@@ -87,11 +87,19 @@ pub async fn confirm_and_start_import(
     let master_year = metadata.as_ref().and_then(|m| m.year).unwrap_or(1970);
 
     // Determine cover art URL based on user selection
-    // If user selected a local image, don't download remote cover art
     let selected_cover_idx = *ctx.selected_cover_index().read();
-    let cover_art_url = if selected_cover_idx.is_some() {
-        // User selected a local image, skip remote download
-        None
+    let folder_files = ctx.folder_files().read().clone();
+    let folder_path_for_cover = ctx.folder_path().read().clone();
+
+    let cover_art_url = if let Some(idx) = selected_cover_idx {
+        // User selected a local image - use its path as the cover art URL
+        if let Some(img) = folder_files.artwork.get(idx) {
+            let local_path = format!("{}/{}", folder_path_for_cover, img.name);
+            Some(local_path)
+        } else {
+            // Fallback to remote if index is invalid
+            candidate.cover_art_url.clone()
+        }
     } else {
         // Use remote cover art URL from candidate
         candidate.cover_art_url.clone()

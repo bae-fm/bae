@@ -1,3 +1,4 @@
+use crate::ui::local_file_url;
 use dioxus::prelude::*;
 
 /// Album art with import progress spinner overlay
@@ -7,9 +8,20 @@ pub fn AlbumArt(
     cover_url: Option<String>,
     import_progress: ReadSignal<Option<u8>>,
 ) -> Element {
+    // Convert local file paths to bae:// URLs
+    let display_url = cover_url.as_ref().map(|url| {
+        if url.starts_with('/') {
+            // Local file path - convert to bae:// URL
+            local_file_url(url)
+        } else {
+            // Already a URL (http://, https://, bae://, etc.)
+            url.clone()
+        }
+    });
+
     rsx! {
         div { class: "aspect-square bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden relative",
-            if let Some(ref url) = cover_url {
+            if let Some(ref url) = display_url {
                 img {
                     src: "{url}",
                     alt: "Album cover for {title}",
