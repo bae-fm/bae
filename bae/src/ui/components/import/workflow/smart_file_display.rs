@@ -4,6 +4,7 @@ use chardetng::EncodingDetector;
 use dioxus::prelude::*;
 use tracing::warn;
 
+use super::image_lightbox::ImageLightbox;
 use super::text_file_modal::TextFileModal;
 
 fn format_file_size(bytes: u64) -> String {
@@ -138,6 +139,7 @@ async fn read_text_file_with_encoding(path: &str) -> Result<String, String> {
 #[component]
 pub fn SmartFileDisplay(files: CategorizedFileInfo, folder_path: String) -> Element {
     let mut modal_state = use_signal(|| None::<(String, String)>);
+    let mut lightbox_index = use_signal(|| None::<usize>);
     let mut show_other_files = use_signal(|| false);
 
     let on_text_file_click = move |filename: String, filepath: String| {
@@ -153,6 +155,17 @@ pub fn SmartFileDisplay(files: CategorizedFileInfo, folder_path: String) -> Elem
         });
     };
 
+    // Build image data for lightbox
+    let image_data: Vec<(String, String)> = files
+        .artwork
+        .iter()
+        .map(|img| {
+            let path = format!("{}/{}", folder_path, img.name);
+            let url = local_file_url(&path);
+            (img.name.clone(), url)
+        })
+        .collect();
+
     rsx! {
         if files.is_empty() {
             div { class: "text-gray-400 text-center py-8",
@@ -163,9 +176,13 @@ pub fn SmartFileDisplay(files: CategorizedFileInfo, folder_path: String) -> Elem
                 // Audio section - render based on content type
                 {render_audio_content(&files.audio, &folder_path, on_text_file_click)}
 
-                // Artwork section
-                for image in files.artwork.iter() {
-                    {render_image_file(image, &folder_path)}
+                // Artwork gallery
+                if !files.artwork.is_empty() {
+                    div { class: "grid grid-cols-3 gap-2",
+                        for (idx, image) in files.artwork.iter().enumerate() {
+                            {render_gallery_thumbnail(image, &folder_path, idx, lightbox_index)}
+                        }
+                    }
                 }
 
                 // Documents section
@@ -213,26 +230,44 @@ pub fn SmartFileDisplay(files: CategorizedFileInfo, folder_path: String) -> Elem
                 on_close: move |_| modal_state.set(None),
             }
         }
+
+        // Lightbox for images
+        if let Some(idx) = *lightbox_index.read() {
+            ImageLightbox {
+                images: image_data.clone(),
+                current_index: idx,
+                on_close: move |_| lightbox_index.set(None),
+                on_navigate: move |new_idx| lightbox_index.set(Some(new_idx)),
+            }
+        }
     }
 }
 
-fn render_image_file(file: &FileInfo, folder_path: &str) -> Element {
+fn render_gallery_thumbnail(
+    file: &FileInfo,
+    folder_path: &str,
+    index: usize,
+    mut lightbox_index: Signal<Option<usize>>,
+) -> Element {
     let image_path = format!("{}/{}", folder_path, file.name);
     let image_url = local_file_url(&image_path);
+    let filename = file.name.clone();
+
     rsx! {
-        div {
-            class: "p-3 bg-gray-800 border border-gray-700 rounded-lg",
-            div { class: "flex items-start gap-3",
-                img {
-                    src: "{image_url}",
-                    class: "w-20 h-20 object-cover rounded flex-shrink-0",
-                    alt: "{file.name}",
-                }
-                div { class: "flex-1 min-w-0",
-                    div { class: "text-sm text-white font-medium truncate", {file.name.clone()} }
-                    div { class: "text-xs text-gray-400 mt-1",
-                        {format!("{} • {}", format_file_size(file.size), file.format)}
-                    }
+        button {
+            class: "relative aspect-square bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-500 transition-colors group",
+            onclick: move |_| lightbox_index.set(Some(index)),
+            img {
+                src: "{image_url}",
+                alt: "{filename}",
+                class: "w-full h-full object-cover",
+            }
+            // Hover overlay with filename
+            div {
+                class: "absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2",
+                span {
+                    class: "text-xs text-white truncate w-full",
+                    {filename.clone()}
                 }
             }
         }
@@ -250,16 +285,16 @@ fn render_text_file(
     rsx! {
         div {
             class: "p-3 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-750 hover:border-gray-600 transition-colors cursor-pointer",
-            onclick: move |_| on_click(filename.clone(), text_path.clone()),
+    onclick: move |_| on_click(filename.clone(), text_path.clone()),
             div { class: "flex items-center gap-3",
                 div {
                     class: "flex-shrink-0 w-8 h-8 bg-gray-700 rounded flex items-center justify-center",
                     span { class: "text-gray-400 text-sm", "📄" }
                 }
                 div { class: "flex-1 min-w-0",
-                    div { class: "text-sm text-white font-medium truncate", {file.name.clone()} }
+            div { class: "text-sm text-white font-medium truncate", {file.name.clone()} }
                     div { class: "text-xs text-gray-400 mt-0.5",
-                        {format!("{} • Click to view", format_file_size(file_size))}
+                {format!("{} • Click to view", format_file_size(file_size))}
                     }
                 }
             }
@@ -269,13 +304,13 @@ fn render_text_file(
 
 fn render_other_file(file: &FileInfo) -> Element {
     rsx! {
-        div {
+                div {
             class: "p-2 bg-gray-800 border border-gray-700 rounded",
-            div { class: "flex items-center justify-between",
-                div { class: "flex-1 min-w-0",
+                    div { class: "flex items-center justify-between",
+                        div { class: "flex-1 min-w-0",
                     div { class: "text-sm text-gray-300 truncate", {file.name.clone()} }
-                }
-                div { class: "text-xs text-gray-500 ml-2",
+                        }
+                        div { class: "text-xs text-gray-500 ml-2",
                     {format!("{} • {}", format_file_size(file.size), file.format)}
                 }
             }

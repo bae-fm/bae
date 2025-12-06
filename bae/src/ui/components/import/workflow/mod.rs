@@ -1,6 +1,7 @@
 mod cd_import;
 mod file_list;
 mod folder_import;
+mod image_lightbox;
 mod inputs;
 mod manual_search_panel;
 mod match_item;
