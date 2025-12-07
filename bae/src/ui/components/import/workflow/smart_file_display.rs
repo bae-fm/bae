@@ -166,6 +166,19 @@ pub fn SmartFileDisplay(files: CategorizedFileInfo, folder_path: String) -> Elem
         })
         .collect();
 
+    // Compute clamped lightbox index to prevent out-of-bounds access
+    let image_count = image_data.len();
+    let current_idx = *lightbox_index.read();
+    let clamped_lightbox_index = current_idx.and_then(|idx| {
+        if image_count == 0 || idx >= image_count {
+            // Index out of bounds or no images - close lightbox
+            lightbox_index.set(None);
+            None
+        } else {
+            Some(idx)
+        }
+    });
+
     rsx! {
         if files.is_empty() {
             div { class: "text-gray-400 text-center py-8",
@@ -232,12 +245,16 @@ pub fn SmartFileDisplay(files: CategorizedFileInfo, folder_path: String) -> Elem
         }
 
         // Lightbox for images
-        if let Some(idx) = *lightbox_index.read() {
+        if let Some(clamped_idx) = clamped_lightbox_index {
             ImageLightbox {
                 images: image_data.clone(),
-                current_index: idx,
+                current_index: clamped_idx,
                 on_close: move |_| lightbox_index.set(None),
-                on_navigate: move |new_idx| lightbox_index.set(Some(new_idx)),
+                on_navigate: move |new_idx: usize| {
+                    // Clamp navigation to valid range
+                    let max_idx = image_count.saturating_sub(1);
+                    lightbox_index.set(Some(new_idx.min(max_idx)));
+                },
             }
         }
     }

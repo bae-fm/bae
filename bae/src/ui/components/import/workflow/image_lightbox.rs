@@ -8,10 +8,24 @@ pub fn ImageLightbox(
     on_navigate: EventHandler<usize>,
 ) -> Element {
     let total = images.len();
-    let (filename, url) = &images[current_index];
 
-    let can_prev = current_index > 0;
-    let can_next = current_index < total - 1;
+    // Clamp index to valid range to prevent panic if images list changed
+    // If images list is empty, close the lightbox
+    if total == 0 {
+        return rsx! {
+            div {
+                class: "fixed inset-0 bg-black/90 flex items-center justify-center z-50",
+                onclick: move |_| on_close.call(()),
+                div { class: "text-white", "No images available" }
+            }
+        };
+    }
+
+    let clamped_index = current_index.min(total - 1);
+    let (filename, url) = &images[clamped_index];
+
+    let can_prev = clamped_index > 0;
+    let can_next = clamped_index < total - 1;
 
     rsx! {
         div {
@@ -32,7 +46,7 @@ pub fn ImageLightbox(
             if total > 1 {
                 div {
                     class: "absolute top-4 left-4 text-gray-400 text-sm",
-                    {format!("{} / {}", current_index + 1, total)}
+                    {format!("{} / {}", clamped_index + 1, total)}
                 }
             }
 
@@ -42,7 +56,7 @@ pub fn ImageLightbox(
                     class: "absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-gray-800/60 hover:bg-gray-700/80 text-white rounded-full flex items-center justify-center transition-colors",
                     onclick: move |e| {
                         e.stop_propagation();
-                        on_navigate.call(current_index - 1);
+                        on_navigate.call(clamped_index - 1);
                     },
                     "‹"
                 }
@@ -54,7 +68,7 @@ pub fn ImageLightbox(
                     class: "absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-gray-800/60 hover:bg-gray-700/80 text-white rounded-full flex items-center justify-center transition-colors",
                     onclick: move |e| {
                         e.stop_propagation();
-                        on_navigate.call(current_index + 1);
+                        on_navigate.call(clamped_index + 1);
                     },
                     "›"
                 }
