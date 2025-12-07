@@ -532,6 +532,7 @@ pub struct ReleaseSearchParams {
     pub artist: Option<String>,
     pub album: Option<String>,
     pub year: Option<String>,
+    pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub barcode: Option<String>,
     pub format: Option<String>,
@@ -544,6 +545,7 @@ impl ReleaseSearchParams {
         self.artist.is_some()
             || self.album.is_some()
             || self.year.is_some()
+            || self.label.is_some()
             || self.catalog_number.is_some()
             || self.barcode.is_some()
             || self.format.is_some()
@@ -567,6 +569,11 @@ impl ReleaseSearchParams {
         if let Some(ref year) = self.year {
             if !year.trim().is_empty() {
                 parts.push(format!("date:{}", year.trim()));
+            }
+        }
+        if let Some(ref label) = self.label {
+            if !label.trim().is_empty() {
+                parts.push(format!("label:\"{}\"", label.trim()));
             }
         }
         if let Some(ref catno) = self.catalog_number {
@@ -649,6 +656,45 @@ pub fn extract_catalog_number(text: &str) -> Option<String> {
     }
 
     None
+}
+
+/// Extract search tokens from folder metadata for the search pills UI
+///
+/// Combines artist, cleaned album title, year, and folder tokens into a
+/// deduplicated list of tokens for display as clickable pills.
+pub fn extract_search_tokens(metadata: &crate::import::FolderMetadata) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    let mut add_token = |s: &str| {
+        let trimmed = s.trim();
+        if !trimmed.is_empty() && seen.insert(trimmed.to_lowercase()) {
+            tokens.push(trimmed.to_string());
+        }
+    };
+
+    // Add artist if present
+    if let Some(ref artist) = metadata.artist {
+        add_token(artist);
+    }
+
+    // Add cleaned album name if present
+    if let Some(ref album) = metadata.album {
+        let cleaned = clean_album_name_for_search(album);
+        add_token(&cleaned);
+    }
+
+    // Add year if present
+    if let Some(year) = metadata.year {
+        add_token(&year.to_string());
+    }
+
+    // Add folder tokens (already extracted during detection)
+    for token in &metadata.folder_tokens {
+        add_token(token);
+    }
+
+    tokens
 }
 
 /// Search MusicBrainz for releases using structured parameters

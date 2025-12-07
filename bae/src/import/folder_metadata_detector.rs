@@ -12,7 +12,8 @@ pub struct FolderMetadata {
     pub discid: Option<String>,    // FreeDB DiscID
     pub mb_discid: Option<String>, // MusicBrainz DiscID
     pub track_count: Option<u32>,
-    pub confidence: f32, // 0-100%
+    pub confidence: f32,            // 0-100%
+    pub folder_tokens: Vec<String>, // Tokens extracted from folder name (brackets/parens content)
 }
 
 #[derive(Debug, Clone)]
@@ -754,18 +755,50 @@ fn read_mp3_metadata(path: &Path) -> (Option<String>, Option<String>, Option<u32
     }
 }
 
-/// Try to extract artist/album from folder name (e.g., "Artist - Album")
-fn parse_folder_name(folder_path: &Path) -> (Option<String>, Option<String>) {
+/// Extract tokens from bracket/paren content in a string
+/// e.g., "Safe As Milk [Buddah BDS-5001, 1967](Mono)(Promo)" -> ["Buddah BDS-5001, 1967", "Mono", "Promo"]
+fn extract_tokens_from_string(s: &str) -> Vec<String> {
+    use regex::Regex;
+
+    let mut tokens = Vec::new();
+
+    // Extract bracketed content: [...]
+    let bracket_re = Regex::new(r"\[([^\]]+)\]").unwrap();
+    for cap in bracket_re.captures_iter(s) {
+        let content = cap[1].trim();
+        if !content.is_empty() {
+            tokens.push(content.to_string());
+        }
+    }
+
+    // Extract parenthesized content: (...)
+    let paren_re = Regex::new(r"\(([^)]+)\)").unwrap();
+    for cap in paren_re.captures_iter(s) {
+        let content = cap[1].trim();
+        if !content.is_empty() {
+            tokens.push(content.to_string());
+        }
+    }
+
+    tokens
+}
+
+/// Try to extract artist/album/tokens from folder name (e.g., "Artist - Album [Catalog](Format)")
+fn parse_folder_name(folder_path: &Path) -> (Option<String>, Option<String>, Vec<String>) {
     if let Some(folder_name) = folder_path.file_name().and_then(|n| n.to_str()) {
+        let tokens = extract_tokens_from_string(folder_name);
+
         if let Some((artist, album)) = folder_name.split_once(" - ") {
             let artist = artist.trim().to_string();
             let album = album.trim().to_string();
             if !artist.is_empty() && !album.is_empty() {
-                return (Some(artist), Some(album));
+                return (Some(artist), Some(album), tokens);
             }
         }
+
+        return (None, None, tokens);
     }
-    (None, None)
+    (None, None, Vec::new())
 }
 
 /// Detect folder contents and metadata from a folder containing audio files
@@ -1030,8 +1063,8 @@ pub fn detect_metadata(folder_path: PathBuf) -> Result<FolderMetadata, MetadataD
         track_count = Some(audio_files.len() as u32);
     }
 
-    // Fallback to folder name parsing
-    let (folder_artist, folder_album) = parse_folder_name(&folder_path);
+    // Fallback to folder name parsing (also extracts tokens from brackets/parens)
+    let (folder_artist, folder_album, folder_tokens) = parse_folder_name(&folder_path);
     if let Some(ref a) = folder_artist {
         debug!("Parsed folder name: artist='{}'", a);
         artist_sources.push((a.clone(), 0.3)); // Low confidence from folder name
@@ -1039,6 +1072,9 @@ pub fn detect_metadata(folder_path: PathBuf) -> Result<FolderMetadata, MetadataD
     if let Some(ref alb) = folder_album {
         debug!("Parsed folder name: album='{}'", alb);
         album_sources.push((alb.clone(), 0.3));
+    }
+    if !folder_tokens.is_empty() {
+        debug!("Extracted folder tokens: {:?}", folder_tokens);
     }
 
     // Aggregate metadata with weighted scoring
@@ -1082,6 +1118,7 @@ pub fn detect_metadata(folder_path: PathBuf) -> Result<FolderMetadata, MetadataD
         mb_discid: mb_discid.clone(),
         track_count,
         confidence,
+        folder_tokens,
     };
 
     info!("✅ Detection complete: confidence={:.0}%", confidence);

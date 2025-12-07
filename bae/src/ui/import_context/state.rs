@@ -18,18 +18,28 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use super::types::{ImportPhase, ImportStep};
-use super::{detection, import, navigation, search};
+use super::{detection, import, navigation};
+
+/// Which search tab is active
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum SearchTab {
+    #[default]
+    General,
+    CatalogNumber,
+    Barcode,
+}
 
 pub struct ImportContext {
     // Structured search fields for manual search
     pub(crate) search_artist: Signal<String>,
     pub(crate) search_album: Signal<String>,
     pub(crate) search_year: Signal<String>,
+    pub(crate) search_label: Signal<String>,
     pub(crate) search_catalog_number: Signal<String>,
     pub(crate) search_barcode: Signal<String>,
-    pub(crate) search_format: Signal<String>,
-    pub(crate) search_country: Signal<String>,
+    pub(crate) search_tab: Signal<SearchTab>,
     pub(crate) search_results: Signal<Vec<DiscogsSearchResult>>,
+    pub(crate) has_searched: Signal<bool>,
     pub(crate) is_searching_masters: Signal<bool>,
     pub(crate) is_loading_versions: Signal<bool>,
     pub(crate) error_message: Signal<Option<String>>,
@@ -92,11 +102,12 @@ impl ImportContext {
             search_artist: Signal::new(String::new()),
             search_album: Signal::new(String::new()),
             search_year: Signal::new(String::new()),
+            search_label: Signal::new(String::new()),
             search_catalog_number: Signal::new(String::new()),
             search_barcode: Signal::new(String::new()),
-            search_format: Signal::new(String::new()),
-            search_country: Signal::new(String::new()),
+            search_tab: Signal::new(SearchTab::default()),
             search_results: Signal::new(Vec::new()),
+            has_searched: Signal::new(false),
             is_searching_masters: Signal::new(false),
             is_loading_versions: Signal::new(false),
             error_message: Signal::new(None),
@@ -153,6 +164,10 @@ impl ImportContext {
         self.search_year
     }
 
+    pub fn search_label(&self) -> Signal<String> {
+        self.search_label
+    }
+
     pub fn search_catalog_number(&self) -> Signal<String> {
         self.search_catalog_number
     }
@@ -161,12 +176,12 @@ impl ImportContext {
         self.search_barcode
     }
 
-    pub fn search_format(&self) -> Signal<String> {
-        self.search_format
+    pub fn search_tab(&self) -> Signal<SearchTab> {
+        self.search_tab
     }
 
-    pub fn search_country(&self) -> Signal<String> {
-        self.search_country
+    pub fn has_searched(&self) -> Signal<bool> {
+        self.has_searched
     }
 
     pub fn folder_path(&self) -> Signal<String> {
@@ -274,18 +289,23 @@ impl ImportContext {
         signal.set(value);
     }
 
-    pub fn set_search_format(&self, value: String) {
-        let mut signal = self.search_format;
+    pub fn set_search_label(&self, value: String) {
+        let mut signal = self.search_label;
         signal.set(value);
     }
 
-    pub fn set_search_country(&self, value: String) {
-        let mut signal = self.search_country;
+    pub fn set_search_tab(&self, value: SearchTab) {
+        let mut signal = self.search_tab;
         signal.set(value);
     }
 
     pub fn set_search_results(&self, value: Vec<DiscogsSearchResult>) {
         let mut signal = self.search_results;
+        signal.set(value);
+    }
+
+    pub fn set_has_searched(&self, value: bool) {
+        let mut signal = self.has_searched;
         signal.set(value);
     }
 
@@ -486,11 +506,12 @@ impl ImportContext {
         self.set_search_artist(String::new());
         self.set_search_album(String::new());
         self.set_search_year(String::new());
+        self.set_search_label(String::new());
         self.set_search_catalog_number(String::new());
         self.set_search_barcode(String::new());
-        self.set_search_format(String::new());
-        self.set_search_country(String::new());
+        self.set_search_tab(SearchTab::default());
         self.set_search_results(Vec::new());
+        self.set_has_searched(false);
         self.set_is_searching_masters(false);
         self.set_is_loading_versions(false);
         self.set_error_message(None);
@@ -530,44 +551,18 @@ impl ImportContext {
         self.set_import_phase(ImportPhase::FolderSelection);
     }
 
-    /// Initialize search fields from metadata
+    /// Clear search fields when entering manual search phase.
+    /// Users fill fields by clicking pills extracted from metadata.
+    #[allow(unused_variables)]
     pub fn init_search_query_from_metadata(&self, metadata: &FolderMetadata) {
-        use crate::musicbrainz::{clean_album_name_for_search, extract_catalog_number};
-
-        // Set artist
-        if let Some(ref artist) = metadata.artist {
-            self.set_search_artist(artist.clone());
-        } else {
-            self.set_search_artist(String::new());
-        }
-
-        // Set album (cleaned)
-        if let Some(ref album) = metadata.album {
-            let cleaned_album = clean_album_name_for_search(album);
-            self.set_search_album(cleaned_album);
-
-            // Try to extract catalog number
-            if let Some(catno) = extract_catalog_number(album) {
-                self.set_search_catalog_number(catno);
-            } else {
-                self.set_search_catalog_number(String::new());
-            }
-        } else {
-            self.set_search_album(String::new());
-            self.set_search_catalog_number(String::new());
-        }
-
-        // Set year
-        if let Some(year) = metadata.year {
-            self.set_search_year(year.to_string());
-        } else {
-            self.set_search_year(String::new());
-        }
-
-        // Clear other fields
+        // Clear all search fields - users click pills to fill them
+        self.set_search_artist(String::new());
+        self.set_search_album(String::new());
+        self.set_search_year(String::new());
+        self.set_search_label(String::new());
+        self.set_search_catalog_number(String::new());
         self.set_search_barcode(String::new());
-        self.set_search_format(String::new());
-        self.set_search_country(String::new());
+        self.set_search_tab(SearchTab::default());
     }
 
     /// Reset state for a new torrent selection
@@ -713,13 +708,6 @@ impl ImportContext {
         }
 
         Ok(())
-    }
-
-    pub async fn search_for_matches(
-        &self,
-        source: SearchSource,
-    ) -> Result<Vec<MatchCandidate>, String> {
-        search::search_for_matches(self, source).await
     }
 
     pub async fn load_cd_for_import(

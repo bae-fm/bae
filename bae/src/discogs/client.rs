@@ -25,6 +25,32 @@ struct SearchResponse {
     results: Vec<DiscogsSearchResult>,
 }
 
+/// Search parameters for flexible Discogs queries
+#[derive(Debug, Clone, Default)]
+pub struct DiscogsSearchParams {
+    pub artist: Option<String>,
+    pub release_title: Option<String>,
+    pub year: Option<String>,
+    pub label: Option<String>,
+    pub catno: Option<String>,
+    pub barcode: Option<String>,
+    pub format: Option<String>,
+    pub country: Option<String>,
+}
+
+impl DiscogsSearchParams {
+    pub fn has_any_field(&self) -> bool {
+        self.artist.is_some()
+            || self.release_title.is_some()
+            || self.year.is_some()
+            || self.label.is_some()
+            || self.catno.is_some()
+            || self.barcode.is_some()
+            || self.format.is_some()
+            || self.country.is_some()
+    }
+}
+
 /// Individual search result
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct DiscogsSearchResult {
@@ -102,102 +128,49 @@ impl DiscogsClient {
         }
     }
 
-    /// Search for masters by DISCID
-    pub async fn search_by_discid(
+    /// Flexible search using any combination of supported parameters
+    pub async fn search_with_params(
         &self,
-        discid: &str,
+        params: &DiscogsSearchParams,
     ) -> Result<Vec<DiscogsSearchResult>, DiscogsError> {
         use tracing::{debug, info, warn};
 
         let url = format!("{}/database/search", self.base_url);
 
-        let mut params = HashMap::new();
-        params.insert("discid", discid);
-        params.insert("type", "master");
-        params.insert("token", &self.api_key);
+        let mut query_params: Vec<(&str, &str)> =
+            vec![("type", "release"), ("token", &self.api_key)];
 
-        info!(
-            "📡 Discogs API: GET {} with discid={}, type=master",
-            url, discid
-        );
-        debug!("Request params: {:?}", params);
-
-        let response = self
-            .client
-            .get(&url)
-            .query(&params)
-            .header("User-Agent", "bae/1.0 +https://github.com/hideselfview/bae")
-            .send()
-            .await?;
-
-        let status = response.status();
-        debug!("Response status: {}", status);
-
-        if response.status().is_success() {
-            let search_response: SearchResponse = response.json().await?;
-
-            info!(
-                "✓ Discogs DISCID search returned {} total result(s)",
-                search_response.results.len()
-            );
-            let masters: Vec<_> = search_response
-                .results
-                .into_iter()
-                .filter(|r| r.result_type == "master")
-                .collect();
-
-            info!("  → {} master(s) after filtering", masters.len());
-            Ok(masters)
-        } else if response.status() == 429 {
-            warn!("✗ Discogs rate limit exceeded");
-            Err(DiscogsError::RateLimit)
-        } else if response.status() == 401 {
-            warn!("✗ Discogs invalid API key");
-            Err(DiscogsError::InvalidApiKey)
-        } else {
-            warn!("✗ Discogs API error: {}", status);
-            Err(DiscogsError::Request(
-                response.error_for_status().unwrap_err(),
-            ))
+        if let Some(ref artist) = params.artist {
+            query_params.push(("artist", artist));
         }
-    }
+        if let Some(ref title) = params.release_title {
+            query_params.push(("release_title", title));
+        }
+        if let Some(ref year) = params.year {
+            query_params.push(("year", year));
+        }
+        if let Some(ref label) = params.label {
+            query_params.push(("label", label));
+        }
+        if let Some(ref catno) = params.catno {
+            query_params.push(("catno", catno));
+        }
+        if let Some(ref barcode) = params.barcode {
+            query_params.push(("barcode", barcode));
+        }
+        if let Some(ref format) = params.format {
+            query_params.push(("format", format));
+        }
+        if let Some(ref country) = params.country {
+            query_params.push(("country", country));
+        }
 
-    /// Search for masters by metadata (artist, album, year)
-    pub async fn search_by_metadata(
-        &self,
-        artist: &str,
-        album: &str,
-        year: Option<u32>,
-    ) -> Result<Vec<DiscogsSearchResult>, DiscogsError> {
-        use tracing::{debug, info, warn};
-
-        let url = format!("{}/database/search", self.base_url);
-
-        // Construct optimized query: "artist album" or "artist album year"
-        let query = if let Some(y) = year {
-            format!("{} {} {}", artist, album, y)
-        } else {
-            format!("{} {}", artist, album)
-        };
-
-        let mut params = HashMap::new();
-        params.insert("q", query.as_str());
-        params.insert("type", "master");
-        params.insert("token", &self.api_key);
-
-        info!(
-            "📡 Discogs API: GET {} with q='{}', type=master",
-            url, query
-        );
-        debug!(
-            "Search query breakdown: artist='{}', album='{}', year={:?}",
-            artist, album, year
-        );
+        info!("📡 Discogs API: GET {} with params: {:?}", url, params);
 
         let response = self
             .client
             .get(&url)
-            .query(&params)
+            .query(&query_params)
             .header("User-Agent", "bae/1.0 +https://github.com/hideselfview/bae")
             .send()
             .await?;
@@ -209,7 +182,7 @@ impl DiscogsClient {
             let search_response: SearchResponse = response.json().await?;
 
             info!(
-                "✓ Discogs text search returned {} total result(s)",
+                "✓ Discogs search returned {} total result(s)",
                 search_response.results.len()
             );
             for (i, result) in search_response.results.iter().enumerate().take(3) {
@@ -222,14 +195,14 @@ impl DiscogsClient {
                 );
             }
 
-            let masters: Vec<_> = search_response
+            let releases: Vec<_> = search_response
                 .results
                 .into_iter()
-                .filter(|r| r.result_type == "master")
+                .filter(|r| r.result_type == "release")
                 .collect();
 
-            info!("  → {} master(s) after filtering", masters.len());
-            Ok(masters)
+            info!("  → {} release(s) after filtering", releases.len());
+            Ok(releases)
         } else if response.status() == 429 {
             warn!("✗ Discogs rate limit exceeded");
             Err(DiscogsError::RateLimit)
@@ -294,10 +267,12 @@ impl DiscogsClient {
             let thumb =
                 primary_image.and_then(|img| img.uri150.clone().or_else(|| Some(img.uri.clone())));
 
+            // Some releases don't have a master_id (standalone releases)
+            // The caller (import_release) will override this with the correct value anyway
             let master_id = release
                 .master_id
-                .expect("Release must have a master_id")
-                .to_string();
+                .map(|id| id.to_string())
+                .unwrap_or_default();
 
             Ok(DiscogsRelease {
                 id: release.id.to_string(),
