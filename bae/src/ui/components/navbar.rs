@@ -15,7 +15,9 @@ pub fn Navbar() -> Element {
         {
             #[cfg(target_os = "macos")]
             {
-                rsx! { TitleBar {} }
+                rsx! {
+                    TitleBar {}
+                }
             }
             #[cfg(not(target_os = "macos"))]
             {

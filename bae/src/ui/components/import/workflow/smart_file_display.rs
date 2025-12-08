@@ -36,18 +36,17 @@ fn render_audio_content(
         AudioContentInfo::TrackFiles(tracks) if !tracks.is_empty() => {
             let total_size: u64 = tracks.iter().map(|f| f.size).sum();
             rsx! {
-                div {
-                    class: "p-4 bg-gray-800/50 border border-blue-500/30 rounded-lg",
+                div { class: "p-4 bg-gray-800/50 border border-blue-500/30 rounded-lg",
                     div { class: "flex items-start gap-3",
-                        div {
-                            class: "flex-shrink-0 w-10 h-10 bg-blue-600 rounded flex items-center justify-center",
+                        div { class: "flex-shrink-0 w-10 h-10 bg-blue-600 rounded flex items-center justify-center",
                             span { class: "text-white text-lg", "🎼" }
                         }
                         div { class: "flex-1",
                             div { class: "flex items-center gap-2 mb-1",
-                                span { class: "text-sm font-semibold text-blue-300", "Track Files" }
-                                span {
-                                    class: "px-2 py-0.5 bg-blue-600/50 text-blue-200 text-xs rounded",
+                                span { class: "text-sm font-semibold text-blue-300",
+                                    "Track Files"
+                                }
+                                span { class: "px-2 py-0.5 bg-blue-600/50 text-blue-200 text-xs rounded",
                                     {format!("{} tracks", tracks.len())}
                                 }
                             }
@@ -83,24 +82,20 @@ fn render_cue_flac_pair(
             class: "p-4 bg-gray-800/50 border border-purple-500/30 rounded-lg hover:bg-gray-800/70 hover:border-purple-500/50 transition-colors cursor-pointer",
             onclick: move |_| on_click(cue_name.clone(), cue_path.clone()),
             div { class: "flex items-start gap-3",
-                div {
-                    class: "flex-shrink-0 w-10 h-10 bg-purple-600 rounded flex items-center justify-center",
+                div { class: "flex-shrink-0 w-10 h-10 bg-purple-600 rounded flex items-center justify-center",
                     span { class: "text-white text-lg", "💿" }
                 }
                 div { class: "flex-1",
                     div { class: "flex items-center gap-2 mb-1",
                         span { class: "text-sm font-semibold text-purple-300", "CUE/FLAC" }
-                        span {
-                            class: "px-2 py-0.5 bg-purple-600/50 text-purple-200 text-xs rounded",
+                        span { class: "px-2 py-0.5 bg-purple-600/50 text-purple-200 text-xs rounded",
                             {format!("{} tracks", track_count)}
                         }
                     }
                     div { class: "text-xs text-gray-400",
                         {format!("{} total • Click to view CUE", format_file_size(total_size))}
                     }
-                    div { class: "text-xs text-gray-500 mt-1 truncate",
-                        {flac_name}
-                    }
+                    div { class: "text-xs text-gray-500 mt-1 truncate", {flac_name} }
                 }
             }
         }
@@ -181,9 +176,7 @@ pub fn SmartFileDisplay(files: CategorizedFileInfo, folder_path: String) -> Elem
 
     rsx! {
         if files.is_empty() {
-            div { class: "text-gray-400 text-center py-8",
-                "No files found"
-            }
+            div { class: "text-gray-400 text-center py-8", "No files found" }
         } else {
             div { class: "space-y-3",
                 // Audio section - render based on content type
@@ -192,7 +185,7 @@ pub fn SmartFileDisplay(files: CategorizedFileInfo, folder_path: String) -> Elem
                 // Artwork gallery
                 if !files.artwork.is_empty() {
                     div { class: "grid grid-cols-3 gap-2",
-                        for (idx, image) in files.artwork.iter().enumerate() {
+                        for (idx , image) in files.artwork.iter().enumerate() {
                             {render_gallery_thumbnail(image, &folder_path, idx, lightbox_index)}
                         }
                     }
@@ -218,7 +211,11 @@ pub fn SmartFileDisplay(files: CategorizedFileInfo, folder_path: String) -> Elem
                                     }
                                 }
                                 span { class: "text-xs",
-                                    if show_other_files() { "▲" } else { "▼" }
+                                    if show_other_files() {
+                                        "▲"
+                                    } else {
+                                        "▼"
+                                    }
                                 }
                             }
                         }
@@ -280,12 +277,8 @@ fn render_gallery_thumbnail(
                 class: "w-full h-full object-cover",
             }
             // Hover overlay with filename
-            div {
-                class: "absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2",
-                span {
-                    class: "text-xs text-white truncate w-full",
-                    {filename.clone()}
-                }
+            div { class: "absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2",
+                span { class: "text-xs text-white truncate w-full", {filename.clone()} }
             }
         }
     }
@@ -302,16 +295,15 @@ fn render_text_file(
     rsx! {
         div {
             class: "p-3 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-750 hover:border-gray-600 transition-colors cursor-pointer",
-    onclick: move |_| on_click(filename.clone(), text_path.clone()),
+            onclick: move |_| on_click(filename.clone(), text_path.clone()),
             div { class: "flex items-center gap-3",
-                div {
-                    class: "flex-shrink-0 w-8 h-8 bg-gray-700 rounded flex items-center justify-center",
+                div { class: "flex-shrink-0 w-8 h-8 bg-gray-700 rounded flex items-center justify-center",
                     span { class: "text-gray-400 text-sm", "📄" }
                 }
                 div { class: "flex-1 min-w-0",
-            div { class: "text-sm text-white font-medium truncate", {file.name.clone()} }
+                    div { class: "text-sm text-white font-medium truncate", {file.name.clone()} }
                     div { class: "text-xs text-gray-400 mt-0.5",
-                {format!("{} • Click to view", format_file_size(file_size))}
+                        {format!("{} • Click to view", format_file_size(file_size))}
                     }
                 }
             }
@@ -321,13 +313,12 @@ fn render_text_file(
 
 fn render_other_file(file: &FileInfo) -> Element {
     rsx! {
-                div {
-            class: "p-2 bg-gray-800 border border-gray-700 rounded",
-                    div { class: "flex items-center justify-between",
-                        div { class: "flex-1 min-w-0",
+        div { class: "p-2 bg-gray-800 border border-gray-700 rounded",
+            div { class: "flex items-center justify-between",
+                div { class: "flex-1 min-w-0",
                     div { class: "text-sm text-gray-300 truncate", {file.name.clone()} }
-                        }
-                        div { class: "text-xs text-gray-500 ml-2",
+                }
+                div { class: "text-xs text-gray-500 ml-2",
                     {format!("{} • {}", format_file_size(file.size), file.format)}
                 }
             }

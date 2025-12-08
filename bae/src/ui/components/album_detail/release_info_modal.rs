@@ -159,29 +159,17 @@ pub fn ReleaseInfoModal(album: DbAlbum, release_id: String, on_close: EventHandl
                     // Tabs
                     div { class: "flex px-6",
                         button {
-                            class: if current_tab == Tab::Details {
-                                "px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500"
-                            } else {
-                                "px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent"
-                            },
+                            class: if current_tab == Tab::Details { "px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500" } else { "px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent" },
                             onclick: move |_| active_tab.set(Tab::Details),
                             "Details"
                         }
                         button {
-                            class: if current_tab == Tab::Files {
-                                "px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500"
-                            } else {
-                                "px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent"
-                            },
+                            class: if current_tab == Tab::Files { "px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500" } else { "px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent" },
                             onclick: move |_| active_tab.set(Tab::Files),
                             "Files"
                         }
                         button {
-                            class: if current_tab == Tab::Gallery {
-                                "px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500"
-                            } else {
-                                "px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent"
-                            },
+                            class: if current_tab == Tab::Gallery { "px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500" } else { "px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent" },
                             onclick: move |_| active_tab.set(Tab::Gallery),
                             "Gallery"
                         }
@@ -192,24 +180,13 @@ pub fn ReleaseInfoModal(album: DbAlbum, release_id: String, on_close: EventHandl
                 div { class: "p-6 overflow-y-auto flex-1",
                     match current_tab {
                         Tab::Details => rsx! {
-                            DetailsTab {
-                                album: album.clone(),
-                                release: release().clone(),
-                            }
+                            DetailsTab { album: album.clone(), release: release().clone() }
                         },
                         Tab::Files => rsx! {
-                            FilesTab {
-                                files,
-                                is_loading: is_loading_files,
-                                error_message,
-                            }
+                            FilesTab { files, is_loading: is_loading_files, error_message }
                         },
                         Tab::Gallery => rsx! {
-                            GalleryTab {
-                                images,
-                                is_loading: is_loading_images,
-                                error_message: images_error,
-                            }
+                            GalleryTab { images, is_loading: is_loading_images, error_message: images_error }
                         },
                     }
                 }
@@ -297,9 +274,7 @@ fn DetailsTab(album: DbAlbum, release: Option<DbRelease>) -> Element {
         }
     } else {
         rsx! {
-            div { class: "text-gray-400 text-center py-8",
-                "Loading release details..."
-            }
+            div { class: "text-gray-400 text-center py-8", "Loading release details..." }
         }
     }
 }
@@ -315,34 +290,20 @@ fn FilesTab(
     let error_message = error_message();
     rsx! {
         if is_loading {
-            div {
-                class: "text-gray-400 text-center py-8",
-                "Loading files..."
-            }
+            div { class: "text-gray-400 text-center py-8", "Loading files..." }
         } else if let Some(ref error) = error_message {
-            div {
-                class: "text-red-400 text-center py-8",
-                {error.clone()}
-            }
+            div { class: "text-red-400 text-center py-8", {error.clone()} }
         } else if files.is_empty() {
-            div {
-                class: "text-gray-400 text-center py-8",
-                "No files found"
-            }
+            div { class: "text-gray-400 text-center py-8", "No files found" }
         } else {
-            div {
-                class: "space-y-2",
+            div { class: "space-y-2",
                 for file in files.iter() {
-                    div {
-                        class: "flex items-center justify-between py-2 px-3 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors",
-                        div {
-                            class: "flex-1",
-                            div {
-                                class: "text-white text-sm font-medium",
+                    div { class: "flex items-center justify-between py-2 px-3 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors",
+                        div { class: "flex-1",
+                            div { class: "text-white text-sm font-medium",
                                 {file.original_filename.clone()}
                             }
-                            div {
-                                class: "text-gray-400 text-xs mt-1",
+                            div { class: "text-gray-400 text-xs mt-1",
                                 {format!("{} • {}", format_file_size(file.file_size), file.format)}
                             }
                         }
@@ -377,23 +338,13 @@ fn GalleryTab(
 
     rsx! {
         if is_loading {
-            div {
-                class: "text-gray-400 text-center py-8",
-                "Loading images..."
-            }
+            div { class: "text-gray-400 text-center py-8", "Loading images..." }
         } else if let Some(ref error) = error_message {
-            div {
-                class: "text-red-400 text-center py-8",
-                {error.clone()}
-            }
+            div { class: "text-red-400 text-center py-8", {error.clone()} }
         } else if images.is_empty() {
-            div {
-                class: "text-gray-400 text-center py-8",
-                "No images found"
-            }
+            div { class: "text-gray-400 text-center py-8", "No images found" }
         } else {
-            div {
-                class: "grid grid-cols-2 sm:grid-cols-3 gap-4",
+            div { class: "grid grid-cols-2 sm:grid-cols-3 gap-4",
                 for image in images.iter() {
                     {render_gallery_image(image)}
                 }
@@ -416,36 +367,24 @@ fn render_gallery_image(image: &DbImage) -> Element {
     };
 
     rsx! {
-        div {
-            class: "relative group",
-            div {
-                class: if is_cover {
-                    "aspect-square bg-gray-700 rounded-lg overflow-hidden ring-2 ring-blue-500"
-                } else {
-                    "aspect-square bg-gray-700 rounded-lg overflow-hidden"
-                },
+        div { class: "relative group",
+            div { class: if is_cover { "aspect-square bg-gray-700 rounded-lg overflow-hidden ring-2 ring-blue-500" } else { "aspect-square bg-gray-700 rounded-lg overflow-hidden" },
                 // Placeholder - actual image serving will be implemented when we have
                 // chunk-based image retrieval or local path resolution
-                div {
-                    class: "w-full h-full flex items-center justify-center text-gray-500",
+                div { class: "w-full h-full flex items-center justify-center text-gray-500",
                     "🖼️"
                 }
             }
             // Overlay with info
-            div {
-                class: "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2",
+            div { class: "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2",
                 div { class: "text-xs text-white truncate", {filename} }
                 div { class: "flex items-center gap-2 mt-1",
                     if is_cover {
-                        span {
-                            class: "text-xs px-1.5 py-0.5 bg-blue-500 text-white rounded",
+                        span { class: "text-xs px-1.5 py-0.5 bg-blue-500 text-white rounded",
                             "Cover"
                         }
                     }
-                    span {
-                        class: "text-xs text-gray-400",
-                        {source_label}
-                    }
+                    span { class: "text-xs text-gray-400", {source_label} }
                 }
             }
         }

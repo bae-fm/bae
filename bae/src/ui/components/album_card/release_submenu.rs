@@ -22,8 +22,7 @@ pub fn ReleaseSubmenu(
 ) -> Element {
     let playback = use_playback_service();
     rsx! {
-        div {
-            class: "absolute left-full top-0 ml-2 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-30 border border-gray-600 min-w-[200px]",
+        div { class: "absolute left-full top-0 ml-2 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-30 border border-gray-600 min-w-[200px]",
             for release in releases().iter() {
                 {
                     let release_id = release.id.clone();
@@ -42,28 +41,34 @@ pub fn ReleaseSubmenu(
                                     evt.stop_propagation();
                                     on_close.call(());
 
+        
+
                                     if is_loading_clone() {
                                         return;
                                     }
-
+        
                                     let release_id = release_id_clone.clone();
                                     let library_manager = library_manager_clone.clone();
                                     let playback = playback_clone.clone();
                                     let action = action;
-
+        
                                     if action == ReleaseAction::Play {
                                         is_loading_clone.set(true);
                                         let mut is_loading = is_loading_clone;
                                         spawn(async move {
                                             match library_manager.get().get_tracks(&release_id).await {
                                                 Ok(mut tracks) => {
-                                                    tracks.sort_by(|a, b| match (a.track_number, b.track_number) {
-                                                        (Some(a_num), Some(b_num)) => a_num.cmp(&b_num),
-                                                        (Some(_), None) => std::cmp::Ordering::Less,
-                                                        (None, Some(_)) => std::cmp::Ordering::Greater,
-                                                        (None, None) => std::cmp::Ordering::Equal,
-                                                    });
-                                                    let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
+                                                    tracks
+                                                        .sort_by(|a, b| match (a.track_number, b.track_number) {
+                                                            (Some(a_num), Some(b_num)) => a_num.cmp(&b_num),
+                                                            (Some(_), None) => std::cmp::Ordering::Less,
+                                                            (None, Some(_)) => std::cmp::Ordering::Greater,
+                                                            (None, None) => std::cmp::Ordering::Equal,
+                                                        });
+                                                    let track_ids: Vec<String> = tracks
+                                                        .iter()
+                                                        .map(|t| t.id.clone())
+                                                        .collect();
                                                     if !track_ids.is_empty() {
                                                         let first_track_id = track_ids[0].clone();
                                                         playback.play_album(track_ids);
@@ -90,7 +95,9 @@ pub fn ReleaseSubmenu(
                                                     }
                                                 }
                                                 Err(e) => {
-                                                    tracing::warn!("Failed to get tracks for release {}: {}", release_id, e);
+                                                    tracing::warn!(
+                                                        "Failed to get tracks for release {}: {}", release_id, e
+                                                    );
                                                     is_loading.set(false);
                                                 }
                                             }
@@ -99,17 +106,23 @@ pub fn ReleaseSubmenu(
                                         spawn(async move {
                                             match library_manager.get().get_tracks(&release_id).await {
                                                 Ok(mut tracks) => {
-                                                    tracks.sort_by(|a, b| match (a.track_number, b.track_number) {
-                                                        (Some(a_num), Some(b_num)) => a_num.cmp(&b_num),
-                                                        (Some(_), None) => std::cmp::Ordering::Less,
-                                                        (None, Some(_)) => std::cmp::Ordering::Greater,
-                                                        (None, None) => std::cmp::Ordering::Equal,
-                                                    });
-                                                    let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
+                                                    tracks
+                                                        .sort_by(|a, b| match (a.track_number, b.track_number) {
+                                                            (Some(a_num), Some(b_num)) => a_num.cmp(&b_num),
+                                                            (Some(_), None) => std::cmp::Ordering::Less,
+                                                            (None, Some(_)) => std::cmp::Ordering::Greater,
+                                                            (None, None) => std::cmp::Ordering::Equal,
+                                                        });
+                                                    let track_ids: Vec<String> = tracks
+                                                        .iter()
+                                                        .map(|t| t.id.clone())
+                                                        .collect();
                                                     playback.add_to_queue(track_ids);
                                                 }
                                                 Err(e) => {
-                                                    tracing::warn!("Failed to get tracks for release {}: {}", release_id, e);
+                                                    tracing::warn!(
+                                                        "Failed to get tracks for release {}: {}", release_id, e
+                                                    );
                                                 }
                                             }
                                         });

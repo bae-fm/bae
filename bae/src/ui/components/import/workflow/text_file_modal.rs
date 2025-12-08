@@ -11,12 +11,8 @@ pub fn TextFileModal(filename: String, content: String, on_close: EventHandler<(
                 onclick: move |e| e.stop_propagation(),
 
                 // Header
-                div {
-                    class: "flex items-center justify-between p-4 border-b border-gray-700",
-                    h3 {
-                        class: "text-lg font-semibold text-white",
-                        {filename}
-                    }
+                div { class: "flex items-center justify-between p-4 border-b border-gray-700",
+                    h3 { class: "text-lg font-semibold text-white", {filename} }
                     button {
                         class: "text-gray-400 hover:text-white transition-colors",
                         onclick: move |_| on_close.call(()),
@@ -25,10 +21,8 @@ pub fn TextFileModal(filename: String, content: String, on_close: EventHandler<(
                 }
 
                 // Content
-                div {
-                    class: "flex-1 overflow-auto p-4",
-                    pre {
-                        class: "text-sm text-gray-300 font-mono whitespace-pre-wrap select-text",
+                div { class: "flex-1 overflow-auto p-4",
+                    pre { class: "text-sm text-gray-300 font-mono whitespace-pre-wrap select-text",
                         {content}
                     }
                 }

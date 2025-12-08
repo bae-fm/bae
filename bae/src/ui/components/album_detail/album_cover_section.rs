@@ -59,8 +59,7 @@ pub fn AlbumCoverSection(
 
                     // Dropdown menu
                     if show_dropdown() {
-                        div {
-                            class: "absolute top-full right-0 mt-2 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-20 border border-gray-600 min-w-[160px]",
+                        div { class: "absolute top-full right-0 mt-2 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-20 border border-gray-600 min-w-[160px]",
 
                             // Show release actions if there's only one release
                             if has_single_release {
@@ -110,14 +109,18 @@ pub fn AlbumCoverSection(
                                                         {
                                                             let target_dir = folder_handle.path().to_path_buf();
 
-                                                            match library_manager.get().export_release(
-                                                                &release_id,
-                                                                &target_dir,
-                                                                &cloud_storage,
-                                                                &cache,
-                                                                &encryption_service,
-                                                                chunk_size_bytes,
-                                                            ).await {
+                                                            match library_manager
+                                                                .get()
+                                                                .export_release(
+                                                                    &release_id,
+                                                                    &target_dir,
+                                                                    &cloud_storage,
+                                                                    &cache,
+                                                                    &encryption_service,
+                                                                    chunk_size_bytes,
+                                                                )
+                                                                .await
+                                                            {
                                                                 Ok(_) => {
                                                                     is_exporting.set(false);
                                                                 }
@@ -158,29 +161,33 @@ pub fn AlbumCoverSection(
                                         }
                                         let album_id = album_id.clone();
                                         let library_manager = library_manager.clone();
-                                        dialog.show_with_callback(
-                                            "Delete Album?".to_string(),
-                                            format!("Are you sure you want to delete \"{}\"? This will delete all releases, tracks, and associated data. This action cannot be undone.", album_title),
-                                            "Delete".to_string(),
-                                            "Cancel".to_string(),
-                                            move || {
-                                                let album_id = album_id.clone();
-                                                let library_manager = library_manager.clone();
-                                                spawn(async move {
-                                                    is_deleting.set(true);
-                                                    match library_manager.get().delete_album(&album_id).await {
-                                                        Ok(_) => {
-                                                            is_deleting.set(false);
-                                                            on_album_deleted.call(());
+                                        dialog
+                                            .show_with_callback(
+                                                "Delete Album?".to_string(),
+                                                format!(
+                                                    "Are you sure you want to delete \"{}\"? This will delete all releases, tracks, and associated data. This action cannot be undone.",
+                                                    album_title,
+                                                ),
+                                                "Delete".to_string(),
+                                                "Cancel".to_string(),
+                                                move || {
+                                                    let album_id = album_id.clone();
+                                                    let library_manager = library_manager.clone();
+                                                    spawn(async move {
+                                                        is_deleting.set(true);
+                                                        match library_manager.get().delete_album(&album_id).await {
+                                                            Ok(_) => {
+                                                                is_deleting.set(false);
+                                                                on_album_deleted.call(());
+                                                            }
+                                                            Err(e) => {
+                                                                error!("Failed to delete album: {}", e);
+                                                                is_deleting.set(false);
+                                                            }
                                                         }
-                                                        Err(e) => {
-                                                            error!("Failed to delete album: {}", e);
-                                                            is_deleting.set(false);
-                                                        }
-                                                    }
-                                                });
-                                            },
-                                        );
+                                                    });
+                                                },
+                                            );
                                     }
                                 },
                                 "Delete Album"

@@ -19,9 +19,7 @@ pub fn GlobalDialog() -> Element {
                     class: "bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4",
                     onclick: move |evt| evt.stop_propagation(),
                     h2 { class: "text-xl font-bold text-white mb-4", "{dialog.title()}" }
-                    p { class: "text-gray-300 mb-6",
-                        "{dialog.message()}"
-                    }
+                    p { class: "text-gray-300 mb-6", "{dialog.message()}" }
                     div { class: "flex gap-3 justify-end",
                         button {
                             class: "px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg",

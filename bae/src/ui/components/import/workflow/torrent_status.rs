@@ -112,7 +112,9 @@ pub fn TorrentStatus(info_hash: String, on_skip: Option<EventHandler<()>>) -> El
             // Torrent info
             if !state_read.name.is_empty() {
                 div { class: "border-b border-gray-200 pb-4",
-                    h4 { class: "text-lg font-semibold text-gray-900 mb-2", {state_read.name.clone()} }
+                    h4 { class: "text-lg font-semibold text-gray-900 mb-2",
+                        {state_read.name.clone()}
+                    }
                     div { class: "flex gap-4 text-sm text-gray-600",
                         span { "Size: {format_size(state_read.total_size)}" }
                         span { "Files: {state_read.num_files}" }
@@ -123,7 +125,9 @@ pub fn TorrentStatus(info_hash: String, on_skip: Option<EventHandler<()>>) -> El
             // Trackers section
             if !state_read.trackers.is_empty() {
                 div { class: "border-b border-gray-200 pb-4",
-                    h5 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2", "Trackers" }
+                    h5 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2",
+                        "Trackers"
+                    }
                     div { class: "space-y-2",
                         for tracker in &state_read.trackers {
                             div { class: "flex items-center justify-between text-sm",
@@ -150,7 +154,9 @@ pub fn TorrentStatus(info_hash: String, on_skip: Option<EventHandler<()>>) -> El
 
             // Peers section
             div { class: "border-b border-gray-200 pb-4",
-                h5 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2", "Peers" }
+                h5 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2",
+                    "Peers"
+                }
                 div { class: "flex gap-4 text-sm text-gray-600",
                     span { "Peers: {state_read.num_peers}" }
                     span { "Seeds: {state_read.num_seeds}" }
@@ -163,19 +169,26 @@ pub fn TorrentStatus(info_hash: String, on_skip: Option<EventHandler<()>>) -> El
                     crate::ui::components::import::AudioContentInfo::CueFlacPairs(pairs) => {
                         pairs.iter().map(|p| p.track_count).sum::<usize>()
                     }
-                    crate::ui::components::import::AudioContentInfo::TrackFiles(tracks) => tracks.len(),
+                    crate::ui::components::import::AudioContentInfo::TrackFiles(tracks) => {
+                        tracks.len()
+                    }
                 };
                 let has_files = audio_count > 0 || !state_read.files.artwork.is_empty();
                 if has_files {
                     rsx! {
                         div { class: "border-b border-gray-200 pb-4",
-                            h5 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2", "Files" }
+                            h5 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2",
+                                "Files"
+                            }
                             div { class: "text-sm text-gray-600",
-                                {format!("{} tracks, {} artwork, {} documents",
-                                    audio_count,
-                                    state_read.files.artwork.len(),
-                                    state_read.files.documents.len()
-                                )}
+                                {
+                                    format!(
+                                        "{} tracks, {} artwork, {} documents",
+                                        audio_count,
+                                        state_read.files.artwork.len(),
+                                        state_read.files.documents.len(),
+                                    )
+                                }
                             }
                         }
                     }
@@ -187,13 +200,17 @@ pub fn TorrentStatus(info_hash: String, on_skip: Option<EventHandler<()>>) -> El
             // Metadata detection section
             if state_read.is_detecting && !state_read.metadata_files.is_empty() {
                 div { class: "border-b border-gray-200 pb-4",
-                    h5 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2", "Downloading Metadata Files" }
+                    h5 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2",
+                        "Downloading Metadata Files"
+                    }
                     div { class: "space-y-3",
                         for file in &state_read.metadata_files {
                             div { class: "space-y-1",
                                 div { class: "flex justify-between text-sm",
                                     span { class: "text-gray-700", {file.clone()} }
-                                    span { class: "text-gray-600", "{(state_read.metadata_progress.get(file).copied().unwrap_or(0.0) * 100.0) as u32}%" }
+                                    span { class: "text-gray-600",
+                                        "{(state_read.metadata_progress.get(file).copied().unwrap_or(0.0) * 100.0) as u32}%"
+                                    }
                                 }
                                 div { class: "w-full bg-gray-200 rounded-full h-2",
                                     div {

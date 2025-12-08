@@ -152,8 +152,7 @@ pub fn TrackRow(track: DbTrack, release_id: String) -> Element {
     };
 
     rsx! {
-        div {
-            class: "{row_class}",
+        div { class: "{row_class}",
             // Progress bar background (only when importing/queued)
             if is_importing {
                 div {
@@ -273,8 +272,7 @@ pub fn TrackRow(track: DbTrack, release_id: String) -> Element {
                             "⋯"
                         }
                         if show_menu() {
-                            div {
-                                class: "absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded shadow-lg z-10 min-w-32",
+                            div { class: "absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded shadow-lg z-10 min-w-32",
                                 button {
                                     class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
                                     disabled: is_exporting(),
@@ -308,14 +306,18 @@ pub fn TrackRow(track: DbTrack, release_id: String) -> Element {
                                                     {
                                                         let output_path = file_handle.path().to_path_buf();
 
-                                                        match library_manager_clone.get().export_track(
-                                                            &track_id,
-                                                            &output_path,
-                                                            &cloud_storage_clone,
-                                                            &cache_clone,
-                                                            &encryption_service_clone,
-                                                            chunk_size_bytes,
-                                                        ).await {
+                                                        match library_manager_clone
+                                                            .get()
+                                                            .export_track(
+                                                                &track_id,
+                                                                &output_path,
+                                                                &cloud_storage_clone,
+                                                                &cache_clone,
+                                                                &encryption_service_clone,
+                                                                chunk_size_bytes,
+                                                            )
+                                                            .await
+                                                        {
                                                             Ok(_) => {
                                                                 is_exporting_clone.set(false);
                                                             }

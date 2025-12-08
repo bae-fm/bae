@@ -32,8 +32,8 @@ pub fn ManualSearch(
     rsx! {
         ManualSearchPanel {
             detected_metadata: detected_metadata_signal,
-            on_match_select: on_match_select,
-            on_confirm: on_confirm,
+            on_match_select,
+            on_confirm,
             selected_index: selected_index_signal,
         }
     }

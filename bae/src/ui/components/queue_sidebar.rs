@@ -108,15 +108,15 @@ pub fn QueueSidebar() -> Element {
 
     rsx! {
         if is_open() {
-            div {
-                class: "fixed top-0 right-0 h-full w-80 bg-gray-900 border-l border-gray-700 z-50 flex flex-col shadow-2xl",
+            div { class: "fixed top-0 right-0 h-full w-80 bg-gray-900 border-l border-gray-700 z-50 flex flex-col shadow-2xl",
                 // Content
-                div {
-                    class: "flex-1 overflow-y-auto",
+                div { class: "flex-1 overflow-y-auto",
                     // Now playing section
                     div {
                         div { class: "px-4 pt-4 pb-2",
-                            h3 { class: "text-sm font-semibold text-gray-400 uppercase tracking-wide", "Now playing" }
+                            h3 { class: "text-sm font-semibold text-gray-400 uppercase tracking-wide",
+                                "Now playing"
+                            }
                         }
                         if let Some(ref current_track_val) = current_track() {
                             QueueItem {
@@ -125,28 +125,25 @@ pub fn QueueSidebar() -> Element {
                                 is_current: true,
                                 track: current_track_val.clone(),
                                 album: current_track_album(),
-                                on_remove: {
-                                    // Can't remove current track from queue (it's not in queue)
-                                    move |_| {}
-                                },
+                                on_remove: {move |_| {}},
                             }
                         } else {
-                            div { class: "px-4 py-3 text-gray-500 text-sm",
-                                "Nothing playing"
-                            }
+                            div { class: "px-4 py-3 text-gray-500 text-sm", "Nothing playing" }
                         }
                     }
                     // Up next section
                     div {
                         div { class: "px-4 pt-4 pb-2",
-                            h3 { class: "text-sm font-semibold text-gray-400 uppercase tracking-wide", "Up next" }
+                            h3 { class: "text-sm font-semibold text-gray-400 uppercase tracking-wide",
+                                "Up next"
+                            }
                         }
                         if !queue.read().is_empty() {
-                            for (index, track_id) in queue.read().iter().enumerate() {
+                            for (index , track_id) in queue.read().iter().enumerate() {
                                 if let Some(track_with_album) = track_details.read().get(track_id).cloned() {
                                     QueueItem {
                                         track_id: track_id.clone(),
-                                        index: index,
+                                        index,
                                         is_current: false,
                                         track: track_with_album.track,
                                         album: track_with_album.album,
@@ -160,9 +157,7 @@ pub fn QueueSidebar() -> Element {
                                 }
                             }
                         } else {
-                            div { class: "px-4 py-3 text-gray-500 text-sm",
-                                "No tracks queued"
-                            }
+                            div { class: "px-4 py-3 text-gray-500 text-sm", "No tracks queued" }
                         }
                     }
                 }
@@ -197,12 +192,7 @@ fn QueueItem(
     on_remove: EventHandler<usize>,
 ) -> Element {
     rsx! {
-        div {
-            class: if is_current {
-                "flex items-center gap-3 p-3 border-b border-gray-700 bg-blue-500/10 hover:bg-blue-500/15 group"
-            } else {
-                "flex items-center gap-3 p-3 border-b border-gray-700 hover:bg-gray-800 group"
-            },
+        div { class: if is_current { "flex items-center gap-3 p-3 border-b border-gray-700 bg-blue-500/10 hover:bg-blue-500/15 group" } else { "flex items-center gap-3 p-3 border-b border-gray-700 hover:bg-gray-800 group" },
             // Album cover
             div { class: "w-12 h-12 flex-shrink-0 bg-gray-700 rounded overflow-hidden",
                 if let Some(album) = &album {
@@ -213,10 +203,14 @@ fn QueueItem(
                             class: "w-full h-full object-cover",
                         }
                     } else {
-                        div { class: "w-full h-full flex items-center justify-center text-gray-500 text-xl", "🎵" }
+                        div { class: "w-full h-full flex items-center justify-center text-gray-500 text-xl",
+                            "🎵"
+                        }
                     }
                 } else {
-                    div { class: "w-full h-full flex items-center justify-center text-gray-500 text-xl", "🎵" }
+                    div { class: "w-full h-full flex items-center justify-center text-gray-500 text-xl",
+                        "🎵"
+                    }
                 }
             }
             // Track info
@@ -230,10 +224,11 @@ fn QueueItem(
                             let navigator = navigator();
                             move |_| {
                                 if let Some(album_id_clone) = album_id.clone() {
-                                    navigator.push(Route::AlbumDetail {
-                                        album_id: album_id_clone,
-                                        release_id: String::new(),
-                                    });
+                                    navigator
+                                        .push(Route::AlbumDetail {
+                                            album_id: album_id_clone,
+                                            release_id: String::new(),
+                                        });
                                 }
                             }
                         },
@@ -249,13 +244,9 @@ fn QueueItem(
                 }
                 // Album title on second line
                 if let Some(album) = &album {
-                    div { class: "text-sm text-gray-400 truncate",
-                        "{album.title}"
-                    }
+                    div { class: "text-sm text-gray-400 truncate", "{album.title}" }
                 } else {
-                    div { class: "text-sm text-gray-400 truncate",
-                        "Loading..."
-                    }
+                    div { class: "text-sm text-gray-400 truncate", "Loading..." }
                 }
             }
             // Remove button (only show for queue items, not current track)

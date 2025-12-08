@@ -77,10 +77,7 @@ pub fn Library() -> Element {
                     }
                 }
             } else {
-                AlbumGrid {
-                    albums: albums(),
-                    album_artists: album_artists(),
-                }
+                AlbumGrid { albums: albums(), album_artists: album_artists() }
             }
         }
     }

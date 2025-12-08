@@ -46,10 +46,11 @@ pub fn AlbumCard(album: DbAlbum, artists: Vec<DbArtist>) -> Element {
                 let album_id_clone = album_id;
                 let navigator = navigator();
                 move |_| {
-                    navigator.push(Route::AlbumDetail {
-                        album_id: album_id_clone.clone(),
-                        release_id: String::new(),
-                    });
+                    navigator
+                        .push(Route::AlbumDetail {
+                            album_id: album_id_clone.clone(),
+                            release_id: String::new(),
+                        });
                 }
             },
 
@@ -81,23 +82,24 @@ pub fn AlbumCard(album: DbAlbum, artists: Vec<DbArtist>) -> Element {
                             onclick: {
                                 let album_id_clone = album_id.clone();
                                 move |evt| {
-                                evt.stop_propagation();
-                                let was_open = show_dropdown();
-                                show_dropdown.set(!was_open);
-                                if !was_open {
-                                    let library_manager = library_manager.clone();
-                                    let album_id_for_spawn = album_id_clone.clone();
-                                    spawn(async move {
-                                        if let Ok(releases) = library_manager
-                                            .get()
-                                            .get_releases_for_album(&album_id_for_spawn)
-                                            .await
-                                        {
-                                            releases_signal.set(releases);
-                                        }
-                                    });
+                                    evt.stop_propagation();
+                                    let was_open = show_dropdown();
+                                    show_dropdown.set(!was_open);
+                                    if !was_open {
+                                        let library_manager = library_manager.clone();
+                                        let album_id_for_spawn = album_id_clone.clone();
+                                        spawn(async move {
+                                            if let Ok(releases) = library_manager
+                                                .get()
+                                                .get_releases_for_album(&album_id_for_spawn)
+                                                .await
+                                            {
+                                                releases_signal.set(releases);
+                                            }
+                                        });
+                                    }
                                 }
-                            }},
+                            },
                             div { class: "flex flex-col gap-1",
                                 div { class: "w-1 h-1 bg-white rounded-full" }
                                 div { class: "w-1 h-1 bg-white rounded-full" }
@@ -115,7 +117,7 @@ pub fn AlbumCard(album: DbAlbum, artists: Vec<DbArtist>) -> Element {
                                 on_close: move |_| {
                                     show_dropdown.set(false);
                                     hover_cover.set(false);
-                                }
+                                },
                             }
                         }
                     }
@@ -146,7 +148,7 @@ pub fn AlbumCard(album: DbAlbum, artists: Vec<DbArtist>) -> Element {
                     onclick: move |_| {
                         show_dropdown.set(false);
                         hover_cover.set(false);
-                    }
+                    },
                 }
             }
         }

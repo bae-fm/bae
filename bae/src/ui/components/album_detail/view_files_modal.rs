@@ -57,12 +57,8 @@ pub fn ViewFilesModal(release_id: String, on_close: EventHandler<()>) -> Element
                     evt.stop_propagation();
                 },
                 // Header
-                div {
-                    class: "flex items-center justify-between p-6 border-b border-gray-700",
-                    h2 {
-                        class: "text-xl font-semibold text-white",
-                        "Files"
-                    }
+                div { class: "flex items-center justify-between p-6 border-b border-gray-700",
+                    h2 { class: "text-xl font-semibold text-white", "Files" }
                     button {
                         class: "text-gray-400 hover:text-white",
                         onclick: move |_| on_close.call(()),
@@ -71,37 +67,22 @@ pub fn ViewFilesModal(release_id: String, on_close: EventHandler<()>) -> Element
                 }
 
                 // Content
-                div {
-                    class: "p-6 overflow-y-auto flex-1",
+                div { class: "p-6 overflow-y-auto flex-1",
                     if is_loading() {
-                        div {
-                            class: "text-gray-400 text-center py-8",
-                            "Loading files..."
-                        }
+                        div { class: "text-gray-400 text-center py-8", "Loading files..." }
                     } else if let Some(ref error) = error_message() {
-                        div {
-                            class: "text-red-400 text-center py-8",
-                            {error.clone()}
-                        }
+                        div { class: "text-red-400 text-center py-8", {error.clone()} }
                     } else if files().is_empty() {
-                        div {
-                            class: "text-gray-400 text-center py-8",
-                            "No files found"
-                        }
+                        div { class: "text-gray-400 text-center py-8", "No files found" }
                     } else {
-                        div {
-                            class: "space-y-2",
+                        div { class: "space-y-2",
                             for file in files().iter() {
-                                div {
-                                    class: "flex items-center justify-between py-2 px-3 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors",
-                                    div {
-                                        class: "flex-1",
-                                        div {
-                                            class: "text-white text-sm font-medium",
+                                div { class: "flex items-center justify-between py-2 px-3 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors",
+                                    div { class: "flex-1",
+                                        div { class: "text-white text-sm font-medium",
                                             {file.original_filename.clone()}
                                         }
-                                        div {
-                                            class: "text-gray-400 text-xs mt-1",
+                                        div { class: "text-gray-400 text-xs mt-1",
                                             {format!("{} • {}", format_file_size(file.file_size), file.format)}
                                         }
                                     }

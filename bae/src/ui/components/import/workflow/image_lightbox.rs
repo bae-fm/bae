@@ -44,8 +44,7 @@ pub fn ImageLightbox(
 
             // Image counter
             if total > 1 {
-                div {
-                    class: "absolute top-4 left-4 text-gray-400 text-sm",
+                div { class: "absolute top-4 left-4 text-gray-400 text-sm",
                     {format!("{} / {}", clamped_index + 1, total)}
                 }
             }
@@ -86,10 +85,7 @@ pub fn ImageLightbox(
                 }
 
                 // Filename
-                div {
-                    class: "mt-4 text-gray-300 text-sm",
-                    {filename.clone()}
-                }
+                div { class: "mt-4 text-gray-300 text-sm", {filename.clone()} }
             }
         }
     }

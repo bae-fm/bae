@@ -83,7 +83,7 @@ pub fn TitleBar() -> Element {
                 onclick: move |_| {
                     info!("Click-outside handler fired");
                     show_results.set(false);
-                }
+                },
             }
         }
 
@@ -102,17 +102,17 @@ pub fn TitleBar() -> Element {
                 NavButton {
                     route: Route::Library {},
                     label: "Library",
-                    is_active: matches!(current_route, Route::Library {} | Route::AlbumDetail { .. })
+                    is_active: matches!(current_route, Route::Library {} | Route::AlbumDetail { .. }),
                 }
                 NavButton {
                     route: Route::ImportWorkflowManager {},
                     label: "Import",
-                    is_active: matches!(current_route, Route::ImportWorkflowManager {})
+                    is_active: matches!(current_route, Route::ImportWorkflowManager {}),
                 }
                 NavButton {
                     route: Route::Settings {},
                     label: "Settings",
-                    is_active: matches!(current_route, Route::Settings {})
+                    is_active: matches!(current_route, Route::Settings {}),
                 }
             }
 
@@ -120,9 +120,7 @@ pub fn TitleBar() -> Element {
             div {
                 class: "flex-1 flex justify-end items-center relative",
                 style: "-webkit-app-region: no-drag;",
-                div {
-                    class: "relative w-64",
-                    id: "search-container",
+                div { class: "relative w-64", id: "search-container",
                     input {
                         r#type: "text",
                         placeholder: "Search...",
@@ -154,8 +152,7 @@ pub fn TitleBar() -> Element {
                     info!("Popover container clicked - stopping propagation");
                     evt.stop_propagation();
                 },
-                div {
-                    class: "mt-2 bg-[#2d3138] border border-[#3d4148] rounded-lg shadow-lg max-h-96 overflow-y-auto",
+                div { class: "mt-2 bg-[#2d3138] border border-[#3d4148] rounded-lg shadow-lg max-h-96 overflow-y-auto",
                     for album in filtered_albums() {
                         {
                             let album_id = album.id.clone();
@@ -197,8 +194,7 @@ pub fn TitleBar() -> Element {
                                             alt: "{album_title}",
                                         }
                                     } else {
-                                        div {
-                                            class: "w-10 h-10 bg-gray-700 rounded flex items-center justify-center flex-shrink-0",
+                                        div { class: "w-10 h-10 bg-gray-700 rounded flex items-center justify-center flex-shrink-0",
                                             div { class: "text-gray-500 text-xs", "🎵" }
                                         }
                                     }
@@ -232,11 +228,7 @@ fn NavButton(route: Route, label: &'static str, is_active: bool) -> Element {
             },
             Link {
                 to: route,
-                class: if is_active {
-                    "text-white no-underline text-[12px] cursor-pointer px-2 py-1 rounded bg-gray-700"
-                } else {
-                    "text-gray-400 no-underline text-[12px] cursor-pointer px-2 py-1 rounded hover:bg-gray-800 hover:text-white transition-colors"
-                },
+                class: if is_active { "text-white no-underline text-[12px] cursor-pointer px-2 py-1 rounded bg-gray-700" } else { "text-gray-400 no-underline text-[12px] cursor-pointer px-2 py-1 rounded hover:bg-gray-800 hover:text-white transition-colors" },
                 "{label}"
             }
         }

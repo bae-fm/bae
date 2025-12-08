@@ -67,57 +67,48 @@ pub fn FolderImport() -> Element {
         div { class: "space-y-6",
             // Phase 1: Folder Selection
             if *import_phase.read() == ImportPhase::FolderSelection {
-                    FolderSelector {
-                        on_select: on_folder_select,
-                        on_error: {
-                            let import_context = import_context.clone();
-                            move |e: String| {
-                                import_context.set_import_error_message(Some(e));
+                FolderSelector {
+                    on_select: on_folder_select,
+                    on_error: {
+                        let import_context = import_context.clone();
+                        move |e: String| {
+                            import_context.set_import_error_message(Some(e));
                         }
-                    }
+                    },
                 }
-            }
-
-            // Phase 2: Release Selection (for multi-release folders)
-            else if *import_phase.read() == ImportPhase::ReleaseSelection {
+            } else if *import_phase.read() == ImportPhase::ReleaseSelection {
                 ReleaseSelector {}
-            }
-
-            else {
+            } else {
                 div { class: "space-y-6",
                     // Show selected folder
                     SelectedSource {
                         title: "Selected Folder".to_string(),
                         path: folder_path,
                         on_clear: on_change_folder,
-                        children: if !folder_files.read().is_empty() {
-                            Some(rsx! {
-                                div { class: "mt-4",
-                                    h4 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3", "Files" }
-                                    SmartFileDisplay {
-                                        files: folder_files.read().clone(),
-                                        folder_path: folder_path.read().clone(),
-                                    }
+                        children: if !folder_files.read().is_empty() { Some(rsx! {
+                            div { class: "mt-4",
+                                h4 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3",
+                                    "Files"
                                 }
-                            })
-                        } else {
-                            None
-                        },
+                                SmartFileDisplay {
+                                    files: folder_files.read().clone(),
+                                    folder_path: folder_path.read().clone(),
+                                }
+                            }
+                        }) } else { None },
                     }
 
                     // Show detecting message during MusicBrainz lookup
                     if *is_looking_up.read() && *import_phase.read() == ImportPhase::MetadataDetection {
-                        DetectingMetadata {
-                            message: "Looking up release...".to_string(),
-                        }
+                        DetectingMetadata { message: "Looking up release...".to_string() }
                     }
 
                     // Phase 2: Exact Lookup
                     if *import_phase.read() == ImportPhase::ExactLookup {
                         ExactLookup {
-                            is_looking_up: is_looking_up,
-                            exact_match_candidates: exact_match_candidates,
-                            selected_match_index: selected_match_index,
+                            is_looking_up,
+                            exact_match_candidates,
+                            selected_match_index,
                             on_select: {
                                 let import_context = import_context.clone();
                                 move |index| {
@@ -130,8 +121,8 @@ pub fn FolderImport() -> Element {
                     // Phase 3: Manual Search
                     if *import_phase.read() == ImportPhase::ManualSearch {
                         ManualSearch {
-                            detected_metadata: detected_metadata,
-                            selected_match_index: selected_match_index,
+                            detected_metadata,
+                            selected_match_index,
                             on_match_select: {
                                 let import_context = import_context.clone();
                                 move |index| {
@@ -150,7 +141,7 @@ pub fn FolderImport() -> Element {
                     // Phase 4: Confirmation
                     if *import_phase.read() == ImportPhase::Confirmation {
                         Confirmation {
-                            confirmed_candidate: confirmed_candidate,
+                            confirmed_candidate,
                             on_edit: {
                                 let import_context = import_context.clone();
                                 move |_| {
@@ -171,7 +162,7 @@ pub fn FolderImport() -> Element {
                     // Error messages
                     ErrorDisplay {
                         error_message: import_error_message,
-                        duplicate_album_id: duplicate_album_id,
+                        duplicate_album_id,
                     }
                 }
             }

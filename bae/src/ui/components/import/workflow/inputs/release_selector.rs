@@ -42,18 +42,20 @@ pub fn ReleaseSelector() -> Element {
         div { class: "space-y-6",
             // Header
             div { class: "text-center",
-                h2 { class: "text-2xl font-semibold text-gray-100 mb-2",
-                    "Multiple Releases Detected"
-                }
-                p { class: "text-gray-400",
-                    "Select the releases you want to import"
-                }
+                h2 { class: "text-2xl font-semibold text-gray-100 mb-2", "Multiple Releases Detected" }
+                p { class: "text-gray-400", "Select the releases you want to import" }
             }
 
             // Selection controls
             div { class: "flex justify-between items-center",
                 div { class: "text-sm text-gray-400",
-                    {format!("{} of {} selected", selected_indices.read().len(), detected_releases.read().len())}
+                    {
+                        format!(
+                            "{} of {} selected",
+                            selected_indices.read().len(),
+                            detected_releases.read().len(),
+                        )
+                    }
                 }
                 div { class: "flex gap-2",
                     button {
@@ -94,20 +96,17 @@ pub fn ReleaseSelector() -> Element {
                                     }
                                 },
 
+        
+
                                 input {
                                     r#type: "checkbox",
                                     class: "{checkbox_class}",
                                     checked: is_selected,
                                     onclick: |e| e.stop_propagation(),
                                 }
-
                                 div { class: "flex-1 min-w-0",
-                                    div { class: "font-medium text-gray-100 mb-1",
-                                        {release.name.clone()}
-                                    }
-                                    div { class: "text-sm text-gray-400 truncate",
-                                        {release.path.display().to_string()}
-                                    }
+                                    div { class: "font-medium text-gray-100 mb-1", {release.name.clone()} }
+                                    div { class: "text-sm text-gray-400 truncate", {release.path.display().to_string()} }
                                 }
                             }
                         }
@@ -118,11 +117,7 @@ pub fn ReleaseSelector() -> Element {
             // Import button
             div { class: "flex justify-center pt-4",
                 button {
-                    class: if selected_indices.read().is_empty() {
-                        "px-6 py-3 bg-gray-700 text-gray-500 rounded-lg cursor-not-allowed"
-                    } else {
-                        "px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    },
+                    class: if selected_indices.read().is_empty() { "px-6 py-3 bg-gray-700 text-gray-500 rounded-lg cursor-not-allowed" } else { "px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors" },
                     disabled: selected_indices.read().is_empty(),
                     onclick: on_import_selected,
                     {

@@ -90,20 +90,12 @@ pub fn TorrentInput(
             div { class: "mb-3",
                 div { class: "flex space-x-1 border-b border-gray-600",
                     button {
-                        class: if *input_mode.read() == TorrentInputMode::File {
-                            "px-3 py-1.5 text-sm font-medium transition-colors text-blue-400 border-b-2 border-blue-400"
-                        } else {
-                            "px-3 py-1.5 text-sm font-medium transition-colors text-gray-400 hover:text-gray-300"
-                        },
+                        class: if *input_mode.read() == TorrentInputMode::File { "px-3 py-1.5 text-sm font-medium transition-colors text-blue-400 border-b-2 border-blue-400" } else { "px-3 py-1.5 text-sm font-medium transition-colors text-gray-400 hover:text-gray-300" },
                         onclick: on_file_mode_click,
                         "Torrent File"
                     }
                     button {
-                        class: if *input_mode.read() == TorrentInputMode::Magnet {
-                            "px-3 py-1.5 text-sm font-medium transition-colors text-blue-400 border-b-2 border-blue-400"
-                        } else {
-                            "px-3 py-1.5 text-sm font-medium transition-colors text-gray-400 hover:text-gray-300"
-                        },
+                        class: if *input_mode.read() == TorrentInputMode::Magnet { "px-3 py-1.5 text-sm font-medium transition-colors text-blue-400 border-b-2 border-blue-400" } else { "px-3 py-1.5 text-sm font-medium transition-colors text-gray-400 hover:text-gray-300" },
                         onclick: on_magnet_mode_click,
                         "Magnet Link"
                     }
@@ -124,7 +116,7 @@ pub fn TorrentInput(
                             path {
                                 stroke_linecap: "round",
                                 stroke_linejoin: "round",
-                                d: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                                d: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z",
                             }
                         }
                         div {
@@ -169,9 +161,7 @@ pub fn TorrentInput(
                             }
                         }
                     }
-                    p { class: "text-xs text-gray-400",
-                        "Paste a magnet link to start downloading"
-                    }
+                    p { class: "text-xs text-gray-400", "Paste a magnet link to start downloading" }
                 }
             }
 
@@ -185,7 +175,7 @@ pub fn TorrentInput(
                         onchange: move |evt| {
                             import_context_for_seed.set_seed_after_download(evt.checked());
                         },
-                        class: "w-4 h-4 text-blue-600 border-gray-600 rounded focus:ring-blue-500 bg-gray-700"
+                        class: "w-4 h-4 text-blue-600 border-gray-600 rounded focus:ring-blue-500 bg-gray-700",
                     }
                     label {
                         r#for: "seed-after-download",

@@ -41,15 +41,15 @@ pub fn MatchItem(
                             class: "w-full h-full object-cover",
                         }
                     } else {
-                        div { class: "w-full h-full flex items-center justify-center text-gray-500 text-2xl", "🎵" }
+                        div { class: "w-full h-full flex items-center justify-center text-gray-500 text-2xl",
+                            "🎵"
+                        }
                     }
                 }
 
                 div { class: "flex-1 min-w-0",
                     div { class: "flex items-center gap-2 mb-1",
-                        h4 { class: "text-lg font-semibold text-white",
-                            "{candidate.title()}"
-                        }
+                        h4 { class: "text-lg font-semibold text-white", "{candidate.title()}" }
                     }
 
                     div { class: "text-sm text-gray-400 mb-2 space-y-1",

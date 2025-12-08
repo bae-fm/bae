@@ -26,8 +26,7 @@ pub fn ReleaseActionMenu(
     let torrent_manager = use_torrent_manager();
 
     rsx! {
-        div {
-            class: "absolute right-0 top-full mt-1 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-10 border border-gray-600 min-w-[160px]",
+        div { class: "absolute right-0 top-full mt-1 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-10 border border-gray-600 min-w-[160px]",
             button {
                 class: "w-full px-4 py-2 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm",
                 disabled: is_deleting() || is_exporting(),
@@ -118,14 +117,18 @@ pub fn ReleaseActionMenu(
                                 {
                                     let target_dir = folder_handle.path().to_path_buf();
 
-                                    match library_manager.get().export_release(
-                                        &release_id,
-                                        &target_dir,
-                                        &cloud_storage,
-                                        &cache,
-                                        &encryption_service,
-                                        chunk_size_bytes,
-                                    ).await {
+                                    match library_manager
+                                        .get()
+                                        .export_release(
+                                            &release_id,
+                                            &target_dir,
+                                            &cloud_storage,
+                                            &cache,
+                                            &encryption_service,
+                                            chunk_size_bytes,
+                                        )
+                                        .await
+                                    {
                                         Ok(_) => {
                                             is_exporting.set(false);
                                         }

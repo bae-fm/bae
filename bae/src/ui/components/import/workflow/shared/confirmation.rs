@@ -85,11 +85,13 @@ pub fn Confirmation(
                                 }
                                 {
                                     let (format_text, country_text, label_text) = match &candidate.source {
-                                        MatchSource::MusicBrainz(release) => (
-                                            release.format.as_ref().map(|f| f.clone()),
-                                            release.country.as_ref().map(|c| c.clone()),
-                                            release.label.as_ref().map(|l| l.clone()),
-                                        ),
+                                        MatchSource::MusicBrainz(release) => {
+                                            (
+                                                release.format.as_ref().map(|f| f.clone()),
+                                                release.country.as_ref().map(|c| c.clone()),
+                                                release.label.as_ref().map(|l| l.clone()),
+                                            )
+                                        }
                                         MatchSource::Discogs(_) => (None, None, None),
                                     };
                                     rsx! {
@@ -129,11 +131,7 @@ pub fn Confirmation(
                                     let is_selected = selected_cover_index.read().is_none();
                                     rsx! {
                                         button {
-                                            class: if is_selected {
-                                                "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden"
-                                            } else {
-                                                "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden"
-                                            },
+                                            class: if is_selected { "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden" } else { "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden" },
                                             onclick: move |_| selected_cover_index.set(None),
                                             img {
                                                 src: "{url}",
@@ -151,18 +149,14 @@ pub fn Confirmation(
                             }
 
                             // Local image options
-                            for (idx, img) in artwork_files.iter().enumerate() {
+                            for (idx , img) in artwork_files.iter().enumerate() {
                                 {
                                     let is_selected = *selected_cover_index.read() == Some(idx);
                                     let img_path = format!("{}/{}", folder_path_str, img.name);
                                     let img_url = local_file_url(&img_path);
                                     rsx! {
                                         button {
-                                            class: if is_selected {
-                                                "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden"
-                                            } else {
-                                                "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden"
-                                            },
+                                            class: if is_selected { "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden" } else { "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden" },
                                             onclick: move |_| selected_cover_index.set(Some(idx)),
                                             img {
                                                 src: "{img_url}",
@@ -193,11 +187,7 @@ pub fn Confirmation(
                         "Edit"
                     }
                     button {
-                        class: if *is_importing.read() {
-                            "px-6 py-2 bg-green-600 text-white rounded-lg transition-colors opacity-75 cursor-not-allowed flex items-center gap-2"
-                        } else {
-                            "px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                        },
+                        class: if *is_importing.read() { "px-6 py-2 bg-green-600 text-white rounded-lg transition-colors opacity-75 cursor-not-allowed flex items-center gap-2" } else { "px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2" },
                         disabled: *is_importing.read(),
                         onclick: move |_| on_confirm.call(()),
                         if *is_importing.read() {
@@ -209,6 +199,8 @@ pub fn Confirmation(
             }
         }
     } else {
-        rsx! { div {} }
+        rsx! {
+            div {}
+        }
     }
 }

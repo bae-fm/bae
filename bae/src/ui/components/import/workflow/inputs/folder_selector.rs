@@ -164,16 +164,14 @@ pub fn FolderSelector(on_select: EventHandler<String>, on_error: EventHandler<St
                         path {
                             stroke_linecap: "round",
                             stroke_linejoin: "round",
-                            d: "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5m-7.5 0h15"
+                            d: "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5m-7.5 0h15",
                         }
                     }
                 }
 
                 // Main text
                 div { class: "text-center space-y-2",
-                    h3 { class: "text-lg font-semibold text-gray-200",
-                        "Select your music folder"
-                    }
+                    h3 { class: "text-lg font-semibold text-gray-200", "Select your music folder" }
                     p { class: "text-sm text-gray-400",
                         "Click the button below to choose a folder containing your music files"
                     }

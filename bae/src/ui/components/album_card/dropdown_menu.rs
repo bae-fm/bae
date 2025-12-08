@@ -21,8 +21,7 @@ pub fn AlbumDropdownMenu(
     let has_multiple_releases = releases().len() > 1;
 
     rsx! {
-        div {
-            class: "absolute top-full right-0 mt-2 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-20 border border-gray-600 min-w-[160px]",
+        div { class: "absolute top-full right-0 mt-2 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-20 border border-gray-600 min-w-[160px]",
 
             if has_multiple_releases {
                 // Play with release selection
@@ -48,7 +47,7 @@ pub fn AlbumDropdownMenu(
                             on_close: move |_| {
                                 show_play_release_menu.set(false);
                                 on_close.call(());
-                            }
+                            },
                         }
                     }
                 }
@@ -76,7 +75,7 @@ pub fn AlbumDropdownMenu(
                             on_close: move |_| {
                                 show_queue_release_menu.set(false);
                                 on_close.call(());
-                            }
+                            },
                         }
                     }
                 }
@@ -134,7 +133,9 @@ pub fn AlbumDropdownMenu(
                                         }
                                     }
                                     Err(e) => {
-                                        tracing::warn!("Failed to get tracks for album {}: {}", album_id, e);
+                                        tracing::warn!(
+                                            "Failed to get tracks for album {}: {}", album_id, e
+                                        );
                                         is_loading.set(false);
                                     }
                                 }
@@ -168,7 +169,9 @@ pub fn AlbumDropdownMenu(
                             let playback = playback_clone.clone();
 
                             spawn(async move {
-                                if let Ok(track_ids) = get_album_track_ids(&library_manager, &album_id).await {
+                                if let Ok(track_ids) = get_album_track_ids(&library_manager, &album_id)
+                                    .await
+                                {
                                     playback.add_to_queue(track_ids);
                                 }
                             });

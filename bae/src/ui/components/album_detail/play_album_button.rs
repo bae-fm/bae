@@ -57,8 +57,7 @@ pub fn PlayAlbumButton(
 
             // Play menu dropdown
             if show_play_menu() {
-                div {
-                    class: "absolute top-full left-0 right-0 mt-2 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-10 border border-gray-600",
+                div { class: "absolute top-full left-0 right-0 mt-2 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-10 border border-gray-600",
                     button {
                         class: "w-full px-4 py-3 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2",
                         disabled: import_progress().is_some() || is_deleting(),
@@ -74,7 +73,12 @@ pub fn PlayAlbumButton(
                                     let library_manager = library_manager.clone();
                                     let playback = playback.clone();
                                     spawn(async move {
-                                        if let Ok(track_ids) = get_album_track_ids(&library_manager, &album_id).await {
+                                        if let Ok(track_ids) = get_album_track_ids(
+                                                &library_manager,
+                                                &album_id,
+                                            )
+                                            .await
+                                        {
                                             playback.add_to_queue(track_ids);
                                         }
                                     });

@@ -95,14 +95,14 @@ pub fn CdImport() -> Element {
         div { class: "space-y-6",
             // Phase 1: CD Drive Selection
             if *import_phase.read() == ImportPhase::FolderSelection {
-                    CdRipper {
-                        on_drive_select: on_drive_select,
-                        on_error: {
-                            let import_context = import_context.clone();
-                            move |e: String| {
-                                import_context.set_import_error_message(Some(e));
+                CdRipper {
+                    on_drive_select,
+                    on_error: {
+                        let import_context = import_context.clone();
+                        move |e: String| {
+                            import_context.set_import_error_message(Some(e));
                         }
-                    }
+                    },
                 }
             } else {
                 div { class: "space-y-6",
@@ -111,40 +111,34 @@ pub fn CdImport() -> Element {
                         title: "Selected CD".to_string(),
                         path: folder_path,
                         on_clear: on_change_folder,
-                        children: if let Some((disc_id, first_track, last_track)) = cd_toc_info.read().as_ref() {
-                            Some(rsx! {
-                                div { class: "mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg",
-                                    div { class: "space-y-2",
-                                        div { class: "flex items-center",
-                                            span { class: "text-sm font-medium text-gray-700 w-24", "DiscID:" }
-                                            span { class: "text-sm text-gray-900 font-mono", "{disc_id}" }
-                                        }
-                                        div { class: "flex items-center",
-                                            span { class: "text-sm font-medium text-gray-700 w-24", "Tracks:" }
-                                            span { class: "text-sm text-gray-900",
-                                                "{last_track - first_track + 1} tracks ({first_track}-{last_track})"
-                                            }
+                        children: if let Some((disc_id, first_track, last_track)) = cd_toc_info.read().as_ref() { Some(rsx! {
+                            div { class: "mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg",
+                                div { class: "space-y-2",
+                                    div { class: "flex items-center",
+                                        span { class: "text-sm font-medium text-gray-700 w-24", "DiscID:" }
+                                        span { class: "text-sm text-gray-900 font-mono", "{disc_id}" }
+                                    }
+                                    div { class: "flex items-center",
+                                        span { class: "text-sm font-medium text-gray-700 w-24", "Tracks:" }
+                                        span { class: "text-sm text-gray-900",
+                                            "{last_track - first_track + 1} tracks ({first_track}-{last_track})"
                                         }
                                     }
                                 }
-                            })
-                        } else if *is_looking_up.read() {
-                            Some(rsx! {
-                                div { class: "mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg text-center",
-                                    p { class: "text-sm text-gray-600", "Reading CD table of contents..." }
-                                }
-                            })
-                        } else {
-                            None
-                        },
+                            }
+                        }) } else if *is_looking_up.read() { Some(rsx! {
+                            div { class: "mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg text-center",
+                                p { class: "text-sm text-gray-600", "Reading CD table of contents..." }
+                            }
+                        }) } else { None },
                     }
 
                     // Phase 2: Exact Lookup
                     if *import_phase.read() == ImportPhase::ExactLookup {
                         ExactLookup {
-                            is_looking_up: is_looking_up,
-                            exact_match_candidates: exact_match_candidates,
-                            selected_match_index: selected_match_index,
+                            is_looking_up,
+                            exact_match_candidates,
+                            selected_match_index,
                             on_select: {
                                 let import_context = import_context.clone();
                                 move |index| {
@@ -157,8 +151,8 @@ pub fn CdImport() -> Element {
                     // Phase 3: Manual Search
                     if *import_phase.read() == ImportPhase::ManualSearch {
                         ManualSearch {
-                            detected_metadata: detected_metadata,
-                            selected_match_index: selected_match_index,
+                            detected_metadata,
+                            selected_match_index,
                             on_match_select: {
                                 let import_context = import_context.clone();
                                 move |index| {
@@ -177,7 +171,7 @@ pub fn CdImport() -> Element {
                     // Phase 4: Confirmation
                     if *import_phase.read() == ImportPhase::Confirmation {
                         Confirmation {
-                            confirmed_candidate: confirmed_candidate,
+                            confirmed_candidate,
                             on_edit: {
                                 let import_context = import_context.clone();
                                 move || {
@@ -198,7 +192,7 @@ pub fn CdImport() -> Element {
                     // Error messages
                     ErrorDisplay {
                         error_message: import_error_message,
-                        duplicate_album_id: duplicate_album_id,
+                        duplicate_album_id,
                     }
                 }
             }

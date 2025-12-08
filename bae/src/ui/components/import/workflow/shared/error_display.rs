@@ -11,8 +11,7 @@ pub fn ErrorDisplay(
     if let Some(ref error) = error_message.read().as_ref() {
         rsx! {
             div { class: "bg-red-50 border border-red-200 rounded-lg p-4",
-                p {
-                    class: "text-sm text-red-700 select-text break-words font-mono",
+                p { class: "text-sm text-red-700 select-text break-words font-mono",
                     "Error: {error}"
                 }
                 {
@@ -25,22 +24,27 @@ pub fn ErrorDisplay(
                                     href: "#",
                                     class: "text-sm text-blue-600 hover:underline",
                                     onclick: move |_| {
-                                        navigator.push(Route::AlbumDetail {
-                                            album_id: dup_id_clone.clone(),
-                                            release_id: String::new(),
-                                        });
+                                        navigator
+                                            .push(Route::AlbumDetail {
+                                                album_id: dup_id_clone.clone(),
+                                                release_id: String::new(),
+                                            });
                                     },
                                     "View existing album"
                                 }
                             }
                         }
                     } else {
-                        rsx! { div {} }
+                        rsx! {
+                            div {}
+                        }
                     }
                 }
             }
         }
     } else {
-        rsx! { div {} }
+        rsx! {
+            div {}
+        }
     }
 }

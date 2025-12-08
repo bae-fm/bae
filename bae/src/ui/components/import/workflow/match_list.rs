@@ -10,7 +10,9 @@ pub fn MatchList(
 ) -> Element {
     if candidates.is_empty() {
         return rsx! {
-            p { class: "text-gray-400 text-center", "No matches found. Try selecting a different folder or search manually." }
+            p { class: "text-gray-400 text-center",
+                "No matches found. Try selecting a different folder or search manually."
+            }
         };
     }
 
@@ -20,7 +22,7 @@ pub fn MatchList(
             p { class: "text-sm text-gray-400 mb-4", "Select a release continue" }
 
             div { class: "space-y-3",
-                for (index, candidate) in candidates.iter().enumerate() {
+                for (index , candidate) in candidates.iter().enumerate() {
                     MatchItem {
                         candidate: candidate.clone(),
                         is_selected: selected_index == Some(index),

@@ -84,7 +84,7 @@ pub fn TorrentImport() -> Element {
             if *import_context.import_phase().read() == ImportPhase::FolderSelection {
                 TorrentInput {
                     on_file_select: on_torrent_file_select,
-                    on_magnet_link: on_magnet_link,
+                    on_magnet_link,
                     on_error: on_torrent_error,
                     show_seed_checkbox: false,
                 }
@@ -97,46 +97,17 @@ pub fn TorrentImport() -> Element {
                         on_clear: on_change_folder,
                         children: Some(rsx! {
                             TorrentTrackerDisplay {
-                                trackers: import_context.torrent_info().read().as_ref().map(|info| info.trackers.clone()).unwrap_or_default(),
+                                trackers: import_context
+                                    .torrent_info()
+                                    .read()
+                                    .as_ref()
+                                    .map(|info| info.trackers.clone())
+                                    .unwrap_or_default(),
                             }
-                            TorrentInfoDisplay {
-                                info: import_context.torrent_info(),
-                            }
-                            TorrentFilesDisplay {
-                                info: import_context.torrent_info(),
-                            }
+                            TorrentInfoDisplay { info: import_context.torrent_info() }
+                            TorrentFilesDisplay { info: import_context.torrent_info() }
                         }),
                     }
-
-                    // OLD CODE - Commented out
-                    /*
-                    // Show torrent status if we have an info_hash
-                    if let Some(info_hash) = import_context.torrent_info_hash().read().as_ref() {
-                        TorrentStatus {
-                            info_hash: info_hash.clone(),
-                            on_skip: if *import_context.is_detecting().read() {
-                                Some({
-                                    let import_context = import_context.clone();
-                                    EventHandler::new(move |()| {
-                                        import_context.skip_metadata_detection();
-                                    })
-                                })
-                            } else {
-                                None
-                            },
-                        }
-                    }
-
-                    // Show file list if available
-                    if !import_context.folder_files().read().is_empty() {
-                        div { class: "bg-white rounded-lg shadow p-6",
-                            h4 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3", "Files" }
-                            FileList {
-                                files: import_context.folder_files().read().clone(),
-                            }
-                        }
-                    }
-                    */
 
                     // Phase 2: Exact Lookup
                     if *import_context.import_phase().read() == ImportPhase::ExactLookup {
@@ -155,17 +126,16 @@ pub fn TorrentImport() -> Element {
 
                     // Phase 3: Manual Search
                     if *import_context.import_phase().read() == ImportPhase::ManualSearch {
-                        if has_cue_files_for_manual && import_context.detected_metadata().read().is_none() && !*import_context.is_detecting().read() {
+                        if has_cue_files_for_manual && import_context.detected_metadata().read().is_none()
+                            && !*import_context.is_detecting().read()
+                        {
                             MetadataDetectionPrompt {
                                 on_detect: {
                                     let import_context = import_context.clone();
                                     EventHandler::new(move |()| {
                                         let import_context = import_context.clone();
                                         spawn(async move {
-                                            if let Err(e) = import_context
-                                                .retry_torrent_metadata_detection()
-                                                .await
-                                            {
+                                            if let Err(e) = import_context.retry_torrent_metadata_detection().await {
                                                 warn!("Failed to retry metadata detection: {}", e);
                                             }
                                         });
@@ -206,7 +176,12 @@ pub fn TorrentImport() -> Element {
                                 let on_confirm_from_manual_local = on_confirm_from_manual;
                                 let import_context = import_context.clone();
                                 move || {
-                                    if let Some(candidate) = import_context.confirmed_candidate().read().as_ref().cloned() {
+                                    if let Some(candidate) = import_context
+                                        .confirmed_candidate()
+                                        .read()
+                                        .as_ref()
+                                        .cloned()
+                                    {
                                         on_confirm_from_manual_local(candidate);
                                     }
                                 }
@@ -327,7 +302,9 @@ fn TorrentTrackerDisplay(trackers: Vec<String>) -> Element {
                             "▶"
                         }
                     }
-                    h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide", "Trackers" }
+                    h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide",
+                        "Trackers"
+                    }
                     if !*expanded.read() {
                         span { class: "text-xs text-gray-400", {format!("({})", summary)} }
                     }
@@ -384,12 +361,9 @@ fn TrackerItem(
                     p { class: "text-sm font-mono text-gray-300 truncate", {url.clone()} }
                 }
                 div { class: "flex items-center gap-4 ml-4",
-                    span { class: "text-xs px-2 py-1 rounded",
-                        class: if announce_status == "Connected" {
-                            "bg-green-900/30 text-green-400 border border-green-700"
-                        } else {
-                            "bg-yellow-900/30 text-yellow-400 border border-yellow-700"
-                        },
+                    span {
+                        class: "text-xs px-2 py-1 rounded",
+                        class: if announce_status == "Connected" { "bg-green-900/30 text-green-400 border border-green-700" } else { "bg-yellow-900/30 text-yellow-400 border border-yellow-700" },
                         {announce_status.clone()}
                     }
                     span { class: "text-xs text-gray-400",
@@ -459,7 +433,9 @@ fn TorrentInfoDisplay(info: ReadSignal<Option<TorrentInfo>>) -> Element {
                     let current = *expanded.read();
                     expanded.set(!current);
                 },
-                h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide", "Details" }
+                h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide",
+                    "Details"
+                }
                 span { class: "text-xs text-gray-400",
                     if *expanded.read() {
                         "▼"
@@ -473,49 +449,59 @@ fn TorrentInfoDisplay(info: ReadSignal<Option<TorrentInfo>>) -> Element {
                 div { class: "mt-3 space-y-4",
                     // Basic Info
                     div { class: "grid grid-cols-2 gap-4",
-                div {
-                    h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2", "Name" }
-                    p {
-                        class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
-                        {torrent_info.name.clone()}
-                    }
-                }
-                div {
-                    h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2", "Total Size" }
-                    p {
-                        class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
-                        {format_size(torrent_info.total_size)}
-                    }
-                }
-                div {
-                    h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2", "Piece Length" }
-                    p {
-                        class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
-                        {format_size(torrent_info.piece_length as i64)}
-                    }
-                }
-                div {
-                    h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2", "Number of Pieces" }
-                    p {
-                        class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
-                        {torrent_info.num_pieces.to_string()}
-                    }
-                }
-                div {
-                    h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2", "Private" }
-                    p {
-                        class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
-                        if torrent_info.is_private { "Yes" } else { "No" }
-                    }
-                }
+                        div {
+                            h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2",
+                                "Name"
+                            }
+                            p { class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
+                                {torrent_info.name.clone()}
+                            }
+                        }
+                        div {
+                            h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2",
+                                "Total Size"
+                            }
+                            p { class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
+                                {format_size(torrent_info.total_size)}
+                            }
+                        }
+                        div {
+                            h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2",
+                                "Piece Length"
+                            }
+                            p { class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
+                                {format_size(torrent_info.piece_length as i64)}
+                            }
+                        }
+                        div {
+                            h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2",
+                                "Number of Pieces"
+                            }
+                            p { class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
+                                {torrent_info.num_pieces.to_string()}
+                            }
+                        }
+                        div {
+                            h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2",
+                                "Private"
+                            }
+                            p { class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
+                                if torrent_info.is_private {
+                                    "Yes"
+                                } else {
+                                    "No"
+                                }
+                            }
+                        }
                     }
 
                     // Comment
                     if !torrent_info.comment.is_empty() {
                         div {
-                            h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2", "Comment" }
-                            p {
-                                class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700 break-words",
+                            h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2",
+                                "Comment"
+                            }
+                            p { class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700 break-words",
                                 {torrent_info.comment.clone()}
                             }
                         }
@@ -524,9 +510,10 @@ fn TorrentInfoDisplay(info: ReadSignal<Option<TorrentInfo>>) -> Element {
                     // Creator
                     if !torrent_info.creator.is_empty() {
                         div {
-                            h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2", "Created By" }
-                            p {
-                                class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
+                            h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2",
+                                "Created By"
+                            }
+                            p { class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
                                 {torrent_info.creator.clone()}
                             }
                         }
@@ -535,9 +522,10 @@ fn TorrentInfoDisplay(info: ReadSignal<Option<TorrentInfo>>) -> Element {
                     // Creation Date
                     if torrent_info.creation_date != 0 {
                         div {
-                            h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2", "Creation Date" }
-                            p {
-                                class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
+                            h4 { class: "text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2",
+                                "Creation Date"
+                            }
+                            p { class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
                                 {format_date(torrent_info.creation_date)}
                             }
                         }
@@ -600,7 +588,9 @@ fn TorrentFilesDisplay(info: ReadSignal<Option<TorrentInfo>>) -> Element {
                     let current = *expanded.read();
                     expanded.set(!current);
                 },
-                h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide", "Files" }
+                h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide",
+                    "Files"
+                }
                 span { class: "text-xs text-gray-400",
                     if *expanded.read() {
                         "▼"
@@ -612,9 +602,7 @@ fn TorrentFilesDisplay(info: ReadSignal<Option<TorrentInfo>>) -> Element {
 
             if *expanded.read() {
                 div { class: "mt-3",
-                    FileList {
-                        files: files,
-                    }
+                    FileList { files }
                 }
             }
         }
@@ -627,9 +615,7 @@ fn MetadataDetectionPrompt(on_detect: EventHandler<()>) -> Element {
         div { class: "bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4",
             div { class: "flex items-center justify-between",
                 div { class: "flex-1",
-                    p { class: "text-sm text-blue-900 font-medium mb-1",
-                        "Metadata files detected"
-                    }
+                    p { class: "text-sm text-blue-900 font-medium mb-1", "Metadata files detected" }
                     p { class: "text-xs text-blue-700",
                         "CUE/log files found in torrent. Download and detect metadata automatically?"
                     }

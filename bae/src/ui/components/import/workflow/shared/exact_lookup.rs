@@ -21,15 +21,17 @@ pub fn ExactLookup(
                 h3 { class: "text-lg font-semibold text-white mb-4", "Multiple Exact Matches Found" }
                 p { class: "text-sm text-gray-400 mb-4", "Select the correct release:" }
                 div { class: "mt-4",
-                MatchList {
-                    candidates: exact_match_candidates.read().clone(),
-                    selected_index: selected_match_index.read().as_ref().copied(),
-                    on_select: move |index| on_select.call(index),
+                    MatchList {
+                        candidates: exact_match_candidates.read().clone(),
+                        selected_index: selected_match_index.read().as_ref().copied(),
+                        on_select: move |index| on_select.call(index),
                     }
                 }
             }
         }
     } else {
-        rsx! { div {} }
+        rsx! {
+            div {}
+        }
     }
 }

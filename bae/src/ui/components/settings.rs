@@ -36,8 +36,8 @@ pub fn Settings() -> Element {
                         div { class: "text-base text-gray-900 flex items-center gap-2",
                             "Configured"
                             span { class: "text-green-600", "✓" }
-                }
-            }
+                        }
+                    }
 
                     div { class: "pb-3",
                         div { class: "text-sm font-medium text-gray-500 mb-1", "Torrent Bind Interface" }

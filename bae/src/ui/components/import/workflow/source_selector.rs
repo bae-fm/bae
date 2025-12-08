@@ -13,8 +13,7 @@ pub fn SearchSourceSelector(
 ) -> Element {
     rsx! {
         div { class: "flex gap-4 mb-4",
-            label {
-                class: "flex items-center gap-2 cursor-pointer",
+            label { class: "flex items-center gap-2 cursor-pointer",
                 input {
                     r#type: "radio",
                     name: "search_source",
@@ -22,12 +21,11 @@ pub fn SearchSourceSelector(
                     onchange: move |_| {
                         selected_source.set(SearchSource::MusicBrainz);
                         on_select.call(SearchSource::MusicBrainz);
-                    }
+                    },
                 }
                 span { class: "text-sm font-medium text-gray-300", "MusicBrainz" }
             }
-            label {
-                class: "flex items-center gap-2 cursor-pointer",
+            label { class: "flex items-center gap-2 cursor-pointer",
                 input {
                     r#type: "radio",
                     name: "search_source",
@@ -35,7 +33,7 @@ pub fn SearchSourceSelector(
                     onchange: move |_| {
                         selected_source.set(SearchSource::Discogs);
                         on_select.call(SearchSource::Discogs);
-                    }
+                    },
                 }
                 span { class: "text-sm font-medium text-gray-300", "Discogs" }
             }

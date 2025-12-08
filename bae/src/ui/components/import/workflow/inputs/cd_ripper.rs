@@ -47,15 +47,11 @@ pub fn CdRipper(on_drive_select: EventHandler<PathBuf>, on_error: EventHandler<S
     rsx! {
         div { class: "space-y-4",
             if *is_scanning.read() {
-                div { class: "text-center py-4 text-gray-400",
-                    "Scanning for CD drives..."
-                }
+                div { class: "text-center py-4 text-gray-400", "Scanning for CD drives..." }
             } else {
                 div { class: "space-y-4",
                     if drives.read().is_empty() {
-                        div { class: "text-center py-8 text-gray-400",
-                            "No CD drives detected"
-                        }
+                        div { class: "text-center py-8 text-gray-400", "No CD drives detected" }
                     } else {
                         div { class: "space-y-2",
                             label { class: "block text-sm font-medium text-gray-300",

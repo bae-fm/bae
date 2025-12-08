@@ -114,27 +114,29 @@ pub fn AlbumDetailView(
                     } else {
                         // Check if this is a multi-disc release
                         {
-                            let has_multiple_discs = tracks.iter()
+                            let has_multiple_discs = tracks
+
+                                // Group tracks by disc number
+                                // Show disc header when disc changes
+                                // Single disc - no headers needed
+                                .iter()
                                 .filter_map(|t| t.disc_number)
                                 .collect::<std::collections::HashSet<_>>()
                                 .len() > 1;
-
                             if has_multiple_discs {
-                                // Group tracks by disc number
                                 let mut current_disc: Option<i32> = None;
                                 rsx! {
                                     div { class: "space-y-2",
                                         for track in &tracks {
-                                            // Show disc header when disc changes
                                             if track.disc_number != current_disc {
                                                 {
                                                     current_disc = track.disc_number;
-                                                    let disc_label = track.disc_number
+                                                    let disc_label = track
+                                                        .disc_number
                                                         .map(|d| format!("Disc {}", d))
                                                         .unwrap_or_else(|| "Disc 1".to_string());
                                                     rsx! {
-                                                        h3 {
-                                                            class: "text-sm font-semibold text-gray-400 uppercase tracking-wide pt-4 pb-2 first:pt-0",
+                                                        h3 { class: "text-sm font-semibold text-gray-400 uppercase tracking-wide pt-4 pb-2 first:pt-0",
                                                             "{disc_label}"
                                                         }
                                                     }
@@ -148,7 +150,6 @@ pub fn AlbumDetailView(
                                     }
                                 }
                             } else {
-                                // Single disc - no headers needed
                                 rsx! {
                                     div { class: "space-y-2",
                                         for track in &tracks {
