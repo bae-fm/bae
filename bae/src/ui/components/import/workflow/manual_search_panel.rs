@@ -7,6 +7,22 @@ use crate::ui::import_context::ImportContext;
 use dioxus::prelude::*;
 use std::rc::Rc;
 
+#[component]
+fn ClearButton(value: Signal<String>, input_ref: Signal<Option<Rc<MountedData>>>) -> Element {
+    rsx! {
+        button {
+            class: "absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-3",
+            onclick: move |_| {
+                value.set(String::new());
+                if let Some(input) = input_ref.read().as_ref() {
+                    drop(input.set_focus(true));
+                }
+            },
+            "✕"
+        }
+    }
+}
+
 /// Which search field is currently focused (for pill insertion)
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum FocusedField {
@@ -310,19 +326,12 @@ pub fn ManualSearchPanel(
                                         },
                                     }
                                     if !search_artist.read().is_empty() {
-                                        button {
-                                            class: "absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1",
-                                            onclick: move |_| {
-                                                search_artist.set(String::new());
-                                                if let Some(input) = artist_input_ref.read().as_ref() {
-                                                    drop(input.set_focus(true));
-                                                }
-                                            },
-                                            "✕"
-                                        }
+                                        ClearButton { value: search_artist, input_ref: artist_input_ref }
                                     }
                                 }
                             }
+
+
 
                             div {
                                 label { class: "block text-sm font-medium text-gray-300 mb-1", "Album" }
@@ -337,16 +346,7 @@ pub fn ManualSearchPanel(
                                         onmounted: move |element| album_input_ref.set(Some(element.data())),
                                     }
                                     if !search_album.read().is_empty() {
-                                        button {
-                                            class: "absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1",
-                                            onclick: move |_| {
-                                                search_album.set(String::new());
-                                                if let Some(input) = album_input_ref.read().as_ref() {
-                                                    std::mem::drop(input.set_focus(true));
-                                                }
-                                            },
-                                            "✕"
-                                        }
+                                        ClearButton { value: search_album, input_ref: album_input_ref }
                                     }
                                 }
                             }
@@ -363,16 +363,7 @@ pub fn ManualSearchPanel(
                                         onmounted: move |element| year_input_ref.set(Some(element.data())),
                                     }
                                     if !search_year.read().is_empty() {
-                                        button {
-                                            class: "absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1",
-                                            onclick: move |_| {
-                                                search_year.set(String::new());
-                                                if let Some(input) = year_input_ref.read().as_ref() {
-                                                    std::mem::drop(input.set_focus(true));
-                                                }
-                                            },
-                                            "✕"
-                                        }
+                                        ClearButton { value: search_year, input_ref: year_input_ref }
                                     }
                                 }
                             }
@@ -389,16 +380,7 @@ pub fn ManualSearchPanel(
                                         onmounted: move |element| label_input_ref.set(Some(element.data())),
                                     }
                                     if !search_label.read().is_empty() {
-                                        button {
-                                            class: "absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1",
-                                            onclick: move |_| {
-                                                search_label.set(String::new());
-                                                if let Some(input) = label_input_ref.read().as_ref() {
-                                                    std::mem::drop(input.set_focus(true));
-                                                }
-                                            },
-                                            "✕"
-                                        }
+                                        ClearButton { value: search_label, input_ref: label_input_ref }
                                     }
                                 }
                             }
@@ -433,16 +415,7 @@ pub fn ManualSearchPanel(
                                     },
                                 }
                                 if !search_catalog_number.read().is_empty() {
-                                    button {
-                                        class: "absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1",
-                                        onclick: move |_| {
-                                            search_catalog_number.set(String::new());
-                                            if let Some(input) = catno_input_ref.read().as_ref() {
-                                                std::mem::drop(input.set_focus(true));
-                                            }
-                                        },
-                                        "✕"
-                                    }
+                                    ClearButton { value: search_catalog_number, input_ref: catno_input_ref }
                                 }
                             }
                             button {
@@ -473,16 +446,7 @@ pub fn ManualSearchPanel(
                                     },
                                 }
                                 if !search_barcode.read().is_empty() {
-                                    button {
-                                        class: "absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1",
-                                        onclick: move |_| {
-                                            search_barcode.set(String::new());
-                                            if let Some(input) = barcode_input_ref.read().as_ref() {
-                                                std::mem::drop(input.set_focus(true));
-                                            }
-                                        },
-                                        "✕"
-                                    }
+                                    ClearButton { value: search_barcode, input_ref: barcode_input_ref }
                                 }
                             }
                             button {
