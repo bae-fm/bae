@@ -1,7 +1,7 @@
 use crate::db::DbTrack;
 use crate::library::use_library_manager;
 use crate::playback::{PlaybackProgress, PlaybackState};
-use crate::ui::Route;
+use crate::ui::{image_url, Route};
 use dioxus::prelude::*;
 
 use super::queue_sidebar::QueueSidebarState;
@@ -522,7 +522,8 @@ pub fn NowPlayingBar() -> Element {
                         Ok(album_id) => {
                             match library_manager.get().get_album_by_id(&album_id).await {
                                 Ok(Some(album)) => {
-                                    cover_art_url.set(album.cover_art_url);
+                                    cover_art_url
+                                        .set(album.cover_image_id.as_ref().map(|id| image_url(id)));
                                 }
                                 Ok(None) => {
                                     cover_art_url.set(None);

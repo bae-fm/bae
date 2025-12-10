@@ -443,7 +443,8 @@ async fn load_albums(
             duration: 0, // TODO: Calculate from tracks
             year: db_album.year,
             genre: None, // TODO: Add genre support
-            cover_art: db_album.cover_art_url,
+            // TODO: Implement getCoverArt endpoint to serve images from chunk storage
+            cover_art: None,
         });
     }
 
@@ -507,7 +508,8 @@ async fn load_album_with_songs(
             track: track.track_number,
             year: db_album.year,
             genre: None,
-            cover_art: db_album.cover_art_url.clone(),
+            // TODO: Implement getCoverArt endpoint to serve images from chunk storage
+            cover_art: None,
             size: None,                             // TODO: Calculate from chunks
             content_type: "audio/flac".to_string(), // TODO: Detect from files
             suffix: "flac".to_string(),
@@ -526,7 +528,8 @@ async fn load_album_with_songs(
         duration: songs.iter().map(|s| s.duration.unwrap_or(0) as u32).sum(),
         year: db_album.year,
         genre: None,
-        cover_art: db_album.cover_art_url,
+        // TODO: Implement getCoverArt endpoint to serve images from chunk storage
+        cover_art: None,
     };
 
     Ok(serde_json::json!({

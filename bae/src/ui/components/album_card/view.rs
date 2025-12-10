@@ -1,6 +1,6 @@
 use crate::db::{DbAlbum, DbArtist};
 use crate::library::use_library_manager;
-use crate::ui::Route;
+use crate::ui::{image_url, Route};
 use dioxus::prelude::*;
 
 use super::dropdown_menu::AlbumDropdownMenu;
@@ -22,7 +22,8 @@ pub fn AlbumCard(album: DbAlbum, artists: Vec<DbArtist>) -> Element {
     let album_id = album.id.clone();
     let album_title = album.title.clone();
     let album_year = album.year;
-    let cover_art_url = album.cover_art_url.clone();
+    // Convert cover_image_id to a bae://image/{id} URL
+    let cover_url = album.cover_image_id.as_ref().map(|id| image_url(id));
 
     // Format artist names
     let artist_name = if artists.is_empty() {
@@ -64,9 +65,9 @@ pub fn AlbumCard(album: DbAlbum, artists: Vec<DbArtist>) -> Element {
                     }
                 },
 
-                if let Some(cover_url) = &cover_art_url {
+                if let Some(url) = &cover_url {
                     img {
-                        src: "{cover_url}",
+                        src: "{url}",
                         alt: "Album cover for {album_title}",
                         class: "w-full h-full object-cover",
                     }

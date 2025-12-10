@@ -1,5 +1,6 @@
 use crate::db::DbAlbum;
 use crate::library::use_library_manager;
+use crate::ui::image_url;
 use crate::AppContext;
 use dioxus::prelude::*;
 use rfd::AsyncFileDialog;
@@ -33,7 +34,7 @@ pub fn AlbumCoverSection(
             onmouseleave: move |_| hover_cover.set(false),
             AlbumArt {
                 title: album.title.clone(),
-                cover_url: album.cover_art_url.clone(),
+                cover_url: album.cover_image_id.as_ref().map(|id| image_url(id)),
                 import_progress,
             }
 

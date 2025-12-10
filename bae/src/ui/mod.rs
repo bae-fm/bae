@@ -8,4 +8,4 @@ pub mod window_activation;
 
 pub use app::*;
 pub use app_context::*;
-pub use local_file_url::local_file_url;
+pub use local_file_url::{image_url, local_file_url};

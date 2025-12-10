@@ -1,7 +1,7 @@
 use crate::db::{DbAlbum, DbArtist};
 use crate::library::use_library_manager;
 use crate::ui::components::use_library_search;
-use crate::ui::Route;
+use crate::ui::{image_url, Route};
 use dioxus::desktop::use_window;
 use dioxus::prelude::*;
 use std::collections::HashMap;
@@ -158,7 +158,7 @@ pub fn TitleBar() -> Element {
                             let album_id = album.id.clone();
                             let album_title = album.title.clone();
                             let album_year = album.year;
-                            let cover_art = album.cover_art_url.clone();
+                            let cover_url = album.cover_image_id.as_ref().map(|id| image_url(id));
                             let artists = album_artists().get(&album.id).cloned().unwrap_or_default();
                             let artist_name = if artists.is_empty() {
                                 "Unknown Artist".to_string()
@@ -187,9 +187,9 @@ pub fn TitleBar() -> Element {
                                             info!("Navigator.push called for album_id: {}", album_id);
                                         }
                                     },
-                                    if let Some(cover_url) = cover_art {
+                                    if let Some(url) = cover_url {
                                         img {
-                                            src: "{cover_url}",
+                                            src: "{url}",
                                             class: "w-10 h-10 rounded object-cover flex-shrink-0",
                                             alt: "{album_title}",
                                         }

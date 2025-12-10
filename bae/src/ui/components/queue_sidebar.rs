@@ -1,7 +1,7 @@
 use crate::db::{DbAlbum, DbTrack};
 use crate::library::use_library_manager;
 use crate::playback::PlaybackState;
-use crate::ui::Route;
+use crate::ui::{image_url, Route};
 use dioxus::prelude::*;
 
 use super::album_detail::utils::format_duration;
@@ -196,9 +196,9 @@ fn QueueItem(
             // Album cover
             div { class: "w-12 h-12 flex-shrink-0 bg-gray-700 rounded overflow-hidden",
                 if let Some(album) = &album {
-                    if let Some(cover_url) = &album.cover_art_url {
+                    if let Some(cover_id) = &album.cover_image_id {
                         img {
-                            src: "{cover_url}",
+                            src: "{image_url(cover_id)}",
                             alt: "Album cover",
                             class: "w-full h-full object-cover",
                         }

@@ -53,7 +53,7 @@ impl Database {
                 title TEXT NOT NULL,
                 year INTEGER,
                 bandcamp_album_id TEXT,
-                cover_art_url TEXT,
+                cover_image_id TEXT,
                 is_compilation BOOLEAN NOT NULL DEFAULT FALSE,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
@@ -578,7 +578,7 @@ impl Database {
         sqlx::query(
             r#"
             INSERT INTO albums (
-                id, title, year, bandcamp_album_id, cover_art_url, is_compilation, created_at, updated_at
+                id, title, year, bandcamp_album_id, cover_image_id, is_compilation, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
@@ -586,7 +586,7 @@ impl Database {
         .bind(&album.title)
         .bind(album.year)
         .bind(&album.bandcamp_album_id)
-        .bind(&album.cover_art_url)
+        .bind(&album.cover_image_id)
         .bind(album.is_compilation)
         .bind(album.created_at.to_rfc3339())
         .bind(album.updated_at.to_rfc3339())
@@ -701,7 +701,7 @@ impl Database {
         sqlx::query(
             r#"
             INSERT INTO albums (
-                id, title, year, bandcamp_album_id, cover_art_url, is_compilation, created_at, updated_at
+                id, title, year, bandcamp_album_id, cover_image_id, is_compilation, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
@@ -709,7 +709,7 @@ impl Database {
         .bind(&album.title)
         .bind(album.year)
         .bind(&album.bandcamp_album_id)
-        .bind(&album.cover_art_url)
+        .bind(&album.cover_image_id)
         .bind(album.is_compilation)
         .bind(album.created_at.to_rfc3339())
         .bind(album.updated_at.to_rfc3339())
@@ -852,7 +852,7 @@ impl Database {
         let rows = sqlx::query(
             r#"
             SELECT 
-                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_art_url, 
+                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_image_id, 
                 a.is_compilation, a.created_at, a.updated_at,
                 ad.discogs_master_id, ad.discogs_release_id,
                 amb.musicbrainz_release_group_id, amb.musicbrainz_release_id
@@ -894,7 +894,7 @@ impl Database {
                 discogs_release,
                 musicbrainz_release,
                 bandcamp_album_id: row.get("bandcamp_album_id"),
-                cover_art_url: row.get("cover_art_url"),
+                cover_image_id: row.get("cover_image_id"),
                 is_compilation: row.get("is_compilation"),
                 created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
                     .unwrap()
@@ -913,7 +913,7 @@ impl Database {
         let row = sqlx::query(
             r#"
             SELECT 
-                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_art_url, 
+                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_image_id, 
                 a.is_compilation, a.created_at, a.updated_at,
                 ad.discogs_master_id, ad.discogs_release_id,
                 amb.musicbrainz_release_group_id, amb.musicbrainz_release_id
@@ -955,7 +955,7 @@ impl Database {
                 discogs_release,
                 musicbrainz_release,
                 bandcamp_album_id: row.get("bandcamp_album_id"),
-                cover_art_url: row.get("cover_art_url"),
+                cover_image_id: row.get("cover_image_id"),
                 is_compilation: row.get("is_compilation"),
                 created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
                     .unwrap()
@@ -1387,7 +1387,7 @@ impl Database {
         let query = if master_id.is_some() && release_id.is_some() {
             r#"
             SELECT 
-                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_art_url, 
+                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_image_id, 
                 a.is_compilation, a.created_at, a.updated_at,
                 ad.discogs_master_id, ad.discogs_release_id,
                 amb.musicbrainz_release_group_id, amb.musicbrainz_release_id
@@ -1400,7 +1400,7 @@ impl Database {
         } else if master_id.is_some() {
             r#"
             SELECT 
-                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_art_url, 
+                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_image_id, 
                 a.is_compilation, a.created_at, a.updated_at,
                 ad.discogs_master_id, ad.discogs_release_id,
                 amb.musicbrainz_release_group_id, amb.musicbrainz_release_id
@@ -1413,7 +1413,7 @@ impl Database {
         } else if release_id.is_some() {
             r#"
             SELECT 
-                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_art_url, 
+                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_image_id, 
                 a.is_compilation, a.created_at, a.updated_at,
                 ad.discogs_master_id, ad.discogs_release_id,
                 amb.musicbrainz_release_group_id, amb.musicbrainz_release_id
@@ -1473,7 +1473,7 @@ impl Database {
                 discogs_release,
                 musicbrainz_release,
                 bandcamp_album_id: row.get("bandcamp_album_id"),
-                cover_art_url: row.get("cover_art_url"),
+                cover_image_id: row.get("cover_image_id"),
                 is_compilation: row.get("is_compilation"),
                 created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
                     .unwrap()
@@ -1497,7 +1497,7 @@ impl Database {
         let query = if release_id.is_some() && release_group_id.is_some() {
             r#"
             SELECT 
-                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_art_url, 
+                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_image_id, 
                 a.is_compilation, a.created_at, a.updated_at,
                 ad.discogs_master_id, ad.discogs_release_id,
                 amb.musicbrainz_release_group_id, amb.musicbrainz_release_id
@@ -1510,7 +1510,7 @@ impl Database {
         } else if release_id.is_some() {
             r#"
             SELECT 
-                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_art_url, 
+                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_image_id, 
                 a.is_compilation, a.created_at, a.updated_at,
                 ad.discogs_master_id, ad.discogs_release_id,
                 amb.musicbrainz_release_group_id, amb.musicbrainz_release_id
@@ -1523,7 +1523,7 @@ impl Database {
         } else if release_group_id.is_some() {
             r#"
             SELECT 
-                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_art_url, 
+                a.id, a.title, a.year, a.bandcamp_album_id, a.cover_image_id, 
                 a.is_compilation, a.created_at, a.updated_at,
                 ad.discogs_master_id, ad.discogs_release_id,
                 amb.musicbrainz_release_group_id, amb.musicbrainz_release_id
@@ -1583,7 +1583,7 @@ impl Database {
                 discogs_release,
                 musicbrainz_release,
                 bandcamp_album_id: row.get("bandcamp_album_id"),
-                cover_art_url: row.get("cover_art_url"),
+                cover_image_id: row.get("cover_image_id"),
                 is_compilation: row.get("is_compilation"),
                 created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
                     .unwrap()
@@ -1893,6 +1893,65 @@ impl Database {
     pub async fn delete_image(&self, image_id: &str) -> Result<(), sqlx::Error> {
         sqlx::query("DELETE FROM images WHERE id = ?")
             .bind(image_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Get an image by ID
+    pub async fn get_image_by_id(&self, image_id: &str) -> Result<Option<DbImage>, sqlx::Error> {
+        let row = sqlx::query("SELECT * FROM images WHERE id = ?")
+            .bind(image_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(row.map(|row| DbImage {
+            id: row.get("id"),
+            release_id: row.get("release_id"),
+            filename: row.get("filename"),
+            is_cover: row.get("is_cover"),
+            source: row.get("source"),
+            width: row.get("width"),
+            height: row.get("height"),
+            created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
+                .unwrap()
+                .with_timezone(&Utc),
+        }))
+    }
+
+    /// Get a file by release ID and filename
+    pub async fn get_file_by_release_and_filename(
+        &self,
+        release_id: &str,
+        filename: &str,
+    ) -> Result<Option<DbFile>, sqlx::Error> {
+        let row = sqlx::query("SELECT * FROM files WHERE release_id = ? AND original_filename = ?")
+            .bind(release_id)
+            .bind(filename)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(row.map(|row| DbFile {
+            id: row.get("id"),
+            release_id: row.get("release_id"),
+            original_filename: row.get("original_filename"),
+            file_size: row.get("file_size"),
+            format: row.get("format"),
+            created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
+                .unwrap()
+                .with_timezone(&Utc),
+        }))
+    }
+
+    /// Update album's cover_image_id
+    pub async fn set_album_cover_image(
+        &self,
+        album_id: &str,
+        cover_image_id: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE albums SET cover_image_id = ? WHERE id = ?")
+            .bind(cover_image_id)
+            .bind(album_id)
             .execute(&self.pool)
             .await?;
         Ok(())

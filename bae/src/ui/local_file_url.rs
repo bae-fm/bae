@@ -1,8 +1,8 @@
-//! Helper for converting local file paths to bae:// URLs
+//! Helper for converting local file paths and image IDs to bae:// URLs
 //!
-//! The bae:// custom protocol is registered in app.rs and serves local files
-//! through the webview. This avoids issues with file:// URLs which don't work
-//! reliably in Dioxus desktop webviews.
+//! The bae:// custom protocol is registered in app.rs and serves:
+//! - Local files: bae://local/path/to/file
+//! - Images from chunk storage: bae://image/{image_id}
 
 /// Convert a local file path to a bae:// URL for serving via custom protocol.
 ///
@@ -22,4 +22,17 @@ pub fn local_file_url(path: &str) -> String {
         .collect::<Vec<_>>()
         .join("/");
     format!("bae://local{}", encoded_path)
+}
+
+/// Convert a DbImage ID to a bae:// URL for serving from chunk storage.
+///
+/// The image will be reconstructed from encrypted chunks on demand.
+///
+/// # Example
+/// ```
+/// let url = image_url("abc123-def456");
+/// // Returns: bae://image/abc123-def456
+/// ```
+pub fn image_url(image_id: &str) -> String {
+    format!("bae://image/{}", image_id)
 }

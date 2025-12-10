@@ -135,7 +135,8 @@ pub struct DbAlbum {
     pub musicbrainz_release: Option<MusicBrainzRelease>,
     /// Album ID from Bandcamp (optional, for future multi-source support)
     pub bandcamp_album_id: Option<String>,
-    pub cover_art_url: Option<String>,
+    /// Reference to the cover image (DbImage.id) - set after import when images are chunked
+    pub cover_image_id: Option<String>,
     /// True for "Various Artists" compilation albums
     pub is_compilation: bool,
     pub created_at: DateTime<Utc>,
@@ -344,7 +345,7 @@ impl DbAlbum {
             discogs_release: None,
             musicbrainz_release: None,
             bandcamp_album_id: None,
-            cover_art_url: None,
+            cover_image_id: None,
             is_compilation: false,
             created_at: now,
             updated_at: now,
@@ -374,7 +375,7 @@ impl DbAlbum {
             discogs_release: Some(discogs_release),
             musicbrainz_release: None,
             bandcamp_album_id: None,
-            cover_art_url: release.thumb.clone(),
+            cover_image_id: None,  // Set after import when images are chunked
             is_compilation: false, // Will be set based on artist analysis
             created_at: now,
             updated_at: now,
@@ -403,7 +404,7 @@ impl DbAlbum {
             discogs_release: None,
             musicbrainz_release: Some(musicbrainz_release),
             bandcamp_album_id: None,
-            cover_art_url: None, // MusicBrainz doesn't provide cover art URLs directly
+            cover_image_id: None,  // Set after import when images are chunked
             is_compilation: false, // Will be set based on artist analysis
             created_at: now,
             updated_at: now,

@@ -388,6 +388,35 @@ impl LibraryManager {
         Ok(())
     }
 
+    /// Get an image by ID
+    pub async fn get_image_by_id(&self, image_id: &str) -> Result<Option<DbImage>, LibraryError> {
+        Ok(self.database.get_image_by_id(image_id).await?)
+    }
+
+    /// Get a file by release ID and filename
+    pub async fn get_file_by_release_and_filename(
+        &self,
+        release_id: &str,
+        filename: &str,
+    ) -> Result<Option<DbFile>, LibraryError> {
+        Ok(self
+            .database
+            .get_file_by_release_and_filename(release_id, filename)
+            .await?)
+    }
+
+    /// Set an album's cover image
+    pub async fn set_album_cover_image(
+        &self,
+        album_id: &str,
+        cover_image_id: &str,
+    ) -> Result<(), LibraryError> {
+        self.database
+            .set_album_cover_image(album_id, cover_image_id)
+            .await?;
+        Ok(())
+    }
+
     /// Delete a release and its associated data
     ///
     /// This will:
@@ -576,7 +605,7 @@ mod tests {
             discogs_release: None,
             musicbrainz_release: None,
             bandcamp_album_id: None,
-            cover_art_url: None,
+            cover_image_id: None,
             is_compilation: false,
             created_at: Utc::now(),
             updated_at: Utc::now(),

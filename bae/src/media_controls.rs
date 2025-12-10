@@ -272,24 +272,24 @@ async fn update_media_metadata(
         }
     };
 
-    // Fetch album info (name and cover art)
-    let (album_name, cover_url) = match library_manager
+    // Fetch album name (cover art is stored in chunks and not accessible via HTTP URL)
+    let album_name = match library_manager
         .get()
         .get_album_id_for_release(&track.release_id)
         .await
     {
         Ok(album_id) => match library_manager.get().get_album_by_id(&album_id).await {
-            Ok(Some(album)) => (Some(album.title), album.cover_art_url),
+            Ok(Some(album)) => Some(album.title),
             Ok(None) => {
                 error!(
                     "Album {} not found for release {}",
                     album_id, track.release_id
                 );
-                (None, None)
+                None
             }
             Err(e) => {
                 error!("Failed to fetch album {}: {}", album_id, e);
-                (None, None)
+                None
             }
         },
         Err(e) => {
@@ -297,9 +297,12 @@ async fn update_media_metadata(
                 "Failed to get album ID for release {}: {}",
                 track.release_id, e
             );
-            (None, None)
+            None
         }
     };
+    // Cover art is stored in chunk storage (bae://image/{id} protocol)
+    // System media controls can't access our custom protocol, so no cover for now
+    let cover_url: Option<String> = None;
 
     // Store strings so we can create references
     let title = track.title.clone();
