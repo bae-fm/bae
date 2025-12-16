@@ -95,13 +95,26 @@ All 8 combinations of flags are valid. Some are silly (chunked but not encrypted
 
 ---
 
-## Plan 6: Storage Profile UI (in progress)
+## Plan 6: Storage Profile UI ✅
 
 **Goal**: Allow users to create/select storage profiles.
 
 - ✅ Add storage profile methods to LibraryManager
 - ✅ Add storage profile dropdown to import confirmation step
 - ✅ Auto-select default profile if one exists
-- Create default profile at app startup (encrypted + chunked + cloud)
-- Add settings page for managing storage profiles
+- ✅ Create default profile at app startup (encrypted + chunked + cloud)
+
+**Status**: Complete. Default "Cloud Storage" profile created on first run. Users can select from available profiles in the import confirmation step.
+
+---
+
+## Plan 7: Settings Page (TODO)
+
+**Goal**: UI for managing storage profiles.
+
+- List all storage profiles
+- Create new profiles (local/cloud, encrypted, chunked combinations)
+- Edit existing profiles
+- Set default profile
+- Delete unused profiles
 
