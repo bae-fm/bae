@@ -167,8 +167,14 @@ impl ImportService {
                     // New storage-based import path
                     match self.database.get_storage_profile(&profile_id).await {
                         Ok(Some(profile)) => {
-                            self.run_storage_import(&db_release, &discovered_files, profile)
-                                .await
+                            self.run_storage_import(
+                                &db_release,
+                                &discovered_files,
+                                &tracks_to_files,
+                                cue_flac_metadata,
+                                profile,
+                            )
+                            .await
                         }
                         Ok(None) => Err(format!("Storage profile not found: {}", profile_id)),
                         Err(e) => Err(format!("Failed to fetch storage profile: {}", e)),
@@ -784,11 +790,15 @@ impl ImportService {
     /// This is the new import method that uses ReleaseStorage instead of
     /// the hardcoded chunk pipeline. Much simpler - just reads files and
     /// calls storage.write_file() for each.
-    #[allow(dead_code)] // Will be used when we wire up the new import path
+    ///
+    /// Note: Currently handles one-file-per-track imports only.
+    /// CUE/FLAC imports will fall back to legacy pipeline until this is extended.
     async fn run_storage_import(
         &self,
         db_release: &DbRelease,
         discovered_files: &[DiscoveredFile],
+        tracks_to_files: &[TrackFile],
+        _cue_flac_metadata: Option<HashMap<PathBuf, CueFlacMetadata>>,
         storage_profile: DbStorageProfile,
     ) -> Result<(), String> {
         let storage = self.create_storage(storage_profile);
@@ -834,9 +844,54 @@ impl ImportService {
             });
         }
 
+        // Persist track metadata (audio format, chunk coords for playback)
+        // The storage layer handles file→chunk mapping, but we still need track metadata
+        let library_manager = self.library_manager.get();
+
+        // Build file-to-chunks mapping from the new DbFileChunk records
+        let mut files_to_chunks = Vec::new();
+        for file in discovered_files {
+            let filename = file.path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+            // Get file record from DB
+            if let Ok(Some(db_file)) = library_manager
+                .get_file_by_release_and_filename(&db_release.id, filename)
+                .await
+            {
+                // Get chunk mappings for this file
+                if let Ok(file_chunks) = library_manager.get_file_chunks(&db_file.id).await {
+                    if !file_chunks.is_empty() {
+                        let start_chunk = file_chunks.first().unwrap().chunk_index;
+                        let end_chunk = file_chunks.last().unwrap().chunk_index;
+                        let start_offset = file_chunks.first().unwrap().byte_offset;
+                        let end_offset = file_chunks.last().unwrap().byte_offset
+                            + file_chunks.last().unwrap().byte_length;
+
+                        files_to_chunks.push(FileToChunks {
+                            file_path: file.path.clone(),
+                            start_chunk_index: start_chunk,
+                            end_chunk_index: end_chunk,
+                            start_byte_offset: start_offset,
+                            end_byte_offset: end_offset,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Persist track metadata using existing persister
+        let persister = MetadataPersister::new(library_manager);
+        persister
+            .persist_release_metadata(
+                &db_release.id,
+                tracks_to_files,
+                &files_to_chunks,
+                self.config.chunk_size_bytes,
+            )
+            .await?;
+
         // Mark release complete
-        self.library_manager
-            .get()
+        library_manager
             .mark_release_complete(&db_release.id)
             .await
             .map_err(|e| format!("Failed to mark release complete: {}", e))?;
