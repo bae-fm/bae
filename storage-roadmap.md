@@ -87,8 +87,19 @@ All 8 combinations of flags are valid. Some are silly (chunked but not encrypted
 - ✅ Add `FileProgress` variant to `ImportProgress` for per-file progress
 - ✅ Add `storage_profile_id` to `ImportRequest` and `ImportCommand`
 - ✅ Wire `do_import()` to use storage path when profile ID specified
-- Folder import with storage profile now goes through `run_storage_import()`
-- Torrent/CD import still use legacy pipeline (TODO markers in place)
+- ✅ Add `storage_profile_id` signal to `ImportContext`
+- ✅ Import requests read profile from context
+- ✅ Track metadata persistence in storage import path
 
-**Next**: Add UI to select storage profile, create default profile
+**Status**: Folder imports with a storage profile use `run_storage_import()`. Torrent/CD imports still use legacy pipeline. CUE/FLAC handling deferred.
+
+---
+
+## Plan 6: Storage Profile UI (TODO)
+
+**Goal**: Allow users to create/select storage profiles.
+
+- Create default profile at app startup (encrypted + chunked + cloud)
+- Add storage profile dropdown to import confirmation step
+- Add settings page for managing storage profiles
 
