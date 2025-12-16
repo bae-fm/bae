@@ -59,14 +59,14 @@ All 8 combinations of flags are valid. Some are silly (chunked but not encrypted
 
 ---
 
-## Plan 4: Chunked/Encrypted Storage
+## Plan 4: Chunked/Encrypted Storage ✅
 
-**Goal**: Add chunking and encryption to the single storage implementation.
+**Goal**: Add encryption and cloud storage to the trait implementation.
 
-- Add chunking logic to `ReleaseStorageImpl` (when `chunked: true`)
-- Add encryption logic to `ReleaseStorageImpl` (when `encrypted: true`)
-- Add S3 backend to `ReleaseStorageImpl` (when `location: Cloud`)
-- Migrate existing chunk code into this
+- ✅ Add encryption logic (when `encrypted: true`) - encrypts/decrypts transparently
+- ✅ Add S3 backend (when `location: Cloud`) - uploads/downloads whole files
+- ⏸️ Chunking deferred - existing chunk pipeline handles chunked releases
+- ⏸️ Migration deferred - trait used for new non-chunked storage modes
 
 ---
 
