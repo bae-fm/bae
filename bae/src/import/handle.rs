@@ -84,6 +84,7 @@ impl ImportServiceHandle {
                 folder,
                 master_year,
                 cover_art_url,
+                storage_profile_id,
             } => {
                 self.send_folder_request(
                     discogs_release,
@@ -91,6 +92,7 @@ impl ImportServiceHandle {
                     folder,
                     master_year,
                     cover_art_url,
+                    storage_profile_id,
                 )
                 .await
             }
@@ -102,6 +104,7 @@ impl ImportServiceHandle {
                 seed_after_download,
                 torrent_metadata,
                 cover_art_url,
+                storage_profile_id,
             } => {
                 self.send_torrent_request(
                     torrent_source,
@@ -111,6 +114,7 @@ impl ImportServiceHandle {
                     seed_after_download,
                     torrent_metadata,
                     cover_art_url,
+                    storage_profile_id,
                 )
                 .await
             }
@@ -120,6 +124,7 @@ impl ImportServiceHandle {
                 drive_path,
                 master_year,
                 cover_art_url,
+                storage_profile_id,
             } => {
                 self.send_cd_request(
                     discogs_release,
@@ -127,6 +132,7 @@ impl ImportServiceHandle {
                     drive_path,
                     master_year,
                     cover_art_url,
+                    storage_profile_id,
                 )
                 .await
             }
@@ -140,6 +146,7 @@ impl ImportServiceHandle {
         folder: std::path::PathBuf,
         master_year: u32,
         cover_art_url: Option<String>,
+        storage_profile_id: Option<String>,
     ) -> Result<(String, String), String> {
         // Validate that at least one release is provided
         if discogs_release.is_none() && mb_release.is_none() {
@@ -268,6 +275,7 @@ impl ImportServiceHandle {
                 tracks_to_files,
                 discovered_files,
                 cue_flac_metadata,
+                storage_profile_id,
             })
             .map_err(|_| "Failed to queue validated album for import".to_string())?;
 
@@ -283,6 +291,7 @@ impl ImportServiceHandle {
         seed_after_download: bool,
         torrent_metadata: TorrentImportMetadata,
         cover_art_url: Option<String>,
+        storage_profile_id: Option<String>,
     ) -> Result<(String, String), String> {
         // Validate that at least one release is provided
         if discogs_release.is_none() && mb_release.is_none() {
@@ -435,6 +444,7 @@ impl ImportServiceHandle {
                 torrent_metadata,
                 seed_after_download,
                 cover_art_url,
+                storage_profile_id,
             })
             .map_err(|_| "Failed to queue validated torrent for import".to_string())?;
 
@@ -448,6 +458,7 @@ impl ImportServiceHandle {
         drive_path: std::path::PathBuf,
         master_year: u32,
         cover_art_url: Option<String>,
+        storage_profile_id: Option<String>,
     ) -> Result<(String, String), String> {
         // Validate that at least one release is provided
         if discogs_release.is_none() && mb_release.is_none() {
@@ -553,6 +564,7 @@ impl ImportServiceHandle {
                 db_tracks,
                 drive_path: drive.device_path,
                 toc,
+                storage_profile_id,
             })
             .map_err(|_| "Failed to queue validated CD import".to_string())?;
 

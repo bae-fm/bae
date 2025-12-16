@@ -52,6 +52,8 @@ pub enum ImportRequest {
         folder: PathBuf,
         master_year: u32,
         cover_art_url: Option<String>,
+        /// Storage profile ID. If set, uses ReleaseStorage trait; otherwise uses legacy pipeline.
+        storage_profile_id: Option<String>,
     },
     Torrent {
         torrent_source: TorrentSource,
@@ -61,6 +63,8 @@ pub enum ImportRequest {
         seed_after_download: bool,
         torrent_metadata: TorrentImportMetadata,
         cover_art_url: Option<String>,
+        /// Storage profile ID. If set, uses ReleaseStorage trait; otherwise uses legacy pipeline.
+        storage_profile_id: Option<String>,
     },
     CD {
         discogs_release: Option<DiscogsRelease>,
@@ -68,6 +72,8 @@ pub enum ImportRequest {
         drive_path: PathBuf,
         master_year: u32,
         cover_art_url: Option<String>,
+        /// Storage profile ID. If set, uses ReleaseStorage trait; otherwise uses legacy pipeline.
+        storage_profile_id: Option<String>,
     },
 }
 
@@ -243,6 +249,8 @@ pub enum ImportCommand {
         discovered_files: Vec<DiscoveredFile>,
         /// Pre-parsed CUE/FLAC metadata (for CUE/FLAC imports only)
         cue_flac_metadata: Option<HashMap<PathBuf, CueFlacMetadata>>,
+        /// Storage profile ID. If set, uses ReleaseStorage trait; otherwise uses legacy pipeline.
+        storage_profile_id: Option<String>,
     },
     /// Torrent-based import: files arrive incrementally
     Torrent {
@@ -261,6 +269,8 @@ pub enum ImportCommand {
         seed_after_download: bool,
         /// Cover art URL to download after torrent completes
         cover_art_url: Option<String>,
+        /// Storage profile ID. If set, uses ReleaseStorage trait; otherwise uses legacy pipeline.
+        storage_profile_id: Option<String>,
     },
     /// CD-based import: service will rip CD first (acquire phase), then process like folder import
     CD {
@@ -274,5 +284,7 @@ pub enum ImportCommand {
         drive_path: PathBuf,
         /// CD TOC (Table of Contents) - read during validation
         toc: CdToc,
+        /// Storage profile ID. If set, uses ReleaseStorage trait; otherwise uses legacy pipeline.
+        storage_profile_id: Option<String>,
     },
 }

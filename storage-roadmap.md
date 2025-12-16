@@ -77,7 +77,7 @@ All 8 combinations of flags are valid. Some are silly (chunked but not encrypted
 
 ---
 
-## Plan 5: Import Pipeline Refactor (in progress)
+## Plan 5: Import Pipeline Refactor ✅
 
 **Goal**: Import uses storage trait instead of hardcoded chunk pipeline.
 
@@ -85,7 +85,10 @@ All 8 combinations of flags are valid. Some are silly (chunked but not encrypted
 - ✅ Add `create_storage(profile)` method to create storage from profile
 - ✅ Add `run_storage_import()` method that uses storage trait
 - ✅ Add `FileProgress` variant to `ImportProgress` for per-file progress
-- Wire up storage profile selection in import workflow UI
-- Call `run_storage_import()` when profile selected (instead of `run_chunk_phase()`)
-- Eventually remove old `run_chunk_phase()` and pipeline code
+- ✅ Add `storage_profile_id` to `ImportRequest` and `ImportCommand`
+- ✅ Wire `do_import()` to use storage path when profile ID specified
+- Folder import with storage profile now goes through `run_storage_import()`
+- Torrent/CD import still use legacy pipeline (TODO markers in place)
+
+**Next**: Add UI to select storage profile, create default profile
 

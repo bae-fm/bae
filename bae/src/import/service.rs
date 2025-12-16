@@ -160,16 +160,30 @@ impl ImportService {
                 tracks_to_files,
                 discovered_files,
                 cue_flac_metadata,
+                storage_profile_id,
             } => {
                 info!("Starting folder import pipeline for '{}'", db_album.title);
-                self.import_album_from_folder(
-                    db_album,
-                    db_release,
-                    tracks_to_files,
-                    discovered_files,
-                    cue_flac_metadata,
-                )
-                .await
+                if let Some(profile_id) = storage_profile_id {
+                    // New storage-based import path
+                    match self.database.get_storage_profile(&profile_id).await {
+                        Ok(Some(profile)) => {
+                            self.run_storage_import(&db_release, &discovered_files, profile)
+                                .await
+                        }
+                        Ok(None) => Err(format!("Storage profile not found: {}", profile_id)),
+                        Err(e) => Err(format!("Failed to fetch storage profile: {}", e)),
+                    }
+                } else {
+                    // Legacy chunk pipeline
+                    self.import_album_from_folder(
+                        db_album,
+                        db_release,
+                        tracks_to_files,
+                        discovered_files,
+                        cue_flac_metadata,
+                    )
+                    .await
+                }
             }
             ImportCommand::Torrent {
                 db_album,
@@ -179,6 +193,7 @@ impl ImportService {
                 torrent_metadata,
                 seed_after_download,
                 cover_art_url,
+                storage_profile_id: _, // TODO: implement storage-based torrent import
             } => {
                 info!("Starting torrent import pipeline for '{}'", db_album.title);
                 self.import_album_from_torrent(
@@ -198,6 +213,7 @@ impl ImportService {
                 db_tracks,
                 drive_path,
                 toc,
+                storage_profile_id: _, // TODO: implement storage-based CD import
             } => {
                 info!("Starting CD import pipeline for '{}'", db_album.title);
                 self.import_album_from_cd(db_album, db_release, db_tracks, drive_path, toc)
