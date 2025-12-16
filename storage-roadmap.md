@@ -35,14 +35,16 @@ All 8 combinations of flags are valid. Some are silly (chunked but not encrypted
 
 ---
 
-## Plan 2: Storage Profiles Schema
+## Plan 2: Storage Profiles Schema ✅
 
 **Goal**: Data model for reusable storage configurations.
 
-- Add `DbStorageProfile` model
-- Add `storage_profiles` table
-- Add `DbReleaseStorage` linking releases to profiles
-- CRUD methods for profiles
+- ✅ Add `DbStorageProfile` model with location, encrypted, chunked flags
+- ✅ Add `StorageLocation` enum (Local/Cloud)
+- ✅ Add `storage_profiles` table
+- ✅ Add `DbReleaseStorage` linking releases to profiles
+- ✅ Add `release_storage` table
+- ✅ CRUD methods for profiles
 
 ---
 

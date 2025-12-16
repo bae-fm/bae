@@ -416,6 +416,47 @@ impl Database {
             .execute(&self.pool)
             .await?;
 
+        // Storage profiles table (reusable storage configurations)
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS storage_profiles (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                location TEXT NOT NULL,
+                location_path TEXT NOT NULL,
+                encrypted BOOLEAN NOT NULL DEFAULT FALSE,
+                chunked BOOLEAN NOT NULL DEFAULT FALSE,
+                is_default BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        // Release storage table (links releases to storage profiles)
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS release_storage (
+                id TEXT PRIMARY KEY,
+                release_id TEXT NOT NULL UNIQUE,
+                storage_profile_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
+                FOREIGN KEY (storage_profile_id) REFERENCES storage_profiles (id)
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_release_storage_profile_id ON release_storage (storage_profile_id)",
+        )
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_track_chunk_coords_track_id ON track_chunk_coords (track_id)",
         )
@@ -2057,5 +2098,213 @@ impl Database {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+
+    // ========================================================================
+    // Storage Profile Methods
+    // ========================================================================
+
+    /// Insert a new storage profile
+    pub async fn insert_storage_profile(
+        &self,
+        profile: &DbStorageProfile,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO storage_profiles (
+                id, name, location, location_path, encrypted, chunked, is_default, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&profile.id)
+        .bind(&profile.name)
+        .bind(profile.location.as_str())
+        .bind(&profile.location_path)
+        .bind(profile.encrypted)
+        .bind(profile.chunked)
+        .bind(profile.is_default)
+        .bind(profile.created_at.to_rfc3339())
+        .bind(profile.updated_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Get a storage profile by ID
+    pub async fn get_storage_profile(
+        &self,
+        profile_id: &str,
+    ) -> Result<Option<DbStorageProfile>, sqlx::Error> {
+        let row = sqlx::query("SELECT * FROM storage_profiles WHERE id = ?")
+            .bind(profile_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(row.map(|row| self.row_to_storage_profile(&row)))
+    }
+
+    /// Get all storage profiles
+    pub async fn get_all_storage_profiles(&self) -> Result<Vec<DbStorageProfile>, sqlx::Error> {
+        let rows = sqlx::query("SELECT * FROM storage_profiles ORDER BY name")
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows
+            .iter()
+            .map(|row| self.row_to_storage_profile(row))
+            .collect())
+    }
+
+    /// Get the default storage profile
+    pub async fn get_default_storage_profile(
+        &self,
+    ) -> Result<Option<DbStorageProfile>, sqlx::Error> {
+        let row = sqlx::query("SELECT * FROM storage_profiles WHERE is_default = TRUE")
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(row.map(|row| self.row_to_storage_profile(&row)))
+    }
+
+    /// Update a storage profile
+    pub async fn update_storage_profile(
+        &self,
+        profile: &DbStorageProfile,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            UPDATE storage_profiles SET
+                name = ?, location = ?, location_path = ?, encrypted = ?, 
+                chunked = ?, is_default = ?, updated_at = ?
+            WHERE id = ?
+            "#,
+        )
+        .bind(&profile.name)
+        .bind(profile.location.as_str())
+        .bind(&profile.location_path)
+        .bind(profile.encrypted)
+        .bind(profile.chunked)
+        .bind(profile.is_default)
+        .bind(profile.updated_at.to_rfc3339())
+        .bind(&profile.id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Delete a storage profile
+    pub async fn delete_storage_profile(&self, profile_id: &str) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM storage_profiles WHERE id = ?")
+            .bind(profile_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Set a profile as the default (clears other defaults)
+    pub async fn set_default_storage_profile(&self, profile_id: &str) -> Result<(), sqlx::Error> {
+        // Clear existing default
+        sqlx::query("UPDATE storage_profiles SET is_default = FALSE WHERE is_default = TRUE")
+            .execute(&self.pool)
+            .await?;
+
+        // Set new default
+        sqlx::query("UPDATE storage_profiles SET is_default = TRUE WHERE id = ?")
+            .bind(profile_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    fn row_to_storage_profile(&self, row: &sqlx::sqlite::SqliteRow) -> DbStorageProfile {
+        let location_str: String = row.get("location");
+        let location = match location_str.as_str() {
+            "cloud" => StorageLocation::Cloud,
+            _ => StorageLocation::Local,
+        };
+
+        DbStorageProfile {
+            id: row.get("id"),
+            name: row.get("name"),
+            location,
+            location_path: row.get("location_path"),
+            encrypted: row.get("encrypted"),
+            chunked: row.get("chunked"),
+            is_default: row.get("is_default"),
+            created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
+                .unwrap()
+                .with_timezone(&Utc),
+            updated_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("updated_at"))
+                .unwrap()
+                .with_timezone(&Utc),
+        }
+    }
+
+    // ========================================================================
+    // Release Storage Methods
+    // ========================================================================
+
+    /// Insert release storage configuration
+    pub async fn insert_release_storage(
+        &self,
+        release_storage: &DbReleaseStorage,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO release_storage (id, release_id, storage_profile_id, created_at)
+            VALUES (?, ?, ?, ?)
+            "#,
+        )
+        .bind(&release_storage.id)
+        .bind(&release_storage.release_id)
+        .bind(&release_storage.storage_profile_id)
+        .bind(release_storage.created_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Get storage configuration for a release
+    pub async fn get_release_storage(
+        &self,
+        release_id: &str,
+    ) -> Result<Option<DbReleaseStorage>, sqlx::Error> {
+        let row = sqlx::query("SELECT * FROM release_storage WHERE release_id = ?")
+            .bind(release_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(row.map(|row| DbReleaseStorage {
+            id: row.get("id"),
+            release_id: row.get("release_id"),
+            storage_profile_id: row.get("storage_profile_id"),
+            created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
+                .unwrap()
+                .with_timezone(&Utc),
+        }))
+    }
+
+    /// Get storage profile for a release (joins release_storage with storage_profiles)
+    pub async fn get_storage_profile_for_release(
+        &self,
+        release_id: &str,
+    ) -> Result<Option<DbStorageProfile>, sqlx::Error> {
+        let row = sqlx::query(
+            r#"
+            SELECT sp.* FROM storage_profiles sp
+            JOIN release_storage rs ON rs.storage_profile_id = sp.id
+            WHERE rs.release_id = ?
+            "#,
+        )
+        .bind(release_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|row| self.row_to_storage_profile(&row)))
     }
 }

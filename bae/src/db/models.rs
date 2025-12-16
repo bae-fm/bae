@@ -793,3 +793,99 @@ impl DbImage {
         self
     }
 }
+
+// ============================================================================
+// Storage Configuration
+// ============================================================================
+
+/// Where release data is stored
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+pub enum StorageLocation {
+    /// Local filesystem path
+    Local,
+    /// Cloud storage (S3/MinIO)
+    Cloud,
+}
+
+impl StorageLocation {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            StorageLocation::Local => "local",
+            StorageLocation::Cloud => "cloud",
+        }
+    }
+}
+
+/// Reusable storage configuration template
+///
+/// Defines how releases should be stored. Users create profiles like
+/// "Local Raw", "Cloud Encrypted", etc. and select them during import.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DbStorageProfile {
+    pub id: String,
+    pub name: String,
+    /// Where to store: local filesystem or cloud
+    pub location: StorageLocation,
+    /// Path for local storage, bucket name for cloud
+    pub location_path: String,
+    /// Whether to encrypt data
+    pub encrypted: bool,
+    /// Whether to split into chunks
+    pub chunked: bool,
+    /// True if this is the default profile for new imports
+    pub is_default: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl DbStorageProfile {
+    pub fn new(
+        name: &str,
+        location: StorageLocation,
+        location_path: &str,
+        encrypted: bool,
+        chunked: bool,
+    ) -> Self {
+        let now = Utc::now();
+        DbStorageProfile {
+            id: Uuid::new_v4().to_string(),
+            name: name.to_string(),
+            location,
+            location_path: location_path.to_string(),
+            encrypted,
+            chunked,
+            is_default: false,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    pub fn with_default(mut self, is_default: bool) -> Self {
+        self.is_default = is_default;
+        self
+    }
+}
+
+/// Links a release to its storage profile
+///
+/// Each release has exactly one storage configuration that determines
+/// where and how its data is stored.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DbReleaseStorage {
+    pub id: String,
+    pub release_id: String,
+    pub storage_profile_id: String,
+    pub created_at: DateTime<Utc>,
+}
+
+impl DbReleaseStorage {
+    pub fn new(release_id: &str, storage_profile_id: &str) -> Self {
+        DbReleaseStorage {
+            id: Uuid::new_v4().to_string(),
+            release_id: release_id.to_string(),
+            storage_profile_id: storage_profile_id.to_string(),
+            created_at: Utc::now(),
+        }
+    }
+}
