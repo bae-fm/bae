@@ -801,6 +801,19 @@ impl ImportService {
         _cue_flac_metadata: Option<HashMap<PathBuf, CueFlacMetadata>>,
         storage_profile: DbStorageProfile,
     ) -> Result<(), String> {
+        let library_manager = self.library_manager.get();
+
+        // Mark release as importing
+        library_manager
+            .mark_release_importing(&db_release.id)
+            .await
+            .map_err(|e| format!("Failed to mark release as importing: {}", e))?;
+
+        // Send started event
+        let _ = self.progress_tx.send(ImportProgress::Started {
+            id: db_release.id.clone(),
+        });
+
         let storage = self.create_storage(storage_profile);
         let total_files = discovered_files.len();
 
@@ -846,7 +859,6 @@ impl ImportService {
 
         // Persist track metadata (audio format, chunk coords for playback)
         // The storage layer handles file→chunk mapping, but we still need track metadata
-        let library_manager = self.library_manager.get();
 
         // Build file-to-chunks mapping from the new DbFileChunk records
         let mut files_to_chunks = Vec::new();
@@ -895,6 +907,11 @@ impl ImportService {
             .mark_release_complete(&db_release.id)
             .await
             .map_err(|e| format!("Failed to mark release complete: {}", e))?;
+
+        // Send completion event
+        let _ = self.progress_tx.send(ImportProgress::Complete {
+            id: db_release.id.clone(),
+        });
 
         info!("Storage import complete for release {}", db_release.id);
         Ok(())
