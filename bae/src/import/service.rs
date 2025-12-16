@@ -733,6 +733,7 @@ impl ImportService {
                 &db_release.id,
                 tracks_to_files,
                 &chunk_layout.files_to_chunks,
+                self.config.chunk_size_bytes,
             )
             .await?;
 

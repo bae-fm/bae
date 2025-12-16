@@ -257,6 +257,26 @@ impl Database {
         .execute(&self.pool)
         .await?;
 
+        // File chunks table (maps files to chunks with byte offsets)
+        // Enables reconstructing files from chunks without fragile offset calculations.
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS file_chunks (
+                id TEXT PRIMARY KEY,
+                file_id TEXT NOT NULL,
+                chunk_id TEXT NOT NULL,
+                chunk_index INTEGER NOT NULL,
+                byte_offset INTEGER NOT NULL,
+                byte_length INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (file_id) REFERENCES files (id) ON DELETE CASCADE,
+                FOREIGN KEY (chunk_id) REFERENCES chunks (id) ON DELETE CASCADE
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         // Create indexes for performance
         sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_artists_discogs_id ON artists (discogs_artist_id)",
@@ -303,6 +323,16 @@ impl Database {
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_chunks_release_id ON chunks (release_id)")
             .execute(&self.pool)
             .await?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_file_chunks_file_id ON file_chunks (file_id)")
+            .execute(&self.pool)
+            .await?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_file_chunks_chunk_id ON file_chunks (chunk_id)",
+        )
+        .execute(&self.pool)
+        .await?;
 
         // Torrents table (torrent import metadata)
         sqlx::query(
@@ -1117,6 +1147,30 @@ impl Database {
         Ok(())
     }
 
+    /// Get a chunk by ID
+    pub async fn get_chunk_by_id(&self, chunk_id: &str) -> Result<Option<DbChunk>, sqlx::Error> {
+        let row = sqlx::query("SELECT * FROM chunks WHERE id = ?")
+            .bind(chunk_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(row.map(|row| DbChunk {
+            id: row.get("id"),
+            release_id: row.get("release_id"),
+            chunk_index: row.get("chunk_index"),
+            encrypted_size: row.get("encrypted_size"),
+            storage_location: row.get("storage_location"),
+            last_accessed: row.get::<Option<String>, _>("last_accessed").map(|s| {
+                DateTime::parse_from_rfc3339(&s)
+                    .unwrap()
+                    .with_timezone(&Utc)
+            }),
+            created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
+                .unwrap()
+                .with_timezone(&Utc),
+        }))
+    }
+
     /// Get all chunks for a release (for testing/verification)
     pub async fn get_chunks_for_release(
         &self,
@@ -1345,12 +1399,60 @@ impl Database {
         Ok(chunks)
     }
 
+    /// Insert a file chunk mapping
+    pub async fn insert_file_chunk(&self, file_chunk: &DbFileChunk) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO file_chunks (
+                id, file_id, chunk_id, chunk_index, byte_offset, byte_length, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&file_chunk.id)
+        .bind(&file_chunk.file_id)
+        .bind(&file_chunk.chunk_id)
+        .bind(file_chunk.chunk_index)
+        .bind(file_chunk.byte_offset)
+        .bind(file_chunk.byte_length)
+        .bind(file_chunk.created_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Get all chunk mappings for a file, ordered by chunk_index
+    pub async fn get_file_chunks(&self, file_id: &str) -> Result<Vec<DbFileChunk>, sqlx::Error> {
+        let rows = sqlx::query("SELECT * FROM file_chunks WHERE file_id = ? ORDER BY chunk_index")
+            .bind(file_id)
+            .fetch_all(&self.pool)
+            .await?;
+
+        let mut file_chunks = Vec::new();
+        for row in rows {
+            file_chunks.push(DbFileChunk {
+                id: row.get("id"),
+                file_id: row.get("file_id"),
+                chunk_id: row.get("chunk_id"),
+                chunk_index: row.get("chunk_index"),
+                byte_offset: row.get("byte_offset"),
+                byte_length: row.get("byte_length"),
+                created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
+                    .unwrap()
+                    .with_timezone(&Utc),
+            });
+        }
+
+        Ok(file_chunks)
+    }
+
     /// Delete a release by ID
     ///
     /// This will cascade delete all related records:
     /// - Tracks (via FOREIGN KEY ON DELETE CASCADE)
     /// - Files (via FOREIGN KEY ON DELETE CASCADE)
     /// - Chunks (via FOREIGN KEY ON DELETE CASCADE)
+    /// - File chunks (via FOREIGN KEY ON DELETE CASCADE on file_id)
     /// - Track artists, audio formats, track chunk coords (via FOREIGN KEY ON DELETE CASCADE)
     pub async fn delete_release(&self, release_id: &str) -> Result<(), sqlx::Error> {
         sqlx::query("DELETE FROM releases WHERE id = ?")

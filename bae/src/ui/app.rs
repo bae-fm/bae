@@ -57,16 +57,14 @@ struct ImageServices {
     cloud_storage: CloudStorageManager,
     cache: CacheManager,
     encryption_service: EncryptionService,
-    chunk_size_bytes: usize,
 }
 
-pub fn make_config(context: &AppContext, chunk_size_bytes: usize) -> DioxusConfig {
+pub fn make_config(context: &AppContext) -> DioxusConfig {
     let services = ImageServices {
         library_manager: context.library_manager.clone(),
         cloud_storage: context.cloud_storage.clone(),
         cache: context.cache.clone(),
         encryption_service: context.encryption_service.clone(),
-        chunk_size_bytes,
     };
 
     DioxusConfig::default()
@@ -147,7 +145,7 @@ pub fn make_config(context: &AppContext, chunk_size_bytes: usize) -> DioxusConfi
         })
 }
 
-/// Reconstruct an image from chunk storage
+/// Reconstruct an image from chunk storage using file_chunks mapping
 async fn serve_image_from_chunks(
     image_id: &str,
     services: &ImageServices,
@@ -172,60 +170,49 @@ async fn serve_image_from_chunks(
         .map_err(|e| format!("Database error: {}", e))?
         .ok_or_else(|| format!("File not found for image: {}", image.filename))?;
 
-    // 3. Get all files for the release to calculate byte offsets
-    let all_files = services
+    // 3. Get file chunk mappings (explicit mapping replaces fragile offset calculation)
+    let file_chunks = services
         .library_manager
         .get()
-        .get_files_for_release(&image.release_id)
+        .get_file_chunks(&file.id)
         .await
         .map_err(|e| format!("Database error: {}", e))?;
 
-    // 4. Calculate where this file starts in the chunk stream
-    // Files are stored sequentially in order
-    let mut byte_offset: i64 = 0;
-    for f in &all_files {
-        if f.id == file.id {
-            break;
-        }
-        byte_offset += f.file_size;
+    if file_chunks.is_empty() {
+        return Err("No file chunk mappings found for image".to_string());
     }
-    let file_size = file.file_size as usize;
-
-    // 5. Calculate which chunks we need
-    let chunk_size = services.chunk_size_bytes as i64;
-    let start_chunk_index = (byte_offset / chunk_size) as i32;
-    let end_chunk_index = ((byte_offset + file_size as i64 - 1) / chunk_size) as i32;
 
     debug!(
-        "Image {} spans chunks {}-{}, byte offset {} size {}",
-        image_id, start_chunk_index, end_chunk_index, byte_offset, file_size
+        "Image {} has {} chunk mappings",
+        image_id,
+        file_chunks.len()
     );
 
-    // 6. Get the required chunks
-    let chunks = services
-        .library_manager
-        .get()
-        .get_chunks_in_range(&image.release_id, start_chunk_index..=end_chunk_index)
-        .await
-        .map_err(|e| format!("Database error: {}", e))?;
+    // 4. Download and decrypt required chunks
+    let mut chunk_data_map: std::collections::HashMap<String, Vec<u8>> =
+        std::collections::HashMap::new();
 
-    if chunks.is_empty() {
-        return Err("No chunks found for image".to_string());
-    }
+    for fc in &file_chunks {
+        if chunk_data_map.contains_key(&fc.chunk_id) {
+            continue; // Already downloaded
+        }
 
-    // 7. Download and decrypt chunks
-    let mut chunk_data_vec: Vec<(i32, Vec<u8>)> = Vec::new();
-    for chunk in &chunks {
+        // Get the chunk metadata
+        let chunk = services
+            .library_manager
+            .get()
+            .get_chunk_by_id(&fc.chunk_id)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?
+            .ok_or_else(|| format!("Chunk not found: {}", fc.chunk_id))?;
+
         let encrypted_data = match services.cache.get_chunk(&chunk.id).await {
             Ok(Some(data)) => data,
-            Ok(None) => {
-                // Download from cloud
-                services
-                    .cloud_storage
-                    .download_chunk(&chunk.storage_location)
-                    .await
-                    .map_err(|e| format!("Failed to download chunk: {}", e))?
-            }
+            Ok(None) => services
+                .cloud_storage
+                .download_chunk(&chunk.storage_location)
+                .await
+                .map_err(|e| format!("Failed to download chunk: {}", e))?,
             Err(e) => {
                 warn!("Cache error: {}", e);
                 services
@@ -241,37 +228,24 @@ async fn serve_image_from_chunks(
             .decrypt_chunk(&encrypted_data)
             .map_err(|e| format!("Failed to decrypt chunk: {}", e))?;
 
-        chunk_data_vec.push((chunk.chunk_index, decrypted));
+        chunk_data_map.insert(fc.chunk_id.clone(), decrypted);
     }
 
-    // Sort by chunk index
-    chunk_data_vec.sort_by_key(|(idx, _)| *idx);
-    let sorted_chunks: Vec<Vec<u8>> = chunk_data_vec.into_iter().map(|(_, data)| data).collect();
-
-    // 8. Extract file bytes
-    let start_byte_in_first_chunk = (byte_offset % chunk_size) as usize;
+    // 5. Extract file bytes using the explicit mappings
+    let file_size = file.file_size as usize;
     let mut file_data = Vec::with_capacity(file_size);
 
-    if sorted_chunks.len() == 1 {
-        // File is entirely within a single chunk
-        let end = start_byte_in_first_chunk + file_size;
-        file_data.extend_from_slice(&sorted_chunks[0][start_byte_in_first_chunk..end]);
-    } else {
-        // File spans multiple chunks
-        // First chunk: from offset to end
-        file_data.extend_from_slice(&sorted_chunks[0][start_byte_in_first_chunk..]);
+    for fc in &file_chunks {
+        let chunk_data = chunk_data_map
+            .get(&fc.chunk_id)
+            .ok_or_else(|| format!("Missing chunk data: {}", fc.chunk_id))?;
 
-        // Middle chunks: entire chunks
-        for chunk in &sorted_chunks[1..sorted_chunks.len() - 1] {
-            file_data.extend_from_slice(chunk);
-        }
-
-        // Last chunk: from start to remaining bytes
-        let remaining = file_size - file_data.len();
-        file_data.extend_from_slice(&sorted_chunks[sorted_chunks.len() - 1][..remaining]);
+        let start = fc.byte_offset as usize;
+        let end = start + fc.byte_length as usize;
+        file_data.extend_from_slice(&chunk_data[start..end]);
     }
 
-    // 9. Determine MIME type from filename
+    // 6. Determine MIME type from filename
     let mime_type = std::path::Path::new(&image.filename)
         .extension()
         .and_then(|e| e.to_str())
@@ -295,10 +269,8 @@ pub fn launch_app(context: AppContext) {
     #[cfg(target_os = "macos")]
     setup_macos_window_activation();
 
-    let chunk_size_bytes = context.config.chunk_size_bytes;
-
     LaunchBuilder::desktop()
-        .with_cfg(make_config(&context, chunk_size_bytes))
+        .with_cfg(make_config(&context))
         .with_context_provider(move || Box::new(context.clone()))
         .launch(App);
 }

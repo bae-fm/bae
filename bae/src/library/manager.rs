@@ -1,8 +1,8 @@
 use crate::cache::CacheManager;
 use crate::cloud_storage::{CloudStorageError, CloudStorageManager};
 use crate::db::{
-    Database, DbAlbum, DbAlbumArtist, DbArtist, DbAudioFormat, DbChunk, DbFile, DbImage, DbRelease,
-    DbTorrent, DbTrack, DbTrackArtist, DbTrackChunkCoords, ImportStatus,
+    Database, DbAlbum, DbAlbumArtist, DbArtist, DbAudioFormat, DbChunk, DbFile, DbFileChunk,
+    DbImage, DbRelease, DbTorrent, DbTrack, DbTrackArtist, DbTrackChunkCoords, ImportStatus,
 };
 use crate::encryption::EncryptionService;
 use crate::library::export::ExportService;
@@ -125,6 +125,12 @@ impl LibraryManager {
     /// Add a file to the library
     pub async fn add_file(&self, file: &DbFile) -> Result<(), LibraryError> {
         self.database.insert_file(file).await?;
+        Ok(())
+    }
+
+    /// Add a file chunk mapping
+    pub async fn add_file_chunk(&self, file_chunk: &DbFileChunk) -> Result<(), LibraryError> {
+        self.database.insert_file_chunk(file_chunk).await?;
         Ok(())
     }
 
@@ -265,6 +271,16 @@ impl LibraryManager {
             .database
             .get_chunks_in_range(release_id, chunk_range)
             .await?)
+    }
+
+    /// Get a chunk by ID
+    pub async fn get_chunk_by_id(&self, chunk_id: &str) -> Result<Option<DbChunk>, LibraryError> {
+        Ok(self.database.get_chunk_by_id(chunk_id).await?)
+    }
+
+    /// Get file chunk mappings for a file
+    pub async fn get_file_chunks(&self, file_id: &str) -> Result<Vec<DbFileChunk>, LibraryError> {
+        Ok(self.database.get_file_chunks(file_id).await?)
     }
 
     /// Get release ID for a track

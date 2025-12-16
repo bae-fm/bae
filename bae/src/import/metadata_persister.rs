@@ -1,4 +1,4 @@
-use crate::db::{DbAudioFormat, DbFile, DbTrackChunkCoords};
+use crate::db::{DbAudioFormat, DbFile, DbFileChunk, DbTrackChunkCoords};
 use crate::import::types::{CueFlacLayoutData, FileToChunks, TrackFile};
 use crate::library::LibraryManager;
 use std::collections::HashMap;
@@ -201,7 +201,8 @@ impl<'a> MetadataPersister<'a> {
 
     /// Persist release-level metadata to database.
     ///
-    /// Creates DbFile records for all files in the release (for export metadata).
+    /// Creates DbFile records for all files in the release (for export metadata),
+    /// and DbFileChunk records mapping files to their chunks with byte offsets.
     /// Track-level metadata (DbAudioFormat and DbTrackChunkCoords) is persisted
     /// per-track as tracks complete via `persist_track_metadata()`.
     pub async fn persist_release_metadata(
@@ -209,17 +210,30 @@ impl<'a> MetadataPersister<'a> {
         release_id: &str,
         track_files: &[TrackFile],
         files_to_chunks: &[FileToChunks],
+        chunk_size_bytes: usize,
     ) -> Result<(), String> {
+        // Get all chunks for this release to build index → id mapping
+        let chunks = self
+            .library
+            .get_chunks_for_release(release_id)
+            .await
+            .map_err(|e| format!("Failed to get chunks: {}", e))?;
+
+        let chunk_index_to_id: HashMap<i32, String> = chunks
+            .iter()
+            .map(|c| (c.chunk_index, c.id.clone()))
+            .collect();
+
         // Collect unique file paths from tracks
         let mut unique_file_paths: std::collections::HashSet<&PathBuf> =
             track_files.iter().map(|tf| &tf.file_path).collect();
 
         // Also include files that might not be associated with tracks (cover.jpg, etc.)
-        for file_to_chunks in files_to_chunks {
-            unique_file_paths.insert(&file_to_chunks.file_path);
+        for ftc in files_to_chunks {
+            unique_file_paths.insert(&ftc.file_path);
         }
 
-        // Create DbFile record for each unique file
+        // Create DbFile and DbFileChunk records for each unique file
         for file_path in unique_file_paths {
             let file_metadata = std::fs::metadata(file_path)
                 .map_err(|e| format!("Failed to read file metadata: {}", e))?;
@@ -236,6 +250,67 @@ impl<'a> MetadataPersister<'a> {
                 .add_file(&db_file)
                 .await
                 .map_err(|e| format!("Failed to insert file: {}", e))?;
+
+            // Find the FileToChunks for this file to create chunk mappings
+            if let Some(ftc) = files_to_chunks.iter().find(|f| &f.file_path == file_path) {
+                self.persist_file_chunks(
+                    &db_file.id,
+                    ftc,
+                    file_size,
+                    chunk_size_bytes,
+                    &chunk_index_to_id,
+                )
+                .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Create DbFileChunk records for a file's chunk mappings.
+    async fn persist_file_chunks(
+        &self,
+        file_id: &str,
+        ftc: &FileToChunks,
+        file_size: i64,
+        chunk_size_bytes: usize,
+        chunk_index_to_id: &HashMap<i32, String>,
+    ) -> Result<(), String> {
+        let chunk_size = chunk_size_bytes as i64;
+
+        for chunk_idx in ftc.start_chunk_index..=ftc.end_chunk_index {
+            let chunk_id = chunk_index_to_id
+                .get(&chunk_idx)
+                .ok_or_else(|| format!("Chunk {} not found in database", chunk_idx))?;
+
+            // Calculate byte offset and length within this chunk
+            let (byte_offset, byte_length) = if ftc.start_chunk_index == ftc.end_chunk_index {
+                // File fits in a single chunk
+                (ftc.start_byte_offset, file_size)
+            } else if chunk_idx == ftc.start_chunk_index {
+                // First chunk: starts at offset, goes to end of chunk
+                let length = chunk_size - ftc.start_byte_offset;
+                (ftc.start_byte_offset, length)
+            } else if chunk_idx == ftc.end_chunk_index {
+                // Last chunk: starts at 0, ends at offset
+                (0, ftc.end_byte_offset)
+            } else {
+                // Middle chunk: full chunk
+                (0, chunk_size)
+            };
+
+            let file_chunk = DbFileChunk::new(
+                file_id,
+                chunk_id,
+                chunk_idx - ftc.start_chunk_index, // chunk_index relative to file
+                byte_offset,
+                byte_length,
+            );
+
+            self.library
+                .add_file_chunk(&file_chunk)
+                .await
+                .map_err(|e| format!("Failed to insert file chunk: {}", e))?;
         }
 
         Ok(())

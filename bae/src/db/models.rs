@@ -541,6 +541,44 @@ impl DbFile {
     }
 }
 
+/// Maps a file to its chunks with byte offsets
+///
+/// Similar to DbTrackChunkCoords but for files instead of tracks.
+/// Enables reconstructing files from chunks without fragile offset calculations.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DbFileChunk {
+    pub id: String,
+    pub file_id: String,
+    pub chunk_id: String,
+    /// Order of this chunk within the file (0-indexed)
+    pub chunk_index: i32,
+    /// Byte offset where this file's data starts within the chunk
+    pub byte_offset: i64,
+    /// Number of bytes from this file in this chunk
+    pub byte_length: i64,
+    pub created_at: DateTime<Utc>,
+}
+
+impl DbFileChunk {
+    pub fn new(
+        file_id: &str,
+        chunk_id: &str,
+        chunk_index: i32,
+        byte_offset: i64,
+        byte_length: i64,
+    ) -> Self {
+        DbFileChunk {
+            id: Uuid::new_v4().to_string(),
+            file_id: file_id.to_string(),
+            chunk_id: chunk_id.to_string(),
+            chunk_index,
+            byte_offset,
+            byte_length,
+            created_at: Utc::now(),
+        }
+    }
+}
+
 impl DbChunk {
     pub fn from_release_chunk(
         release_id: &str,
