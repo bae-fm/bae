@@ -799,7 +799,7 @@ impl DbImage {
 // ============================================================================
 
 /// Where release data is stored
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
 pub enum StorageLocation {
     /// Local filesystem path
@@ -821,7 +821,7 @@ impl StorageLocation {
 ///
 /// Defines how releases should be stored. Users create profiles like
 /// "Local Raw", "Cloud Encrypted", etc. and select them during import.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DbStorageProfile {
     pub id: String,
     pub name: String,

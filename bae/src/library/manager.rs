@@ -619,6 +619,19 @@ impl LibraryManager {
             .set_default_storage_profile(profile_id)
             .await?)
     }
+
+    /// Update a storage profile
+    pub async fn update_storage_profile(
+        &self,
+        profile: &DbStorageProfile,
+    ) -> Result<(), LibraryError> {
+        Ok(self.database.update_storage_profile(profile).await?)
+    }
+
+    /// Delete a storage profile
+    pub async fn delete_storage_profile(&self, profile_id: &str) -> Result<(), LibraryError> {
+        Ok(self.database.delete_storage_profile(profile_id).await?)
+    }
 }
 
 #[cfg(test)]

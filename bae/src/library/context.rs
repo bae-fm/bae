@@ -1,5 +1,6 @@
 use super::manager::LibraryManager;
 use dioxus::prelude::*;
+use std::ops::Deref;
 use std::sync::Arc;
 
 /// Shared library manager that can be accessed from both UI and Subsonic server
@@ -11,6 +12,14 @@ pub struct SharedLibraryManager {
 impl PartialEq for SharedLibraryManager {
     fn eq(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
+impl Deref for SharedLibraryManager {
+    type Target = LibraryManager;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
