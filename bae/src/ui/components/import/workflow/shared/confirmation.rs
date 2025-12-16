@@ -1,3 +1,4 @@
+use crate::db::DbStorageProfile;
 use crate::import::{MatchCandidate, MatchSource};
 use crate::ui::import_context::ImportContext;
 use crate::ui::local_file_url;
@@ -14,6 +15,40 @@ pub fn Confirmation(
     let is_importing = import_context.is_importing();
     let folder_files = import_context.folder_files();
     let folder_path = import_context.folder_path();
+
+    // Storage profile state
+    let mut storage_profiles: Signal<Vec<DbStorageProfile>> = use_signal(Vec::new);
+    let mut selected_profile_id = import_context.storage_profile_id();
+
+    // Load storage profiles on mount
+    {
+        let import_context = import_context.clone();
+        use_effect(move || {
+            let import_context = import_context.clone();
+            spawn(async move {
+                match import_context
+                    .library_manager
+                    .get()
+                    .get_all_storage_profiles()
+                    .await
+                {
+                    Ok(profiles) => {
+                        storage_profiles.set(profiles.clone());
+
+                        // Auto-select default profile if none selected
+                        if selected_profile_id.read().is_none() {
+                            if let Some(default) = profiles.iter().find(|p| p.is_default) {
+                                import_context.set_storage_profile_id(Some(default.id.clone()));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to load storage profiles: {}", e);
+                    }
+                }
+            });
+        });
+    }
 
     // Use context signal for selected cover image index (None = use remote URL from candidate)
     let mut selected_cover_index = import_context.selected_cover_index();
@@ -175,6 +210,41 @@ pub fn Confirmation(
                         }
                         p { class: "text-xs text-gray-500 mt-1",
                             "Click an image to set it as the album cover"
+                        }
+                    }
+                }
+
+                // Storage profile selector
+                if !storage_profiles.read().is_empty() {
+                    div { class: "mb-4 flex items-center gap-3",
+                        label { class: "text-sm text-gray-400", "Storage:" }
+                        select {
+                            class: "bg-gray-700 text-white rounded px-3 py-1.5 text-sm border border-gray-600 focus:border-blue-500 focus:outline-none",
+                            disabled: *is_importing.read(),
+                            onchange: {
+                                let import_context = import_context.clone();
+                                move |evt: Event<FormData>| {
+                                    let value = evt.value();
+                                    if value.is_empty() {
+                                        import_context.set_storage_profile_id(None);
+                                    } else {
+                                        import_context.set_storage_profile_id(Some(value));
+                                    }
+                                }
+                            },
+                            option {
+                                value: "",
+                                selected: selected_profile_id.read().is_none(),
+                                "Legacy (built-in)"
+                            }
+                            for profile in storage_profiles.read().iter() {
+                                option {
+                                    key: "{profile.id}",
+                                    value: "{profile.id}",
+                                    selected: selected_profile_id.read().as_ref() == Some(&profile.id),
+                                    "{profile.name}"
+                                }
+                            }
                         }
                     }
                 }

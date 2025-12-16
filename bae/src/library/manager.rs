@@ -2,7 +2,8 @@ use crate::cache::CacheManager;
 use crate::cloud_storage::{CloudStorageError, CloudStorageManager};
 use crate::db::{
     Database, DbAlbum, DbAlbumArtist, DbArtist, DbAudioFormat, DbChunk, DbFile, DbFileChunk,
-    DbImage, DbRelease, DbTorrent, DbTrack, DbTrackArtist, DbTrackChunkCoords, ImportStatus,
+    DbImage, DbRelease, DbStorageProfile, DbTorrent, DbTrack, DbTrackArtist, DbTrackChunkCoords,
+    ImportStatus,
 };
 use crate::encryption::EncryptionService;
 use crate::library::export::ExportService;
@@ -586,6 +587,36 @@ impl LibraryManager {
         Ok(self
             .database
             .find_album_by_mb_ids(release_id, release_group_id)
+            .await?)
+    }
+
+    // ==================== Storage Profile Methods ====================
+
+    /// Get all storage profiles
+    pub async fn get_all_storage_profiles(&self) -> Result<Vec<DbStorageProfile>, LibraryError> {
+        Ok(self.database.get_all_storage_profiles().await?)
+    }
+
+    /// Get the default storage profile
+    pub async fn get_default_storage_profile(
+        &self,
+    ) -> Result<Option<DbStorageProfile>, LibraryError> {
+        Ok(self.database.get_default_storage_profile().await?)
+    }
+
+    /// Insert a new storage profile
+    pub async fn insert_storage_profile(
+        &self,
+        profile: &DbStorageProfile,
+    ) -> Result<(), LibraryError> {
+        Ok(self.database.insert_storage_profile(profile).await?)
+    }
+
+    /// Set a profile as the default
+    pub async fn set_default_storage_profile(&self, profile_id: &str) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .set_default_storage_profile(profile_id)
             .await?)
     }
 }
