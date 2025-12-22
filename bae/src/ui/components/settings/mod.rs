@@ -1,6 +1,5 @@
 mod about;
 mod api_keys;
-mod cloud_storage;
 mod encryption;
 mod import_settings;
 mod network;
@@ -11,7 +10,6 @@ use dioxus::prelude::*;
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum SettingsTab {
     StorageProfiles,
-    CloudStorage,
     ApiKeys,
     Encryption,
     ImportSettings,
@@ -23,7 +21,6 @@ impl SettingsTab {
     fn label(&self) -> &'static str {
         match self {
             SettingsTab::StorageProfiles => "Storage Profiles",
-            SettingsTab::CloudStorage => "Cloud Storage",
             SettingsTab::ApiKeys => "API Keys",
             SettingsTab::Encryption => "Encryption",
             SettingsTab::ImportSettings => "Import",
@@ -35,7 +32,6 @@ impl SettingsTab {
     fn all() -> &'static [SettingsTab] {
         &[
             SettingsTab::StorageProfiles,
-            SettingsTab::CloudStorage,
             SettingsTab::ApiKeys,
             SettingsTab::Encryption,
             SettingsTab::ImportSettings,
@@ -84,7 +80,6 @@ pub fn Settings() -> Element {
                 div { class: "flex-1 overflow-y-auto p-6",
                     match *active_tab.read() {
                         SettingsTab::StorageProfiles => rsx! { storage_profiles::StorageProfilesSection {} },
-                        SettingsTab::CloudStorage => rsx! { cloud_storage::CloudStorageSection {} },
                         SettingsTab::ApiKeys => rsx! { api_keys::ApiKeysSection {} },
                         SettingsTab::Encryption => rsx! { encryption::EncryptionSection {} },
                         SettingsTab::ImportSettings => rsx! { import_settings::ImportSettingsSection {} },

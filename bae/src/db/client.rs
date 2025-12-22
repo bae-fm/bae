@@ -428,6 +428,11 @@ impl Database {
                 encrypted BOOLEAN NOT NULL DEFAULT FALSE,
                 chunked BOOLEAN NOT NULL DEFAULT FALSE,
                 is_default BOOLEAN NOT NULL DEFAULT FALSE,
+                cloud_bucket TEXT,
+                cloud_region TEXT,
+                cloud_endpoint TEXT,
+                cloud_access_key TEXT,
+                cloud_secret_key TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
@@ -2117,8 +2122,10 @@ impl Database {
         sqlx::query(
             r#"
             INSERT INTO storage_profiles (
-                id, name, location, location_path, encrypted, chunked, is_default, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                id, name, location, location_path, encrypted, chunked, is_default,
+                cloud_bucket, cloud_region, cloud_endpoint, cloud_access_key, cloud_secret_key,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&profile.id)
@@ -2128,6 +2135,11 @@ impl Database {
         .bind(profile.encrypted)
         .bind(profile.chunked)
         .bind(profile.is_default)
+        .bind(&profile.cloud_bucket)
+        .bind(&profile.cloud_region)
+        .bind(&profile.cloud_endpoint)
+        .bind(&profile.cloud_access_key)
+        .bind(&profile.cloud_secret_key)
         .bind(profile.created_at.to_rfc3339())
         .bind(profile.updated_at.to_rfc3339())
         .execute(&self.pool)
@@ -2181,7 +2193,10 @@ impl Database {
             r#"
             UPDATE storage_profiles SET
                 name = ?, location = ?, location_path = ?, encrypted = ?, 
-                chunked = ?, is_default = ?, updated_at = ?
+                chunked = ?, is_default = ?,
+                cloud_bucket = ?, cloud_region = ?, cloud_endpoint = ?,
+                cloud_access_key = ?, cloud_secret_key = ?,
+                updated_at = ?
             WHERE id = ?
             "#,
         )
@@ -2191,6 +2206,11 @@ impl Database {
         .bind(profile.encrypted)
         .bind(profile.chunked)
         .bind(profile.is_default)
+        .bind(&profile.cloud_bucket)
+        .bind(&profile.cloud_region)
+        .bind(&profile.cloud_endpoint)
+        .bind(&profile.cloud_access_key)
+        .bind(&profile.cloud_secret_key)
         .bind(profile.updated_at.to_rfc3339())
         .bind(&profile.id)
         .execute(&self.pool)
@@ -2240,6 +2260,11 @@ impl Database {
             encrypted: row.get("encrypted"),
             chunked: row.get("chunked"),
             is_default: row.get("is_default"),
+            cloud_bucket: row.get("cloud_bucket"),
+            cloud_region: row.get("cloud_region"),
+            cloud_endpoint: row.get("cloud_endpoint"),
+            cloud_access_key: row.get("cloud_access_key"),
+            cloud_secret_key: row.get("cloud_secret_key"),
             created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
                 .unwrap()
                 .with_timezone(&Utc),

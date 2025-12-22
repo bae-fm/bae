@@ -304,12 +304,46 @@ fn ProfileEditor(
             .map(|p| p.location)
             .unwrap_or(StorageLocation::Cloud)
     });
+    // Local storage path
     let mut location_path = use_signal(|| {
         profile
             .as_ref()
             .map(|p| p.location_path.clone())
             .unwrap_or_default()
     });
+    // Cloud-specific fields
+    let mut cloud_bucket = use_signal(|| {
+        profile
+            .as_ref()
+            .and_then(|p| p.cloud_bucket.clone())
+            .unwrap_or_default()
+    });
+    let mut cloud_region = use_signal(|| {
+        profile
+            .as_ref()
+            .and_then(|p| p.cloud_region.clone())
+            .unwrap_or_default()
+    });
+    let mut cloud_endpoint = use_signal(|| {
+        profile
+            .as_ref()
+            .and_then(|p| p.cloud_endpoint.clone())
+            .unwrap_or_default()
+    });
+    let mut cloud_access_key = use_signal(|| {
+        profile
+            .as_ref()
+            .and_then(|p| p.cloud_access_key.clone())
+            .unwrap_or_default()
+    });
+    let mut cloud_secret_key = use_signal(|| {
+        profile
+            .as_ref()
+            .and_then(|p| p.cloud_secret_key.clone())
+            .unwrap_or_default()
+    });
+    let mut show_secrets = use_signal(|| false);
+
     let mut encrypted = use_signal(|| profile.as_ref().map(|p| p.encrypted).unwrap_or(true));
     let mut chunked = use_signal(|| profile.as_ref().map(|p| p.chunked).unwrap_or(true));
     let mut is_default = use_signal(|| profile.as_ref().map(|p| p.is_default).unwrap_or(false));
@@ -329,6 +363,7 @@ fn ProfileEditor(
                     label { class: "block text-sm font-medium text-gray-400 mb-2", "Name" }
                     input {
                         r#type: "text",
+                        autocomplete: "off",
                         class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
                         placeholder: "My Storage Profile",
                         value: "{name}",
@@ -363,43 +398,116 @@ fn ProfileEditor(
                     }
                 }
 
-                // Location path
-                div {
-                    label { class: "block text-sm font-medium text-gray-400 mb-2",
-                        if *location.read() == StorageLocation::Cloud {
-                            "Bucket Name"
-                        } else {
-                            "Directory Path"
+                // Location-specific fields
+                if *location.read() == StorageLocation::Local {
+                    div {
+                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Directory Path" }
+                        input {
+                            r#type: "text",
+                            autocomplete: "off",
+                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
+                            placeholder: "/path/to/storage",
+                            value: "{location_path}",
+                            oninput: move |e| location_path.set(e.value())
                         }
                     }
-                    input {
-                        r#type: "text",
-                        class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
-                        placeholder: if *location.read() == StorageLocation::Cloud { "my-music-bucket" } else { "/path/to/storage" },
-                        value: "{location_path}",
-                        oninput: move |e| location_path.set(e.value())
+                } else {
+                    // Cloud storage fields
+                    div {
+                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Bucket Name" }
+                        input {
+                            r#type: "text",
+                            autocomplete: "off",
+                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
+                            placeholder: "my-music-bucket",
+                            value: "{cloud_bucket}",
+                            oninput: move |e| cloud_bucket.set(e.value())
+                        }
+                    }
+                    div {
+                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Region" }
+                        input {
+                            r#type: "text",
+                            autocomplete: "off",
+                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
+                            placeholder: "us-east-1",
+                            value: "{cloud_region}",
+                            oninput: move |e| cloud_region.set(e.value())
+                        }
+                    }
+                    div {
+                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Custom Endpoint (optional)" }
+                        input {
+                            r#type: "text",
+                            autocomplete: "off",
+                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
+                            placeholder: "https://minio.example.com",
+                            value: "{cloud_endpoint}",
+                            oninput: move |e| cloud_endpoint.set(e.value())
+                        }
+                        p { class: "text-xs text-gray-500 mt-1", "Leave empty for AWS S3" }
+                    }
+                    div { class: "flex items-center justify-between",
+                        span { class: "text-sm font-medium text-gray-400", "Credentials" }
+                        button {
+                            r#type: "button",
+                            class: "text-sm text-indigo-400 hover:text-indigo-300",
+                            onclick: move |_| {
+                                let current = *show_secrets.read();
+                                show_secrets.set(!current);
+                            },
+                            if *show_secrets.read() { "Hide" } else { "Show" }
+                        }
+                    }
+                    div {
+                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Access Key ID" }
+                        input {
+                            r#type: if *show_secrets.read() { "text" } else { "password" },
+                            autocomplete: "off",
+                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono",
+                            placeholder: "AKIAIOSFODNN7EXAMPLE",
+                            value: "{cloud_access_key}",
+                            oninput: move |e| cloud_access_key.set(e.value())
+                        }
+                    }
+                    div {
+                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Secret Access Key" }
+                        input {
+                            r#type: if *show_secrets.read() { "text" } else { "password" },
+                            autocomplete: "off",
+                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono",
+                            placeholder: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+                            value: "{cloud_secret_key}",
+                            oninput: move |e| cloud_secret_key.set(e.value())
+                        }
                     }
                 }
 
                 // Options
-                div { class: "flex gap-6",
-                    label { class: "flex items-center gap-2 cursor-pointer",
+                div { class: "space-y-3",
+                    label { class: "flex items-start gap-3 cursor-pointer",
                         input {
                             r#type: "checkbox",
-                            class: "rounded text-indigo-600 focus:ring-indigo-500 bg-gray-700 border-gray-600",
+                            class: "rounded text-indigo-600 focus:ring-indigo-500 bg-gray-700 border-gray-600 mt-0.5",
                             checked: *encrypted.read(),
                             onchange: move |e| encrypted.set(e.checked())
                         }
-                        span { class: "text-white", "Encrypted" }
+                        div {
+                            span { class: "text-white block", "Encrypted" }
+                            span { class: "text-xs text-gray-500", "AES-256 encryption. Data is unreadable without your key." }
+                        }
                     }
-                    label { class: "flex items-center gap-2 cursor-pointer",
+                    label { class: "flex items-start gap-3 cursor-pointer",
                         input {
                             r#type: "checkbox",
-                            class: "rounded text-indigo-600 focus:ring-indigo-500 bg-gray-700 border-gray-600",
+                            class: "rounded text-indigo-600 focus:ring-indigo-500 bg-gray-700 border-gray-600 mt-0.5",
                             checked: *chunked.read(),
                             onchange: move |e| chunked.set(e.checked())
                         }
-                        span { class: "text-white", "Chunked" }
+                        div {
+                            span { class: "text-white block", "Chunked" }
+                            span { class: "text-xs text-gray-500", "Split files so they can't be identified by size or hash on public cloud." }
+                        }
                     }
                 }
 
@@ -434,6 +542,11 @@ fn ProfileEditor(
                                 let new_name = name.read().clone();
                                 let new_location = *location.read();
                                 let new_location_path = location_path.read().clone();
+                                let new_cloud_bucket = cloud_bucket.read().clone();
+                                let new_cloud_region = cloud_region.read().clone();
+                                let new_cloud_endpoint = cloud_endpoint.read().clone();
+                                let new_cloud_access_key = cloud_access_key.read().clone();
+                                let new_cloud_secret_key = cloud_secret_key.read().clone();
                                 let new_encrypted = *encrypted.read();
                                 let new_chunked = *chunked.read();
                                 let new_is_default = *is_default.read();
@@ -450,10 +563,35 @@ fn ProfileEditor(
                                         is_saving.set(false);
                                         return;
                                     }
-                                    if new_location_path.trim().is_empty() {
-                                        save_error.set(Some("Path/bucket is required".to_string()));
-                                        is_saving.set(false);
-                                        return;
+
+                                    if new_location == StorageLocation::Local {
+                                        if new_location_path.trim().is_empty() {
+                                            save_error.set(Some("Directory path is required".to_string()));
+                                            is_saving.set(false);
+                                            return;
+                                        }
+                                    } else {
+                                        // Cloud validation
+                                        if new_cloud_bucket.trim().is_empty() {
+                                            save_error.set(Some("Bucket name is required".to_string()));
+                                            is_saving.set(false);
+                                            return;
+                                        }
+                                        if new_cloud_region.trim().is_empty() {
+                                            save_error.set(Some("Region is required".to_string()));
+                                            is_saving.set(false);
+                                            return;
+                                        }
+                                        if new_cloud_access_key.trim().is_empty() {
+                                            save_error.set(Some("Access key is required".to_string()));
+                                            is_saving.set(false);
+                                            return;
+                                        }
+                                        if new_cloud_secret_key.trim().is_empty() {
+                                            save_error.set(Some("Secret key is required".to_string()));
+                                            is_saving.set(false);
+                                            return;
+                                        }
                                     }
 
                                     let result = if let Some(mut profile) = existing {
@@ -464,17 +602,50 @@ fn ProfileEditor(
                                         profile.encrypted = new_encrypted;
                                         profile.chunked = new_chunked;
                                         profile.is_default = new_is_default;
+                                        if new_location == StorageLocation::Cloud {
+                                            profile.cloud_bucket = Some(new_cloud_bucket);
+                                            profile.cloud_region = Some(new_cloud_region);
+                                            profile.cloud_endpoint = if new_cloud_endpoint.trim().is_empty() {
+                                                None
+                                            } else {
+                                                Some(new_cloud_endpoint)
+                                            };
+                                            profile.cloud_access_key = Some(new_cloud_access_key);
+                                            profile.cloud_secret_key = Some(new_cloud_secret_key);
+                                        } else {
+                                            profile.cloud_bucket = None;
+                                            profile.cloud_region = None;
+                                            profile.cloud_endpoint = None;
+                                            profile.cloud_access_key = None;
+                                            profile.cloud_secret_key = None;
+                                        }
                                         lm.update_storage_profile(&profile).await
                                     } else {
                                         // Create new
-                                        let profile = DbStorageProfile::new(
-                                            &new_name,
-                                            new_location,
-                                            &new_location_path,
-                                            new_encrypted,
-                                            new_chunked,
-                                        )
-                                        .with_default(new_is_default);
+                                        let profile = if new_location == StorageLocation::Local {
+                                            DbStorageProfile::new_local(
+                                                &new_name,
+                                                &new_location_path,
+                                                new_encrypted,
+                                                new_chunked,
+                                            )
+                                        } else {
+                                            let endpoint = if new_cloud_endpoint.trim().is_empty() {
+                                                None
+                                            } else {
+                                                Some(new_cloud_endpoint.as_str())
+                                            };
+                                            DbStorageProfile::new_cloud(
+                                                &new_name,
+                                                &new_cloud_bucket,
+                                                &new_cloud_region,
+                                                endpoint,
+                                                &new_cloud_access_key,
+                                                &new_cloud_secret_key,
+                                                new_encrypted,
+                                                new_chunked,
+                                            )
+                                        }.with_default(new_is_default);
                                         lm.insert_storage_profile(&profile).await
                                     };
 

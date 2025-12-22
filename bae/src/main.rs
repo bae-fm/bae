@@ -115,10 +115,13 @@ async fn ensure_default_storage_profile(
             // No default profile, create one
             info!("Creating default storage profile...");
 
-            let profile = db::DbStorageProfile::new(
+            let profile = db::DbStorageProfile::new_cloud(
                 "Cloud Storage",
-                db::StorageLocation::Cloud,
                 &config.s3_config.bucket_name,
+                &config.s3_config.region,
+                config.s3_config.endpoint_url.as_deref(),
+                &config.s3_config.access_key_id,
+                &config.s3_config.secret_access_key,
                 true, // encrypted
                 true, // chunked
             )

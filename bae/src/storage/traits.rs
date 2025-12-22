@@ -495,9 +495,8 @@ mod tests {
     use tempfile::TempDir;
 
     fn local_raw_profile(temp_dir: &TempDir) -> DbStorageProfile {
-        DbStorageProfile::new(
+        DbStorageProfile::new_local(
             "Test Local Raw",
-            StorageLocation::Local,
             temp_dir.path().to_str().unwrap(),
             false, // not encrypted
             false, // not chunked
@@ -505,9 +504,8 @@ mod tests {
     }
 
     fn local_encrypted_profile(temp_dir: &TempDir) -> DbStorageProfile {
-        DbStorageProfile::new(
+        DbStorageProfile::new_local(
             "Test Local Encrypted",
-            StorageLocation::Local,
             temp_dir.path().to_str().unwrap(),
             true,  // encrypted
             false, // not chunked

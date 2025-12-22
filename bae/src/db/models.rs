@@ -842,7 +842,7 @@ pub struct DbStorageProfile {
     pub name: String,
     /// Where to store: local filesystem or cloud
     pub location: StorageLocation,
-    /// Path for local storage, bucket name for cloud
+    /// Path for local storage (ignored for cloud)
     pub location_path: String,
     /// Whether to encrypt data
     pub encrypted: bool,
@@ -850,15 +850,53 @@ pub struct DbStorageProfile {
     pub chunked: bool,
     /// True if this is the default profile for new imports
     pub is_default: bool,
+
+    // Cloud-specific fields (only used when location == Cloud)
+    /// S3 bucket name
+    pub cloud_bucket: Option<String>,
+    /// AWS region (e.g., "us-east-1")
+    pub cloud_region: Option<String>,
+    /// Custom endpoint URL for S3-compatible services (MinIO, etc.)
+    pub cloud_endpoint: Option<String>,
+    /// Access key ID
+    pub cloud_access_key: Option<String>,
+    /// Secret access key
+    pub cloud_secret_key: Option<String>,
+
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 impl DbStorageProfile {
-    pub fn new(
+    /// Create a new local storage profile
+    pub fn new_local(name: &str, path: &str, encrypted: bool, chunked: bool) -> Self {
+        let now = Utc::now();
+        DbStorageProfile {
+            id: Uuid::new_v4().to_string(),
+            name: name.to_string(),
+            location: StorageLocation::Local,
+            location_path: path.to_string(),
+            encrypted,
+            chunked,
+            is_default: false,
+            cloud_bucket: None,
+            cloud_region: None,
+            cloud_endpoint: None,
+            cloud_access_key: None,
+            cloud_secret_key: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    /// Create a new cloud storage profile
+    pub fn new_cloud(
         name: &str,
-        location: StorageLocation,
-        location_path: &str,
+        bucket: &str,
+        region: &str,
+        endpoint: Option<&str>,
+        access_key: &str,
+        secret_key: &str,
         encrypted: bool,
         chunked: bool,
     ) -> Self {
@@ -866,11 +904,16 @@ impl DbStorageProfile {
         DbStorageProfile {
             id: Uuid::new_v4().to_string(),
             name: name.to_string(),
-            location,
-            location_path: location_path.to_string(),
+            location: StorageLocation::Cloud,
+            location_path: String::new(), // Not used for cloud
             encrypted,
             chunked,
             is_default: false,
+            cloud_bucket: Some(bucket.to_string()),
+            cloud_region: Some(region.to_string()),
+            cloud_endpoint: endpoint.map(|s| s.to_string()),
+            cloud_access_key: Some(access_key.to_string()),
+            cloud_secret_key: Some(secret_key.to_string()),
             created_at: now,
             updated_at: now,
         }
