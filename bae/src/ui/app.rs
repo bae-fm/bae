@@ -117,9 +117,16 @@ pub fn make_config(context: &AppContext) -> DioxusConfig {
                         .unwrap();
                 }
 
-                // Use block_on to run async code in sync context
-                let result = tokio::runtime::Handle::current()
-                    .block_on(serve_image_from_chunks(image_id, &services));
+                // Use a dedicated runtime to avoid "cannot block_on within a runtime" panic
+                // This happens because webview's protocol handler may be called from within tokio
+                let services_clone = services.clone();
+                let image_id_owned = image_id.to_string();
+                let result = std::thread::spawn(move || {
+                    let rt = tokio::runtime::Runtime::new().unwrap();
+                    rt.block_on(serve_image_from_chunks(&image_id_owned, &services_clone))
+                })
+                .join()
+                .unwrap_or_else(|_| Err("Thread panicked".to_string()));
 
                 match result {
                     Ok((data, mime_type)) => HttpResponse::builder()
@@ -162,13 +169,70 @@ async fn serve_image_from_chunks(
         .ok_or_else(|| format!("Image not found: {}", image_id))?;
 
     // 2. Find the file record for this image
+    // DbImage.filename may include directory (e.g., ".bae/cover-mb.jpg")
+    // DbFile.original_filename is just the filename (e.g., "cover-mb.jpg")
+    let filename_only = std::path::Path::new(&image.filename)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&image.filename);
+
     let file = services
         .library_manager
         .get()
-        .get_file_by_release_and_filename(&image.release_id, &image.filename)
+        .get_file_by_release_and_filename(&image.release_id, filename_only)
         .await
         .map_err(|e| format!("Database error: {}", e))?
         .ok_or_else(|| format!("File not found for image: {}", image.filename))?;
+
+    // 2b. For non-chunked storage, read from source_path
+    if let Some(ref source_path) = file.source_path {
+        debug!("Serving image from non-chunked storage: {}", source_path);
+
+        // Get storage profile to check encryption setting
+        let storage_profile = services
+            .library_manager
+            .get()
+            .get_storage_profile_for_release(&image.release_id)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        // Read data - cloud storage uses download_chunk, local uses fs::read
+        let raw_data = if source_path.starts_with("s3://") {
+            services
+                .cloud_storage
+                .download_chunk(source_path)
+                .await
+                .map_err(|e| format!("Failed to download image from cloud: {}", e))?
+        } else {
+            tokio::fs::read(source_path)
+                .await
+                .map_err(|e| format!("Failed to read image file: {}", e))?
+        };
+
+        // Decrypt if the storage profile has encryption enabled
+        let data = if storage_profile
+            .as_ref()
+            .map(|p| p.encrypted)
+            .unwrap_or(false)
+        {
+            services
+                .encryption_service
+                .decrypt_simple(&raw_data)
+                .map_err(|e| format!("Failed to decrypt image: {}", e))?
+        } else {
+            raw_data
+        };
+
+        let mime_type = match image.filename.rsplit('.').next() {
+            Some("jpg") | Some("jpeg") => "image/jpeg",
+            Some("png") => "image/png",
+            Some("gif") => "image/gif",
+            Some("webp") => "image/webp",
+            _ => "application/octet-stream",
+        };
+
+        return Ok((data, mime_type));
+    }
 
     // 3. Get file chunk mappings (explicit mapping replaces fragile offset calculation)
     let file_chunks = services
@@ -225,7 +289,7 @@ async fn serve_image_from_chunks(
 
         let decrypted = services
             .encryption_service
-            .decrypt_chunk(&encrypted_data)
+            .decrypt_simple(&encrypted_data)
             .map_err(|e| format!("Failed to decrypt chunk: {}", e))?;
 
         chunk_data_map.insert(fc.chunk_id.clone(), decrypted);
