@@ -337,8 +337,7 @@ async fn run_storage_test(location: StorageLocation, chunked: bool, encrypted: b
         assert_eq!(
             unique_count,
             chunks.len(),
-            "Chunk indices must be unique - found {} unique indices for {} chunks. \
-             This indicates per-file chunking instead of release-level chunking.",
+            "Chunk indices must be unique - found {} unique indices for {} chunks",
             unique_count,
             chunks.len()
         );
