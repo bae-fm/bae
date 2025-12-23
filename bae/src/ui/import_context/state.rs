@@ -467,6 +467,21 @@ impl ImportContext {
     }
 
     pub fn set_confirmed_candidate(&self, value: Option<MatchCandidate>) {
+        // Initialize selected_cover when confirming a candidate with cover art
+        if let Some(ref candidate) = value {
+            if let Some(ref url) = candidate.cover_art_url {
+                let source = match &candidate.source {
+                    crate::import::MatchSource::MusicBrainz(_) => "musicbrainz",
+                    crate::import::MatchSource::Discogs(_) => "discogs",
+                };
+                self.set_remote_cover(url, source);
+            }
+        } else {
+            // Clear selection when clearing candidate
+            let mut signal = self.selected_cover;
+            signal.set(None);
+        }
+
         let mut signal = self.confirmed_candidate;
         signal.set(value);
     }
