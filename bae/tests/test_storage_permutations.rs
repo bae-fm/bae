@@ -326,6 +326,32 @@ async fn run_storage_test(location: StorageLocation, chunked: bool, encrypted: b
         );
         info!("✓ {} DbChunk records exist", chunks.len());
 
+        // Verify chunk indices are unique and sequential (release-level chunking)
+        let mut indices: Vec<i32> = chunks.iter().map(|c| c.chunk_index).collect();
+        indices.sort();
+        let unique_count = {
+            let mut sorted = indices.clone();
+            sorted.dedup();
+            sorted.len()
+        };
+        assert_eq!(
+            unique_count,
+            chunks.len(),
+            "Chunk indices must be unique - found {} unique indices for {} chunks. \
+             This indicates per-file chunking instead of release-level chunking.",
+            unique_count,
+            chunks.len()
+        );
+        let expected_indices: Vec<i32> = (0..chunks.len() as i32).collect();
+        assert_eq!(
+            indices, expected_indices,
+            "Chunk indices must be sequential 0..N"
+        );
+        info!(
+            "✓ Chunk indices are unique and sequential (0..{})",
+            chunks.len() - 1
+        );
+
         // Verify file chunks exist
         for file in &files {
             if file.format == "flac" {

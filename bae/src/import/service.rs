@@ -924,24 +924,36 @@ impl ImportService {
             db_release.id, total_files
         );
 
-        for (idx, file) in discovered_files.iter().enumerate() {
+        // Read all files first
+        let mut file_data: Vec<(String, Vec<u8>)> = Vec::with_capacity(total_files);
+        for file in discovered_files.iter() {
             let filename = file
                 .path
                 .file_name()
                 .and_then(|n| n.to_str())
-                .ok_or_else(|| format!("Invalid filename: {:?}", file.path))?;
+                .ok_or_else(|| format!("Invalid filename: {:?}", file.path))?
+                .to_string();
 
-            // Read file data
             let data = tokio::fs::read(&file.path)
                 .await
                 .map_err(|e| format!("Failed to read file {:?}: {}", file.path, e))?;
 
-            // Write to storage (handles chunking, encryption, cloud upload, DB records)
-            storage
-                .write_file(&db_release.id, filename, &data)
-                .await
-                .map_err(|e| format!("Failed to store file {}: {}", filename, e))?;
+            file_data.push((filename, data));
+        }
 
+        // Write all files (handles release-level chunking)
+        let files_ref: Vec<(&str, &[u8])> = file_data
+            .iter()
+            .map(|(name, data)| (name.as_str(), data.as_slice()))
+            .collect();
+
+        storage
+            .write_files(&db_release.id, &files_ref)
+            .await
+            .map_err(|e| format!("Failed to store files: {}", e))?;
+
+        // Emit progress for each file
+        for (idx, (filename, data)) in file_data.iter().enumerate() {
             info!(
                 "Stored file {}/{}: {} ({} bytes)",
                 idx + 1,
@@ -950,7 +962,6 @@ impl ImportService {
                 data.len()
             );
 
-            // Emit progress
             let _ = self.progress_tx.send(ImportProgress::FileProgress {
                 release_id: db_release.id.clone(),
                 file_index: idx,

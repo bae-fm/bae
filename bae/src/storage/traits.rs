@@ -59,6 +59,13 @@ pub trait ReleaseStorage: Send + Sync {
 
     /// Delete a file from storage
     async fn delete_file(&self, release_id: &str, filename: &str) -> Result<(), StorageError>;
+
+    /// Write multiple files to storage with proper release-level chunking
+    async fn write_files(
+        &self,
+        release_id: &str,
+        files: &[(&str, &[u8])],
+    ) -> Result<(), StorageError>;
 }
 
 /// Storage implementation that applies transforms based on StorageProfile flags
@@ -194,12 +201,16 @@ impl ReleaseStorageImpl {
     }
 
     /// Write chunked file data
+    ///
+    /// Takes a starting chunk index and returns the next available chunk index.
+    /// This allows sequential chunk indices across multiple files in a release.
     async fn write_chunked(
         &self,
         release_id: &str,
         filename: &str,
         data: &[u8],
-    ) -> Result<(), StorageError> {
+        start_chunk_index: i32,
+    ) -> Result<i32, StorageError> {
         let db = self.database.as_ref().ok_or(StorageError::NotConfigured)?;
 
         // Create file record
@@ -216,7 +227,7 @@ impl ReleaseStorageImpl {
 
         // Split into chunks and store
         let mut offset = 0usize;
-        let mut chunk_index = 0i32;
+        let mut chunk_index = start_chunk_index;
 
         while offset < data.len() {
             let end = std::cmp::min(offset + self.chunk_size_bytes, data.len());
@@ -277,7 +288,7 @@ impl ReleaseStorageImpl {
             chunk_index += 1;
         }
 
-        Ok(())
+        Ok(chunk_index)
     }
 
     /// Read chunked file data
@@ -395,7 +406,8 @@ impl ReleaseStorage for ReleaseStorageImpl {
         data: &[u8],
     ) -> Result<(), StorageError> {
         if self.profile.chunked {
-            return self.write_chunked(release_id, filename, data).await;
+            self.write_chunked(release_id, filename, data, 0).await?;
+            return Ok(());
         }
 
         // Non-chunked: encrypt whole file if needed, write to storage
@@ -435,6 +447,26 @@ impl ReleaseStorage for ReleaseStorageImpl {
                 .map_err(|e| StorageError::Database(e.to_string()))?;
         }
 
+        Ok(())
+    }
+
+    async fn write_files(
+        &self,
+        release_id: &str,
+        files: &[(&str, &[u8])], // (filename, data)
+    ) -> Result<(), StorageError> {
+        if self.profile.chunked {
+            let mut chunk_index = 0i32;
+            for (filename, data) in files {
+                chunk_index = self
+                    .write_chunked(release_id, filename, data, chunk_index)
+                    .await?;
+            }
+        } else {
+            for (filename, data) in files {
+                self.write_file(release_id, filename, data).await?;
+            }
+        }
         Ok(())
     }
 
