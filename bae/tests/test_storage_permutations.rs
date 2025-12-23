@@ -382,6 +382,20 @@ async fn run_storage_test(location: StorageLocation, chunked: bool, encrypted: b
     );
     info!("✓ Album cover_image_id is set correctly");
 
+    // 13d. Verify we can actually load the cover image data
+    verify_image_loadable(
+        cover_image,
+        &library_manager,
+        &cloud_storage,
+        &cache_manager,
+        &encryption_service,
+        &location,
+        chunked,
+        encrypted,
+    )
+    .await;
+    info!("✓ Cover image data is loadable");
+
     // 14. Verify storage state
     verify_storage_state(
         &location,
@@ -552,6 +566,137 @@ fn generate_test_file(dir: &Path, filename: &str, pattern: &[u8], size: usize) -
 
     fs::write(&file_path, &data).expect("Failed to write test file");
     data
+}
+
+/// Verify we can actually load image data from storage
+/// This mirrors the logic in ui/app.rs serve_image_from_chunks
+async fn verify_image_loadable(
+    image: &bae::db::DbImage,
+    library_manager: &LibraryManager,
+    cloud_storage: &CloudStorageManager,
+    _cache_manager: &CacheManager,
+    encryption_service: &EncryptionService,
+    location: &StorageLocation,
+    chunked: bool,
+    encrypted: bool,
+) {
+    // Find the file record for this image
+    let filename_only = std::path::Path::new(&image.filename)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&image.filename);
+
+    let file = library_manager
+        .get_file_by_release_and_filename(&image.release_id, filename_only)
+        .await
+        .expect("Failed to get file")
+        .expect("File not found for image");
+
+    // For non-chunked storage, read from source_path
+    if !chunked {
+        let source_path = file
+            .source_path
+            .as_ref()
+            .expect("Non-chunked file should have source_path");
+
+        let data = match location {
+            StorageLocation::Local => {
+                // Local files can be read directly
+                tokio::fs::read(source_path)
+                    .await
+                    .expect("Failed to read local image file")
+            }
+            StorageLocation::Cloud => {
+                // Cloud files need to be downloaded via cloud_storage
+                cloud_storage
+                    .download_chunk(source_path)
+                    .await
+                    .expect("Failed to download image from cloud")
+            }
+        };
+
+        // Decrypt if needed
+        let data = if encrypted {
+            encryption_service
+                .decrypt_simple(&data)
+                .expect("Failed to decrypt image")
+        } else {
+            data
+        };
+
+        // Verify we got valid JPEG data (should start with FFD8)
+        assert!(
+            data.len() >= 2 && data[0] == 0xFF && data[1] == 0xD8,
+            "Image data should be valid JPEG (got {} bytes, starts with {:02X}{:02X})",
+            data.len(),
+            data.get(0).unwrap_or(&0),
+            data.get(1).unwrap_or(&0)
+        );
+
+        return;
+    }
+
+    // For chunked storage, use file_chunks
+    let file_chunks = library_manager
+        .get_file_chunks(&file.id)
+        .await
+        .expect("Failed to get file chunks");
+
+    assert!(!file_chunks.is_empty(), "Chunked file should have chunks");
+
+    // Download and decrypt chunks
+    let mut chunk_data_map: std::collections::HashMap<String, Vec<u8>> =
+        std::collections::HashMap::new();
+
+    for fc in &file_chunks {
+        if chunk_data_map.contains_key(&fc.chunk_id) {
+            continue;
+        }
+
+        let chunk = library_manager
+            .get_chunk_by_id(&fc.chunk_id)
+            .await
+            .expect("Failed to get chunk")
+            .expect("Chunk not found");
+
+        // For local storage, read from disk; for cloud, use cloud_storage
+        let data = match location {
+            StorageLocation::Local => tokio::fs::read(&chunk.storage_location)
+                .await
+                .expect("Failed to read local chunk"),
+            StorageLocation::Cloud => cloud_storage
+                .download_chunk(&chunk.storage_location)
+                .await
+                .expect("Failed to download chunk from cloud"),
+        };
+
+        let decrypted = if encrypted {
+            encryption_service
+                .decrypt_simple(&data)
+                .expect("Failed to decrypt chunk")
+        } else {
+            data
+        };
+
+        chunk_data_map.insert(fc.chunk_id.clone(), decrypted);
+    }
+
+    // Reassemble file
+    let mut file_data = Vec::new();
+    for fc in &file_chunks {
+        let chunk_data = chunk_data_map
+            .get(&fc.chunk_id)
+            .expect("Missing chunk data");
+        let start = fc.byte_offset as usize;
+        let end = start + fc.byte_length as usize;
+        file_data.extend_from_slice(&chunk_data[start..end]);
+    }
+
+    // Verify we got valid JPEG data
+    assert!(
+        file_data.len() >= 2 && file_data[0] == 0xFF && file_data[1] == 0xD8,
+        "Image data should be valid JPEG"
+    );
 }
 
 async fn verify_storage_state(
