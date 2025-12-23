@@ -45,7 +45,7 @@ We're implementing accurate track splitting for CUE/FLAC pairs using libFLAC's s
 1. **Download Chunks**: Get chunks in range from cloud storage
 2. **Extract Byte Range**: Extract track's byte range from reassembled chunks
 3. **Prepend Headers**: Add original album FLAC headers
-4. **Decode/Re-encode**: Use Symphonia to decode and flacenc to re-encode
+4. **Decode/Re-encode**: Use Symphonia to decode and libFLAC to re-encode
 5. **Stream**: Send to audio player
 
 ## Status

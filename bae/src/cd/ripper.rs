@@ -1,11 +1,6 @@
 //! CD ripping logic - streams bytes directly to FLAC encoder
 
 use crate::cd::drive::{CdDrive, CdToc};
-use flacenc::bitsink::ByteSink;
-use flacenc::component::BitRepr;
-use flacenc::config;
-use flacenc::error::Verify;
-use flacenc::source::MemSource;
 use std::path::PathBuf;
 use thiserror::Error;
 use tokio::sync::mpsc;
@@ -374,7 +369,7 @@ impl CdRipper {
         Ok((samples, errors))
     }
 
-    /// Encode samples to FLAC using flacenc
+    /// Encode samples to FLAC using libFLAC
     fn encode_to_flac(
         &self,
         samples: &[i32],
@@ -382,30 +377,7 @@ impl CdRipper {
         channels: u32,
         bits_per_sample: u32,
     ) -> Result<Vec<u8>, RipError> {
-        // Convert samples to the format flacenc expects (interleaved i32)
-        let source = MemSource::from_samples(
-            samples,
-            channels as usize,
-            bits_per_sample as usize,
-            sample_rate as usize,
-        );
-
-        // Create and verify encoder config
-        let config = config::Encoder::default();
-        let config = config.into_verified().map_err(|(_, e)| {
-            RipError::Flac(format!("Failed to verify encoder config: {:?}", e))
-        })?;
-
-        // Encode with default block size (4096)
-        let flac_stream = flacenc::encode_with_fixed_block_size(&config, source, 4096)
-            .map_err(|e| RipError::Flac(format!("Failed to encode FLAC: {:?}", e)))?;
-
-        // Write stream to a ByteSink
-        let mut sink = ByteSink::new();
-        flac_stream
-            .write(&mut sink)
-            .map_err(|e| RipError::Flac(format!("Failed to write stream to sink: {:?}", e)))?;
-
-        Ok(sink.as_slice().to_vec())
+        crate::flac_encoder::encode_to_flac(samples, sample_rate, channels, bits_per_sample)
+            .map_err(RipError::Flac)
     }
 }

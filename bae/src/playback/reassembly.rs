@@ -131,7 +131,7 @@ pub async fn reassemble_track(
             let mut temp_flac = headers.clone();
             temp_flac.extend_from_slice(&audio_data);
 
-            // Decode with Symphonia and re-encode with flacenc
+            // Decode with Symphonia and re-encode with libFLAC
             // Note: audio_data already contains only this track's byte range,
             // so we decode from the start (time 0), not from the track's original position
             audio_data = decode_and_reencode_track(
@@ -255,7 +255,7 @@ fn extract_file_from_chunks(
     file_data
 }
 
-/// Decode and re-encode a track from FLAC data using Symphonia + flacenc
+/// Decode and re-encode a track from FLAC data using Symphonia + libFLAC
 ///
 /// This matches the approach in split_cue_flac.rs binary.
 /// The input is a complete FLAC file (with headers), and we seek to the
@@ -392,8 +392,8 @@ async fn decode_and_reencode_track(
             }
         }
 
-        // Encode to FLAC using flacenc
-        encode_to_flac(
+        // Encode to FLAC using libflac-sys
+        crate::flac_encoder::encode_to_flac(
             &all_samples,
             sample_rate,
             num_channels as u32,
@@ -402,46 +402,6 @@ async fn decode_and_reencode_track(
     })
     .await
     .map_err(|e| format!("Decode/encode task failed: {}", e))?
-}
-
-/// Encode samples to FLAC using flacenc
-fn encode_to_flac(
-    samples: &[i32],
-    sample_rate: u32,
-    channels: u32,
-    bits_per_sample: u32,
-) -> Result<Vec<u8>, String> {
-    use flacenc::bitsink::ByteSink;
-    use flacenc::component::BitRepr;
-    use flacenc::config;
-    use flacenc::error::Verify;
-    use flacenc::source::MemSource;
-
-    // Convert samples to the format flacenc expects (interleaved i32)
-    let source = MemSource::from_samples(
-        samples,
-        channels as usize,
-        bits_per_sample as usize,
-        sample_rate as usize,
-    );
-
-    // Create and verify encoder config
-    let config = config::Encoder::default();
-    let config = config
-        .into_verified()
-        .map_err(|(_, e)| format!("Failed to verify encoder config: {:?}", e))?;
-
-    // Encode with default block size (4096)
-    let flac_stream = flacenc::encode_with_fixed_block_size(&config, source, 4096)
-        .map_err(|e| format!("Failed to encode FLAC: {:?}", e))?;
-
-    // Write stream to a ByteSink
-    let mut sink = ByteSink::new();
-    flac_stream
-        .write(&mut sink)
-        .map_err(|e| format!("Failed to write stream to sink: {:?}", e))?;
-
-    Ok(sink.as_slice().to_vec())
 }
 
 #[cfg(test)]

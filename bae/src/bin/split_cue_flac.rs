@@ -231,55 +231,14 @@ fn decode_and_encode_track(
         "Decoded audio"
     );
 
-    // Encode to FLAC using flacenc
+    // Encode to FLAC using libFLAC
     debug!("Encoding to FLAC");
-    encode_flac(
-        output_path,
+    let flac_data = bae::flac_encoder::encode_to_flac(
         &all_samples,
         sample_rate,
         num_channels as u32,
         bits_per_sample,
     )?;
-
-    Ok(())
-}
-
-fn encode_flac(
-    output_path: &Path,
-    samples: &[i32],
-    sample_rate: u32,
-    channels: u32,
-    bits_per_sample: u32,
-) -> Result<(), String> {
-    use flacenc::bitsink::ByteSink;
-    use flacenc::component::BitRepr;
-    use flacenc::config;
-    use flacenc::error::Verify;
-    use flacenc::source::MemSource;
-
-    // Convert samples to the format flacenc expects (interleaved i32)
-    let source = MemSource::from_samples(
-        samples,
-        channels as usize,
-        bits_per_sample as usize,
-        sample_rate as usize,
-    );
-
-    // Create and verify encoder config
-    let config = config::Encoder::default();
-    let config = config
-        .into_verified()
-        .map_err(|(_, e)| format!("Failed to verify encoder config: {:?}", e))?;
-
-    // Encode with default block size (4096)
-    let flac_stream = flacenc::encode_with_fixed_block_size(&config, source, 4096)
-        .map_err(|e| format!("Failed to encode FLAC: {:?}", e))?;
-
-    // Write stream to a ByteSink
-    let mut sink = ByteSink::new();
-    flac_stream
-        .write(&mut sink)
-        .map_err(|e| format!("Failed to write stream to sink: {:?}", e))?;
 
     // Write to file
     let output_file =
@@ -288,7 +247,7 @@ fn encode_flac(
 
     use std::io::Write;
     writer
-        .write_all(sink.as_slice())
+        .write_all(&flac_data)
         .map_err(|e| format!("Failed to write FLAC file: {}", e))?;
 
     Ok(())

@@ -24,6 +24,7 @@ pub mod torrent;
 
 // Optional modules
 pub mod cue_flac;
+pub mod flac_encoder;
 pub mod playback;
 pub mod subsonic;
 
