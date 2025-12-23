@@ -356,8 +356,16 @@ async fn run_storage_test(location: StorageLocation, chunked: bool, encrypted: b
     );
     info!("✓ {} DbImage records, cover image exists", images.len());
 
-    // 13b. Verify album.cover_image_id is set
+    // 13b. Verify the correct cover was selected (.bae/ should win over local cover.jpg)
     let cover_image = images.iter().find(|img| img.is_cover).unwrap();
+    assert!(
+        cover_image.filename.starts_with(".bae/"),
+        "Cover should be from .bae/ folder (user-selected MusicBrainz), not local: {}",
+        cover_image.filename
+    );
+    info!("✓ Correct cover selected: {}", cover_image.filename);
+
+    // 13c. Verify album.cover_image_id is set
     let album_id = library_manager
         .get_album_id_for_release(&release_id)
         .await
@@ -513,6 +521,10 @@ fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
         0xDB, 0x20, 0xA8, 0xF1, 0x7E, 0xFF, 0xD9,
     ];
     fs::write(bae_dir.join("cover-mb.jpg"), &minimal_jpeg).expect("Failed to write cover image");
+
+    // Also create a local cover.jpg in the album root to test priority
+    // The .bae/ cover should win over this local cover
+    fs::write(dir.join("cover.jpg"), &minimal_jpeg).expect("Failed to write local cover");
 
     patterns
         .iter()
