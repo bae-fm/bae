@@ -211,7 +211,12 @@ impl ReleaseStorageImpl {
         data: &[u8],
         start_chunk_index: i32,
     ) -> Result<i32, StorageError> {
-        let db = self.database.as_ref().ok_or(StorageError::NotConfigured)?;
+        use futures::stream::{self, StreamExt};
+        use std::time::Instant;
+        use tracing::info;
+
+        let total_start = Instant::now();
+        let db = self.database.clone().ok_or(StorageError::NotConfigured)?;
 
         // Create file record
         let format = std::path::Path::new(filename)
@@ -220,73 +225,118 @@ impl ReleaseStorageImpl {
             .unwrap_or("bin")
             .to_lowercase();
         let db_file = DbFile::new(release_id, filename, data.len() as i64, &format);
+        let file_id = db_file.id.clone();
 
         db.insert_file(&db_file)
             .await
             .map_err(|e| StorageError::Database(e.to_string()))?;
 
-        // Split into chunks and store
+        let num_chunks = (data.len() + self.chunk_size_bytes - 1) / self.chunk_size_bytes;
+
+        // Phase 1: Prepare all chunks (encrypt if needed) - CPU bound, sequential
+        let encrypt_start = Instant::now();
+        let mut prepared_chunks: Vec<(String, i32, Vec<u8>, usize)> =
+            Vec::with_capacity(num_chunks);
         let mut offset = 0usize;
         let mut chunk_index = start_chunk_index;
 
         while offset < data.len() {
             let end = std::cmp::min(offset + self.chunk_size_bytes, data.len());
             let chunk_data = &data[offset..end];
-            let byte_length = chunk_data.len();
+            let original_len = chunk_data.len();
 
-            // Encrypt chunk if needed
             let chunk_to_store = self.encrypt_if_needed(chunk_data)?;
             let chunk_id = Uuid::new_v4().to_string();
 
-            // Store chunk
-            let storage_location = match self.profile.location {
-                StorageLocation::Local => {
-                    let chunk_path = self.release_path(release_id).join("chunks").join(&chunk_id);
-                    if let Some(parent) = chunk_path.parent() {
-                        tokio::fs::create_dir_all(parent).await?;
-                    }
-                    tokio::fs::write(&chunk_path, &chunk_to_store).await?;
-                    chunk_path.display().to_string()
-                }
-                StorageLocation::Cloud => {
-                    let cloud = self.cloud.as_ref().ok_or(StorageError::NotConfigured)?;
-                    let key = self.chunk_key(release_id, &chunk_id);
-                    cloud
-                        .upload_chunk_data(&key, &chunk_to_store)
-                        .await
-                        .map_err(|e| StorageError::Cloud(e.to_string()))?
-                }
-            };
-
-            // Create chunk record
-            let db_chunk = DbChunk::from_release_chunk(
-                release_id,
-                &chunk_id,
-                chunk_index,
-                chunk_to_store.len(),
-                &storage_location,
-            );
-
-            db.insert_chunk(&db_chunk)
-                .await
-                .map_err(|e| StorageError::Database(e.to_string()))?;
-
-            // Create file-chunk mapping
-            let file_chunk = DbFileChunk::new(
-                &db_file.id,
-                &chunk_id,
-                chunk_index,
-                0, // byte_offset within chunk (always 0 for per-file chunks)
-                byte_length as i64,
-            );
-
-            db.insert_file_chunk(&file_chunk)
-                .await
-                .map_err(|e| StorageError::Database(e.to_string()))?;
+            prepared_chunks.push((chunk_id, chunk_index, chunk_to_store, original_len));
 
             offset = end;
             chunk_index += 1;
         }
+        let encrypt_ms = encrypt_start.elapsed().as_millis();
+
+        // Phase 2: Write chunks + DB inserts in parallel
+        let write_start = Instant::now();
+
+        // Create directory once for local storage
+        let chunks_dir = match self.profile.location {
+            StorageLocation::Local => {
+                let dir = self.release_path(release_id).join("chunks");
+                tokio::fs::create_dir_all(&dir).await?;
+                Some(dir)
+            }
+            StorageLocation::Cloud => None,
+        };
+
+        let cloud = self.cloud.clone();
+        let release_id_owned = release_id.to_string();
+
+        let results: Vec<Result<(), StorageError>> = stream::iter(prepared_chunks.into_iter().map(
+            |(chunk_id, idx, encrypted_data, original_len)| {
+                let chunks_dir = chunks_dir.clone();
+                let cloud = cloud.clone();
+                let db = db.clone();
+                let release_id = release_id_owned.clone();
+                let file_id = file_id.clone();
+
+                async move {
+                    // Write to storage
+                    let storage_location = if let Some(dir) = chunks_dir {
+                        let chunk_path = dir.join(&chunk_id);
+                        tokio::fs::write(&chunk_path, &encrypted_data).await?;
+                        chunk_path.display().to_string()
+                    } else {
+                        let cloud = cloud.as_ref().ok_or(StorageError::NotConfigured)?;
+                        let key = format!("{}/chunks/{}", release_id, chunk_id);
+                        cloud
+                            .upload_chunk_data(&key, &encrypted_data)
+                            .await
+                            .map_err(|e| StorageError::Cloud(e.to_string()))?
+                    };
+
+                    // Insert chunk record
+                    let db_chunk = DbChunk::from_release_chunk(
+                        &release_id,
+                        &chunk_id,
+                        idx,
+                        encrypted_data.len(),
+                        &storage_location,
+                    );
+                    db.insert_chunk(&db_chunk)
+                        .await
+                        .map_err(|e| StorageError::Database(e.to_string()))?;
+
+                    // Insert file-chunk mapping
+                    let file_chunk =
+                        DbFileChunk::new(&file_id, &chunk_id, idx, 0, original_len as i64);
+                    db.insert_file_chunk(&file_chunk)
+                        .await
+                        .map_err(|e| StorageError::Database(e.to_string()))?;
+
+                    Ok(())
+                }
+            },
+        ))
+        .buffer_unordered(16)
+        .collect()
+        .await;
+
+        // Check for errors
+        for result in results {
+            result?;
+        }
+
+        let write_ms = write_start.elapsed().as_millis();
+
+        info!(
+            "write_chunked {} ({} bytes, {} chunks): encrypt={}ms, write+db={}ms, total={}ms",
+            filename,
+            data.len(),
+            num_chunks,
+            encrypt_ms,
+            write_ms,
+            total_start.elapsed().as_millis()
+        );
 
         Ok(chunk_index)
     }
