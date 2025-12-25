@@ -103,27 +103,36 @@ impl<'a> MetadataPersister<'a> {
                     )
                 })?;
 
-            // Get pre-calculated chunk range for this track
-            let (start_chunk_index, end_chunk_index) = cue_flac_layout
-                .track_chunk_ranges
-                .get(track_id)
-                .ok_or_else(|| format!("No chunk range found for track {}", track_id))?;
-
-            // Get the actual byte positions from album_chunk_layout
-            // These are stored in the track_byte_ranges map
-            let (start_byte, end_byte) = cue_flac_layout
+            // Get FLAC-relative byte positions from pre-calculated layout
+            let (flac_start_byte, flac_end_byte) = cue_flac_layout
                 .track_byte_ranges
                 .get(track_id)
                 .ok_or_else(|| format!("No byte range found for track {}", track_id))?;
 
-            // Convert absolute byte positions to offsets within the chunk range
+            // Convert FLAC-relative to stream-absolute positions
+            // FLAC starts at: file_to_chunks.start_chunk_index * chunk_size + start_byte_offset
             let chunk_size_i64 = _chunk_size_bytes as i64;
-            let start_byte_offset = start_byte % chunk_size_i64;
-            let end_byte_offset = end_byte % chunk_size_i64;
+            let flac_stream_start = file_to_chunks.start_chunk_index as i64 * chunk_size_i64
+                + file_to_chunks.start_byte_offset;
+
+            let stream_start_byte = flac_stream_start + flac_start_byte;
+            let stream_end_byte = flac_stream_start + flac_end_byte;
+
+            // Calculate chunk indices and byte offsets from stream-absolute positions
+            let start_chunk_index = (stream_start_byte / chunk_size_i64) as i32;
+            let end_chunk_index = ((stream_end_byte - 1) / chunk_size_i64) as i32;
+            let start_byte_offset = stream_start_byte % chunk_size_i64;
+            let end_byte_offset = (stream_end_byte - 1) % chunk_size_i64;
 
             debug!(
-                "Track {}: storing byte offsets {}-{} within chunks {}-{}",
-                track_id, start_byte_offset, end_byte_offset, start_chunk_index, end_chunk_index
+                "Track {}: FLAC bytes {}-{} -> stream bytes {}-{}, chunks {}-{}",
+                track_id,
+                flac_start_byte,
+                flac_end_byte,
+                stream_start_byte,
+                stream_end_byte,
+                start_chunk_index,
+                end_chunk_index
             );
 
             // For CUE/FLAC, we store the original album FLAC headers and seektable
@@ -156,8 +165,8 @@ impl<'a> MetadataPersister<'a> {
             // Time offsets: where to seek with Symphonia during decode
             let coords = DbTrackChunkCoords::new(
                 track_id,
-                *start_chunk_index,
-                *end_chunk_index,
+                start_chunk_index,
+                end_chunk_index,
                 start_byte_offset,
                 end_byte_offset,
                 cue_track.start_time_ms as i64,
