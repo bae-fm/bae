@@ -30,7 +30,7 @@ impl From<DbImport> for ActiveImport {
 }
 
 /// Shared state for active imports across the app
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct ActiveImportsState {
     pub imports: Signal<Vec<ActiveImport>>,
     pub is_loading: Signal<bool>,
@@ -45,6 +45,25 @@ impl ActiveImportsState {
     /// Returns true if there are any active imports
     pub fn has_active(&self) -> bool {
         !self.imports.read().is_empty()
+    }
+
+    /// Dismiss/remove an import from the list
+    pub fn dismiss(&self, import_id: &str) {
+        let mut imports = self.imports;
+        imports.with_mut(|list| {
+            list.retain(|i| i.import_id != import_id);
+        });
+    }
+
+    /// Dismiss all completed and failed imports
+    pub fn dismiss_all_finished(&self) {
+        let mut imports = self.imports;
+        imports.with_mut(|list| {
+            list.retain(|i| {
+                i.status != ImportOperationStatus::Complete
+                    && i.status != ImportOperationStatus::Failed
+            });
+        });
     }
 }
 
@@ -114,25 +133,36 @@ fn handle_progress_event(imports: Signal<Vec<ActiveImport>>, event: ImportProgre
     let mut imports = imports;
     match event {
         ImportProgress::Preparing { import_id, step } => {
-            // Update current step for this import
             imports.with_mut(|list| {
                 if let Some(import) = list.iter_mut().find(|i| i.import_id == import_id) {
                     import.current_step = Some(step);
                     import.status = ImportOperationStatus::Preparing;
                 } else {
-                    // Import not in list yet - will be added when Started is received
-                    // or was loaded from DB
+                    // New import - add it to the list
+                    list.push(ActiveImport {
+                        import_id,
+                        album_title: "Importing...".to_string(),
+                        artist_name: String::new(),
+                        status: ImportOperationStatus::Preparing,
+                        current_step: Some(step),
+                        progress_percent: None,
+                        release_id: None,
+                    });
                 }
             });
         }
 
-        ImportProgress::Started { import_id, .. } => {
+        ImportProgress::Started { id, import_id, .. } => {
             if let Some(ref iid) = import_id {
                 imports.with_mut(|list| {
                     if let Some(import) = list.iter_mut().find(|i| &i.import_id == iid) {
                         import.status = ImportOperationStatus::Importing;
                         import.current_step = None;
                         import.progress_percent = Some(0);
+                        // Update release_id if we have it
+                        if import.release_id.is_none() {
+                            import.release_id = Some(id.clone());
+                        }
                     }
                 });
             }
@@ -160,18 +190,12 @@ fn handle_progress_event(imports: Signal<Vec<ActiveImport>>, event: ImportProgre
                     if let Some(import) = list.iter_mut().find(|i| &i.import_id == iid) {
                         import.status = ImportOperationStatus::Complete;
                         import.progress_percent = Some(100);
-                        import.release_id = release_id.clone();
+                        if release_id.is_some() {
+                            import.release_id = release_id.clone();
+                        }
                     }
                 });
-
-                // Remove completed import after a delay
-                let iid = iid.clone();
-                spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    imports.with_mut(|list| {
-                        list.retain(|i| i.import_id != iid);
-                    });
-                });
+                // Don't auto-remove - user will dismiss manually
             }
         }
 
@@ -182,15 +206,7 @@ fn handle_progress_event(imports: Signal<Vec<ActiveImport>>, event: ImportProgre
                         import.status = ImportOperationStatus::Failed;
                     }
                 });
-
-                // Remove failed import after a delay
-                let iid = iid.clone();
-                spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                    imports.with_mut(|list| {
-                        list.retain(|i| i.import_id != iid);
-                    });
-                });
+                // Don't auto-remove - user will dismiss manually
             }
         }
     }

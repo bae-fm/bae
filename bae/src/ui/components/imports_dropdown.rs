@@ -10,6 +10,11 @@ pub fn ImportsDropdown(mut is_open: Signal<bool>) -> Element {
     let imports = active_imports.imports.read();
     let navigator = use_navigator();
 
+    // Check if there are any finished imports to dismiss
+    let has_finished = imports.iter().any(|i| {
+        i.status == ImportOperationStatus::Complete || i.status == ImportOperationStatus::Failed
+    });
+
     if !*is_open.read() {
         return rsx! {};
     }
@@ -25,36 +30,57 @@ pub fn ImportsDropdown(mut is_open: Signal<bool>) -> Element {
         div {
             class: "absolute top-full right-0 mt-2 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-[1700] overflow-hidden",
 
-            // Header
-            div { class: "px-4 py-3 border-b border-gray-700",
-                h3 { class: "text-sm font-semibold text-white", "Active Imports" }
+            // Header with dismiss all button
+            div { class: "px-4 py-3 border-b border-gray-700 flex items-center justify-between",
+                h3 { class: "text-sm font-semibold text-white", "Imports" }
+                if has_finished {
+                    button {
+                        class: "text-xs text-gray-400 hover:text-white transition-colors",
+                        onclick: move |e: Event<MouseData>| {
+                            e.stop_propagation();
+                            active_imports.dismiss_all_finished();
+                        },
+                        "Clear finished"
+                    }
+                }
             }
 
             // Import list
             if imports.is_empty() {
                 div { class: "px-4 py-6 text-center text-gray-400 text-sm",
-                    "No active imports"
+                    "No imports"
                 }
             } else {
                 div { class: "max-h-80 overflow-y-auto",
                     for import in imports.iter() {
-                        ImportItem {
-                            key: "{import.import_id}",
-                            import: import.clone(),
-                            on_click: {
-                                let navigator = navigator.clone();
-                                let release_id = import.release_id.clone();
-                                let mut is_open = is_open;
-                                move |_| {
-                                    is_open.set(false);
-                                    if let Some(ref rid) = release_id {
-                                        navigator.push(Route::AlbumDetail {
-                                            album_id: rid.clone(),
-                                            release_id: String::new(),
-                                        });
-                                    }
+                        {
+                            let import_id = import.import_id.clone();
+                            rsx! {
+                                ImportItem {
+                                    key: "{import_id}",
+                                    import: import.clone(),
+                                    on_click: {
+                                        let navigator = navigator.clone();
+                                        let release_id = import.release_id.clone();
+                                        let mut is_open = is_open;
+                                        move |_| {
+                                            is_open.set(false);
+                                            if let Some(ref rid) = release_id {
+                                                navigator.push(Route::AlbumDetail {
+                                                    album_id: rid.clone(),
+                                                    release_id: String::new(),
+                                                });
+                                            }
+                                        }
+                                    },
+                                    on_dismiss: {
+                                        let import_id = import_id.clone();
+                                        move |_| {
+                                            active_imports.dismiss(&import_id);
+                                        }
+                                    },
                                 }
-                            },
+                            }
                         }
                     }
                 }
@@ -65,7 +91,11 @@ pub fn ImportsDropdown(mut is_open: Signal<bool>) -> Element {
 
 /// Single import item in the dropdown
 #[component]
-fn ImportItem(import: ActiveImport, on_click: EventHandler<()>) -> Element {
+fn ImportItem(
+    import: ActiveImport,
+    on_click: EventHandler<()>,
+    on_dismiss: EventHandler<()>,
+) -> Element {
     let status_text = match import.status {
         ImportOperationStatus::Preparing => {
             if let Some(step) = import.current_step {
@@ -81,17 +111,18 @@ fn ImportItem(import: ActiveImport, on_click: EventHandler<()>) -> Element {
                 "Importing...".to_string()
             }
         }
-        ImportOperationStatus::Complete => "Complete".to_string(),
+        ImportOperationStatus::Complete => "Complete - click to view".to_string(),
         ImportOperationStatus::Failed => "Failed".to_string(),
     };
 
     let progress_percent = import.progress_percent.unwrap_or(0);
     let is_complete = import.status == ImportOperationStatus::Complete;
     let is_failed = import.status == ImportOperationStatus::Failed;
+    let is_finished = is_complete || is_failed;
 
     rsx! {
         div {
-            class: "px-4 py-3 hover:bg-gray-700/50 cursor-pointer border-b border-gray-700/50 last:border-b-0 transition-colors",
+            class: if is_complete { "px-4 py-3 hover:bg-gray-700/50 cursor-pointer border-b border-gray-700/50 last:border-b-0 transition-colors" } else { "px-4 py-3 hover:bg-gray-700/50 border-b border-gray-700/50 last:border-b-0 transition-colors" },
             onclick: move |_| {
                 if is_complete {
                     on_click.call(());
@@ -141,11 +172,36 @@ fn ImportItem(import: ActiveImport, on_click: EventHandler<()>) -> Element {
                     p { class: "text-sm font-medium text-white truncate",
                         "{import.album_title}"
                     }
-                    p { class: "text-xs text-gray-400 truncate",
-                        "{import.artist_name}"
+                    if !import.artist_name.is_empty() {
+                        p { class: "text-xs text-gray-400 truncate",
+                            "{import.artist_name}"
+                        }
                     }
                     p { class: "text-xs text-gray-500 mt-1",
                         "{status_text}"
+                    }
+                }
+
+                // Dismiss button for finished imports
+                if is_finished {
+                    button {
+                        class: "flex-shrink-0 p-1 text-gray-500 hover:text-white transition-colors",
+                        onclick: move |e: Event<MouseData>| {
+                            e.stop_propagation();
+                            on_dismiss.call(());
+                        },
+                        svg {
+                            class: "h-4 w-4",
+                            fill: "none",
+                            stroke: "currentColor",
+                            view_box: "0 0 24 24",
+                            stroke_width: "2",
+                            path {
+                                stroke_linecap: "round",
+                                stroke_linejoin: "round",
+                                d: "M6 18L18 6M6 6l12 12"
+                            }
+                        }
                     }
                 }
             }
