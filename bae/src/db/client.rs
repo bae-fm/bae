@@ -1551,7 +1551,17 @@ impl Database {
     /// - Album artists (via FOREIGN KEY ON DELETE CASCADE)
     /// - Album discogs (via FOREIGN KEY ON DELETE CASCADE)
     /// - All tracks, files, chunks, etc. from releases (via cascading)
+    /// - Import records referencing this album's releases (cleared before delete)
     pub async fn delete_album(&self, album_id: &str) -> Result<(), sqlx::Error> {
+        // Clear import records that reference this album's releases
+        // (imports table has FK to releases, need to clear before cascade delete)
+        sqlx::query(
+            "UPDATE imports SET release_id = NULL WHERE release_id IN (SELECT id FROM releases WHERE album_id = ?)"
+        )
+        .bind(album_id)
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query("DELETE FROM albums WHERE id = ?")
             .bind(album_id)
             .execute(&self.pool)
