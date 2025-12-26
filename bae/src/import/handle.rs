@@ -756,6 +756,14 @@ pub async fn extract_and_store_durations(
 /// Extract duration from an audio file
 fn extract_duration_from_file(file_path: &Path) -> Option<i64> {
     debug!("Extracting duration from file: {}", file_path.display());
+
+    // For FLAC files, use libFLAC directly (more tolerant of non-standard files)
+    let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    if extension.eq_ignore_ascii_case("flac") {
+        return extract_flac_duration(file_path);
+    }
+
+    // For other formats, use symphonia via TrackDecoder
     let file_data = match std::fs::read(file_path) {
         Ok(data) => {
             debug!("Read {} bytes from file", data.len());
@@ -783,6 +791,31 @@ fn extract_duration_from_file(file_path: &Path) -> Option<i64> {
         }
         Err(e) => {
             warn!("Failed to decode file for duration extraction: {:?}", e);
+            None
+        }
+    }
+}
+
+/// Extract duration from a FLAC file using libFLAC
+fn extract_flac_duration(file_path: &Path) -> Option<i64> {
+    use crate::import::album_chunk_layout::build_seektable;
+
+    match build_seektable(file_path) {
+        Ok(flac_info) => {
+            let duration_ms = flac_info.duration_ms() as i64;
+            debug!(
+                "Extracted FLAC duration via libFLAC: {} ms from {}",
+                duration_ms,
+                file_path.display()
+            );
+            Some(duration_ms)
+        }
+        Err(e) => {
+            warn!(
+                "Failed to extract FLAC duration via libFLAC: {} for {}",
+                e,
+                file_path.display()
+            );
             None
         }
     }

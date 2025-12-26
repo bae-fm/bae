@@ -1,35 +1,66 @@
 use super::active_imports_context::use_active_imports;
+use crate::db::ImportOperationStatus;
 use dioxus::prelude::*;
 
 /// Button in title bar that shows active imports count and toggles dropdown
 #[component]
 pub fn ImportsButton(mut is_open: Signal<bool>) -> Element {
     let active_imports = use_active_imports();
-    let count = active_imports.imports.read().len();
+    let imports = active_imports.imports.read();
+    let count = imports.len();
 
     // Don't render if no active imports
     if count == 0 {
         return rsx! {};
     }
 
-    let has_preparing = active_imports.imports.read().iter().any(|i| {
-        i.status == crate::db::ImportOperationStatus::Preparing
-            || i.status == crate::db::ImportOperationStatus::Importing
+    let has_in_progress = imports.iter().any(|i| {
+        i.status == ImportOperationStatus::Preparing || i.status == ImportOperationStatus::Importing
     });
+
+    let has_failed = imports
+        .iter()
+        .any(|i| i.status == ImportOperationStatus::Failed);
+
+    let badge_color = if has_failed {
+        "bg-red-500"
+    } else if has_in_progress {
+        "bg-indigo-500"
+    } else {
+        "bg-green-500"
+    };
 
     rsx! {
         button {
-            class: "relative px-3 py-1.5 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-md transition-colors flex items-center gap-2",
+            class: "relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors",
             onclick: move |_| {
                 let current = *is_open.read();
                 is_open.set(!current);
             },
 
-            // Spinner when actively importing
-            if has_preparing {
-                div { class: "animate-spin h-3.5 w-3.5 border-2 border-gray-400 border-t-transparent rounded-full" }
+            // Icon
+            if has_in_progress {
+                // Animated spinner
+                svg {
+                    class: "h-4 w-4 text-indigo-400 animate-spin",
+                    fill: "none",
+                    view_box: "0 0 24 24",
+                    circle {
+                        class: "opacity-25",
+                        cx: "12",
+                        cy: "12",
+                        r: "10",
+                        stroke: "currentColor",
+                        stroke_width: "4",
+                    }
+                    path {
+                        class: "opacity-75",
+                        fill: "currentColor",
+                        d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    }
+                }
             } else {
-                // Download icon when complete
+                // Download icon
                 svg {
                     class: "h-4 w-4",
                     fill: "none",
@@ -44,11 +75,11 @@ pub fn ImportsButton(mut is_open: Signal<bool>) -> Element {
                 }
             }
 
-            "Imports"
+            span { "Imports" }
 
             // Count badge
             span {
-                class: "absolute -top-1 -right-1 bg-indigo-500 text-white text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1",
+                class: "{badge_color} text-white text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1.5",
                 "{count}"
             }
         }

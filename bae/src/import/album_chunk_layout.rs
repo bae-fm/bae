@@ -30,9 +30,29 @@ use tracing::debug;
 // FFI bindings for libFLAC seektable generation
 extern crate libflac_sys;
 
-/// Build a seektable mapping sample positions to byte positions using libFLAC
-/// Returns a HashMap where key is sample number and value is byte position
-pub fn build_seektable(flac_path: &Path) -> Result<HashMap<u64, u64>, String> {
+/// FLAC file metadata extracted via libFLAC
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct FlacInfo {
+    /// Seektable mapping sample positions to byte positions
+    pub seektable: HashMap<u64, u64>,
+    /// Sample rate in Hz (e.g., 44100)
+    pub sample_rate: u32,
+    /// Total number of samples in the file
+    pub total_samples: u64,
+}
+
+impl FlacInfo {
+    /// Calculate duration in milliseconds
+    pub fn duration_ms(&self) -> u64 {
+        if self.sample_rate == 0 {
+            return 0;
+        }
+        (self.total_samples * 1000) / self.sample_rate as u64
+    }
+}
+
+/// Build a seektable and extract metadata from a FLAC file using libFLAC
+pub fn build_seektable(flac_path: &Path) -> Result<FlacInfo, String> {
     use tracing::debug;
 
     debug!("Building seektable for: {:?}", flac_path);
@@ -49,6 +69,8 @@ pub fn build_seektable(flac_path: &Path) -> Result<HashMap<u64, u64>, String> {
         file_pos: usize,
         seektable: HashMap<u64, u64>,
         cumulative_samples: u64, // Track cumulative samples for frame_number mode
+        sample_rate: u32,
+        total_samples: u64,
     }
 
     let state = DecoderState {
@@ -56,6 +78,8 @@ pub fn build_seektable(flac_path: &Path) -> Result<HashMap<u64, u64>, String> {
         file_pos: 0,
         seektable: HashMap::new(),
         cumulative_samples: 0,
+        sample_rate: 0,
+        total_samples: 0,
     };
 
     // Read callback
@@ -200,13 +224,21 @@ pub fn build_seektable(flac_path: &Path) -> Result<HashMap<u64, u64>, String> {
         libflac_sys::FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE
     }
 
-    // Metadata callback
+    // Metadata callback - capture STREAMINFO
     extern "C" fn metadata_callback(
         _decoder: *const libflac_sys::FLAC__StreamDecoder,
-        _metadata: *const libflac_sys::FLAC__StreamMetadata,
-        _client_data: *mut libc::c_void,
+        metadata: *const libflac_sys::FLAC__StreamMetadata,
+        client_data: *mut libc::c_void,
     ) {
-        // We don't need to do anything with metadata
+        let state = unsafe { &mut *(client_data as *mut DecoderState) };
+        let metadata_ref = unsafe { &*metadata };
+
+        // Check if this is STREAMINFO (type 0)
+        if metadata_ref.type_ == libflac_sys::FLAC__METADATA_TYPE_STREAMINFO {
+            let streaminfo = unsafe { &metadata_ref.data.stream_info };
+            state.sample_rate = streaminfo.sample_rate;
+            state.total_samples = streaminfo.total_samples;
+        }
     }
 
     // Error callback
@@ -337,82 +369,42 @@ pub fn build_seektable(flac_path: &Path) -> Result<HashMap<u64, u64>, String> {
         }
 
         debug!(
-            "Finished processing, frames: {}, seektable entries: {}",
+            "Finished processing, frames: {}, seektable entries: {}, sample_rate: {}, total_samples: {}",
             frames_processed,
-            state.seektable.len()
+            state.seektable.len(),
+            state.sample_rate,
+            state.total_samples
         );
 
         // Finish decoder
         libflac_sys::FLAC__stream_decoder_finish(decoder);
         libflac_sys::FLAC__stream_decoder_delete(decoder);
 
-        // Extract seektable
-        Ok(state.seektable)
+        // Return FlacInfo with seektable and metadata
+        Ok(FlacInfo {
+            seektable: state.seektable,
+            sample_rate: state.sample_rate,
+            total_samples: state.total_samples,
+        })
     }
 }
 
-/// Find exact byte range for a track using seektable and Symphonia time-based seeking
+/// Find exact byte range for a track using seektable and sample rate
+///
+/// Converts time positions to sample positions, then looks up byte positions in the seektable.
+/// Uses libFLAC-derived metadata instead of symphonia for better compatibility with
+/// non-standard FLAC files.
 pub fn find_track_byte_range(
     flac_path: &Path,
     start_time_ms: u64,
     end_time_ms: Option<u64>,
     seektable: &HashMap<u64, u64>,
+    sample_rate: u32,
 ) -> Result<(i64, i64), String> {
-    use std::fs::File;
-    use symphonia::core::codecs::CODEC_TYPE_FLAC;
-    use symphonia::core::formats::{FormatOptions, SeekMode, SeekTo};
-    use symphonia::core::io::MediaSourceStream;
-    use symphonia::core::meta::MetadataOptions;
-    use symphonia::core::probe::Hint;
-    use symphonia::core::units::Time;
-
     // Get file size for end position
     let file_size = std::fs::metadata(flac_path)
         .map_err(|e| format!("Failed to get file metadata: {}", e))?
         .len() as i64;
-
-    // Use Symphonia to get audio parameters and seek to time position
-    let file = File::open(flac_path).map_err(|e| format!("Failed to open FLAC file: {}", e))?;
-    let mss = MediaSourceStream::new(Box::new(file), Default::default());
-
-    let mut hint = Hint::new();
-    hint.with_extension("flac");
-
-    let probed = symphonia::default::get_probe()
-        .format(
-            &hint,
-            mss,
-            &FormatOptions::default(),
-            &MetadataOptions::default(),
-        )
-        .map_err(|e| format!("Failed to probe FLAC file: {}", e))?;
-
-    let mut format = probed.format;
-
-    let (sample_rate, track_id) = {
-        let track = format
-            .tracks()
-            .iter()
-            .find(|t| t.codec_params.codec == CODEC_TYPE_FLAC)
-            .ok_or_else(|| "No FLAC track found".to_string())?;
-
-        let codec_params = &track.codec_params;
-        let sample_rate = codec_params.sample_rate.unwrap_or(44100);
-
-        (sample_rate, track.id)
-    };
-
-    // Seek to start time position (like split_cue_flac.rs does)
-    let start_time = Time::from(start_time_ms as f64 / 1000.0);
-    format
-        .seek(
-            SeekMode::Accurate,
-            SeekTo::Time {
-                time: start_time,
-                track_id: Some(track_id),
-            },
-        )
-        .map_err(|e| format!("Failed to seek to start: {}", e))?;
 
     // Calculate sample position from time
     let start_sample = (start_time_ms * sample_rate as u64) / 1000;
@@ -422,18 +414,6 @@ pub fn find_track_byte_range(
 
     // Find end byte position
     let end_byte = if let Some(end_ms) = end_time_ms {
-        // Seek to end time
-        let end_time = Time::from(end_ms as f64 / 1000.0);
-        format
-            .seek(
-                SeekMode::Accurate,
-                SeekTo::Time {
-                    time: end_time,
-                    track_id: Some(track_id),
-                },
-            )
-            .map_err(|e| format!("Failed to seek to end: {}", e))?;
-
         let end_sample = (end_ms * sample_rate as u64) / 1000;
         lookup_seektable(seektable, end_sample)? as i64
     } else {
@@ -676,11 +656,11 @@ fn build_chunk_track_mappings(
                 "Building seektable for FLAC file: {}",
                 cue_metadata.flac_path.display()
             );
-            let seektable = build_seektable(&cue_metadata.flac_path)
+            let flac_info = build_seektable(&cue_metadata.flac_path)
                 .map_err(|e| format!("Failed to build seektable: {}", e))?;
-            debug!("Seektable built with {} entries", seektable.len());
+            debug!("Seektable built with {} entries", flac_info.seektable.len());
 
-            // For CUE/FLAC, calculate exact byte ranges using seektable + Symphonia time-based seeking
+            // For CUE/FLAC, calculate exact byte ranges using seektable
             let mut track_chunk_ranges = HashMap::new();
             let mut track_byte_ranges = HashMap::new();
             let chunk_size_i64 = chunk_size as i64;
@@ -690,12 +670,13 @@ fn build_chunk_track_mappings(
                     continue;
                 };
 
-                // Find exact byte positions using seektable + Symphonia time-based seeking
+                // Find exact byte positions using seektable and sample rate from libFLAC
                 let (start_byte, end_byte) = find_track_byte_range(
                     &cue_metadata.flac_path,
                     cue_track.start_time_ms,
                     cue_track.end_time_ms,
-                    &seektable,
+                    &flac_info.seektable,
+                    flac_info.sample_rate,
                 )?;
 
                 debug!(
@@ -757,7 +738,7 @@ fn build_chunk_track_mappings(
                     flac_headers,
                     track_chunk_ranges,
                     track_byte_ranges,
-                    seektable: Some(seektable),
+                    seektable: Some(flac_info.seektable),
                 },
             );
         } else {

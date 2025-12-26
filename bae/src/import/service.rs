@@ -904,7 +904,7 @@ impl ImportService {
                     .to_string();
 
                 // Build seektable for this FLAC
-                let seektable = build_seektable(flac_path)
+                let flac_info = build_seektable(flac_path)
                     .map_err(|e| format!("Failed to build seektable for {:?}: {}", flac_path, e))?;
 
                 // Get tracks that map to this FLAC file
@@ -922,7 +922,8 @@ impl ImportService {
                             flac_path,
                             cue_track.start_time_ms,
                             cue_track.end_time_ms,
-                            &seektable,
+                            &flac_info.seektable,
+                            flac_info.sample_rate,
                         )?;
 
                         track_infos.push((track_file.db_track_id.clone(), start_byte, end_byte));
@@ -981,7 +982,7 @@ impl ImportService {
                 .map_err(|e| format!("Failed to extract FLAC headers: {}", e))?;
 
             // Build seektable from FLAC file
-            let seektable = build_seektable(flac_path)
+            let flac_info = build_seektable(flac_path)
                 .map_err(|e| format!("Failed to build seektable: {}", e))?;
 
             // Get tracks that map to this FLAC file
@@ -1006,12 +1007,13 @@ impl ImportService {
                     .get(i)
                     .ok_or_else(|| format!("No track mapping for CUE track {}", cue_track.title))?;
 
-                // Find exact byte positions using seektable + Symphonia
+                // Find exact byte positions using seektable and sample rate from libFLAC
                 let (start_byte, end_byte) = find_track_byte_range(
                     flac_path,
                     cue_track.start_time_ms,
                     cue_track.end_time_ms,
-                    &seektable,
+                    &flac_info.seektable,
+                    flac_info.sample_rate,
                 )?;
 
                 track_byte_ranges.insert(db_track.db_track_id.clone(), (start_byte, end_byte));
@@ -1031,7 +1033,7 @@ impl ImportService {
                     flac_headers,
                     track_chunk_ranges,
                     track_byte_ranges,
-                    seektable: Some(seektable),
+                    seektable: Some(flac_info.seektable),
                 },
             );
         }
@@ -1463,7 +1465,7 @@ impl ImportService {
                 let flac_headers = CueFlacProcessor::extract_flac_headers(flac_path)
                     .map_err(|e| format!("Failed to extract FLAC headers: {}", e))?;
 
-                let seektable = build_seektable(flac_path)
+                let flac_info = build_seektable(flac_path)
                     .map_err(|e| format!("Failed to build seektable: {}", e))?;
 
                 // Get tracks mapping to this FLAC
@@ -1480,7 +1482,8 @@ impl ImportService {
                             flac_path,
                             cue_track.start_time_ms,
                             cue_track.end_time_ms,
-                            &seektable,
+                            &flac_info.seektable,
+                            flac_info.sample_rate,
                         )?;
                         track_byte_ranges
                             .insert(db_track.db_track_id.clone(), (start_byte, end_byte));
@@ -1489,7 +1492,7 @@ impl ImportService {
 
                 data.insert(
                     flac_path.clone(),
-                    (metadata.clone(), flac_headers, seektable, track_byte_ranges),
+                    (metadata.clone(), flac_headers, flac_info.seektable, track_byte_ranges),
                 );
             }
             data
