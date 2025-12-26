@@ -2,8 +2,8 @@ use crate::cache::CacheManager;
 use crate::cloud_storage::{CloudStorageError, CloudStorageManager};
 use crate::db::{
     Database, DbAlbum, DbAlbumArtist, DbArtist, DbAudioFormat, DbChunk, DbFile, DbFileChunk,
-    DbImage, DbRelease, DbStorageProfile, DbTorrent, DbTrack, DbTrackArtist, DbTrackChunkCoords,
-    ImportStatus,
+    DbImage, DbImport, DbRelease, DbStorageProfile, DbTorrent, DbTrack, DbTrackArtist,
+    DbTrackChunkCoords, ImportOperationStatus, ImportStatus,
 };
 use crate::encryption::EncryptionService;
 use crate::library::export::ExportService;
@@ -642,6 +642,39 @@ impl LibraryManager {
             .database
             .get_storage_profile_for_release(release_id)
             .await?)
+    }
+
+    // ========== Import Operations ==========
+
+    /// Insert a new import operation record
+    pub async fn insert_import(&self, import: &DbImport) -> Result<(), LibraryError> {
+        Ok(self.database.insert_import(import).await?)
+    }
+
+    /// Update the status of an import operation
+    pub async fn update_import_status(
+        &self,
+        id: &str,
+        status: ImportOperationStatus,
+    ) -> Result<(), LibraryError> {
+        Ok(self.database.update_import_status(id, status).await?)
+    }
+
+    /// Link an import operation to a release (after release is created)
+    pub async fn link_import_to_release(
+        &self,
+        import_id: &str,
+        release_id: &str,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .link_import_to_release(import_id, release_id)
+            .await?)
+    }
+
+    /// Record an error for an import operation
+    pub async fn update_import_error(&self, id: &str, error: &str) -> Result<(), LibraryError> {
+        Ok(self.database.update_import_error(id, error).await?)
     }
 }
 

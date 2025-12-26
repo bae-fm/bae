@@ -38,7 +38,9 @@ use crate::cache::CacheManager;
 use crate::cd::drive::CdToc;
 use crate::cd::RipProgress;
 use crate::cloud_storage::CloudStorageManager;
-use crate::db::{Database, DbAlbum, DbFile, DbRelease, DbStorageProfile, DbTrack};
+use crate::db::{
+    Database, DbAlbum, DbFile, DbRelease, DbStorageProfile, DbTrack, ImportOperationStatus,
+};
 use crate::encryption::EncryptionService;
 use crate::import::album_chunk_layout::AlbumChunkLayout;
 use crate::import::album_chunk_layout::{build_seektable, find_track_byte_range};
@@ -132,9 +134,13 @@ impl ImportService {
         let (commands_tx, commands_rx) = mpsc::unbounded_channel();
         let (progress_tx, progress_rx) = mpsc::unbounded_channel();
 
-        // Clone library_manager and cache_manager for the thread
+        // Clone progress_tx for the handle (before it's moved to worker)
+        let progress_tx_for_handle = progress_tx.clone();
+
+        // Clone library_manager, cache_manager, and database for the thread
         let library_manager_for_worker = library_manager.clone();
         let cache_manager_for_worker = cache_manager.clone();
+        let database_for_handle = database.clone();
 
         // Spawn the service task on a dedicated thread
         std::thread::spawn(move || {
@@ -171,7 +177,14 @@ impl ImportService {
             });
         });
 
-        ImportServiceHandle::new(commands_tx, progress_rx, library_manager, runtime_handle)
+        ImportServiceHandle::new(
+            commands_tx,
+            progress_tx_for_handle,
+            progress_rx,
+            library_manager,
+            database_for_handle,
+            runtime_handle,
+        )
     }
 
     async fn do_import(&self, command: ImportCommand) {
@@ -184,6 +197,7 @@ impl ImportService {
                 cue_flac_metadata,
                 storage_profile_id,
                 selected_cover_filename,
+                import_id,
             } => {
                 info!("Starting folder import for '{}'", db_album.title);
                 match storage_profile_id {
@@ -197,6 +211,7 @@ impl ImportService {
                                     cue_flac_metadata,
                                     profile,
                                     selected_cover_filename,
+                                    &import_id,
                                 )
                                 .await
                             }
@@ -212,6 +227,7 @@ impl ImportService {
                             &tracks_to_files,
                             cue_flac_metadata,
                             selected_cover_filename,
+                            &import_id,
                         )
                         .await
                     }
@@ -1009,6 +1025,7 @@ impl ImportService {
         cue_flac_metadata: Option<HashMap<PathBuf, CueFlacMetadata>>,
         storage_profile: DbStorageProfile,
         selected_cover_filename: Option<String>,
+        import_id: &str,
     ) -> Result<(), String> {
         let library_manager = self.library_manager.get();
 
@@ -1021,7 +1038,7 @@ impl ImportService {
         // Send started event
         let _ = self.progress_tx.send(ImportProgress::Started {
             id: db_release.id.clone(),
-            import_id: None,
+            import_id: Some(import_id.to_string()),
         });
 
         // Link release to storage profile
@@ -1068,10 +1085,12 @@ impl ImportService {
 
         // Write files with progress reporting
         let mut chunk_index = 0i32;
+        let import_id_owned = import_id.to_string();
         for (idx, (filename, data, _path)) in file_data.iter().enumerate() {
             let track_infos = file_to_tracks.get(filename).cloned().unwrap_or_default();
             let progress_tx = self.progress_tx.clone();
             let release_id = db_release.id.clone();
+            let import_id_for_closure = import_id_owned.clone();
             let file_size = data.len();
 
             // Capture release_bytes_written for the closure
@@ -1092,7 +1111,7 @@ impl ImportService {
                                 id: track_id.clone(),
                                 percent,
                                 phase: Some(ImportPhase::Chunk),
-                                import_id: None,
+                                import_id: Some(import_id_for_closure.clone()),
                             });
                         }
 
@@ -1104,7 +1123,7 @@ impl ImportService {
                             id: release_id.clone(),
                             percent: release_percent,
                             phase: Some(ImportPhase::Chunk),
-                            import_id: None,
+                            import_id: Some(import_id_for_closure.clone()),
                         });
                     }),
                 )
@@ -1209,7 +1228,7 @@ impl ImportService {
                 id: track_file.db_track_id.clone(),
                 release_id: Some(db_release.id.clone()),
                 cover_image_id: None, // Tracks don't have covers
-                import_id: None,
+                import_id: Some(import_id.to_string()),
             });
         }
 
@@ -1219,12 +1238,18 @@ impl ImportService {
             .await
             .map_err(|e| format!("Failed to mark release complete: {}", e))?;
 
+        // Update import status to Complete
+        let _ = self
+            .database
+            .update_import_status(import_id, ImportOperationStatus::Complete)
+            .await;
+
         // Send release completion event with cover_image_id for reactive UI update
         let _ = self.progress_tx.send(ImportProgress::Complete {
             id: db_release.id.clone(),
             release_id: None,
             cover_image_id,
-            import_id: None,
+            import_id: Some(import_id.to_string()),
         });
 
         info!("Storage import complete for release {}", db_release.id);
@@ -1539,6 +1564,7 @@ impl ImportService {
         tracks_to_files: &[TrackFile],
         _cue_flac_metadata: Option<HashMap<PathBuf, CueFlacMetadata>>,
         selected_cover_filename: Option<String>,
+        import_id: &str,
     ) -> Result<(), String> {
         let library_manager = self.library_manager.get();
 
@@ -1551,7 +1577,7 @@ impl ImportService {
         // Send started event
         let _ = self.progress_tx.send(ImportProgress::Started {
             id: db_release.id.clone(),
-            import_id: None,
+            import_id: Some(import_id.to_string()),
         });
 
         let total_files = discovered_files.len();
@@ -1610,7 +1636,7 @@ impl ImportService {
                         id: track_id.clone(),
                         percent: 100,
                         phase: Some(ImportPhase::Chunk),
-                        import_id: None,
+                        import_id: Some(import_id.to_string()),
                     });
                 }
             }
@@ -1621,7 +1647,7 @@ impl ImportService {
                 id: db_release.id.clone(),
                 percent: release_percent,
                 phase: Some(ImportPhase::Chunk),
-                import_id: None,
+                import_id: Some(import_id.to_string()),
             });
 
             info!(
@@ -1644,7 +1670,7 @@ impl ImportService {
                 id: track_file.db_track_id.clone(),
                 release_id: Some(db_release.id.clone()),
                 cover_image_id: None, // Tracks don't have covers
-                import_id: None,
+                import_id: Some(import_id.to_string()),
             });
         }
 
@@ -1665,12 +1691,18 @@ impl ImportService {
             .await
             .map_err(|e| format!("Failed to mark release complete: {}", e))?;
 
+        // Update import status to Complete
+        let _ = self
+            .database
+            .update_import_status(import_id, ImportOperationStatus::Complete)
+            .await;
+
         // Send release completion event with cover_image_id for reactive UI update
         let _ = self.progress_tx.send(ImportProgress::Complete {
             id: db_release.id.clone(),
             release_id: None,
             cover_image_id,
-            import_id: None,
+            import_id: Some(import_id.to_string()),
         });
 
         info!("None storage import complete for release {}", db_release.id);

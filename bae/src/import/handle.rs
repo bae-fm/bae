@@ -4,7 +4,7 @@
 // Provides the public API for interacting with the import service.
 
 use crate::cue_flac::CueFlacProcessor;
-use crate::db::{DbTorrent, ImageSource};
+use crate::db::{Database, DbImport, DbTorrent, ImageSource, ImportOperationStatus};
 use crate::discogs::DiscogsRelease;
 use crate::import::cover_art::download_cover_art_to_bae_folder;
 use crate::import::discogs_parser::parse_discogs_release;
@@ -12,12 +12,14 @@ use crate::import::musicbrainz_parser::fetch_and_parse_mb_release;
 use crate::import::progress::ImportProgressHandle;
 use crate::import::track_to_file_mapper::map_tracks_to_files;
 use crate::import::types::{
-    DiscoveredFile, ImportCommand, ImportProgress, ImportRequest, TorrentSource, TrackFile,
+    DiscoveredFile, ImportCommand, ImportProgress, ImportRequest, PrepareStep, TorrentSource,
+    TrackFile,
 };
 use crate::library::{LibraryManager, SharedLibraryManager};
 use crate::musicbrainz::MbRelease;
 use crate::playback::symphonia_decoder::TrackDecoder;
 use std::path::Path;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
@@ -25,8 +27,10 @@ use tracing::{debug, info, warn};
 #[derive(Clone)]
 pub struct ImportServiceHandle {
     pub requests_tx: mpsc::UnboundedSender<ImportCommand>,
+    pub progress_tx: mpsc::UnboundedSender<ImportProgress>,
     pub progress_handle: ImportProgressHandle,
     pub library_manager: SharedLibraryManager,
+    pub database: Arc<Database>,
     pub runtime_handle: tokio::runtime::Handle,
 }
 
@@ -54,16 +58,20 @@ impl ImportServiceHandle {
     /// Create a new ImportHandle with the given dependencies
     pub fn new(
         requests_tx: mpsc::UnboundedSender<ImportCommand>,
+        progress_tx: mpsc::UnboundedSender<ImportProgress>,
         progress_rx: mpsc::UnboundedReceiver<ImportProgress>,
         library_manager: SharedLibraryManager,
+        database: Arc<Database>,
         runtime_handle: tokio::runtime::Handle,
     ) -> Self {
         let progress_handle = ImportProgressHandle::new(progress_rx, runtime_handle.clone());
 
         Self {
             requests_tx,
+            progress_tx,
             progress_handle,
             library_manager,
+            database,
             runtime_handle,
         }
     }
@@ -162,9 +170,49 @@ impl ImportServiceHandle {
 
         let library_manager = self.library_manager.get();
 
-        // ========== VALIDATION (before queueing) ==========
+        // ========== PHASE 0: PREPARATION WITH PROGRESS TRACKING ==========
+
+        // Generate import_id for progress tracking
+        let import_id = uuid::Uuid::new_v4().to_string();
+
+        // Extract album title and artist name for DbImport (before parsing)
+        let (album_title, artist_name) = if let Some(ref discogs_rel) = discogs_release {
+            let artist = discogs_rel
+                .artists
+                .iter()
+                .map(|a| a.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            (discogs_rel.title.clone(), artist)
+        } else if let Some(ref mb_rel) = mb_release {
+            (mb_rel.title.clone(), mb_rel.artist.clone())
+        } else {
+            return Err("No release provided".to_string());
+        };
+
+        // Create DbImport record at start
+        let db_import = DbImport::new(
+            &import_id,
+            &album_title,
+            &artist_name,
+            folder.to_str().unwrap_or(""),
+        );
+        self.database
+            .insert_import(&db_import)
+            .await
+            .map_err(|e| format!("Failed to create import record: {}", e))?;
+
+        // Helper to emit preparing events
+        let emit_preparing = |step: PrepareStep| {
+            let _ = self.progress_tx.send(ImportProgress::Preparing {
+                import_id: import_id.clone(),
+                step,
+            });
+        };
 
         // 1. Parse release into database models (Discogs or MusicBrainz)
+        emit_preparing(PrepareStep::ParsingMetadata);
+
         let (db_album, db_release, db_tracks, artists, album_artists) =
             if let Some(ref discogs_rel) = discogs_release {
                 use crate::import::discogs_parser::parse_discogs_release;
@@ -180,6 +228,8 @@ impl ImportServiceHandle {
         // 2. Download cover art to .bae/ folder if we have a URL
         // This happens before file discovery so the downloaded image is included
         if let Some(ref url) = cover_art_url {
+            emit_preparing(PrepareStep::DownloadingCoverArt);
+
             // Determine source based on which release we're importing
             let source = if mb_release.is_some() {
                 ImageSource::MusicBrainz
@@ -199,14 +249,19 @@ impl ImportServiceHandle {
         }
 
         // 3. Discover files (will now include downloaded cover art from .bae/)
+        emit_preparing(PrepareStep::DiscoveringFiles);
         let discovered_files = discover_folder_files(&folder)?;
 
-        // 3. Build track-to-file mapping (validates and parses CUE sheets if present)
+        // 4. Build track-to-file mapping (validates and parses CUE sheets if present)
+        emit_preparing(PrepareStep::ValidatingTracks);
         let mapping_result = map_tracks_to_files(&db_tracks, &discovered_files).await?;
         let tracks_to_files = mapping_result.track_files.clone();
         let cue_flac_metadata = mapping_result.cue_flac_metadata.clone();
 
-        // 4. Insert or lookup artists (deduplicate across imports)
+        // 5. Save to database
+        emit_preparing(PrepareStep::SavingToDatabase);
+
+        // Insert or lookup artists (deduplicate across imports)
         // Build a map from parsed artist ID to actual database artist ID
         let mut artist_id_map = std::collections::HashMap::new();
         for artist in &artists {
@@ -236,16 +291,19 @@ impl ImportServiceHandle {
             artist_id_map.insert(parsed_id, actual_id);
         }
 
-        // 5. Insert album + release + tracks with status='queued'
+        // Insert album + release + tracks with status='queued'
         library_manager
             .insert_album_with_release_and_tracks(&db_album, &db_release, &db_tracks)
             .await
             .map_err(|e| format!("Database error: {}", e))?;
 
-        // 6. Extract and store durations early (before pipeline starts)
-        extract_and_store_durations(library_manager, &tracks_to_files).await?;
+        // Link import to release now that release exists
+        self.database
+            .link_import_to_release(&import_id, &db_release.id)
+            .await
+            .map_err(|e| format!("Failed to link import to release: {}", e))?;
 
-        // 7. Insert album-artist relationships (using actual database artist IDs)
+        // Insert album-artist relationships (using actual database artist IDs)
         for album_artist in &album_artists {
             let actual_artist_id = artist_id_map.get(&album_artist.artist_id).ok_or_else(|| {
                 format!(
@@ -263,6 +321,10 @@ impl ImportServiceHandle {
                 .map_err(|e| format!("Failed to insert album-artist relationship: {}", e))?;
         }
 
+        // 6. Extract and store durations
+        emit_preparing(PrepareStep::ExtractingDurations);
+        extract_and_store_durations(library_manager, &tracks_to_files).await?;
+
         tracing::info!(
             "Validated and queued album '{}' (release: {}) with {} tracks",
             db_album.title,
@@ -271,6 +333,12 @@ impl ImportServiceHandle {
         );
 
         // ========== QUEUE FOR PIPELINE ==========
+
+        // Update import status to Importing before queueing
+        self.database
+            .update_import_status(&import_id, ImportOperationStatus::Importing)
+            .await
+            .map_err(|e| format!("Failed to update import status: {}", e))?;
 
         let album_id = db_album.id.clone();
         let release_id = db_release.id.clone();
@@ -284,6 +352,7 @@ impl ImportServiceHandle {
                 cue_flac_metadata,
                 storage_profile_id,
                 selected_cover_filename,
+                import_id,
             })
             .map_err(|_| "Failed to queue validated album for import".to_string())?;
 

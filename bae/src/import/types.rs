@@ -278,6 +278,8 @@ pub enum ImportCommand {
         storage_profile_id: Option<String>,
         /// User-selected cover image filename
         selected_cover_filename: Option<String>,
+        /// Import operation ID for progress tracking
+        import_id: String,
     },
     /// Torrent-based import: files arrive incrementally
     Torrent {
