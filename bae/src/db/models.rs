@@ -754,6 +754,83 @@ impl DbTorrentPieceMapping {
     }
 }
 
+// ============================================================================
+// Import Operations
+// ============================================================================
+
+// String constants for import operation status (keep in sync with as_str())
+const IMPORT_OP_STATUS_PREPARING: &str = "preparing";
+const IMPORT_OP_STATUS_IMPORTING: &str = "importing";
+const IMPORT_OP_STATUS_COMPLETE: &str = "complete";
+const IMPORT_OP_STATUS_FAILED: &str = "failed";
+
+/// Status of an import operation (distinct from release/track ImportStatus)
+///
+/// Tracks the lifecycle of an import from button click through completion:
+/// - Preparing: Phase 0 work in ImportHandle (parsing, validation, DB setup)
+/// - Importing: Phase 1 work in ImportService (file processing, encryption, upload)
+/// - Complete: Successfully finished
+/// - Failed: Error occurred
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+pub enum ImportOperationStatus {
+    Preparing,
+    Importing,
+    Complete,
+    Failed,
+}
+
+impl ImportOperationStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ImportOperationStatus::Preparing => IMPORT_OP_STATUS_PREPARING,
+            ImportOperationStatus::Importing => IMPORT_OP_STATUS_IMPORTING,
+            ImportOperationStatus::Complete => IMPORT_OP_STATUS_COMPLETE,
+            ImportOperationStatus::Failed => IMPORT_OP_STATUS_FAILED,
+        }
+    }
+}
+
+/// Tracks an import operation from button click through completion
+///
+/// Created when user clicks Import, before any database records exist.
+/// Provides a stable ID for progress subscriptions during phase 0.
+/// Linked to release_id after phase 0 completes and release is created.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DbImport {
+    pub id: String,
+    pub status: ImportOperationStatus,
+    /// Linked after phase 0 when release is created
+    pub release_id: Option<String>,
+    /// Album title for display before release exists
+    pub album_title: String,
+    /// Artist name for display
+    pub artist_name: String,
+    /// Source folder path
+    pub folder_path: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+    /// Error message if status is Failed
+    pub error_message: Option<String>,
+}
+
+impl DbImport {
+    pub fn new(id: &str, album_title: &str, artist_name: &str, folder_path: &str) -> Self {
+        let now = Utc::now().timestamp();
+        DbImport {
+            id: id.to_string(),
+            status: ImportOperationStatus::Preparing,
+            release_id: None,
+            album_title: album_title.to_string(),
+            artist_name: artist_name.to_string(),
+            folder_path: folder_path.to_string(),
+            created_at: now,
+            updated_at: now,
+            error_message: None,
+        }
+    }
+}
+
 /// Source of an image file
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]

@@ -476,6 +476,33 @@ impl Database {
         .execute(&self.pool)
         .await?;
 
+        // Imports table (tracks import operations from button click through completion)
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS imports (
+                id TEXT PRIMARY KEY,
+                status TEXT NOT NULL DEFAULT 'preparing',
+                release_id TEXT REFERENCES releases(id),
+                album_title TEXT NOT NULL,
+                artist_name TEXT NOT NULL,
+                folder_path TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                error_message TEXT
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_imports_status ON imports (status)")
+            .execute(&self.pool)
+            .await?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_imports_release_id ON imports (release_id)")
+            .execute(&self.pool)
+            .await?;
+
         Ok(())
     }
 
@@ -2343,5 +2370,128 @@ impl Database {
         .await?;
 
         Ok(row.map(|row| self.row_to_storage_profile(&row)))
+    }
+
+    // ========================================================================
+    // Import Operations Methods
+    // ========================================================================
+
+    /// Insert a new import operation record
+    pub async fn insert_import(&self, import: &DbImport) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO imports (
+                id, status, release_id, album_title, artist_name,
+                folder_path, created_at, updated_at, error_message
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&import.id)
+        .bind(import.status.as_str())
+        .bind(&import.release_id)
+        .bind(&import.album_title)
+        .bind(&import.artist_name)
+        .bind(&import.folder_path)
+        .bind(import.created_at)
+        .bind(import.updated_at)
+        .bind(&import.error_message)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Get an import by ID
+    pub async fn get_import(&self, id: &str) -> Result<Option<DbImport>, sqlx::Error> {
+        let row = sqlx::query("SELECT * FROM imports WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(row.map(|row| self.row_to_import(&row)))
+    }
+
+    /// Get all active (non-complete, non-failed) imports
+    pub async fn get_active_imports(&self) -> Result<Vec<DbImport>, sqlx::Error> {
+        let rows = sqlx::query(
+            "SELECT * FROM imports WHERE status IN ('preparing', 'importing') ORDER BY created_at DESC",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.iter().map(|row| self.row_to_import(row)).collect())
+    }
+
+    /// Update import status
+    pub async fn update_import_status(
+        &self,
+        id: &str,
+        status: ImportOperationStatus,
+    ) -> Result<(), sqlx::Error> {
+        let now = Utc::now().timestamp();
+        sqlx::query("UPDATE imports SET status = ?, updated_at = ? WHERE id = ?")
+            .bind(status.as_str())
+            .bind(now)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Update import with error message and set status to Failed
+    pub async fn update_import_error(&self, id: &str, error: &str) -> Result<(), sqlx::Error> {
+        let now = Utc::now().timestamp();
+        sqlx::query(
+            "UPDATE imports SET status = ?, error_message = ?, updated_at = ? WHERE id = ?",
+        )
+        .bind(ImportOperationStatus::Failed.as_str())
+        .bind(error)
+        .bind(now)
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Link an import to a release (called after release is created in phase 0)
+    pub async fn link_import_to_release(
+        &self,
+        import_id: &str,
+        release_id: &str,
+    ) -> Result<(), sqlx::Error> {
+        let now = Utc::now().timestamp();
+        sqlx::query("UPDATE imports SET release_id = ?, updated_at = ? WHERE id = ?")
+            .bind(release_id)
+            .bind(now)
+            .bind(import_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    fn row_to_import(&self, row: &sqlx::sqlite::SqliteRow) -> DbImport {
+        let status_str: String = row.get("status");
+        let status = match status_str.as_str() {
+            "preparing" => ImportOperationStatus::Preparing,
+            "importing" => ImportOperationStatus::Importing,
+            "complete" => ImportOperationStatus::Complete,
+            "failed" => ImportOperationStatus::Failed,
+            _ => ImportOperationStatus::Preparing,
+        };
+
+        DbImport {
+            id: row.get("id"),
+            status,
+            release_id: row.get("release_id"),
+            album_title: row.get("album_title"),
+            artist_name: row.get("artist_name"),
+            folder_path: row.get("folder_path"),
+            created_at: row.get("created_at"),
+            updated_at: row.get("updated_at"),
+            error_message: row.get("error_message"),
+        }
     }
 }
