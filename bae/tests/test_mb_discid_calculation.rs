@@ -1,4 +1,4 @@
-use bae::import::calculate_mb_discid_from_cue;
+use bae::import::calculate_mb_discid_from_cue_flac;
 use std::path::PathBuf;
 
 #[test]
@@ -26,7 +26,7 @@ fn test_calculate_mb_discid_acdc_back_in_black() {
         .with_max_level(tracing::Level::DEBUG)
         .try_init();
 
-    match calculate_mb_discid_from_cue(&cue_path, &flac_path) {
+    match calculate_mb_discid_from_cue_flac(&cue_path, &flac_path) {
         Ok(discid) => {
             println!("✅ Successfully calculated MusicBrainz DiscID: {}", discid);
             println!("   Expected format: 28-character base64-like string");

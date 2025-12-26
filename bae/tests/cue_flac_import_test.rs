@@ -1,3 +1,5 @@
+#![cfg(feature = "test-utils")]
+
 //! CUE/FLAC import integration test
 //!
 //! This test requires:
@@ -22,7 +24,9 @@ use bae::encryption::EncryptionService;
 use bae::import::{ImportConfig, ImportRequest, ImportService};
 use bae::library::{LibraryManager, SharedLibraryManager};
 use bae::playback::reassembly::reassemble_track;
+use bae::torrent::TorrentManagerHandle;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use uuid::Uuid;
 
@@ -42,9 +46,11 @@ async fn test_cue_flac_import() {
     std::fs::create_dir_all(&test_dir).unwrap();
 
     let db_path = test_dir.join("test.db");
-    let database = Database::new(db_path.to_str().unwrap())
-        .await
-        .expect("Failed to create DB");
+    let database = Arc::new(
+        Database::new(db_path.to_str().unwrap())
+            .await
+            .expect("Failed to create DB"),
+    );
 
     // Setup config
     let config = Config::load();
@@ -63,8 +69,10 @@ async fn test_cue_flac_import() {
         .await
         .expect("Failed to create cloud storage");
 
-    let library_manager =
-        SharedLibraryManager::new(LibraryManager::new(database, cloud_storage.clone()));
+    let library_manager = SharedLibraryManager::new(LibraryManager::new(
+        (*database).clone(),
+        cloud_storage.clone(),
+    ));
 
     // Setup encryption
     let encryption_service =
@@ -74,6 +82,9 @@ async fn test_cue_flac_import() {
     let cache_manager = CacheManager::new()
         .await
         .expect("Failed to create cache manager");
+
+    // Setup torrent manager (dummy for folder imports)
+    let torrent_handle = TorrentManagerHandle::new_dummy();
 
     // Setup import service
     let runtime = tokio::runtime::Handle::current();
@@ -90,6 +101,9 @@ async fn test_cue_flac_import() {
         library_manager.clone(),
         encryption_service.clone(),
         cloud_storage.clone(),
+        cache_manager.clone(),
+        torrent_handle,
+        database.clone(),
     );
 
     // Check if test folder exists
@@ -118,6 +132,7 @@ async fn test_cue_flac_import() {
         cover_art_url: None,
         storage_profile_id: None,
         selected_cover_filename: None,
+        import_id: Uuid::new_v4().to_string(),
     };
 
     let (_album_id, release_id) = import_handle

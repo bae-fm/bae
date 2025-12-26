@@ -146,6 +146,7 @@ async fn run_storage_test(location: StorageLocation, chunked: bool, encrypted: b
             cover_art_url: None,
             storage_profile_id: Some(storage_profile_id.clone()),
             selected_cover_filename: Some(selected_cover.clone()),
+            import_id: uuid::Uuid::new_v4().to_string(),
         })
         .await
         .expect("Failed to send import request");
@@ -166,7 +167,9 @@ async fn run_storage_test(location: StorageLocation, chunked: bool, encrypted: b
     while let Some(progress) = progress_rx.recv().await {
         info!("Progress: {:?}", progress);
         match &progress {
-            ImportProgress::Progress { id, percent, phase } => {
+            ImportProgress::Progress {
+                id, percent, phase, ..
+            } => {
                 // Release subscription only receives release-level Progress events (id == release_id)
                 // Track-level Progress events require individual track subscriptions
                 if id == &release_id {
@@ -1125,6 +1128,7 @@ async fn run_real_album_test(
             cover_art_url: None,
             storage_profile_id: Some(storage_profile_id.clone()),
             selected_cover_filename: None,
+            import_id: uuid::Uuid::new_v4().to_string(),
         })
         .await
         .expect("Failed to send import request");
