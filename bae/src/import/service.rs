@@ -1492,7 +1492,12 @@ impl ImportService {
 
                 data.insert(
                     flac_path.clone(),
-                    (metadata.clone(), flac_headers, flac_info.seektable, track_byte_ranges),
+                    (
+                        metadata.clone(),
+                        flac_headers,
+                        flac_info.seektable,
+                        track_byte_ranges,
+                    ),
                 );
             }
             data
