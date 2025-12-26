@@ -106,13 +106,6 @@ pub enum ImportProgress {
         /// - CD imports: Acquire phase (rip), then Chunk phase (upload)
         phase: Option<ImportPhase>,
     },
-    /// Per-file progress for storage-based imports
-    FileProgress {
-        release_id: String,
-        file_index: usize,
-        total_files: usize,
-        filename: String,
-    },
     Complete {
         id: String,
         /// For track completions, this is the parent release ID (for filtering)

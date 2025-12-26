@@ -1832,11 +1832,12 @@ impl ImportService {
                 source_path
             );
 
-            let _ = self.progress_tx.send(ImportProgress::FileProgress {
-                release_id: db_release.id.clone(),
-                file_index: idx,
-                total_files,
-                filename: filename.to_string(),
+            // Emit release-level progress
+            let release_percent = ((idx + 1) * 100 / total_files.max(1)) as u8;
+            let _ = self.progress_tx.send(ImportProgress::Progress {
+                id: db_release.id.clone(),
+                percent: release_percent,
+                phase: Some(ImportPhase::Chunk),
             });
         }
 

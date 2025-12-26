@@ -22,9 +22,6 @@ impl SubscriptionFilter {
             SubscriptionFilter::Release { release_id } => match progress {
                 ImportProgress::Started { id } => id == release_id,
                 ImportProgress::Progress { id, .. } => id == release_id,
-                ImportProgress::FileProgress {
-                    release_id: rid, ..
-                } => rid == release_id,
                 // Match if this is the release completion OR a track completion for this release
                 ImportProgress::Complete {
                     id,
@@ -36,7 +33,6 @@ impl SubscriptionFilter {
             SubscriptionFilter::Track { track_id } => match progress {
                 ImportProgress::Started { id } => id == track_id,
                 ImportProgress::Progress { id, .. } => id == track_id,
-                ImportProgress::FileProgress { .. } => false, // FileProgress is release-level only
                 ImportProgress::Complete { id, .. } => id == track_id,
                 ImportProgress::Failed { id, .. } => id == track_id,
             },

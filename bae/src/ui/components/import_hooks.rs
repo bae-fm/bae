@@ -63,8 +63,6 @@ pub fn use_track_progress(
                             );
                             state.set(TrackImportState::Importing { percent });
                         }
-                        // FileProgress is release-level only, filtered out for track subscriptions
-                        ImportProgress::FileProgress { .. } => {}
                         ImportProgress::Complete { .. } => {
                             trace!("Track {} complete", track_id);
                             state.set(TrackImportState::Complete);

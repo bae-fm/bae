@@ -232,14 +232,6 @@ fn use_release_import_state(
                         } => {
                             progress.set(Some(percent));
                         }
-                        ImportProgress::FileProgress {
-                            file_index,
-                            total_files,
-                            ..
-                        } => {
-                            let percent = ((file_index + 1) * 100 / total_files) as u8;
-                            progress.set(Some(percent));
-                        }
                         ImportProgress::Complete {
                             cover_image_id: cid,
                             release_id: rid,
