@@ -188,6 +188,17 @@ impl ImportService {
     }
 
     async fn do_import(&self, command: ImportCommand) {
+        // Extract release_id and import_id before consuming command
+        let (release_id_for_error, import_id_for_error) = match &command {
+            ImportCommand::Folder {
+                db_release,
+                import_id,
+                ..
+            } => (db_release.id.clone(), Some(import_id.clone())),
+            ImportCommand::Torrent { db_release, .. } => (db_release.id.clone(), None),
+            ImportCommand::CD { db_release, .. } => (db_release.id.clone(), None),
+        };
+
         let result = match command {
             ImportCommand::Folder {
                 db_album,
@@ -328,7 +339,22 @@ impl ImportService {
 
         if let Err(e) = result {
             error!("Import failed: {}", e);
-            // TODO: Mark album as failed
+
+            // Mark release as failed in database
+            if let Err(db_err) = self
+                .library_manager
+                .mark_release_failed(&release_id_for_error)
+                .await
+            {
+                error!("Failed to mark release as failed: {}", db_err);
+            }
+
+            // Emit Failed progress event
+            let _ = self.progress_tx.send(ImportProgress::Failed {
+                id: release_id_for_error,
+                error: e,
+                import_id: import_id_for_error,
+            });
         }
     }
 
