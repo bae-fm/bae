@@ -94,8 +94,14 @@ pub enum TorrentSource {
 /// Progress updates during import
 #[derive(Debug, Clone)]
 pub enum ImportProgress {
+    /// Phase 0: Preparation steps (emitted from ImportHandle before pipeline starts)
+    Preparing {
+        import_id: String,
+        step: PrepareStep,
+    },
     Started {
         id: String,
+        import_id: Option<String>,
     },
     Progress {
         id: String,
@@ -105,6 +111,7 @@ pub enum ImportProgress {
         /// - Torrent imports: Acquire phase (download), then Chunk phase (upload)
         /// - CD imports: Acquire phase (rip), then Chunk phase (upload)
         phase: Option<ImportPhase>,
+        import_id: Option<String>,
     },
     Complete {
         id: String,
@@ -113,10 +120,12 @@ pub enum ImportProgress {
         release_id: Option<String>,
         /// For release completions, the cover image ID (for reactive UI update)
         cover_image_id: Option<String>,
+        import_id: Option<String>,
     },
     Failed {
         id: String,
         error: String,
+        import_id: Option<String>,
     },
 }
 
@@ -131,6 +140,17 @@ pub enum ImportPhase {
     /// Chunk phase: Upload and encrypt data to cloud storage
     /// Same for all import types: stream files → encrypt → upload chunks
     Chunk,
+}
+
+/// Steps during phase 0 preparation (in ImportHandle, before pipeline starts)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PrepareStep {
+    ParsingMetadata,
+    DownloadingCoverArt,
+    DiscoveringFiles,
+    ValidatingTracks,
+    SavingToDatabase,
+    ExtractingDurations,
 }
 
 /// Maps a logical track to its physical audio file.

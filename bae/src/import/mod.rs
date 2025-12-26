@@ -56,4 +56,4 @@ pub use folder_scanner::{
 };
 pub use handle::{ImportServiceHandle, TorrentFileMetadata, TorrentImportMetadata};
 pub use service::{ImportConfig, ImportService};
-pub use types::{ImportPhase, ImportProgress, ImportRequest, TorrentSource};
+pub use types::{ImportPhase, ImportProgress, ImportRequest, PrepareStep, TorrentSource};

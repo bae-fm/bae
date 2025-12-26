@@ -600,6 +600,15 @@ impl ImportServiceHandle {
     ) -> tokio::sync::mpsc::UnboundedReceiver<ImportProgress> {
         self.progress_handle.subscribe_track(track_id)
     }
+
+    /// Subscribe to progress updates for a specific import operation
+    /// Returns Preparing events and any event with matching import_id
+    pub fn subscribe_import(
+        &self,
+        import_id: String,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<ImportProgress> {
+        self.progress_handle.subscribe_import(import_id)
+    }
 }
 
 /// Extract durations from audio files and update database immediately

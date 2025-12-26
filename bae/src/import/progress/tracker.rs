@@ -102,6 +102,7 @@ impl ImportProgressTracker {
             id: self.release_id.clone(),
             percent: progress_update.1,
             phase: Some(crate::import::types::ImportPhase::Chunk),
+            import_id: None,
         });
 
         // Emit track-level progress for each track that's still importing (Chunk phase)
@@ -112,6 +113,7 @@ impl ImportProgressTracker {
                 id: track_id.clone(),
                 percent,
                 phase: Some(crate::import::types::ImportPhase::Chunk),
+                import_id: None,
             });
         }
 
@@ -123,6 +125,7 @@ impl ImportProgressTracker {
                 id: track_id.clone(),
                 release_id: Some(self.release_id.clone()),
                 cover_image_id: None, // Tracks don't have covers
+                import_id: None,
             });
         }
 
@@ -241,13 +244,27 @@ mod tests {
         let mut complete_count = 0;
         while let Ok(event) = rx.try_recv() {
             match event {
-                ImportProgress::Progress { id, .. } => {
+                ImportProgress::Progress { id, import_id, .. } => {
+                    // Tracker-emitted Progress events should have import_id: None
+                    assert!(
+                        import_id.is_none(),
+                        "Tracker-emitted Progress events should have import_id: None"
+                    );
                     if id == "test-album" {
                         release_progress_count += 1;
                     }
                 }
-                ImportProgress::Complete { .. } => complete_count += 1,
-                _ => {}
+                ImportProgress::Complete { import_id, .. } => {
+                    // Tracker-emitted Complete events should have import_id: None
+                    assert!(
+                        import_id.is_none(),
+                        "Tracker-emitted Complete events should have import_id: None"
+                    );
+                    complete_count += 1;
+                }
+                ImportProgress::Preparing { .. }
+                | ImportProgress::Started { .. }
+                | ImportProgress::Failed { .. } => {}
             }
         }
         assert_eq!(

@@ -346,6 +346,7 @@ impl ImportService {
         // Send started progress
         let _ = self.progress_tx.send(ImportProgress::Started {
             id: db_release.id.clone(),
+            import_id: None,
         });
 
         // ========== ACQUIRE PHASE: TORRENT DOWNLOAD ==========
@@ -377,6 +378,7 @@ impl ImportService {
                 id: db_release.id.clone(),
                 percent,
                 phase: Some(crate::import::types::ImportPhase::Acquire),
+                import_id: None,
             });
 
             if progress >= 1.0 {
@@ -509,6 +511,7 @@ impl ImportService {
             id: db_release.id,
             release_id: None,
             cover_image_id: None,
+            import_id: None,
         });
 
         info!(
@@ -547,6 +550,7 @@ impl ImportService {
         // Send started progress
         let _ = self.progress_tx.send(ImportProgress::Started {
             id: db_release.id.clone(),
+            import_id: None,
         });
 
         // ========== ACQUIRE PHASE: CD RIPPING ==========
@@ -597,6 +601,7 @@ impl ImportService {
                     id: release_id_for_progress.clone(),
                     percent: rip_progress.percent,
                     phase: Some(ImportPhase::Acquire),
+                    import_id: None,
                 });
 
                 // Send track-level progress (Acquire phase) for the current track
@@ -605,6 +610,7 @@ impl ImportService {
                         id: track_id.clone(),
                         percent: rip_progress.track_percent,
                         phase: Some(ImportPhase::Acquire),
+                        import_id: None,
                     });
                 }
             }
@@ -708,6 +714,7 @@ impl ImportService {
             id: db_release.id,
             release_id: None,
             cover_image_id: None,
+            import_id: None,
         });
 
         info!("CD import completed successfully for {}", db_album.title);
@@ -1014,6 +1021,7 @@ impl ImportService {
         // Send started event
         let _ = self.progress_tx.send(ImportProgress::Started {
             id: db_release.id.clone(),
+            import_id: None,
         });
 
         // Link release to storage profile
@@ -1084,6 +1092,7 @@ impl ImportService {
                                 id: track_id.clone(),
                                 percent,
                                 phase: Some(ImportPhase::Chunk),
+                                import_id: None,
                             });
                         }
 
@@ -1095,6 +1104,7 @@ impl ImportService {
                             id: release_id.clone(),
                             percent: release_percent,
                             phase: Some(ImportPhase::Chunk),
+                            import_id: None,
                         });
                     }),
                 )
@@ -1199,6 +1209,7 @@ impl ImportService {
                 id: track_file.db_track_id.clone(),
                 release_id: Some(db_release.id.clone()),
                 cover_image_id: None, // Tracks don't have covers
+                import_id: None,
             });
         }
 
@@ -1213,6 +1224,7 @@ impl ImportService {
             id: db_release.id.clone(),
             release_id: None,
             cover_image_id,
+            import_id: None,
         });
 
         info!("Storage import complete for release {}", db_release.id);
@@ -1539,6 +1551,7 @@ impl ImportService {
         // Send started event
         let _ = self.progress_tx.send(ImportProgress::Started {
             id: db_release.id.clone(),
+            import_id: None,
         });
 
         let total_files = discovered_files.len();
@@ -1597,6 +1610,7 @@ impl ImportService {
                         id: track_id.clone(),
                         percent: 100,
                         phase: Some(ImportPhase::Chunk),
+                        import_id: None,
                     });
                 }
             }
@@ -1607,6 +1621,7 @@ impl ImportService {
                 id: db_release.id.clone(),
                 percent: release_percent,
                 phase: Some(ImportPhase::Chunk),
+                import_id: None,
             });
 
             info!(
@@ -1629,6 +1644,7 @@ impl ImportService {
                 id: track_file.db_track_id.clone(),
                 release_id: Some(db_release.id.clone()),
                 cover_image_id: None, // Tracks don't have covers
+                import_id: None,
             });
         }
 
@@ -1654,6 +1670,7 @@ impl ImportService {
             id: db_release.id.clone(),
             release_id: None,
             cover_image_id,
+            import_id: None,
         });
 
         info!("None storage import complete for release {}", db_release.id);
@@ -1691,6 +1708,7 @@ impl ImportService {
         // Send started progress
         let _ = self.progress_tx.send(ImportProgress::Started {
             id: db_release.id.clone(),
+            import_id: None,
         });
 
         // ========== ACQUIRE PHASE: TORRENT DOWNLOAD ==========
@@ -1722,6 +1740,7 @@ impl ImportService {
                 id: db_release.id.clone(),
                 percent,
                 phase: Some(crate::import::types::ImportPhase::Acquire),
+                import_id: None,
             });
 
             if progress >= 1.0 {
@@ -1838,6 +1857,7 @@ impl ImportService {
                 id: db_release.id.clone(),
                 percent: release_percent,
                 phase: Some(ImportPhase::Chunk),
+                import_id: None,
             });
         }
 
@@ -1852,6 +1872,7 @@ impl ImportService {
                 id: track_file.db_track_id.clone(),
                 release_id: Some(db_release.id.clone()),
                 cover_image_id: None, // Tracks don't have covers
+                import_id: None,
             });
         }
 
@@ -1877,6 +1898,7 @@ impl ImportService {
             id: db_release.id.clone(),
             release_id: None,
             cover_image_id,
+            import_id: None,
         });
 
         // NOTE: We intentionally skip cleanup - files stay in temp folder
@@ -1968,6 +1990,7 @@ impl ImportService {
 
         let _ = self.progress_tx.send(ImportProgress::Started {
             id: db_release.id.clone(),
+            import_id: None,
         });
 
         // Create temp directory for ripped files (will NOT be cleaned up)
@@ -2035,6 +2058,7 @@ impl ImportService {
                 id: track.id.clone(),
                 release_id: Some(db_release.id.clone()),
                 cover_image_id: None, // Tracks don't have covers
+                import_id: None,
             });
         }
 
@@ -2050,6 +2074,7 @@ impl ImportService {
             id: db_release.id.clone(),
             release_id: None,
             cover_image_id: None,
+            import_id: None,
         });
 
         info!(

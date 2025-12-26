@@ -73,6 +73,9 @@ pub fn use_track_progress(
                             state.set(TrackImportState::Failed);
                             break;
                         }
+                        ImportProgress::Preparing { .. } => {
+                            // Preparing events are for import-level tracking, not track-level
+                        }
                     }
                 }
 

@@ -250,7 +250,7 @@ fn use_release_import_state(
                             progress.set(None);
                             break;
                         }
-                        ImportProgress::Started { .. } => {}
+                        ImportProgress::Started { .. } | ImportProgress::Preparing { .. } => {}
                     }
                 }
             });
