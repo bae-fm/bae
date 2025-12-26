@@ -88,6 +88,7 @@ pub fn AlbumDetail(
                             on_release_select,
                             tracks,
                             import_progress: import_state.progress,
+                            import_error: import_state.import_error,
                             on_album_deleted,
                         }
                     }
@@ -185,6 +186,8 @@ struct ReleaseImportState {
     progress: Signal<Option<u8>>,
     /// Cover image ID received from import completion (for reactive UI update)
     cover_image_id: Signal<Option<String>>,
+    /// Error message if import failed
+    import_error: Signal<Option<String>>,
 }
 
 fn use_release_import_state(
@@ -193,6 +196,7 @@ fn use_release_import_state(
 ) -> ReleaseImportState {
     let mut progress = use_signal(|| None::<u8>);
     let mut cover_image_id = use_signal(|| None::<String>);
+    let mut import_error = use_signal(|| None::<String>);
     let import_service = use_import_service();
 
     use_effect(move || {
@@ -246,8 +250,9 @@ fn use_release_import_state(
                                 break;
                             }
                         }
-                        ImportProgress::Failed { .. } => {
+                        ImportProgress::Failed { error, .. } => {
                             progress.set(None);
+                            import_error.set(Some(error));
                             break;
                         }
                         ImportProgress::Started { .. } | ImportProgress::Preparing { .. } => {}
@@ -262,5 +267,6 @@ fn use_release_import_state(
     ReleaseImportState {
         progress,
         cover_image_id,
+        import_error,
     }
 }

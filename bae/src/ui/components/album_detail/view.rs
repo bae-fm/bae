@@ -21,6 +21,7 @@ pub fn AlbumDetailView(
     on_release_select: EventHandler<String>,
     tracks: Vec<DbTrack>,
     import_progress: ReadSignal<Option<u8>>,
+    import_error: ReadSignal<Option<String>>,
     on_album_deleted: EventHandler<()>,
 ) -> Element {
     let library_manager = use_library_manager();
@@ -81,6 +82,7 @@ pub fn AlbumDetailView(
                         album_id: album.id.clone(),
                         tracks: tracks.clone(),
                         import_progress,
+                        import_error,
                         is_deleting,
                     }
                 }
