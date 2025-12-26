@@ -12,9 +12,17 @@ type SubscriptionId = u64;
 /// Filter criteria for progress subscriptions
 #[derive(Debug, Clone)]
 enum SubscriptionFilter {
-    Release { release_id: String },
-    Track { track_id: String },
-    Import { import_id: String },
+    Release {
+        release_id: String,
+    },
+    Track {
+        track_id: String,
+    },
+    Import {
+        import_id: String,
+    },
+    /// Matches any event that has an import_id (for toolbar dropdown)
+    AllImports,
 }
 
 impl SubscriptionFilter {
@@ -45,6 +53,14 @@ impl SubscriptionFilter {
                 ImportProgress::Progress { import_id: iid, .. } => iid.as_ref() == Some(import_id),
                 ImportProgress::Complete { import_id: iid, .. } => iid.as_ref() == Some(import_id),
                 ImportProgress::Failed { import_id: iid, .. } => iid.as_ref() == Some(import_id),
+            },
+            SubscriptionFilter::AllImports => match progress {
+                // Match any event that has an import_id
+                ImportProgress::Preparing { .. } => true,
+                ImportProgress::Started { import_id, .. } => import_id.is_some(),
+                ImportProgress::Progress { import_id, .. } => import_id.is_some(),
+                ImportProgress::Complete { import_id, .. } => import_id.is_some(),
+                ImportProgress::Failed { import_id, .. } => import_id.is_some(),
             },
         }
     }
@@ -159,6 +175,22 @@ impl ImportProgressHandle {
 
         let subscription = Subscription {
             filter: SubscriptionFilter::Import { import_id },
+            tx,
+        };
+
+        self.subscriptions.lock().unwrap().insert(id, subscription);
+        rx
+    }
+
+    /// Subscribe to progress updates for ALL import operations
+    /// Returns a receiver that yields any event with an import_id (for toolbar dropdown)
+    /// Subscription is automatically removed when receiver is dropped
+    pub fn subscribe_all_imports(&self) -> tokio_mpsc::UnboundedReceiver<ImportProgress> {
+        let (tx, rx) = tokio_mpsc::unbounded_channel();
+        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+
+        let subscription = Subscription {
+            filter: SubscriptionFilter::AllImports,
             tx,
         };
 
@@ -347,6 +379,62 @@ mod tests {
             id: "release-1".to_string(),
             percent: 50,
             phase: Some(ImportPhase::Chunk),
+            import_id: None,
+        }));
+    }
+
+    #[test]
+    fn test_all_imports_filter_matches_any_import_event() {
+        let filter = SubscriptionFilter::AllImports;
+
+        // Should match all Preparing events
+        assert!(filter.matches(&ImportProgress::Preparing {
+            import_id: "import-1".to_string(),
+            step: PrepareStep::ParsingMetadata,
+        }));
+        assert!(filter.matches(&ImportProgress::Preparing {
+            import_id: "import-2".to_string(),
+            step: PrepareStep::DownloadingCoverArt,
+        }));
+
+        // Should match events with any import_id
+        assert!(filter.matches(&ImportProgress::Started {
+            id: "release-1".to_string(),
+            import_id: Some("import-1".to_string()),
+        }));
+        assert!(filter.matches(&ImportProgress::Progress {
+            id: "release-1".to_string(),
+            percent: 50,
+            phase: Some(ImportPhase::Chunk),
+            import_id: Some("import-2".to_string()),
+        }));
+        assert!(filter.matches(&ImportProgress::Complete {
+            id: "release-1".to_string(),
+            release_id: None,
+            cover_image_id: None,
+            import_id: Some("import-3".to_string()),
+        }));
+        assert!(filter.matches(&ImportProgress::Failed {
+            id: "release-1".to_string(),
+            error: "error".to_string(),
+            import_id: Some("import-4".to_string()),
+        }));
+
+        // Should NOT match events without import_id
+        assert!(!filter.matches(&ImportProgress::Started {
+            id: "release-1".to_string(),
+            import_id: None,
+        }));
+        assert!(!filter.matches(&ImportProgress::Progress {
+            id: "release-1".to_string(),
+            percent: 50,
+            phase: Some(ImportPhase::Chunk),
+            import_id: None,
+        }));
+        assert!(!filter.matches(&ImportProgress::Complete {
+            id: "release-1".to_string(),
+            release_id: None,
+            cover_image_id: None,
             import_id: None,
         }));
     }
