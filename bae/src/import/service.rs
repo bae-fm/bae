@@ -1131,16 +1131,24 @@ impl ImportService {
                     data,
                     chunk_index,
                     Box::new(move |file_bytes_written, _file_total| {
-                        // Emit per-track progress
+                        // Emit per-track progress only for tracks we've started writing
+                        // This ensures sequential progress: track 1 completes before track 2 starts
+                        let bytes_written = file_bytes_written as i64;
                         for (track_id, start_byte, end_byte) in &track_infos {
-                            let percent =
-                                calculate_track_percent(file_bytes_written, *start_byte, *end_byte);
-                            let _ = progress_tx.send(ImportProgress::Progress {
-                                id: track_id.clone(),
-                                percent,
-                                phase: Some(ImportPhase::Chunk),
-                                import_id: Some(import_id_for_closure.clone()),
-                            });
+                            // Only emit progress once we've reached this track's byte range
+                            if bytes_written > *start_byte {
+                                let percent = calculate_track_percent(
+                                    file_bytes_written,
+                                    *start_byte,
+                                    *end_byte,
+                                );
+                                let _ = progress_tx.send(ImportProgress::Progress {
+                                    id: track_id.clone(),
+                                    percent,
+                                    phase: Some(ImportPhase::Chunk),
+                                    import_id: Some(import_id_for_closure.clone()),
+                                });
+                            }
                         }
 
                         // Emit release-level progress
