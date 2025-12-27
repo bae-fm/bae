@@ -289,11 +289,13 @@ pub fn NowPlayingBar() -> Element {
                                 PlaybackState::Playing {
                                     ref track,
                                     duration,
+                                    decoded_duration,
                                     ..
                                 }
                                 | PlaybackState::Paused {
                                     ref track,
                                     duration,
+                                    decoded_duration,
                                     ..
                                 } => {
                                     let new_state = if was_paused {
@@ -301,12 +303,14 @@ pub fn NowPlayingBar() -> Element {
                                             track: track.clone(),
                                             position,
                                             duration,
+                                            decoded_duration,
                                         }
                                     } else {
                                         PlaybackState::Playing {
                                             track: track.clone(),
                                             position,
                                             duration,
+                                            decoded_duration,
                                         }
                                     };
                                     state.set(new_state);
@@ -397,6 +401,7 @@ pub fn NowPlayingBar() -> Element {
                             if let PlaybackState::Playing {
                                 ref track,
                                 duration,
+                                decoded_duration,
                                 ..
                             } = state()
                             {
@@ -404,10 +409,12 @@ pub fn NowPlayingBar() -> Element {
                                     track: track.clone(),
                                     position,
                                     duration,
+                                    decoded_duration,
                                 });
                             } else if let PlaybackState::Paused {
                                 ref track,
                                 duration,
+                                decoded_duration,
                                 ..
                             } = state()
                             {
@@ -415,6 +422,7 @@ pub fn NowPlayingBar() -> Element {
                                     track: track.clone(),
                                     position,
                                     duration,
+                                    decoded_duration,
                                 });
                             }
 

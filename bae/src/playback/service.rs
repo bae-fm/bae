@@ -40,12 +40,16 @@ pub enum PlaybackState {
     Playing {
         track: DbTrack,
         position: std::time::Duration,
+        /// Expected duration from database metadata
         duration: Option<std::time::Duration>,
+        /// Actual duration of decoded audio (may differ for CUE/FLAC if byte extraction fails)
+        decoded_duration: std::time::Duration,
     },
     Paused {
         track: DbTrack,
         position: std::time::Duration,
         duration: Option<std::time::Duration>,
+        decoded_duration: std::time::Duration,
     },
     Loading {
         track_id: String,
@@ -147,7 +151,8 @@ pub struct PlaybackService {
     previous_track_id: Option<String>, // Track ID of the previous track
     current_track: Option<DbTrack>,
     current_position: Option<std::time::Duration>, // Current playback position
-    current_duration: Option<std::time::Duration>, // Current track duration
+    current_duration: Option<std::time::Duration>, // Current track duration (from db)
+    current_decoded_duration: Option<std::time::Duration>, // Actual decoded audio duration
     is_paused: bool,                               // Whether playback is currently paused
     current_position_shared: Arc<std::sync::Mutex<Option<std::time::Duration>>>, // Shared position for bridge tasks
     audio_output: AudioOutput,
@@ -221,6 +226,7 @@ impl PlaybackService {
                     current_track: None,
                     current_position: None,
                     current_duration: None,
+                    current_decoded_duration: None,
                     is_paused: false,
                     current_position_shared: Arc::new(std::sync::Mutex::new(None)),
                     audio_output,
@@ -715,6 +721,9 @@ impl PlaybackService {
     ) {
         info!("Starting playback for track: {}", track_id);
 
+        // Get decoded duration before moving pcm_source
+        let decoded_duration = pcm_source.duration();
+
         // Store source for seeking
         self.current_pcm_source = Some(pcm_source.clone());
 
@@ -794,6 +803,7 @@ impl PlaybackService {
         self.current_track = Some(track.clone());
         self.current_position = Some(std::time::Duration::ZERO);
         self.current_duration = Some(track_duration);
+        self.current_decoded_duration = Some(decoded_duration);
         self.is_paused = false;
         // Initialize shared position
         *self.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
@@ -804,6 +814,7 @@ impl PlaybackService {
                 track: track.clone(),
                 position: std::time::Duration::ZERO,
                 duration: Some(track_duration),
+                decoded_duration,
             },
         });
 
@@ -974,12 +985,16 @@ impl PlaybackService {
                 .unwrap()
                 .unwrap_or(std::time::Duration::ZERO);
             let duration = self.current_duration;
+            let decoded_duration = self
+                .current_decoded_duration
+                .unwrap_or(std::time::Duration::ZERO);
             self.is_paused = true;
             let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
                 state: PlaybackState::Paused {
                     track: track.clone(),
                     position,
                     duration,
+                    decoded_duration,
                 },
             });
         }
@@ -999,12 +1014,16 @@ impl PlaybackService {
                 .unwrap()
                 .unwrap_or(std::time::Duration::ZERO);
             let duration = self.current_duration;
+            let decoded_duration = self
+                .current_decoded_duration
+                .unwrap_or(std::time::Duration::ZERO);
             self.is_paused = false;
             let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
                 state: PlaybackState::Playing {
                     track: track.clone(),
                     position,
                     duration,
+                    decoded_duration,
                 },
             });
         }
@@ -1276,7 +1295,7 @@ impl PlaybackService {
     /// Load audio directly from source_path for None storage.
     ///
     /// For single-file-per-track imports, finds the audio file and reads it.
-    /// Note: CUE/FLAC with None storage is not yet supported.
+    /// For CUE/FLAC imports, extracts the track's byte range and prepends FLAC headers.
     async fn load_audio_from_source_path(
         &self,
         track_id: &str,
@@ -1286,6 +1305,20 @@ impl PlaybackService {
             "Loading audio from source path for track {} (None storage)",
             track_id
         );
+
+        // Get track chunk coords (contains byte ranges for CUE/FLAC)
+        let coords = self
+            .library_manager
+            .get_track_chunk_coords(track_id)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        // Get audio format (has FLAC headers if needed)
+        let audio_format = self
+            .library_manager
+            .get_audio_format_by_track_id(track_id)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?;
 
         // Get files for the release
         let files = self
@@ -1343,10 +1376,56 @@ impl PlaybackService {
 
         info!("Reading audio from: {}", source_path);
 
-        // Read the file directly
-        tokio::fs::read(source_path)
+        // Read the file
+        let file_data = tokio::fs::read(source_path)
             .await
-            .map_err(|e| format!("Failed to read audio file {}: {}", source_path, e))
+            .map_err(|e| format!("Failed to read audio file {}: {}", source_path, e))?;
+
+        // Check if this is a CUE/FLAC track (has coords with byte ranges)
+        if let (Some(coords), Some(audio_format)) = (coords, audio_format) {
+            // chunk_index = -1 means non-chunked storage with absolute byte offsets
+            if coords.start_chunk_index == -1 {
+                let start_byte = coords.start_byte_offset as usize;
+                let end_byte = coords.end_byte_offset as usize;
+
+                info!(
+                    "CUE/FLAC: Extracting track bytes {}-{} from {} byte file",
+                    start_byte,
+                    end_byte,
+                    file_data.len()
+                );
+
+                if end_byte > file_data.len() {
+                    return Err(format!(
+                        "Track byte range {}-{} exceeds file size {}",
+                        start_byte,
+                        end_byte,
+                        file_data.len()
+                    ));
+                }
+
+                let track_bytes = file_data[start_byte..end_byte].to_vec();
+
+                // Prepend FLAC headers if needed
+                if audio_format.needs_headers {
+                    if let Some(headers) = &audio_format.flac_headers {
+                        info!(
+                            "Prepending {} bytes of FLAC headers to {} bytes of track data",
+                            headers.len(),
+                            track_bytes.len()
+                        );
+                        let mut result = headers.clone();
+                        result.extend_from_slice(&track_bytes);
+                        return Ok(result);
+                    }
+                }
+
+                return Ok(track_bytes);
+            }
+        }
+
+        // No coords or single-track file: return whole file
+        Ok(file_data)
     }
 
     /// Load audio from non-chunked storage.
