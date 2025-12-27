@@ -169,18 +169,6 @@ mod ffi {
         /// `handle` must be a valid pointer to a TorrentHandle that outlives the call.
         unsafe fn torrent_get_tracker_status(handle: *mut TorrentHandle) -> String;
 
-        /// Get the listen_interfaces setting from a session
-        ///
-        /// # Safety
-        /// `sess` must be a valid pointer to a Session that outlives the call.
-        unsafe fn session_get_listen_interfaces(sess: *mut Session) -> String;
-
-        /// Get the listening port from a session
-        ///
-        /// # Safety
-        /// `sess` must be a valid pointer to a Session that outlives the call.
-        unsafe fn session_get_listening_port(sess: *mut Session) -> String;
-
         /// Pause a torrent
         ///
         /// # Safety
