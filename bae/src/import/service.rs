@@ -991,12 +991,6 @@ impl ImportService {
                 .filter(|tf| &tf.file_path == flac_path)
                 .collect();
 
-            // Get the FileToChunks for this FLAC
-            let ftc = files_to_chunks
-                .iter()
-                .find(|f| &f.file_path == flac_path)
-                .ok_or_else(|| format!("No chunk mapping for FLAC: {:?}", flac_path))?;
-
             // Calculate per-track byte and chunk ranges
             let mut track_chunk_ranges = HashMap::new();
             let mut track_byte_ranges = HashMap::new();
