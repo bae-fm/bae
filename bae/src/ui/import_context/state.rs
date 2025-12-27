@@ -321,12 +321,6 @@ impl ImportContext {
         }));
     }
 
-    /// Clear cover selection
-    pub fn clear_cover(&self) {
-        let mut signal = self.selected_cover;
-        signal.set(None);
-    }
-
     pub fn torrent_source(&self) -> Signal<Option<TorrentSource>> {
         self.torrent_source
     }
@@ -718,17 +712,6 @@ impl ImportContext {
             let current_idx = *self.current_release_index.read();
             self.set_current_release_index(current_idx + 1);
         }
-    }
-
-    /// Get the currently selected release
-    pub fn get_current_release(&self) -> Option<DetectedRelease> {
-        let current_idx = *self.current_release_index.read();
-        let selected_indices = self.selected_release_indices.read();
-        let releases = self.detected_releases.read();
-
-        selected_indices
-            .get(current_idx)
-            .and_then(|&release_idx| releases.get(release_idx).cloned())
     }
 
     // Facade methods delegating to submodules

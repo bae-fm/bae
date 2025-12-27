@@ -1,5 +1,5 @@
 use crate::torrent::client::TorrentError;
-use crate::torrent::ffi::{get_torrent_info, TorrentFileInfo, TorrentInfo};
+use crate::torrent::ffi::{get_torrent_info, TorrentInfo};
 use std::path::Path;
 
 /// Parse a torrent file and extract all available metadata
@@ -21,9 +21,4 @@ pub fn parse_torrent_info(file_path: &Path) -> Result<TorrentInfo, TorrentError>
     }
 
     Ok(info)
-}
-
-/// Convert TorrentFileInfo to a more convenient format
-pub fn file_info_to_path_size(file_info: &TorrentFileInfo) -> (String, i64) {
-    (file_info.path.clone(), file_info.size)
 }

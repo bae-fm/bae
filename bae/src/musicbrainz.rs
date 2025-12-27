@@ -848,28 +848,6 @@ pub async fn search_releases_with_params(
     Ok(releases)
 }
 
-/// Search MusicBrainz for releases by artist, album, and optional year
-/// This is a convenience wrapper around search_releases_with_params
-pub async fn search_releases(
-    artist: &str,
-    album: &str,
-    year: Option<u32>,
-) -> Result<Vec<MbRelease>, MusicBrainzError> {
-    info!(
-        "🎵 MusicBrainz: Searching for artist='{}', album='{}', year={:?}",
-        artist, album, year
-    );
-
-    let params = ReleaseSearchParams {
-        artist: Some(artist.to_string()),
-        album: Some(album.to_string()),
-        year: year.map(|y| y.to_string()),
-        ..Default::default()
-    };
-
-    search_releases_with_params(&params).await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -930,60 +908,4 @@ mod tests {
             "artist:\"ACDC\" AND catno:\"A2 16018\""
         );
     }
-}
-
-/// Fetch the first release date for a release group
-/// Returns the earliest release date from all releases in the group
-pub async fn fetch_release_group_first_date(
-    release_group_id: &str,
-) -> Result<Option<String>, MusicBrainzError> {
-    info!(
-        "🎵 MusicBrainz: Fetching first release date for release group '{}'",
-        release_group_id
-    );
-
-    let url = format!(
-        "https://musicbrainz.org/ws/2/release-group/{}",
-        release_group_id
-    );
-    let url_with_params = format!("{}?inc=releases", url);
-
-    debug!("MusicBrainz API request: {}", url_with_params);
-
-    let client = reqwest::Client::builder()
-        .user_agent("bae/1.0 +https://github.com/hideselfview/bae")
-        .build()
-        .map_err(|e| MusicBrainzError::Api(format!("Failed to create HTTP client: {}", e)))?;
-
-    let response = client
-        .get(&url_with_params)
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(|e| MusicBrainzError::Api(format!("HTTP request failed: {}", e)))?;
-
-    if !response.status().is_success() {
-        return Err(MusicBrainzError::Api(format!(
-            "MusicBrainz API returned status: {}",
-            response.status()
-        )));
-    }
-
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| MusicBrainzError::Api(format!("Failed to parse JSON: {}", e)))?;
-
-    debug!("MusicBrainz release-group response: {:#}", json);
-
-    // Get the first-release-date field if available
-    if let Some(first_date) = json.get("first-release-date").and_then(|v| v.as_str()) {
-        if !first_date.is_empty() {
-            info!("✓ Found first release date: {}", first_date);
-            return Ok(Some(first_date.to_string()));
-        }
-    }
-
-    info!("No first release date found for release group");
-    Ok(None)
 }

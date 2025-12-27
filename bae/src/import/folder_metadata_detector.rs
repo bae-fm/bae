@@ -17,15 +17,7 @@ pub struct FolderMetadata {
 }
 
 #[derive(Debug, Clone)]
-pub struct FileEntry {
-    pub name: String,
-    pub size: u64,
-    pub extension: String,
-}
-
-#[derive(Debug, Clone)]
 pub struct FolderContents {
-    pub files: Vec<FileEntry>,
     pub metadata: FolderMetadata,
 }
 
@@ -771,50 +763,8 @@ fn parse_folder_name(folder_path: &Path) -> (Option<String>, Option<String>, Vec
 pub fn detect_folder_contents(
     folder_path: PathBuf,
 ) -> Result<FolderContents, MetadataDetectionError> {
-    use crate::import::folder_scanner;
-
-    // Use folder scanner to collect files recursively (already categorized)
-    let categorized = folder_scanner::collect_release_files(&folder_path)
-        .map_err(|e| MetadataDetectionError::Io(std::io::Error::other(e)))?;
-
-    // Convert all categories to FileEntry format for the FolderContents
-    let mut files: Vec<FileEntry> = Vec::new();
-
-    // Helper to convert ScannedFile to FileEntry
-    let to_file_entry = |f: &folder_scanner::ScannedFile| {
-        let extension = std::path::Path::new(&f.relative_path)
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("")
-            .to_string();
-        FileEntry {
-            name: f.relative_path.clone(),
-            size: f.size,
-            extension,
-        }
-    };
-
-    // Add audio files based on content type
-    match &categorized.audio {
-        folder_scanner::AudioContent::CueFlacPairs(pairs) => {
-            for pair in pairs {
-                files.push(to_file_entry(&pair.cue_file));
-                files.push(to_file_entry(&pair.audio_file));
-            }
-        }
-        folder_scanner::AudioContent::TrackFiles(tracks) => {
-            files.extend(tracks.iter().map(to_file_entry));
-        }
-    }
-    files.extend(categorized.artwork.iter().map(to_file_entry));
-    files.extend(categorized.documents.iter().map(to_file_entry));
-    files.extend(categorized.other.iter().map(to_file_entry));
-
-    files.sort_by(|a, b| a.name.cmp(&b.name));
-
     let metadata = detect_metadata(folder_path)?;
-
-    Ok(FolderContents { files, metadata })
+    Ok(FolderContents { metadata })
 }
 
 /// Detect metadata from a folder containing audio files

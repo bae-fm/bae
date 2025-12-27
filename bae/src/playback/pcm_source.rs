@@ -99,11 +99,6 @@ impl PcmSource {
         std::time::Duration::from_secs_f64(seconds)
     }
 
-    /// Check if playback is complete
-    pub fn is_complete(&self) -> bool {
-        self.position.load(Ordering::Relaxed) >= self.samples.len()
-    }
-
     /// Get bits per sample
     pub fn bits_per_sample(&self) -> u32 {
         self.bits_per_sample

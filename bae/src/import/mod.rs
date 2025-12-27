@@ -51,9 +51,7 @@ pub use folder_metadata_detector::{
     calculate_mb_discid_from_cue_flac, calculate_mb_discid_from_log, detect_folder_contents,
     detect_metadata, FolderMetadata,
 };
-pub use folder_scanner::{
-    AudioContent, CategorizedFiles, DetectedRelease, ScannedCueFlacPair, ScannedFile,
-};
+pub use folder_scanner::{CategorizedFiles, DetectedRelease};
 pub use handle::{ImportServiceHandle, TorrentFileMetadata, TorrentImportMetadata};
 pub use service::{ImportConfig, ImportService};
-pub use types::{ImportPhase, ImportProgress, ImportRequest, PrepareStep, TorrentSource};
+pub use types::{ImportProgress, ImportRequest, PrepareStep, TorrentSource};

@@ -37,32 +37,11 @@ pub struct ActiveImportsState {
 }
 
 impl ActiveImportsState {
-    /// Returns the number of active imports
-    pub fn count(&self) -> usize {
-        self.imports.read().len()
-    }
-
-    /// Returns true if there are any active imports
-    pub fn has_active(&self) -> bool {
-        !self.imports.read().is_empty()
-    }
-
     /// Dismiss/remove an import from the list
     pub fn dismiss(&self, import_id: &str) {
         let mut imports = self.imports;
         imports.with_mut(|list| {
             list.retain(|i| i.import_id != import_id);
-        });
-    }
-
-    /// Dismiss all completed and failed imports
-    pub fn dismiss_all_finished(&self) {
-        let mut imports = self.imports;
-        imports.with_mut(|list| {
-            list.retain(|i| {
-                i.status != ImportOperationStatus::Complete
-                    && i.status != ImportOperationStatus::Failed
-            });
         });
     }
 }

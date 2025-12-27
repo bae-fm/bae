@@ -18,7 +18,6 @@ pub enum DiscIdLookupResult {
 
 pub struct FolderDetectionResult {
     pub metadata: crate::import::FolderMetadata,
-    pub files: CategorizedFileInfo,
     pub discid_result: Option<DiscIdLookupResult>,
 }
 
@@ -162,7 +161,6 @@ pub async fn load_folder_for_import(
                 confidence: 0.0,
                 folder_tokens: Vec::new(),
             },
-            files: CategorizedFileInfo::default(),
             discid_result: None,
         });
     }
@@ -185,7 +183,6 @@ pub async fn load_folder_for_import(
                 confidence: 0.0,
                 folder_tokens: Vec::new(),
             },
-            files: CategorizedFileInfo::default(),
             discid_result: None,
         });
     };
@@ -235,7 +232,6 @@ pub async fn load_folder_for_import(
 
     Ok(FolderDetectionResult {
         metadata,
-        files,
         discid_result,
     })
 }
@@ -302,7 +298,6 @@ pub async fn load_selected_release(
 
     Ok(FolderDetectionResult {
         metadata,
-        files,
         discid_result,
     })
 }

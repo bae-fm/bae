@@ -100,23 +100,13 @@ impl ReleaseStorageImpl {
         }
     }
 
-    /// Create storage with encryption service
+    /// Create storage with encryption service (test-only)
+    #[cfg(feature = "test-utils")]
     pub fn new_with_encryption(profile: DbStorageProfile, encryption: EncryptionService) -> Self {
         Self {
             profile,
             encryption: Some(encryption),
             cloud: None,
-            database: None,
-            chunk_size_bytes: DEFAULT_CHUNK_SIZE,
-        }
-    }
-
-    /// Create storage with cloud backend
-    pub fn new_with_cloud(profile: DbStorageProfile, cloud: Arc<CloudStorageManager>) -> Self {
-        Self {
-            profile,
-            encryption: None,
-            cloud: Some(cloud),
             database: None,
             chunk_size_bytes: DEFAULT_CHUNK_SIZE,
         }
