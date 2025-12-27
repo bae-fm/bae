@@ -1604,7 +1604,7 @@ impl ImportService {
         db_release: &DbRelease,
         discovered_files: &[DiscoveredFile],
         tracks_to_files: &[TrackFile],
-        _cue_flac_metadata: Option<HashMap<PathBuf, CueFlacMetadata>>,
+        cue_flac_metadata: Option<HashMap<PathBuf, CueFlacMetadata>>,
         selected_cover_filename: Option<String>,
         import_id: &str,
     ) -> Result<(), String> {
@@ -1699,6 +1699,13 @@ impl ImportService {
                 filename,
                 source_path
             );
+        }
+
+        // For CUE/FLAC imports, persist track metadata (positions, audio format, seektable)
+        // This is needed so playback knows where each track starts/ends in the FLAC file
+        if cue_flac_metadata.is_some() {
+            self.persist_non_chunked_track_metadata(tracks_to_files, cue_flac_metadata)
+                .await?;
         }
 
         // Mark all tracks as complete and send completion events
