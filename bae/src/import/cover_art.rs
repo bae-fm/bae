@@ -150,8 +150,6 @@ pub async fn fetch_cover_art_for_mb_release(
 pub struct DownloadedCoverArt {
     /// Path to the downloaded file (e.g., "/path/to/album/.bae/cover-mb.jpg")
     pub path: PathBuf,
-    /// Source of the cover art
-    pub source: ImageSource,
 }
 
 /// Download cover art from a URL to the .bae/ folder in the release directory.
@@ -236,8 +234,5 @@ pub async fn download_cover_art_to_bae_folder(
         file_path
     );
 
-    Ok(DownloadedCoverArt {
-        path: file_path,
-        source,
-    })
+    Ok(DownloadedCoverArt { path: file_path })
 }

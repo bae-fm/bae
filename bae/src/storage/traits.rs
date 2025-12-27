@@ -633,6 +633,7 @@ mod tests {
         )
     }
 
+    #[cfg(feature = "test-utils")]
     fn local_encrypted_profile(temp_dir: &TempDir) -> DbStorageProfile {
         DbStorageProfile::new_local(
             "Test Local Encrypted",

@@ -685,14 +685,21 @@ impl LibraryManager {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "test-utils")]
     use super::*;
+    #[cfg(feature = "test-utils")]
     use crate::cloud_storage::CloudStorageManager;
+    #[cfg(feature = "test-utils")]
     use crate::db::{DbAlbum, DbChunk, DbRelease, ImportStatus};
     #[cfg(feature = "test-utils")]
     use crate::test_support::MockCloudStorage;
+    #[cfg(feature = "test-utils")]
     use chrono::Utc;
+    #[cfg(feature = "test-utils")]
     use std::sync::Arc;
+    #[cfg(feature = "test-utils")]
     use tempfile::TempDir;
+    #[cfg(feature = "test-utils")]
     use uuid::Uuid;
 
     #[cfg(feature = "test-utils")]
@@ -706,6 +713,7 @@ mod tests {
         (manager, temp_dir, cloud_storage)
     }
 
+    #[cfg(feature = "test-utils")]
     fn create_test_album() -> DbAlbum {
         DbAlbum {
             id: Uuid::new_v4().to_string(),
@@ -722,6 +730,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "test-utils")]
     fn create_test_release(album_id: &str) -> DbRelease {
         DbRelease {
             id: Uuid::new_v4().to_string(),
@@ -741,6 +750,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "test-utils")]
     async fn create_test_chunk(
         release_id: &str,
         chunk_index: i32,

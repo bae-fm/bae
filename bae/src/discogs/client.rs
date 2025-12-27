@@ -38,19 +38,6 @@ pub struct DiscogsSearchParams {
     pub country: Option<String>,
 }
 
-impl DiscogsSearchParams {
-    pub fn has_any_field(&self) -> bool {
-        self.artist.is_some()
-            || self.release_title.is_some()
-            || self.year.is_some()
-            || self.label.is_some()
-            || self.catno.is_some()
-            || self.barcode.is_some()
-            || self.format.is_some()
-            || self.country.is_some()
-    }
-}
-
 /// Individual search result
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct DiscogsSearchResult {
