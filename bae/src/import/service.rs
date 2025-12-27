@@ -962,7 +962,6 @@ impl ImportService {
         &self,
         cue_metadata: &HashMap<PathBuf, CueFlacMetadata>,
         tracks_to_files: &[TrackFile],
-        files_to_chunks: &[FileToChunks],
     ) -> Result<HashMap<PathBuf, CueFlacLayoutData>, String> {
         use crate::cue_flac::CueFlacProcessor;
         use crate::import::album_chunk_layout::{build_seektable, find_track_byte_range};
@@ -1203,7 +1202,7 @@ impl ImportService {
 
             // Build CueFlacLayoutData if we have CUE/FLAC metadata
             let cue_flac_data = if let Some(ref cue_metadata) = cue_flac_metadata {
-                self.build_cue_flac_layout_data(cue_metadata, tracks_to_files, &files_to_chunks)
+                self.build_cue_flac_layout_data(cue_metadata, tracks_to_files)
                     .await?
             } else {
                 HashMap::new()
