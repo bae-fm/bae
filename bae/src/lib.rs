@@ -1,5 +1,3 @@
-// Library exports for integration tests and reusable components
-
 // Internal modules needed for compilation (hidden from docs)
 #[doc(hidden)]
 pub mod config;

@@ -122,7 +122,7 @@ pub async fn reassemble_track(
         audio_data.len() / 1_000_000
     );
 
-    // For CUE/FLAC tracks, decode and re-encode (like split_cue_flac.rs)
+    // For CUE/FLAC tracks, decode and re-encode using libFLAC
     if audio_format.needs_headers {
         if let Some(ref headers) = audio_format.flac_headers {
             debug!("CUE/FLAC track: prepending headers and decode/re-encode");
