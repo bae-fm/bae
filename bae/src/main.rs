@@ -19,6 +19,7 @@ mod cue_flac;
 mod db;
 mod discogs;
 mod encryption;
+mod flac_decoder;
 mod flac_encoder;
 mod import;
 mod library;
