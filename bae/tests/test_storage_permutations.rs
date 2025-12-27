@@ -572,14 +572,22 @@ fn create_test_discogs_release() -> DiscogsRelease {
 }
 
 fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
-    // Generate 3 test FLAC files with different patterns
-    let patterns = vec![
-        (0..=255).collect::<Vec<u8>>(),
-        (0..=255).rev().collect::<Vec<u8>>(),
-        (0..=127).map(|i| i * 2).collect::<Vec<u8>>(),
-    ];
+    // Use the real FLAC fixture file for testing
+    // This ensures we have valid FLAC data for decoding tests
+    let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join("flac")
+        .join("01 Test Track 1.flac");
+    let flac_template = std::fs::read(&fixture_path)
+        .expect("Failed to read FLAC fixture - run scripts/generate_test_flac.sh");
 
-    let sizes = vec![2 * 1024 * 1024, 3 * 1024 * 1024, 1536 * 1024];
+    // Create 3 copies of the test FLAC with different names
+    let files = vec![
+        "01 Track One.flac",
+        "02 Track Two.flac",
+        "03 Track Three.flac",
+    ];
 
     // Create .bae/ directory and cover image (simulates MusicBrainz cover art download)
     let bae_dir = dir.join(".bae");
@@ -624,32 +632,15 @@ fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
     fs::write(scans_dir.join("front.jpg"), &minimal_jpeg).expect("Failed to write scans/front.jpg");
     fs::write(scans_dir.join("back.jpg"), &minimal_jpeg).expect("Failed to write scans/back.jpg");
 
-    patterns
+    // Write the FLAC files and return their data
+    files
         .iter()
-        .zip(sizes.iter())
-        .enumerate()
-        .map(|(i, (pattern, &size))| {
-            let filename = format!("{:02} Track {}.flac", i + 1, ["One", "Two", "Three"][i]);
-            generate_test_file(dir, &filename, pattern, size)
+        .map(|filename| {
+            let file_path = dir.join(filename);
+            fs::write(&file_path, &flac_template).expect("Failed to write FLAC file");
+            flac_template.clone()
         })
         .collect()
-}
-
-fn generate_test_file(dir: &Path, filename: &str, pattern: &[u8], size: usize) -> Vec<u8> {
-    let file_path = dir.join(filename);
-    let mut data = Vec::with_capacity(size);
-
-    while data.len() < size {
-        for &byte in pattern {
-            if data.len() >= size {
-                break;
-            }
-            data.push(byte);
-        }
-    }
-
-    fs::write(&file_path, &data).expect("Failed to write test file");
-    data
 }
 
 /// Verify we can actually load image data from storage
