@@ -1,4 +1,3 @@
-pub mod do_roundtrip;
 // MockCloudStorage moved to bae::test_support
 
 /// Initialize tracing for tests with proper test output handling
