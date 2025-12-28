@@ -582,7 +582,7 @@ fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
         .expect("Failed to read FLAC fixture - run scripts/generate_test_flac.sh");
 
     // Create 3 copies of the test FLAC with different names
-    let files = vec![
+    let files = [
         "01 Track One.flac",
         "02 Track Two.flac",
         "03 Track Three.flac",
@@ -703,7 +703,7 @@ async fn verify_image_loadable(
             data.len() >= 2 && data[0] == 0xFF && data[1] == 0xD8,
             "Image data should be valid JPEG (got {} bytes, starts with {:02X}{:02X})",
             data.len(),
-            data.get(0).unwrap_or(&0),
+            data.first().unwrap_or(&0),
             data.get(1).unwrap_or(&0)
         );
 
@@ -777,7 +777,7 @@ async fn verify_storage_state(
     location: &StorageLocation,
     chunked: bool,
     encrypted: bool,
-    storage_dir: &Path,
+    _storage_dir: &Path,
     mock_storage: &MockCloudStorage,
     files: &[bae::db::DbFile],
     library_manager: &LibraryManager,
@@ -1059,15 +1059,6 @@ async fn run_real_album_test(
         .expect("Failed to create database");
 
     let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
-
-    let cache_config = bae::cache::CacheConfig {
-        cache_dir: cache_dir.clone(),
-        max_size_bytes: 1024 * 1024 * 1024,
-        max_chunks: 10000,
-    };
-    let cache_manager = CacheManager::with_config(cache_config)
-        .await
-        .expect("Failed to create cache manager");
 
     let library_manager = LibraryManager::new(database.clone(), cloud_storage.clone());
     let shared_library_manager = bae::library::SharedLibraryManager::new(library_manager.clone());

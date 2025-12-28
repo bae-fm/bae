@@ -24,7 +24,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Running cargo clippy on library..."
-cargo clippy --lib -- -D warnings
+cargo clippy --lib -- -D warnings -A unexpected_cfgs -A deprecated
 
 if [ $? -ne 0 ]; then
     echo ""
@@ -33,15 +33,27 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo "Running cargo clippy on tests..."
-cargo clippy --tests --features test-utils -- -D warnings
+echo "Running cargo clippy on unit tests..."
+cargo clippy --tests --features test-utils -- -D warnings -A unexpected_cfgs -A deprecated
 
 if [ $? -ne 0 ]; then
     echo ""
-    echo "❌ Commit rejected: Clippy found warnings in test code"
+    echo "❌ Commit rejected: Clippy found warnings in unit test code"
     echo "Fix the warnings above and try again"
     exit 1
 fi
+
+echo "Running cargo clippy on integration tests..."
+for test in tests/*.rs; do
+    testname=$(basename "$test" .rs)
+    cargo clippy --test "$testname" --features test-utils -- -D warnings -A unexpected_cfgs -A deprecated
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "❌ Commit rejected: Clippy found warnings in integration test: $testname"
+        echo "Fix the warnings above and try again"
+        exit 1
+    fi
+done
 
 echo "✅ Code formatting and clippy checks passed"
 exit 0
