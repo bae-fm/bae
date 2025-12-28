@@ -5,7 +5,7 @@ use crate::encryption::EncryptionService;
 use crate::library::LibraryManager;
 use crate::playback::cpal_output::AudioOutput;
 use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
-use crate::playback::PcmSource;
+use crate::playback::{PcmSource, PlaybackError};
 use cpal::traits::StreamTrait;
 use std::collections::VecDeque;
 use std::sync::{mpsc, Arc};
@@ -691,10 +691,10 @@ impl PlaybackService {
     }
 
     /// Decode raw FLAC bytes to PCM source
-    async fn decode_flac_bytes(flac_data: &[u8]) -> Result<Arc<PcmSource>, String> {
+    async fn decode_flac_bytes(flac_data: &[u8]) -> Result<Arc<PcmSource>, PlaybackError> {
         // Validate FLAC header
         if flac_data.len() < 4 || &flac_data[0..4] != b"fLaC" {
-            return Err("Invalid FLAC header".to_string());
+            return Err(PlaybackError::flac("Invalid FLAC header"));
         }
 
         let flac_data = flac_data.to_vec();
@@ -702,7 +702,8 @@ impl PlaybackService {
             crate::flac_decoder::decode_flac_range(&flac_data, None, None)
         })
         .await
-        .map_err(|e| format!("Decode task failed: {}", e))??;
+        .map_err(PlaybackError::task)?
+        .map_err(PlaybackError::flac)?;
 
         Ok(Arc::new(PcmSource::new(
             decoded.samples,
@@ -1300,7 +1301,7 @@ impl PlaybackService {
         &self,
         track_id: &str,
         release_id: &str,
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<Vec<u8>, PlaybackError> {
         info!(
             "Loading audio from source path for track {} (None storage)",
             track_id
@@ -1311,21 +1312,21 @@ impl PlaybackService {
             .library_manager
             .get_track_chunk_coords(track_id)
             .await
-            .map_err(|e| format!("Database error: {}", e))?;
+            .map_err(PlaybackError::database)?;
 
         // Get audio format (has FLAC headers if needed)
         let audio_format = self
             .library_manager
             .get_audio_format_by_track_id(track_id)
             .await
-            .map_err(|e| format!("Database error: {}", e))?;
+            .map_err(PlaybackError::database)?;
 
         // Get files for the release
         let files = self
             .library_manager
             .get_files_for_release(release_id)
             .await
-            .map_err(|e| format!("Failed to get files: {}", e))?;
+            .map_err(PlaybackError::database)?;
 
         // Find an audio file with source_path set
         // For single-file-per-track, we match by track number in filename
@@ -1333,8 +1334,8 @@ impl PlaybackService {
             .library_manager
             .get_track(track_id)
             .await
-            .map_err(|e| format!("Failed to get track: {}", e))?
-            .ok_or_else(|| format!("Track not found: {}", track_id))?;
+            .map_err(PlaybackError::database)?
+            .ok_or_else(|| PlaybackError::not_found("Track", track_id))?;
 
         // Try to find a matching audio file
         let audio_file = files
@@ -1362,24 +1363,17 @@ impl PlaybackService {
                         && f.source_path.is_some()
                 })
             })
-            .ok_or_else(|| {
-                format!(
-                    "No audio file with source_path found for release {}",
-                    release_id
-                )
-            })?;
+            .ok_or_else(|| PlaybackError::not_found("Audio file", release_id))?;
 
         let source_path = audio_file
             .source_path
             .as_ref()
-            .ok_or_else(|| "Audio file has no source_path".to_string())?;
+            .ok_or_else(|| PlaybackError::not_found("Source path", &audio_file.id))?;
 
         info!("Reading audio from: {}", source_path);
 
         // Read the file
-        let file_data = tokio::fs::read(source_path)
-            .await
-            .map_err(|e| format!("Failed to read audio file {}: {}", source_path, e))?;
+        let file_data = tokio::fs::read(source_path).await?;
 
         // Check if this is a CUE/FLAC track (has coords with byte ranges)
         if let (Some(coords), Some(audio_format)) = (coords, audio_format) {
@@ -1396,12 +1390,12 @@ impl PlaybackService {
                 );
 
                 if end_byte > file_data.len() {
-                    return Err(format!(
+                    return Err(PlaybackError::flac(format!(
                         "Track byte range {}-{} exceeds file size {}",
                         start_byte,
                         end_byte,
                         file_data.len()
-                    ));
+                    )));
                 }
 
                 let track_bytes = file_data[start_byte..end_byte].to_vec();
@@ -1437,7 +1431,7 @@ impl PlaybackService {
         track_id: &str,
         release_id: &str,
         storage_profile: &crate::db::DbStorageProfile,
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<Vec<u8>, PlaybackError> {
         info!(
             "Loading audio from non-chunked storage for track {} (profile: {})",
             track_id, storage_profile.name
@@ -1448,45 +1442,43 @@ impl PlaybackService {
             .library_manager
             .get_track_chunk_coords(track_id)
             .await
-            .map_err(|e| format!("Database error: {}", e))?;
+            .map_err(PlaybackError::database)?;
 
         // Get audio format (has FLAC headers if needed)
         let audio_format = self
             .library_manager
             .get_audio_format_by_track_id(track_id)
             .await
-            .map_err(|e| format!("Database error: {}", e))?;
+            .map_err(PlaybackError::database)?;
 
         // Get the audio file for this release
         let files = self
             .library_manager
             .get_files_for_release(release_id)
             .await
-            .map_err(|e| format!("Failed to get files: {}", e))?;
+            .map_err(PlaybackError::database)?;
 
         let audio_file = files
             .iter()
             .find(|f| f.format.to_lowercase() == "flac" && f.source_path.is_some())
-            .ok_or_else(|| format!("No FLAC file found for release {}", release_id))?;
+            .ok_or_else(|| PlaybackError::not_found("FLAC file", release_id))?;
 
         let source_path = audio_file
             .source_path
             .as_ref()
-            .ok_or_else(|| "Audio file has no source_path".to_string())?;
+            .ok_or_else(|| PlaybackError::not_found("Source path", &audio_file.id))?;
 
         info!("Reading from storage path: {}", source_path);
 
         // Read file based on storage location
         let file_data = match storage_profile.location {
-            crate::db::StorageLocation::Local => tokio::fs::read(source_path)
-                .await
-                .map_err(|e| format!("Failed to read file {}: {}", source_path, e))?,
+            crate::db::StorageLocation::Local => tokio::fs::read(source_path).await?,
             crate::db::StorageLocation::Cloud => {
                 // Download from cloud
                 self.cloud_storage
                     .download_chunk(source_path)
                     .await
-                    .map_err(|e| format!("Failed to download from cloud: {}", e))?
+                    .map_err(PlaybackError::cloud)?
             }
         };
 
@@ -1494,13 +1486,13 @@ impl PlaybackService {
         // Note: Non-chunked encrypted storage stores the nonce at the start of the file
         let file_data = if storage_profile.encrypted {
             if file_data.len() < 12 {
-                return Err("Encrypted file too small to contain nonce".to_string());
+                return Err(PlaybackError::decrypt("File too small to contain nonce"));
             }
             let nonce = &file_data[..12];
             let ciphertext = &file_data[12..];
             self.encryption_service
                 .decrypt(ciphertext, nonce)
-                .map_err(|e| format!("Failed to decrypt: {}", e))?
+                .map_err(PlaybackError::decrypt)?
         } else {
             file_data
         };
@@ -1520,12 +1512,12 @@ impl PlaybackService {
                 );
 
                 if end_byte > file_data.len() {
-                    return Err(format!(
+                    return Err(PlaybackError::flac(format!(
                         "Track byte range {}-{} exceeds file size {}",
                         start_byte,
                         end_byte,
                         file_data.len()
-                    ));
+                    )));
                 }
 
                 let track_bytes = file_data[start_byte..end_byte].to_vec();

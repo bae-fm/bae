@@ -3,7 +3,7 @@ use crate::cloud_storage::CloudStorageManager;
 use crate::db::DbChunk;
 use crate::encryption::EncryptionService;
 use crate::library::LibraryManager;
-use crate::playback::PcmSource;
+use crate::playback::{PcmSource, PlaybackError};
 use futures::stream::{self, StreamExt};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
@@ -19,22 +19,22 @@ pub async fn reassemble_track(
     cache: &CacheManager,
     encryption_service: &EncryptionService,
     chunk_size_bytes: usize,
-) -> Result<Arc<PcmSource>, String> {
+) -> Result<Arc<PcmSource>, PlaybackError> {
     info!("Reassembling chunks for track: {}", track_id);
 
     // Step 1: Get track chunk coordinates (has all location info)
     let coords = library_manager
         .get_track_chunk_coords(track_id)
         .await
-        .map_err(|e| format!("Database error: {}", e))?
-        .ok_or_else(|| format!("No chunk coordinates found for track {}", track_id))?;
+        .map_err(PlaybackError::database)?
+        .ok_or_else(|| PlaybackError::not_found("Chunk coordinates", track_id))?;
 
     // Step 2: Get audio format (has FLAC headers if needed)
     let audio_format = library_manager
         .get_audio_format_by_track_id(track_id)
         .await
-        .map_err(|e| format!("Database error: {}", e))?
-        .ok_or_else(|| format!("No audio format found for track {}", track_id))?;
+        .map_err(PlaybackError::database)?
+        .ok_or_else(|| PlaybackError::not_found("Audio format", track_id))?;
 
     debug!(
         "Track spans chunks {}-{} with byte offsets {}-{}",
@@ -48,18 +48,18 @@ pub async fn reassemble_track(
     let track = library_manager
         .get_track(track_id)
         .await
-        .map_err(|e| format!("Database error: {}", e))?
-        .ok_or_else(|| format!("Track not found: {}", track_id))?;
+        .map_err(PlaybackError::database)?
+        .ok_or_else(|| PlaybackError::not_found("Track", track_id))?;
 
     // Step 4: Get all chunks in range
     let chunk_range = coords.start_chunk_index..=coords.end_chunk_index;
     let chunks = library_manager
         .get_chunks_in_range(&track.release_id, chunk_range)
         .await
-        .map_err(|e| format!("Database error: {}", e))?;
+        .map_err(PlaybackError::database)?;
 
     if chunks.is_empty() {
-        return Err(format!("No chunks found for track {}", track_id));
+        return Err(PlaybackError::not_found("Chunks", track_id));
     }
 
     debug!("Found {} chunks to reassemble", chunks.len());
@@ -69,7 +69,7 @@ pub async fn reassemble_track(
     sorted_chunks.sort_by_key(|c| c.chunk_index);
 
     // Download and decrypt all chunks in parallel (max 10 concurrent)
-    let chunk_results: Vec<Result<(i32, Vec<u8>), String>> = stream::iter(sorted_chunks)
+    let chunk_results: Vec<Result<(i32, Vec<u8>), PlaybackError>> = stream::iter(sorted_chunks)
         .map(move |chunk| {
             let cloud_storage = cloud_storage.clone();
             let cache = cache.clone();
@@ -78,7 +78,7 @@ pub async fn reassemble_track(
                 let chunk_data =
                     download_and_decrypt_chunk(&chunk, &cloud_storage, &cache, &encryption_service)
                         .await?;
-                Ok::<_, String>((chunk.chunk_index, chunk_data))
+                Ok::<_, PlaybackError>((chunk.chunk_index, chunk_data))
             }
         })
         .buffer_unordered(10) // Download up to 10 chunks concurrently
@@ -160,7 +160,7 @@ async fn download_and_decrypt_chunk(
     cloud_storage: &CloudStorageManager,
     cache: &CacheManager,
     encryption_service: &EncryptionService,
-) -> Result<Vec<u8>, String> {
+) -> Result<Vec<u8>, PlaybackError> {
     // Check cache first
     let encrypted_data = match cache.get_chunk(&chunk.id).await {
         Ok(Some(cached_encrypted_data)) => {
@@ -173,7 +173,7 @@ async fn download_and_decrypt_chunk(
             let data = cloud_storage
                 .download_chunk(&chunk.storage_location)
                 .await
-                .map_err(|e| format!("Failed to download chunk: {}", e))?;
+                .map_err(PlaybackError::cloud)?;
 
             // Cache the encrypted data for future use
             if let Err(e) = cache.put_chunk(&chunk.id, &data).await {
@@ -187,7 +187,7 @@ async fn download_and_decrypt_chunk(
             cloud_storage
                 .download_chunk(&chunk.storage_location)
                 .await
-                .map_err(|e| format!("Failed to download chunk: {}", e))?
+                .map_err(PlaybackError::cloud)?
         }
     };
 
@@ -197,10 +197,10 @@ async fn download_and_decrypt_chunk(
     let decrypted_data = tokio::task::spawn_blocking(move || {
         encryption_service
             .decrypt_simple(&encrypted_data)
-            .map_err(|e| format!("Failed to decrypt chunk: {}", e))
+            .map_err(PlaybackError::decrypt)
     })
     .await
-    .map_err(|e| format!("Decryption task failed: {}", e))??;
+    .map_err(PlaybackError::task)??;
 
     Ok(decrypted_data)
 }
@@ -256,11 +256,14 @@ fn extract_file_from_chunks(
 }
 
 /// Decode FLAC data to PCM using libFLAC
-async fn decode_flac_to_pcm(flac_data: &[u8]) -> Result<crate::flac_decoder::DecodedFlac, String> {
+pub(crate) async fn decode_flac_to_pcm(
+    flac_data: &[u8],
+) -> Result<crate::flac_decoder::DecodedFlac, PlaybackError> {
     let flac_data = flac_data.to_vec();
     tokio::task::spawn_blocking(move || {
         crate::flac_decoder::decode_flac_range(&flac_data, None, None)
     })
     .await
-    .map_err(|e| format!("Decode task failed: {}", e))?
+    .map_err(PlaybackError::task)?
+    .map_err(PlaybackError::flac)
 }

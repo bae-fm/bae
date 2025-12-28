@@ -171,7 +171,8 @@ impl ExportService {
             encryption_service,
             chunk_size_bytes,
         )
-        .await?;
+        .await
+        .map_err(|e| e.to_string())?;
 
         // Re-encode to FLAC for export
         let flac_data = crate::flac_encoder::encode_to_flac(
