@@ -120,9 +120,7 @@ pub fn TitleBar() -> Element {
             }
 
             // Imports button with dropdown
-            div {
-                class: "relative ml-4",
-                style: "-webkit-app-region: no-drag;",
+            div { class: "relative ml-4", style: "-webkit-app-region: no-drag;",
                 ImportsButton { is_open: imports_dropdown_open }
                 ImportsDropdown { is_open: imports_dropdown_open }
             }

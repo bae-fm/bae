@@ -63,7 +63,9 @@ pub fn NetworkSection() -> Element {
                     div { class: "flex items-center justify-between",
                         div {
                             h3 { class: "text-lg font-medium text-white", "Torrent Bind Interface" }
-                            p { class: "text-sm text-gray-400 mt-1", "Network interface for torrent downloads" }
+                            p { class: "text-sm text-gray-400 mt-1",
+                                "Network interface for torrent downloads"
+                            }
                         }
                         if !*is_editing.read() {
                             button {
@@ -77,15 +79,19 @@ pub fn NetworkSection() -> Element {
                     if *is_editing.read() {
                         div { class: "space-y-4",
                             div {
-                                label { class: "block text-sm font-medium text-gray-400 mb-2", "Interface" }
+                                label { class: "block text-sm font-medium text-gray-400 mb-2",
+                                    "Interface"
+                                }
                                 input {
                                     r#type: "text",
                                     class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
                                     placeholder: "e.g., eth0, tun0, 0.0.0.0:6881",
                                     value: "{bind_interface}",
-                                    oninput: move |e| bind_interface.set(e.value())
+                                    oninput: move |e| bind_interface.set(e.value()),
                                 }
-                                p { class: "text-xs text-gray-500 mt-1", "Leave empty to use the system default" }
+                                p { class: "text-xs text-gray-500 mt-1",
+                                    "Leave empty to use the system default"
+                                }
                             }
 
                             if let Some(error) = save_error.read().as_ref() {
@@ -99,7 +105,11 @@ pub fn NetworkSection() -> Element {
                                     class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                                     disabled: !has_changes || *is_saving.read(),
                                     onclick: save_changes,
-                                    if *is_saving.read() { "Saving..." } else { "Save" }
+                                    if *is_saving.read() {
+                                        "Saving..."
+                                    } else {
+                                        "Save"
+                                    }
                                 }
                                 button {
                                     class: "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
@@ -112,7 +122,9 @@ pub fn NetworkSection() -> Element {
                         div { class: "flex items-center gap-3",
                             div { class: "flex-1 px-4 py-2 bg-gray-700 rounded-lg font-mono",
                                 if config.torrent_bind_interface.is_some() {
-                                    span { class: "text-white", "{config.torrent_bind_interface.as_ref().unwrap()}" }
+                                    span { class: "text-white",
+                                        "{config.torrent_bind_interface.as_ref().unwrap()}"
+                                    }
                                 } else {
                                     span { class: "text-gray-500 italic", "Not set (uses default)" }
                                 }

@@ -79,12 +79,24 @@ pub fn Settings() -> Element {
                 // Content area
                 div { class: "flex-1 overflow-y-auto p-6",
                     match *active_tab.read() {
-                        SettingsTab::StorageProfiles => rsx! { storage_profiles::StorageProfilesSection {} },
-                        SettingsTab::ApiKeys => rsx! { api_keys::ApiKeysSection {} },
-                        SettingsTab::Encryption => rsx! { encryption::EncryptionSection {} },
-                        SettingsTab::ImportSettings => rsx! { import_settings::ImportSettingsSection {} },
-                        SettingsTab::Network => rsx! { network::NetworkSection {} },
-                        SettingsTab::About => rsx! { about::AboutSection {} },
+                        SettingsTab::StorageProfiles => rsx! {
+                            storage_profiles::StorageProfilesSection {}
+                        },
+                        SettingsTab::ApiKeys => rsx! {
+                            api_keys::ApiKeysSection {}
+                        },
+                        SettingsTab::Encryption => rsx! {
+                            encryption::EncryptionSection {}
+                        },
+                        SettingsTab::ImportSettings => rsx! {
+                            import_settings::ImportSettingsSection {}
+                        },
+                        SettingsTab::Network => rsx! {
+                            network::NetworkSection {}
+                        },
+                        SettingsTab::About => rsx! {
+                            about::AboutSection {}
+                        },
                     }
                 }
             }

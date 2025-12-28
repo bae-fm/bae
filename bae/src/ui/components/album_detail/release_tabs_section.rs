@@ -35,6 +35,8 @@ pub fn ReleaseTabsSection(
 
 
 
+
+
                             div { key: "{release.id}", class: "flex items-center gap-2 relative",
                                 button {
                                     class: if is_selected { "px-4 py-2 text-sm font-medium text-blue-400 border-b-2 border-blue-400 whitespace-nowrap" } else { "px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-300 border-b-2 border-transparent whitespace-nowrap" },

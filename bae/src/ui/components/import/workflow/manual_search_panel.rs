@@ -333,6 +333,7 @@ pub fn ManualSearchPanel(
 
 
 
+
                             div {
                                 label { class: "block text-sm font-medium text-gray-300 mb-1", "Album" }
                                 div { class: "relative",

@@ -24,8 +24,7 @@ pub fn ImportsDropdown(mut is_open: Signal<bool>) -> Element {
         }
 
         // Dropdown panel
-        div {
-            class: "absolute top-full right-0 mt-2 w-96 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-[1700] overflow-hidden",
+        div { class: "absolute top-full right-0 mt-2 w-96 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-[1700] overflow-hidden",
 
             // Header
             div { class: "px-4 py-3 bg-gray-800/50 border-b border-gray-700 flex items-center justify-between",
@@ -40,7 +39,7 @@ pub fn ImportsDropdown(mut is_open: Signal<bool>) -> Element {
                         path {
                             stroke_linecap: "round",
                             stroke_linejoin: "round",
-                            d: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            d: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
                         }
                     }
                     h3 { class: "text-sm font-semibold text-white", "Imports" }
@@ -73,7 +72,7 @@ pub fn ImportsDropdown(mut is_open: Signal<bool>) -> Element {
                         path {
                             stroke_linecap: "round",
                             stroke_linejoin: "round",
-                            d: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            d: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
                         }
                     }
                     p { class: "text-gray-500 text-sm", "No active imports" }
@@ -93,10 +92,11 @@ pub fn ImportsDropdown(mut is_open: Signal<bool>) -> Element {
                                         move |_| {
                                             is_open.set(false);
                                             if let Some(ref rid) = release_id {
-                                                navigator.push(Route::AlbumDetail {
-                                                    album_id: rid.clone(),
-                                                    release_id: String::new(),
-                                                });
+                                                navigator
+                                                    .push(Route::AlbumDetail {
+                                                        album_id: rid.clone(),
+                                                        release_id: String::new(),
+                                                    });
                                             }
                                         }
                                     },
@@ -172,13 +172,17 @@ fn ImportItem(
             div { class: "flex items-start gap-3",
                 // Cover thumbnail with status overlay
                 {
-                    let cover_url = import.cover_image_id
+                    let cover_url = import
+
+                        // Status badge overlay
+                        // Spinning indicator for in-progress
+                        .cover_image_id
                         .as_ref()
                         .map(|id| image_url(id))
                         .or(import.cover_art_url.clone());
-
                     rsx! {
-                        div { class: "flex-shrink-0 w-10 h-10 bg-gray-700 rounded overflow-hidden relative",
+                        div {
+                            class: "flex-shrink-0 w-10 h-10 bg-gray-700 rounded overflow-hidden relative",
                             if let Some(url) = cover_url {
                                 img {
                                     src: "{url}",
@@ -191,7 +195,6 @@ fn ImportItem(
                                 }
                             }
 
-                            // Status badge overlay
                             if is_complete {
                                 div { class: "absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center",
                                     svg {
@@ -203,7 +206,7 @@ fn ImportItem(
                                         path {
                                             stroke_linecap: "round",
                                             stroke_linejoin: "round",
-                                            d: "M5 13l4 4L19 7"
+                                            d: "M5 13l4 4L19 7",
                                         }
                                     }
                                 }
@@ -218,12 +221,11 @@ fn ImportItem(
                                         path {
                                             stroke_linecap: "round",
                                             stroke_linejoin: "round",
-                                            d: "M6 18L18 6M6 6l12 12"
+                                            d: "M6 18L18 6M6 6l12 12",
                                         }
                                     }
                                 }
                             } else {
-                                // Spinning indicator for in-progress
                                 div { class: "absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center",
                                     svg {
                                         class: "h-2.5 w-2.5 text-white animate-spin",
@@ -240,7 +242,7 @@ fn ImportItem(
                                         path {
                                             class: "opacity-75",
                                             fill: "currentColor",
-                                            d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z",
                                         }
                                     }
                                 }
@@ -251,17 +253,11 @@ fn ImportItem(
 
                 // Text content
                 div { class: "flex-1 min-w-0",
-                    p { class: "text-sm font-medium text-white truncate",
-                        "{import.album_title}"
-                    }
+                    p { class: "text-sm font-medium text-white truncate", "{import.album_title}" }
                     if !import.artist_name.is_empty() {
-                        p { class: "text-xs text-gray-400 truncate",
-                            "{import.artist_name}"
-                        }
+                        p { class: "text-xs text-gray-400 truncate", "{import.artist_name}" }
                     }
-                    p { class: "text-xs {status_color} mt-1",
-                        "{status_text}"
-                    }
+                    p { class: "text-xs {status_color} mt-1", "{status_text}" }
 
                     // Progress bar
                     if is_importing && progress_percent > 0 {
@@ -291,7 +287,7 @@ fn ImportItem(
                         path {
                             stroke_linecap: "round",
                             stroke_linejoin: "round",
-                            d: "M6 18L18 6M6 6l12 12"
+                            d: "M6 18L18 6M6 6l12 12",
                         }
                     }
                 }

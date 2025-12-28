@@ -49,7 +49,7 @@ pub fn StorageProfilesSection() -> Element {
                                 stroke_linecap: "round",
                                 stroke_linejoin: "round",
                                 stroke_width: "2",
-                                d: "M12 4v16m8-8H4"
+                                d: "M12 4v16m8-8H4",
                             }
                         }
                         "New Profile"
@@ -68,7 +68,7 @@ pub fn StorageProfilesSection() -> Element {
                     on_cancel: move |_| {
                         editing_profile.set(None);
                         is_creating.set(false);
-                    }
+                    },
                 }
             } else if let Some(profile) = editing_profile.read().clone() {
                 ProfileEditor {
@@ -80,7 +80,7 @@ pub fn StorageProfilesSection() -> Element {
                     on_cancel: move |_| {
                         editing_profile.set(None);
                         is_creating.set(false);
-                    }
+                    },
                 }
             }
 
@@ -93,7 +93,9 @@ pub fn StorageProfilesSection() -> Element {
                 } else if profiles.read().is_empty() {
                     div { class: "bg-gray-800 rounded-lg p-6 text-center",
                         p { class: "text-gray-400 mb-4", "No storage profiles configured" }
-                        p { class: "text-sm text-gray-500", "Create a profile to define how releases are stored." }
+                        p { class: "text-sm text-gray-500",
+                            "Create a profile to define how releases are stored."
+                        }
                     }
                 } else {
                     div { class: "space-y-3",
@@ -107,7 +109,7 @@ pub fn StorageProfilesSection() -> Element {
                                 },
                                 on_refresh: move |_| {
                                     refresh_trigger.set(refresh_trigger() + 1);
-                                }
+                                },
                             }
                         }
                     }
@@ -147,7 +149,9 @@ fn ProfileCard(
                     div { class: "flex items-center gap-3",
                         h3 { class: "text-lg font-medium text-white", "{profile.name}" }
                         if profile.is_default {
-                            span { class: "px-2 py-0.5 bg-indigo-900 text-indigo-300 rounded text-xs", "Default" }
+                            span { class: "px-2 py-0.5 bg-indigo-900 text-indigo-300 rounded text-xs",
+                                "Default"
+                            }
                         }
                     }
 
@@ -159,10 +163,14 @@ fn ProfileCard(
                             }
                         }
                         if profile.encrypted {
-                            span { class: "px-2 py-1 bg-green-900 text-green-300 rounded text-xs", "Encrypted" }
+                            span { class: "px-2 py-1 bg-green-900 text-green-300 rounded text-xs",
+                                "Encrypted"
+                            }
                         }
                         if profile.chunked {
-                            span { class: "px-2 py-1 bg-blue-900 text-blue-300 rounded text-xs", "Chunked" }
+                            span { class: "px-2 py-1 bg-blue-900 text-blue-300 rounded text-xs",
+                                "Chunked"
+                            }
                         }
                     }
 
@@ -201,7 +209,7 @@ fn ProfileCard(
                                     stroke_linecap: "round",
                                     stroke_linejoin: "round",
                                     stroke_width: "2",
-                                    d: "M5 13l4 4L19 7"
+                                    d: "M5 13l4 4L19 7",
                                 }
                             }
                         }
@@ -222,7 +230,7 @@ fn ProfileCard(
                                 stroke_linecap: "round",
                                 stroke_linejoin: "round",
                                 stroke_width: "2",
-                                d: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                d: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
                             }
                         }
                     }
@@ -239,7 +247,7 @@ fn ProfileCard(
                                 stroke_linecap: "round",
                                 stroke_linejoin: "round",
                                 stroke_width: "2",
-                                d: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                d: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
                             }
                         }
                     }
@@ -249,7 +257,9 @@ fn ProfileCard(
             // Delete confirmation
             if *show_delete_confirm.read() {
                 div { class: "mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg",
-                    p { class: "text-sm text-red-300 mb-3", "Are you sure you want to delete this profile?" }
+                    p { class: "text-sm text-red-300 mb-3",
+                        "Are you sure you want to delete this profile?"
+                    }
                     div { class: "flex gap-2",
                         button {
                             class: "px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-500 transition-colors text-sm disabled:opacity-50",
@@ -274,7 +284,11 @@ fn ProfileCard(
                                     });
                                 }
                             },
-                            if *is_deleting.read() { "Deleting..." } else { "Delete" }
+                            if *is_deleting.read() {
+                                "Deleting..."
+                            } else {
+                                "Delete"
+                            }
                         }
                         button {
                             class: "px-3 py-1.5 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors text-sm",
@@ -354,7 +368,11 @@ fn ProfileEditor(
     rsx! {
         div { class: "bg-gray-800 rounded-lg p-6 mb-6",
             h3 { class: "text-lg font-medium text-white mb-4",
-                if is_edit { "Edit Profile" } else { "New Profile" }
+                if is_edit {
+                    "Edit Profile"
+                } else {
+                    "New Profile"
+                }
             }
 
             div { class: "space-y-4",
@@ -367,7 +385,7 @@ fn ProfileEditor(
                         class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
                         placeholder: "My Storage Profile",
                         value: "{name}",
-                        oninput: move |e| name.set(e.value())
+                        oninput: move |e| name.set(e.value()),
                     }
                 }
 
@@ -381,7 +399,7 @@ fn ProfileEditor(
                                 name: "location",
                                 class: "text-indigo-600 focus:ring-indigo-500",
                                 checked: *location.read() == StorageLocation::Cloud,
-                                onchange: move |_| location.set(StorageLocation::Cloud)
+                                onchange: move |_| location.set(StorageLocation::Cloud),
                             }
                             span { class: "text-white", "Cloud (S3)" }
                         }
@@ -391,7 +409,7 @@ fn ProfileEditor(
                                 name: "location",
                                 class: "text-indigo-600 focus:ring-indigo-500",
                                 checked: *location.read() == StorageLocation::Local,
-                                onchange: move |_| location.set(StorageLocation::Local)
+                                onchange: move |_| location.set(StorageLocation::Local),
                             }
                             span { class: "text-white", "Local Filesystem" }
                         }
@@ -401,49 +419,57 @@ fn ProfileEditor(
                 // Location-specific fields
                 if *location.read() == StorageLocation::Local {
                     div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Directory Path" }
+                        label { class: "block text-sm font-medium text-gray-400 mb-2",
+                            "Directory Path"
+                        }
                         input {
                             r#type: "text",
                             autocomplete: "off",
                             class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
                             placeholder: "/path/to/storage",
                             value: "{location_path}",
-                            oninput: move |e| location_path.set(e.value())
+                            oninput: move |e| location_path.set(e.value()),
                         }
                     }
                 } else {
                     // Cloud storage fields
                     div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Bucket Name" }
+                        label { class: "block text-sm font-medium text-gray-400 mb-2",
+                            "Bucket Name"
+                        }
                         input {
                             r#type: "text",
                             autocomplete: "off",
                             class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
                             placeholder: "my-music-bucket",
                             value: "{cloud_bucket}",
-                            oninput: move |e| cloud_bucket.set(e.value())
+                            oninput: move |e| cloud_bucket.set(e.value()),
                         }
                     }
                     div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Region" }
+                        label { class: "block text-sm font-medium text-gray-400 mb-2",
+                            "Region"
+                        }
                         input {
                             r#type: "text",
                             autocomplete: "off",
                             class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
                             placeholder: "us-east-1",
                             value: "{cloud_region}",
-                            oninput: move |e| cloud_region.set(e.value())
+                            oninput: move |e| cloud_region.set(e.value()),
                         }
                     }
                     div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Custom Endpoint (optional)" }
+                        label { class: "block text-sm font-medium text-gray-400 mb-2",
+                            "Custom Endpoint (optional)"
+                        }
                         input {
                             r#type: "text",
                             autocomplete: "off",
                             class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
                             placeholder: "https://minio.example.com",
                             value: "{cloud_endpoint}",
-                            oninput: move |e| cloud_endpoint.set(e.value())
+                            oninput: move |e| cloud_endpoint.set(e.value()),
                         }
                         p { class: "text-xs text-gray-500 mt-1", "Leave empty for AWS S3" }
                     }
@@ -456,29 +482,37 @@ fn ProfileEditor(
                                 let current = *show_secrets.read();
                                 show_secrets.set(!current);
                             },
-                            if *show_secrets.read() { "Hide" } else { "Show" }
+                            if *show_secrets.read() {
+                                "Hide"
+                            } else {
+                                "Show"
+                            }
                         }
                     }
                     div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Access Key ID" }
+                        label { class: "block text-sm font-medium text-gray-400 mb-2",
+                            "Access Key ID"
+                        }
                         input {
                             r#type: if *show_secrets.read() { "text" } else { "password" },
                             autocomplete: "off",
                             class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono",
                             placeholder: "AKIAIOSFODNN7EXAMPLE",
                             value: "{cloud_access_key}",
-                            oninput: move |e| cloud_access_key.set(e.value())
+                            oninput: move |e| cloud_access_key.set(e.value()),
                         }
                     }
                     div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2", "Secret Access Key" }
+                        label { class: "block text-sm font-medium text-gray-400 mb-2",
+                            "Secret Access Key"
+                        }
                         input {
                             r#type: if *show_secrets.read() { "text" } else { "password" },
                             autocomplete: "off",
                             class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono",
                             placeholder: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
                             value: "{cloud_secret_key}",
-                            oninput: move |e| cloud_secret_key.set(e.value())
+                            oninput: move |e| cloud_secret_key.set(e.value()),
                         }
                     }
                 }
@@ -490,11 +524,13 @@ fn ProfileEditor(
                             r#type: "checkbox",
                             class: "rounded text-indigo-600 focus:ring-indigo-500 bg-gray-700 border-gray-600 mt-0.5",
                             checked: *encrypted.read(),
-                            onchange: move |e| encrypted.set(e.checked())
+                            onchange: move |e| encrypted.set(e.checked()),
                         }
                         div {
                             span { class: "text-white block", "Encrypted" }
-                            span { class: "text-xs text-gray-500", "AES-256 encryption. Data is unreadable without your key." }
+                            span { class: "text-xs text-gray-500",
+                                "AES-256 encryption. Data is unreadable without your key."
+                            }
                         }
                     }
                     label { class: "flex items-start gap-3 cursor-pointer",
@@ -502,11 +538,13 @@ fn ProfileEditor(
                             r#type: "checkbox",
                             class: "rounded text-indigo-600 focus:ring-indigo-500 bg-gray-700 border-gray-600 mt-0.5",
                             checked: *chunked.read(),
-                            onchange: move |e| chunked.set(e.checked())
+                            onchange: move |e| chunked.set(e.checked()),
                         }
                         div {
                             span { class: "text-white block", "Chunked" }
-                            span { class: "text-xs text-gray-500", "Split files so they can't be identified by size or hash on public cloud." }
+                            span { class: "text-xs text-gray-500",
+                                "Split files so they can't be identified by size or hash on public cloud."
+                            }
                         }
                     }
                 }
@@ -518,7 +556,7 @@ fn ProfileEditor(
                             r#type: "checkbox",
                             class: "rounded text-indigo-600 focus:ring-indigo-500 bg-gray-700 border-gray-600",
                             checked: *is_default.read(),
-                            onchange: move |e| is_default.set(e.checked())
+                            onchange: move |e| is_default.set(e.checked()),
                         }
                         span { class: "text-white", "Set as default" }
                     }
@@ -605,9 +643,12 @@ fn ProfileEditor(
                                         if new_location == StorageLocation::Cloud {
                                             profile.cloud_bucket = Some(new_cloud_bucket);
                                             profile.cloud_region = Some(new_cloud_region);
-                                            profile.cloud_endpoint = if new_cloud_endpoint.trim().is_empty() {
+                                            profile.cloud_endpoint = if new_cloud_endpoint.trim().is_empty()
+                                            {
                                                 None
                                             } else {
+                                                // Create new
+
                                                 Some(new_cloud_endpoint)
                                             };
                                             profile.cloud_access_key = Some(new_cloud_access_key);
@@ -621,7 +662,6 @@ fn ProfileEditor(
                                         }
                                         lm.update_storage_profile(&profile).await
                                     } else {
-                                        // Create new
                                         let profile = if new_location == StorageLocation::Local {
                                             DbStorageProfile::new_local(
                                                 &new_name,
@@ -645,10 +685,10 @@ fn ProfileEditor(
                                                 new_encrypted,
                                                 new_chunked,
                                             )
-                                        }.with_default(new_is_default);
+                                        }
+                                            .with_default(new_is_default);
                                         lm.insert_storage_profile(&profile).await
                                     };
-
                                     match result {
                                         Ok(()) => {
                                             info!("Saved storage profile: {}", new_name);
@@ -659,12 +699,15 @@ fn ProfileEditor(
                                             save_error.set(Some(e.to_string()));
                                         }
                                     }
-
                                     is_saving.set(false);
                                 });
                             }
                         },
-                        if *is_saving.read() { "Saving..." } else { "Save" }
+                        if *is_saving.read() {
+                            "Saving..."
+                        } else {
+                            "Save"
+                        }
                     }
                     button {
                         class: "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",

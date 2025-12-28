@@ -105,7 +105,9 @@ pub fn FolderImport() -> Element {
                     }
 
                     // Show DiscID lookup error with retry button (when in ManualSearch after a failed lookup)
-                    if *import_phase.read() == ImportPhase::ManualSearch && discid_lookup_error.read().is_some() {
+                    if *import_phase.read() == ImportPhase::ManualSearch
+                        && discid_lookup_error.read().is_some()
+                    {
                         DiscIdLookupError {
                             error_message: discid_lookup_error,
                             is_retrying: is_looking_up,

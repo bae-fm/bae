@@ -88,7 +88,9 @@ pub fn ImportSettingsSection() -> Element {
                 div { class: "flex items-center justify-between mb-6",
                     div {
                         h3 { class: "text-lg font-medium text-white", "Worker Pools" }
-                        p { class: "text-sm text-gray-400 mt-1", "Parallel processing for import operations" }
+                        p { class: "text-sm text-gray-400 mt-1",
+                            "Parallel processing for import operations"
+                        }
                     }
                     if !*is_editing.read() {
                         button {
@@ -103,49 +105,63 @@ pub fn ImportSettingsSection() -> Element {
                     div { class: "space-y-4",
                         // Encrypt workers
                         div {
-                            label { class: "block text-sm font-medium text-gray-400 mb-2", "Encryption Workers" }
+                            label { class: "block text-sm font-medium text-gray-400 mb-2",
+                                "Encryption Workers"
+                            }
                             input {
                                 r#type: "number",
                                 min: "1",
                                 max: "64",
                                 class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500",
                                 value: "{encrypt_workers}",
-                                oninput: move |e| encrypt_workers.set(e.value())
+                                oninput: move |e| encrypt_workers.set(e.value()),
                             }
-                            p { class: "text-xs text-gray-500 mt-1", "CPU-bound tasks (recommended: 2x CPU cores)" }
+                            p { class: "text-xs text-gray-500 mt-1",
+                                "CPU-bound tasks (recommended: 2x CPU cores)"
+                            }
                         }
 
                         // Upload workers
                         div {
-                            label { class: "block text-sm font-medium text-gray-400 mb-2", "Upload Workers" }
+                            label { class: "block text-sm font-medium text-gray-400 mb-2",
+                                "Upload Workers"
+                            }
                             input {
                                 r#type: "number",
                                 min: "1",
                                 max: "100",
                                 class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500",
                                 value: "{upload_workers}",
-                                oninput: move |e| upload_workers.set(e.value())
+                                oninput: move |e| upload_workers.set(e.value()),
                             }
-                            p { class: "text-xs text-gray-500 mt-1", "I/O-bound tasks (recommended: 20)" }
+                            p { class: "text-xs text-gray-500 mt-1",
+                                "I/O-bound tasks (recommended: 20)"
+                            }
                         }
 
                         // DB write workers
                         div {
-                            label { class: "block text-sm font-medium text-gray-400 mb-2", "Database Writers" }
+                            label { class: "block text-sm font-medium text-gray-400 mb-2",
+                                "Database Writers"
+                            }
                             input {
                                 r#type: "number",
                                 min: "1",
                                 max: "50",
                                 class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500",
                                 value: "{db_write_workers}",
-                                oninput: move |e| db_write_workers.set(e.value())
+                                oninput: move |e| db_write_workers.set(e.value()),
                             }
-                            p { class: "text-xs text-gray-500 mt-1", "I/O-bound tasks (recommended: 10)" }
+                            p { class: "text-xs text-gray-500 mt-1",
+                                "I/O-bound tasks (recommended: 10)"
+                            }
                         }
 
                         // Chunk size
                         div {
-                            label { class: "block text-sm font-medium text-gray-400 mb-2", "Chunk Size (KB)" }
+                            label { class: "block text-sm font-medium text-gray-400 mb-2",
+                                "Chunk Size (KB)"
+                            }
                             input {
                                 r#type: "number",
                                 min: "64",
@@ -153,9 +169,11 @@ pub fn ImportSettingsSection() -> Element {
                                 step: "64",
                                 class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500",
                                 value: "{chunk_size}",
-                                oninput: move |e| chunk_size.set(e.value())
+                                oninput: move |e| chunk_size.set(e.value()),
                             }
-                            p { class: "text-xs text-gray-500 mt-1", "Size of encrypted chunks (recommended: 1024 KB = 1 MB)" }
+                            p { class: "text-xs text-gray-500 mt-1",
+                                "Size of encrypted chunks (recommended: 1024 KB = 1 MB)"
+                            }
                         }
 
                         if let Some(error) = save_error.read().as_ref() {
@@ -169,7 +187,11 @@ pub fn ImportSettingsSection() -> Element {
                                 class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                                 disabled: !has_changes || *is_saving.read(),
                                 onclick: save_changes,
-                                if *is_saving.read() { "Saving..." } else { "Save" }
+                                if *is_saving.read() {
+                                    "Saving..."
+                                } else {
+                                    "Save"
+                                }
                             }
                             button {
                                 class: "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",

@@ -98,6 +98,7 @@ pub fn ReleaseSelector() -> Element {
 
 
 
+
                                 input {
                                     r#type: "checkbox",
                                     class: "{checkbox_class}",

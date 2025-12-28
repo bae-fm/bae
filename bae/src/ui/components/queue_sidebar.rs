@@ -204,11 +204,7 @@ fn QueueItem(
                             .or_else(|| album.cover_art_url.clone());
                         if let Some(url) = cover_url {
                             rsx! {
-                                img {
-                                    src: "{url}",
-                                    alt: "Album cover",
-                                    class: "w-full h-full object-cover",
-                                }
+                                img { src: "{url}", alt: "Album cover", class: "w-full h-full object-cover" }
                             }
                         } else {
                             rsx! {

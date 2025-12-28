@@ -57,7 +57,9 @@ pub fn ApiKeysSection() -> Element {
                     div { class: "flex items-center justify-between",
                         div {
                             h3 { class: "text-lg font-medium text-white", "Discogs" }
-                            p { class: "text-sm text-gray-400 mt-1", "Used for release metadata and cover art" }
+                            p { class: "text-sm text-gray-400 mt-1",
+                                "Used for release metadata and cover art"
+                            }
                         }
                         if !*is_editing.read() {
                             button {
@@ -71,13 +73,15 @@ pub fn ApiKeysSection() -> Element {
                     if *is_editing.read() {
                         div { class: "space-y-4",
                             div {
-                                label { class: "block text-sm font-medium text-gray-400 mb-2", "API Key" }
+                                label { class: "block text-sm font-medium text-gray-400 mb-2",
+                                    "API Key"
+                                }
                                 input {
                                     r#type: "password",
                                     class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
                                     placeholder: "Enter your Discogs API key",
                                     value: "{discogs_key}",
-                                    oninput: move |e| discogs_key.set(e.value())
+                                    oninput: move |e| discogs_key.set(e.value()),
                                 }
                             }
 
@@ -92,7 +96,11 @@ pub fn ApiKeysSection() -> Element {
                                     class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                                     disabled: !has_changes || *is_saving.read(),
                                     onclick: save_changes,
-                                    if *is_saving.read() { "Saving..." } else { "Save" }
+                                    if *is_saving.read() {
+                                        "Saving..."
+                                    } else {
+                                        "Save"
+                                    }
                                 }
                                 button {
                                     class: "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
@@ -106,7 +114,9 @@ pub fn ApiKeysSection() -> Element {
                             div { class: "flex-1 px-4 py-2 bg-gray-700 rounded-lg text-gray-400 font-mono",
                                 "••••••••••••••••"
                             }
-                            span { class: "px-3 py-1 bg-green-900 text-green-300 rounded-full text-sm", "Configured" }
+                            span { class: "px-3 py-1 bg-green-900 text-green-300 rounded-full text-sm",
+                                "Configured"
+                            }
                         }
                     }
                 }

@@ -56,7 +56,7 @@ pub fn ImportsButton(mut is_open: Signal<bool>) -> Element {
                     path {
                         class: "opacity-75",
                         fill: "currentColor",
-                        d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z",
                     }
                 }
             } else {
@@ -70,7 +70,7 @@ pub fn ImportsButton(mut is_open: Signal<bool>) -> Element {
                     path {
                         stroke_linecap: "round",
                         stroke_linejoin: "round",
-                        d: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                        d: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
                     }
                 }
             }
@@ -78,8 +78,7 @@ pub fn ImportsButton(mut is_open: Signal<bool>) -> Element {
             span { "Imports" }
 
             // Count badge
-            span {
-                class: "{badge_color} text-white text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1.5",
+            span { class: "{badge_color} text-white text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1.5",
                 "{count}"
             }
         }

@@ -144,11 +144,7 @@ pub fn Confirmation(
                                 {
                                     let (format_text, country_text, label_text) = match &candidate.source {
                                         MatchSource::MusicBrainz(release) => {
-                                            (
-                                                release.format.clone(),
-                                                release.country.clone(),
-                                                release.label.clone(),
-                                            )
+                                            (release.format.clone(), release.country.clone(), release.label.clone())
                                         }
                                         MatchSource::Discogs(_) => (None, None, None),
                                     };
@@ -186,7 +182,10 @@ pub fn Confirmation(
                             // Remote cover option (if available)
                             if let Some(ref url) = remote_cover_url {
                                 {
-                                    let is_selected = matches!(selected_cover.read().as_ref(), Some(SelectedCover::Remote { .. }));
+                                    let is_selected = matches!(
+                                        selected_cover.read().as_ref(),
+                                        Some(SelectedCover::Remote { .. })
+                                    );
                                     let url_for_click = url.clone();
                                     let source_for_click = cover_source.to_string();
                                     let ctx = import_context.clone();
@@ -215,7 +214,8 @@ pub fn Confirmation(
                                     let img_name = img.name.clone();
                                     let is_selected = matches!(
                                         selected_cover.read().as_ref(),
-                                        Some(SelectedCover::Local { filename }) if filename == &img_name
+                                        Some(SelectedCover::Local { filename })
+                                        if filename == &img_name
                                     );
                                     let img_path = format!("{}/{}", folder_path_str, img.name);
                                     let img_url = local_file_url(&img_path);
@@ -290,9 +290,7 @@ pub fn Confirmation(
                     // Show current preparation step during import
                     if *is_importing.read() {
                         if let Some(step) = *preparing_step.read() {
-                            span { class: "text-sm text-gray-400",
-                                {step.display_text()}
-                            }
+                            span { class: "text-sm text-gray-400", {step.display_text()} }
                         }
                     }
                     button {
