@@ -629,35 +629,6 @@ pub fn clean_album_name_for_search(album: &str) -> String {
     cleaned.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// Extract catalog number from album or folder name
-pub fn extract_catalog_number(text: &str) -> Option<String> {
-    use regex::Regex;
-
-    // Match patterns like [Label 123-456] or [123-456, Year]
-    let bracket_pattern = Regex::new(r"\[([^\]]+)\]").unwrap();
-
-    if let Some(caps) = bracket_pattern.captures(text) {
-        if let Some(content) = caps.get(1) {
-            let content_str = content.as_str();
-
-            // Try to extract catalog number pattern: alphanumeric with dashes/spaces
-            let catno_pattern = Regex::new(r"([A-Z0-9][\w\s\-]+\d+)").unwrap();
-
-            if let Some(catno_caps) = catno_pattern.captures(content_str) {
-                if let Some(catno) = catno_caps.get(1) {
-                    let catno_str = catno.as_str().trim();
-                    // Filter out years (4 digits only)
-                    if !Regex::new(r"^\d{4}$").unwrap().is_match(catno_str) {
-                        return Some(catno_str.to_string());
-                    }
-                }
-            }
-        }
-    }
-
-    None
-}
-
 /// Extract search tokens from folder metadata for the search pills UI
 ///
 /// Combines artist, cleaned album title, year, and folder tokens into a
@@ -870,19 +841,6 @@ mod tests {
             clean_album_name_for_search("The Wall (Deluxe Edition)"),
             "The Wall"
         );
-    }
-
-    #[test]
-    fn test_extract_catalog_number() {
-        assert_eq!(
-            extract_catalog_number("Electric Ladyland (1968) [Polydor 823 359-2, 1984]"),
-            Some("Polydor 823 359-2".to_string())
-        );
-        assert_eq!(
-            extract_catalog_number("Back In Black [Atlantic A2 16018]"),
-            Some("Atlantic A2 16018".to_string())
-        );
-        assert_eq!(extract_catalog_number("No catalog here"), None);
     }
 
     #[test]

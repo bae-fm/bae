@@ -51,4 +51,5 @@ pub use folder_metadata_detector::{detect_folder_contents, detect_metadata, Fold
 pub use folder_scanner::{CategorizedFiles, DetectedRelease};
 pub use handle::{ImportServiceHandle, TorrentFileMetadata, TorrentImportMetadata};
 pub use service::{ImportConfig, ImportService};
+#[allow(unused_imports)] // ImportPhase used by integration tests
 pub use types::{ImportPhase, ImportProgress, ImportRequest, PrepareStep, TorrentSource};

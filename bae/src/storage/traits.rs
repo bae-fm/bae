@@ -16,12 +16,14 @@ pub enum StorageError {
     Io(#[from] std::io::Error),
 
     #[error("File not found: {0}")]
+    #[allow(dead_code)] // Used by test-only trait methods
     NotFound(String),
 
     #[error("Storage not configured")]
     NotConfigured,
 
     #[error("Operation not supported for this storage configuration")]
+    #[allow(dead_code)] // Used by test-only trait methods
     NotSupported(String),
 
     #[error("Encryption error: {0}")]
@@ -43,7 +45,8 @@ pub type ProgressCallback = Box<dyn Fn(usize, usize) + Send + Sync>;
 /// Implementations apply the appropriate transforms based on the StorageProfile.
 #[async_trait]
 pub trait ReleaseStorage: Send + Sync {
-    /// Read a file from storage
+    /// Read a file from storage (test-only currently)
+    #[allow(dead_code)]
     async fn read_file(&self, release_id: &str, filename: &str) -> Result<Vec<u8>, StorageError>;
 
     /// Write a file to storage with progress reporting.
@@ -62,13 +65,16 @@ pub trait ReleaseStorage: Send + Sync {
         on_progress: ProgressCallback,
     ) -> Result<i32, StorageError>;
 
-    /// List all files for a release
+    /// List all files for a release (test-only currently)
+    #[allow(dead_code)]
     async fn list_files(&self, release_id: &str) -> Result<Vec<String>, StorageError>;
 
-    /// Check if a file exists
+    /// Check if a file exists (test-only currently)
+    #[allow(dead_code)]
     async fn file_exists(&self, release_id: &str, filename: &str) -> Result<bool, StorageError>;
 
-    /// Delete a file from storage
+    /// Delete a file from storage (test-only currently)
+    #[allow(dead_code)]
     async fn delete_file(&self, release_id: &str, filename: &str) -> Result<(), StorageError>;
 }
 
@@ -85,30 +91,32 @@ pub struct ReleaseStorageImpl {
     chunk_size_bytes: usize,
 }
 
-/// Default chunk size: 1MB
-const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024;
-
 impl ReleaseStorageImpl {
-    /// Create storage for local raw files (no encryption, no chunking)
+    /// Default chunk size: 1MB (for test helpers)
+    #[cfg(test)]
+    const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024;
+
+    /// Create storage for local raw files (no encryption, no chunking) - test only
+    #[cfg(test)]
     pub fn new_local_raw(profile: DbStorageProfile) -> Self {
         Self {
             profile,
             encryption: None,
             cloud: None,
             database: None,
-            chunk_size_bytes: DEFAULT_CHUNK_SIZE,
+            chunk_size_bytes: Self::DEFAULT_CHUNK_SIZE,
         }
     }
 
     /// Create storage with encryption service (test-only)
-    #[cfg(feature = "test-utils")]
+    #[cfg(test)]
     pub fn new_with_encryption(profile: DbStorageProfile, encryption: EncryptionService) -> Self {
         Self {
             profile,
             encryption: Some(encryption),
             cloud: None,
             database: None,
-            chunk_size_bytes: DEFAULT_CHUNK_SIZE,
+            chunk_size_bytes: Self::DEFAULT_CHUNK_SIZE,
         }
     }
 
@@ -160,7 +168,8 @@ impl ReleaseStorageImpl {
         Ok(result)
     }
 
-    /// Decrypt data if encryption is enabled
+    /// Decrypt data if encryption is enabled (used by test-only read methods)
+    #[allow(dead_code)]
     fn decrypt_if_needed(&self, data: &[u8]) -> Result<Vec<u8>, StorageError> {
         if !self.profile.encrypted {
             return Ok(data.to_vec());
@@ -416,7 +425,8 @@ impl ReleaseStorageImpl {
         Ok(())
     }
 
-    /// Read chunked file data
+    /// Read chunked file data (used by test-only read_file)
+    #[allow(dead_code)]
     async fn read_chunked(
         &self,
         release_id: &str,
