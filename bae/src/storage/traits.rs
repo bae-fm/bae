@@ -15,16 +15,8 @@ pub enum StorageError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("File not found: {0}")]
-    #[allow(dead_code)] // Used by test-only trait methods
-    NotFound(String),
-
     #[error("Storage not configured")]
     NotConfigured,
-
-    #[error("Operation not supported for this storage configuration")]
-    #[allow(dead_code)] // Used by test-only trait methods
-    NotSupported(String),
 
     #[error("Encryption error: {0}")]
     Encryption(String),
@@ -39,16 +31,12 @@ pub enum StorageError {
 /// Progress callback type: (bytes_written, total_bytes)
 pub type ProgressCallback = Box<dyn Fn(usize, usize) + Send + Sync>;
 
-/// Trait for reading/writing release files to storage
+/// Trait for writing release files to storage during import
 ///
 /// Abstracts over different storage configurations (local/cloud, encrypted/plain, chunked/raw).
 /// Implementations apply the appropriate transforms based on the StorageProfile.
 #[async_trait]
 pub trait ReleaseStorage: Send + Sync {
-    /// Read a file from storage (test-only currently)
-    #[allow(dead_code)]
-    async fn read_file(&self, release_id: &str, filename: &str) -> Result<Vec<u8>, StorageError>;
-
     /// Write a file to storage with progress reporting.
     ///
     /// For chunked storage: reports after each chunk completes.
@@ -64,18 +52,6 @@ pub trait ReleaseStorage: Send + Sync {
         start_chunk_index: i32,
         on_progress: ProgressCallback,
     ) -> Result<i32, StorageError>;
-
-    /// List all files for a release (test-only currently)
-    #[allow(dead_code)]
-    async fn list_files(&self, release_id: &str) -> Result<Vec<String>, StorageError>;
-
-    /// Check if a file exists (test-only currently)
-    #[allow(dead_code)]
-    async fn file_exists(&self, release_id: &str, filename: &str) -> Result<bool, StorageError>;
-
-    /// Delete a file from storage (test-only currently)
-    #[allow(dead_code)]
-    async fn delete_file(&self, release_id: &str, filename: &str) -> Result<(), StorageError>;
 }
 
 /// Storage implementation that applies transforms based on StorageProfile flags
@@ -92,34 +68,6 @@ pub struct ReleaseStorageImpl {
 }
 
 impl ReleaseStorageImpl {
-    /// Default chunk size: 1MB (for test helpers)
-    #[cfg(test)]
-    const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024;
-
-    /// Create storage for local raw files (no encryption, no chunking) - test only
-    #[cfg(test)]
-    pub fn new_local_raw(profile: DbStorageProfile) -> Self {
-        Self {
-            profile,
-            encryption: None,
-            cloud: None,
-            database: None,
-            chunk_size_bytes: Self::DEFAULT_CHUNK_SIZE,
-        }
-    }
-
-    /// Create storage with encryption service (test-only)
-    #[cfg(test)]
-    pub fn new_with_encryption(profile: DbStorageProfile, encryption: EncryptionService) -> Self {
-        Self {
-            profile,
-            encryption: Some(encryption),
-            cloud: None,
-            database: None,
-            chunk_size_bytes: Self::DEFAULT_CHUNK_SIZE,
-        }
-    }
-
     /// Create fully configured storage (all features)
     pub fn new_full(
         profile: DbStorageProfile,
@@ -166,31 +114,6 @@ impl ReleaseStorageImpl {
         let mut result = nonce;
         result.extend(ciphertext);
         Ok(result)
-    }
-
-    /// Decrypt data if encryption is enabled (used by test-only read methods)
-    #[allow(dead_code)]
-    fn decrypt_if_needed(&self, data: &[u8]) -> Result<Vec<u8>, StorageError> {
-        if !self.profile.encrypted {
-            return Ok(data.to_vec());
-        }
-
-        let encryption = self
-            .encryption
-            .as_ref()
-            .ok_or(StorageError::NotConfigured)?;
-
-        if data.len() < 12 {
-            return Err(StorageError::Encryption(
-                "Data too short for nonce".to_string(),
-            ));
-        }
-
-        let (nonce, ciphertext) = data.split_at(12);
-
-        encryption
-            .decrypt(ciphertext, nonce)
-            .map_err(|e| StorageError::Encryption(e.to_string()))
     }
 
     /// Generate a storage key for cloud storage
@@ -424,116 +347,10 @@ impl ReleaseStorageImpl {
 
         Ok(())
     }
-
-    /// Read chunked file data (used by test-only read_file)
-    #[allow(dead_code)]
-    async fn read_chunked(
-        &self,
-        release_id: &str,
-        filename: &str,
-    ) -> Result<Vec<u8>, StorageError> {
-        let db = self.database.as_ref().ok_or(StorageError::NotConfigured)?;
-
-        // Find the file record
-        let file = db
-            .get_file_by_release_and_filename(release_id, filename)
-            .await
-            .map_err(|e| StorageError::Database(e.to_string()))?
-            .ok_or_else(|| StorageError::NotFound(filename.to_string()))?;
-
-        // Get file-chunk mappings
-        let file_chunks = db
-            .get_file_chunks(&file.id)
-            .await
-            .map_err(|e| StorageError::Database(e.to_string()))?;
-
-        if file_chunks.is_empty() {
-            return Err(StorageError::NotFound(format!(
-                "No chunks found for file: {}",
-                filename
-            )));
-        }
-
-        // Read and reassemble chunks
-        let mut data = Vec::with_capacity(file.file_size as usize);
-
-        for fc in file_chunks {
-            // Get chunk metadata
-            let chunk = db
-                .get_chunk_by_id(&fc.chunk_id)
-                .await
-                .map_err(|e| StorageError::Database(e.to_string()))?
-                .ok_or_else(|| {
-                    StorageError::NotFound(format!("Chunk not found: {}", fc.chunk_id))
-                })?;
-
-            // Read chunk data
-            let encrypted_chunk = match self.profile.location {
-                StorageLocation::Local => {
-                    let chunk_path = PathBuf::from(&chunk.storage_location);
-                    tokio::fs::read(&chunk_path).await.map_err(|e| {
-                        if e.kind() == std::io::ErrorKind::NotFound {
-                            StorageError::NotFound(chunk_path.display().to_string())
-                        } else {
-                            StorageError::Io(e)
-                        }
-                    })?
-                }
-                StorageLocation::Cloud => {
-                    let cloud = self.cloud.as_ref().ok_or(StorageError::NotConfigured)?;
-                    cloud
-                        .download_chunk(&chunk.storage_location)
-                        .await
-                        .map_err(|e| StorageError::Cloud(e.to_string()))?
-                }
-            };
-
-            // Decrypt if needed
-            let decrypted = self.decrypt_if_needed(&encrypted_chunk)?;
-
-            // Extract the portion of this chunk that belongs to our file
-            let start = fc.byte_offset as usize;
-            let end = start + fc.byte_length as usize;
-            data.extend_from_slice(&decrypted[start..end]);
-        }
-
-        Ok(data)
-    }
 }
 
 #[async_trait]
 impl ReleaseStorage for ReleaseStorageImpl {
-    async fn read_file(&self, release_id: &str, filename: &str) -> Result<Vec<u8>, StorageError> {
-        if self.profile.chunked {
-            return self.read_chunked(release_id, filename).await;
-        }
-
-        // Non-chunked: read whole file from storage backend
-        let raw_data = match self.profile.location {
-            StorageLocation::Local => {
-                let path = self.file_path(release_id, filename);
-                tokio::fs::read(&path).await.map_err(|e| {
-                    if e.kind() == std::io::ErrorKind::NotFound {
-                        StorageError::NotFound(path.display().to_string())
-                    } else {
-                        StorageError::Io(e)
-                    }
-                })?
-            }
-            StorageLocation::Cloud => {
-                let cloud = self.cloud.as_ref().ok_or(StorageError::NotConfigured)?;
-                let key = self.cloud_key(release_id, filename);
-                cloud
-                    .download_chunk(&key)
-                    .await
-                    .map_err(|e| StorageError::Cloud(e.to_string()))?
-            }
-        };
-
-        // Decrypt if needed
-        self.decrypt_if_needed(&raw_data)
-    }
-
     async fn write_file(
         &self,
         release_id: &str,
@@ -550,244 +367,5 @@ impl ReleaseStorage for ReleaseStorageImpl {
                 .await?;
             Ok(start_chunk_index)
         }
-    }
-
-    async fn list_files(&self, release_id: &str) -> Result<Vec<String>, StorageError> {
-        match self.profile.location {
-            StorageLocation::Local => {
-                let release_path = self.release_path(release_id);
-                if !release_path.exists() {
-                    return Ok(Vec::new());
-                }
-
-                let mut files = Vec::new();
-                let mut entries = tokio::fs::read_dir(&release_path).await?;
-
-                while let Some(entry) = entries.next_entry().await? {
-                    if entry.file_type().await?.is_file() {
-                        if let Some(name) = entry.file_name().to_str() {
-                            files.push(name.to_string());
-                        }
-                    }
-                }
-
-                Ok(files)
-            }
-            StorageLocation::Cloud => {
-                // Cloud listing would require S3 list objects API
-                Err(StorageError::NotSupported(
-                    "Cloud file listing not yet implemented".to_string(),
-                ))
-            }
-        }
-    }
-
-    async fn file_exists(&self, release_id: &str, filename: &str) -> Result<bool, StorageError> {
-        match self.profile.location {
-            StorageLocation::Local => {
-                let path = self.file_path(release_id, filename);
-                Ok(path.exists())
-            }
-            StorageLocation::Cloud => {
-                // Could use S3 head object, but not implemented yet
-                Err(StorageError::NotSupported(
-                    "Cloud file existence check not yet implemented".to_string(),
-                ))
-            }
-        }
-    }
-
-    async fn delete_file(&self, release_id: &str, filename: &str) -> Result<(), StorageError> {
-        match self.profile.location {
-            StorageLocation::Local => {
-                let path = self.file_path(release_id, filename);
-                if path.exists() {
-                    tokio::fs::remove_file(&path).await?;
-                }
-                Ok(())
-            }
-            StorageLocation::Cloud => {
-                let cloud = self.cloud.as_ref().ok_or(StorageError::NotConfigured)?;
-                let key = self.cloud_key(release_id, filename);
-                cloud
-                    .delete_chunk(&key)
-                    .await
-                    .map_err(|e| StorageError::Cloud(e.to_string()))?;
-                Ok(())
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::TempDir;
-
-    fn local_raw_profile(temp_dir: &TempDir) -> DbStorageProfile {
-        DbStorageProfile::new_local(
-            "Test Local Raw",
-            temp_dir.path().to_str().unwrap(),
-            false, // not encrypted
-            false, // not chunked
-        )
-    }
-
-    #[cfg(feature = "test-utils")]
-    fn local_encrypted_profile(temp_dir: &TempDir) -> DbStorageProfile {
-        DbStorageProfile::new_local(
-            "Test Local Encrypted",
-            temp_dir.path().to_str().unwrap(),
-            true,  // encrypted
-            false, // not chunked
-        )
-    }
-
-    #[cfg(feature = "test-utils")]
-    fn test_encryption_service() -> EncryptionService {
-        // 32-byte test key
-        EncryptionService::new_with_key(vec![0u8; 32])
-    }
-
-    /// No-op progress callback for tests
-    fn no_progress() -> ProgressCallback {
-        Box::new(|_, _| {})
-    }
-
-    #[tokio::test]
-    async fn test_write_and_read_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = ReleaseStorageImpl::new_local_raw(local_raw_profile(&temp_dir));
-
-        let release_id = "test-release-123";
-        let filename = "cover.jpg";
-        let data = b"fake image data";
-
-        // Write
-        storage
-            .write_file(release_id, filename, data, 0, no_progress())
-            .await
-            .unwrap();
-
-        // Read back
-        let read_data = storage.read_file(release_id, filename).await.unwrap();
-        assert_eq!(read_data, data);
-    }
-
-    #[tokio::test]
-    async fn test_file_exists() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = ReleaseStorageImpl::new_local_raw(local_raw_profile(&temp_dir));
-
-        let release_id = "test-release-456";
-
-        // Doesn't exist yet
-        assert!(!storage.file_exists(release_id, "nope.txt").await.unwrap());
-
-        // Write it
-        storage
-            .write_file(release_id, "yes.txt", b"hello", 0, no_progress())
-            .await
-            .unwrap();
-
-        // Now exists
-        assert!(storage.file_exists(release_id, "yes.txt").await.unwrap());
-    }
-
-    #[tokio::test]
-    async fn test_list_files() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = ReleaseStorageImpl::new_local_raw(local_raw_profile(&temp_dir));
-
-        let release_id = "test-release-789";
-
-        // Empty initially
-        let files = storage.list_files(release_id).await.unwrap();
-        assert!(files.is_empty());
-
-        // Add some files
-        storage
-            .write_file(release_id, "track01.flac", b"audio1", 0, no_progress())
-            .await
-            .unwrap();
-        storage
-            .write_file(release_id, "track02.flac", b"audio2", 0, no_progress())
-            .await
-            .unwrap();
-        storage
-            .write_file(release_id, "cover.jpg", b"image", 0, no_progress())
-            .await
-            .unwrap();
-
-        // List them
-        let mut files = storage.list_files(release_id).await.unwrap();
-        files.sort();
-        assert_eq!(files, vec!["cover.jpg", "track01.flac", "track02.flac"]);
-    }
-
-    #[tokio::test]
-    async fn test_delete_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = ReleaseStorageImpl::new_local_raw(local_raw_profile(&temp_dir));
-
-        let release_id = "test-release-del";
-
-        // Write and verify
-        storage
-            .write_file(release_id, "delete-me.txt", b"bye", 0, no_progress())
-            .await
-            .unwrap();
-        assert!(storage
-            .file_exists(release_id, "delete-me.txt")
-            .await
-            .unwrap());
-
-        // Delete
-        storage
-            .delete_file(release_id, "delete-me.txt")
-            .await
-            .unwrap();
-        assert!(!storage
-            .file_exists(release_id, "delete-me.txt")
-            .await
-            .unwrap());
-    }
-
-    #[tokio::test]
-    async fn test_read_nonexistent_returns_not_found() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = ReleaseStorageImpl::new_local_raw(local_raw_profile(&temp_dir));
-
-        let result = storage.read_file("no-release", "no-file.txt").await;
-        assert!(matches!(result, Err(StorageError::NotFound(_))));
-    }
-
-    #[cfg(feature = "test-utils")]
-    #[tokio::test]
-    async fn test_encrypted_write_and_read() {
-        let temp_dir = TempDir::new().unwrap();
-        let encryption = test_encryption_service();
-        let storage =
-            ReleaseStorageImpl::new_with_encryption(local_encrypted_profile(&temp_dir), encryption);
-
-        let release_id = "test-encrypted-123";
-        let filename = "secret.txt";
-        let data = b"this is secret data";
-
-        // Write encrypted
-        storage
-            .write_file(release_id, filename, data, 0, no_progress())
-            .await
-            .unwrap();
-
-        // Verify file on disk is NOT plaintext
-        let raw_path = temp_dir.path().join(release_id).join(filename);
-        let raw_data = std::fs::read(&raw_path).unwrap();
-        assert_ne!(raw_data, data); // Should be encrypted
-        assert!(raw_data.len() > data.len()); // Encrypted data is larger (nonce + auth tag)
-
-        // Read back should decrypt
-        let read_data = storage.read_file(release_id, filename).await.unwrap();
-        assert_eq!(read_data, data);
     }
 }
