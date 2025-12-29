@@ -46,6 +46,7 @@ jobs:
       with:
         workspaces: bae -> target
         shared-key: rust-cache
+        cache-directories: ~/.cargo/bin
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -58,15 +59,6 @@ jobs:
       working-directory: ./bae
       run: npm ci
 
-    - name: Restore cargo bin cache
-      id: cache-cargo-bin
-      uses: actions/cache/restore@v4
-      with:
-        path: ~/.cargo/bin
-        key: ${{ runner.os }}-cargo-bin-dioxus-0.7
-        restore-keys: |
-          ${{ runner.os }}-cargo-bin-dioxus-
-
     - name: Install Dioxus CLI
       run: |
         if ! command -v dx &> /dev/null; then
@@ -75,13 +67,6 @@ jobs:
           echo "Dioxus CLI already installed, skipping"
         fi
       shell: bash
-
-    - name: Save cargo bin cache
-      if: steps.cache-cargo-bin.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: ~/.cargo/bin
-        key: ${{ runner.os }}-cargo-bin-dioxus-0.7
 
     - name: Check Rust formatting
       working-directory: ./bae
