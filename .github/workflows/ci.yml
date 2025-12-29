@@ -72,6 +72,14 @@ jobs:
       working-directory: ./bae
       run: npm ci
 
+    - name: Cache cargo bin directory
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin
+        key: ${{ runner.os }}-cargo-bin-${{ hashFiles('**/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-bin-
+
     - name: Install Dioxus CLI
       run: cargo install dioxus-cli
 
@@ -82,12 +90,6 @@ jobs:
     - name: Check RSX formatting
       working-directory: ./bae
       run: dx fmt --check
-
-    - name: Debug with SSH (on failure)
-      if: failure() && runner.os == 'Linux'
-      uses: mxschmitt/action-tmate@v3
-      with:
-        limit-access-to-actor: true
 
     - name: Run Clippy (Linux/macOS)
       if: runner.os != 'Windows'
@@ -137,6 +139,12 @@ jobs:
         PKG_CONFIG_PATH: ${{ runner.os == 'macOS' && '/opt/homebrew/lib/pkgconfig' || '' }}
         LIBRARY_PATH: ${{ runner.os == 'macOS' && '/opt/homebrew/lib' || '' }}
       run: cargo build --verbose --release
+
+    - name: Debug with SSH (on failure)
+      if: failure() && runner.os == 'Linux'
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
 
   security:
     name: Security Audit
