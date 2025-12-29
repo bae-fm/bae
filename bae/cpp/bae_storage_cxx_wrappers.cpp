@@ -11,8 +11,8 @@
 #include <string>
 
 // Include the cxx bridge generated header for TorrentFileInfo
-// The path is relative to cxxbridge/include which is in the include path
-#include "bae/Users/dima/dev/bae/bae/src/torrent/ffi.rs.h"
+// The path is relative to cxxbridge/crate which is in the include path
+#include "bae/src/torrent/ffi.rs.h"
 
 // Wrapper for create_bae_storage_constructor
 // Converts rust::Fn callbacks to std::function callbacks

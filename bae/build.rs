@@ -52,7 +52,7 @@ fn compile_cpp_storage() {
     let source = cpp_dir.join("bae_storage.cpp");
     let helpers_header = cpp_dir.join("bae_storage_helpers.h");
     let helpers_source = cpp_dir.join("bae_storage_helpers.cpp");
-    let ffi_rs = Path::new(manifest_dir).join("src/torrent/ffi.rs");
+    let ffi_rs_abs = Path::new(manifest_dir).join("src/torrent/ffi.rs");
     if !header.exists() || !source.exists() || !helpers_header.exists() || !helpers_source.exists()
     {
         println!("cargo:warning=Custom storage C++ files not found, skipping compilation",);
@@ -81,8 +81,8 @@ fn compile_cpp_storage() {
             }
         }
     }
-    // Build with all include paths - fold over include paths
-    let mut binding = cxx_build::bridge(&ffi_rs);
+    // Build with all include paths - use relative path for cxx_build to get portable header paths
+    let mut binding = cxx_build::bridge("src/torrent/ffi.rs");
     let base_build = binding
         .file(&source)
         .file(&helpers_source)
@@ -92,7 +92,7 @@ fn compile_cpp_storage() {
         .iter()
         .fold(base_build, |acc, path| acc.include(path));
     build.compile("bae_storage");
-    println!("cargo:rerun-if-changed={}", ffi_rs.display());
+    println!("cargo:rerun-if-changed={}", ffi_rs_abs.display());
     println!("cargo:rerun-if-changed={}", source.display());
     println!("cargo:rerun-if-changed={}", helpers_source.display());
     println!("cargo:rerun-if-changed={}", header.display());
