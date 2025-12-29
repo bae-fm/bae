@@ -83,6 +83,12 @@ jobs:
       working-directory: ./bae
       run: dx fmt --check
 
+    - name: Debug with SSH (on failure)
+      if: failure() && runner.os == 'Linux'
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+
     - name: Run Clippy (Linux/macOS)
       if: runner.os != 'Windows'
       working-directory: ./bae
