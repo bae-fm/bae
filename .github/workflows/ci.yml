@@ -90,6 +90,7 @@ jobs:
         key: ${{ runner.os }}-cargo-bin-dioxus-0.7
         restore-keys: |
           ${{ runner.os }}-cargo-bin-dioxus-
+        save-always: true
 
     - name: Install Dioxus CLI
       run: |
