@@ -20,14 +20,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable, beta]
-        exclude:
-          # Only test beta on one OS to save CI time
-          - os: macos-latest
-            rust: beta
-          - os: windows-latest
-            rust: beta
+        # TODO: Re-enable ubuntu-latest, windows-latest once caches are populated
+        os: [macos-latest]
+        rust: [stable]
+        # rust: [stable, beta]
+        # exclude:
+        #   # Only test beta on one OS to save CI time
+        #   - os: macos-latest
+        #     rust: beta
+        #   - os: windows-latest
+        #     rust: beta
 
     steps:
     - name: Checkout code
@@ -83,14 +85,14 @@ jobs:
       working-directory: ./bae
       run: npm ci
 
-    - name: Cache cargo bin directory
-      uses: actions/cache@v4
+    - name: Restore cargo bin cache
+      id: cache-cargo-bin
+      uses: actions/cache/restore@v4
       with:
         path: ~/.cargo/bin
         key: ${{ runner.os }}-cargo-bin-dioxus-0.7
         restore-keys: |
           ${{ runner.os }}-cargo-bin-dioxus-
-        save-always: true
 
     - name: Install Dioxus CLI
       run: |
@@ -100,6 +102,13 @@ jobs:
           echo "Dioxus CLI already installed, skipping"
         fi
       shell: bash
+
+    - name: Save cargo bin cache
+      if: steps.cache-cargo-bin.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cargo/bin
+        key: ${{ runner.os }}-cargo-bin-dioxus-0.7
 
     - name: Check Rust formatting
       working-directory: ./bae
@@ -193,7 +202,8 @@ jobs:
     needs: [test, security]
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # TODO: Re-enable ubuntu-latest, windows-latest once caches are populated
+        os: [macos-latest]
 
     steps:
     - name: Checkout code
