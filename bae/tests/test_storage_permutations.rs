@@ -813,14 +813,14 @@ async fn verify_roundtrip(
     info!("✓ Roundtrip verification passed");
 }
 /// Test with a real album - run with:
-/// cargo test --test test_storage_permutations --features test-utils test_real_album -- --ignored --nocapture
+/// REAL_ALBUM_PATH="/path/to/album" cargo test --test test_storage_permutations --features test-utils test_real_album -- --ignored --nocapture
 #[tokio::test]
 #[ignore]
 async fn test_real_album() {
     tracing_init();
-    let real_album_path = PathBuf::from(
-        "/Users/dima/Torrents/Rush  - Moving Pictures 1981 ( 1983 West Germany 1st Press Mercury 800 048-2 Green Arrow)",
-    );
+    let real_album_path = std::env::var("REAL_ALBUM_PATH")
+        .map(PathBuf::from)
+        .expect("Set REAL_ALBUM_PATH env var to run this test");
     if !real_album_path.exists() {
         panic!("Real album path does not exist: {:?}", real_album_path);
     }
