@@ -39,9 +39,7 @@ jobs:
         brew install libdiscid libcdio pkg-config libtorrent-rasterbar boost
 
     - name: Install Rust (uses rust-toolchain.toml)
-      uses: dtolnay/rust-toolchain@master
-      with:
-        components: rustfmt, clippy
+      run: rustup show
 
     - name: Cache cargo registry
       uses: actions/cache@v4
@@ -171,10 +169,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@master
-      with:
-        components: rustfmt, clippy
+    - name: Install Rust (uses rust-toolchain.toml)
+      run: rustup show
 
     - name: Install cargo-audit
       run: cargo install cargo-audit
@@ -211,9 +207,7 @@ jobs:
         brew install libdiscid libcdio pkg-config libtorrent-rasterbar boost
 
     - name: Install Rust (uses rust-toolchain.toml)
-      uses: dtolnay/rust-toolchain@master
-      with:
-        components: rustfmt, clippy
+      run: rustup show
 
     - name: Cache cargo registry
       uses: actions/cache@v4
