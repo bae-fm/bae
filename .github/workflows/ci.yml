@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, release ]
   pull_request:
     branches: [ main, develop ]
 
@@ -152,6 +152,7 @@ jobs:
 
   build-artifacts:
     name: Build Artifacts
+    if: github.ref == 'refs/heads/release'
     runs-on: ${{ matrix.os }}
     needs: [test, security]
     strategy:
