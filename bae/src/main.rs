@@ -36,14 +36,12 @@ async fn create_cache_manager() -> cache::CacheManager {
     info!("Cache manager created");
     cache_manager
 }
-/// Initialize cloud storage from config
+/// Initialize cloud storage from config (optional - app works without it)
 async fn create_cloud_storage_manager(
     config: &config::Config,
 ) -> cloud_storage::CloudStorageManager {
     info!("Initializing cloud storage...");
-    cloud_storage::CloudStorageManager::new(config.s3_config.clone())
-        .await
-        .expect("Failed to initialize cloud storage. Please check your S3 configuration.")
+    cloud_storage::CloudStorageManager::new_optional(config.s3_config.clone()).await
 }
 /// Initialize database
 async fn create_database(config: &config::Config) -> Database {
@@ -71,11 +69,13 @@ fn create_library_manager(
 }
 /// Ensure a default storage profile exists
 ///
-/// Creates "Cloud Storage" profile (encrypted + chunked + cloud) if no default exists.
-/// This matches the legacy import behavior.
+/// Creates a default storage profile if none exists:
+/// - If cloud storage is available: creates "Cloud Storage" profile (encrypted + chunked + cloud)
+/// - If cloud storage is unavailable: skips creation, user can set up storage in settings
 async fn ensure_default_storage_profile(
     library_manager: &SharedLibraryManager,
     config: &config::Config,
+    cloud_storage: &cloud_storage::CloudStorageManager,
 ) {
     let manager = library_manager.get();
     match manager.get_default_storage_profile().await {
@@ -83,29 +83,33 @@ async fn ensure_default_storage_profile(
             info!("Default storage profile exists: {}", profile.name);
         }
         Ok(None) => {
-            info!("Creating default storage profile...");
-            let profile = db::DbStorageProfile::new_cloud(
-                "Cloud Storage",
-                &config.s3_config.bucket_name,
-                &config.s3_config.region,
-                config.s3_config.endpoint_url.as_deref(),
-                &config.s3_config.access_key_id,
-                &config.s3_config.secret_access_key,
-                true,
-                true,
-            )
-            .with_default(true);
-            match manager.insert_storage_profile(&profile).await {
-                Ok(()) => {
-                    if let Err(e) = manager.set_default_storage_profile(&profile.id).await {
-                        error!("Failed to set default storage profile: {}", e);
-                    } else {
-                        info!("Created default storage profile: Cloud Storage");
+            if cloud_storage.is_available() {
+                info!("Creating default cloud storage profile...");
+                let profile = db::DbStorageProfile::new_cloud(
+                    "Cloud Storage",
+                    &config.s3_config.bucket_name,
+                    &config.s3_config.region,
+                    config.s3_config.endpoint_url.as_deref(),
+                    &config.s3_config.access_key_id,
+                    &config.s3_config.secret_access_key,
+                    true,
+                    true,
+                )
+                .with_default(true);
+                match manager.insert_storage_profile(&profile).await {
+                    Ok(()) => {
+                        if let Err(e) = manager.set_default_storage_profile(&profile.id).await {
+                            error!("Failed to set default storage profile: {}", e);
+                        } else {
+                            info!("Created default storage profile: Cloud Storage");
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to create default storage profile: {}", e);
                     }
                 }
-                Err(e) => {
-                    error!("Failed to create default storage profile: {}", e);
-                }
+            } else {
+                info!("No default storage profile. Cloud storage unavailable - user can configure storage in settings.");
             }
         }
         Err(e) => {
@@ -131,7 +135,11 @@ fn main() {
     let cloud_storage = runtime_handle.block_on(create_cloud_storage_manager(&config));
     let database = runtime_handle.block_on(create_database(&config));
     let library_manager = create_library_manager(database.clone(), cloud_storage.clone());
-    runtime_handle.block_on(ensure_default_storage_profile(&library_manager, &config));
+    runtime_handle.block_on(ensure_default_storage_profile(
+        &library_manager,
+        &config,
+        &cloud_storage,
+    ));
     let encryption_service = encryption::EncryptionService::new(&config).expect(
         "Failed to initialize encryption service. Check your encryption key configuration.",
     );

@@ -1,4 +1,9 @@
 [application]
+name = "Bae"
+
+[bundle]
+identifier = "com.bae.app"
+publisher = "Bae"
 
 [web.app]
 

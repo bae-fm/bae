@@ -250,31 +250,101 @@ impl CloudStorage for S3CloudStorage {
         Ok(())
     }
 }
+/// No-op cloud storage implementation for when S3 is unavailable
+///
+/// All operations return errors, but the app can still run without cloud storage.
+struct UnavailableCloudStorage;
+
+#[async_trait::async_trait]
+impl CloudStorage for UnavailableCloudStorage {
+    async fn upload_chunk(
+        &self,
+        _chunk_id: &str,
+        _data: &[u8],
+    ) -> Result<String, CloudStorageError> {
+        Err(CloudStorageError::Config(
+            "Cloud storage is not configured. Please set up S3/MinIO to use cloud features.".into(),
+        ))
+    }
+
+    async fn download_chunk(&self, _storage_location: &str) -> Result<Vec<u8>, CloudStorageError> {
+        Err(CloudStorageError::Config(
+            "Cloud storage is not configured. Please set up S3/MinIO to use cloud features.".into(),
+        ))
+    }
+
+    async fn delete_chunk(&self, _storage_location: &str) -> Result<(), CloudStorageError> {
+        Err(CloudStorageError::Config(
+            "Cloud storage is not configured. Please set up S3/MinIO to use cloud features.".into(),
+        ))
+    }
+}
+
 /// Cloud storage manager that handles chunk lifecycle
 #[derive(Clone)]
 pub struct CloudStorageManager {
     storage: std::sync::Arc<dyn CloudStorage>,
+    available: bool,
 }
+
 impl std::fmt::Debug for CloudStorageManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CloudStorageManager")
             .field("storage", &"<dyn CloudStorage>")
+            .field("available", &self.available)
             .finish()
     }
 }
+
 impl CloudStorageManager {
     /// Create a new cloud storage manager with S3 configuration
     pub async fn new(config: S3Config) -> Result<Self, CloudStorageError> {
         let storage = S3CloudStorage::new(config).await?;
         Ok(CloudStorageManager {
             storage: std::sync::Arc::new(storage),
+            available: true,
         })
     }
+
+    /// Create a cloud storage manager that attempts S3 but falls back to unavailable
+    ///
+    /// This allows the app to start even when S3 is not configured or unreachable.
+    /// Cloud storage operations will fail gracefully with descriptive errors.
+    pub async fn new_optional(config: S3Config) -> Self {
+        match S3CloudStorage::new(config).await {
+            Ok(storage) => {
+                info!("Cloud storage initialized successfully");
+                CloudStorageManager {
+                    storage: std::sync::Arc::new(storage),
+                    available: true,
+                }
+            }
+            Err(e) => {
+                warn!(
+                    "Cloud storage unavailable: {}. App will run without cloud features.",
+                    e
+                );
+                CloudStorageManager {
+                    storage: std::sync::Arc::new(UnavailableCloudStorage),
+                    available: false,
+                }
+            }
+        }
+    }
+
+    /// Check if cloud storage is available
+    pub fn is_available(&self) -> bool {
+        self.available
+    }
+
     /// Create a cloud storage manager from any CloudStorage implementation (for testing)
     #[cfg(feature = "test-utils")]
     #[allow(unused)]
     pub fn from_storage(storage: std::sync::Arc<dyn CloudStorage>) -> Self {
-        CloudStorageManager { storage }
+        CloudStorageManager {
+            storage,
+            available: true,
+        }
     }
     /// Upload chunk data directly from memory
     pub async fn upload_chunk_data(
