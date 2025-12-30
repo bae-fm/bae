@@ -10,6 +10,7 @@ pub mod cue_flac;
 pub mod db;
 pub mod discogs;
 pub mod encryption;
+pub mod fixtures;
 pub mod flac_decoder;
 pub mod flac_encoder;
 pub mod import;

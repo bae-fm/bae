@@ -10,6 +10,14 @@ default-run = "bae"
 name = "bae"
 path = "src/lib.rs"
 
+[[bin]]
+name = "bae"
+path = "src/main.rs"
+
+[[bin]]
+name = "generate_screenshots"
+path = "src/bin/generate_screenshots.rs"
+
 [dependencies]
 dioxus = { version = "0.7.1", features = ["router", "desktop"] }
 reqwest = { version = "0.12", features = ["json"] }
