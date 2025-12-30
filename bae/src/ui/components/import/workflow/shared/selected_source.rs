@@ -5,7 +5,7 @@ pub fn SelectedSource(
     title: String,
     path: Signal<String>,
     on_clear: EventHandler<()>,
-    children: Option<Element>,
+    children: Element,
 ) -> Element {
     let full_path = path.read().clone();
     let path_buf = PathBuf::from(&full_path);
@@ -63,9 +63,7 @@ pub fn SelectedSource(
                     }
                 }
             }
-            if let Some(children) = children {
-                {children}
-            }
+            {children}
         }
     }
 }

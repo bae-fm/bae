@@ -77,7 +77,7 @@ pub fn FolderImport() -> Element {
                         title: "Selected Folder".to_string(),
                         path: folder_path,
                         on_clear: on_change_folder,
-                        children: if !folder_files.read().is_empty() { Some(rsx! {
+                        if !folder_files.read().is_empty() {
                             div { class: "mt-4",
                                 h4 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3",
                                     "Files"
@@ -87,7 +87,7 @@ pub fn FolderImport() -> Element {
                                     folder_path: folder_path.read().clone(),
                                 }
                             }
-                        }) } else { None },
+                        }
                     }
                     if *is_looking_up.read() && *import_phase.read() == ImportPhase::MetadataDetection {
                         DetectingMetadata { message: "Looking up release...".to_string() }

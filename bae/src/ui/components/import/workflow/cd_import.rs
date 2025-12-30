@@ -98,26 +98,32 @@ pub fn CdImport() -> Element {
                         title: "Selected CD".to_string(),
                         path: folder_path,
                         on_clear: on_change_folder,
-                        children: if let Some((disc_id, first_track, last_track)) = cd_toc_info.read().as_ref() { Some(rsx! {
+                        if let Some((disc_id, first_track, last_track)) = cd_toc_info.read().as_ref() {
                             div { class: "mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg",
                                 div { class: "space-y-2",
                                     div { class: "flex items-center",
-                                        span { class: "text-sm font-medium text-gray-700 w-24", "DiscID:" }
-                                        span { class: "text-sm text-gray-900 font-mono", "{disc_id}" }
+                                        span { class: "text-sm font-medium text-gray-700 w-24",
+                                            "DiscID:"
+                                        }
+                                        span { class: "text-sm text-gray-900 font-mono",
+                                            "{disc_id}"
+                                        }
                                     }
                                     div { class: "flex items-center",
-                                        span { class: "text-sm font-medium text-gray-700 w-24", "Tracks:" }
+                                        span { class: "text-sm font-medium text-gray-700 w-24",
+                                            "Tracks:"
+                                        }
                                         span { class: "text-sm text-gray-900",
                                             "{last_track - first_track + 1} tracks ({first_track}-{last_track})"
                                         }
                                     }
                                 }
                             }
-                        }) } else if *is_looking_up.read() { Some(rsx! {
+                        } else if *is_looking_up.read() {
                             div { class: "mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg text-center",
                                 p { class: "text-sm text-gray-600", "Reading CD table of contents..." }
                             }
-                        }) } else { None },
+                        }
                     }
                     if *import_phase.read() == ImportPhase::ExactLookup {
                         ExactLookup {

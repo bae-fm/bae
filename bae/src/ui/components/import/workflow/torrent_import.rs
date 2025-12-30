@@ -85,18 +85,16 @@ pub fn TorrentImport() -> Element {
                         title: "Selected Torrent".to_string(),
                         path: import_context.folder_path(),
                         on_clear: on_change_folder,
-                        children: Some(rsx! {
-                            TorrentTrackerDisplay {
-                                trackers: import_context
-                                    .torrent_info()
-                                    .read()
-                                    .as_ref()
-                                    .map(|info| info.trackers.clone())
-                                    .unwrap_or_default(),
-                            }
-                            TorrentInfoDisplay { info: import_context.torrent_info() }
-                            TorrentFilesDisplay { info: import_context.torrent_info() }
-                        }),
+                        TorrentTrackerDisplay {
+                            trackers: import_context
+                                .torrent_info()
+                                .read()
+                                .as_ref()
+                                .map(|info| info.trackers.clone())
+                                .unwrap_or_default(),
+                        }
+                        TorrentInfoDisplay { info: import_context.torrent_info() }
+                        TorrentFilesDisplay { info: import_context.torrent_info() }
                     }
                     if *import_context.import_phase().read() == ImportPhase::ExactLookup {
                         ExactLookup {
