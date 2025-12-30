@@ -1,47 +1,78 @@
 use crate::db::{DbAlbum, DbArtist};
+#[cfg(not(feature = "demo"))]
 use crate::library::use_library_manager;
 use crate::ui::components::album_card::AlbumCard;
 use crate::ui::Route;
 use dioxus::prelude::*;
 use std::collections::HashMap;
 use tracing::debug;
+
 /// Library browser page
 #[component]
 pub fn Library() -> Element {
     debug!("Component rendering");
-    let library_manager = use_library_manager();
     let mut albums = use_signal(Vec::<DbAlbum>::new);
     let mut album_artists = use_signal(HashMap::<String, Vec<DbArtist>>::new);
     let mut loading = use_signal(|| true);
+    #[cfg(not(feature = "demo"))]
     let mut error = use_signal(|| None::<String>);
-    use_effect(move || {
-        debug!("Starting load_albums effect");
-        let library_manager = library_manager.clone();
-        spawn(async move {
-            debug!("Inside async spawn, fetching albums");
+    #[cfg(feature = "demo")]
+    let error = use_signal(|| None::<String>);
+
+    // Demo mode: load embedded fixture data
+    #[cfg(feature = "demo")]
+    use_effect({
+        use crate::fixtures::demo_data;
+        move || {
+            debug!("Loading demo data");
             loading.set(true);
-            error.set(None);
-            match library_manager.get().get_albums().await {
-                Ok(album_list) => {
-                    let mut artists_map = HashMap::new();
-                    for album in &album_list {
-                        if let Ok(artists) =
-                            library_manager.get().get_artists_for_album(&album.id).await
-                        {
-                            artists_map.insert(album.id.clone(), artists);
-                        }
-                    }
-                    album_artists.set(artists_map);
-                    albums.set(album_list);
-                    loading.set(false);
-                }
-                Err(e) => {
-                    error.set(Some(format!("Failed to load library: {}", e)));
-                    loading.set(false);
-                }
+
+            let album_list = demo_data::get_albums();
+            let mut artists_map = HashMap::new();
+            for album in &album_list {
+                let artists = demo_data::get_artists_for_album(&album.id);
+                artists_map.insert(album.id.clone(), artists);
             }
-        });
+
+            album_artists.set(artists_map);
+            albums.set(album_list);
+            loading.set(false);
+        }
     });
+
+    // Production mode: load from database
+    #[cfg(not(feature = "demo"))]
+    {
+        let library_manager = use_library_manager();
+        use_effect(move || {
+            debug!("Starting load_albums effect");
+            let library_manager = library_manager.clone();
+            spawn(async move {
+                debug!("Inside async spawn, fetching albums");
+                loading.set(true);
+                error.set(None);
+                match library_manager.get().get_albums().await {
+                    Ok(album_list) => {
+                        let mut artists_map = HashMap::new();
+                        for album in &album_list {
+                            if let Ok(artists) =
+                                library_manager.get().get_artists_for_album(&album.id).await
+                            {
+                                artists_map.insert(album.id.clone(), artists);
+                            }
+                        }
+                        album_artists.set(artists_map);
+                        albums.set(album_list);
+                        loading.set(false);
+                    }
+                    Err(e) => {
+                        error.set(Some(format!("Failed to load library: {}", e)));
+                        loading.set(false);
+                    }
+                }
+            });
+        });
+    }
     rsx! {
         div { class: "container mx-auto p-6",
             h1 { class: "text-3xl font-bold text-white mb-6", "Music Library" }

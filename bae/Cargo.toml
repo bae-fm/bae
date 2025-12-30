@@ -18,8 +18,10 @@ path = "src/main.rs"
 name = "generate_screenshots"
 path = "src/bin/generate_screenshots.rs"
 
+
 [dependencies]
 dioxus = { version = "0.7.1", features = ["router", "desktop"] }
+dioxus-core-macro = "=0.7.1"  # Pin to avoid 0.7.2 which changes children prop handling
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -61,6 +63,9 @@ chardetng = "0.1"       # Encoding detection for text files
 encoding_rs = "0.8"     # Character encoding conversion
 urlencoding = "2.1"     # URL encoding/decoding for custom protocol paths
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+
 [target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))'.dependencies]
 libcdio-sys = "0.5"     # FFI bindings to libcdio for CD drive access (requires libcdio system library)
 rayon = "1.10"          # Parallel processing for CUE/FLAC splitting
@@ -95,6 +100,8 @@ required-features = ["test-utils"]
 [features]
 default = ["desktop"]
 desktop = ["dioxus/desktop"]
+web = ["dioxus/web"]
+demo = []  # Embeds fixture data for screenshots, no database needed
 test-utils = []  # Feature for test helper APIs
 
 [lints.clippy]
