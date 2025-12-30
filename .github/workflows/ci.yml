@@ -159,6 +159,8 @@ jobs:
     needs: [test, security]
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -207,9 +209,11 @@ jobs:
 
   build-artifacts:
     name: Build Artifacts
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/release'
     runs-on: macos-latest
-    # No 'needs' - tags are created by auto-release which already passed test/security
+    needs: [auto-release]
+    permissions:
+      contents: write
 
     steps:
     - name: Checkout code
@@ -354,9 +358,9 @@ jobs:
         if-no-files-found: ignore
 
     - name: Create GitHub Release
-      if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: v${{ needs.auto-release.outputs.version }}
         files: |
           bae/target/Bae.dmg
           bae/screenshots/*.png
