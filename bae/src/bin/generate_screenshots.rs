@@ -50,8 +50,18 @@ fn main() {
 
     println!("Screenshots will be saved to {:?}", output_dir);
 
-    // Set environment to use temp library
+    // Set environment for the app
+    // Use dev mode so it reads from env vars instead of keyring
+    std::env::set_var("BAE_DEV_MODE", "1");
     std::env::set_var("BAE_LIBRARY_PATH", temp_dir.to_str().unwrap());
+
+    // Set dummy credentials - we don't need real ones for screenshots
+    // The app handles unavailable cloud storage gracefully
+    std::env::set_var("BAE_DISCOGS_API_KEY", "dummy-for-screenshots");
+    std::env::set_var("BAE_S3_BUCKET", "dummy");
+    std::env::set_var("BAE_S3_REGION", "us-east-1");
+    std::env::set_var("BAE_S3_ACCESS_KEY", "dummy");
+    std::env::set_var("BAE_S3_SECRET_KEY", "dummy");
 
     // Launch the app
     println!("Launching Bae app...");
