@@ -2,7 +2,7 @@
 #[link(name = "torrent-rasterbar")]
 extern "C" {}
 use crate::db::Database;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 mod cache;
 mod cd;
 mod cloud_storage;
@@ -149,8 +149,7 @@ fn main() {
         max_db_write_workers: config.max_import_db_write_workers,
         chunk_size_bytes: config.chunk_size_bytes,
     };
-    let torrent_options =
-        torrent_options_from_config(&config).expect("Invalid torrent bind interface configuration");
+    let torrent_options = torrent_options_from_config(&config);
     let torrent_manager = torrent::start_torrent_manager(
         cache_manager.clone(),
         database.clone(),
@@ -245,22 +244,29 @@ async fn start_subsonic_server(
     }
 }
 /// Create torrent client options from application config
-fn torrent_options_from_config(
-    config: &config::Config,
-) -> Result<torrent::client::TorrentClientOptions, String> {
-    if let Some(interface) = &config.torrent_bind_interface {
-        network::validate_network_interface(interface)?;
-    }
-    let options = torrent::client::TorrentClientOptions {
-        bind_interface: config.torrent_bind_interface.clone(),
-    };
-    if let Some(interface) = &options.bind_interface {
-        info!(
-            "Torrent client configured to bind to interface: {}",
-            interface
-        );
+///
+/// If the configured interface doesn't exist, falls back to default binding.
+fn torrent_options_from_config(config: &config::Config) -> torrent::client::TorrentClientOptions {
+    let bind_interface = if let Some(interface) = &config.torrent_bind_interface {
+        match network::validate_network_interface(interface) {
+            Ok(()) => {
+                info!(
+                    "Torrent client configured to bind to interface: {}",
+                    interface
+                );
+                Some(interface.clone())
+            }
+            Err(e) => {
+                warn!(
+                    "Configured torrent interface '{}' not available: {}. Using default binding.",
+                    interface, e
+                );
+                None
+            }
+        }
     } else {
         info!("Torrent client using default network binding");
-    }
-    Ok(options)
+        None
+    };
+    torrent::client::TorrentClientOptions { bind_interface }
 }
