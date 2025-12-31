@@ -1,0 +1,143 @@
+name: Retry Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Run ID containing the unsigned build artifact'
+        required: true
+        type: string
+      version:
+        description: 'Version tag (e.g., 2025.12.3)'
+        required: true
+        type: string
+
+jobs:
+  retry-release:
+    name: Sign and Release
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download unsigned build
+      uses: actions/download-artifact@v4
+      with:
+        name: Bae-macOS-unsigned
+        path: bae/target/dx/bae/bundle/macos/bundle/macos/Bae.app
+        run-id: ${{ inputs.run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Import Apple certificate
+      env:
+        APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      run: |
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+        KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+        
+        security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        
+        echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
+        security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+        security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+    - name: Sign app bundle
+      env:
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        APP_PATH="bae/target/dx/bae/bundle/macos/bundle/macos/Bae.app"
+        IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+        echo "Using signing identity: $IDENTITY"
+        
+        codesign --deep --force --verify --verbose \
+          --sign "$IDENTITY" \
+          --options runtime \
+          "$APP_PATH"
+        
+        codesign --verify --verbose "$APP_PATH"
+
+    - name: Create signed DMG
+      env:
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        APP_PATH="bae/target/dx/bae/bundle/macos/bundle/macos/Bae.app"
+        DMG_PATH="bae/target/Bae.dmg"
+        IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+        
+        hdiutil create -volname "Bae" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+        codesign --force --sign "$IDENTITY" "$DMG_PATH"
+
+    - name: Notarize DMG
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        DMG_PATH="bae/target/Bae.dmg"
+        
+        xcrun notarytool submit "$DMG_PATH" \
+          --apple-id "$APPLE_ID" \
+          --password "$APPLE_APP_PASSWORD" \
+          --team-id "$APPLE_TEAM_ID" \
+          --wait
+        
+        xcrun stapler staple "$DMG_PATH"
+
+    - name: Install macOS dependencies
+      run: |
+        brew install libdiscid libcdio pkg-config libtorrent-rasterbar boost
+
+    - name: Install Rust
+      run: rustup show
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Node dependencies
+      working-directory: ./bae
+      run: npm ci
+
+    - name: Generate screenshots
+      working-directory: ./bae
+      env:
+        PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig
+        LIBRARY_PATH: /opt/homebrew/lib
+      run: |
+        cargo build --release --bin bae
+        cargo build --release --bin generate_screenshots
+        ./target/release/generate_screenshots
+
+    - name: Upload signed DMG
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bae-macOS-signed
+        path: bae/target/Bae.dmg
+
+    - name: Upload screenshots
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: screenshots
+        path: bae/screenshots/
+        if-no-files-found: ignore
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ inputs.version }}
+        files: |
+          bae/target/Bae.dmg
+          bae/screenshots/*.png
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
