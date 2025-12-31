@@ -240,11 +240,10 @@ pub fn start_torrent_manager(
 
 /// Create a no-op torrent manager that doesn't bind to any network interfaces.
 /// Used for screenshot mode where we don't want network permission dialogs.
-pub fn start_torrent_manager_noop() -> TorrentManagerHandle {
+pub fn start_torrent_manager_noop(runtime_handle: tokio::runtime::Handle) -> TorrentManagerHandle {
     let (command_tx, _command_rx) = mpsc::unbounded_channel();
     let (_progress_tx, progress_rx) = mpsc::unbounded_channel();
-    let rt = tokio::runtime::Handle::current();
-    let progress_handle = TorrentProgressHandle::new(progress_rx, rt);
+    let progress_handle = TorrentProgressHandle::new(progress_rx, runtime_handle);
     TorrentManagerHandle {
         command_tx,
         progress_handle,

@@ -156,7 +156,7 @@ fn main() {
         chunk_size_bytes: config.chunk_size_bytes,
     };
     let torrent_manager = if screenshot_mode {
-        torrent::start_torrent_manager_noop()
+        torrent::start_torrent_manager_noop(runtime_handle.clone())
     } else {
         let torrent_options = torrent_options_from_config(&config);
         torrent::start_torrent_manager(

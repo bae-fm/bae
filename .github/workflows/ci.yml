@@ -170,24 +170,23 @@ jobs:
     - name: Calculate CalVer version
       id: version
       run: |
-        CURRENT=$(grep '^version' bae/Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
         YEAR_MONTH=$(date +%Y.%-m)
         
-        # Extract year.month and patch from current version
-        CURRENT_YM=$(echo "$CURRENT" | cut -d. -f1-2)
-        CURRENT_PATCH=$(echo "$CURRENT" | cut -d. -f3)
+        # Find the latest tag for this month from git tags (not Cargo.toml)
+        LATEST_TAG=$(git tag -l "v${YEAR_MONTH}.*" | sort -V | tail -1)
         
-        if [ "$CURRENT_YM" = "$YEAR_MONTH" ]; then
-          # Same month, increment patch
-          NEW_PATCH=$((CURRENT_PATCH + 1))
-        else
-          # New month, start at 1
+        if [ -z "$LATEST_TAG" ]; then
+          # No tags for this month yet, start at 1
           NEW_PATCH=1
+        else
+          # Extract patch number from latest tag and increment
+          CURRENT_PATCH=$(echo "$LATEST_TAG" | sed 's/v[0-9]*\.[0-9]*\.//')
+          NEW_PATCH=$((CURRENT_PATCH + 1))
         fi
         
         NEW_VERSION="${YEAR_MONTH}.${NEW_PATCH}"
         echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-        echo "Bumping $CURRENT → $NEW_VERSION"
+        echo "Latest tag: ${LATEST_TAG:-none} → New version: $NEW_VERSION"
 
     - name: Update Cargo.toml
       run: |
