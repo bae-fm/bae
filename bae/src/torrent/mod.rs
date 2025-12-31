@@ -6,7 +6,7 @@ pub mod parser;
 pub mod piece_mapper;
 pub mod progress;
 pub mod storage;
-pub use manager::{start_torrent_manager, TorrentManagerHandle};
+pub use manager::{start_torrent_manager, start_torrent_manager_noop, TorrentManagerHandle};
 pub use metadata_detector::detect_metadata_from_torrent_file;
 pub use parser::parse_torrent_info;
 pub use piece_mapper::TorrentPieceMapper;

@@ -54,6 +54,8 @@ fn main() {
     // Use dev mode so it reads from env vars instead of keyring
     std::env::set_var("BAE_DEV_MODE", "1");
     std::env::set_var("BAE_LIBRARY_PATH", temp_dir.to_str().unwrap());
+    // Screenshot mode disables network features to avoid permission dialogs
+    std::env::set_var("BAE_SCREENSHOT_MODE", "1");
 
     // Set dummy credentials - we don't need real ones for screenshots
     // The app handles unavailable cloud storage gracefully

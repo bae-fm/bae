@@ -130,6 +130,10 @@ fn configure_logging() {
 fn main() {
     let config = config::Config::load();
     configure_logging();
+    let screenshot_mode = std::env::var("BAE_SCREENSHOT_MODE").is_ok();
+    if screenshot_mode {
+        info!("Screenshot mode enabled - disabling network features");
+    }
     let runtime = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
     let runtime_handle = runtime.handle().clone();
     info!("Building dependencies...");
@@ -151,13 +155,17 @@ fn main() {
         max_db_write_workers: config.max_import_db_write_workers,
         chunk_size_bytes: config.chunk_size_bytes,
     };
-    let torrent_options = torrent_options_from_config(&config);
-    let torrent_manager = torrent::start_torrent_manager(
-        cache_manager.clone(),
-        database.clone(),
-        config.chunk_size_bytes,
-        torrent_options,
-    );
+    let torrent_manager = if screenshot_mode {
+        torrent::start_torrent_manager_noop()
+    } else {
+        let torrent_options = torrent_options_from_config(&config);
+        torrent::start_torrent_manager(
+            cache_manager.clone(),
+            database.clone(),
+            config.chunk_size_bytes,
+            torrent_options,
+        )
+    };
     let import_handle = import::ImportService::start(
         import_config,
         runtime_handle.clone(),
@@ -201,16 +209,18 @@ fn main() {
         encryption_service: encryption_service.clone(),
         cloud_storage: cloud_storage.clone(),
     };
-    runtime_handle.spawn(async move {
-        start_subsonic_server(
-            cache_manager,
-            library_manager,
-            encryption_service,
-            cloud_storage,
-            config.chunk_size_bytes,
-        )
-        .await
-    });
+    if !screenshot_mode {
+        runtime_handle.spawn(async move {
+            start_subsonic_server(
+                cache_manager,
+                library_manager,
+                encryption_service,
+                cloud_storage,
+                config.chunk_size_bytes,
+            )
+            .await
+        });
+    }
     info!("Starting UI");
     ui::launch_app(ui_context);
     info!("UI quit");
