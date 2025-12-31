@@ -98,6 +98,10 @@ fn main() {
 
 #[cfg(target_os = "macos")]
 fn capture_screenshots(output_dir: &std::path::Path, _app: &mut Child) {
+    // Resize the app window to a good screenshot size
+    resize_bae_window(1920, 1080);
+    thread::sleep(Duration::from_millis(1000)); // Let UI re-render
+
     // Find the Bae window ID using AppleScript
     let window_id = get_bae_window_id();
 
@@ -174,6 +178,42 @@ fn get_bae_window_id() -> Option<String> {
         String::from_utf8_lossy(&output.stderr)
     );
     None
+}
+
+#[cfg(target_os = "macos")]
+fn resize_bae_window(width: u32, height: u32) {
+    let script = format!(
+        r#"
+        tell application "System Events"
+            set baeProcess to first process whose name is "bae" or name is "Bae"
+            tell baeProcess
+                set frontmost to true
+                if (count of windows) > 0 then
+                    set position of window 1 to {{0, 0}}
+                    set size of window 1 to {{{}, {}}}
+                end if
+            end tell
+        end tell
+    "#,
+        width, height
+    );
+
+    let output = Command::new("osascript").args(["-e", &script]).output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            println!("Resized Bae window to {}x{}", width, height);
+        }
+        Ok(out) => {
+            eprintln!(
+                "Warning: Could not resize window: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+        }
+        Err(e) => {
+            eprintln!("Warning: Failed to run resize script: {}", e);
+        }
+    }
 }
 
 #[cfg(not(target_os = "macos"))]
