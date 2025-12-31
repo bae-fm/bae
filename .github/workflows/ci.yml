@@ -342,10 +342,6 @@ jobs:
         PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig
         LIBRARY_PATH: /opt/homebrew/lib
       run: |
-        # Ensure release binary exists (dx bundle should have built it, but be explicit)
-        cargo build --release --bin bae
-        
-        # Build and run the screenshot generator
         cargo build --release --bin generate_screenshots
         ./target/release/generate_screenshots
 
