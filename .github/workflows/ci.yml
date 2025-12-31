@@ -257,6 +257,13 @@ jobs:
         LIBRARY_PATH: /opt/homebrew/lib
       run: dx bundle --release
 
+    - name: Upload unsigned build (backup)
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bae-macOS-unsigned
+        path: bae/target/dx/bae/bundle/macos/bundle/macos/Bae.app
+        retention-days: 7
+
     - name: Import Apple certificate
       env:
         APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
