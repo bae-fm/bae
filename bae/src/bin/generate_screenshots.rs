@@ -65,18 +65,32 @@ fn main() {
     std::env::set_var("BAE_S3_ACCESS_KEY", "dummy");
     std::env::set_var("BAE_S3_SECRET_KEY", "dummy");
 
-    // Launch the app
+    // Launch the app - check multiple possible locations
     println!("Launching Bae app...");
-    let app_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("target")
-        .join("release")
-        .join("bae");
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-    if !app_path.exists() {
-        eprintln!("Error: Release build not found at {:?}", app_path);
-        eprintln!("Run `cargo build --release` first");
-        std::process::exit(1);
-    }
+    // Possible binary locations (in order of preference)
+    let possible_paths = [
+        // After dx bundle: binary inside .app bundle
+        manifest_dir.join("target/dx/bae/bundle/macos/bundle/macos/Bae.app/Contents/MacOS/Bae"),
+        // After cargo build --release
+        manifest_dir.join("target/release/bae"),
+    ];
+
+    let app_path = possible_paths
+        .iter()
+        .find(|p| p.exists())
+        .cloned()
+        .unwrap_or_else(|| {
+            eprintln!("Error: Release build not found. Checked:");
+            for p in &possible_paths {
+                eprintln!("  - {:?}", p);
+            }
+            eprintln!("Run `dx bundle --release` or `cargo build --release` first");
+            std::process::exit(1);
+        });
+
+    println!("Using binary at: {:?}", app_path);
 
     let mut app_process = Command::new(&app_path)
         .spawn()
