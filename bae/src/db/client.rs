@@ -1098,7 +1098,13 @@ impl Database {
     /// - Tracks (via FOREIGN KEY ON DELETE CASCADE)
     /// - Files (via FOREIGN KEY ON DELETE CASCADE)
     /// - Track artists, audio formats (via FOREIGN KEY ON DELETE CASCADE)
+    /// - Import records referencing this release (cleared before delete)
     pub async fn delete_release(&self, release_id: &str) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE imports SET release_id = NULL WHERE release_id = ?")
+            .bind(release_id)
+            .execute(&self.pool)
+            .await?;
+
         sqlx::query("DELETE FROM releases WHERE id = ?")
             .bind(release_id)
             .execute(&self.pool)
