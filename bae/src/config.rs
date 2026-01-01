@@ -3,6 +3,7 @@ use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use thiserror::Error;
 use tracing::{info, warn};
+
 /// Configuration errors (production mode only)
 #[derive(Error, Debug)]
 pub enum ConfigError {
@@ -15,6 +16,7 @@ pub enum ConfigError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }
+
 /// YAML config file structure for non-secret settings
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ConfigYaml {
@@ -25,40 +27,27 @@ pub struct ConfigYaml {
     pub chunk_size_bytes: Option<usize>,
     pub torrent_bind_interface: Option<String>,
 }
+
 /// Application configuration
-/// In debug builds: loads from .env file
-/// In release builds: loads from ~/.bae/config.yaml + keyring
 #[derive(Clone, Debug)]
 pub struct Config {
-    /// Library ID (loaded from config or auto-generated)
     pub library_id: String,
-    /// Discogs API key (required)
-    pub discogs_api_key: String,
-    /// S3 configuration
-    pub s3_config: crate::cloud_storage::S3Config,
-    /// Encryption key (hex-encoded 256-bit key)
+    pub discogs_api_key: Option<String>,
     pub encryption_key: String,
-    /// Number of parallel encryption workers for import (CPU-bound)
     pub max_import_encrypt_workers: usize,
-    /// Number of parallel upload workers for import (I/O-bound)
     pub max_import_upload_workers: usize,
-    /// Number of parallel DB write workers for import (I/O-bound)
     pub max_import_db_write_workers: usize,
-    /// Size of each chunk in bytes (default: 1MB)
     pub chunk_size_bytes: usize,
-    /// Network interface to bind torrent clients to (optional, e.g. "eth0", "tun0", "0.0.0.0:6881")
     pub torrent_bind_interface: Option<String>,
 }
-/// Credential data loaded from keyring (production mode only)
-#[derive(Debug, Clone)]
+
+#[derive(Debug, Clone, Default)]
 struct CredentialData {
-    discogs_api_key: String,
-    s3_config: crate::cloud_storage::S3Config,
-    encryption_key: String,
+    discogs_api_key: Option<String>,
+    encryption_key: Option<String>,
 }
+
 impl Config {
-    /// Load configuration based on build mode
-    /// Dev mode is activated if .env file exists or BAE_DEV_MODE env var is set
     pub fn load() -> Self {
         let dev_mode = std::env::var("BAE_DEV_MODE").is_ok() || dotenvy::dotenv().is_ok();
         if dev_mode {
@@ -69,46 +58,15 @@ impl Config {
             Self::from_config_file()
         }
     }
-    /// Load configuration from environment variables (dev mode)
+
     fn from_env() -> Self {
-        let library_id = match std::env::var("BAE_LIBRARY_ID").ok() {
-            Some(id) => {
-                info!("Using library ID from .env: {}", id);
-                id
-            }
-            None => {
-                let id = uuid::Uuid::new_v4().to_string();
-                warn!("No BAE_LIBRARY_ID in .env, generated new ID: {}", id);
-                info!(
-                    "Add this to your .env file to persist: BAE_LIBRARY_ID={}",
-                    id
-                );
-                id
-            }
-        };
-        let discogs_api_key = std::env::var("BAE_DISCOGS_API_KEY")
-            .expect("BAE_DISCOGS_API_KEY must be set in .env for dev mode");
-        let bucket_name =
-            std::env::var("BAE_S3_BUCKET").expect("BAE_S3_BUCKET must be set in .env for dev mode");
-        let region =
-            std::env::var("BAE_S3_REGION").expect("BAE_S3_REGION must be set in .env for dev mode");
-        let access_key_id = std::env::var("BAE_S3_ACCESS_KEY")
-            .expect("BAE_S3_ACCESS_KEY must be set in .env for dev mode");
-        let secret_access_key = std::env::var("BAE_S3_SECRET_KEY")
-            .expect("BAE_S3_SECRET_KEY must be set in .env for dev mode");
-        let endpoint_url = std::env::var("BAE_S3_ENDPOINT")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty());
-        let s3_config = crate::cloud_storage::S3Config {
-            bucket_name: bucket_name.clone(),
-            region,
-            access_key_id,
-            secret_access_key,
-            endpoint_url: endpoint_url.clone(),
-        };
+        let library_id = std::env::var("BAE_LIBRARY_ID").unwrap_or_else(|_| {
+            let id = uuid::Uuid::new_v4().to_string();
+            warn!("No BAE_LIBRARY_ID in .env, generated new ID: {}", id);
+            id
+        });
+        let discogs_api_key = std::env::var("BAE_DISCOGS_API_KEY").ok();
         let encryption_key = std::env::var("BAE_ENCRYPTION_KEY").unwrap_or_else(|_| {
-            warn!("No BAE_ENCRYPTION_KEY found, generating temporary key");
             use aes_gcm::{aead::OsRng, Aes256Gcm, KeyInit};
             let key = Aes256Gcm::generate_key(OsRng);
             hex::encode(key.as_ref() as &[u8])
@@ -136,20 +94,10 @@ impl Config {
         let torrent_bind_interface = std::env::var("BAE_TORRENT_BIND_INTERFACE")
             .ok()
             .filter(|s| !s.is_empty());
-        info!("Dev mode with S3 storage");
-        info!("S3 bucket: {}", bucket_name);
-        if let Some(endpoint) = &endpoint_url {
-            info!("S3 endpoint: {}", endpoint);
-        }
-        info!(
-            "Import worker pools - encrypt: {}, upload: {}, db_write: {}",
-            max_import_encrypt_workers, max_import_upload_workers, max_import_db_write_workers
-        );
-        info!("Chunk size: {} bytes", chunk_size_bytes);
+
         Self {
             library_id,
             discogs_api_key,
-            s3_config,
             encryption_key,
             chunk_size_bytes,
             max_import_encrypt_workers,
@@ -158,56 +106,58 @@ impl Config {
             torrent_bind_interface,
         }
     }
-    /// Load configuration from config.yaml + keyring (production mode)
+
     fn from_config_file() -> Self {
-        info!("Production mode - loading from config.yaml + keyring");
-        let credentials = Self::load_from_keyring()
-            .expect("Failed to load credentials from keyring - run setup wizard first");
+        let credentials = Self::load_from_keyring();
         let home_dir = dirs::home_dir().expect("Failed to get home directory");
         let config_path = home_dir.join(".bae").join("config.yaml");
         let yaml_config: ConfigYaml = if config_path.exists() {
-            let yaml_str =
-                std::fs::read_to_string(&config_path).expect("Failed to read config.yaml");
-            serde_yaml::from_str(&yaml_str).expect("Failed to parse config.yaml")
+            serde_yaml::from_str(&std::fs::read_to_string(&config_path).unwrap())
+                .unwrap_or_default()
         } else {
-            warn!("No config.yaml found at {:?}, using defaults", config_path);
             ConfigYaml::default()
         };
-        let library_id = yaml_config.library_id.unwrap_or_else(|| {
-            let id = uuid::Uuid::new_v4().to_string();
-            warn!("No library_id in config.yaml, generated new ID: {}", id);
-            id
+
+        let library_id = yaml_config
+            .library_id
+            .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+        let encryption_key = credentials.encryption_key.unwrap_or_else(|| {
+            use aes_gcm::{aead::OsRng, Aes256Gcm, KeyInit};
+            let key = Aes256Gcm::generate_key(OsRng);
+            let key_hex = hex::encode(key.as_ref() as &[u8]);
+            if let Ok(entry) = keyring::Entry::new("bae", "encryption_master_key") {
+                let _ = entry.set_password(&key_hex);
+            }
+            key_hex
         });
-        let default_encrypt_workers = std::thread::available_parallelism()
+        let default_workers = std::thread::available_parallelism()
             .map(|n| n.get() * 2)
             .unwrap_or(4);
+
         Self {
             library_id,
             discogs_api_key: credentials.discogs_api_key,
-            s3_config: credentials.s3_config,
-            encryption_key: credentials.encryption_key,
+            encryption_key,
             max_import_encrypt_workers: yaml_config
                 .max_import_encrypt_workers
-                .unwrap_or(default_encrypt_workers),
+                .unwrap_or(default_workers),
             max_import_upload_workers: yaml_config.max_import_upload_workers.unwrap_or(20),
             max_import_db_write_workers: yaml_config.max_import_db_write_workers.unwrap_or(10),
             chunk_size_bytes: yaml_config.chunk_size_bytes.unwrap_or(1024 * 1024),
             torrent_bind_interface: yaml_config.torrent_bind_interface,
         }
     }
-    /// Get the library storage path
+
     pub fn get_library_path(&self) -> PathBuf {
-        if let Ok(path) = std::env::var("BAE_LIBRARY_PATH") {
-            return PathBuf::from(path);
-        }
-        let home_dir = dirs::home_dir().expect("Failed to get home directory");
-        home_dir.join(".bae")
+        std::env::var("BAE_LIBRARY_PATH")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| dirs::home_dir().unwrap().join(".bae"))
     }
-    /// Check if running in dev mode
+
     pub fn is_dev_mode() -> bool {
         std::env::var("BAE_DEV_MODE").is_ok() || std::path::Path::new(".env").exists()
     }
-    /// Save configuration - dispatches to appropriate backend based on mode
+
     pub fn save(&self) -> Result<(), ConfigError> {
         if Self::is_dev_mode() {
             self.save_to_env()
@@ -216,127 +166,74 @@ impl Config {
             self.save_to_config_yaml()
         }
     }
-    /// Save configuration to .env file (dev mode)
+
     pub fn save_to_env(&self) -> Result<(), ConfigError> {
         let env_path = std::path::Path::new(".env");
         let mut lines: Vec<String> = if env_path.exists() {
-            let file = std::fs::File::open(env_path)?;
-            std::io::BufReader::new(file)
+            std::io::BufReader::new(std::fs::File::open(env_path)?)
                 .lines()
                 .collect::<Result<Vec<_>, _>>()?
         } else {
             Vec::new()
         };
-        let managed_keys = [
-            "BAE_LIBRARY_ID",
-            "BAE_DISCOGS_API_KEY",
-            "BAE_S3_BUCKET",
-            "BAE_S3_REGION",
-            "BAE_S3_ACCESS_KEY",
-            "BAE_S3_SECRET_KEY",
-            "BAE_S3_ENDPOINT",
-            "BAE_ENCRYPTION_KEY",
-            "BAE_MAX_IMPORT_ENCRYPT_WORKERS",
-            "BAE_MAX_IMPORT_UPLOAD_WORKERS",
-            "BAE_MAX_IMPORT_DB_WRITE_WORKERS",
-            "BAE_CHUNK_SIZE_BYTES",
-            "BAE_TORRENT_BIND_INTERFACE",
-        ];
-        let mut new_values: std::collections::HashMap<String, String> =
-            std::collections::HashMap::new();
-        new_values.insert("BAE_LIBRARY_ID".to_string(), self.library_id.clone());
-        new_values.insert(
-            "BAE_DISCOGS_API_KEY".to_string(),
-            self.discogs_api_key.clone(),
-        );
-        new_values.insert(
-            "BAE_S3_BUCKET".to_string(),
-            self.s3_config.bucket_name.clone(),
-        );
-        new_values.insert("BAE_S3_REGION".to_string(), self.s3_config.region.clone());
-        new_values.insert(
-            "BAE_S3_ACCESS_KEY".to_string(),
-            self.s3_config.access_key_id.clone(),
-        );
-        new_values.insert(
-            "BAE_S3_SECRET_KEY".to_string(),
-            self.s3_config.secret_access_key.clone(),
-        );
-        if let Some(endpoint) = &self.s3_config.endpoint_url {
-            new_values.insert("BAE_S3_ENDPOINT".to_string(), endpoint.clone());
+
+        let mut new_values = std::collections::HashMap::new();
+        new_values.insert("BAE_LIBRARY_ID", self.library_id.clone());
+        if let Some(key) = &self.discogs_api_key {
+            new_values.insert("BAE_DISCOGS_API_KEY", key.clone());
         }
+        new_values.insert("BAE_ENCRYPTION_KEY", self.encryption_key.clone());
         new_values.insert(
-            "BAE_ENCRYPTION_KEY".to_string(),
-            self.encryption_key.clone(),
-        );
-        new_values.insert(
-            "BAE_MAX_IMPORT_ENCRYPT_WORKERS".to_string(),
+            "BAE_MAX_IMPORT_ENCRYPT_WORKERS",
             self.max_import_encrypt_workers.to_string(),
         );
         new_values.insert(
-            "BAE_MAX_IMPORT_UPLOAD_WORKERS".to_string(),
+            "BAE_MAX_IMPORT_UPLOAD_WORKERS",
             self.max_import_upload_workers.to_string(),
         );
         new_values.insert(
-            "BAE_MAX_IMPORT_DB_WRITE_WORKERS".to_string(),
+            "BAE_MAX_IMPORT_DB_WRITE_WORKERS",
             self.max_import_db_write_workers.to_string(),
         );
-        new_values.insert(
-            "BAE_CHUNK_SIZE_BYTES".to_string(),
-            self.chunk_size_bytes.to_string(),
-        );
-        if let Some(interface) = &self.torrent_bind_interface {
-            new_values.insert("BAE_TORRENT_BIND_INTERFACE".to_string(), interface.clone());
+        new_values.insert("BAE_CHUNK_SIZE_BYTES", self.chunk_size_bytes.to_string());
+        if let Some(iface) = &self.torrent_bind_interface {
+            new_values.insert("BAE_TORRENT_BIND_INTERFACE", iface.clone());
         }
-        let mut found_keys: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        let mut found = std::collections::HashSet::new();
         for line in &mut lines {
-            let trimmed = line.trim();
-            if trimmed.is_empty() || trimmed.starts_with('#') {
-                continue;
-            }
-            if let Some(eq_pos) = trimmed.find('=') {
-                let key = trimmed[..eq_pos].trim().to_string();
-                if let Some(new_value) = new_values.get(&key) {
-                    *line = format!("{}={}", key, new_value);
-                    found_keys.insert(key);
+            if let Some(eq) = line.find('=') {
+                let key = line[..eq].trim().to_string();
+                if let Some(val) = new_values.get(key.as_str()) {
+                    *line = format!("{}={}", key, val);
+                    found.insert(key);
                 }
             }
         }
-        for key in managed_keys {
-            if !found_keys.contains(key) {
-                if let Some(value) = new_values.get(key) {
-                    lines.push(format!("{}={}", key, value));
-                }
+        for (key, val) in &new_values {
+            if !found.contains(*key) {
+                lines.push(format!("{}={}", key, val));
             }
         }
         let mut file = std::fs::File::create(env_path)?;
         for line in lines {
             writeln!(file, "{}", line)?;
         }
-        info!("Saved configuration to .env");
         Ok(())
     }
-    /// Save secrets to keyring (release mode)
+
     pub fn save_to_keyring(&self) -> Result<(), ConfigError> {
-        use keyring::Entry;
-        info!("Saving credentials to keyring...");
-        let entry = Entry::new("bae", "discogs_api_key")?;
-        entry.set_password(&self.discogs_api_key)?;
-        let s3_json = serde_json::to_string(&self.s3_config)
-            .map_err(|e| ConfigError::Serialization(e.to_string()))?;
-        let entry = Entry::new("bae", "s3_config")?;
-        entry.set_password(&s3_json)?;
-        let entry = Entry::new("bae", "encryption_master_key")?;
-        entry.set_password(&self.encryption_key)?;
-        info!("Saved credentials to keyring");
+        if let Some(key) = &self.discogs_api_key {
+            keyring::Entry::new("bae", "discogs_api_key")?.set_password(key)?;
+        }
+        keyring::Entry::new("bae", "encryption_master_key")?.set_password(&self.encryption_key)?;
         Ok(())
     }
-    /// Save non-secret config to config.yaml (release mode)
+
     pub fn save_to_config_yaml(&self) -> Result<(), ConfigError> {
         let config_dir = self.get_library_path();
         std::fs::create_dir_all(&config_dir)?;
-        let config_path = config_dir.join("config.yaml");
-        let yaml_config = ConfigYaml {
+        let yaml = ConfigYaml {
             library_id: Some(self.library_id.clone()),
             max_import_encrypt_workers: Some(self.max_import_encrypt_workers),
             max_import_upload_workers: Some(self.max_import_upload_workers),
@@ -344,74 +241,25 @@ impl Config {
             chunk_size_bytes: Some(self.chunk_size_bytes),
             torrent_bind_interface: self.torrent_bind_interface.clone(),
         };
-        let yaml_str = serde_yaml::to_string(&yaml_config)
-            .map_err(|e| ConfigError::Serialization(e.to_string()))?;
-        std::fs::write(&config_path, yaml_str)?;
-        info!("Saved configuration to {:?}", config_path);
+        std::fs::write(
+            config_dir.join("config.yaml"),
+            serde_yaml::to_string(&yaml).unwrap(),
+        )?;
         Ok(())
     }
-    /// Load credentials from keyring (production mode only)
-    fn load_from_keyring() -> Result<CredentialData, ConfigError> {
-        use keyring::Entry;
-        info!("Loading credentials from keyring (password may be required)...");
-        let discogs_api_key = match Entry::new("bae", "discogs_api_key") {
-            Ok(entry) => match entry.get_password() {
-                Ok(key) => {
-                    info!("Loaded Discogs API key");
-                    key
-                }
-                Err(keyring::Error::NoEntry) => {
-                    return Err(ConfigError::Config(
-                        "No Discogs API key found - run setup wizard first".to_string(),
-                    ));
-                }
-                Err(e) => return Err(ConfigError::Keyring(e)),
-            },
-            Err(e) => return Err(ConfigError::Keyring(e)),
-        };
-        let s3_config = match Entry::new("bae", "s3_config") {
-            Ok(entry) => match entry.get_password() {
-                Ok(json) => {
-                    let config: crate::cloud_storage::S3Config = serde_json::from_str(&json)
-                        .map_err(|e| ConfigError::Serialization(e.to_string()))?;
-                    info!("Loaded S3 configuration");
-                    config
-                }
-                Err(keyring::Error::NoEntry) => {
-                    return Err(ConfigError::Config(
-                        "No S3 configuration found - run setup wizard first".to_string(),
-                    ));
-                }
-                Err(e) => return Err(ConfigError::Keyring(e)),
-            },
-            Err(e) => return Err(ConfigError::Keyring(e)),
-        };
-        let encryption_key = match Entry::new("bae", "encryption_master_key") {
-            Ok(entry) => match entry.get_password() {
-                Ok(key_hex) => {
-                    info!("Loaded encryption master key");
-                    key_hex
-                }
-                Err(keyring::Error::NoEntry) => {
-                    return Err(ConfigError::Config(
-                        "No encryption key found - run setup wizard first".to_string(),
-                    ));
-                }
-                Err(e) => return Err(ConfigError::Keyring(e)),
-            },
-            Err(e) => return Err(ConfigError::Keyring(e)),
-        };
-        Ok(CredentialData {
-            discogs_api_key,
-            s3_config,
-            encryption_key,
-        })
+
+    fn load_from_keyring() -> CredentialData {
+        CredentialData {
+            discogs_api_key: keyring::Entry::new("bae", "discogs_api_key")
+                .ok()
+                .and_then(|e| e.get_password().ok()),
+            encryption_key: keyring::Entry::new("bae", "encryption_master_key")
+                .ok()
+                .and_then(|e| e.get_password().ok()),
+        }
     }
 }
-/// Hook to access config from components (using Dioxus context)
-/// The config is provided via UIContext in main.rs
+
 pub fn use_config() -> Config {
-    use dioxus::prelude::use_context;
-    let context = use_context::<crate::ui::AppContext>();
-    context.config
+    dioxus::prelude::use_context::<crate::ui::AppContext>().config
 }

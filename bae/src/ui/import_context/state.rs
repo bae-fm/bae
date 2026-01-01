@@ -175,7 +175,7 @@ impl ImportContext {
             search_source: Signal::new(SearchSource::MusicBrainz),
             manual_match_candidates: Signal::new(Vec::new()),
             dialog,
-            discogs_client: DiscogsClient::new(config.discogs_api_key.clone()),
+            discogs_client: DiscogsClient::new(config.discogs_api_key.clone().unwrap_or_default()),
             library_manager,
             import_service,
         }

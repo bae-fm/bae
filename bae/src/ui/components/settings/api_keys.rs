@@ -67,8 +67,11 @@ pub fn ApiKeysSection() -> Element {
                                     r#type: "password",
                                     class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
                                     placeholder: "Enter your Discogs API key",
-                                    value: "{discogs_key}",
-                                    oninput: move |e| discogs_key.set(e.value()),
+                                    value: "{discogs_key.read().clone().unwrap_or_default()}",
+                                    oninput: move |e| {
+                                        let val = e.value();
+                                        discogs_key.set(if val.is_empty() { None } else { Some(val) });
+                                    },
                                 }
                             }
                             if let Some(error) = save_error.read().as_ref() {

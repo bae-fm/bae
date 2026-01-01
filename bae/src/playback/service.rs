@@ -1,11 +1,11 @@
 use crate::cache::CacheManager;
-use crate::cloud_storage::CloudStorageManager;
 use crate::db::DbTrack;
 use crate::encryption::EncryptionService;
 use crate::library::LibraryManager;
 use crate::playback::cpal_output::AudioOutput;
 use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
 use crate::playback::{PcmSource, PlaybackError};
+use crate::storage::create_storage_reader;
 use cpal::traits::StreamTrait;
 use std::collections::VecDeque;
 use std::sync::{mpsc, Arc};
@@ -118,7 +118,6 @@ impl PlaybackHandle {
 /// Playback service that manages audio playback
 pub struct PlaybackService {
     library_manager: LibraryManager,
-    cloud_storage: CloudStorageManager,
     cache: CacheManager,
     encryption_service: EncryptionService,
     chunk_size_bytes: usize,
@@ -142,7 +141,6 @@ pub struct PlaybackService {
 impl PlaybackService {
     pub fn start(
         library_manager: LibraryManager,
-        cloud_storage: CloudStorageManager,
         cache: CacheManager,
         encryption_service: EncryptionService,
         chunk_size_bytes: usize,
@@ -181,7 +179,6 @@ impl PlaybackService {
                 };
                 let mut service = PlaybackService {
                     library_manager,
-                    cloud_storage,
                     cache,
                     encryption_service,
                     chunk_size_bytes,
@@ -502,6 +499,7 @@ impl PlaybackService {
                 return;
             }
         };
+
         let pcm_source = match &storage_profile {
             None => {
                 match self
@@ -543,11 +541,22 @@ impl PlaybackService {
                     }
                 }
             }
-            Some(_) => {
+            Some(profile) => {
+                let storage = match create_storage_reader(profile).await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        error!("Failed to create storage reader: {}", e);
+                        let _ = self.progress_tx.send(PlaybackProgress::PlaybackError {
+                            message: format!("Failed to access storage: {}", e),
+                        });
+                        self.stop().await;
+                        return;
+                    }
+                };
                 match super::reassembly::reassemble_track(
                     track_id,
                     &self.library_manager,
-                    &self.cloud_storage,
+                    storage,
                     &self.cache,
                     &self.encryption_service,
                     self.chunk_size_bytes,
@@ -771,11 +780,18 @@ impl PlaybackService {
                     }
                 }
             }
-            Some(_) => {
+            Some(profile) => {
+                let storage = match create_storage_reader(profile).await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        error!("Failed to create storage reader for preload: {}", e);
+                        return;
+                    }
+                };
                 match super::reassembly::reassemble_track(
                     track_id,
                     &self.library_manager,
-                    &self.cloud_storage,
+                    storage,
                     &self.cache,
                     &self.encryption_service,
                     self.chunk_size_bytes,
@@ -1185,11 +1201,15 @@ impl PlaybackService {
         info!("Reading from storage path: {}", source_path);
         let file_data = match storage_profile.location {
             crate::db::StorageLocation::Local => tokio::fs::read(source_path).await?,
-            crate::db::StorageLocation::Cloud => self
-                .cloud_storage
-                .download_chunk(source_path)
-                .await
-                .map_err(PlaybackError::cloud)?,
+            crate::db::StorageLocation::Cloud => {
+                let storage = create_storage_reader(storage_profile)
+                    .await
+                    .map_err(PlaybackError::cloud)?;
+                storage
+                    .download_chunk(source_path)
+                    .await
+                    .map_err(PlaybackError::cloud)?
+            }
         };
         let file_data = if storage_profile.encrypted {
             if file_data.len() < 12 {

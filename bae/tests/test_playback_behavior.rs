@@ -2,14 +2,12 @@
 mod support;
 use crate::support::tracing_init;
 use bae::cache::{CacheConfig, CacheManager};
-use bae::cloud_storage::CloudStorageManager;
 use bae::db::{Database, DbStorageProfile};
 use bae::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae::encryption::EncryptionService;
 use bae::import::ImportRequest;
 use bae::library::{LibraryManager, SharedLibraryManager};
 use bae::playback::{PlaybackProgress, PlaybackState};
-use bae::test_support::MockCloudStorage;
 use bae::torrent::TorrentManagerHandle;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -32,10 +30,19 @@ impl PlaybackTestFixture {
         std::fs::create_dir_all(&cache_dir)?;
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
+        let storage_dir = temp_dir.path().join("storage");
+        std::fs::create_dir_all(&storage_dir)?;
         let chunk_size_bytes = 1024 * 1024;
-        let mock_storage = Arc::new(MockCloudStorage::new());
-        let cloud_storage = CloudStorageManager::from_storage(mock_storage.clone());
         let database = Database::new(db_path.to_str().unwrap()).await?;
+        // Create a local storage profile (playback tests use local storage now)
+        let storage_profile = DbStorageProfile::new_local(
+            "test-local",
+            storage_dir.to_str().unwrap(),
+            true, // encrypted
+            true, // chunked
+        );
+        let storage_profile_id = storage_profile.id.clone();
+        database.insert_storage_profile(&storage_profile).await?;
         let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
         let cache_config = CacheConfig {
             cache_dir,
@@ -44,7 +51,7 @@ impl PlaybackTestFixture {
         };
         let cache_manager = CacheManager::with_config(cache_config).await?;
         let database_arc = Arc::new(database);
-        let library_manager = LibraryManager::new((*database_arc).clone(), cloud_storage.clone());
+        let library_manager = LibraryManager::new((*database_arc).clone());
         let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
         let library_manager_arc = Arc::new(library_manager);
         let runtime_handle = tokio::runtime::Handle::current();
@@ -64,7 +71,6 @@ impl PlaybackTestFixture {
             runtime_handle.clone(),
             shared_library_manager.clone(),
             encryption_service.clone(),
-            cloud_storage.clone(),
             torrent_handle,
             database_arc,
         );
@@ -78,7 +84,7 @@ impl PlaybackTestFixture {
                 folder: album_dir.clone(),
                 master_year,
                 cover_art_url: None,
-                storage_profile_id: None,
+                storage_profile_id: Some(storage_profile_id),
                 selected_cover_filename: None,
             })
             .await?;
@@ -104,7 +110,6 @@ impl PlaybackTestFixture {
         std::env::set_var("MUTE_TEST_AUDIO", "1");
         let playback_handle = bae::playback::PlaybackService::start(
             library_manager_arc.as_ref().clone(),
-            cloud_storage,
             cache_manager,
             encryption_service,
             chunk_size_bytes,
@@ -850,146 +855,5 @@ async fn test_queue_maintained_after_previous_navigation() {
         "Should go to track 2 when Next is called after navigating back to track 1",
     );
 }
-#[tokio::test]
-async fn test_playback_error_emitted_when_storage_offline() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-    tracing_init();
-    let temp_dir = TempDir::new().expect("temp dir");
-    let db_path = temp_dir.path().join("test.db");
-    let cache_dir = temp_dir.path().join("cache");
-    let album_dir = temp_dir.path().join("album");
-    std::fs::create_dir_all(&cache_dir).expect("cache dir");
-    std::fs::create_dir_all(&album_dir).expect("album dir");
-    let chunk_size_bytes = 1024 * 1024;
-    let mock_storage = Arc::new(MockCloudStorage::new());
-    let cloud_storage = CloudStorageManager::from_storage(mock_storage.clone());
-    let database = Database::new(db_path.to_str().unwrap())
-        .await
-        .expect("database");
-    let storage_profile = DbStorageProfile::new_cloud(
-        "test-cloud",
-        "test-bucket",
-        "us-east-1",
-        None,
-        "test-access-key",
-        "test-secret-key",
-        true,
-        true,
-    );
-    let storage_profile_id = storage_profile.id.clone();
-    database
-        .insert_storage_profile(&storage_profile)
-        .await
-        .expect("insert profile");
-    let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
-    let cache_config = CacheConfig {
-        cache_dir,
-        max_size_bytes: 1024 * 1024 * 1024,
-        max_chunks: 10000,
-    };
-    let cache_manager = CacheManager::with_config(cache_config)
-        .await
-        .expect("cache");
-    let database_arc = Arc::new(database.clone());
-    let library_manager = LibraryManager::new(database.clone(), cloud_storage.clone());
-    let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
-    let library_manager_arc = Arc::new(library_manager);
-    let runtime_handle = tokio::runtime::Handle::current();
-    let discogs_release = create_test_album();
-    let _track_data = generate_test_flac_files(&album_dir);
-    let import_config = bae::import::ImportConfig {
-        chunk_size_bytes,
-        max_encrypt_workers: 4,
-        max_upload_workers: 20,
-        max_db_write_workers: 10,
-    };
-    let torrent_handle = TorrentManagerHandle::new_dummy();
-    let import_handle = bae::import::ImportService::start(
-        import_config,
-        runtime_handle.clone(),
-        shared_library_manager.clone(),
-        encryption_service.clone(),
-        cloud_storage.clone(),
-        torrent_handle,
-        database_arc,
-    );
-    let master_year = discogs_release.year.unwrap_or(2024);
-    let import_id = uuid::Uuid::new_v4().to_string();
-    let (_album_id, release_id) = import_handle
-        .send_request(ImportRequest::Folder {
-            import_id,
-            discogs_release: Some(discogs_release),
-            mb_release: None,
-            folder: album_dir.clone(),
-            master_year,
-            cover_art_url: None,
-            storage_profile_id: Some(storage_profile_id),
-            selected_cover_filename: None,
-        })
-        .await
-        .expect("send request");
-    let mut progress_rx = import_handle.subscribe_release(release_id.clone());
-    while let Some(progress) = progress_rx.recv().await {
-        match progress {
-            bae::import::ImportProgress::Complete { .. } => break,
-            bae::import::ImportProgress::Failed { error, .. } => {
-                panic!("Import failed: {}", error);
-            }
-            _ => {}
-        }
-    }
-    let albums = library_manager_arc.get_albums().await.expect("albums");
-    let releases = library_manager_arc
-        .get_releases_for_album(&albums[0].id)
-        .await
-        .expect("releases");
-    let tracks = library_manager_arc
-        .get_tracks(&releases[0].id)
-        .await
-        .expect("tracks");
-    let track_id = tracks[0].id.clone();
-    let chunks_before = mock_storage.chunks.lock().unwrap().len();
-    assert!(
-        chunks_before > 0,
-        "Should have uploaded chunks during import"
-    );
-    mock_storage.chunks.lock().unwrap().clear();
-    std::env::set_var("MUTE_TEST_AUDIO", "1");
-    let playback_handle = bae::playback::PlaybackService::start(
-        library_manager_arc.as_ref().clone(),
-        cloud_storage,
-        cache_manager,
-        encryption_service,
-        chunk_size_bytes,
-        runtime_handle,
-    );
-    playback_handle.set_volume(0.0);
-    let mut playback_progress_rx = playback_handle.subscribe_progress();
-    playback_handle.play(track_id);
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut error_received = None;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(100), playback_progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::PlaybackError { message })) => {
-                error_received = Some(message);
-                break;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
-        }
-    }
-    assert!(
-        error_received.is_some(),
-        "Should receive PlaybackError when storage is offline",
-    );
-    let error_message = error_received.unwrap();
-    assert!(
-        error_message.contains("Failed to load track"),
-        "Error message should indicate track loading failure, got: {}",
-        error_message,
-    );
-}
+// Note: test_playback_error_emitted_when_storage_offline was removed because it relied
+// on MockCloudStorage injection which was removed with CloudStorageManager.

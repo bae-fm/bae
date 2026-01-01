@@ -6,14 +6,11 @@
 //! position within the single FLAC file for each track.
 mod support;
 use crate::support::tracing_init;
-use bae::cache::{CacheConfig, CacheManager};
-use bae::cloud_storage::CloudStorageManager;
 use bae::db::{Database, ImportStatus};
 use bae::discogs::models::{DiscogsRelease, DiscogsTrack};
 use bae::encryption::EncryptionService;
 use bae::import::{ImportConfig, ImportProgress, ImportRequest, ImportService};
 use bae::library::{LibraryManager, SharedLibraryManager};
-use bae::test_support::MockCloudStorage;
 use bae::torrent::TorrentManagerHandle;
 use std::path::Path;
 use std::sync::Arc;
@@ -35,14 +32,12 @@ async fn test_storageless_cue_flac_records_track_positions() {
     std::fs::create_dir_all(&db_dir).expect("db dir");
     generate_cue_flac_files(&album_dir);
     let chunk_size_bytes = 1024 * 1024;
-    let mock_storage = Arc::new(MockCloudStorage::new());
-    let cloud_storage = CloudStorageManager::from_storage(mock_storage);
     let db_file = db_dir.join("test.db");
     let database = Database::new(db_file.to_str().unwrap())
         .await
         .expect("database");
     let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
-    let library_manager = LibraryManager::new(database.clone(), cloud_storage.clone());
+    let library_manager = LibraryManager::new(database.clone());
     let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
@@ -59,7 +54,6 @@ async fn test_storageless_cue_flac_records_track_positions() {
         runtime_handle,
         shared_library_manager,
         encryption_service,
-        cloud_storage,
         torrent_handle,
         database_arc,
     );
@@ -193,22 +187,20 @@ async fn test_storageless_cue_flac_playback_uses_track_positions() {
     std::fs::create_dir_all(&cache_dir).expect("cache dir");
     generate_cue_flac_files_with_two_tracks(&album_dir);
     let chunk_size_bytes = 1024 * 1024;
-    let mock_storage = Arc::new(MockCloudStorage::new());
-    let cloud_storage = CloudStorageManager::from_storage(mock_storage);
     let db_file = db_dir.join("test.db");
     let database = Database::new(db_file.to_str().unwrap())
         .await
         .expect("database");
     let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
-    let cache_config = CacheConfig {
+    let cache_config = bae::cache::CacheConfig {
         cache_dir,
         max_size_bytes: 1024 * 1024 * 1024,
         max_chunks: 10000,
     };
-    let cache_manager = CacheManager::with_config(cache_config)
+    let cache_manager = bae::cache::CacheManager::with_config(cache_config)
         .await
         .expect("cache");
-    let library_manager = LibraryManager::new(database.clone(), cloud_storage.clone());
+    let library_manager = LibraryManager::new(database.clone());
     let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
@@ -225,7 +217,6 @@ async fn test_storageless_cue_flac_playback_uses_track_positions() {
         runtime_handle.clone(),
         shared_library_manager,
         encryption_service.clone(),
-        cloud_storage.clone(),
         torrent_handle,
         database_arc,
     );
@@ -310,7 +301,6 @@ async fn test_storageless_cue_flac_playback_uses_track_positions() {
     std::env::set_var("MUTE_TEST_AUDIO", "1");
     let playback_handle = bae::playback::PlaybackService::start(
         library_manager.as_ref().clone(),
-        cloud_storage,
         cache_manager,
         encryption_service,
         chunk_size_bytes,

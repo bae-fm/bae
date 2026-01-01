@@ -1,5 +1,7 @@
+use crate::cloud_storage::CloudStorage;
 use crate::library::LibraryError;
 use crate::library::SharedLibraryManager;
+use crate::storage::create_storage_reader;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -17,7 +19,6 @@ pub struct SubsonicState {
     pub library_manager: SharedLibraryManager,
     pub cache_manager: crate::cache::CacheManager,
     pub encryption_service: crate::encryption::EncryptionService,
-    pub cloud_storage: crate::cloud_storage::CloudStorageManager,
     pub chunk_size_bytes: usize,
 }
 /// Common query parameters for Subsonic API
@@ -127,14 +128,12 @@ pub fn create_router(
     library_manager: SharedLibraryManager,
     cache_manager: crate::cache::CacheManager,
     encryption_service: crate::encryption::EncryptionService,
-    cloud_storage: crate::cloud_storage::CloudStorageManager,
     chunk_size_bytes: usize,
 ) -> Router {
     let state = SubsonicState {
         library_manager,
         cache_manager,
         encryption_service,
-        cloud_storage,
         chunk_size_bytes,
     };
     Router::new()
@@ -506,6 +505,18 @@ async fn stream_track_chunks(
         .await
         .map_err(|e| format!("Database error: {}", e))?
         .ok_or_else(|| format!("Track not found: {}", track_id))?;
+
+    // Get storage profile and create reader
+    let storage_profile = library_manager
+        .get()
+        .get_storage_profile_for_release(&track.release_id)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?
+        .ok_or_else(|| "No storage profile for release".to_string())?;
+    let storage = create_storage_reader(&storage_profile)
+        .await
+        .map_err(|e| format!("Failed to create storage reader: {}", e))?;
+
     let release_chunks = library_manager
         .get()
         .get_chunks_for_release(&track.release_id)
@@ -528,7 +539,7 @@ async fn stream_track_chunks(
             "Processing chunk {} (index {})",
             chunk.id, chunk.chunk_index
         );
-        let chunk_data = download_and_decrypt_chunk(state, &chunk).await?;
+        let chunk_data = download_and_decrypt_chunk(state, &*storage, &chunk).await?;
         chunk_data_vec.push(chunk_data);
     }
     let chunk_size = state.chunk_size_bytes;
@@ -555,6 +566,7 @@ async fn stream_track_chunks(
 /// Download and decrypt a single chunk with caching
 async fn download_and_decrypt_chunk(
     state: &SubsonicState,
+    storage: &dyn CloudStorage,
     chunk: &crate::db::DbChunk,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
     let cache_manager = &state.cache_manager;
@@ -569,9 +581,8 @@ async fn download_and_decrypt_chunk(
             .map_err(|e| format!("Failed to decrypt cached chunk: {}", e))?;
         return Ok(decrypted_data);
     }
-    debug!("Downloading chunk from cloud: {}", chunk.storage_location);
-    let encrypted_data = state
-        .cloud_storage
+    debug!("Downloading chunk: {}", chunk.storage_location);
+    let encrypted_data = storage
         .download_chunk(&chunk.storage_location)
         .await
         .map_err(|e| format!("Failed to download chunk: {}", e))?;

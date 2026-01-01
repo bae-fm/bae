@@ -1,5 +1,5 @@
 use crate::cache::CacheManager;
-use crate::cloud_storage::CloudStorageManager;
+use crate::cloud_storage::CloudStorage;
 use crate::db::DbChunk;
 use crate::encryption::EncryptionService;
 use crate::library::LibraryManager;
@@ -7,6 +7,7 @@ use crate::playback::{PcmSource, PlaybackError};
 use futures::stream::{self, StreamExt};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
+
 /// Reassemble chunks for a track and decode to PCM for playback
 ///
 /// Returns decoded PCM audio ready for cpal output.
@@ -14,22 +15,25 @@ use tracing::{debug, info, warn};
 pub async fn reassemble_track(
     track_id: &str,
     library_manager: &LibraryManager,
-    cloud_storage: &CloudStorageManager,
+    storage: Arc<dyn CloudStorage>,
     cache: &CacheManager,
     encryption_service: &EncryptionService,
     chunk_size_bytes: usize,
 ) -> Result<Arc<PcmSource>, PlaybackError> {
     info!("Reassembling chunks for track: {}", track_id);
+
     let coords = library_manager
         .get_track_chunk_coords(track_id)
         .await
         .map_err(PlaybackError::database)?
         .ok_or_else(|| PlaybackError::not_found("Chunk coordinates", track_id))?;
+
     let audio_format = library_manager
         .get_audio_format_by_track_id(track_id)
         .await
         .map_err(PlaybackError::database)?
         .ok_or_else(|| PlaybackError::not_found("Audio format", track_id))?;
+
     debug!(
         "Track spans chunks {}-{} with byte offsets {}-{}",
         coords.start_chunk_index,
@@ -37,30 +41,36 @@ pub async fn reassemble_track(
         coords.start_byte_offset,
         coords.end_byte_offset
     );
+
     let track = library_manager
         .get_track(track_id)
         .await
         .map_err(PlaybackError::database)?
         .ok_or_else(|| PlaybackError::not_found("Track", track_id))?;
+
     let chunk_range = coords.start_chunk_index..=coords.end_chunk_index;
     let chunks = library_manager
         .get_chunks_in_range(&track.release_id, chunk_range)
         .await
         .map_err(PlaybackError::database)?;
+
     if chunks.is_empty() {
         return Err(PlaybackError::not_found("Chunks", track_id));
     }
+
     debug!("Found {} chunks to reassemble", chunks.len());
+
     let mut sorted_chunks = chunks;
     sorted_chunks.sort_by_key(|c| c.chunk_index);
+
     let chunk_results: Vec<Result<(i32, Vec<u8>), PlaybackError>> = stream::iter(sorted_chunks)
         .map(move |chunk| {
-            let cloud_storage = cloud_storage.clone();
+            let storage = storage.clone();
             let cache = cache.clone();
             let encryption_service = encryption_service.clone();
             async move {
                 let chunk_data =
-                    download_and_decrypt_chunk(&chunk, &cloud_storage, &cache, &encryption_service)
+                    download_and_decrypt_chunk(&chunk, &*storage, &cache, &encryption_service)
                         .await?;
                 Ok::<_, PlaybackError>((chunk.chunk_index, chunk_data))
             }
@@ -68,12 +78,15 @@ pub async fn reassemble_track(
         .buffer_unordered(10)
         .collect()
         .await;
+
     let mut indexed_chunks: Vec<(i32, Vec<u8>)> = Vec::new();
     for result in chunk_results {
         indexed_chunks.push(result?);
     }
+
     indexed_chunks.sort_by_key(|(idx, _)| *idx);
     let chunk_data: Vec<Vec<u8>> = indexed_chunks.into_iter().map(|(_, data)| data).collect();
+
     debug!(
         "Extracting track data: {} chunks, start_offset={}, end_offset={}, chunk_size={}",
         chunk_data.len(),
@@ -81,17 +94,20 @@ pub async fn reassemble_track(
         coords.end_byte_offset,
         chunk_size_bytes
     );
+
     let audio_data = extract_file_from_chunks(
         &chunk_data,
         coords.start_byte_offset,
         coords.end_byte_offset,
         chunk_size_bytes,
     );
+
     debug!(
         "Extracted {} bytes of audio data ({}MB)",
         audio_data.len(),
         audio_data.len() / 1_000_000
     );
+
     let flac_data = if audio_format.needs_headers {
         if let Some(ref headers) = audio_format.flac_headers {
             debug!("CUE/FLAC track: prepending headers for decode");
@@ -105,8 +121,10 @@ pub async fn reassemble_track(
     } else {
         audio_data
     };
+
     debug!("Decoding {} bytes of FLAC data to PCM", flac_data.len());
     let decoded = decode_flac_to_pcm(&flac_data).await?;
+
     info!(
         "Successfully decoded track {}: {} samples, {}Hz, {} channels",
         track_id,
@@ -114,6 +132,7 @@ pub async fn reassemble_track(
         decoded.sample_rate,
         decoded.channels
     );
+
     Ok(Arc::new(PcmSource::new(
         decoded.samples,
         decoded.sample_rate,
@@ -121,10 +140,11 @@ pub async fn reassemble_track(
         decoded.bits_per_sample,
     )))
 }
+
 /// Download and decrypt a single chunk with caching
 async fn download_and_decrypt_chunk(
     chunk: &DbChunk,
-    cloud_storage: &CloudStorageManager,
+    storage: &dyn CloudStorage,
     cache: &CacheManager,
     encryption_service: &EncryptionService,
 ) -> Result<Vec<u8>, PlaybackError> {
@@ -134,11 +154,13 @@ async fn download_and_decrypt_chunk(
             cached_encrypted_data
         }
         Ok(None) => {
-            debug!("Cache miss - downloading chunk from cloud: {}", chunk.id);
-            let data = cloud_storage
+            debug!("Cache miss - downloading chunk: {}", chunk.id);
+
+            let data = storage
                 .download_chunk(&chunk.storage_location)
                 .await
                 .map_err(PlaybackError::cloud)?;
+
             if let Err(e) = cache.put_chunk(&chunk.id, &data).await {
                 warn!("Failed to cache chunk (non-fatal): {}", e);
             }
@@ -146,12 +168,13 @@ async fn download_and_decrypt_chunk(
         }
         Err(e) => {
             warn!("Cache error (continuing with download): {}", e);
-            cloud_storage
+            storage
                 .download_chunk(&chunk.storage_location)
                 .await
                 .map_err(PlaybackError::cloud)?
         }
     };
+
     let encryption_service = encryption_service.clone();
     let decrypted_data = tokio::task::spawn_blocking(move || {
         encryption_service
@@ -160,21 +183,11 @@ async fn download_and_decrypt_chunk(
     })
     .await
     .map_err(PlaybackError::task)??;
+
     Ok(decrypted_data)
 }
+
 /// Extract file data from chunks using byte offsets
-///
-/// Given a list of chunks and the file's byte offsets within those chunks,
-/// this function extracts exactly the bytes that belong to the file.
-///
-/// # Arguments
-/// * `chunks` - Decrypted chunk data in order (chunk 0, chunk 1, chunk 2, ...)
-/// * `start_byte_offset` - Byte offset within the first chunk where the file starts
-/// * `end_byte_offset` - Byte offset within the last chunk where the file ends (inclusive)
-/// * `chunk_size` - Size of each chunk in bytes
-///
-/// # Returns
-/// The extracted file data
 fn extract_file_from_chunks(
     chunks: &[Vec<u8>],
     start_byte_offset: i64,
@@ -184,7 +197,9 @@ fn extract_file_from_chunks(
     if chunks.is_empty() {
         return Vec::new();
     }
+
     let mut file_data = Vec::new();
+
     if chunks.len() == 1 {
         let start = start_byte_offset as usize;
         let end = ((end_byte_offset + 1) as usize).min(chunks[0].len());
@@ -192,15 +207,19 @@ fn extract_file_from_chunks(
     } else {
         let first_chunk_start = start_byte_offset as usize;
         file_data.extend_from_slice(&chunks[0][first_chunk_start..]);
+
         for chunk in &chunks[1..chunks.len() - 1] {
             file_data.extend_from_slice(chunk);
         }
+
         let last_chunk = &chunks[chunks.len() - 1];
         let last_chunk_end = ((end_byte_offset + 1) as usize).min(last_chunk.len());
         file_data.extend_from_slice(&last_chunk[0..last_chunk_end]);
     }
+
     file_data
 }
+
 /// Decode FLAC data to PCM using libFLAC
 pub(crate) async fn decode_flac_to_pcm(
     flac_data: &[u8],

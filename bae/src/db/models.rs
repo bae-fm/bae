@@ -935,6 +935,21 @@ impl DbStorageProfile {
         self.is_default = is_default;
         self
     }
+
+    /// Convert cloud storage fields to S3Config for creating a client.
+    /// Returns None if this is not a cloud profile or credentials are missing.
+    pub fn to_s3_config(&self) -> Option<crate::cloud_storage::S3Config> {
+        if self.location != StorageLocation::Cloud {
+            return None;
+        }
+        Some(crate::cloud_storage::S3Config {
+            bucket_name: self.cloud_bucket.clone()?,
+            region: self.cloud_region.clone()?,
+            access_key_id: self.cloud_access_key.clone()?,
+            secret_access_key: self.cloud_secret_key.clone()?,
+            endpoint_url: self.cloud_endpoint.clone(),
+        })
+    }
 }
 /// Links a release to its storage profile
 ///

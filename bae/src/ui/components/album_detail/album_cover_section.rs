@@ -84,7 +84,6 @@ pub fn AlbumCoverSection(
                                         onclick: {
                                             let release_id = release_id.clone();
                                             let library_manager = library_manager.clone();
-                                            let cloud_storage = app_context.cloud_storage.clone();
                                             let cache = app_context.cache.clone();
                                             let encryption_service = app_context.encryption_service.clone();
                                             let chunk_size_bytes = app_context.config.chunk_size_bytes;
@@ -94,7 +93,6 @@ pub fn AlbumCoverSection(
                                                 if !is_deleting() && !is_exporting() {
                                                     let release_id = release_id.clone();
                                                     let library_manager = library_manager.clone();
-                                                    let cloud_storage = cloud_storage.clone();
                                                     let cache = cache.clone();
                                                     let encryption_service = encryption_service.clone();
                                                     spawn(async move {
@@ -111,7 +109,6 @@ pub fn AlbumCoverSection(
                                                                 .export_release(
                                                                     &release_id,
                                                                     &target_dir,
-                                                                    &cloud_storage,
                                                                     &cache,
                                                                     &encryption_service,
                                                                     chunk_size_bytes,

@@ -242,7 +242,6 @@ pub fn TrackRow(track: DbTrack, release_id: String) -> Element {
                                     onclick: {
                                         let track_id_clone = track_id.clone();
                                         let library_manager_clone = library_manager.clone();
-                                        let cloud_storage_clone = app_context.cloud_storage.clone();
                                         let cache_clone = app_context.cache.clone();
                                         let encryption_service_clone = app_context.encryption_service.clone();
                                         let chunk_size_bytes = app_context.config.chunk_size_bytes;
@@ -253,7 +252,6 @@ pub fn TrackRow(track: DbTrack, release_id: String) -> Element {
                                             if !is_exporting_clone() {
                                                 let track_id = track_id_clone.clone();
                                                 let library_manager_clone = library_manager_clone.clone();
-                                                let cloud_storage_clone = cloud_storage_clone.clone();
                                                 let cache_clone = cache_clone.clone();
                                                 let encryption_service_clone = encryption_service_clone.clone();
                                                 let chunk_size_bytes = chunk_size_bytes;
@@ -272,7 +270,6 @@ pub fn TrackRow(track: DbTrack, release_id: String) -> Element {
                                                             .export_track(
                                                                 &track_id,
                                                                 &output_path,
-                                                                &cloud_storage_clone,
                                                                 &cache_clone,
                                                                 &encryption_service_clone,
                                                                 chunk_size_bytes,

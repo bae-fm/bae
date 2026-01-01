@@ -1,6 +1,5 @@
 use crate::cd::drive::CdToc;
 use crate::cd::RipProgress;
-use crate::cloud_storage::CloudStorageManager;
 use crate::db::{
     Database, DbAlbum, DbFile, DbRelease, DbStorageProfile, DbTrack, ImportOperationStatus,
 };
@@ -66,8 +65,6 @@ pub struct ImportService {
     progress_tx: mpsc::UnboundedSender<ImportProgress>,
     /// Service for encrypting files before upload
     encryption_service: EncryptionService,
-    /// Service for uploading encrypted chunks to cloud storage
-    cloud_storage: CloudStorageManager,
     /// Shared manager for library database operations
     library_manager: SharedLibraryManager,
     /// Handle to torrent manager service for torrent operations
@@ -86,7 +83,6 @@ impl ImportService {
         runtime_handle: tokio::runtime::Handle,
         library_manager: SharedLibraryManager,
         encryption_service: EncryptionService,
-        cloud_storage: CloudStorageManager,
         torrent_handle: TorrentManagerHandle,
         database: Arc<Database>,
     ) -> ImportServiceHandle {
@@ -104,7 +100,6 @@ impl ImportService {
                     progress_tx,
                     library_manager: library_manager_for_worker,
                     encryption_service,
-                    cloud_storage,
                     torrent_handle,
                     database,
                 };
@@ -601,6 +596,25 @@ impl ImportService {
         cue_flac_metadata: Option<HashMap<PathBuf, CueFlacMetadata>>,
     ) -> Result<(), String> {
         let library_manager = self.library_manager.get();
+
+        // Get storage profile for this release (or default)
+        let storage_profile = self
+            .database
+            .get_storage_profile_for_release(&db_release.id)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?
+            .or_else(|| {
+                // Fall back to default profile for legacy imports
+                futures::executor::block_on(self.database.get_default_storage_profile())
+                    .ok()
+                    .flatten()
+            })
+            .ok_or_else(|| "No storage profile found".to_string())?;
+
+        let storage = crate::storage::create_storage_reader(&storage_profile)
+            .await
+            .map_err(|e| format!("Failed to create storage reader: {}", e))?;
+
         let chunk_layout = AlbumChunkLayout::build(
             discovered_files.to_vec(),
             tracks_to_files,
@@ -618,7 +632,7 @@ impl ImportService {
             self.config.clone(),
             db_release.id.clone(),
             self.encryption_service.clone(),
-            self.cloud_storage.clone(),
+            storage,
             library_manager.clone(),
             progress_tracker,
             tracks_to_files.to_vec(),
@@ -662,14 +676,18 @@ impl ImportService {
         Ok(())
     }
     /// Create a storage implementation from a profile
-    fn create_storage(&self, profile: DbStorageProfile) -> ReleaseStorageImpl {
-        ReleaseStorageImpl::new_full(
+    async fn create_storage(
+        &self,
+        profile: DbStorageProfile,
+    ) -> Result<ReleaseStorageImpl, String> {
+        ReleaseStorageImpl::from_profile(
             profile,
             Some(self.encryption_service.clone()),
-            Some(Arc::new(self.cloud_storage.clone())),
             self.database.clone(),
             self.config.chunk_size_bytes,
         )
+        .await
+        .map_err(|e| format!("Failed to create storage: {}", e))
     }
     /// Build a map from filename to track progress info for progress reporting.
     ///
@@ -812,11 +830,11 @@ impl ImportService {
             .await
             .map_err(|e| format!("Failed to link release to storage profile: {}", e))?;
         let is_chunked = storage_profile.chunked;
-        let storage = self.create_storage(storage_profile);
+        let storage = self.create_storage(storage_profile).await?;
         let total_files = discovered_files.len();
         info!(
-            "Starting storage import for release {} ({} files)",
-            db_release.id, total_files
+            "Starting storage import for release {} ({} files, chunked={})",
+            db_release.id, total_files, is_chunked
         );
         let mut file_data: Vec<(String, Vec<u8>, PathBuf)> = Vec::with_capacity(total_files);
         for file in discovered_files.iter() {

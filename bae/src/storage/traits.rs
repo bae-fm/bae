@@ -1,11 +1,12 @@
 //! Storage trait and implementation
-use crate::cloud_storage::CloudStorageManager;
+use crate::cloud_storage::{CloudStorage, S3CloudStorage};
 use crate::db::{Database, DbChunk, DbFile, DbFileChunk, DbStorageProfile, StorageLocation};
 use crate::encryption::EncryptionService;
 use async_trait::async_trait;
 use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
+use tracing::info;
 use uuid::Uuid;
 #[derive(Error, Debug)]
 pub enum StorageError {
@@ -52,27 +53,39 @@ pub trait ReleaseStorage: Send + Sync {
 pub struct ReleaseStorageImpl {
     profile: DbStorageProfile,
     encryption: Option<EncryptionService>,
-    cloud: Option<Arc<CloudStorageManager>>,
+    cloud: Option<Arc<dyn CloudStorage>>,
     database: Option<Arc<Database>>,
     chunk_size_bytes: usize,
 }
 impl ReleaseStorageImpl {
-    /// Create fully configured storage (all features)
-    pub fn new_full(
+    /// Create storage from a profile, creating S3 client from profile credentials if needed.
+    pub async fn from_profile(
         profile: DbStorageProfile,
         encryption: Option<EncryptionService>,
-        cloud: Option<Arc<CloudStorageManager>>,
         database: Arc<Database>,
         chunk_size_bytes: usize,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, StorageError> {
+        let cloud: Option<Arc<dyn CloudStorage>> = if profile.location == StorageLocation::Cloud {
+            let s3_config = profile
+                .to_s3_config()
+                .ok_or_else(|| StorageError::Cloud("Missing S3 credentials in profile".into()))?;
+            let client = S3CloudStorage::new(s3_config)
+                .await
+                .map_err(|e| StorageError::Cloud(e.to_string()))?;
+            info!("Created S3 client for profile: {}", profile.name);
+            Some(Arc::new(client))
+        } else {
+            None
+        };
+        Ok(Self {
             profile,
             encryption,
             cloud,
             database: Some(database),
             chunk_size_bytes,
-        }
+        })
     }
+
     /// Get the local path for a release's files
     fn release_path(&self, release_id: &str) -> PathBuf {
         PathBuf::from(&self.profile.location_path).join(release_id)
@@ -170,7 +183,7 @@ impl ReleaseStorageImpl {
                         let cloud = cloud.as_ref().ok_or(StorageError::NotConfigured)?;
                         let key = format!("{}/chunks/{}", release_id, chunk_id);
                         cloud
-                            .upload_chunk_data(&key, &encrypted_data)
+                            .upload_chunk(&key, &encrypted_data)
                             .await
                             .map_err(|e| StorageError::Cloud(e.to_string()))?
                     };
@@ -251,7 +264,7 @@ impl ReleaseStorageImpl {
                 let cloud = self.cloud.as_ref().ok_or(StorageError::NotConfigured)?;
                 let key = self.cloud_key(release_id, filename);
                 let storage_location = cloud
-                    .upload_chunk_data(&key, &data_to_store)
+                    .upload_chunk(&key, &data_to_store)
                     .await
                     .map_err(|e| StorageError::Cloud(e.to_string()))?;
                 on_progress(total_bytes, total_bytes);

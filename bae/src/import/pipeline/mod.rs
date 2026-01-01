@@ -1,5 +1,5 @@
 pub(super) mod chunk_producer;
-use crate::cloud_storage::CloudStorageManager;
+use crate::cloud_storage::CloudStorage;
 use crate::db::DbChunk;
 use crate::encryption::{EncryptedChunk, EncryptionService};
 use crate::import::progress::ImportProgressTracker;
@@ -9,6 +9,7 @@ use crate::library::LibraryManager;
 use futures::stream::{Stream, StreamExt};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::error;
@@ -27,7 +28,7 @@ pub(super) fn build_import_pipeline(
     config: ImportConfig,
     release_id: String,
     encryption_service: EncryptionService,
-    cloud_storage: CloudStorageManager,
+    storage: Arc<dyn CloudStorage>,
     library_manager: LibraryManager,
     progress_tracker: ImportProgressTracker,
     track_files: Vec<TrackFile>,
@@ -58,10 +59,10 @@ pub(super) fn build_import_pipeline(
         })
         .buffer_unordered(config.max_encrypt_workers)
         .map(move |encrypted_result| {
-            let cloud_storage = cloud_storage.clone();
+            let storage = storage.clone();
             async move {
                 let encrypted = encrypted_result?;
-                upload_chunk(encrypted, &cloud_storage).await
+                upload_chunk(encrypted, &*storage).await
             }
         })
         .buffer_unordered(config.max_upload_workers)
@@ -173,10 +174,10 @@ pub(super) fn encrypt_chunk_blocking(
 /// Returns cloud location for database storage and later retrieval.
 pub(super) async fn upload_chunk(
     encrypted_chunk: EncryptedChunkData,
-    cloud_storage: &CloudStorageManager,
+    storage: &dyn CloudStorage,
 ) -> Result<UploadedChunk, String> {
-    let cloud_location = cloud_storage
-        .upload_chunk_data(&encrypted_chunk.chunk_id, &encrypted_chunk.encrypted_data)
+    let cloud_location = storage
+        .upload_chunk(&encrypted_chunk.chunk_id, &encrypted_chunk.encrypted_data)
         .await
         .map_err(|e| format!("Upload failed: {}", e))?;
     Ok(UploadedChunk {

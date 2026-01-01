@@ -188,14 +188,7 @@ mod tests {
         let test_key_hex = hex::encode(test_key.as_ref() as &[u8]);
         let test_config = crate::config::Config {
             library_id: "test-library".to_string(),
-            discogs_api_key: "test-key".to_string(),
-            s3_config: crate::cloud_storage::S3Config {
-                bucket_name: "test-bucket".to_string(),
-                region: "us-east-1".to_string(),
-                access_key_id: "test-access".to_string(),
-                secret_access_key: "test-secret".to_string(),
-                endpoint_url: None,
-            },
+            discogs_api_key: Some("test-key".to_string()),
             encryption_key: test_key_hex,
             max_import_encrypt_workers: 4,
             max_import_upload_workers: 20,

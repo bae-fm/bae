@@ -1,7 +1,7 @@
 use crate::cache::CacheManager;
-use crate::cloud_storage::CloudStorageManager;
 use crate::encryption::EncryptionService;
 use crate::library::SharedLibraryManager;
+use crate::storage::create_storage_reader;
 use crate::ui::components::import::ImportWorkflowManager;
 use crate::ui::components::*;
 #[cfg(target_os = "macos")]
@@ -46,14 +46,12 @@ fn mime_type_for_extension(ext: &str) -> &'static str {
 #[derive(Clone)]
 struct ImageServices {
     library_manager: SharedLibraryManager,
-    cloud_storage: CloudStorageManager,
     cache: CacheManager,
     encryption_service: EncryptionService,
 }
 pub fn make_config(context: &AppContext) -> DioxusConfig {
     let services = ImageServices {
         library_manager: context.library_manager.clone(),
-        cloud_storage: context.cloud_storage.clone(),
         cache: context.cache.clone(),
         encryption_service: context.encryption_service.clone(),
     };
@@ -160,8 +158,13 @@ async fn serve_image_from_chunks(
             .await
             .map_err(|e| format!("Database error: {}", e))?;
         let raw_data = if source_path.starts_with("s3://") {
-            services
-                .cloud_storage
+            let profile = storage_profile
+                .as_ref()
+                .ok_or_else(|| "No storage profile for cloud image".to_string())?;
+            let storage = create_storage_reader(profile)
+                .await
+                .map_err(|e| format!("Failed to create storage reader: {}", e))?;
+            storage
                 .download_chunk(source_path)
                 .await
                 .map_err(|e| format!("Failed to download image from cloud: {}", e))?
@@ -205,6 +208,19 @@ async fn serve_image_from_chunks(
         image_id,
         file_chunks.len()
     );
+
+    // Get storage profile and create reader for chunk downloads
+    let storage_profile = services
+        .library_manager
+        .get()
+        .get_storage_profile_for_release(&image.release_id)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?
+        .ok_or_else(|| "No storage profile for chunked image".to_string())?;
+    let storage = create_storage_reader(&storage_profile)
+        .await
+        .map_err(|e| format!("Failed to create storage reader: {}", e))?;
+
     let mut chunk_data_map: std::collections::HashMap<String, Vec<u8>> =
         std::collections::HashMap::new();
     for fc in &file_chunks {
@@ -220,15 +236,13 @@ async fn serve_image_from_chunks(
             .ok_or_else(|| format!("Chunk not found: {}", fc.chunk_id))?;
         let encrypted_data = match services.cache.get_chunk(&chunk.id).await {
             Ok(Some(data)) => data,
-            Ok(None) => services
-                .cloud_storage
+            Ok(None) => storage
                 .download_chunk(&chunk.storage_location)
                 .await
                 .map_err(|e| format!("Failed to download chunk: {}", e))?,
             Err(e) => {
                 warn!("Cache error: {}", e);
-                services
-                    .cloud_storage
+                storage
                     .download_chunk(&chunk.storage_location)
                     .await
                     .map_err(|e| format!("Failed to download chunk: {}", e))?

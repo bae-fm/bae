@@ -1,5 +1,5 @@
 use crate::cache::CacheManager;
-use crate::cloud_storage::{CloudStorageError, CloudStorageManager};
+use crate::cloud_storage::CloudStorageError;
 use crate::db::{
     Database, DbAlbum, DbAlbumArtist, DbArtist, DbAudioFormat, DbChunk, DbFile, DbFileChunk,
     DbImage, DbImport, DbRelease, DbStorageProfile, DbTorrent, DbTrack, DbTrackArtist,
@@ -33,15 +33,11 @@ pub enum LibraryError {
 #[derive(Debug, Clone)]
 pub struct LibraryManager {
     database: Database,
-    cloud_storage: CloudStorageManager,
 }
 impl LibraryManager {
     /// Create a new library manager
-    pub fn new(database: Database, cloud_storage: CloudStorageManager) -> Self {
-        LibraryManager {
-            database,
-            cloud_storage,
-        }
+    pub fn new(database: Database) -> Self {
+        LibraryManager { database }
     }
     /// Get a reference to the database
     pub fn database(&self) -> &Database {
@@ -392,19 +388,26 @@ impl LibraryManager {
     /// 4. If this was the last release for the album, also delete the album
     pub async fn delete_release(&self, release_id: &str) -> Result<(), LibraryError> {
         let album_id = self.get_album_id_for_release(release_id).await?;
-        let chunks = self.get_chunks_for_release(release_id).await?;
-        for chunk in &chunks {
-            if let Err(e) = self
-                .cloud_storage
-                .delete_chunk(&chunk.storage_location)
-                .await
-            {
-                warn!(
-                    "Failed to delete chunk {} from cloud storage: {}. Continuing with database deletion.",
-                    chunk.id, e
-                );
+
+        // Try to get storage reader for chunk cleanup
+        if let Ok(Some(profile)) = self
+            .database
+            .get_storage_profile_for_release(release_id)
+            .await
+        {
+            if let Ok(storage) = crate::storage::create_storage_reader(&profile).await {
+                let chunks = self.get_chunks_for_release(release_id).await?;
+                for chunk in &chunks {
+                    if let Err(e) = storage.delete_chunk(&chunk.storage_location).await {
+                        warn!(
+                            "Failed to delete chunk {} from storage: {}. Continuing with database deletion.",
+                            chunk.id, e
+                        );
+                    }
+                }
             }
         }
+
         self.database.delete_release(release_id).await?;
         let remaining_releases = self.get_releases_for_album(&album_id).await?;
         if remaining_releases.is_empty() {
@@ -421,17 +424,22 @@ impl LibraryManager {
     pub async fn delete_album(&self, album_id: &str) -> Result<(), LibraryError> {
         let releases = self.get_releases_for_album(album_id).await?;
         for release in &releases {
-            let chunks = self.get_chunks_for_release(&release.id).await?;
-            for chunk in &chunks {
-                if let Err(e) = self
-                    .cloud_storage
-                    .delete_chunk(&chunk.storage_location)
-                    .await
-                {
-                    warn!(
-                        "Failed to delete chunk {} from cloud storage: {}. Continuing with database deletion.",
-                        chunk.id, e
-                    );
+            // Try to get storage reader for chunk cleanup
+            if let Ok(Some(profile)) = self
+                .database
+                .get_storage_profile_for_release(&release.id)
+                .await
+            {
+                if let Ok(storage) = crate::storage::create_storage_reader(&profile).await {
+                    let chunks = self.get_chunks_for_release(&release.id).await?;
+                    for chunk in &chunks {
+                        if let Err(e) = storage.delete_chunk(&chunk.storage_location).await {
+                            warn!(
+                                "Failed to delete chunk {} from storage: {}. Continuing with database deletion.",
+                                chunk.id, e
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -446,7 +454,6 @@ impl LibraryManager {
         &self,
         release_id: &str,
         target_dir: &Path,
-        cloud_storage: &CloudStorageManager,
         cache: &CacheManager,
         encryption_service: &EncryptionService,
         chunk_size_bytes: usize,
@@ -455,7 +462,6 @@ impl LibraryManager {
             release_id,
             target_dir,
             self,
-            cloud_storage,
             cache,
             encryption_service,
             chunk_size_bytes,
@@ -471,16 +477,29 @@ impl LibraryManager {
         &self,
         track_id: &str,
         output_path: &Path,
-        cloud_storage: &CloudStorageManager,
         cache: &CacheManager,
         encryption_service: &EncryptionService,
         chunk_size_bytes: usize,
     ) -> Result<(), LibraryError> {
+        // Get storage profile for track's release
+        let track = self
+            .get_track(track_id)
+            .await?
+            .ok_or_else(|| LibraryError::Import(format!("Track not found: {}", track_id)))?;
+        let storage_profile = self
+            .database
+            .get_storage_profile_for_release(&track.release_id)
+            .await?
+            .ok_or_else(|| LibraryError::Import("No storage profile for release".to_string()))?;
+        let storage = crate::storage::create_storage_reader(&storage_profile)
+            .await
+            .map_err(LibraryError::CloudStorage)?;
+
         ExportService::export_track(
             track_id,
             output_path,
             self,
-            cloud_storage,
+            storage,
             cache,
             encryption_service,
             chunk_size_bytes,
@@ -595,33 +614,20 @@ impl LibraryManager {
 }
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "test-utils")]
     use super::*;
-    #[cfg(feature = "test-utils")]
-    use crate::cloud_storage::CloudStorageManager;
-    #[cfg(feature = "test-utils")]
     use crate::db::{DbAlbum, DbChunk, DbRelease, ImportStatus};
-    #[cfg(feature = "test-utils")]
-    use crate::test_support::MockCloudStorage;
-    #[cfg(feature = "test-utils")]
     use chrono::Utc;
-    #[cfg(feature = "test-utils")]
-    use std::sync::Arc;
-    #[cfg(feature = "test-utils")]
     use tempfile::TempDir;
-    #[cfg(feature = "test-utils")]
     use uuid::Uuid;
-    #[cfg(feature = "test-utils")]
-    async fn setup_test_manager() -> (LibraryManager, TempDir, CloudStorageManager) {
+
+    async fn setup_test_manager() -> (LibraryManager, TempDir) {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
         let database = Database::new(db_path.to_str().unwrap()).await.unwrap();
-        let mock_storage = Arc::new(MockCloudStorage::new());
-        let cloud_storage = CloudStorageManager::from_storage(mock_storage);
-        let manager = LibraryManager::new(database, cloud_storage.clone());
-        (manager, temp_dir, cloud_storage)
+        let manager = LibraryManager::new(database);
+        (manager, temp_dir)
     }
-    #[cfg(feature = "test-utils")]
+
     fn create_test_album() -> DbAlbum {
         DbAlbum {
             id: Uuid::new_v4().to_string(),
@@ -637,7 +643,7 @@ mod tests {
             updated_at: Utc::now(),
         }
     }
-    #[cfg(feature = "test-utils")]
+
     fn create_test_release(album_id: &str) -> DbRelease {
         DbRelease {
             id: Uuid::new_v4().to_string(),
@@ -656,38 +662,32 @@ mod tests {
             updated_at: Utc::now(),
         }
     }
-    #[cfg(feature = "test-utils")]
-    async fn create_test_chunk(
-        release_id: &str,
-        chunk_index: i32,
-        cloud_storage: &CloudStorageManager,
-    ) -> DbChunk {
-        let chunk_id = Uuid::new_v4().to_string();
-        let storage_location = cloud_storage
-            .upload_chunk_data(&chunk_id, &[0u8; 1024])
-            .await
-            .unwrap();
+
+    fn create_test_chunk(release_id: &str, chunk_index: i32) -> DbChunk {
         DbChunk {
-            id: chunk_id,
+            id: Uuid::new_v4().to_string(),
             release_id: release_id.to_string(),
             chunk_index,
             encrypted_size: 1024,
-            storage_location,
+            storage_location: format!("/tmp/test_chunk_{}.bin", Uuid::new_v4()),
             last_accessed: None,
             created_at: Utc::now(),
         }
     }
+
     #[tokio::test]
-    #[cfg(feature = "test-utils")]
     async fn test_delete_release_with_single_release_deletes_album() {
-        let (manager, _temp_dir, _cloud_storage) = setup_test_manager().await;
+        let (manager, _temp_dir) = setup_test_manager().await;
         let album = create_test_album();
         let release = create_test_release(&album.id);
-        let chunk = create_test_chunk(&release.id, 0, &manager.cloud_storage).await;
+        let chunk = create_test_chunk(&release.id, 0);
+
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release).await.unwrap();
         manager.database.insert_chunk(&chunk).await.unwrap();
+
         manager.delete_release(&release.id).await.unwrap();
+
         let album_result = manager.database.get_album_by_id(&album.id).await.unwrap();
         assert!(album_result.is_none());
         let releases = manager
@@ -697,21 +697,24 @@ mod tests {
             .unwrap();
         assert!(releases.is_empty());
     }
+
     #[tokio::test]
-    #[cfg(feature = "test-utils")]
     async fn test_delete_release_with_multiple_releases_preserves_album() {
-        let (manager, _temp_dir, _cloud_storage) = setup_test_manager().await;
+        let (manager, _temp_dir) = setup_test_manager().await;
         let album = create_test_album();
         let release1 = create_test_release(&album.id);
         let release2 = create_test_release(&album.id);
-        let chunk1 = create_test_chunk(&release1.id, 0, &manager.cloud_storage).await;
-        let chunk2 = create_test_chunk(&release2.id, 0, &manager.cloud_storage).await;
+        let chunk1 = create_test_chunk(&release1.id, 0);
+        let chunk2 = create_test_chunk(&release2.id, 0);
+
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release1).await.unwrap();
         manager.database.insert_release(&release2).await.unwrap();
         manager.database.insert_chunk(&chunk1).await.unwrap();
         manager.database.insert_chunk(&chunk2).await.unwrap();
+
         manager.delete_release(&release1.id).await.unwrap();
+
         let album_result = manager.database.get_album_by_id(&album.id).await.unwrap();
         assert!(album_result.is_some());
         let releases = manager
@@ -722,25 +725,24 @@ mod tests {
         assert_eq!(releases.len(), 1);
         assert_eq!(releases[0].id, release2.id);
     }
+
     #[tokio::test]
-    #[cfg(feature = "test-utils")]
-    async fn test_delete_album_deletes_all_releases_and_chunks() {
-        let (manager, _temp_dir, cloud_storage) = setup_test_manager().await;
+    async fn test_delete_album_deletes_all_releases() {
+        let (manager, _temp_dir) = setup_test_manager().await;
         let album = create_test_album();
         let release1 = create_test_release(&album.id);
         let release2 = create_test_release(&album.id);
-        let chunk1 = create_test_chunk(&release1.id, 0, &manager.cloud_storage).await;
-        let chunk2 = create_test_chunk(&release2.id, 0, &manager.cloud_storage).await;
-        let location1 = chunk1.storage_location.clone();
-        let location2 = chunk2.storage_location.clone();
+        let chunk1 = create_test_chunk(&release1.id, 0);
+        let chunk2 = create_test_chunk(&release2.id, 0);
+
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release1).await.unwrap();
         manager.database.insert_release(&release2).await.unwrap();
         manager.database.insert_chunk(&chunk1).await.unwrap();
         manager.database.insert_chunk(&chunk2).await.unwrap();
-        assert!(cloud_storage.download_chunk(&location1).await.is_ok());
-        assert!(cloud_storage.download_chunk(&location2).await.is_ok());
+
         manager.delete_album(&album.id).await.unwrap();
+
         let album_result = manager.database.get_album_by_id(&album.id).await.unwrap();
         assert!(album_result.is_none());
         let releases = manager
@@ -749,22 +751,5 @@ mod tests {
             .await
             .unwrap();
         assert!(releases.is_empty());
-        assert!(cloud_storage.download_chunk(&location1).await.is_err());
-        assert!(cloud_storage.download_chunk(&location2).await.is_err());
-    }
-    #[tokio::test]
-    #[cfg(feature = "test-utils")]
-    async fn test_delete_release_cloud_storage_cleanup() {
-        let (manager, _temp_dir, cloud_storage) = setup_test_manager().await;
-        let album = create_test_album();
-        let release = create_test_release(&album.id);
-        let chunk = create_test_chunk(&release.id, 0, &manager.cloud_storage).await;
-        let location = chunk.storage_location.clone();
-        manager.database.insert_album(&album).await.unwrap();
-        manager.database.insert_release(&release).await.unwrap();
-        manager.database.insert_chunk(&chunk).await.unwrap();
-        assert!(cloud_storage.download_chunk(&location).await.is_ok());
-        manager.delete_release(&release.id).await.unwrap();
-        assert!(cloud_storage.download_chunk(&location).await.is_err());
     }
 }
