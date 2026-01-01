@@ -204,10 +204,19 @@ jobs:
 
     - name: Build app bundle
       working-directory: ./bae
-      env:
-        PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig
-        LIBRARY_PATH: /opt/homebrew/lib
-      run: dx bundle --release
+      run: |
+        if [[ -d "/opt/homebrew" ]]; then
+          export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
+          export LIBRARY_PATH="/opt/homebrew/lib"
+        else
+          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
+          export LIBRARY_PATH="/usr/local/lib"
+        fi
+        dx bundle --release
+
+    - name: Bundle dylibs into app
+      working-directory: ./bae
+      run: ./scripts/bundle_dylibs.sh target/dx/bae/bundle/macos/bundle/macos/Bae.app
 
     - name: Upload unsigned build (backup)
       uses: actions/upload-artifact@v4
@@ -277,10 +286,14 @@ jobs:
 
     - name: Generate screenshots
       working-directory: ./bae
-      env:
-        PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig
-        LIBRARY_PATH: /opt/homebrew/lib
       run: |
+        if [[ -d "/opt/homebrew" ]]; then
+          export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
+          export LIBRARY_PATH="/opt/homebrew/lib"
+        else
+          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
+          export LIBRARY_PATH="/usr/local/lib"
+        fi
         cargo build --release --bin generate_screenshots
         ./target/release/generate_screenshots
 
