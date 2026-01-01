@@ -56,9 +56,9 @@ impl S3Config {
 /// Trait for cloud storage operations (allows mocking for tests)
 #[async_trait::async_trait]
 pub trait CloudStorage: Send + Sync {
-    async fn upload_chunk(&self, chunk_id: &str, data: &[u8]) -> Result<String, CloudStorageError>;
-    async fn download_chunk(&self, storage_location: &str) -> Result<Vec<u8>, CloudStorageError>;
-    async fn delete_chunk(&self, storage_location: &str) -> Result<(), CloudStorageError>;
+    async fn upload(&self, key: &str, data: &[u8]) -> Result<String, CloudStorageError>;
+    async fn download(&self, storage_location: &str) -> Result<Vec<u8>, CloudStorageError>;
+    async fn delete(&self, storage_location: &str) -> Result<(), CloudStorageError>;
 }
 /// Format AWS SDK error for better debugging
 fn format_error_details(err: &dyn std::fmt::Debug) -> String {
@@ -184,42 +184,45 @@ impl S3CloudStorage {
             bucket_name,
         })
     }
-    /// Generate S3 key for a chunk using hash-based partitioning
-    /// Example: chunk_abcd1234-5678-9abc-def0-123456789abc -> chunks/ab/cd/chunk_abcd1234-5678-9abc-def0-123456789abc.enc
-    fn chunk_key(&self, chunk_id: &str) -> String {
-        if chunk_id.len() < 4 {
-            return format!("chunks/misc/{}.enc", chunk_id);
+    /// Generate S3 key using hash-based partitioning for better distribution
+    fn object_key(&self, key: &str) -> String {
+        if key.len() < 4 {
+            return format!("files/misc/{}", key);
         }
-        let prefix = &chunk_id[..2];
-        let subprefix = &chunk_id[2..4];
-        format!("chunks/{}/{}/{}.enc", prefix, subprefix, chunk_id)
+        let prefix = &key[..2];
+        let subprefix = &key[2..4];
+        format!("files/{}/{}/{}", prefix, subprefix, key)
     }
 }
 #[async_trait::async_trait]
 impl CloudStorage for S3CloudStorage {
-    async fn upload_chunk(&self, chunk_id: &str, data: &[u8]) -> Result<String, CloudStorageError> {
-        let key = self.chunk_key(chunk_id);
-        debug!("Uploading chunk {} ({} bytes)", chunk_id, data.len());
+    async fn upload(&self, key: &str, data: &[u8]) -> Result<String, CloudStorageError> {
+        let s3_key = self.object_key(key);
+
+        debug!("Uploading {} ({} bytes)", key, data.len());
         self.client
             .put_object()
             .bucket(&self.bucket_name)
-            .key(&key)
+            .key(&s3_key)
             .body(data.to_vec().into())
             .content_type("application/octet-stream")
             .send()
             .await
             .map_err(|e| CloudStorageError::SdkError(format!("Put object failed: {}", e)))?;
-        let storage_location = format!("s3://{}/{}", self.bucket_name, key);
-        debug!("Successfully uploaded chunk to {}", storage_location);
+        let storage_location = format!("s3://{}/{}", self.bucket_name, s3_key);
+
+        debug!("Successfully uploaded to {}", storage_location);
         Ok(storage_location)
     }
-    async fn download_chunk(&self, storage_location: &str) -> Result<Vec<u8>, CloudStorageError> {
+
+    async fn download(&self, storage_location: &str) -> Result<Vec<u8>, CloudStorageError> {
         let key = storage_location
             .strip_prefix(&format!("s3://{}/", self.bucket_name))
             .ok_or_else(|| {
                 CloudStorageError::Download(format!("Invalid S3 location: {}", storage_location))
             })?;
-        debug!("Downloading chunk from {}", storage_location);
+
+        debug!("Downloading from {}", storage_location);
         let response = self
             .client
             .get_object()
@@ -229,16 +232,19 @@ impl CloudStorage for S3CloudStorage {
             .await
             .map_err(|e| CloudStorageError::SdkError(format!("Get object failed: {}", e)))?;
         let data = response.body.collect().await?.into_bytes().to_vec();
+
         debug!("Successfully downloaded {} bytes", data.len());
         Ok(data)
     }
-    async fn delete_chunk(&self, storage_location: &str) -> Result<(), CloudStorageError> {
+
+    async fn delete(&self, storage_location: &str) -> Result<(), CloudStorageError> {
         let key = storage_location
             .strip_prefix(&format!("s3://{}/", self.bucket_name))
             .ok_or_else(|| {
                 CloudStorageError::Download(format!("Invalid S3 location: {}", storage_location))
             })?;
-        debug!("Deleting chunk from {}", storage_location);
+
+        debug!("Deleting from {}", storage_location);
         self.client
             .delete_object()
             .bucket(&self.bucket_name)
@@ -246,7 +252,8 @@ impl CloudStorage for S3CloudStorage {
             .send()
             .await
             .map_err(|e| CloudStorageError::SdkError(format!("Delete object failed: {}", e)))?;
-        debug!("Successfully deleted chunk from {}", storage_location);
+
+        debug!("Successfully deleted from {}", storage_location);
         Ok(())
     }
 }

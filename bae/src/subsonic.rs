@@ -283,7 +283,7 @@ async fn get_album(
         }
     }
 }
-/// Stream a song - reassemble encrypted chunks into audio stream
+/// Stream a song - read and decrypt audio file from storage
 async fn stream_song(
     Query(params): Query<HashMap<String, String>>,
     State(state): State<SubsonicState>,
@@ -529,7 +529,7 @@ async fn stream_track_audio(
         let key = format!("{}/{}", track.release_id, audio_file.original_filename);
         debug!("Downloading from storage: {}", key);
         storage
-            .download_chunk(&key)
+            .download(&key)
             .await
             .map_err(|e| format!("Failed to download file: {}", e))?
     } else {

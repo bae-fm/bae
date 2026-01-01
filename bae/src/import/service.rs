@@ -53,6 +53,9 @@ pub struct ImportService {
     torrent_handle: TorrentManagerHandle,
     /// Database for storage operations
     database: Arc<Database>,
+    /// Optional pre-built cloud storage (for testing with MockCloudStorage)
+    #[cfg(feature = "test-utils")]
+    injected_cloud: Option<Arc<dyn crate::cloud_storage::CloudStorage>>,
 }
 
 impl ImportService {
@@ -85,9 +88,67 @@ impl ImportService {
                     encryption_service,
                     torrent_handle,
                     database,
+                    #[cfg(feature = "test-utils")]
+                    injected_cloud: None,
                 };
 
                 info!("Worker started");
+                loop {
+                    match service.commands_rx.recv().await {
+                        Some(command) => {
+                            service.do_import(command).await;
+                        }
+                        None => {
+                            info!("Worker receive channel closed");
+                            break;
+                        }
+                    }
+                }
+            });
+        });
+
+        ImportServiceHandle::new(
+            commands_tx,
+            progress_tx_for_handle,
+            progress_rx,
+            library_manager,
+            database_for_handle,
+            runtime_handle,
+        )
+    }
+
+    /// Start the import service with an injected cloud storage (for testing).
+    #[cfg(feature = "test-utils")]
+    #[allow(dead_code)]
+    pub fn start_with_cloud(
+        _runtime_handle: tokio::runtime::Handle,
+        library_manager: SharedLibraryManager,
+        encryption_service: EncryptionService,
+        torrent_handle: TorrentManagerHandle,
+        database: Arc<Database>,
+        cloud: Arc<dyn crate::cloud_storage::CloudStorage>,
+    ) -> ImportServiceHandle {
+        let (commands_tx, commands_rx) = mpsc::unbounded_channel();
+        let (progress_tx, progress_rx) = mpsc::unbounded_channel();
+        let progress_tx_for_handle = progress_tx.clone();
+        let library_manager_for_worker = library_manager.clone();
+        let database_for_handle = database.clone();
+        let runtime_handle = tokio::runtime::Handle::current();
+
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
+            rt.block_on(async move {
+                let mut service = ImportService {
+                    commands_rx,
+                    progress_tx,
+                    library_manager: library_manager_for_worker,
+                    encryption_service,
+                    torrent_handle,
+                    database,
+                    injected_cloud: Some(cloud),
+                };
+
+                info!("Worker started (with injected cloud)");
                 loop {
                     match service.commands_rx.recv().await {
                         Some(command) => {
@@ -280,6 +341,17 @@ impl ImportService {
         &self,
         profile: DbStorageProfile,
     ) -> Result<ReleaseStorageImpl, String> {
+        // In tests, use injected cloud if available
+        #[cfg(feature = "test-utils")]
+        if let Some(ref cloud) = self.injected_cloud {
+            return Ok(ReleaseStorageImpl::with_cloud(
+                profile,
+                Some(self.encryption_service.clone()),
+                cloud.clone(),
+                self.database.clone(),
+            ));
+        }
+
         ReleaseStorageImpl::from_profile(
             profile,
             Some(self.encryption_service.clone()),
@@ -452,7 +524,7 @@ impl ImportService {
                                 let _ = progress_tx.send(ImportProgress::Progress {
                                     id: track_id.clone(),
                                     percent,
-                                    phase: Some(ImportPhase::Chunk),
+                                    phase: Some(ImportPhase::Store),
                                     import_id: Some(import_id_for_closure.clone()),
                                 });
                             }
@@ -464,7 +536,7 @@ impl ImportService {
                         let _ = progress_tx.send(ImportProgress::Progress {
                             id: release_id.clone(),
                             percent: release_percent,
-                            phase: Some(ImportPhase::Chunk),
+                            phase: Some(ImportPhase::Store),
                             import_id: Some(import_id_for_closure.clone()),
                         });
                     }),
@@ -482,7 +554,7 @@ impl ImportService {
             );
         }
 
-        // Persist track metadata for non-chunked storage
+        // Persist track metadata
         self.persist_track_metadata(tracks_to_files, cue_flac_metadata)
             .await?;
 
@@ -822,7 +894,7 @@ impl ImportService {
                     let _ = self.progress_tx.send(ImportProgress::Progress {
                         id: track_id.clone(),
                         percent: 100,
-                        phase: Some(ImportPhase::Chunk),
+                        phase: Some(ImportPhase::Store),
                         import_id: Some(import_id.to_string()),
                     });
                 }
@@ -832,7 +904,7 @@ impl ImportService {
             let _ = self.progress_tx.send(ImportProgress::Progress {
                 id: db_release.id.clone(),
                 percent: release_percent,
-                phase: Some(ImportPhase::Chunk),
+                phase: Some(ImportPhase::Store),
                 import_id: Some(import_id.to_string()),
             });
 
@@ -1042,7 +1114,7 @@ impl ImportService {
             let _ = self.progress_tx.send(ImportProgress::Progress {
                 id: db_release.id.clone(),
                 percent: release_percent,
-                phase: Some(ImportPhase::Chunk),
+                phase: Some(ImportPhase::Store),
                 import_id: None,
             });
         }

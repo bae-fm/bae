@@ -68,16 +68,12 @@ impl BaeStorage {
         }
         let mut chunks = Vec::new();
         for chunk_id in &chunk_ids {
-            let cached_data = self
-                .cache_manager
-                .get_chunk(chunk_id)
-                .await?
-                .ok_or_else(|| {
-                    StorageError::Cache(crate::cache::CacheError::Io(std::io::Error::new(
-                        std::io::ErrorKind::NotFound,
-                        format!("Chunk {} not in cache", chunk_id),
-                    )))
-                })?;
+            let cached_data = self.cache_manager.get(chunk_id).await?.ok_or_else(|| {
+                StorageError::Cache(crate::cache::CacheError::Io(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("Chunk {} not in cache", chunk_id),
+                )))
+            })?;
             chunks.push(cached_data);
         }
         let piece_data = self.extract_piece_from_chunks(
@@ -139,17 +135,12 @@ impl BaeStorage {
                         })?;
                     if chunk_mapping.chunk_index < existing_chunk_ids.len() {
                         let chunk_id = &existing_chunk_ids[chunk_mapping.chunk_index];
-                        self.cache_manager
-                            .get_chunk(chunk_id)
-                            .await?
-                            .ok_or_else(|| {
-                                StorageError::Cache(crate::cache::CacheError::Io(
-                                    std::io::Error::new(
-                                        std::io::ErrorKind::NotFound,
-                                        format!("Chunk {} not found", chunk_id),
-                                    ),
-                                ))
-                            })?
+                        self.cache_manager.get(chunk_id).await?.ok_or_else(|| {
+                            StorageError::Cache(crate::cache::CacheError::Io(std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                format!("Chunk {} not found", chunk_id),
+                            )))
+                        })?
                     } else {
                         vec![0u8; self.piece_mapper.piece_length()]
                     }
@@ -161,9 +152,7 @@ impl BaeStorage {
                 let chunk_end = chunk_offset + (data_end - data_start);
                 updated_chunk[chunk_offset..chunk_end].copy_from_slice(&data[data_start..data_end]);
                 let chunk_id = uuid::Uuid::new_v4().to_string();
-                self.cache_manager
-                    .put_chunk(&chunk_id, &updated_chunk)
-                    .await?;
+                self.cache_manager.put(&chunk_id, &updated_chunk).await?;
                 chunk_ids.push(chunk_id);
             }
         }

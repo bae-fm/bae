@@ -40,23 +40,20 @@ async fn test_storage_reader_uses_profile_credentials() {
     // Create storage reader from profile
     let storage = create_storage_reader(&profile).await.unwrap();
 
-    // Write and read a test chunk to verify it works
-    let test_data = b"test chunk data";
-    let chunk_path = storage_path.join("test_chunk.bin");
-    let chunk_path_str = chunk_path.to_str().unwrap();
+    // Write and read a test file to verify it works
+    let test_data = b"test file data";
+    let file_path = storage_path.join("test_file.bin");
+    let file_path_str = file_path.to_str().unwrap();
 
-    let location = storage
-        .upload_chunk(chunk_path_str, test_data)
-        .await
-        .unwrap();
-    assert_eq!(location, chunk_path_str);
+    let location = storage.upload(file_path_str, test_data).await.unwrap();
+    assert_eq!(location, file_path_str);
 
-    let downloaded = storage.download_chunk(chunk_path_str).await.unwrap();
+    let downloaded = storage.download(file_path_str).await.unwrap();
     assert_eq!(downloaded, test_data);
 
     // Cleanup
-    storage.delete_chunk(chunk_path_str).await.unwrap();
-    assert!(!chunk_path.exists());
+    storage.delete(file_path_str).await.unwrap();
+    assert!(!file_path.exists());
 }
 
 /// Test that release_storage links release to profile, and we can retrieve the same profile

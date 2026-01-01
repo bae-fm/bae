@@ -26,7 +26,7 @@ pub enum LibraryError {
 /// The main library manager for database operations and entity persistence
 ///
 /// Handles:
-/// - Album/track/file/chunk persistence
+/// - Album/track/file persistence
 /// - State transitions (importing -> complete/failed)
 /// - Query methods for library browsing
 /// - Deletion with cloud storage cleanup
@@ -348,7 +348,7 @@ impl LibraryManager {
                 let files = self.get_files_for_release(release_id).await?;
                 for file in &files {
                     if let Some(ref source_path) = file.source_path {
-                        if let Err(e) = storage.delete_chunk(source_path).await {
+                        if let Err(e) = storage.delete(source_path).await {
                             warn!(
                                 "Failed to delete file {} from storage: {}. Continuing with database deletion.",
                                 file.id, e
@@ -386,7 +386,7 @@ impl LibraryManager {
                     let files = self.get_files_for_release(&release.id).await?;
                     for file in &files {
                         if let Some(ref source_path) = file.source_path {
-                            if let Err(e) = storage.delete_chunk(source_path).await {
+                            if let Err(e) = storage.delete(source_path).await {
                                 warn!(
                                     "Failed to delete file {} from storage: {}. Continuing with database deletion.",
                                     file.id, e

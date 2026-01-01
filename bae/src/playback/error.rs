@@ -6,7 +6,7 @@ pub enum PlaybackError {
     /// Database query failed
     #[error("Database error: {0}")]
     Database(String),
-    /// Requested resource not found (track, file, chunk, etc.)
+    /// Requested resource not found (track, file, etc.)
     #[error("{0} not found: {1}")]
     NotFound(&'static str, String),
     /// Cloud storage download failed

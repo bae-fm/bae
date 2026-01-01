@@ -95,7 +95,7 @@ pub fn make_config(context: &AppContext) -> DioxusConfig {
                 let image_id_owned = image_id.to_string();
                 let result = std::thread::spawn(move || {
                     let rt = tokio::runtime::Runtime::new().unwrap();
-                    rt.block_on(serve_image_from_chunks(&image_id_owned, &services_clone))
+                    rt.block_on(serve_image(&image_id_owned, &services_clone))
                 })
                 .join()
                 .unwrap_or_else(|_| Err("Thread panicked".to_string()));
@@ -122,12 +122,12 @@ pub fn make_config(context: &AppContext) -> DioxusConfig {
             }
         })
 }
-/// Reconstruct an image from chunk storage using file_chunks mapping
-async fn serve_image_from_chunks(
+/// Serve an image from storage
+async fn serve_image(
     image_id: &str,
     services: &ImageServices,
 ) -> Result<(Vec<u8>, &'static str), String> {
-    debug!("Serving image from chunks: {}", image_id);
+    debug!("Serving image: {}", image_id);
     let image = services
         .library_manager
         .get()
@@ -147,7 +147,7 @@ async fn serve_image_from_chunks(
         .map_err(|e| format!("Database error: {}", e))?
         .ok_or_else(|| format!("File not found for image: {}", image.filename))?;
     if let Some(ref source_path) = file.source_path {
-        debug!("Serving image from non-chunked storage: {}", source_path);
+        debug!("Serving image from storage: {}", source_path);
         let storage_profile = services
             .library_manager
             .get()
@@ -162,7 +162,7 @@ async fn serve_image_from_chunks(
                 .await
                 .map_err(|e| format!("Failed to create storage reader: {}", e))?;
             storage
-                .download_chunk(source_path)
+                .download(source_path)
                 .await
                 .map_err(|e| format!("Failed to download image from cloud: {}", e))?
         } else {

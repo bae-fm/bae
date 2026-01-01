@@ -67,19 +67,16 @@ pub async fn reassemble_track(
 
         // Check cache first
         let cache_key = format!("file:{}", audio_file.id);
-        let encrypted_data = match cache.get_chunk(&cache_key).await {
+        let encrypted_data = match cache.get(&cache_key).await {
             Ok(Some(cached_data)) => {
                 debug!("Cache hit for file: {}", audio_file.id);
                 cached_data
             }
             Ok(None) | Err(_) => {
                 debug!("Cache miss - downloading file: {}", audio_file.id);
-                let data = storage
-                    .download_chunk(&key)
-                    .await
-                    .map_err(PlaybackError::cloud)?;
+                let data = storage.download(&key).await.map_err(PlaybackError::cloud)?;
 
-                if let Err(e) = cache.put_chunk(&cache_key, &data).await {
+                if let Err(e) = cache.put(&cache_key, &data).await {
                     warn!("Failed to cache file (non-fatal): {}", e);
                 }
                 data

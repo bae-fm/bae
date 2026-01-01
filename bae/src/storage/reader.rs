@@ -28,23 +28,21 @@ pub async fn create_storage_reader(
     }
 }
 
-/// Local file storage that reads chunks from disk paths.
-///
-/// For local storage, `storage_location` in DbChunk is a local file path.
+/// Local file storage that reads files from disk paths.
 pub struct LocalFileStorage;
 
 #[async_trait::async_trait]
 impl CloudStorage for LocalFileStorage {
-    async fn upload_chunk(&self, path: &str, data: &[u8]) -> Result<String, CloudStorageError> {
+    async fn upload(&self, path: &str, data: &[u8]) -> Result<String, CloudStorageError> {
         tokio::fs::write(path, data).await?;
         Ok(path.to_string())
     }
 
-    async fn download_chunk(&self, path: &str) -> Result<Vec<u8>, CloudStorageError> {
+    async fn download(&self, path: &str) -> Result<Vec<u8>, CloudStorageError> {
         tokio::fs::read(path).await.map_err(CloudStorageError::Io)
     }
 
-    async fn delete_chunk(&self, path: &str) -> Result<(), CloudStorageError> {
+    async fn delete(&self, path: &str) -> Result<(), CloudStorageError> {
         tokio::fs::remove_file(path)
             .await
             .map_err(CloudStorageError::Io)

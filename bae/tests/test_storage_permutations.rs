@@ -5,12 +5,14 @@
 //! - Location: Local, Cloud
 //! - Encrypted: true, false
 use bae::cache::CacheManager;
+use bae::cloud_storage::CloudStorage;
 use bae::db::{Database, DbStorageProfile, ImportStatus, StorageLocation};
 use bae::discogs::models::{DiscogsRelease, DiscogsTrack};
 use bae::encryption::EncryptionService;
 use bae::import::{ImportPhase, ImportProgress, ImportRequest, ImportService};
 use bae::library::LibraryManager;
 use bae::storage::create_storage_reader;
+use bae::test_support::MockCloudStorage;
 use bae::torrent::TorrentManagerHandle;
 use std::path::Path;
 use std::sync::Arc;
@@ -31,10 +33,8 @@ fn tracing_init() {
 #[tokio::test]
 async fn test_storage_permutations() {
     tracing_init();
-    // Note: Cloud tests are skipped because they require MockCloudStorage injection
-    // which was removed with CloudStorageManager. Cloud storage is tested via
-    // real S3 in manual testing or with the test_real_album test.
-    for location in [StorageLocation::Local] {
+    // Test all 4 permutations: (local/cloud) × (encrypted/plain)
+    for location in [StorageLocation::Local, StorageLocation::Cloud] {
         for encrypted in [false, true] {
             info!(
                 "\n\n========== Testing: {:?} / encrypted={} ==========\n",
@@ -65,9 +65,9 @@ async fn run_storage_test(location: StorageLocation, encrypted: bool) {
     let cache_config = bae::cache::CacheConfig {
         cache_dir: cache_dir.clone(),
         max_size_bytes: 1024 * 1024 * 1024,
-        max_chunks: 10000,
+        max_files: 10000,
     };
-    let cache_manager = CacheManager::with_config(cache_config)
+    let _cache_manager = CacheManager::with_config(cache_config)
         .await
         .expect("Failed to create cache manager");
     let library_manager = LibraryManager::new(database.clone());
@@ -87,13 +87,32 @@ async fn run_storage_test(location: StorageLocation, encrypted: bool) {
     let runtime_handle = tokio::runtime::Handle::current();
     let torrent_handle = TorrentManagerHandle::new_dummy();
     let database_arc = Arc::new(database.clone());
-    let import_handle = ImportService::start(
-        runtime_handle,
-        shared_library_manager,
-        encryption_service.clone(),
-        torrent_handle,
-        database_arc,
-    );
+
+    // Create mock cloud storage for cloud tests
+    let mock_cloud: Option<Arc<MockCloudStorage>> = if location == StorageLocation::Cloud {
+        Some(Arc::new(MockCloudStorage::new()))
+    } else {
+        None
+    };
+
+    let import_handle = if let Some(ref cloud) = mock_cloud {
+        ImportService::start_with_cloud(
+            runtime_handle,
+            shared_library_manager,
+            encryption_service.clone(),
+            torrent_handle,
+            database_arc,
+            cloud.clone(),
+        )
+    } else {
+        ImportService::start(
+            runtime_handle,
+            shared_library_manager,
+            encryption_service.clone(),
+            torrent_handle,
+            database_arc,
+        )
+    };
     let discogs_release = create_test_discogs_release();
     let master_year = discogs_release.year.unwrap_or(2024);
     let selected_cover = "scans/back.jpg".to_string();
@@ -127,7 +146,7 @@ async fn run_storage_test(location: StorageLocation, encrypted: bool) {
                 if id == &release_id {
                     assert_eq!(
                         *phase,
-                        Some(ImportPhase::Chunk),
+                        Some(ImportPhase::Store),
                         "Storage import progress should have phase=Chunk",
                     );
                     progress_events_with_chunk_phase += 1;
@@ -279,13 +298,15 @@ async fn run_storage_test(location: StorageLocation, encrypted: bool) {
         cover_image,
         &library_manager,
         &storage_profile,
-        &cache_manager,
         &encryption_service,
         encrypted,
+        mock_cloud
+            .as_ref()
+            .map(|c| c.clone() as Arc<dyn CloudStorage>),
     )
     .await;
     info!("✓ Cover image data is loadable");
-    verify_storage_state(encrypted, &files).await;
+    verify_storage_state(location, encrypted, &files, mock_cloud.as_ref()).await;
     verify_roundtrip(&tracks, &library_manager, encrypted).await;
     info!(
         "\n✅ Test passed: {:?} / encrypted={}\n",
@@ -412,13 +433,17 @@ async fn verify_image_loadable(
     image: &bae::db::DbImage,
     library_manager: &LibraryManager,
     storage_profile: &DbStorageProfile,
-    _cache_manager: &CacheManager,
     encryption_service: &EncryptionService,
     encrypted: bool,
+    mock_cloud: Option<Arc<dyn CloudStorage>>,
 ) {
-    let storage = create_storage_reader(storage_profile)
-        .await
-        .expect("Failed to create storage reader");
+    let storage: Arc<dyn CloudStorage> = if let Some(cloud) = mock_cloud {
+        cloud
+    } else {
+        create_storage_reader(storage_profile)
+            .await
+            .expect("Failed to create storage reader")
+    };
 
     let filename_only = std::path::Path::new(&image.filename)
         .file_name()
@@ -435,7 +460,7 @@ async fn verify_image_loadable(
         .as_ref()
         .expect("File should have source_path");
     let data = storage
-        .download_chunk(source_path)
+        .download(source_path)
         .await
         .expect("Failed to read image file");
     let data = if encrypted {
@@ -454,26 +479,64 @@ async fn verify_image_loadable(
     );
 }
 
-async fn verify_storage_state(encrypted: bool, files: &[bae::db::DbFile]) {
-    // Verify local files exist (this test only runs for local storage now)
-    for file in files {
-        if let Some(ref source_path) = file.source_path {
-            let path = PathBuf::from(source_path);
-            assert!(path.exists(), "Local file should exist at: {}", source_path);
-            if encrypted && file.format == "flac" {
-                let data = fs::read(&path).expect("Failed to read file");
-                assert!(
-                    data.len() < 4 || &data[0..4] != b"fLaC",
-                    "Encrypted file should not have plain FLAC header",
-                );
-                info!(
-                    "✓ File '{}' is encrypted (no fLaC header)",
-                    file.original_filename
-                );
+async fn verify_storage_state(
+    location: StorageLocation,
+    encrypted: bool,
+    files: &[bae::db::DbFile],
+    mock_cloud: Option<&Arc<MockCloudStorage>>,
+) {
+    match location {
+        StorageLocation::Local => {
+            // Verify local files exist
+            for file in files {
+                if let Some(ref source_path) = file.source_path {
+                    let path = PathBuf::from(source_path);
+                    assert!(path.exists(), "Local file should exist at: {}", source_path);
+                    if encrypted && file.format == "flac" {
+                        let data = fs::read(&path).expect("Failed to read file");
+                        assert!(
+                            data.len() < 4 || &data[0..4] != b"fLaC",
+                            "Encrypted file should not have plain FLAC header",
+                        );
+                        info!(
+                            "✓ File '{}' is encrypted (no fLaC header)",
+                            file.original_filename
+                        );
+                    }
+                }
             }
+            info!("✓ Local storage files verified");
+        }
+        StorageLocation::Cloud => {
+            // Verify files exist in mock cloud storage
+            let cloud = mock_cloud.expect("Mock cloud should exist for cloud tests");
+            let stored_files = cloud.files.lock().unwrap();
+            for file in files {
+                if let Some(ref source_path) = file.source_path {
+                    assert!(
+                        stored_files.contains_key(source_path),
+                        "File should exist in cloud storage: {}",
+                        source_path
+                    );
+                    let data = stored_files.get(source_path).unwrap();
+                    if encrypted && file.format == "flac" {
+                        assert!(
+                            data.len() < 4 || &data[0..4] != b"fLaC",
+                            "Encrypted file should not have plain FLAC header",
+                        );
+                        info!(
+                            "✓ File '{}' is encrypted in cloud (no fLaC header)",
+                            file.original_filename
+                        );
+                    }
+                }
+            }
+            info!(
+                "✓ Cloud storage files verified ({} files in mock)",
+                stored_files.len()
+            );
         }
     }
-    info!("✓ Local storage files verified");
 }
 
 async fn verify_roundtrip(

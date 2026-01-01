@@ -402,7 +402,7 @@ impl TorrentManager {
             })?;
             chunk_ids.extend(ids);
         }
-        self.cache_manager.pin_chunks(&chunk_ids).await;
+        self.cache_manager.pin_all(&chunk_ids).await;
         info!("Pinned {} chunks for seeding", chunk_ids.len());
         self.mark_torrent_seeding(&torrent.id, true).await?;
         info!("Successfully started seeding for release {}", release_id);
@@ -423,7 +423,7 @@ impl TorrentManager {
             })?;
             chunk_ids.extend(ids);
         }
-        self.cache_manager.unpin_chunks(&chunk_ids).await;
+        self.cache_manager.unpin_all(&chunk_ids).await;
         info!("Unpinned {} chunks", chunk_ids.len());
         self.mark_torrent_seeding(&torrent.id, false).await?;
         Ok(())

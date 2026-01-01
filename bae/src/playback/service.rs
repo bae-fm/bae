@@ -1095,10 +1095,10 @@ impl PlaybackService {
         }
         Ok(file_data)
     }
-    /// Load audio from non-chunked storage.
+    /// Load audio from storage.
     ///
-    /// For non-chunked storage, the file is stored whole (not split into chunks).
-    /// For CUE/FLAC tracks, we use byte ranges to extract the track's portion.
+    /// Files are stored whole. For CUE/FLAC tracks, we use byte ranges to
+    /// extract the track's portion.
     async fn load_audio_from_storage(
         &self,
         track_id: &str,
@@ -1106,7 +1106,7 @@ impl PlaybackService {
         storage_profile: &crate::db::DbStorageProfile,
     ) -> Result<Vec<u8>, PlaybackError> {
         info!(
-            "Loading audio from non-chunked storage for track {} (profile: {})",
+            "Loading audio from storage for track {} (profile: {})",
             track_id, storage_profile.name
         );
         let audio_format = self
@@ -1135,7 +1135,7 @@ impl PlaybackService {
                     .await
                     .map_err(PlaybackError::cloud)?;
                 storage
-                    .download_chunk(source_path)
+                    .download(source_path)
                     .await
                     .map_err(PlaybackError::cloud)?
             }

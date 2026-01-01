@@ -98,10 +98,10 @@ pub enum ImportProgress {
     Progress {
         id: String,
         percent: u8,
-        /// Phase of import: Acquire (data fetching) or Chunk (storage/encryption)
-        /// - Folder imports: Only Chunk phase (acquire is instant)
-        /// - Torrent imports: Acquire phase (download), then Chunk phase (storage)
-        /// - CD imports: Acquire phase (rip), then Chunk phase (storage)
+        /// Phase of import: Acquire (data fetching) or Store (storage/encryption)
+        /// - Folder imports: Only Store phase (acquire is instant)
+        /// - Torrent imports: Acquire phase (download), then Store phase (storage)
+        /// - CD imports: Acquire phase (rip), then Store phase (storage)
         phase: Option<ImportPhase>,
         import_id: Option<String>,
     },
@@ -129,9 +129,9 @@ pub enum ImportPhase {
     /// - Torrent: Download torrent to temporary folder
     /// - CD: Rip CD tracks to FLAC files
     Acquire,
-    /// Chunk phase: Store and encrypt data
+    /// Store phase: Store and encrypt data
     /// Same for all import types: read files → encrypt → store
-    Chunk,
+    Store,
 }
 
 /// Steps during phase 0 preparation (in ImportHandle, before pipeline starts)
@@ -215,7 +215,7 @@ pub struct DiscoveredFile {
 ///
 /// All imports follow a two-phase model:
 /// - **Acquire phase**: Get data ready (folder: no-op, torrent: download, CD: rip)
-/// - **Chunk phase**: Store and encrypt (same for all types)
+/// - **Store phase**: Store and encrypt (same for all types)
 ///
 /// Handle only validates and sends commands. Service executes both phases.
 #[derive(Debug)]

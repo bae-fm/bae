@@ -54,7 +54,7 @@ impl ExportService {
                 // Read from storage
                 debug!("Reading file from storage: {}", source_path);
                 let data = storage
-                    .download_chunk(source_path)
+                    .download(source_path)
                     .await
                     .map_err(|e| format!("Failed to read file {}: {}", source_path, e))?;
 

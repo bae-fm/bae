@@ -186,7 +186,7 @@ async fn test_storageless_cue_flac_playback_uses_track_positions() {
     let cache_config = bae::cache::CacheConfig {
         cache_dir,
         max_size_bytes: 1024 * 1024 * 1024,
-        max_chunks: 10000,
+        max_files: 10000,
     };
     let _cache_manager = bae::cache::CacheManager::with_config(cache_config)
         .await

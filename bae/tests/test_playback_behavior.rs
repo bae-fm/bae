@@ -45,7 +45,7 @@ impl PlaybackTestFixture {
         let cache_config = CacheConfig {
             cache_dir,
             max_size_bytes: 1024 * 1024 * 1024,
-            max_chunks: 10000,
+            max_files: 10000,
         };
         let _cache_manager = CacheManager::with_config(cache_config).await?;
         let database_arc = Arc::new(database);

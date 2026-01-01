@@ -123,7 +123,7 @@ pub struct DbAlbum {
     pub musicbrainz_release: Option<MusicBrainzRelease>,
     /// Album ID from Bandcamp (optional, for future multi-source support)
     pub bandcamp_album_id: Option<String>,
-    /// Reference to the cover image (DbImage.id) - set after import when images are chunked
+    /// Reference to the cover image (DbImage.id) - set after import
     pub cover_image_id: Option<String>,
     /// Cover art URL for immediate display (remote URL or bae://local/... for local files)
     /// Used before import completes and cover_image_id is set
@@ -138,7 +138,7 @@ pub struct DbAlbum {
 /// A release is a physical or digital version of a logical album.
 /// Examples: "1973 Original Pressing", "2016 Remaster", "180g Vinyl", "Digital Release"
 ///
-/// Files, tracks, and chunks belong to releases (not albums), because:
+/// Files and tracks belong to releases (not albums), because:
 /// - Users import specific releases, not abstract albums
 /// - Each release has its own audio files and metadata
 /// - Multiple releases of the same album can coexist in the library
@@ -208,7 +208,7 @@ pub struct DbTrack {
 /// - Some files are metadata (cover.jpg, .cue sheets) not associated with any track
 ///
 /// When a release has no storage profile, the `source_path` field stores the actual
-/// file location for direct playback (no chunks exist).
+/// file location for direct playback.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbFile {
     pub id: String,

@@ -83,6 +83,22 @@ impl ReleaseStorageImpl {
         })
     }
 
+    /// Create storage with an injected cloud storage (for testing).
+    #[cfg(feature = "test-utils")]
+    pub fn with_cloud(
+        profile: DbStorageProfile,
+        encryption: Option<EncryptionService>,
+        cloud: Arc<dyn CloudStorage>,
+        database: Arc<Database>,
+    ) -> Self {
+        Self {
+            profile,
+            encryption,
+            cloud: Some(cloud),
+            database: Some(database),
+        }
+    }
+
     /// Get the local path for a release's files
     fn release_path(&self, release_id: &str) -> PathBuf {
         PathBuf::from(&self.profile.location_path).join(release_id)
@@ -165,7 +181,7 @@ impl ReleaseStorage for ReleaseStorageImpl {
                 let cloud = self.cloud.as_ref().ok_or(StorageError::NotConfigured)?;
                 let key = self.cloud_key(release_id, filename);
                 let storage_location = cloud
-                    .upload_chunk(&key, &data_to_store)
+                    .upload(&key, &data_to_store)
                     .await
                     .map_err(|e| StorageError::Cloud(e.to_string()))?;
                 on_progress(total_bytes, total_bytes);

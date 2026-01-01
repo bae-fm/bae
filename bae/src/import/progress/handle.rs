@@ -186,7 +186,7 @@ mod tests {
         assert!(filter.matches(&ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: 50,
-            phase: Some(ImportPhase::Chunk),
+            phase: Some(ImportPhase::Store),
             import_id: None,
         },),);
         assert!(filter.matches(&ImportProgress::Complete {
@@ -198,7 +198,7 @@ mod tests {
         assert!(!filter.matches(&ImportProgress::Progress {
             id: "release-2".to_string(),
             percent: 50,
-            phase: Some(ImportPhase::Chunk),
+            phase: Some(ImportPhase::Store),
             import_id: None,
         },),);
         assert!(!filter.matches(&ImportProgress::Preparing {
@@ -235,7 +235,7 @@ mod tests {
         assert!(filter.matches(&ImportProgress::Progress {
             id: "track-1".to_string(),
             percent: 75,
-            phase: Some(ImportPhase::Chunk),
+            phase: Some(ImportPhase::Store),
             import_id: None,
         },),);
         assert!(filter.matches(&ImportProgress::Complete {
@@ -247,7 +247,7 @@ mod tests {
         assert!(!filter.matches(&ImportProgress::Progress {
             id: "track-2".to_string(),
             percent: 50,
-            phase: Some(ImportPhase::Chunk),
+            phase: Some(ImportPhase::Store),
             import_id: None,
         },),);
         assert!(!filter.matches(&ImportProgress::Preparing {
@@ -297,7 +297,7 @@ mod tests {
         assert!(filter.matches(&ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: 50,
-            phase: Some(ImportPhase::Chunk),
+            phase: Some(ImportPhase::Store),
             import_id: Some("import-1".to_string()),
         },),);
         assert!(filter.matches(&ImportProgress::Complete {
@@ -314,13 +314,13 @@ mod tests {
         assert!(!filter.matches(&ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: 50,
-            phase: Some(ImportPhase::Chunk),
+            phase: Some(ImportPhase::Store),
             import_id: Some("import-2".to_string()),
         },),);
         assert!(!filter.matches(&ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: 50,
-            phase: Some(ImportPhase::Chunk),
+            phase: Some(ImportPhase::Store),
             import_id: None,
         },),);
     }
@@ -348,7 +348,7 @@ mod tests {
         assert!(filter.matches(&ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: 50,
-            phase: Some(ImportPhase::Chunk),
+            phase: Some(ImportPhase::Store),
             import_id: Some("import-2".to_string()),
         },),);
         assert!(filter.matches(&ImportProgress::Complete {
@@ -369,7 +369,7 @@ mod tests {
         assert!(!filter.matches(&ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: 50,
-            phase: Some(ImportPhase::Chunk),
+            phase: Some(ImportPhase::Store),
             import_id: None,
         },),);
         assert!(!filter.matches(&ImportProgress::Complete {

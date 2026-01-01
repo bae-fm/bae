@@ -18,9 +18,8 @@ pub enum EncryptionError {
 /// Manages encryption keys and provides AES-256-GCM encryption/decryption
 ///
 /// This implements the security model described in the README:
-/// - Files are split into chunks and each chunk is encrypted separately
-/// - Uses AES-256-GCM for authenticated encryption
-/// - Each chunk gets a unique nonce for security
+/// - Files are encrypted using AES-256-GCM for authenticated encryption
+/// - Each file gets a unique nonce for security
 #[derive(Clone)]
 pub struct EncryptionService {
     cipher: Aes256Gcm,

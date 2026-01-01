@@ -2,7 +2,7 @@
 //!
 //! The bae:// custom protocol is registered in app.rs and serves:
 //! - Local files: bae://local/path/to/file
-//! - Images from chunk storage: bae://image/{image_id}
+//! - Images from storage: bae://image/{image_id}
 /// Convert a local file path to a bae:// URL for serving via custom protocol.
 ///
 /// The path will be URL-encoded to handle special characters like spaces,
@@ -22,9 +22,9 @@ pub fn local_file_url(path: &str) -> String {
         .join("/");
     format!("bae://local{}", encoded_path)
 }
-/// Convert a DbImage ID to a bae:// URL for serving from chunk storage.
+/// Convert a DbImage ID to a bae:// URL for serving from storage.
 ///
-/// The image will be reconstructed from encrypted chunks on demand.
+/// The image will be read and decrypted on demand.
 ///
 /// # Example
 /// ```

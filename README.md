@@ -10,8 +10,8 @@ A desktop music library app. Album-oriented, metadata-first: you pick releases f
 - CD ripping (libcdio-paranoia with error correction)
 
 **Storage**
-- Cloud: S3-compatible storage (AWS, MinIO, etc.) with AES-GCM encryption and chunking
-- Local: filesystem path, optional encryption/chunking
+- Cloud: S3-compatible storage (AWS, MinIO, etc.) with optional AES-GCM encryption
+- Local: filesystem path with optional encryption
 - Storage profiles let you configure different destinations
 
 **Playback**
