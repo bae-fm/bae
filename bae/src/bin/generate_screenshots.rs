@@ -116,8 +116,8 @@ fn capture_screenshots(output_dir: &std::path::Path, _app: &mut Child) {
     resize_bae_window(1920, 1080);
     thread::sleep(Duration::from_millis(1000)); // Let UI re-render
 
-    // Find the Bae window ID using AppleScript
-    let window_id = get_bae_window_id();
+    // Get the CGWindowID for proper window capture with rounded corners
+    let window_id = get_bae_cg_window_id();
 
     let screenshots = [
         ("library-grid.png", "Library view"),
@@ -129,13 +129,13 @@ fn capture_screenshots(output_dir: &std::path::Path, _app: &mut Child) {
         let output_path = output_dir.join(filename);
 
         let status = if let Some(wid) = &window_id {
-            // Capture specific window by ID
+            // Capture window by CGWindowID - preserves rounded corners with alpha
             Command::new("screencapture")
                 .args([
                     "-x", // No sound
                     "-o", // No shadow
                     "-l",
-                    wid, // Window ID
+                    wid, // CGWindowID
                     "-t",
                     "png",
                     output_path.to_str().unwrap(),
@@ -146,7 +146,7 @@ fn capture_screenshots(output_dir: &std::path::Path, _app: &mut Child) {
             // Fallback: capture entire screen
             println!("  Warning: Could not find Bae window, capturing full screen");
             Command::new("screencapture")
-                .args(["-x", "-o", "-t", "png", output_path.to_str().unwrap()])
+                .args(["-x", "-t", "png", output_path.to_str().unwrap()])
                 .status()
                 .expect("Failed to run screencapture")
         };
@@ -162,33 +162,35 @@ fn capture_screenshots(output_dir: &std::path::Path, _app: &mut Child) {
 }
 
 #[cfg(target_os = "macos")]
-fn get_bae_window_id() -> Option<String> {
-    // Use AppleScript to get the window ID of the Bae app
+fn get_bae_cg_window_id() -> Option<String> {
+    // Use Swift with Quartz to get the actual CGWindowID
     let script = r#"
-        tell application "System Events"
-            set baePID to unix id of (first process whose name is "bae" or name is "Bae")
-            set windowList to windows of (first process whose unix id is baePID)
-            if (count of windowList) > 0 then
-                return id of item 1 of windowList
-            end if
-        end tell
-    "#;
+import Quartz
+let options = CGWindowListOption(arrayLiteral: .optionOnScreenOnly)
+if let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] {
+    for window in windowList {
+        if let name = window[kCGWindowOwnerName as String] as? String,
+           (name.contains("Bae") || name.contains("bae")),
+           let num = window[kCGWindowNumber as String] as? Int {
+            print(num)
+            break
+        }
+    }
+}
+"#;
 
-    let output = Command::new("osascript")
-        .args(["-e", script])
-        .output()
-        .ok()?;
+    let output = Command::new("swift").args(["-e", script]).output().ok()?;
 
     if output.status.success() {
         let wid = String::from_utf8_lossy(&output.stdout).trim().to_string();
         if !wid.is_empty() {
-            println!("Found Bae window ID: {}", wid);
+            println!("Found Bae CGWindowID: {}", wid);
             return Some(wid);
         }
     }
 
     eprintln!(
-        "Warning: Could not get Bae window ID: {}",
+        "Warning: Could not get Bae CGWindowID: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     None
