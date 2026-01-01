@@ -656,14 +656,14 @@ impl ImportService {
         tracks_to_files: &[TrackFile],
         cue_flac_metadata: Option<HashMap<PathBuf, CueFlacMetadata>>,
     ) -> Result<(), String> {
-        use crate::cue_flac::CueFlacProcessor;
+        use crate::cue_flac::{CueFlacProcessor, FlacInfo};
         use crate::db::DbAudioFormat;
 
         let library_manager = self.library_manager.get();
 
-        // Build CUE/FLAC data if present (metadata, flac headers, seektable tuples)
+        // Build CUE/FLAC data if present (metadata, flac headers, flac info for byte offsets)
         #[allow(clippy::type_complexity)]
-        let cue_flac_data: HashMap<PathBuf, (CueFlacMetadata, Vec<u8>, Vec<(u64, u64)>)> =
+        let cue_flac_data: HashMap<PathBuf, (CueFlacMetadata, Vec<u8>, FlacInfo)> =
             if let Some(ref cue_metadata) = cue_flac_metadata {
                 let mut data = HashMap::new();
                 for (flac_path, metadata) in cue_metadata {
@@ -671,21 +671,18 @@ impl ImportService {
                         .map_err(|e| format!("Failed to extract FLAC headers: {}", e))?;
                     let flac_info = CueFlacProcessor::analyze_flac(flac_path)
                         .map_err(|e| format!("Failed to analyze FLAC: {}", e))?;
-                    // Convert SeekPoints to tuples (sample_number, stream_offset) for serialization
-                    let seektable_tuples: Vec<(u64, u64)> = flac_info
-                        .seektable
-                        .iter()
-                        .map(|sp| (sp.sample_number, sp.stream_offset))
-                        .collect();
                     data.insert(
                         flac_path.clone(),
-                        (metadata.clone(), flac_headers.headers, seektable_tuples),
+                        (metadata.clone(), flac_headers.headers, flac_info),
                     );
                 }
                 data
             } else {
                 HashMap::new()
             };
+
+        // Track which CUE track index we're on for each FLAC file
+        let mut track_indices: HashMap<PathBuf, usize> = HashMap::new();
 
         for track_file in tracks_to_files {
             let format = track_file
@@ -695,15 +692,50 @@ impl ImportService {
                 .unwrap_or("unknown")
                 .to_lowercase();
 
-            if let Some((_, flac_headers, seektable)) = cue_flac_data.get(&track_file.file_path) {
-                let flac_seektable = bincode::serialize(seektable)
+            if let Some((metadata, flac_headers, flac_info)) =
+                cue_flac_data.get(&track_file.file_path)
+            {
+                // Get current track index for this FLAC file
+                let track_idx = *track_indices.get(&track_file.file_path).unwrap_or(&0);
+                track_indices.insert(track_file.file_path.clone(), track_idx + 1);
+
+                // Look up CUE track timing
+                let cue_track = metadata.cue_sheet.tracks.get(track_idx).ok_or_else(|| {
+                    format!(
+                        "CUE track index {} out of bounds for {}",
+                        track_idx,
+                        track_file.file_path.display()
+                    )
+                })?;
+
+                // Calculate byte offsets using seektable
+                let (start_byte, end_byte) = CueFlacProcessor::find_track_byte_range(
+                    cue_track.start_time_ms,
+                    cue_track.end_time_ms,
+                    &flac_info.seektable,
+                    flac_info.sample_rate,
+                    flac_info.total_samples,
+                    flac_info.audio_data_start,
+                    flac_info.audio_data_end,
+                );
+
+                // Serialize seektable for storage
+                let seektable_tuples: Vec<(u64, u64)> = flac_info
+                    .seektable
+                    .iter()
+                    .map(|sp| (sp.sample_number, sp.stream_offset))
+                    .collect();
+                let flac_seektable = bincode::serialize(&seektable_tuples)
                     .map_err(|e| format!("Failed to serialize seektable: {}", e))?;
-                let audio_format = DbAudioFormat::new_with_seektable(
+
+                let audio_format = DbAudioFormat::new_with_byte_offsets(
                     &track_file.db_track_id,
                     "flac",
                     Some(flac_headers.clone()),
                     Some(flac_seektable),
                     true, // needs_headers for CUE/FLAC
+                    start_byte,
+                    end_byte,
                 );
                 library_manager
                     .add_audio_format(&audio_format)
