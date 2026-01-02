@@ -77,6 +77,26 @@ void set_listen_interfaces(SessionParams* params, rust::Str interfaces) {
     libtorrent::set_listen_interfaces(params, std::string(interfaces));
 }
 
+// Wrapper for set_enable_upnp
+void set_enable_upnp(SessionParams* params, bool enable) {
+    libtorrent::set_enable_upnp(params, enable);
+}
+
+// Wrapper for set_enable_natpmp
+void set_enable_natpmp(SessionParams* params, bool enable) {
+    libtorrent::set_enable_natpmp(params, enable);
+}
+
+// Wrapper for set_connections_limit
+void set_connections_limit(SessionParams* params, int32_t limit) {
+    libtorrent::set_connections_limit(params, limit);
+}
+
+// Wrapper for set_unchoke_slots_limit
+void set_unchoke_slots_limit(SessionParams* params, int32_t limit) {
+    libtorrent::set_unchoke_slots_limit(params, limit);
+}
+
 // Wrapper for torrent_get_name - converts std::string to rust::String
 rust::String torrent_get_name(TorrentHandle* handle) {
     std::string name = libtorrent::torrent_get_name_internal(handle);

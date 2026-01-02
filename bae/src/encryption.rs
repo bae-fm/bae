@@ -112,6 +112,13 @@ mod tests {
             discogs_api_key: Some("test-key".to_string()),
             encryption_key: test_key_hex,
             torrent_bind_interface: None,
+            torrent_listen_port: None,
+            torrent_enable_upnp: true,
+            torrent_enable_natpmp: true,
+            torrent_max_connections: None,
+            torrent_max_connections_per_torrent: None,
+            torrent_max_uploads: None,
+            torrent_max_uploads_per_torrent: None,
         };
         EncryptionService::new(&test_config).expect("Failed to create test encryption service")
     }

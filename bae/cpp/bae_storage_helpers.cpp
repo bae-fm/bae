@@ -315,6 +315,30 @@ void set_listen_interfaces(session_params* params, const std::string& interfaces
     }
 }
 
+void set_enable_upnp(session_params* params, bool enable) {
+    if (params) {
+        params->settings.set_bool(settings_pack::enable_upnp, enable);
+    }
+}
+
+void set_enable_natpmp(session_params* params, bool enable) {
+    if (params) {
+        params->settings.set_bool(settings_pack::enable_natpmp, enable);
+    }
+}
+
+void set_connections_limit(session_params* params, int32_t limit) {
+    if (params) {
+        params->settings.set_int(settings_pack::connections_limit, limit);
+    }
+}
+
+void set_unchoke_slots_limit(session_params* params, int32_t limit) {
+    if (params) {
+        params->settings.set_int(settings_pack::unchoke_slots_limit, limit);
+    }
+}
+
 std::string session_get_listen_interfaces(session* sess) {
     if (!sess) {
         return "No session";

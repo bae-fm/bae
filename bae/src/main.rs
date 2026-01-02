@@ -212,5 +212,12 @@ fn torrent_options_from_config(config: &config::Config) -> torrent::client::Torr
         info!("Torrent client using default network binding");
         None
     };
-    torrent::client::TorrentClientOptions { bind_interface }
+    torrent::client::TorrentClientOptions {
+        bind_interface,
+        listen_port: config.torrent_listen_port,
+        enable_upnp: config.torrent_enable_upnp,
+        enable_natpmp: config.torrent_enable_natpmp,
+        max_connections: config.torrent_max_connections,
+        max_uploads: config.torrent_max_uploads,
+    }
 }

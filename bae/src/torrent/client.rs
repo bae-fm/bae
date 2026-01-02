@@ -58,6 +58,16 @@ thread_local! {
 pub struct TorrentClientOptions {
     /// Network interface to bind to (e.g. "eth0", "tun0", "0.0.0.0:6881")
     pub bind_interface: Option<String>,
+    /// Listening port. None = random port.
+    pub listen_port: Option<u16>,
+    /// Enable UPnP port forwarding
+    pub enable_upnp: bool,
+    /// Enable NAT-PMP port forwarding
+    pub enable_natpmp: bool,
+    /// Global max connections. None = unlimited.
+    pub max_connections: Option<i32>,
+    /// Global max upload slots. None = unlimited.
+    pub max_uploads: Option<i32>,
 }
 /// Wrapper around libtorrent session
 pub struct TorrentClient {
@@ -545,40 +555,110 @@ fn apply_options_to_session_params(
     session_params: &mut UniquePtr<ffi::SessionParams>,
     options: &TorrentClientOptions,
 ) {
-    use tracing::{info, warn};
-    if let Some(interface) = &options.bind_interface {
-        let listen_interface = if interface.contains(':') {
-            interface.clone()
-        } else {
-            match get_interface_ip_and_format(interface) {
-                Ok(formatted) => {
-                    info!(
-                        "Resolved interface '{}' to listen address: {}",
-                        interface, formatted
-                    );
-                    formatted
-                }
-                Err(e) => {
-                    warn!(
-                        "Failed to resolve IP for interface '{}': {}. Using interface:port format instead.",
-                        interface, e
-                    );
-                    format!("{}:6881", interface)
-                }
-            }
-        };
-        info!(
-            "Configuring torrent session to bind to: {} (port 0: libtorrent auto-selects)",
-            listen_interface
-        );
+    use tracing::info;
+
+    // Apply listen interface/port settings
+    let listen_interface = build_listen_interface(options);
+    if let Some(interface) = &listen_interface {
+        info!("Configuring torrent session to bind to: {}", interface);
         unsafe {
             if let Some(pinned_params) = session_params.as_mut() {
                 let params_ptr = std::pin::Pin::get_unchecked_mut(pinned_params) as *mut _;
-                set_listen_interfaces(params_ptr, &listen_interface);
+                set_listen_interfaces(params_ptr, interface);
             }
         }
     } else {
-        info!("Torrent session using default network binding (no interface specified)");
+        info!("Torrent session using default network binding");
+    }
+
+    // Apply UPnP and NAT-PMP settings
+    unsafe {
+        if let Some(pinned_params) = session_params.as_mut() {
+            let params_ptr = std::pin::Pin::get_unchecked_mut(pinned_params) as *mut _;
+            ffi::set_enable_upnp(params_ptr, options.enable_upnp);
+            ffi::set_enable_natpmp(params_ptr, options.enable_natpmp);
+            info!(
+                "UPnP: {}, NAT-PMP: {}",
+                if options.enable_upnp {
+                    "enabled"
+                } else {
+                    "disabled"
+                },
+                if options.enable_natpmp {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            );
+        }
+    }
+
+    // Apply connection limits
+    if let Some(max_connections) = options.max_connections {
+        unsafe {
+            if let Some(pinned_params) = session_params.as_mut() {
+                let params_ptr = std::pin::Pin::get_unchecked_mut(pinned_params) as *mut _;
+                ffi::set_connections_limit(params_ptr, max_connections);
+            }
+        }
+
+        info!("Max connections: {}", max_connections);
+    }
+
+    // Apply upload slot limits
+    if let Some(max_uploads) = options.max_uploads {
+        unsafe {
+            if let Some(pinned_params) = session_params.as_mut() {
+                let params_ptr = std::pin::Pin::get_unchecked_mut(pinned_params) as *mut _;
+                ffi::set_unchoke_slots_limit(params_ptr, max_uploads);
+            }
+        }
+
+        info!("Max upload slots: {}", max_uploads);
+    }
+}
+
+/// Build the listen interface string from options
+fn build_listen_interface(options: &TorrentClientOptions) -> Option<String> {
+    use tracing::warn;
+
+    // If there's a specific port, use it
+    let port = options
+        .listen_port
+        .map(|p| p.to_string())
+        .unwrap_or_else(|| "0".to_string());
+
+    if let Some(interface) = &options.bind_interface {
+        // If interface already contains a port, use as-is
+        if interface.contains(':') {
+            return Some(interface.clone());
+        }
+
+        // Try to resolve interface name to IP
+        match get_interface_ip_and_format(interface) {
+            Ok(formatted) => {
+                // Replace :0 with actual port
+                let formatted = if port != "0" {
+                    formatted.replace(":0", &format!(":{}", port))
+                } else {
+                    formatted
+                };
+                Some(formatted)
+            }
+            Err(e) => {
+                warn!(
+                    "Failed to resolve IP for interface '{}': {}. Using interface:port format.",
+                    interface, e
+                );
+                Some(format!("{}:{}", interface, port))
+            }
+        }
+    } else if options.listen_port.is_some() {
+        // No interface but specific port - bind to all interfaces on that port
+        Some(format!("0.0.0.0:{}", port))
+    } else {
+        // No interface, no port - use libtorrent defaults
+        None
     }
 }
 /// Get the IP address of a network interface and format it as IP:port for libtorrent

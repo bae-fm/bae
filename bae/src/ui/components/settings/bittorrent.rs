@@ -7,24 +7,110 @@ use tracing::{error, info};
 pub fn BitTorrentSection() -> Element {
     let config = use_config();
     let app_context = use_context::<AppContext>();
-    let mut bind_interface =
-        use_signal(|| config.torrent_bind_interface.clone().unwrap_or_default());
+
+    // Editing state
     let mut is_editing = use_signal(|| false);
     let mut is_saving = use_signal(|| false);
     let mut save_error = use_signal(|| Option::<String>::None);
-    let original_value = config.torrent_bind_interface.clone().unwrap_or_default();
-    let has_changes = *bind_interface.read() != original_value;
+
+    // Form state - initialize from config
+    let mut bind_interface =
+        use_signal(|| config.torrent_bind_interface.clone().unwrap_or_default());
+    let mut listen_port = use_signal(|| {
+        config
+            .torrent_listen_port
+            .map(|p| p.to_string())
+            .unwrap_or_default()
+    });
+    let mut enable_upnp = use_signal(|| config.torrent_enable_upnp);
+    let mut enable_natpmp = use_signal(|| config.torrent_enable_natpmp);
+    let mut max_connections = use_signal(|| {
+        config
+            .torrent_max_connections
+            .map(|c| c.to_string())
+            .unwrap_or_default()
+    });
+    let mut max_connections_per_torrent = use_signal(|| {
+        config
+            .torrent_max_connections_per_torrent
+            .map(|c| c.to_string())
+            .unwrap_or_default()
+    });
+    let mut max_uploads = use_signal(|| {
+        config
+            .torrent_max_uploads
+            .map(|c| c.to_string())
+            .unwrap_or_default()
+    });
+    let mut max_uploads_per_torrent = use_signal(|| {
+        config
+            .torrent_max_uploads_per_torrent
+            .map(|c| c.to_string())
+            .unwrap_or_default()
+    });
+
+    // Track original values for change detection
+    let original_bind = config.torrent_bind_interface.clone().unwrap_or_default();
+    let original_port = config
+        .torrent_listen_port
+        .map(|p| p.to_string())
+        .unwrap_or_default();
+    let original_upnp = config.torrent_enable_upnp;
+    let original_natpmp = config.torrent_enable_natpmp;
+    let original_max_conn = config
+        .torrent_max_connections
+        .map(|c| c.to_string())
+        .unwrap_or_default();
+    let original_max_conn_torrent = config
+        .torrent_max_connections_per_torrent
+        .map(|c| c.to_string())
+        .unwrap_or_default();
+    let original_max_up = config
+        .torrent_max_uploads
+        .map(|c| c.to_string())
+        .unwrap_or_default();
+    let original_max_up_torrent = config
+        .torrent_max_uploads_per_torrent
+        .map(|c| c.to_string())
+        .unwrap_or_default();
+
+    let has_changes = *bind_interface.read() != original_bind
+        || *listen_port.read() != original_port
+        || *enable_upnp.read() != original_upnp
+        || *enable_natpmp.read() != original_natpmp
+        || *max_connections.read() != original_max_conn
+        || *max_connections_per_torrent.read() != original_max_conn_torrent
+        || *max_uploads.read() != original_max_up
+        || *max_uploads_per_torrent.read() != original_max_up_torrent;
+
     let save_changes = move |_| {
         let new_interface = bind_interface.read().clone();
+        let new_port = listen_port.read().clone();
+        let new_upnp = *enable_upnp.read();
+        let new_natpmp = *enable_natpmp.read();
+        let new_max_conn = max_connections.read().clone();
+        let new_max_conn_torrent = max_connections_per_torrent.read().clone();
+        let new_max_up = max_uploads.read().clone();
+        let new_max_up_torrent = max_uploads_per_torrent.read().clone();
         let mut config = app_context.config.clone();
+
         spawn(async move {
             is_saving.set(true);
             save_error.set(None);
+
             config.torrent_bind_interface = if new_interface.is_empty() {
                 None
             } else {
                 Some(new_interface)
             };
+            config.torrent_listen_port = new_port.parse().ok();
+            config.torrent_enable_upnp = new_upnp;
+            config.torrent_enable_natpmp = new_natpmp;
+            config.torrent_max_connections = new_max_conn.parse().ok();
+            config.torrent_max_connections_per_torrent = new_max_conn_torrent.parse().ok();
+            config.torrent_max_uploads = new_max_up.parse().ok();
+            config.torrent_max_uploads_per_torrent = new_max_up_torrent.parse().ok();
+
             match config.save() {
                 Ok(()) => {
                     info!("Saved BitTorrent settings");
@@ -38,94 +124,205 @@ pub fn BitTorrentSection() -> Element {
             is_saving.set(false);
         });
     };
+
     let cancel_edit = move |_| {
-        bind_interface.set(original_value.clone());
+        bind_interface.set(original_bind.clone());
+        listen_port.set(original_port.clone());
+        enable_upnp.set(original_upnp);
+        enable_natpmp.set(original_natpmp);
+        max_connections.set(original_max_conn.clone());
+        max_connections_per_torrent.set(original_max_conn_torrent.clone());
+        max_uploads.set(original_max_up.clone());
+        max_uploads_per_torrent.set(original_max_up_torrent.clone());
         is_editing.set(false);
         save_error.set(None);
     };
+
     rsx! {
-        div { class: "max-w-2xl",
+        div { class: "max-w-2xl space-y-6",
             h2 { class: "text-xl font-semibold text-white mb-6", "BitTorrent" }
+
+            // Listening Port section
             div { class: "bg-gray-800 rounded-lg p-6",
-                div { class: "space-y-4",
-                    div { class: "flex items-center justify-between",
-                        div {
-                            h3 { class: "text-lg font-medium text-white", "Torrent Bind Interface" }
-                            p { class: "text-sm text-gray-400 mt-1",
-                                "Network interface for torrent downloads"
-                            }
-                        }
-                        if !*is_editing.read() {
-                            button {
-                                class: "px-3 py-1.5 text-sm bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
-                                onclick: move |_| is_editing.set(true),
-                                "Edit"
-                            }
-                        }
-                    }
-                    if *is_editing.read() {
-                        div { class: "space-y-4",
-                            div {
-                                label { class: "block text-sm font-medium text-gray-400 mb-2",
-                                    "Interface"
-                                }
-                                input {
-                                    r#type: "text",
-                                    class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
-                                    placeholder: "e.g., eth0, tun0, 0.0.0.0:6881",
-                                    value: "{bind_interface}",
-                                    oninput: move |e| bind_interface.set(e.value()),
-                                }
-                                p { class: "text-xs text-gray-500 mt-1",
-                                    "Leave empty to use the system default"
-                                }
-                            }
-                            if let Some(error) = save_error.read().as_ref() {
-                                div { class: "p-3 bg-red-900/30 border border-red-700 rounded-lg text-sm text-red-300",
-                                    "{error}"
-                                }
-                            }
-                            div { class: "flex gap-3",
-                                button {
-                                    class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-                                    disabled: !has_changes || *is_saving.read(),
-                                    onclick: save_changes,
-                                    if *is_saving.read() {
-                                        "Saving..."
-                                    } else {
-                                        "Save"
-                                    }
-                                }
-                                button {
-                                    class: "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
-                                    onclick: cancel_edit,
-                                    "Cancel"
-                                }
-                            }
-                        }
-                    } else {
-                        div { class: "flex items-center gap-3",
-                            div { class: "flex-1 px-4 py-2 bg-gray-700 rounded-lg font-mono",
-                                if config.torrent_bind_interface.is_some() {
-                                    span { class: "text-white",
-                                        "{config.torrent_bind_interface.as_ref().unwrap()}"
-                                    }
-                                } else {
-                                    span { class: "text-gray-500 italic", "Not set (uses default)" }
-                                }
-                            }
+                div { class: "flex items-center justify-between mb-4",
+                    h3 { class: "text-lg font-medium text-white", "Listening Port" }
+                    if !*is_editing.read() {
+                        button {
+                            class: "px-3 py-1.5 text-sm bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
+                            onclick: move |_| is_editing.set(true),
+                            "Edit"
                         }
                     }
                 }
-                div { class: "mt-6 p-4 bg-gray-700/50 rounded-lg",
-                    p { class: "text-sm text-gray-400",
-                        "Use this to route torrent traffic through a specific network interface, such as a VPN tunnel. "
-                        "Changes take effect on next torrent download."
+
+                if *is_editing.read() {
+                    div { class: "space-y-4",
+                        div { class: "flex items-center gap-4",
+                            label { class: "text-sm text-gray-400 w-48", "Port for incoming connections:" }
+                            input {
+                                r#type: "number",
+                                class: "w-24 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500",
+                                placeholder: "Random",
+                                min: "1024",
+                                max: "65535",
+                                value: "{listen_port}",
+                                oninput: move |e| listen_port.set(e.value()),
+                            }
+                            p { class: "text-xs text-gray-500", "Leave empty for random port" }
+                        }
+                        div { class: "flex items-center gap-3",
+                            input {
+                                r#type: "checkbox",
+                                class: "w-4 h-4 rounded bg-gray-700 border-gray-600 text-indigo-600 focus:ring-indigo-500",
+                                checked: *enable_upnp.read(),
+                                onchange: move |e| enable_upnp.set(e.checked()),
+                            }
+                            label { class: "text-sm text-gray-300",
+                                "Use UPnP / NAT-PMP port forwarding from my router"
+                            }
+                        }
+                    }
+                } else {
+                    div { class: "space-y-2 text-sm",
+                        div { class: "flex items-center gap-2",
+                            span { class: "text-gray-400", "Port:" }
+                            span { class: "text-white font-mono",
+                                if let Some(port) = config.torrent_listen_port {
+                                    "{port}"
+                                } else {
+                                    "Random"
+                                }
+                            }
+                        }
+                        div { class: "flex items-center gap-2",
+                            span { class: "text-gray-400", "UPnP / NAT-PMP:" }
+                            span { class: if config.torrent_enable_upnp || config.torrent_enable_natpmp { "text-green-400" } else { "text-gray-500" },
+                                if config.torrent_enable_upnp || config.torrent_enable_natpmp {
+                                    "Enabled"
+                                } else {
+                                    "Disabled"
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            div { class: "bg-gray-800 rounded-lg p-6 mt-6",
+            // Connection Limits section
+            div { class: "bg-gray-800 rounded-lg p-6",
+                h3 { class: "text-lg font-medium text-white mb-4", "Connection Limits" }
+
+                if *is_editing.read() {
+                    div { class: "space-y-3",
+                        LimitRow {
+                            label: "Global maximum number of connections:",
+                            value: max_connections,
+                            placeholder: "Unlimited",
+                        }
+                        LimitRow {
+                            label: "Maximum connections per torrent:",
+                            value: max_connections_per_torrent,
+                            placeholder: "Unlimited",
+                        }
+                        LimitRow {
+                            label: "Global maximum number of upload slots:",
+                            value: max_uploads,
+                            placeholder: "Unlimited",
+                        }
+                        LimitRow {
+                            label: "Maximum upload slots per torrent:",
+                            value: max_uploads_per_torrent,
+                            placeholder: "Unlimited",
+                        }
+                    }
+                } else {
+                    div { class: "space-y-2 text-sm",
+                        LimitDisplay {
+                            label: "Max connections:",
+                            value: config.torrent_max_connections,
+                        }
+                        LimitDisplay {
+                            label: "Max connections/torrent:",
+                            value: config.torrent_max_connections_per_torrent,
+                        }
+                        LimitDisplay {
+                            label: "Max upload slots:",
+                            value: config.torrent_max_uploads,
+                        }
+                        LimitDisplay {
+                            label: "Max upload slots/torrent:",
+                            value: config.torrent_max_uploads_per_torrent,
+                        }
+                    }
+                }
+            }
+
+            // Network Interface section
+            div { class: "bg-gray-800 rounded-lg p-6",
+                h3 { class: "text-lg font-medium text-white mb-4", "Network Interface" }
+
+                if *is_editing.read() {
+                    div { class: "space-y-2",
+                        input {
+                            r#type: "text",
+                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
+                            placeholder: "e.g., eth0, tun0, 192.168.1.100",
+                            value: "{bind_interface}",
+                            oninput: move |e| bind_interface.set(e.value()),
+                        }
+                        p { class: "text-xs text-gray-500",
+                            "Bind to a specific interface (e.g., VPN tunnel). Leave empty for default."
+                        }
+                    }
+                } else {
+                    div { class: "text-sm",
+                        span { class: "text-gray-400", "Interface: " }
+                        if config.torrent_bind_interface.is_some() {
+                            span { class: "text-white font-mono",
+                                "{config.torrent_bind_interface.as_ref().unwrap()}"
+                            }
+                        } else {
+                            span { class: "text-gray-500 italic", "Default" }
+                        }
+                    }
+                }
+            }
+
+            // Save/Cancel buttons when editing
+            if *is_editing.read() {
+                if let Some(error) = save_error.read().as_ref() {
+                    div { class: "p-3 bg-red-900/30 border border-red-700 rounded-lg text-sm text-red-300",
+                        "{error}"
+                    }
+                }
+
+                div { class: "flex gap-3",
+                    button {
+                        class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                        disabled: !has_changes || *is_saving.read(),
+                        onclick: save_changes,
+                        if *is_saving.read() {
+                            "Saving..."
+                        } else {
+                            "Save Changes"
+                        }
+                    }
+                    button {
+                        class: "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
+                        onclick: cancel_edit,
+                        "Cancel"
+                    }
+                }
+
+                div { class: "p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg",
+                    p { class: "text-sm text-yellow-200/80",
+                        "Changes take effect on next torrent download. Active downloads use existing settings."
+                    }
+                }
+            }
+
+            // Info section
+            div { class: "bg-gray-800 rounded-lg p-6",
                 h3 { class: "text-lg font-medium text-white mb-4", "About BitTorrent in BAE" }
                 div { class: "space-y-3 text-sm text-gray-400",
                     p {
@@ -136,6 +333,39 @@ pub fn BitTorrentSection() -> Element {
                         "If your storage profile has encryption enabled, all imported files (audio, cover art, metadata) "
                         "are encrypted before storage."
                     }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn LimitRow(label: &'static str, value: Signal<String>, placeholder: &'static str) -> Element {
+    rsx! {
+        div { class: "flex items-center gap-4",
+            label { class: "text-sm text-gray-300 flex-1", "{label}" }
+            input {
+                r#type: "number",
+                class: "w-24 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-right focus:outline-none focus:ring-2 focus:ring-indigo-500",
+                placeholder,
+                min: "1",
+                value: "{value}",
+                oninput: move |e| value.set(e.value()),
+            }
+        }
+    }
+}
+
+#[component]
+fn LimitDisplay(label: &'static str, value: Option<i32>) -> Element {
+    rsx! {
+        div { class: "flex items-center gap-2",
+            span { class: "text-gray-400", "{label}" }
+            span { class: "text-white",
+                if let Some(v) = value {
+                    "{v}"
+                } else {
+                    "Unlimited"
                 }
             }
         }

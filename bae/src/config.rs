@@ -17,11 +17,31 @@ pub enum ConfigError {
     Io(#[from] std::io::Error),
 }
 
+fn default_true() -> bool {
+    true
+}
+
 /// YAML config file structure for non-secret settings
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ConfigYaml {
     pub library_id: Option<String>,
     pub torrent_bind_interface: Option<String>,
+    /// Listening port for incoming torrent connections. None = random port.
+    pub torrent_listen_port: Option<u16>,
+    /// Enable UPnP port forwarding
+    #[serde(default = "default_true")]
+    pub torrent_enable_upnp: bool,
+    /// Enable NAT-PMP port forwarding
+    #[serde(default = "default_true")]
+    pub torrent_enable_natpmp: bool,
+    /// Global max connections. None = disabled/unlimited.
+    pub torrent_max_connections: Option<i32>,
+    /// Max connections per torrent. None = disabled/unlimited.
+    pub torrent_max_connections_per_torrent: Option<i32>,
+    /// Global max upload slots. None = disabled/unlimited.
+    pub torrent_max_uploads: Option<i32>,
+    /// Max upload slots per torrent. None = disabled/unlimited.
+    pub torrent_max_uploads_per_torrent: Option<i32>,
 }
 
 /// Application configuration
@@ -31,6 +51,13 @@ pub struct Config {
     pub discogs_api_key: Option<String>,
     pub encryption_key: String,
     pub torrent_bind_interface: Option<String>,
+    pub torrent_listen_port: Option<u16>,
+    pub torrent_enable_upnp: bool,
+    pub torrent_enable_natpmp: bool,
+    pub torrent_max_connections: Option<i32>,
+    pub torrent_max_connections_per_torrent: Option<i32>,
+    pub torrent_max_uploads: Option<i32>,
+    pub torrent_max_uploads_per_torrent: Option<i32>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -72,6 +99,13 @@ impl Config {
             discogs_api_key,
             encryption_key,
             torrent_bind_interface,
+            torrent_listen_port: None,
+            torrent_enable_upnp: true,
+            torrent_enable_natpmp: true,
+            torrent_max_connections: None,
+            torrent_max_connections_per_torrent: None,
+            torrent_max_uploads: None,
+            torrent_max_uploads_per_torrent: None,
         }
     }
 
@@ -104,6 +138,13 @@ impl Config {
             discogs_api_key: credentials.discogs_api_key,
             encryption_key,
             torrent_bind_interface: yaml_config.torrent_bind_interface,
+            torrent_listen_port: yaml_config.torrent_listen_port,
+            torrent_enable_upnp: yaml_config.torrent_enable_upnp,
+            torrent_enable_natpmp: yaml_config.torrent_enable_natpmp,
+            torrent_max_connections: yaml_config.torrent_max_connections,
+            torrent_max_connections_per_torrent: yaml_config.torrent_max_connections_per_torrent,
+            torrent_max_uploads: yaml_config.torrent_max_uploads,
+            torrent_max_uploads_per_torrent: yaml_config.torrent_max_uploads_per_torrent,
         }
     }
 
@@ -182,6 +223,13 @@ impl Config {
         let yaml = ConfigYaml {
             library_id: Some(self.library_id.clone()),
             torrent_bind_interface: self.torrent_bind_interface.clone(),
+            torrent_listen_port: self.torrent_listen_port,
+            torrent_enable_upnp: self.torrent_enable_upnp,
+            torrent_enable_natpmp: self.torrent_enable_natpmp,
+            torrent_max_connections: self.torrent_max_connections,
+            torrent_max_connections_per_torrent: self.torrent_max_connections_per_torrent,
+            torrent_max_uploads: self.torrent_max_uploads,
+            torrent_max_uploads_per_torrent: self.torrent_max_uploads_per_torrent,
         };
         std::fs::write(
             config_dir.join("config.yaml"),

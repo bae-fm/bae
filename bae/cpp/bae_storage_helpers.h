@@ -136,6 +136,18 @@ void set_paused(add_torrent_params* params, bool paused);
 /// interfaces can be an interface name (e.g. "eth0", "tun0") or IP:port (e.g. "0.0.0.0:6881")
 void set_listen_interfaces(session_params* params, const std::string& interfaces);
 
+/// Set enable_upnp on session_params
+void set_enable_upnp(session_params* params, bool enable);
+
+/// Set enable_natpmp on session_params
+void set_enable_natpmp(session_params* params, bool enable);
+
+/// Set connections_limit on session_params (global max connections)
+void set_connections_limit(session_params* params, int32_t limit);
+
+/// Set unchoke_slots_limit on session_params (global max upload slots)
+void set_unchoke_slots_limit(session_params* params, int32_t limit);
+
 /// Get the actual listen_interfaces setting from a session
 std::string session_get_listen_interfaces(session* sess);
 
@@ -239,6 +251,10 @@ std::unique_ptr<AddTorrentParams> parse_magnet_uri(rust::Str magnet, rust::Str s
 std::unique_ptr<AddTorrentParams> load_torrent_file(rust::Str file_path, rust::Str save_path);
 void set_seed_mode(AddTorrentParams* params, bool seed_mode);
 void set_listen_interfaces(SessionParams* params, rust::Str interfaces);
+void set_enable_upnp(SessionParams* params, bool enable);
+void set_enable_natpmp(SessionParams* params, bool enable);
+void set_connections_limit(SessionParams* params, int32_t limit);
+void set_unchoke_slots_limit(SessionParams* params, int32_t limit);
 rust::String torrent_get_name(TorrentHandle* handle);
 
 #endif // BAE_STORAGE_HELPERS_H

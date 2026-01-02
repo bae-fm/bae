@@ -45,6 +45,26 @@ mod ffi {
         /// # Safety
         /// `params` must be a valid pointer to SessionParams that outlives the call.
         unsafe fn set_listen_interfaces(params: *mut SessionParams, interfaces: &str);
+        /// Set enable_upnp on session_params
+        ///
+        /// # Safety
+        /// `params` must be a valid pointer to SessionParams that outlives the call.
+        unsafe fn set_enable_upnp(params: *mut SessionParams, enable: bool);
+        /// Set enable_natpmp on session_params
+        ///
+        /// # Safety
+        /// `params` must be a valid pointer to SessionParams that outlives the call.
+        unsafe fn set_enable_natpmp(params: *mut SessionParams, enable: bool);
+        /// Set connections_limit on session_params (global max connections)
+        ///
+        /// # Safety
+        /// `params` must be a valid pointer to SessionParams that outlives the call.
+        unsafe fn set_connections_limit(params: *mut SessionParams, limit: i32);
+        /// Set unchoke_slots_limit on session_params (global max upload slots)
+        ///
+        /// # Safety
+        /// `params` must be a valid pointer to SessionParams that outlives the call.
+        unsafe fn set_unchoke_slots_limit(params: *mut SessionParams, limit: i32);
         /// Create a session from session_params (extends libtorrent-rs)
         fn create_session_with_params(params: UniquePtr<SessionParams>) -> UniquePtr<Session>;
         /// Get raw session pointer from Session unique_ptr
@@ -210,7 +230,8 @@ pub use ffi::{
     create_bae_storage_constructor, create_session_params_default,
     create_session_params_with_storage, create_session_with_params, get_session_ptr,
     get_torrent_info, load_torrent_file, parse_magnet_uri, session_add_torrent, session_pop_alerts,
-    session_remove_torrent, set_listen_interfaces, set_paused, set_seed_mode,
+    session_remove_torrent, set_connections_limit, set_enable_natpmp, set_enable_upnp,
+    set_listen_interfaces, set_paused, set_seed_mode, set_unchoke_slots_limit,
     torrent_get_file_list, torrent_get_name, torrent_get_num_peers, torrent_get_num_pieces,
     torrent_get_num_seeds, torrent_get_piece_length, torrent_get_progress,
     torrent_get_storage_index, torrent_get_total_size, torrent_get_tracker_status,
