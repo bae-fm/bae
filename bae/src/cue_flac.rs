@@ -366,7 +366,11 @@ impl CueFlacProcessor {
         for i in 0..tracks_with_end_times.len() {
             if i + 1 < tracks_with_end_times.len() {
                 let next_track = &tracks_with_end_times[i + 1];
-                tracks_with_end_times[i].end_time_ms = Some(next_track.start_time_ms);
+                // Use pregap (INDEX 00) as boundary if present, otherwise INDEX 01
+                let boundary = next_track
+                    .pregap_time_ms
+                    .unwrap_or(next_track.start_time_ms);
+                tracks_with_end_times[i].end_time_ms = Some(boundary);
             }
         }
         Ok((
@@ -660,6 +664,104 @@ FILE "test.flac" WAVE
         assert!(result.is_ok());
         let (_, cue_sheet) = result.unwrap();
         assert_eq!(cue_sheet.tracks.len(), 2, "Should parse 2 tracks");
+    }
+
+    #[test]
+    fn test_pregap_sets_correct_track_boundary() {
+        // Track 2 has a 3-second pregap (INDEX 00 at 2:46, INDEX 01 at 2:49)
+        // Track 1 should end at INDEX 00 (2:46), not INDEX 01 (2:49)
+        let cue_content = r#"PERFORMER "Led Zeppelin"
+TITLE "Led Zeppelin I"
+FILE "Led Zeppelin I.flac" WAVE
+  TRACK 01 AUDIO
+    TITLE "Good Times Bad Times"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Babe I'm Gonna Leave You"
+    INDEX 00 02:46:00
+    INDEX 01 02:49:00
+  TRACK 03 AUDIO
+    TITLE "You Shook Me"
+    INDEX 01 09:31:00
+"#;
+        let result = CueFlacProcessor::parse_cue_content(cue_content);
+        assert!(result.is_ok());
+        let (_, cue_sheet) = result.unwrap();
+
+        // Track 1 should end at track 2's pregap (INDEX 00), not INDEX 01
+        let track1_end_ms = cue_sheet.tracks[0].end_time_ms.unwrap();
+        let track2_pregap_ms = cue_sheet.tracks[1].pregap_time_ms.unwrap();
+        let track2_start_ms = cue_sheet.tracks[1].start_time_ms;
+
+        // Verify pregap was parsed correctly (INDEX 00 = 2:46 = 166000ms)
+        assert_eq!(track2_pregap_ms, 2 * 60 * 1000 + 46 * 1000);
+        // Verify start was parsed correctly (INDEX 01 = 2:49 = 169000ms)
+        assert_eq!(track2_start_ms, 2 * 60 * 1000 + 49 * 1000);
+
+        // THE KEY ASSERTION: Track 1 ends at pregap, not at start
+        assert_eq!(
+            track1_end_ms, track2_pregap_ms,
+            "Track 1 should end at track 2's INDEX 00 (pregap), not INDEX 01"
+        );
+    }
+
+    #[test]
+    fn test_pregap_duration_calculation() {
+        // Pregap duration = INDEX 01 - INDEX 00
+        let cue_content = r#"PERFORMER "Test Artist"
+TITLE "Test Album"
+FILE "test.flac" WAVE
+  TRACK 01 AUDIO
+    TITLE "Track 1"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track 2"
+    INDEX 00 03:00:00
+    INDEX 01 03:03:00
+"#;
+        let result = CueFlacProcessor::parse_cue_content(cue_content);
+        assert!(result.is_ok());
+        let (_, cue_sheet) = result.unwrap();
+
+        let track2 = &cue_sheet.tracks[1];
+        let pregap_ms = track2.pregap_time_ms.unwrap();
+        let start_ms = track2.start_time_ms;
+
+        // Pregap duration should be 3 seconds (3:03 - 3:00 = 3000ms)
+        let pregap_duration = start_ms - pregap_ms;
+        assert_eq!(pregap_duration, 3000, "Pregap duration should be 3 seconds");
+    }
+
+    #[test]
+    fn test_track_without_pregap_uses_start_for_boundary() {
+        // Track 3 has no pregap, so track 2 should end at track 3's INDEX 01
+        let cue_content = r#"PERFORMER "Test Artist"
+TITLE "Test Album"
+FILE "test.flac" WAVE
+  TRACK 01 AUDIO
+    TITLE "Track 1"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track 2"
+    INDEX 00 03:00:00
+    INDEX 01 03:02:00
+  TRACK 03 AUDIO
+    TITLE "Track 3"
+    INDEX 01 06:00:00
+"#;
+        let result = CueFlacProcessor::parse_cue_content(cue_content);
+        assert!(result.is_ok());
+        let (_, cue_sheet) = result.unwrap();
+
+        // Track 2 should end at track 3's start (no pregap on track 3)
+        let track2_end_ms = cue_sheet.tracks[1].end_time_ms.unwrap();
+        let track3_start_ms = cue_sheet.tracks[2].start_time_ms;
+
+        assert_eq!(
+            track2_end_ms, track3_start_ms,
+            "Track 2 should end at track 3's INDEX 01 (no pregap)"
+        );
+        assert_eq!(track2_end_ms, 6 * 60 * 1000);
     }
     #[test]
     fn test_parse_cue_with_rem_between_title_and_file() {

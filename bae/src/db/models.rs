@@ -247,6 +247,9 @@ pub struct DbAudioFormat {
     pub start_byte_offset: Option<i64>,
     /// End byte offset within the source file (for CUE/FLAC tracks)
     pub end_byte_offset: Option<i64>,
+    /// Pre-gap duration in milliseconds (for CUE/FLAC tracks with INDEX 00)
+    /// When present, playback starts at INDEX 00 and shows negative time until INDEX 01
+    pub pregap_ms: Option<i64>,
     pub created_at: DateTime<Utc>,
 }
 impl DbArtist {
@@ -506,6 +509,7 @@ impl DbAudioFormat {
             needs_headers,
             None,
             None,
+            None,
         )
     }
 
@@ -524,6 +528,7 @@ impl DbAudioFormat {
             needs_headers,
             None,
             None,
+            None,
         )
     }
 
@@ -535,6 +540,7 @@ impl DbAudioFormat {
         needs_headers: bool,
         start_byte_offset: i64,
         end_byte_offset: i64,
+        pregap_ms: Option<i64>,
     ) -> Self {
         Self::new_full(
             track_id,
@@ -544,6 +550,7 @@ impl DbAudioFormat {
             needs_headers,
             Some(start_byte_offset),
             Some(end_byte_offset),
+            pregap_ms,
         )
     }
 
@@ -555,6 +562,7 @@ impl DbAudioFormat {
         needs_headers: bool,
         start_byte_offset: Option<i64>,
         end_byte_offset: Option<i64>,
+        pregap_ms: Option<i64>,
     ) -> Self {
         DbAudioFormat {
             id: Uuid::new_v4().to_string(),
@@ -565,6 +573,7 @@ impl DbAudioFormat {
             needs_headers,
             start_byte_offset,
             end_byte_offset,
+            pregap_ms,
             created_at: Utc::now(),
         }
     }

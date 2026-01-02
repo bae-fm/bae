@@ -399,8 +399,11 @@ impl ImportService {
                 let mut track_infos = Vec::new();
                 for (i, cue_track) in metadata.cue_sheet.tracks.iter().enumerate() {
                     if let Some(track_file) = flac_tracks.get(i) {
+                        // Audio starts at INDEX 00 (pregap) if present
+                        let audio_start_ms =
+                            cue_track.pregap_time_ms.unwrap_or(cue_track.start_time_ms);
                         let (start_byte, end_byte) = CueFlacProcessor::find_track_byte_range(
-                            cue_track.start_time_ms,
+                            audio_start_ms,
                             cue_track.end_time_ms,
                             &flac_info.seektable,
                             flac_info.sample_rate,
@@ -779,9 +782,17 @@ impl ImportService {
                     )
                 })?;
 
+                // For pregap support: audio starts at INDEX 00 if present, otherwise INDEX 01
+                let audio_start_ms = cue_track.pregap_time_ms.unwrap_or(cue_track.start_time_ms);
+
+                // Calculate pregap duration (INDEX 01 - INDEX 00)
+                let pregap_ms = cue_track
+                    .pregap_time_ms
+                    .map(|pregap| (cue_track.start_time_ms - pregap) as i64);
+
                 // Calculate byte offsets using seektable
                 let (start_byte, end_byte) = CueFlacProcessor::find_track_byte_range(
-                    cue_track.start_time_ms,
+                    audio_start_ms,
                     cue_track.end_time_ms,
                     &flac_info.seektable,
                     flac_info.sample_rate,
@@ -807,6 +818,7 @@ impl ImportService {
                     true, // needs_headers for CUE/FLAC
                     start_byte,
                     end_byte,
+                    pregap_ms,
                 );
                 library_manager
                     .add_audio_format(&audio_format)

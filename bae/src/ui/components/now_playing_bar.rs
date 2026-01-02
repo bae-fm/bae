@@ -166,10 +166,32 @@ fn format_duration(duration: std::time::Duration) -> String {
     let secs = total_secs % 60;
     format!("{:02}:{:02}", mins, secs)
 }
+
+/// Format duration with pregap support (shows negative time during pregap)
+fn format_display_time(position_ms: u64, pregap_ms: Option<i64>) -> String {
+    let pregap = pregap_ms.unwrap_or(0) as u64;
+    if position_ms < pregap {
+        // In pregap: show negative time
+        let remaining_ms = pregap - position_ms;
+        let total_secs = remaining_ms / 1000;
+        let mins = total_secs / 60;
+        let secs = total_secs % 60;
+        format!("-{:02}:{:02}", mins, secs)
+    } else {
+        // Past pregap: show normal time (position - pregap)
+        let adjusted_ms = position_ms - pregap;
+        let total_secs = adjusted_ms / 1000;
+        let mins = total_secs / 60;
+        let secs = total_secs % 60;
+        format!("{:02}:{:02}", mins, secs)
+    }
+}
+
 #[component]
 fn PositionZone(
     position: ReadSignal<Option<std::time::Duration>>,
     duration: ReadSignal<Option<std::time::Duration>>,
+    pregap_ms: ReadSignal<Option<i64>>,
     is_paused: ReadSignal<bool>,
     on_seek: EventHandler<std::time::Duration>,
     is_seeking: Signal<bool>,
@@ -183,40 +205,61 @@ fn PositionZone(
     rsx! {
         if let Some(pos) = local_position() {
             div { class: "flex items-center gap-2 text-sm text-gray-400",
-                span { class: "w-12 text-right", "{format_duration(pos)}" }
+                span { class: "w-12 text-right",
+                    "{format_display_time(pos.as_millis() as u64, pregap_ms())}"
+                }
                 if let Some(duration) = duration() {
-                    input {
-                        r#type: "range",
-                        class: "w-64 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer",
-                        style: "background: linear-gradient(to right, #3b82f6 0%, #3b82f6 {(pos.as_secs_f64() / duration.as_secs_f64().max(1.0) * 100.0)}%, #374151 {(pos.as_secs_f64() / duration.as_secs_f64().max(1.0) * 100.0)}%, #374151 100%);",
-                        min: "0",
-                        max: "{duration.as_secs()}",
-                        value: "{pos.as_secs()}",
-                        onmousedown: move |_| {
-                            is_seeking.set(true);
-                        },
-                        onmouseup: move |_| {
-                            if is_seeking() {
-                                spawn(async move {
-                                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                    {
+                        // Calculate progress bar position with pregap offset
+                        let pregap = pregap_ms().unwrap_or(0).max(0) as u64;
+                        let pos_ms = pos.as_millis() as u64;
+                        let adjusted_pos = pos_ms.saturating_sub(pregap);
+                        let duration_ms = duration.as_millis() as u64;
+                        let progress_percent = if duration_ms > 0 {
+                            (adjusted_pos as f64 / duration_ms as f64 * 100.0).min(100.0)
+                        } else {
+                            0.0
+                        };
+
+                        rsx! {
+                            input {
+                                r#type: "range",
+                                class: "w-64 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer",
+                                style: "background: linear-gradient(to right, #3b82f6 0%, #3b82f6 {progress_percent}%, #374151 {progress_percent}%, #374151 100%);",
+                                min: "0",
+                                max: "{duration.as_secs()}",
+                                value: "{adjusted_pos / 1000}",
+                                onmousedown: move |_| {
+                                    is_seeking.set(true);
+                                },
+                                onmouseup: move |_| {
                                     if is_seeking() {
-                                        is_seeking.set(false);
+                                        spawn(async move {
+                                            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                                            if is_seeking() {
+                                                is_seeking.set(false);
+                                            }
+                                        });
                                     }
-                                });
+                                },
+                                oninput: move |evt| {
+                                    if let Ok(secs) = evt.value().parse::<u64>() {
+                                        // Add pregap back when user scrubs
+                                        let pregap_secs = pregap_ms().unwrap_or(0).max(0) as u64 / 1000;
+                                        local_position.set(Some(std::time::Duration::from_secs(secs + pregap_secs)));
+                                    }
+                                },
+                                onchange: move |evt| {
+                                    if let Ok(secs) = evt.value().parse::<u64>() {
+                                        // Add pregap back when seeking
+                                        let pregap_secs = pregap_ms().unwrap_or(0).max(0) as u64 / 1000;
+                                        on_seek.call(std::time::Duration::from_secs(secs + pregap_secs));
+                                    }
+                                },
                             }
-                        },
-                        oninput: move |evt| {
-                            if let Ok(secs) = evt.value().parse::<u64>() {
-                                local_position.set(Some(std::time::Duration::from_secs(secs)));
-                            }
-                        },
-                        onchange: move |evt| {
-                            if let Ok(secs) = evt.value().parse::<u64>() {
-                                on_seek.call(std::time::Duration::from_secs(secs));
-                            }
-                        },
+                            span { class: "w-12", "{format_duration(duration)}" }
+                        }
                     }
-                    span { class: "w-12", "{format_duration(duration)}" }
                 } else {
                     div { class: "w-64 h-2 bg-gray-700 rounded-lg",
                         div {
@@ -270,12 +313,14 @@ pub fn NowPlayingBar() -> Element {
                                     ref track,
                                     duration,
                                     decoded_duration,
+                                    pregap_ms,
                                     ..
                                 }
                                 | PlaybackState::Paused {
                                     ref track,
                                     duration,
                                     decoded_duration,
+                                    pregap_ms,
                                     ..
                                 } => {
                                     let new_state = if was_paused {
@@ -284,6 +329,7 @@ pub fn NowPlayingBar() -> Element {
                                             position,
                                             duration,
                                             decoded_duration,
+                                            pregap_ms,
                                         }
                                     } else {
                                         PlaybackState::Playing {
@@ -291,6 +337,7 @@ pub fn NowPlayingBar() -> Element {
                                             position,
                                             duration,
                                             decoded_duration,
+                                            pregap_ms,
                                         }
                                     };
                                     state.set(new_state);
@@ -370,6 +417,7 @@ pub fn NowPlayingBar() -> Element {
                                 ref track,
                                 duration,
                                 decoded_duration,
+                                pregap_ms,
                                 ..
                             } = state()
                             {
@@ -378,11 +426,13 @@ pub fn NowPlayingBar() -> Element {
                                     position,
                                     duration,
                                     decoded_duration,
+                                    pregap_ms,
                                 });
                             } else if let PlaybackState::Paused {
                                 ref track,
                                 duration,
                                 decoded_duration,
+                                pregap_ms,
                                 ..
                             } = state()
                             {
@@ -391,6 +441,7 @@ pub fn NowPlayingBar() -> Element {
                                     position,
                                     duration,
                                     decoded_duration,
+                                    pregap_ms,
                                 });
                             }
                         }
@@ -423,6 +474,12 @@ pub fn NowPlayingBar() -> Element {
     let duration = use_memo(move || match state() {
         PlaybackState::Playing { duration, .. } | PlaybackState::Paused { duration, .. } => {
             duration
+        }
+        _ => None,
+    });
+    let pregap_ms = use_memo(move || match state() {
+        PlaybackState::Playing { pregap_ms, .. } | PlaybackState::Paused { pregap_ms, .. } => {
+            pregap_ms
         }
         _ => None,
     });
@@ -544,6 +601,7 @@ pub fn NowPlayingBar() -> Element {
                 PositionZone {
                     position,
                     duration,
+                    pregap_ms,
                     is_paused,
                     on_seek: move |duration| playback_seek.seek(duration),
                     is_seeking,

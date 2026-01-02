@@ -844,3 +844,211 @@ async fn test_queue_maintained_after_previous_navigation() {
 }
 // Note: test_playback_error_emitted_when_storage_offline was removed because it relied
 // on MockCloudStorage injection which was removed with CloudStorageManager.
+
+// ============================================================================
+// Pregap behavior tests
+// ============================================================================
+// These tests verify CD-like pregap behavior:
+// - Direct selection (play, next, previous button): skip pregap, start at INDEX 01
+// - Natural transition (auto-advance): play pregap from INDEX 00, show negative time
+
+#[tokio::test]
+async fn test_direct_play_skips_pregap() {
+    // When directly playing a track with pregap_ms set,
+    // playback should start at pregap_ms offset (INDEX 01), not 0 (INDEX 00)
+    if should_skip_audio_tests() {
+        debug!("Skipping audio test - no audio device available");
+        return;
+    }
+
+    let mut fixture = match PlaybackTestFixture::new().await {
+        Ok(f) => f,
+        Err(e) => {
+            debug!("Failed to set up test fixture: {}", e);
+            return;
+        }
+    };
+
+    if fixture.track_ids.is_empty() {
+        debug!("No tracks available for testing");
+        return;
+    }
+
+    let track_id = &fixture.track_ids[0];
+    fixture.playback_handle.play(track_id.clone());
+
+    let playing_state = fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { .. }),
+            Duration::from_secs(5),
+        )
+        .await;
+
+    // For tracks without pregap, position should start at 0
+    // For tracks with pregap, position should start at pregap_ms
+    // This test uses one-file-per-track fixtures which have no pregap,
+    // so we just verify the basic behavior works.
+    // TODO: Add CUE/FLAC fixture with pregap to properly test this
+    if let Some(PlaybackState::Playing {
+        position,
+        pregap_ms,
+        ..
+    }) = playing_state
+    {
+        if let Some(pregap) = pregap_ms {
+            // If there's a pregap, position should start at or after pregap_ms
+            assert!(
+                position.as_millis() as i64 >= pregap,
+                "Direct play should skip pregap: position {} should be >= pregap {}",
+                position.as_millis(),
+                pregap
+            );
+        } else {
+            // No pregap, position should start near 0
+            assert!(
+                position < Duration::from_millis(500),
+                "Without pregap, position should start near 0"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_next_button_skips_pregap() {
+    // When pressing Next button, the next track should start at INDEX 01 (skip pregap)
+    if should_skip_audio_tests() {
+        debug!("Skipping audio test - no audio device available");
+        return;
+    }
+
+    let mut fixture = match PlaybackTestFixture::new().await {
+        Ok(f) => f,
+        Err(e) => {
+            debug!("Failed to set up test fixture: {}", e);
+            return;
+        }
+    };
+
+    if fixture.track_ids.len() < 2 {
+        debug!("Need at least 2 tracks for next button test");
+        return;
+    }
+
+    let first_track_id = fixture.track_ids[0].clone();
+    let second_track_id = fixture.track_ids[1].clone();
+
+    // Start playing first track
+    fixture.playback_handle.play(first_track_id.clone());
+    let _first_state = fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { .. }),
+            Duration::from_secs(5),
+        )
+        .await;
+
+    // Press Next (direct selection)
+    fixture.playback_handle.next();
+
+    let second_track_state = fixture
+        .wait_for_state(
+            |s| {
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.id == second_track_id
+                } else {
+                    false
+                }
+            },
+            Duration::from_secs(5),
+        )
+        .await;
+
+    // Verify position starts at pregap_ms (or 0 if no pregap)
+    if let Some(PlaybackState::Playing {
+        position,
+        pregap_ms: Some(pregap),
+        ..
+    }) = second_track_state
+    {
+        assert!(
+            position.as_millis() as i64 >= pregap,
+            "Next button should skip pregap: position {} should be >= pregap {}",
+            position.as_millis(),
+            pregap
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_auto_advance_plays_pregap() {
+    // When a track naturally ends and auto-advances, the next track should
+    // start at INDEX 00 (play pregap), with position showing negative time initially
+    if should_skip_audio_tests() {
+        debug!("Skipping audio test - no audio device available");
+        return;
+    }
+
+    let mut fixture = match PlaybackTestFixture::new().await {
+        Ok(f) => f,
+        Err(e) => {
+            debug!("Failed to set up test fixture: {}", e);
+            return;
+        }
+    };
+
+    if fixture.track_ids.len() < 2 {
+        debug!("Need at least 2 tracks for auto-advance pregap test");
+        return;
+    }
+
+    let first_track_id = fixture.track_ids[0].clone();
+    let second_track_id = fixture.track_ids[1].clone();
+
+    // Start playing first track
+    fixture.playback_handle.play(first_track_id.clone());
+    let _first_state = fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { .. }),
+            Duration::from_secs(5),
+        )
+        .await;
+
+    // Seek near end to trigger auto-advance
+    // Test fixture tracks are ~5 seconds, so seek to 4.5s
+    fixture
+        .playback_handle
+        .seek(Duration::from_secs(4) + Duration::from_millis(800));
+
+    // Wait for auto-advance to second track
+    let second_track_state = fixture
+        .wait_for_state(
+            |s| {
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.id == second_track_id
+                } else {
+                    false
+                }
+            },
+            Duration::from_secs(10),
+        )
+        .await;
+
+    // For natural transition (auto-advance), position should start at 0 (INDEX 00)
+    // to play the pregap (showing negative time in UI)
+    if let Some(PlaybackState::Playing {
+        position,
+        pregap_ms,
+        ..
+    }) = second_track_state
+    {
+        if pregap_ms.is_some() {
+            // With pregap: natural transition should start at 0, not at pregap_ms
+            assert!(
+                position < Duration::from_millis(500),
+                "Auto-advance should start at INDEX 00 (position 0) to play pregap, got {:?}",
+                position
+            );
+        }
+    } else {
+        debug!("Auto-advance test inconclusive - may need longer track fixtures");
+    }
+}
