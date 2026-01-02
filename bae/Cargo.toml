@@ -38,7 +38,6 @@ uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 sha2 = "0.10"
 aes-gcm = "0.10"
-rand = "0.8"
 hex = "0.4"
 aws-config = "1.1"
 aws-sdk-s3 = "1.15"
@@ -46,12 +45,9 @@ aws-credential-types = "1.1"
 async-trait = "0.1"
 dirs = "5.0"
 axum = "0.7"
-tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "fs"] }
-hyper = { version = "1.0", features = ["full"] }
 nom = "7.1"              # Parser combinator for CUE format
 id3 = "1.14"            # MP3 tag reading
-musicbrainz_rs = "0.5"  # MusicBrainz API for DISCID lookup
 discid = "0.5"          # Calculate MusicBrainz DiscIDs from TOC data
 regex = "1.11"          # Regular expressions for album name cleaning
 libflac-sys = "0.3.4"    # FFI bindings to libFLAC for seektable generation
@@ -59,7 +55,6 @@ libc = "0.2"            # C types for libflac-sys FFI
 crc32fast = "1.4"       # Fast CRC32 calculation for EAC-style log files
 if-addrs = "0.14"       # Network interface enumeration for validation
 chardetng = "0.1"       # Encoding detection for text files
-encoding_rs = "0.8"     # Character encoding conversion
 urlencoding = "2.1"     # URL encoding/decoding for custom protocol paths
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
