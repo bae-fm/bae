@@ -125,8 +125,8 @@ fn ListeningPortSection() -> Element {
                 }
             } else {
                 div { class: "space-y-2 text-sm",
-                    div { class: "flex items-center gap-2",
-                        span { class: "text-gray-400", "Port:" }
+                    div { class: "flex items-center",
+                        span { class: "text-gray-400 w-36", "Port:" }
                         span { class: "text-white font-mono",
                             if let Some(port) = config.torrent_listen_port {
                                 "{port}"
@@ -135,8 +135,8 @@ fn ListeningPortSection() -> Element {
                             }
                         }
                     }
-                    div { class: "flex items-center gap-2",
-                        span { class: "text-gray-400", "UPnP / NAT-PMP:" }
+                    div { class: "flex items-center",
+                        span { class: "text-gray-400 w-36", "UPnP / NAT-PMP:" }
                         span { class: if config.torrent_enable_upnp || config.torrent_enable_natpmp { "text-green-400" } else { "text-gray-500" },
                             if config.torrent_enable_upnp || config.torrent_enable_natpmp {
                                 "Enabled"
@@ -494,8 +494,8 @@ fn LimitRow(label: &'static str, value: Signal<String>, placeholder: &'static st
 #[component]
 fn LimitDisplay(label: &'static str, value: Option<i32>) -> Element {
     rsx! {
-        div { class: "flex items-center gap-2",
-            span { class: "text-gray-400", "{label}" }
+        div { class: "flex items-center",
+            span { class: "text-gray-400 w-48", "{label}" }
             span { class: "text-white",
                 if let Some(v) = value {
                     "{v}"
