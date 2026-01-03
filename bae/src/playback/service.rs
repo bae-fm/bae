@@ -1198,7 +1198,7 @@ impl PlaybackService {
     /// Load audio directly from source_path for None storage.
     ///
     /// For single-file-per-track imports, finds the audio file and reads it.
-    /// For CUE/FLAC imports, extracts the track's byte range and prepends FLAC headers.
+    /// For CUE/FLAC imports, reads only the track's byte range using seek + read_exact.
     async fn load_audio_from_source_path(
         &self,
         track_id: &str,
@@ -1251,34 +1251,34 @@ impl PlaybackService {
             .source_path
             .as_ref()
             .ok_or_else(|| PlaybackError::not_found("Source path", &audio_file.id))?;
-        info!("Reading audio from: {}", source_path);
-        let file_data = tokio::fs::read(source_path).await?;
 
         // Check if this is a CUE/FLAC track that needs byte range extraction
-        if let Some(audio_format) = audio_format {
+        if let Some(audio_format) = &audio_format {
             if let (Some(start_offset), Some(end_offset)) =
                 (audio_format.start_byte_offset, audio_format.end_byte_offset)
             {
-                let start_byte = start_offset as usize;
-                let end_byte = end_offset as usize;
+                let start_byte = start_offset as u64;
+                let end_byte = end_offset as u64;
+
                 info!(
-                    "CUE/FLAC: Extracting track bytes {}-{} ({} bytes) from {} byte file, needs_headers={}, has_headers={}",
+                    "CUE/FLAC range read: bytes {}-{} ({} bytes) from {}, needs_headers={}, has_headers={}",
                     start_byte,
                     end_byte,
                     end_byte - start_byte,
-                    file_data.len(),
+                    source_path,
                     audio_format.needs_headers,
                     audio_format.flac_headers.is_some()
                 );
-                if end_byte > file_data.len() {
-                    return Err(PlaybackError::flac(format!(
-                        "Track byte range {}-{} exceeds file size {}",
-                        start_byte,
-                        end_byte,
-                        file_data.len(),
-                    )));
-                }
-                let track_bytes = file_data[start_byte..end_byte].to_vec();
+
+                // Read only the byte range we need using seek + read_exact
+                use tokio::io::{AsyncReadExt, AsyncSeekExt};
+                let mut file = tokio::fs::File::open(source_path).await?;
+                file.seek(std::io::SeekFrom::Start(start_byte)).await?;
+
+                let len = (end_byte - start_byte) as usize;
+                let mut track_bytes = vec![0u8; len];
+                file.read_exact(&mut track_bytes).await?;
+
                 if audio_format.needs_headers {
                     if let Some(headers) = &audio_format.flac_headers {
                         info!(
@@ -1294,12 +1294,16 @@ impl PlaybackService {
                 return Ok(track_bytes);
             }
         }
+
+        // Non-CUE/FLAC: read entire file
+        info!("Reading full audio file from: {}", source_path);
+        let file_data = tokio::fs::read(source_path).await?;
         Ok(file_data)
     }
     /// Load audio from storage.
     ///
-    /// Files are stored whole. For CUE/FLAC tracks, we use byte ranges to
-    /// extract the track's portion.
+    /// For CUE/FLAC tracks, reads only the byte range needed instead of the entire file.
+    /// For encrypted files, calculates the encrypted range, fetches those chunks, and decrypts.
     async fn load_audio_from_storage(
         &self,
         track_id: &str,
@@ -1328,7 +1332,87 @@ impl PlaybackService {
             .source_path
             .as_ref()
             .ok_or_else(|| PlaybackError::not_found("Source path", &audio_file.id))?;
-        info!("Reading from storage path: {}", source_path);
+
+        // Check if this is a CUE/FLAC track that needs byte range extraction
+        if let Some(audio_format) = &audio_format {
+            if let (Some(start_offset), Some(end_offset)) =
+                (audio_format.start_byte_offset, audio_format.end_byte_offset)
+            {
+                let start_byte = start_offset as u64;
+                let end_byte = end_offset as u64;
+
+                let track_bytes = if storage_profile.encrypted {
+                    // Encrypted: calculate encrypted range, fetch chunks, decrypt
+                    let (enc_start, enc_end) =
+                        crate::encryption::encrypted_range_for_plaintext(start_byte, end_byte);
+
+                    info!(
+                        "CUE/FLAC encrypted range read: plaintext {}-{} -> encrypted {}-{} from {}",
+                        start_byte, end_byte, enc_start, enc_end, source_path
+                    );
+
+                    let encrypted_data = match storage_profile.location {
+                        crate::db::StorageLocation::Local => {
+                            use tokio::io::{AsyncReadExt, AsyncSeekExt};
+                            let mut file = tokio::fs::File::open(source_path).await?;
+                            file.seek(std::io::SeekFrom::Start(enc_start)).await?;
+
+                            let len = (enc_end - enc_start) as usize;
+                            let mut buffer = vec![0u8; len];
+                            file.read_exact(&mut buffer).await?;
+                            buffer
+                        }
+                        crate::db::StorageLocation::Cloud => {
+                            let storage = create_storage_reader(storage_profile)
+                                .await
+                                .map_err(PlaybackError::cloud)?;
+                            storage
+                                .download_range(source_path, enc_start, enc_end)
+                                .await
+                                .map_err(PlaybackError::cloud)?
+                        }
+                    };
+
+                    self.encryption_service
+                        .decrypt_range(&encrypted_data, start_byte, end_byte)
+                        .map_err(PlaybackError::decrypt)?
+                } else {
+                    // Unencrypted: direct range read
+                    info!(
+                        "CUE/FLAC range read: bytes {}-{} ({} bytes) from {}",
+                        start_byte,
+                        end_byte,
+                        end_byte - start_byte,
+                        source_path
+                    );
+
+                    let storage = create_storage_reader(storage_profile)
+                        .await
+                        .map_err(PlaybackError::cloud)?;
+                    storage
+                        .download_range(source_path, start_byte, end_byte)
+                        .await
+                        .map_err(PlaybackError::cloud)?
+                };
+
+                if audio_format.needs_headers {
+                    if let Some(headers) = &audio_format.flac_headers {
+                        info!(
+                            "Prepending {} bytes of FLAC headers to {} bytes of track data",
+                            headers.len(),
+                            track_bytes.len()
+                        );
+                        let mut result = headers.clone();
+                        result.extend_from_slice(&track_bytes);
+                        return Ok(result);
+                    }
+                }
+                return Ok(track_bytes);
+            }
+        }
+
+        // Non-CUE/FLAC: read entire file
+        info!("Reading full file from storage: {}", source_path);
         let file_data = match storage_profile.location {
             crate::db::StorageLocation::Local => tokio::fs::read(source_path).await?,
             crate::db::StorageLocation::Cloud => {
@@ -1341,46 +1425,14 @@ impl PlaybackService {
                     .map_err(PlaybackError::cloud)?
             }
         };
-        let file_data = if storage_profile.encrypted {
+
+        if storage_profile.encrypted {
             self.encryption_service
                 .decrypt(&file_data)
-                .map_err(PlaybackError::decrypt)?
+                .map_err(PlaybackError::decrypt)
         } else {
-            file_data
-        };
-        // Check if this is a CUE/FLAC track that needs byte range extraction
-        if let Some(audio_format) = audio_format {
-            if let (Some(start_offset), Some(end_offset)) =
-                (audio_format.start_byte_offset, audio_format.end_byte_offset)
-            {
-                let start_byte = start_offset as usize;
-                let end_byte = end_offset as usize;
-                info!(
-                    "Extracting track bytes {}-{} from {} byte file",
-                    start_byte,
-                    end_byte,
-                    file_data.len()
-                );
-                if end_byte > file_data.len() {
-                    return Err(PlaybackError::flac(format!(
-                        "Track byte range {}-{} exceeds file size {}",
-                        start_byte,
-                        end_byte,
-                        file_data.len(),
-                    )));
-                }
-                let track_bytes = file_data[start_byte..end_byte].to_vec();
-                if audio_format.needs_headers {
-                    if let Some(headers) = &audio_format.flac_headers {
-                        let mut result = headers.clone();
-                        result.extend_from_slice(&track_bytes);
-                        return Ok(result);
-                    }
-                }
-                return Ok(track_bytes);
-            }
+            Ok(file_data)
         }
-        Ok(file_data)
     }
 }
 

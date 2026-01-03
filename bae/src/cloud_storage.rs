@@ -58,6 +58,14 @@ impl S3Config {
 pub trait CloudStorage: Send + Sync {
     async fn upload(&self, key: &str, data: &[u8]) -> Result<String, CloudStorageError>;
     async fn download(&self, storage_location: &str) -> Result<Vec<u8>, CloudStorageError>;
+    /// Download a specific byte range from storage.
+    /// Range is inclusive start, exclusive end: [start, end)
+    async fn download_range(
+        &self,
+        storage_location: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<u8>, CloudStorageError>;
     async fn delete(&self, storage_location: &str) -> Result<(), CloudStorageError>;
 }
 /// Format AWS SDK error for better debugging
@@ -234,6 +242,51 @@ impl CloudStorage for S3CloudStorage {
         let data = response.body.collect().await?.into_bytes().to_vec();
 
         debug!("Successfully downloaded {} bytes", data.len());
+        Ok(data)
+    }
+
+    async fn download_range(
+        &self,
+        storage_location: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<u8>, CloudStorageError> {
+        if start >= end {
+            return Err(CloudStorageError::Download(format!(
+                "Invalid range: start ({}) >= end ({})",
+                start, end
+            )));
+        }
+
+        let key = storage_location
+            .strip_prefix(&format!("s3://{}/", self.bucket_name))
+            .ok_or_else(|| {
+                CloudStorageError::Download(format!("Invalid S3 location: {}", storage_location))
+            })?;
+
+        // S3 Range header is inclusive on both ends: bytes=start-end
+        // Our API is [start, end), so we use end-1
+        let range = format!("bytes={}-{}", start, end - 1);
+
+        debug!(
+            "Downloading range {} from {} ({} bytes)",
+            range,
+            storage_location,
+            end - start
+        );
+
+        let response = self
+            .client
+            .get_object()
+            .bucket(&self.bucket_name)
+            .key(key)
+            .range(range)
+            .send()
+            .await
+            .map_err(|e| CloudStorageError::SdkError(format!("Get object range failed: {}", e)))?;
+        let data = response.body.collect().await?.into_bytes().to_vec();
+
+        debug!("Successfully downloaded {} bytes (range)", data.len());
         Ok(data)
     }
 

@@ -52,6 +52,38 @@ impl CloudStorage for MockCloudStorage {
             })
     }
 
+    async fn download_range(
+        &self,
+        storage_location: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<u8>, CloudStorageError> {
+        if start >= end {
+            return Err(CloudStorageError::Download(format!(
+                "Invalid range: start ({}) >= end ({})",
+                start, end
+            )));
+        }
+
+        let files = self.files.lock().unwrap();
+        let data = files.get(storage_location).ok_or_else(|| {
+            CloudStorageError::Download(format!("File not found: {}", storage_location))
+        })?;
+
+        let start = start as usize;
+        let end = end as usize;
+
+        if end > data.len() {
+            return Err(CloudStorageError::Download(format!(
+                "Range end ({}) exceeds file size ({})",
+                end,
+                data.len()
+            )));
+        }
+
+        Ok(data[start..end].to_vec())
+    }
+
     async fn delete(&self, storage_location: &str) -> Result<(), CloudStorageError> {
         self.files.lock().unwrap().remove(storage_location);
         Ok(())

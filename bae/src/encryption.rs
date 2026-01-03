@@ -255,6 +255,52 @@ impl EncryptionService {
 
         Ok(result)
     }
+
+    /// Decrypt a specific plaintext byte range from encrypted data.
+    ///
+    /// The ciphertext must start with the nonce (first 24 bytes) but may be
+    /// truncated after the chunks needed for the requested range.
+    ///
+    /// Returns exactly the plaintext bytes from `plaintext_start` to `plaintext_end`.
+    pub fn decrypt_range(
+        &self,
+        ciphertext: &[u8],
+        plaintext_start: u64,
+        plaintext_end: u64,
+    ) -> Result<Vec<u8>, EncryptionError> {
+        ensure_sodium_init();
+
+        if plaintext_start >= plaintext_end {
+            return Err(EncryptionError::Decryption(format!(
+                "Invalid range: start ({}) >= end ({})",
+                plaintext_start, plaintext_end
+            )));
+        }
+
+        let start_chunk = plaintext_start / CHUNK_SIZE as u64;
+        let end_chunk = (plaintext_end.saturating_sub(1)) / CHUNK_SIZE as u64;
+
+        let mut plaintext = Vec::new();
+        for chunk_idx in start_chunk..=end_chunk {
+            let chunk = self.decrypt_chunk(ciphertext, chunk_idx as usize)?;
+            plaintext.extend(chunk);
+        }
+
+        // Slice to exact range within the decrypted chunks
+        let offset_in_first_chunk = (plaintext_start % CHUNK_SIZE as u64) as usize;
+        let len = (plaintext_end - plaintext_start) as usize;
+        let end = offset_in_first_chunk + len;
+
+        if end > plaintext.len() {
+            return Err(EncryptionError::Decryption(format!(
+                "Decrypted data too short: need {} bytes, got {}",
+                end,
+                plaintext.len()
+            )));
+        }
+
+        Ok(plaintext[offset_in_first_chunk..end].to_vec())
+    }
 }
 
 /// Derive nonce for chunk i: base_nonce XOR i (little-endian)
@@ -272,8 +318,6 @@ fn chunk_nonce(
 
 /// Calculate the encrypted byte range needed for a plaintext byte range.
 /// Returns (encrypted_start, encrypted_end) including the nonce header.
-/// Note: Currently only used in tests, will be used by Plan 2 for CUE-FLAC range reads.
-#[cfg(test)]
 pub fn encrypted_range_for_plaintext(start: u64, end: u64) -> (u64, u64) {
     let start_chunk = start / CHUNK_SIZE as u64;
     let end_chunk = (end.saturating_sub(1)) / CHUNK_SIZE as u64;
@@ -483,5 +527,82 @@ mod tests {
 
         // Chunk 1 should fail
         assert!(service.decrypt_chunk(&ciphertext, 1).is_err());
+    }
+
+    #[test]
+    fn test_decrypt_range_within_single_chunk() {
+        let service = create_test_service();
+        // Create plaintext with recognizable pattern
+        let plaintext: Vec<u8> = (0..CHUNK_SIZE).map(|i| (i % 256) as u8).collect();
+
+        let ciphertext = service.encrypt(&plaintext);
+
+        // Decrypt range [100, 200) within first chunk
+        let decrypted = service.decrypt_range(&ciphertext, 100, 200).unwrap();
+
+        assert_eq!(decrypted.len(), 100);
+        assert_eq!(decrypted, plaintext[100..200]);
+    }
+
+    #[test]
+    fn test_decrypt_range_spanning_chunks() {
+        let service = create_test_service();
+        // 3 chunks of data
+        let plaintext: Vec<u8> = (0..CHUNK_SIZE * 3).map(|i| (i % 256) as u8).collect();
+
+        let ciphertext = service.encrypt(&plaintext);
+
+        // Range spanning from end of chunk 0 into chunk 1
+        let start = CHUNK_SIZE as u64 - 100;
+        let end = CHUNK_SIZE as u64 + 100;
+        let decrypted = service.decrypt_range(&ciphertext, start, end).unwrap();
+
+        assert_eq!(decrypted.len(), 200);
+        assert_eq!(decrypted, &plaintext[start as usize..end as usize]);
+    }
+
+    #[test]
+    fn test_decrypt_range_entire_middle_chunk() {
+        let service = create_test_service();
+        // 3 chunks, middle chunk filled with 0xBB
+        let mut plaintext = vec![0xAAu8; CHUNK_SIZE];
+        plaintext.extend(vec![0xBBu8; CHUNK_SIZE]);
+        plaintext.extend(vec![0xCCu8; CHUNK_SIZE]);
+
+        let ciphertext = service.encrypt(&plaintext);
+
+        // Decrypt just the middle chunk
+        let start = CHUNK_SIZE as u64;
+        let end = (CHUNK_SIZE * 2) as u64;
+        let decrypted = service.decrypt_range(&ciphertext, start, end).unwrap();
+
+        assert_eq!(decrypted, vec![0xBBu8; CHUNK_SIZE]);
+    }
+
+    #[test]
+    fn test_decrypt_range_with_partial_encrypted_data() {
+        let service = create_test_service();
+        // Create 3-chunk plaintext
+        let plaintext: Vec<u8> = (0..CHUNK_SIZE * 3).map(|i| (i % 256) as u8).collect();
+        let full_ciphertext = service.encrypt(&plaintext);
+
+        // Calculate encrypted range for plaintext bytes in chunk 1
+        let plaintext_start = CHUNK_SIZE as u64 + 100;
+        let plaintext_end = CHUNK_SIZE as u64 + 200;
+        let (enc_start, enc_end) = encrypted_range_for_plaintext(plaintext_start, plaintext_end);
+
+        // Fetch only the needed encrypted bytes (simulating range read)
+        let partial_ciphertext = full_ciphertext[enc_start as usize..enc_end as usize].to_vec();
+
+        // Decrypt range from partial data
+        let decrypted = service
+            .decrypt_range(&partial_ciphertext, plaintext_start, plaintext_end)
+            .unwrap();
+
+        assert_eq!(decrypted.len(), 100);
+        assert_eq!(
+            decrypted,
+            &plaintext[plaintext_start as usize..plaintext_end as usize]
+        );
     }
 }

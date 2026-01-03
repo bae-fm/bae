@@ -2,6 +2,7 @@
 use crate::cloud_storage::{CloudStorage, CloudStorageError, S3CloudStorage};
 use crate::db::{DbStorageProfile, StorageLocation};
 use std::sync::Arc;
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tracing::debug;
 
 /// Create a storage reader from a profile.
@@ -40,6 +41,29 @@ impl CloudStorage for LocalFileStorage {
 
     async fn download(&self, path: &str) -> Result<Vec<u8>, CloudStorageError> {
         tokio::fs::read(path).await.map_err(CloudStorageError::Io)
+    }
+
+    async fn download_range(
+        &self,
+        path: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<u8>, CloudStorageError> {
+        if start >= end {
+            return Err(CloudStorageError::Download(format!(
+                "Invalid range: start ({}) >= end ({})",
+                start, end
+            )));
+        }
+
+        let mut file = tokio::fs::File::open(path).await?;
+        file.seek(std::io::SeekFrom::Start(start)).await?;
+
+        let len = (end - start) as usize;
+        let mut buffer = vec![0u8; len];
+        file.read_exact(&mut buffer).await?;
+
+        Ok(buffer)
     }
 
     async fn delete(&self, path: &str) -> Result<(), CloudStorageError> {
