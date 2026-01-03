@@ -1342,13 +1342,8 @@ impl PlaybackService {
             }
         };
         let file_data = if storage_profile.encrypted {
-            if file_data.len() < 12 {
-                return Err(PlaybackError::decrypt("File too small to contain nonce"));
-            }
-            let nonce = &file_data[..12];
-            let ciphertext = &file_data[12..];
             self.encryption_service
-                .decrypt(ciphertext, nonce)
+                .decrypt(&file_data)
                 .map_err(PlaybackError::decrypt)?
         } else {
             file_data

@@ -37,7 +37,6 @@ sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono"
 uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 sha2 = "0.10"
-aes-gcm = "0.10"
 hex = "0.4"
 aws-config = "1.1"
 aws-sdk-s3 = "1.15"
@@ -106,8 +105,6 @@ too_many_arguments = "allow"
 [lints.rust]
 # objc crate uses cfg(feature = "cargo-clippy") internally which triggers this warning
 unexpected_cfgs = "allow"
-# generic-array 0.14 deprecation warnings from aes-gcm/sha2 - will be fixed when they update
-deprecated = "allow"
 
 [profile]
 

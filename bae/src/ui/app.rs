@@ -177,7 +177,7 @@ async fn serve_image(
         {
             services
                 .encryption_service
-                .decrypt_simple(&raw_data)
+                .decrypt(&raw_data)
                 .map_err(|e| format!("Failed to decrypt image: {}", e))?
         } else {
             raw_data

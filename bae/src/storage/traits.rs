@@ -14,8 +14,6 @@ pub enum StorageError {
     Io(#[from] std::io::Error),
     #[error("Storage not configured")]
     NotConfigured,
-    #[error("Encryption error: {0}")]
-    Encryption(String),
     #[error("Cloud storage error: {0}")]
     Cloud(String),
     #[error("Database error: {0}")]
@@ -118,12 +116,7 @@ impl ReleaseStorageImpl {
             .encryption
             .as_ref()
             .ok_or(StorageError::NotConfigured)?;
-        let (ciphertext, nonce) = encryption
-            .encrypt(data)
-            .map_err(|e| StorageError::Encryption(e.to_string()))?;
-        let mut result = nonce;
-        result.extend(ciphertext);
-        Ok(result)
+        Ok(encryption.encrypt(data))
     }
 
     /// Generate a storage key for cloud storage

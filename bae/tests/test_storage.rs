@@ -75,7 +75,7 @@ async fn test_storageless_import() {
     let database = Database::new(db_file.to_str().unwrap())
         .await
         .expect("database");
-    let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
+    let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
     let library_manager = LibraryManager::new(database.clone());
     let shared_library_manager = bae::library::SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
@@ -205,7 +205,7 @@ async fn test_storageless_delete_preserves_files() {
     let database = Database::new(db_file.to_str().unwrap())
         .await
         .expect("database");
-    let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
+    let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
     let library_manager = LibraryManager::new(database.clone());
     let shared_library_manager = bae::library::SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
@@ -327,7 +327,7 @@ async fn run_storage_test(location: StorageLocation, encrypted: bool) {
     let database = Database::new(db_file.to_str().unwrap())
         .await
         .expect("Failed to create database");
-    let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
+    let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
     let cache_config = bae::cache::CacheConfig {
         cache_dir: cache_dir.clone(),
         max_size_bytes: 1024 * 1024 * 1024,
@@ -731,7 +731,7 @@ async fn verify_image_loadable(
         .expect("Failed to read image file");
     let data = if encrypted {
         encryption_service
-            .decrypt_simple(&data)
+            .decrypt(&data)
             .expect("Failed to decrypt image")
     } else {
         data
@@ -864,7 +864,7 @@ async fn run_real_album_test(album_dir: PathBuf, location: StorageLocation, encr
     let database = Database::new(db_file.to_str().unwrap())
         .await
         .expect("Failed to create database");
-    let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
+    let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
     let library_manager = LibraryManager::new(database.clone());
     let shared_library_manager = bae::library::SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);

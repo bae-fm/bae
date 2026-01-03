@@ -540,7 +540,7 @@ async fn stream_track_audio(
     let decrypted = if storage_profile.map(|p| p.encrypted).unwrap_or(false) {
         state
             .encryption_service
-            .decrypt_simple(&file_data)
+            .decrypt(&file_data)
             .map_err(|e| format!("Failed to decrypt file: {}", e))?
     } else {
         file_data

@@ -37,7 +37,7 @@ async fn test_cue_flac_records_track_positions() {
     let database = Database::new(db_file.to_str().unwrap())
         .await
         .expect("database");
-    let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
+    let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
     let library_manager = LibraryManager::new(database.clone());
     let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
@@ -180,7 +180,7 @@ async fn test_cue_flac_playback_uses_track_positions() {
     let database = Database::new(db_file.to_str().unwrap())
         .await
         .expect("database");
-    let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
+    let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
     let cache_config = bae::cache::CacheConfig {
         cache_dir,
         max_size_bytes: 1024 * 1024 * 1024,
@@ -335,7 +335,7 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let database = Database::new(db_file.to_str().unwrap())
         .await
         .expect("database");
-    let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
+    let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
     let cache_config = bae::cache::CacheConfig {
         cache_dir,
         max_size_bytes: 1024 * 1024 * 1024,
@@ -482,7 +482,7 @@ async fn test_cue_flac_byte_ranges_have_no_gaps() {
     let database = Database::new(db_file.to_str().unwrap())
         .await
         .expect("database");
-    let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
+    let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
     let library_manager = LibraryManager::new(database.clone());
     let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
@@ -637,7 +637,7 @@ async fn test_cue_flac_builds_dense_seektable() {
     let database = Database::new(db_file.to_str().unwrap())
         .await
         .expect("database");
-    let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
+    let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
     let library_manager = LibraryManager::new(database.clone());
     let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);

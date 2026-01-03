@@ -1,5 +1,6 @@
 #[link(name = "bae_storage", kind = "static")]
 #[link(name = "torrent-rasterbar")]
+#[link(name = "sodium")]
 extern "C" {}
 use crate::db::Database;
 use tracing::{error, info, warn};
@@ -21,6 +22,7 @@ mod media_controls;
 mod musicbrainz;
 mod network;
 mod playback;
+mod sodium_ffi;
 mod storage;
 mod subsonic;
 mod test_support;

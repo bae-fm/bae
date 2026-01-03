@@ -88,7 +88,7 @@ pub async fn load_track_audio(
             let encryption_service = encryption_service.clone();
             tokio::task::spawn_blocking(move || {
                 encryption_service
-                    .decrypt_simple(&encrypted_data)
+                    .decrypt(&encrypted_data)
                     .map_err(PlaybackError::decrypt)
             })
             .await

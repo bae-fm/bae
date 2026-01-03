@@ -63,7 +63,7 @@ impl ExportService {
                     let enc_service = encryption_service.clone();
                     tokio::task::spawn_blocking(move || {
                         enc_service
-                            .decrypt_simple(&data)
+                            .decrypt(&data)
                             .map_err(|e| format!("Failed to decrypt file: {}", e))
                     })
                     .await

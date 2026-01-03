@@ -36,6 +36,11 @@ fn main() {
             panic!("Failed to run tailwindcss: {}", e);
         }
     }
+
+    // Link libsodium for encryption
+    println!("cargo:rustc-link-search=native=/opt/homebrew/lib");
+    println!("cargo:rustc-link-search=native=/usr/local/lib");
+    println!("cargo:rustc-link-lib=sodium");
 }
 fn compile_cpp_storage() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");

@@ -41,7 +41,7 @@ impl PlaybackTestFixture {
         );
         let storage_profile_id = storage_profile.id.clone();
         database.insert_storage_profile(&storage_profile).await?;
-        let encryption_service = EncryptionService::new_with_key(vec![0u8; 32]);
+        let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
         let cache_config = CacheConfig {
             cache_dir,
             max_size_bytes: 1024 * 1024 * 1024,

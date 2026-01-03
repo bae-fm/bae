@@ -92,11 +92,8 @@ impl Config {
             id
         });
         let discogs_api_key = std::env::var("BAE_DISCOGS_API_KEY").ok();
-        let encryption_key = std::env::var("BAE_ENCRYPTION_KEY").unwrap_or_else(|_| {
-            use aes_gcm::{aead::OsRng, Aes256Gcm, KeyInit};
-            let key = Aes256Gcm::generate_key(OsRng);
-            hex::encode(key.as_ref() as &[u8])
-        });
+        let encryption_key = std::env::var("BAE_ENCRYPTION_KEY")
+            .unwrap_or_else(|_| hex::encode(crate::encryption::generate_random_key()));
         let torrent_bind_interface = std::env::var("BAE_TORRENT_BIND_INTERFACE")
             .ok()
             .filter(|s| !s.is_empty());
@@ -133,9 +130,7 @@ impl Config {
             .library_id
             .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
         let encryption_key = credentials.encryption_key.unwrap_or_else(|| {
-            use aes_gcm::{aead::OsRng, Aes256Gcm, KeyInit};
-            let key = Aes256Gcm::generate_key(OsRng);
-            let key_hex = hex::encode(key.as_ref() as &[u8]);
+            let key_hex = hex::encode(crate::encryption::generate_random_key());
             if let Ok(entry) = keyring::Entry::new("bae", "encryption_master_key") {
                 let _ = entry.set_password(&key_hex);
             }
