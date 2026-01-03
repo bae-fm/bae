@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+When debugging an issue, ALWAYS make sure we replicate it in a test first, unless explicitly instructed otherwise.
