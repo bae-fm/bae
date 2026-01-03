@@ -319,9 +319,13 @@ impl CueFlacProcessor {
 
     /// Find the byte range for a track in a CUE/FLAC file.
     ///
-    /// Returns (start_byte, end_byte) as absolute byte positions in the file.
-    /// With a frame-accurate seektable (built during import), positions are
-    /// accurate to ~93ms (one FLAC frame), which is imperceptible.
+    /// Returns (start_byte, end_byte, frame_offset_samples):
+    /// - start_byte, end_byte: absolute byte positions in the file
+    /// - frame_offset_samples: samples to skip from start of decoded audio to actual track start
+    ///
+    /// Due to FLAC frame alignment, start_byte is at a frame boundary which may be
+    /// up to ~4096 samples before the track's actual start. The frame_offset_samples tells
+    /// the decoder how many samples to skip when playing.
     pub fn find_track_byte_range(
         start_time_ms: u64,
         end_time_ms: Option<u64>,
@@ -330,9 +334,9 @@ impl CueFlacProcessor {
         total_samples: u64,
         audio_data_start: u64,
         audio_data_end: u64,
-    ) -> (i64, i64) {
+    ) -> (i64, i64, i64) {
         if sample_rate == 0 {
-            return (audio_data_start as i64, audio_data_end as i64);
+            return (audio_data_start as i64, audio_data_end as i64, 0);
         }
 
         let start_sample = (start_time_ms * sample_rate as u64) / 1000;
@@ -340,23 +344,31 @@ impl CueFlacProcessor {
             .map(|ms| (ms * sample_rate as u64) / 1000)
             .unwrap_or(total_samples);
 
-        // Find start byte using seektable
-        let start_byte = if seektable.is_empty() {
-            // Linear interpolation without seektable
+        // Find start byte using seektable, tracking the frame's sample number
+        let (start_byte, frame_sample) = if seektable.is_empty() {
+            // Linear interpolation without seektable - no offset needed
             let audio_size = audio_data_end - audio_data_start;
-            audio_data_start + (start_sample * audio_size) / total_samples
+            (
+                audio_data_start + (start_sample * audio_size) / total_samples,
+                start_sample,
+            )
         } else {
             // Find the seek point at or before start_sample
             let mut best_offset = 0u64;
+            let mut best_sample = 0u64;
             for sp in seektable.iter() {
                 if sp.sample_number <= start_sample {
                     best_offset = sp.stream_offset;
+                    best_sample = sp.sample_number;
                 } else {
                     break;
                 }
             }
-            audio_data_start + best_offset
+            (audio_data_start + best_offset, best_sample)
         };
+
+        // Calculate frame offset: how many samples into decoded audio the track actually starts
+        let frame_offset_samples = (start_sample - frame_sample) as i64;
 
         // Find end byte using seektable - use "at or after" to include all audio
         let end_byte = if seektable.is_empty() {
@@ -377,7 +389,7 @@ impl CueFlacProcessor {
             audio_data_start + best_offset
         };
 
-        (start_byte as i64, end_byte as i64)
+        (start_byte as i64, end_byte as i64, frame_offset_samples)
     }
 
     /// Find where audio frames start in a FLAC file
@@ -940,7 +952,7 @@ FILE "Test Artist - Test Album.flac" WAVE
         let boundary_ms = 166_000u64;
 
         // Track 1: 0 to boundary
-        let (_, track1_end) = CueFlacProcessor::find_track_byte_range(
+        let (_, track1_end, _) = CueFlacProcessor::find_track_byte_range(
             0,
             Some(boundary_ms),
             &seektable,
@@ -951,7 +963,7 @@ FILE "Test Artist - Test Album.flac" WAVE
         );
 
         // Track 2: boundary to end
-        let (track2_start, _) = CueFlacProcessor::find_track_byte_range(
+        let (track2_start, _, _) = CueFlacProcessor::find_track_byte_range(
             boundary_ms,
             None,
             &seektable,
@@ -994,7 +1006,7 @@ FILE "Test Artist - Test Album.flac" WAVE
         let track2_start_ms = 167027u64;
         let _track2_start_sample = track2_start_ms * sample_rate as u64 / 1000; // ~7,365,991
 
-        let (start_byte, _) = CueFlacProcessor::find_track_byte_range(
+        let (start_byte, _, _) = CueFlacProcessor::find_track_byte_range(
             track2_start_ms,
             None,
             &seektable,

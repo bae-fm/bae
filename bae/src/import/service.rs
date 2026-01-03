@@ -405,7 +405,7 @@ impl ImportService {
                 for (i, cue_track) in metadata.cue_sheet.tracks.iter().enumerate() {
                     if let Some(track_file) = flac_tracks.get(i) {
                         let audio_start_ms = cue_track.audio_start_ms();
-                        let (start_byte, end_byte) = CueFlacProcessor::find_track_byte_range(
+                        let (start_byte, end_byte, _) = CueFlacProcessor::find_track_byte_range(
                             audio_start_ms,
                             cue_track.end_time_ms,
                             &dense_seektable.entries,
@@ -812,15 +812,16 @@ impl ImportService {
                 };
 
                 // Calculate byte offsets using dense seektable for frame-accurate positioning
-                let (start_byte, end_byte) = CueFlacProcessor::find_track_byte_range(
-                    audio_start_ms,
-                    cue_track.end_time_ms,
-                    dense_seektable,
-                    flac_info.sample_rate,
-                    flac_info.total_samples,
-                    flac_info.audio_data_start,
-                    flac_info.audio_data_end,
-                );
+                let (start_byte, end_byte, frame_offset_samples) =
+                    CueFlacProcessor::find_track_byte_range(
+                        audio_start_ms,
+                        cue_track.end_time_ms,
+                        dense_seektable,
+                        flac_info.sample_rate,
+                        flac_info.total_samples,
+                        flac_info.audio_data_start,
+                        flac_info.audio_data_end,
+                    );
 
                 // Serialize dense seektable for storage (used for seeking during playback)
                 let seektable_tuples: Vec<(u64, u64)> = dense_seektable
@@ -839,6 +840,7 @@ impl ImportService {
                     start_byte,
                     end_byte,
                     pregap_ms,
+                    Some(frame_offset_samples),
                 );
                 library_manager
                     .add_audio_format(&audio_format)

@@ -181,6 +181,7 @@ impl Database {
                 start_byte_offset INTEGER,
                 end_byte_offset INTEGER,
                 pregap_ms INTEGER,
+                frame_offset_samples INTEGER,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE
             )
@@ -1049,8 +1050,8 @@ impl Database {
         sqlx::query(
             r#"
             INSERT INTO audio_formats (
-                id, track_id, format, flac_headers, flac_seektable, needs_headers, start_byte_offset, end_byte_offset, pregap_ms, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                id, track_id, format, flac_headers, flac_seektable, needs_headers, start_byte_offset, end_byte_offset, pregap_ms, frame_offset_samples, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&audio_format.id)
@@ -1062,6 +1063,7 @@ impl Database {
         .bind(audio_format.start_byte_offset)
         .bind(audio_format.end_byte_offset)
         .bind(audio_format.pregap_ms)
+        .bind(audio_format.frame_offset_samples)
         .bind(audio_format.created_at.to_rfc3339())
         .execute(&self.pool)
         .await?;
@@ -1087,6 +1089,7 @@ impl Database {
                 start_byte_offset: row.get("start_byte_offset"),
                 end_byte_offset: row.get("end_byte_offset"),
                 pregap_ms: row.get("pregap_ms"),
+                frame_offset_samples: row.get("frame_offset_samples"),
                 created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
                     .unwrap()
                     .with_timezone(&Utc),

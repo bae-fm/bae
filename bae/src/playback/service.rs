@@ -566,17 +566,17 @@ impl PlaybackService {
             }
         };
 
-        // Load audio format to get pregap_ms for CUE/FLAC tracks
-        let pregap_ms = match self
+        // Load audio format to get pregap_ms and frame_offset_samples for CUE/FLAC tracks
+        let (pregap_ms, frame_offset_samples) = match self
             .library_manager
             .get_audio_format_by_track_id(track_id)
             .await
         {
-            Ok(Some(audio_format)) => audio_format.pregap_ms,
-            Ok(None) => None,
+            Ok(Some(audio_format)) => (audio_format.pregap_ms, audio_format.frame_offset_samples),
+            Ok(None) => (None, None),
             Err(e) => {
                 error!("Failed to get audio format: {}", e);
-                None
+                (None, None)
             }
         };
 
@@ -599,7 +599,7 @@ impl PlaybackService {
                     .load_audio_from_source_path(track_id, &track.release_id)
                     .await
                 {
-                    Ok(data) => match Self::decode_flac_bytes(&data).await {
+                    Ok(data) => match Self::decode_flac_bytes(&data, frame_offset_samples).await {
                         Ok(source) => source,
                         Err(e) => {
                             error!("Failed to decode FLAC: {}", e);
@@ -619,7 +619,7 @@ impl PlaybackService {
                     .load_audio_from_storage(track_id, &track.release_id, profile)
                     .await
                 {
-                    Ok(data) => match Self::decode_flac_bytes(&data).await {
+                    Ok(data) => match Self::decode_flac_bytes(&data, frame_offset_samples).await {
                         Ok(source) => source,
                         Err(e) => {
                             error!("Failed to decode FLAC: {}", e);
@@ -656,7 +656,13 @@ impl PlaybackService {
         .await;
     }
     /// Decode raw FLAC bytes to PCM source
-    async fn decode_flac_bytes(flac_data: &[u8]) -> Result<Arc<PcmSource>, PlaybackError> {
+    ///
+    /// frame_offset_samples: If set, skip this many samples at the start of decoded audio.
+    /// This handles the lead-in from FLAC frame boundary alignment.
+    async fn decode_flac_bytes(
+        flac_data: &[u8],
+        frame_offset_samples: Option<i64>,
+    ) -> Result<Arc<PcmSource>, PlaybackError> {
         if flac_data.len() < 4 || &flac_data[0..4] != b"fLaC" {
             return Err(PlaybackError::flac("Invalid FLAC header"));
         }
@@ -667,8 +673,22 @@ impl PlaybackService {
         .await
         .map_err(PlaybackError::task)?
         .map_err(PlaybackError::flac)?;
+
+        // Skip lead-in samples if frame_offset_samples is set
+        // (Due to FLAC frame alignment, extracted bytes may start before the actual track)
+        let samples = if let Some(offset) = frame_offset_samples.filter(|&s| s > 0) {
+            let skip_samples = offset as usize * decoded.channels as usize;
+            if skip_samples < decoded.samples.len() {
+                decoded.samples[skip_samples..].to_vec()
+            } else {
+                decoded.samples
+            }
+        } else {
+            decoded.samples
+        };
+
         Ok(Arc::new(PcmSource::new(
-            decoded.samples,
+            samples,
             decoded.sample_rate,
             decoded.channels,
             decoded.bits_per_sample,
@@ -815,17 +835,17 @@ impl PlaybackService {
             }
         };
 
-        // Load audio format to get pregap_ms for CUE/FLAC tracks
-        let pregap_ms = match self
+        // Load audio format to get pregap_ms and frame_offset_samples for CUE/FLAC tracks
+        let (pregap_ms, frame_offset_samples) = match self
             .library_manager
             .get_audio_format_by_track_id(track_id)
             .await
         {
-            Ok(Some(audio_format)) => audio_format.pregap_ms,
-            Ok(None) => None,
+            Ok(Some(audio_format)) => (audio_format.pregap_ms, audio_format.frame_offset_samples),
+            Ok(None) => (None, None),
             Err(e) => {
                 error!("Failed to get audio format for preload: {}", e);
-                None
+                (None, None)
             }
         };
 
@@ -846,7 +866,7 @@ impl PlaybackService {
                     .load_audio_from_source_path(track_id, &track.release_id)
                     .await
                 {
-                    Ok(data) => match Self::decode_flac_bytes(&data).await {
+                    Ok(data) => match Self::decode_flac_bytes(&data, frame_offset_samples).await {
                         Ok(source) => source,
                         Err(e) => {
                             error!("Failed to decode FLAC for preload: {}", e);
@@ -864,7 +884,7 @@ impl PlaybackService {
                     .load_audio_from_storage(track_id, &track.release_id, profile)
                     .await
                 {
-                    Ok(data) => match Self::decode_flac_bytes(&data).await {
+                    Ok(data) => match Self::decode_flac_bytes(&data, frame_offset_samples).await {
                         Ok(source) => source,
                         Err(e) => {
                             error!("Failed to decode FLAC for preload: {}", e);

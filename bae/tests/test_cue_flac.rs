@@ -769,6 +769,301 @@ fn copy_cue_flac_fixture_with_seektable(dir: &Path) {
     );
 }
 
+/// Test that track 2's decoded audio matches ground truth.
+///
+/// This is the definitive test for CUE/FLAC byte range extraction:
+/// 1. Ground truth: Decode entire FLAC, seek to track 2's start sample
+/// 2. Under test: Use import + playback code path with byte range extraction
+/// 3. Compare: First N samples after track start should match exactly
+///
+/// If byte offsets are wrong by even one frame, samples won't match.
+#[tokio::test]
+async fn test_cue_flac_track2_samples_match_ground_truth() {
+    use bae::cue_flac::CueFlacProcessor;
+    use bae::flac_decoder::decode_flac_range;
+
+    tracing_init();
+
+    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
+    let flac_path = fixture_dir.join("Test Album.flac");
+    let cue_path = fixture_dir.join("Test Album.cue");
+
+    if !flac_path.exists() || !cue_path.exists() {
+        panic!("Fixture not found. Run: ./scripts/generate_cue_flac_fixture.sh");
+    }
+
+    info!("Testing with fixture: {:?}", fixture_dir);
+
+    // Parse CUE to get track 2's timing
+    let cue_sheet = CueFlacProcessor::parse_cue_sheet(&cue_path).expect("parse cue");
+    let track2_cue = &cue_sheet.tracks[1]; // 0-indexed, track 2
+    let track2_start_ms = track2_cue.audio_start_ms();
+    info!(
+        "Track 2 '{}' starts at {}ms (CUE timing)",
+        track2_cue.title, track2_start_ms
+    );
+
+    // Read and analyze the FLAC
+    let flac_data = std::fs::read(&flac_path).expect("read flac");
+    let flac_info = CueFlacProcessor::analyze_flac(&flac_path).expect("analyze flac");
+    info!(
+        "FLAC: {} samples at {}Hz, audio starts at byte {}",
+        flac_info.total_samples, flac_info.sample_rate, flac_info.audio_data_start
+    );
+
+    // === GROUND TRUTH ===
+    // Decode the entire FLAC and extract samples starting at track 2's position
+    info!("Decoding entire FLAC for ground truth...");
+    let full_decode = decode_flac_range(&flac_data, None, None).expect("decode full flac");
+    let channels = full_decode.channels as usize;
+    let sample_rate = full_decode.sample_rate;
+
+    // Calculate track 2's start position in samples (interleaved)
+    let track2_start_sample = (track2_start_ms * sample_rate as u64 / 1000) as usize * channels;
+    info!(
+        "Ground truth: track 2 starts at sample index {} (of {})",
+        track2_start_sample,
+        full_decode.samples.len()
+    );
+
+    let truth_samples = &full_decode.samples[track2_start_sample..];
+
+    // === UNDER TEST ===
+    // Build seektable and find byte range (same as import does)
+    let dense_seektable = CueFlacProcessor::build_dense_seektable(&flac_data, &flac_info);
+    info!(
+        "Built dense seektable with {} entries",
+        dense_seektable.entries.len()
+    );
+
+    let seektable_entries: Vec<bae::cue_flac::SeekPoint> = dense_seektable.entries;
+
+    let (start_byte, end_byte, _frame_offset_ms) = CueFlacProcessor::find_track_byte_range(
+        track2_start_ms,
+        track2_cue.end_time_ms,
+        &seektable_entries,
+        flac_info.sample_rate,
+        flac_info.total_samples,
+        flac_info.audio_data_start,
+        flac_info.audio_data_end,
+    );
+    info!(
+        "Byte range for track 2: {} - {} ({} bytes)",
+        start_byte,
+        end_byte,
+        end_byte - start_byte
+    );
+
+    // Extract byte range and prepend headers (same as playback does)
+    let headers = CueFlacProcessor::extract_flac_headers(&flac_path).expect("extract headers");
+    let track_bytes = &flac_data[start_byte as usize..end_byte as usize];
+
+    let mut flac_with_headers = headers.headers.clone();
+    flac_with_headers.extend_from_slice(track_bytes);
+
+    info!(
+        "Decoding extracted track ({} bytes with headers)...",
+        flac_with_headers.len()
+    );
+    let track_decode = decode_flac_range(&flac_with_headers, None, None).expect("decode track");
+    let actual_samples = &track_decode.samples;
+
+    info!(
+        "Decoded {} samples from byte range extraction",
+        actual_samples.len()
+    );
+
+    // === COMPARE ===
+    // Compare first ~1 second of audio (44100 * 2 channels = 88200 samples)
+    let compare_count = (sample_rate as usize * channels).min(actual_samples.len());
+
+    // The extracted track should start at the frame boundary at or before track2_start_ms.
+    // We need to find where in the extracted audio the actual track 2 content starts.
+    // The seektable entry we used is at or before track2_start_sample, so there may be
+    // some "lead-in" samples from before track 2.
+
+    // Find the seektable entry used for start_byte
+    let start_entry = seektable_entries
+        .iter()
+        .rev()
+        .find(|e| e.sample_number <= track2_start_ms * sample_rate as u64 / 1000)
+        .expect("find start entry");
+
+    let lead_in_samples = (track2_start_ms * sample_rate as u64 / 1000 - start_entry.sample_number)
+        as usize
+        * channels;
+
+    info!(
+        "Lead-in samples (frame alignment): {} ({:.1}ms)",
+        lead_in_samples,
+        lead_in_samples as f64 / channels as f64 / sample_rate as f64 * 1000.0
+    );
+
+    // Compare samples after the lead-in
+    let actual_start = lead_in_samples;
+    let truth_start = 0; // Ground truth already starts at track 2
+
+    info!(
+        "Comparing {} samples: actual[{}..] vs truth[{}..{}]",
+        compare_count,
+        actual_start,
+        truth_start,
+        truth_start + compare_count
+    );
+
+    // Check we have enough samples
+    assert!(
+        actual_samples.len() >= actual_start + compare_count,
+        "Not enough actual samples: {} < {} + {}",
+        actual_samples.len(),
+        actual_start,
+        compare_count
+    );
+    assert!(
+        truth_samples.len() >= truth_start + compare_count,
+        "Not enough truth samples: {} < {} + {}",
+        truth_samples.len(),
+        truth_start,
+        compare_count
+    );
+
+    // Compare sample by sample
+    let mut mismatches = 0;
+    let mut first_mismatch = None;
+    for i in 0..compare_count {
+        let actual = actual_samples[actual_start + i];
+        let truth = truth_samples[truth_start + i];
+        if actual != truth {
+            mismatches += 1;
+            if first_mismatch.is_none() {
+                first_mismatch = Some((i, actual, truth));
+            }
+        }
+    }
+
+    if mismatches > 0 {
+        let (idx, actual, truth) = first_mismatch.unwrap();
+        let offset_ms = idx as f64 / channels as f64 / sample_rate as f64 * 1000.0;
+        panic!(
+            "AUDIO MISMATCH: {} of {} samples differ!\n\
+             First mismatch at index {} ({:.1}ms): actual={}, truth={}\n\
+             This means byte range extraction is returning wrong audio.\n\
+             The seektable or byte offset calculation is broken.",
+            mismatches, compare_count, idx, offset_ms, actual, truth
+        );
+    }
+
+    info!(
+        "✅ All {} samples match! Track 2 byte range extraction is correct.",
+        compare_count
+    );
+}
+
+/// Test that extracted track audio starts at the correct position for all scenarios.
+///
+/// Tests 2x2 matrix:
+/// - With/without pregap
+/// - Auto-advance (natural transition) vs manual start (user clicks track)
+///
+/// Currently FAILS due to lead-in samples from frame boundary alignment.
+#[tokio::test]
+async fn test_cue_flac_track_start_positions() {
+    use bae::cue_flac::CueFlacProcessor;
+    use bae::flac_decoder::decode_flac_range;
+
+    tracing_init();
+
+    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
+    let flac_path = fixture_dir.join("Test Album.flac");
+    let cue_path = fixture_dir.join("Test Album.cue");
+
+    if !flac_path.exists() || !cue_path.exists() {
+        panic!("Fixture not found. Run: ./scripts/generate_cue_flac_fixture.sh");
+    }
+
+    let cue_sheet = CueFlacProcessor::parse_cue_sheet(&cue_path).expect("parse cue");
+    let flac_data = std::fs::read(&flac_path).expect("read flac");
+    let flac_info = CueFlacProcessor::analyze_flac(&flac_path).expect("analyze flac");
+    let dense_seektable = CueFlacProcessor::build_dense_seektable(&flac_data, &flac_info);
+    let full_decode = decode_flac_range(&flac_data, None, None).expect("decode full");
+    let channels = full_decode.channels as usize;
+    let sample_rate = full_decode.sample_rate;
+
+    // Test cases: (track_index, is_auto_advance, description)
+    // Track 2 has pregap (INDEX 00 at 8s, INDEX 01 at 10s)
+    // Track 3 has no pregap (INDEX 01 at 20s)
+    let test_cases = [
+        (1, true, "Track 2 with pregap, auto-advance"), // INDEX 00 at 8000ms
+        (1, false, "Track 2 with pregap, manual start"), // INDEX 01 at 10000ms
+        (2, true, "Track 3 no pregap, auto-advance"),   // INDEX 01 at 20000ms
+        (2, false, "Track 3 no pregap, manual start"),  // INDEX 01 at 20000ms
+    ];
+
+    for (track_idx, is_auto_advance, desc) in test_cases {
+        let track = &cue_sheet.tracks[track_idx];
+
+        // Determine expected start position
+        let expected_start_ms = if is_auto_advance {
+            track.audio_start_ms() // INDEX 00 if pregap exists, else INDEX 01
+        } else {
+            track.start_time_ms // INDEX 01 always
+        };
+
+        info!("Testing: {} - expected start {}ms", desc, expected_start_ms);
+
+        // Get byte range and frame offset
+        let (start_byte, end_byte, frame_offset_samples) = CueFlacProcessor::find_track_byte_range(
+            expected_start_ms,
+            track.end_time_ms,
+            &dense_seektable.entries,
+            flac_info.sample_rate,
+            flac_info.total_samples,
+            flac_info.audio_data_start,
+            flac_info.audio_data_end,
+        );
+
+        info!(
+            "  Frame offset: {} samples ({:.1}ms)",
+            frame_offset_samples,
+            frame_offset_samples as f64 * 1000.0 / sample_rate as f64
+        );
+
+        // Extract and decode, then skip lead-in samples
+        let headers = CueFlacProcessor::extract_flac_headers(&flac_path).expect("headers");
+        let track_bytes = &flac_data[start_byte as usize..end_byte as usize];
+        let mut flac_with_headers = headers.headers.clone();
+        flac_with_headers.extend_from_slice(track_bytes);
+
+        let extracted = decode_flac_range(&flac_with_headers, None, None).expect("decode");
+
+        // Skip lead-in samples (the fix!)
+        let skip_samples = if frame_offset_samples > 0 {
+            frame_offset_samples as usize * channels
+        } else {
+            0
+        };
+        let extracted_samples_all = &extracted.samples[skip_samples..];
+
+        // Ground truth: samples at the expected start position
+        let expected_sample_idx =
+            (expected_start_ms * sample_rate as u64 / 1000) as usize * channels;
+        let truth_samples: Vec<i32> =
+            full_decode.samples[expected_sample_idx..expected_sample_idx + channels].to_vec();
+        let extracted_samples: Vec<i32> = extracted_samples_all[0..channels].to_vec();
+
+        info!("  Ground truth: {:?}", truth_samples);
+        info!("  Extracted:    {:?}", extracted_samples);
+
+        assert_eq!(
+            extracted_samples, truth_samples,
+            "{}: Lead-in bug! Expected {:?} at {}ms, got {:?}",
+            desc, truth_samples, expected_start_ms, extracted_samples
+        );
+
+        info!("  ✅ passed");
+    }
+}
+
 /// Discogs release matching the seektable fixture (tests/fixtures/cue_flac/)
 fn create_test_discogs_release() -> DiscogsRelease {
     DiscogsRelease {
@@ -801,5 +1096,79 @@ fn create_test_discogs_release() -> DiscogsRelease {
             },
         ],
         master_id: "test-master".to_string(),
+    }
+}
+
+/// Test that frame scanning is robust against small min_frame_size values.
+///
+/// The test fixture naturally has min_frame_size=14 because:
+/// - Track 1: Silence → compresses to tiny frames → min_frame_size=14 in STREAMINFO
+/// - Tracks 2-3: Noise → compressed data contains false 0xFF 0xF8 sync patterns
+///
+/// With min_frame_size=14, the scanner skips only 14 bytes after each frame,
+/// finding false positive sync codes in the noise data. Without CRC-8 validation,
+/// these corrupt the seektable.
+///
+#[test]
+fn test_scan_flac_frames_with_small_min_frame_size() {
+    use bae::flac_decoder::scan_flac_frames;
+
+    tracing_init();
+
+    // Load the fixture (silence + noise, naturally has min_frame_size=14)
+    let fixture_path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac");
+
+    if !fixture_path.exists() {
+        eprintln!("Skipping: fixture not found at {:?}", fixture_path);
+        return;
+    }
+
+    let flac_data = std::fs::read(&fixture_path).expect("read fixture");
+    assert_eq!(&flac_data[0..4], b"fLaC", "Invalid FLAC signature");
+
+    // Verify the fixture has small min_frame_size (from silence track)
+    let min_frame_size =
+        ((flac_data[12] as u32) << 16) | ((flac_data[13] as u32) << 8) | (flac_data[14] as u32);
+    info!("Fixture min_frame_size: {}", min_frame_size);
+    assert!(
+        min_frame_size <= 50,
+        "Fixture should have small min_frame_size from silence, got {}",
+        min_frame_size
+    );
+
+    // Scan the FLAC
+    let result = scan_flac_frames(&flac_data).expect("scan should succeed");
+
+    info!("Seektable has {} entries", result.seektable.len());
+
+    // The fixture is ~30 seconds at 44100Hz with 4096-sample blocks
+    // Expected frames: 30 * 44100 / 4096 ≈ 323 frames
+    let expected_frames = 323;
+    let tolerance = 50;
+
+    // This should FAIL with buggy code (missing frames due to false positives)
+    // and PASS after CRC-8 validation is added
+    assert!(
+        result.seektable.len() > expected_frames - tolerance,
+        "Seektable has {} entries, expected ~{} (too few - false positives corrupted monotonicity)",
+        result.seektable.len(),
+        expected_frames
+    );
+
+    // Check that sample numbers increase by reasonable amounts
+    for window in result.seektable.windows(2) {
+        let delta = window[1]
+            .sample_number
+            .saturating_sub(window[0].sample_number);
+        if window[1].sample_number < 30 * 44100 {
+            assert!(
+                delta > 0 && delta <= 8192,
+                "Sample number jump {} -> {} (delta {}) is suspicious",
+                window[0].sample_number,
+                window[1].sample_number,
+                delta
+            );
+        }
     }
 }

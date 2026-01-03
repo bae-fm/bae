@@ -257,6 +257,12 @@ pub struct DbAudioFormat {
     /// Pre-gap duration in milliseconds (for CUE/FLAC tracks with INDEX 00)
     /// When present, playback starts at INDEX 00 and shows negative time until INDEX 01
     pub pregap_ms: Option<i64>,
+    /// Offset in samples from the start of extracted bytes to actual track content.
+    /// Due to FLAC frame alignment, extracted bytes start at a frame boundary which may
+    /// be up to ~4096 samples before the track's actual start. This offset tells the
+    /// decoder how many samples to skip when playing.
+    /// Stored as samples (not ms) to avoid rounding errors.
+    pub frame_offset_samples: Option<i64>,
     pub created_at: DateTime<Utc>,
 }
 impl DbArtist {
@@ -517,6 +523,7 @@ impl DbAudioFormat {
             None,
             None,
             None,
+            None,
         )
     }
 
@@ -536,6 +543,7 @@ impl DbAudioFormat {
             None,
             None,
             None,
+            None,
         )
     }
 
@@ -548,6 +556,7 @@ impl DbAudioFormat {
         start_byte_offset: i64,
         end_byte_offset: i64,
         pregap_ms: Option<i64>,
+        frame_offset_samples: Option<i64>,
     ) -> Self {
         Self::new_full(
             track_id,
@@ -558,6 +567,7 @@ impl DbAudioFormat {
             Some(start_byte_offset),
             Some(end_byte_offset),
             pregap_ms,
+            frame_offset_samples,
         )
     }
 
@@ -570,6 +580,7 @@ impl DbAudioFormat {
         start_byte_offset: Option<i64>,
         end_byte_offset: Option<i64>,
         pregap_ms: Option<i64>,
+        frame_offset_samples: Option<i64>,
     ) -> Self {
         DbAudioFormat {
             id: Uuid::new_v4().to_string(),
@@ -581,6 +592,7 @@ impl DbAudioFormat {
             start_byte_offset,
             end_byte_offset,
             pregap_ms,
+            frame_offset_samples,
             created_at: Utc::now(),
         }
     }
