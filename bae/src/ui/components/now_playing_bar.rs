@@ -234,6 +234,11 @@ fn PositionZone(
                                 },
                                 onmouseup: move |_| {
                                     if is_seeking() {
+                                        // Trigger seek with current local_position
+                                        // (onchange doesn't fire reliably for range inputs in Dioxus)
+                                        if let Some(pos) = local_position() {
+                                            on_seek.call(pos);
+                                        }
                                         spawn(async move {
                                             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                                             if is_seeking() {
@@ -247,13 +252,6 @@ fn PositionZone(
                                         // Add pregap back when user scrubs
                                         let pregap_secs = pregap_ms().unwrap_or(0).max(0) as u64 / 1000;
                                         local_position.set(Some(std::time::Duration::from_secs(secs + pregap_secs)));
-                                    }
-                                },
-                                onchange: move |evt| {
-                                    if let Ok(secs) = evt.value().parse::<u64>() {
-                                        // Add pregap back when seeking
-                                        let pregap_secs = pregap_ms().unwrap_or(0).max(0) as u64 / 1000;
-                                        on_seek.call(std::time::Duration::from_secs(secs + pregap_secs));
                                     }
                                 },
                             }
