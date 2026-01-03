@@ -135,7 +135,12 @@ pub struct PlaybackService {
     previous_track_id: Option<String>,
     current_track: Option<DbTrack>,
     current_position: Option<std::time::Duration>,
+    /// Track duration from metadata (excludes pregap). Used for UI display only.
+    /// May be slightly inaccurate depending on import source (CUE has ~13ms precision,
+    /// other sources like Discogs/MusicBrainz may be less accurate).
     current_duration: Option<std::time::Duration>,
+    /// Actual PCM audio duration (includes pregap). This is ground truth - use for
+    /// seek validation, progress calculations, and anything requiring accuracy.
     current_decoded_duration: Option<std::time::Duration>,
     /// Pre-gap duration for CUE/FLAC tracks (None for regular tracks)
     current_pregap_ms: Option<i64>,
@@ -146,6 +151,7 @@ pub struct PlaybackService {
     current_pcm_source: Option<Arc<PcmSource>>,
     next_pcm_source: Option<Arc<PcmSource>>,
     next_track_id: Option<String>,
+    /// Metadata duration for preloaded track (decoded duration computed when played)
     next_duration: Option<std::time::Duration>,
     next_pregap_ms: Option<i64>,
 }
@@ -489,7 +495,6 @@ impl PlaybackService {
                     }
                 }
                 PlaybackCommand::Seek(position) => {
-                    info!("Seek command received: {:?}", position);
                     self.seek(position).await;
                 }
                 PlaybackCommand::SetVolume(volume) => {
@@ -812,7 +817,7 @@ impl PlaybackService {
         });
         let progress_tx = self.progress_tx.clone();
         let track_id = track_id.to_string();
-        let track_duration_for_completion = track_duration;
+        let track_duration_for_completion = decoded_duration;
         let current_position_for_listener = self.current_position_shared.clone();
         tokio::spawn(async move {
             info!(
@@ -1050,23 +1055,21 @@ impl PlaybackService {
         } else {
             trace!("Seek: No stream to drop");
         }
-        let track_duration = self
-            .current_duration
-            .expect("Cannot seek: track has no duration");
-        if position > track_duration {
-            error!(
-                "Cannot seek past end of track: requested {}, track duration {}",
-                position.as_secs_f64(),
-                track_duration.as_secs_f64()
-            );
+        // Use decoded_duration for validation since UI sends positions that include pregap
+        // (decoded audio includes pregap from INDEX 00, while track metadata duration excludes it)
+        let decoded_duration = self
+            .current_decoded_duration
+            .expect("Cannot seek: track has no decoded duration");
+        if let Err(e) = validate_seek_position(position, decoded_duration) {
+            error!("Cannot seek past end of track: {:?}", e);
             let _ = self.progress_tx.send(PlaybackProgress::SeekError {
                 requested_position: position,
-                track_duration,
+                track_duration: decoded_duration,
             });
             return;
         }
         pcm_source.seek(position);
-        trace!("Seek: PCM source seeked successfully, creating new channels");
+        trace!("Seek: Creating new channels");
         let (position_tx, position_rx) = mpsc::channel();
         let (completion_tx, completion_rx) = mpsc::channel();
         let (position_tx_async, mut position_rx_async) = tokio_mpsc::unbounded_channel();
@@ -1113,7 +1116,7 @@ impl PlaybackService {
         });
         let progress_tx_for_task = self.progress_tx.clone();
         let track_id_for_task = track_id.clone();
-        let track_duration_for_completion = track_duration;
+        let track_duration_for_completion = decoded_duration;
         let current_position_for_seek_listener = self.current_position_shared.clone();
         let was_paused = self.is_paused;
         tokio::spawn(async move {
@@ -1180,7 +1183,6 @@ impl PlaybackService {
                 .send_command(crate::playback::cpal_output::AudioCommand::Play);
         }
         if let Some(track) = &self.current_track {
-            trace!("Seek: Sending Seeked event with position: {:?}", position);
             let _ = self.progress_tx.send(PlaybackProgress::Seeked {
                 position,
                 track_id: track.id.clone(),
@@ -1456,6 +1458,36 @@ pub fn calculate_start_position(
     }
 }
 
+/// Validate a seek position against the decoded audio duration.
+///
+/// IMPORTANT: This must use `decoded_duration` (actual PCM length including pregap),
+/// NOT `track_duration` (metadata duration excluding pregap).
+///
+/// The UI sends seek positions that include pregap offset, so validation must
+/// compare against the full decoded audio length.
+pub fn validate_seek_position(
+    seek_position: std::time::Duration,
+    decoded_duration: std::time::Duration,
+) -> Result<(), SeekValidationError> {
+    if seek_position > decoded_duration {
+        Err(SeekValidationError::PastEnd {
+            requested: seek_position,
+            max_seekable: decoded_duration,
+        })
+    } else {
+        Ok(())
+    }
+}
+
+/// Error returned when seek validation fails
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SeekValidationError {
+    PastEnd {
+        requested: std::time::Duration,
+        max_seekable: std::time::Duration,
+    },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1521,6 +1553,82 @@ mod tests {
             start_pos,
             std::time::Duration::ZERO,
             "Natural transition without pregap should start at 0"
+        );
+    }
+
+    #[test]
+    fn test_seek_validation_within_bounds() {
+        // Seeking within decoded duration should succeed
+        let decoded_duration = std::time::Duration::from_secs(180);
+        let seek_position = std::time::Duration::from_secs(90);
+
+        assert!(
+            validate_seek_position(seek_position, decoded_duration).is_ok(),
+            "Seeking within bounds should succeed"
+        );
+    }
+
+    #[test]
+    fn test_seek_validation_at_end() {
+        // Seeking to exactly the end should succeed
+        let decoded_duration = std::time::Duration::from_secs(180);
+        let seek_position = std::time::Duration::from_secs(180);
+
+        assert!(
+            validate_seek_position(seek_position, decoded_duration).is_ok(),
+            "Seeking to exactly the end should succeed"
+        );
+    }
+
+    #[test]
+    fn test_seek_validation_past_end() {
+        // Seeking past the end should fail
+        let decoded_duration = std::time::Duration::from_secs(180);
+        let seek_position = std::time::Duration::from_secs(181);
+
+        let result = validate_seek_position(seek_position, decoded_duration);
+        assert!(result.is_err(), "Seeking past end should fail");
+
+        if let Err(SeekValidationError::PastEnd {
+            requested,
+            max_seekable,
+        }) = result
+        {
+            assert_eq!(requested, seek_position);
+            assert_eq!(max_seekable, decoded_duration);
+        }
+    }
+
+    #[test]
+    fn test_seek_validation_with_pregap_track() {
+        // For a track with 3 second pregap:
+        // - track_duration (metadata) = 180 seconds (excludes pregap)
+        // - decoded_duration (actual PCM) = 183 seconds (includes pregap)
+        //
+        // When user seeks to end of slider (180s adjusted), UI sends 180 + 3 = 183s
+        // This MUST be valid because decoded audio is 183 seconds long.
+        //
+        // BUG that was fixed: validation was using track_duration (180s) instead of
+        // decoded_duration (183s), causing seeks near the end to fail.
+        let track_duration_metadata = std::time::Duration::from_secs(180);
+        let pregap = std::time::Duration::from_secs(3);
+        let decoded_duration = track_duration_metadata + pregap; // 183 seconds
+
+        // User seeks to end of track (slider at max = 180s)
+        // UI adds pregap back: 180 + 3 = 183
+        let seek_position = std::time::Duration::from_secs(183);
+
+        // With the fix, this should succeed (183 <= 183)
+        assert!(
+            validate_seek_position(seek_position, decoded_duration).is_ok(),
+            "Seeking to end of pregap track should succeed when using decoded_duration"
+        );
+
+        // The bug was: validation used track_duration instead of decoded_duration
+        // This would have failed: 183 > 180
+        assert!(
+            validate_seek_position(seek_position, track_duration_metadata).is_err(),
+            "This shows the bug: using track_duration would incorrectly reject the seek"
         );
     }
 }
