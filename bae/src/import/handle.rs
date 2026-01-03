@@ -569,10 +569,11 @@ pub async fn extract_and_store_durations(
                     Ok(cue_sheet) => {
                         for (mapping, cue_track) in mappings.iter().zip(cue_sheet.tracks.iter()) {
                             let duration_ms =
-                                cue_track.audio_duration_ms().map(|d| d as i64).or_else(|| {
+                                cue_track.track_duration_ms().map(|d| d as i64).or_else(|| {
                                     // Last track: calculate from file duration
+                                    // Use start_time_ms (INDEX 01) not audio_start_ms (INDEX 00) to exclude pregap
                                     extract_duration_from_file(file_path).map(|file_duration_ms| {
-                                        file_duration_ms - cue_track.audio_start_ms() as i64
+                                        file_duration_ms - cue_track.start_time_ms as i64
                                     })
                                 });
                             library_manager

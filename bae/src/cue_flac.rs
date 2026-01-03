@@ -37,8 +37,15 @@ impl CueTrack {
     }
 
     /// Duration of audio bytes (None for last track)
+    /// This includes the pregap if present (from INDEX 00 to end)
     pub fn audio_duration_ms(&self) -> Option<u64> {
         self.end_time_ms.map(|end| end - self.audio_start_ms())
+    }
+
+    /// Duration of the track excluding pregap (None for last track)
+    /// This is the duration from INDEX 01 (actual track start) to end, used for display
+    pub fn track_duration_ms(&self) -> Option<u64> {
+        self.end_time_ms.map(|end| end - self.start_time_ms)
     }
 
     /// Pregap duration in ms (0 if no pregap)
@@ -878,12 +885,15 @@ FILE "test.flac" WAVE
         assert_eq!(track2.pregap_duration_ms(), 3000); // 3 seconds
                                                        // Duration: 9:31 - 2:46 = 405 seconds (includes pregap)
         assert_eq!(track2.audio_duration_ms(), Some(405000));
+        // Track duration excludes pregap: 9:31 - 2:49 = 402 seconds
+        assert_eq!(track2.track_duration_ms(), Some(402000));
 
         // Track 3: last track, no end time
         let track3 = &cue_sheet.tracks[2];
         assert_eq!(track3.audio_start_ms(), 571000); // 9:31
         assert_eq!(track3.pregap_duration_ms(), 0);
         assert_eq!(track3.audio_duration_ms(), None);
+        assert_eq!(track3.track_duration_ms(), None);
     }
 
     #[test]
