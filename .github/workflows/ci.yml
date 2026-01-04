@@ -101,10 +101,21 @@ jobs:
       with:
         vcpkgGitCommitId: '84bab45d415d22042bd0b9081aea57f362da3f35'
 
-    - name: Install Windows dependencies
+    - name: Install Windows dependencies (vcpkg)
       if: runner.os == 'Windows'
       run: |
-        vcpkg install libsodium:x64-windows libtorrent:x64-windows libdiscid:x64-windows libcdio:x64-windows boost:x64-windows
+        vcpkg install libsodium:x64-windows libtorrent:x64-windows libcdio:x64-windows boost:x64-windows
+      shell: pwsh
+
+    # libdiscid is not available in vcpkg, so we build it from source
+    - name: Build libdiscid from source (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        git clone --depth 1 https://github.com/metabrainz/libdiscid.git
+        cd libdiscid
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$env:VCPKG_ROOT/installed/x64-windows
+        cmake --build build --config Release
+        cmake --install build --config Release
       shell: pwsh
 
     - name: Set Windows environment
