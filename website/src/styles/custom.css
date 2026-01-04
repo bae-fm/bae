@@ -25,3 +25,17 @@
 /* Import fonts */
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
+
+/* Disable sidebar section collapsing */
+.sidebar-content details > summary {
+	pointer-events: none;
+	list-style: none;
+}
+.sidebar-content details > summary::marker,
+.sidebar-content details > summary::-webkit-details-marker {
+	display: none;
+}
+/* Hide the caret icon */
+.sidebar-content details > summary svg.caret {
+	display: none;
+}

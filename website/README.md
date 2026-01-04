@@ -1,6 +1,6 @@
-# Bae Website
+# bae Website
 
-Landing page and documentation for [Bae](https://github.com/baebaebaebaebae/bae).
+Landing page and documentation for [bae](https://github.com/baebaebaebaebae/bae).
 
 Built with [Astro](https://astro.build) and [Starlight](https://starlight.astro.build).
 

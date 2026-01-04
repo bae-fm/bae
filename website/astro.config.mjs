@@ -7,7 +7,7 @@ export default defineConfig({
 	site: 'https://bae.fm',
 	integrations: [
 		starlight({
-			title: 'Bae',
+			title: 'bae',
 			description: 'Your music library, beautifully organized',
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/baebaebaebaebae/bae' }
