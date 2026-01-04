@@ -420,10 +420,10 @@ fn NetworkInterfaceSection() -> Element {
 fn AboutSection() -> Element {
     rsx! {
         div { class: "bg-gray-800 rounded-lg p-6",
-            h3 { class: "text-lg font-medium text-white mb-4", "About BitTorrent in BAE" }
+            h3 { class: "text-lg font-medium text-white mb-4", "About BitTorrent in bae" }
             div { class: "space-y-3 text-sm text-gray-400",
                 p {
-                    "BAE uses BitTorrent to download music from torrent files or magnet links. "
+                    "bae uses BitTorrent to download music from torrent files or magnet links. "
                     "Downloaded files are imported into your library using your selected storage profile."
                 }
                 p {
