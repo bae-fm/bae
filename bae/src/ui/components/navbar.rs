@@ -1,6 +1,7 @@
 use super::dialog::GlobalDialog;
 use super::queue_sidebar::QueueSidebar;
 use super::NowPlayingBar;
+#[cfg(target_os = "macos")]
 use super::TitleBar;
 use crate::ui::Route;
 use dioxus::prelude::*;
