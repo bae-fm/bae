@@ -252,13 +252,13 @@ jobs:
 
     - name: Bundle dylibs into app
       working-directory: ./bae
-      run: ./scripts/bundle_dylibs.sh target/dx/bae/bundle/macos/bundle/macos/Bae.app
+      run: ./scripts/bundle_dylibs.sh target/dx/bae/bundle/macos/bundle/macos/bae.app
 
     - name: Upload unsigned build (backup)
       uses: actions/upload-artifact@v4
       with:
-        name: Bae-macOS-unsigned
-        path: bae/target/dx/bae/bundle/macos/bundle/macos/Bae.app
+        name: bae-macOS-unsigned
+        path: bae/target/dx/bae/bundle/macos/bundle/macos/bae.app
         retention-days: 7
 
     - name: Import Apple certificate
@@ -282,7 +282,7 @@ jobs:
       env:
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        APP_PATH="bae/target/dx/bae/bundle/macos/bundle/macos/Bae.app"
+        APP_PATH="bae/target/dx/bae/bundle/macos/bundle/macos/bae.app"
         IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
         echo "Using signing identity: $IDENTITY"
         
@@ -297,8 +297,8 @@ jobs:
       env:
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        APP_PATH="bae/target/dx/bae/bundle/macos/bundle/macos/Bae.app"
-        DMG_PATH="bae/target/Bae.dmg"
+        APP_PATH="bae/target/dx/bae/bundle/macos/bundle/macos/bae.app"
+        DMG_PATH="bae/target/bae.dmg"
         IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
         
         # Create temporary directory for DMG contents
@@ -312,7 +312,7 @@ jobs:
         ln -s /Applications "$DMG_TEMP/Applications"
         
         # Create DMG from temp directory
-        hdiutil create -volname "Bae" -srcfolder "$DMG_TEMP" -ov -format UDZO "$DMG_PATH"
+        hdiutil create -volname "bae" -srcfolder "$DMG_TEMP" -ov -format UDZO "$DMG_PATH"
         codesign --force --sign "$IDENTITY" "$DMG_PATH"
 
     - name: Notarize DMG
@@ -321,7 +321,7 @@ jobs:
         APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        DMG_PATH="bae/target/Bae.dmg"
+        DMG_PATH="bae/target/bae.dmg"
         
         xcrun notarytool submit "$DMG_PATH" \
           --apple-id "$APPLE_ID" \
@@ -356,8 +356,8 @@ jobs:
     - name: Upload signed DMG
       uses: actions/upload-artifact@v4
       with:
-        name: Bae-macOS-signed
-        path: bae/target/Bae.dmg
+        name: bae-macOS-signed
+        path: bae/target/bae.dmg
         retention-days: 30
 
     # Screenshot upload disabled - uncomment to re-enable
@@ -374,7 +374,7 @@ jobs:
       with:
         tag_name: v${{ needs.check-version.outputs.version }}
         files: |
-          bae/target/Bae.dmg
+          bae/target/bae.dmg
           # bae/screenshots/*.png  # Screenshots disabled
         generate_release_notes: true
       env:

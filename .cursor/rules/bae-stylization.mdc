@@ -10,8 +10,8 @@ The app name "bae" is always stylized in lowercase as "bae", never "Bae" or "BAE
 - Button text
 - Alt text
 - Meta descriptions
+- File names and directory names (e.g., "bae.dmg", "bae Library")
+- URLs and protocol names (e.g., "bae://") should use lowercase
 
 Exceptions:
-- File names and directory names may use any case (e.g., "Bae.dmg", "Bae Library")
 - Code identifiers (variables, functions, types) may use any case as appropriate for the language's conventions
-- URLs and protocol names (e.g., "bae://") should use lowercase
