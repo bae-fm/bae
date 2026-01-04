@@ -1,0 +1,27 @@
+/* Custom theme for Bae docs */
+:root {
+	--sl-color-accent-low: #1a1625;
+	--sl-color-accent: #8b5cf6;
+	--sl-color-accent-high: #c4b5fd;
+	--sl-color-white: #ffffff;
+	--sl-color-gray-1: #eceef2;
+	--sl-color-gray-2: #c0c2c7;
+	--sl-color-gray-3: #888b96;
+	--sl-color-gray-4: #545861;
+	--sl-color-gray-5: #353841;
+	--sl-color-gray-6: #24272f;
+	--sl-color-black: #17181c;
+	
+	--sl-font: 'Instrument Sans', system-ui, sans-serif;
+	--sl-font-mono: 'JetBrains Mono', monospace;
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #ede9fe;
+	--sl-color-accent: #7c3aed;
+	--sl-color-accent-high: #4c1d95;
+}
+
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+

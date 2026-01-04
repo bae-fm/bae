@@ -18,7 +18,6 @@ jobs:
   # Check if this push should trigger a release
   check-version:
     name: Check Version
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.check.outputs.should_release }}
@@ -31,6 +30,7 @@ jobs:
 
     - name: Check if version already released
       id: check
+      if: github.ref == 'refs/heads/main'
       run: |
         VERSION=$(grep '^version' bae/Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
         echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -42,6 +42,32 @@ jobs:
           echo "::notice::New version $VERSION will be released"
           echo "should_release=true" >> $GITHUB_OUTPUT
         fi
+
+    - name: Set defaults for non-main branches
+      if: github.ref != 'refs/heads/main'
+      run: |
+        echo "should_release=false" >> $GITHUB_OUTPUT
+        echo "version=" >> $GITHUB_OUTPUT
+
+  # Check if website files changed
+  check-website:
+    name: Check Website Changes
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changes.outputs.website }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+
+    - name: Check for website changes
+      id: changes
+      uses: dorny/paths-filter@v2
+      with:
+        filters: |
+          website:
+            - 'website/**'
 
   test:
     name: Test
@@ -190,10 +216,16 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: bae/package-lock.json
+        cache-dependency-path: |
+          bae/package-lock.json
+          website/package-lock.json
 
-    - name: Install Node dependencies
+    - name: Install Node dependencies (app)
       working-directory: ./bae
+      run: npm ci
+
+    - name: Install Node dependencies (website)
+      working-directory: ./website
       run: npm ci
 
     - name: Install Dioxus CLI
@@ -332,3 +364,95 @@ jobs:
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Generate screenshots when website files change or on release
+  generate-screenshots:
+    name: Generate Screenshots
+    if: |
+      github.ref == 'refs/heads/main' &&
+      (needs.check-website.outputs.changed == 'true' || needs.check-version.outputs.should_release == 'true')
+    runs-on: macos-latest
+    needs: [check-website, check-version]
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install macOS dependencies
+      run: |
+        brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost
+
+    - name: Install Rust (uses rust-toolchain.toml)
+      run: rustup show
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: bae -> target
+        shared-key: rust-cache
+
+    - name: Build bae app
+      working-directory: ./bae
+      run: cargo build --release --bin bae
+
+    - name: Generate screenshots
+      working-directory: ./bae
+      env:
+        BAE_SCREENSHOT_FIXTURES_DIR: ../website/fixtures/screenshots
+        BAE_SCREENSHOT_OUTPUT_DIR: ../website/public/screenshots
+      run: cargo run --release --bin generate_screenshots
+
+    - name: Upload screenshots
+      uses: actions/upload-artifact@v4
+      with:
+        name: website-screenshots
+        path: website/public/screenshots/
+        retention-days: 7
+
+  # Deploy website when website files change or on release
+  deploy-website:
+    name: Deploy Website
+    if: |
+      github.ref == 'refs/heads/main' &&
+      (needs.check-website.outputs.changed == 'true' || needs.check-version.outputs.should_release == 'true')
+    runs-on: ubuntu-latest
+    needs: [check-website, check-version, generate-screenshots]
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download screenshots
+      uses: actions/download-artifact@v4
+      with:
+        name: website-screenshots
+        path: website/public/screenshots/
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: website/package-lock.json
+
+    - name: Install Node dependencies
+      working-directory: ./website
+      run: npm ci
+
+    - name: Build website
+      working-directory: ./website
+      run: npm run build
+
+    - name: Deploy website to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: ./website
+        scope: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-args: '--prod'

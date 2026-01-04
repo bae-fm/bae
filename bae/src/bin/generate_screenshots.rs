@@ -109,9 +109,14 @@ async fn load_fixtures(
 }
 
 fn fixtures_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("fixtures")
-        .join("screenshots")
+    // Allow override via environment variable for website screenshot generation
+    if let Ok(path) = std::env::var("BAE_SCREENSHOT_FIXTURES_DIR") {
+        PathBuf::from(path)
+    } else {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("fixtures")
+            .join("screenshots")
+    }
 }
 
 const SCREENSHOT_DELAY_MS: u64 = 8000; // Give app time to fully load library
@@ -145,7 +150,12 @@ fn main() {
     });
 
     // Create output directory
-    let output_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("screenshots");
+    // Allow override via environment variable for website screenshot generation
+    let output_dir = if let Ok(path) = std::env::var("BAE_SCREENSHOT_OUTPUT_DIR") {
+        PathBuf::from(path)
+    } else {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("screenshots")
+    };
     std::fs::create_dir_all(&output_dir).expect("Failed to create output dir");
 
     println!("Screenshots will be saved to {:?}", output_dir);

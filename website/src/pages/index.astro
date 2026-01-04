@@ -1,0 +1,571 @@
+---
+import { Image } from 'astro:assets';
+---
+
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta name="description" content="Bae - Your music library, beautifully organized. Import from local files, CDs, or torrents. Rich metadata from Discogs and MusicBrainz." />
+	<title>Bae - Your Music Library</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+</head>
+<body>
+	<div class="noise"></div>
+	
+	<nav>
+		<a href="/" class="logo">bae</a>
+		<div class="nav-links">
+			<a href="/getting-started/installation">Docs</a>
+			<a href="https://github.com/baebaebaebaebae/bae" target="_blank">GitHub</a>
+		</div>
+	</nav>
+
+	<main>
+		<section class="hero">
+			<div class="hero-content">
+				<h1>Your music library,<br/><span class="accent">beautifully organized</span></h1>
+				<p class="tagline">Import from anywhere. Enrich with metadata. Own your collection.</p>
+				<div class="cta-group">
+					<a href="https://github.com/baebaebaebaebae/bae/releases/latest/download/Bae.dmg" class="btn primary">
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+						</svg>
+						Download for macOS
+					</a>
+					<a href="/getting-started/installation" class="btn secondary">Read the docs</a>
+				</div>
+				<p class="platform-note">Windows & Linux coming soon</p>
+			</div>
+			<div class="hero-visual">
+				<!-- Screenshot generated locally -->
+				<img 
+					src="/screenshots/library-grid.png" 
+					alt="Bae music library showing album grid view"
+					class="app-screenshot"
+					onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+				/>
+				<!-- Fallback placeholder if screenshot not available -->
+				<div class="window-frame" style="display: none;">
+					<div class="window-controls">
+						<span></span><span></span><span></span>
+					</div>
+					<div class="window-content">
+						<div class="placeholder-app">
+							<div class="sidebar">
+								<div class="sidebar-item active"></div>
+								<div class="sidebar-item"></div>
+								<div class="sidebar-item"></div>
+								<div class="sidebar-item"></div>
+							</div>
+							<div class="content-area">
+								<div class="album-grid">
+									<div class="album"></div>
+									<div class="album"></div>
+									<div class="album"></div>
+									<div class="album"></div>
+									<div class="album"></div>
+									<div class="album"></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="features">
+			<h2>Everything you need</h2>
+			<div class="feature-grid">
+				<div class="feature">
+					<div class="feature-icon">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+							<polyline points="9 22 9 12 15 12 15 22"/>
+						</svg>
+					</div>
+					<h3>Local-first</h3>
+					<p>Your music stays on your machine. No cloud required, no subscriptions, no lock-in.</p>
+				</div>
+				<div class="feature">
+					<div class="feature-icon">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<circle cx="12" cy="12" r="10"/>
+							<circle cx="12" cy="12" r="3"/>
+						</svg>
+					</div>
+					<h3>CD Ripping</h3>
+					<p>Rip your CDs to FLAC with automatic metadata lookup from MusicBrainz.</p>
+				</div>
+				<div class="feature">
+					<div class="feature-icon">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+							<polyline points="7 10 12 15 17 10"/>
+							<line x1="12" y1="15" x2="12" y2="3"/>
+						</svg>
+					</div>
+					<h3>Torrent Import</h3>
+					<p>Import from magnet links or .torrent files. Built-in client, no extra software needed.</p>
+				</div>
+				<div class="feature">
+					<div class="feature-icon">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+							<polyline points="14 2 14 8 20 8"/>
+							<line x1="16" y1="13" x2="8" y2="13"/>
+							<line x1="16" y1="17" x2="8" y2="17"/>
+						</svg>
+					</div>
+					<h3>Rich Metadata</h3>
+					<p>Automatic lookup from Discogs and MusicBrainz. Album art, credits, release info.</p>
+				</div>
+				<div class="feature">
+					<div class="feature-icon">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+							<line x1="3" y1="9" x2="21" y2="9"/>
+							<line x1="9" y1="21" x2="9" y2="9"/>
+						</svg>
+					</div>
+					<h3>Smart Organization</h3>
+					<p>Browse by artist, album, genre, year. Filter and search your entire collection instantly.</p>
+				</div>
+				<div class="feature">
+					<div class="feature-icon">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<polyline points="16 18 22 12 16 6"/>
+							<polyline points="8 6 2 12 8 18"/>
+						</svg>
+					</div>
+					<h3>Open Source</h3>
+					<p>Built with Rust and Dioxus. MIT licensed. Contribute on GitHub.</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="download-cta">
+			<h2>Ready to organize your music?</h2>
+			<p>Download Bae for free. No account required.</p>
+			<a href="https://github.com/baebaebaebaebae/bae/releases/latest/download/Bae.dmg" class="btn primary large">
+				Download for macOS
+			</a>
+		</section>
+	</main>
+
+	<footer>
+		<div class="footer-content">
+			<span class="footer-logo">bae</span>
+			<div class="footer-links">
+				<a href="/getting-started/installation">Docs</a>
+				<a href="https://github.com/baebaebaebaebae/bae" target="_blank">GitHub</a>
+				<a href="https://github.com/baebaebaebaebae/bae/releases" target="_blank">Releases</a>
+			</div>
+		</div>
+	</footer>
+</body>
+</html>
+
+<style>
+	* {
+		margin: 0;
+		padding: 0;
+		box-sizing: border-box;
+	}
+
+	:root {
+		--bg: #0a0a0c;
+		--bg-subtle: #111114;
+		--text: #e8e8ed;
+		--text-muted: #8b8b96;
+		--accent: #a855f7;
+		--accent-dim: #7c3aed;
+		--border: #1f1f24;
+	}
+
+	html {
+		font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+		background: var(--bg);
+		color: var(--text);
+		scroll-behavior: smooth;
+	}
+
+	body {
+		min-height: 100vh;
+		position: relative;
+		overflow-x: hidden;
+	}
+
+	.noise {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		opacity: 0.03;
+		background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+		z-index: 1000;
+	}
+
+	nav {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1.5rem 3rem;
+		max-width: 1400px;
+		margin: 0 auto;
+	}
+
+	.logo {
+		font-family: 'DM Serif Display', serif;
+		font-size: 1.5rem;
+		color: var(--text);
+		text-decoration: none;
+		letter-spacing: -0.02em;
+	}
+
+	.nav-links {
+		display: flex;
+		gap: 2rem;
+	}
+
+	.nav-links a {
+		color: var(--text-muted);
+		text-decoration: none;
+		font-size: 0.9rem;
+		transition: color 0.2s;
+	}
+
+	.nav-links a:hover {
+		color: var(--text);
+	}
+
+	main {
+		max-width: 1400px;
+		margin: 0 auto;
+		padding: 0 3rem;
+	}
+
+	.hero {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 4rem;
+		align-items: center;
+		min-height: 80vh;
+		padding: 4rem 0;
+	}
+
+	h1 {
+		font-family: 'DM Serif Display', serif;
+		font-size: 4rem;
+		font-weight: 400;
+		line-height: 1.1;
+		letter-spacing: -0.02em;
+		margin-bottom: 1.5rem;
+	}
+
+	h1 .accent {
+		background: linear-gradient(135deg, var(--accent) 0%, #ec4899 100%);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+	}
+
+	.tagline {
+		font-size: 1.25rem;
+		color: var(--text-muted);
+		margin-bottom: 2rem;
+		max-width: 400px;
+	}
+
+	.cta-group {
+		display: flex;
+		gap: 1rem;
+		margin-bottom: 1rem;
+	}
+
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.875rem 1.5rem;
+		border-radius: 8px;
+		text-decoration: none;
+		font-weight: 500;
+		font-size: 0.95rem;
+		transition: all 0.2s;
+	}
+
+	.btn.primary {
+		background: var(--accent);
+		color: white;
+	}
+
+	.btn.primary:hover {
+		background: var(--accent-dim);
+		transform: translateY(-1px);
+	}
+
+	.btn.secondary {
+		background: var(--bg-subtle);
+		color: var(--text);
+		border: 1px solid var(--border);
+	}
+
+	.btn.secondary:hover {
+		background: var(--border);
+	}
+
+	.btn.large {
+		padding: 1rem 2rem;
+		font-size: 1.1rem;
+	}
+
+	.platform-note {
+		font-size: 0.85rem;
+		color: var(--text-muted);
+	}
+
+	.hero-visual {
+		display: flex;
+		justify-content: center;
+	}
+
+	.app-screenshot {
+		width: 100%;
+		max-width: 600px;
+		border-radius: 12px;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+	}
+
+	.window-frame {
+		background: var(--bg-subtle);
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		overflow: hidden;
+		width: 100%;
+		max-width: 500px;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+	}
+
+	.window-controls {
+		display: flex;
+		gap: 8px;
+		padding: 12px 16px;
+		background: var(--border);
+	}
+
+	.window-controls span {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: #3f3f46;
+	}
+
+	.window-content {
+		padding: 0;
+	}
+
+	.placeholder-app {
+		display: flex;
+		height: 300px;
+	}
+
+	.sidebar {
+		width: 60px;
+		background: #18181b;
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.sidebar-item {
+		width: 36px;
+		height: 36px;
+		border-radius: 8px;
+		background: #27272a;
+	}
+
+	.sidebar-item.active {
+		background: var(--accent-dim);
+	}
+
+	.content-area {
+		flex: 1;
+		padding: 16px;
+		background: var(--bg);
+	}
+
+	.album-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 12px;
+	}
+
+	.album {
+		aspect-ratio: 1;
+		background: linear-gradient(135deg, #27272a 0%, #18181b 100%);
+		border-radius: 6px;
+	}
+
+	.album:nth-child(1) { background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%); }
+	.album:nth-child(2) { background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); }
+	.album:nth-child(3) { background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%); }
+	.album:nth-child(4) { background: linear-gradient(135deg, #10b981 0%, #047857 100%); }
+	.album:nth-child(5) { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
+
+	.features {
+		padding: 6rem 0;
+	}
+
+	.features h2 {
+		font-family: 'DM Serif Display', serif;
+		font-size: 2.5rem;
+		font-weight: 400;
+		text-align: center;
+		margin-bottom: 4rem;
+	}
+
+	.feature-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 2rem;
+	}
+
+	.feature {
+		padding: 2rem;
+		background: var(--bg-subtle);
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		transition: border-color 0.2s;
+	}
+
+	.feature:hover {
+		border-color: #2f2f36;
+	}
+
+	.feature-icon {
+		width: 48px;
+		height: 48px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: linear-gradient(135deg, var(--accent-dim) 0%, var(--accent) 100%);
+		border-radius: 10px;
+		margin-bottom: 1.25rem;
+		color: white;
+	}
+
+	.feature h3 {
+		font-size: 1.1rem;
+		font-weight: 600;
+		margin-bottom: 0.5rem;
+	}
+
+	.feature p {
+		color: var(--text-muted);
+		font-size: 0.95rem;
+		line-height: 1.6;
+	}
+
+	.download-cta {
+		text-align: center;
+		padding: 6rem 0;
+		border-top: 1px solid var(--border);
+	}
+
+	.download-cta h2 {
+		font-family: 'DM Serif Display', serif;
+		font-size: 2.5rem;
+		font-weight: 400;
+		margin-bottom: 1rem;
+	}
+
+	.download-cta p {
+		color: var(--text-muted);
+		margin-bottom: 2rem;
+	}
+
+	footer {
+		border-top: 1px solid var(--border);
+		padding: 2rem 3rem;
+	}
+
+	.footer-content {
+		max-width: 1400px;
+		margin: 0 auto;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.footer-logo {
+		font-family: 'DM Serif Display', serif;
+		font-size: 1.25rem;
+		color: var(--text-muted);
+	}
+
+	.footer-links {
+		display: flex;
+		gap: 2rem;
+	}
+
+	.footer-links a {
+		color: var(--text-muted);
+		text-decoration: none;
+		font-size: 0.9rem;
+		transition: color 0.2s;
+	}
+
+	.footer-links a:hover {
+		color: var(--text);
+	}
+
+	@media (max-width: 1024px) {
+		.hero {
+			grid-template-columns: 1fr;
+			text-align: center;
+			min-height: auto;
+		}
+
+		h1 {
+			font-size: 3rem;
+		}
+
+		.tagline {
+			max-width: none;
+		}
+
+		.cta-group {
+			justify-content: center;
+		}
+
+		.feature-grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+
+	@media (max-width: 640px) {
+		nav, main, footer {
+			padding-left: 1.5rem;
+			padding-right: 1.5rem;
+		}
+
+		h1 {
+			font-size: 2.25rem;
+		}
+
+		.feature-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.cta-group {
+			flex-direction: column;
+		}
+	}
+</style>
+

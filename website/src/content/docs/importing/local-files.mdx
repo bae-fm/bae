@@ -1,0 +1,55 @@
+---
+title: Local Files
+description: Import music from your computer
+---
+
+Import music files you already have on your computer.
+
+## Supported formats
+
+Bae supports common audio formats:
+
+- **Lossless**: FLAC, WAV, AIFF, ALAC
+- **Lossy**: MP3, AAC, OGG, Opus
+
+## How to import
+
+1. Click **Import** in the sidebar
+2. Select **Local Files**
+3. Choose a folder containing an album
+4. Bae scans and identifies the tracks
+
+## Metadata matching
+
+After scanning, Bae shows potential matches from:
+
+- **Discogs** - Great for vinyl releases, credits, and catalog numbers
+- **MusicBrainz** - Comprehensive database with detailed track info
+
+Select the release that best matches your files. Bae uses this to:
+
+- Download album artwork
+- Fill in artist, album, genre, year
+- Get track names and durations
+- Store release-specific info (barcode, label, etc.)
+
+## File organization
+
+When you import, Bae copies files to your library folder organized as:
+
+```
+~/Music/Bae Library/
+  Artist Name/
+    Album Title (Year)/
+      01 - Track Name.flac
+      02 - Track Name.flac
+      ...
+      cover.jpg
+```
+
+Your original files are left untouched.
+
+## Bulk import
+
+You can select a folder containing multiple albums. Bae will scan recursively and let you import each album individually.
+

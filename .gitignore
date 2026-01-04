@@ -24,6 +24,16 @@ node_modules/
 # Generated Tailwind CSS
 bae/assets/tailwind.css
 
+# Website build artifacts
+website/dist/
+website/.astro/
+website/.vercel/
+website/public/screenshots/
+
+# Fixture node_modules
+bae/fixtures/screenshots/node_modules/
+website/fixtures/screenshots/node_modules/
+
 # Development environment
 .env
 
