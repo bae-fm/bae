@@ -78,13 +78,9 @@ fn configure_logging() {
         .with_target(false)
         .with_file(true);
 
-    // Always log to console. In release mode, also log to macOS Console.app.
-    if config::Config::is_dev_mode() {
-        tracing_subscriber::registry()
-            .with(env_filter)
-            .with(fmt_layer)
-            .init();
-    } else {
+    // Always log to console. In release mode on macOS, also log to Console.app.
+    #[cfg(target_os = "macos")]
+    if !config::Config::is_dev_mode() {
         let oslog_layer = tracing_oslog::OsLogger::new("com.bae.app", "default");
 
         tracing_subscriber::registry()
@@ -92,7 +88,13 @@ fn configure_logging() {
             .with(fmt_layer)
             .with(oslog_layer)
             .init();
+        return;
     }
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(fmt_layer)
+        .init();
 }
 
 fn main() {
