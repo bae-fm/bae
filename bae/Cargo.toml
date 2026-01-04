@@ -28,11 +28,9 @@ serde_yaml = "0.9"
 tokio = { version = "1.0", features = ["full"] }
 thiserror = "1.0"
 keyring = { version = "3.6.3", features = ["apple-native"] }
-rfd = "0.16"
-# ashpd is pulled in transitively by rfd on Linux. Adding it directly ensures Cargo's feature
-# unification uses only tokio (not async-std), preventing compilation conflicts.
-# Note: Must match rfd's version requirement (0.11.0) to avoid version conflicts.
-ashpd = { version = "0.11", default-features = false, features = ["tokio"] }
+# On Linux, rfd's default features include async-std for ashpd. Since we use tokio,
+# we disable defaults and explicitly enable the tokio feature instead.
+rfd = { version = "0.16", default-features = false, features = ["xdg-portal", "tokio"] }
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
 uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
