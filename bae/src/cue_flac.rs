@@ -303,7 +303,7 @@ impl CueFlacProcessor {
     /// which is more reliable than manual sync-code scanning because libFLAC
     /// properly validates frame headers and CRCs.
     pub fn build_dense_seektable(file_data: &[u8], _flac_info: &FlacInfo) -> DenseSeektable {
-        match crate::flac_decoder::scan_flac_frames(file_data) {
+        match crate::flac_frame_scanner::scan_flac_frames(file_data) {
             Ok(scan_result) => {
                 let entries: Vec<SeekPoint> = scan_result
                     .seektable

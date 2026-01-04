@@ -16,6 +16,7 @@ mod encryption;
 mod fixtures;
 mod flac_decoder;
 mod flac_encoder;
+mod flac_frame_scanner;
 mod import;
 mod library;
 mod media_controls;
