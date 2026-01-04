@@ -684,29 +684,6 @@ async fn test_cue_flac_builds_dense_seektable() {
         .await
         .expect("get tracks");
 
-    // Check that the stored seektable is dense
-    let track1 = &tracks[0];
-    let audio_format = library_manager
-        .get_audio_format_by_track_id(&track1.id)
-        .await
-        .expect("get audio format")
-        .expect("audio format exists");
-
-    let stored_seektable: Vec<(u64, u64)> = audio_format
-        .flac_seektable
-        .as_ref()
-        .map(|data| bincode::deserialize(data).expect("deserialize seektable"))
-        .unwrap_or_default();
-
-    info!("Stored seektable in DB: {} entries", stored_seektable.len());
-
-    assert!(
-        stored_seektable.len() > 50,
-        "Stored seektable should be dense (got {} entries), not sparse. \
-         We build our own seektable for frame-accurate seeking.",
-        stored_seektable.len()
-    );
-
     // Verify track 2 byte position is frame-accurate
     // Track 2 starts at 00:08:00 (8 seconds) = 8 * 44100 = 352800 samples
     // With frame-accurate positioning, byte offset should be within one frame (~93ms)

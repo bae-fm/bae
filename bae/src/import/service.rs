@@ -823,19 +823,10 @@ impl ImportService {
                         flac_info.audio_data_end,
                     );
 
-                // Serialize dense seektable for storage (used for seeking during playback)
-                let seektable_tuples: Vec<(u64, u64)> = dense_seektable
-                    .iter()
-                    .map(|sp| (sp.sample_number, sp.stream_offset))
-                    .collect();
-                let flac_seektable = bincode::serialize(&seektable_tuples)
-                    .map_err(|e| format!("Failed to serialize seektable: {}", e))?;
-
                 let audio_format = DbAudioFormat::new_with_byte_offsets(
                     &track_file.db_track_id,
                     "flac",
                     Some(flac_headers.clone()),
-                    Some(flac_seektable),
                     true, // needs_headers for CUE/FLAC
                     start_byte,
                     end_byte,

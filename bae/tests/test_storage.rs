@@ -942,10 +942,9 @@ async fn run_real_album_test(album_dir: PathBuf, location: StorageLocation, encr
             .expect("Failed to get audio format");
         if let Some(af) = audio_format {
             info!(
-                "    audio_format: {}, flac_headers={}, seektable={}",
+                "    audio_format: {}, flac_headers={}",
                 af.format,
-                af.flac_headers.is_some(),
-                af.flac_seektable.is_some()
+                af.flac_headers.is_some()
             );
         } else {
             info!("    audio_format: None");

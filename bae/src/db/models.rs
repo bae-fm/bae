@@ -244,13 +244,9 @@ pub struct DbAudioFormat {
     pub track_id: String,
     pub format: String,
     pub flac_headers: Option<Vec<u8>>,
-    /// Dense seektable built during import by scanning every FLAC frame (~93ms precision).
-    /// Stored as bincode-serialized Vec<(sample_number, byte_offset)>.
-    /// Used for smooth seeking during playback and accurate track boundary positioning.
-    pub flac_seektable: Option<Vec<u8>>,
     pub needs_headers: bool,
     /// Start byte offset within the source file (for CUE/FLAC tracks).
-    /// Calculated using the dense seektable for frame-accurate positioning.
+    /// Calculated at import time using a dense seektable for frame-accurate positioning.
     pub start_byte_offset: Option<i64>,
     /// End byte offset within the source file (for CUE/FLAC tracks)
     pub end_byte_offset: Option<i64>,
@@ -522,28 +518,6 @@ impl DbAudioFormat {
             track_id,
             format,
             flac_headers,
-            None,
-            needs_headers,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )
-    }
-
-    pub fn new_with_seektable(
-        track_id: &str,
-        format: &str,
-        flac_headers: Option<Vec<u8>>,
-        flac_seektable: Option<Vec<u8>>,
-        needs_headers: bool,
-    ) -> Self {
-        Self::new_full(
-            track_id,
-            format,
-            flac_headers,
-            flac_seektable,
             needs_headers,
             None,
             None,
@@ -557,7 +531,6 @@ impl DbAudioFormat {
         track_id: &str,
         format: &str,
         flac_headers: Option<Vec<u8>>,
-        flac_seektable: Option<Vec<u8>>,
         needs_headers: bool,
         start_byte_offset: i64,
         end_byte_offset: i64,
@@ -569,7 +542,6 @@ impl DbAudioFormat {
             track_id,
             format,
             flac_headers,
-            flac_seektable,
             needs_headers,
             Some(start_byte_offset),
             Some(end_byte_offset),
@@ -583,7 +555,6 @@ impl DbAudioFormat {
         track_id: &str,
         format: &str,
         flac_headers: Option<Vec<u8>>,
-        flac_seektable: Option<Vec<u8>>,
         needs_headers: bool,
         start_byte_offset: Option<i64>,
         end_byte_offset: Option<i64>,
@@ -596,7 +567,6 @@ impl DbAudioFormat {
             track_id: track_id.to_string(),
             format: format.to_string(),
             flac_headers,
-            flac_seektable,
             needs_headers,
             start_byte_offset,
             end_byte_offset,
