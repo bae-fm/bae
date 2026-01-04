@@ -388,6 +388,17 @@ jobs:
       run: |
         brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost
 
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: bae/package-lock.json
+
+    - name: Install Node dependencies (for tailwindcss)
+      working-directory: ./bae
+      run: npm ci
+
     - name: Install Rust (uses rust-toolchain.toml)
       run: rustup show
 

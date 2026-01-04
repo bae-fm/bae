@@ -1,0 +1,44 @@
+---
+title: Storage Profiles
+description: Creating and managing storage profiles
+---
+
+Storage profiles are templates that define where and how to store music. You create profiles in Settings, then select one when importing releases.
+
+## Creating a Profile
+
+Go to **Settings → Storage** and click **Add Profile**. Configure:
+
+- **Name**: A label for this profile (e.g., "Local SSD", "AWS Backup")
+- **Type**: Local folder or S3-compatible storage
+- **Location**: The folder path or S3 bucket details
+- **Encryption**: Whether to encrypt files (recommended for cloud storage)
+
+## Profile as Template
+
+When you import a release and select a storage profile, bae copies that profile's settings to the release. The release now has its own independent storage configuration.
+
+**Important**: If you later update a profile, existing releases using that profile are not affected. Their storage configuration was set at import time.
+
+This design means:
+- You can safely edit profiles without breaking existing imports
+- Each release is self-contained with its own storage settings
+- You can delete a profile after importing without losing access to those releases
+
+## Changing a Release's Storage
+
+To move a release to different storage:
+
+1. Open the release in your library
+2. Go to release settings
+3. Select a different storage profile (or "Unstored" to remove from managed storage)
+4. Bae migrates the files in the background
+
+Migration copies files to the new location, verifies them, then removes the old copies. Your music remains playable throughout.
+
+## Unstored Releases
+
+Choosing "Unstored" means bae stops managing the files for that release. Use this for:
+- Music you manage yourself
+- Releases you want to remove from cloud storage
+- Temporary imports you don't want to keep

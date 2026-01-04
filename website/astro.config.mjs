@@ -30,6 +30,13 @@ export default defineConfig({
 					],
 				},
 				{
+					label: 'Storage',
+					items: [
+						{ label: 'Overview', slug: 'storage/overview' },
+						{ label: 'Profiles', slug: 'storage/profiles' },
+					],
+				},
+				{
 					label: 'Library',
 					items: [
 						{ label: 'Browsing', slug: 'library/browsing' },
