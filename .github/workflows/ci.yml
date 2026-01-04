@@ -78,7 +78,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        # Windows disabled: libcdio and libdiscid not available in vcpkg
+        os: [macos-latest, ubuntu-latest]
 
     steps:
     - name: Checkout code
