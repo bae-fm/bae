@@ -2,7 +2,7 @@
 //!
 //! This binary:
 //! 1. Creates a temp database with fixture data
-//! 2. Launches the Bae app
+//! 2. Launches the bae app
 //! 3. Captures screenshots of different views
 //!
 //! Usage: cargo run --release --bin generate_screenshots
@@ -176,13 +176,13 @@ fn main() {
     std::env::set_var("BAE_S3_SECRET_KEY", "dummy");
 
     // Launch the app - check multiple possible locations
-    println!("Launching Bae app...");
+    println!("Launching bae app...");
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
     // Possible binary locations (in order of preference)
     let possible_paths = [
         // After dx bundle: binary inside .app bundle
-        manifest_dir.join("target/dx/bae/bundle/macos/bundle/macos/Bae.app/Contents/MacOS/Bae"),
+        manifest_dir.join("target/dx/bae/bundle/macos/bundle/macos/bae.app/Contents/MacOS/bae"),
         // After cargo build --release
         manifest_dir.join("target/release/bae"),
     ];
@@ -254,7 +254,7 @@ fn capture_screenshots(output_dir: &std::path::Path, _app: &mut Child) {
                 .expect("Failed to run screencapture")
         } else {
             // Fallback: capture entire screen
-            println!("  Warning: Could not find Bae window, capturing full screen");
+            println!("  Warning: Could not find bae window, capturing full screen");
             Command::new("screencapture")
                 .args(["-x", "-t", "png", output_path.to_str().unwrap()])
                 .status()
@@ -280,7 +280,7 @@ let options = CGWindowListOption(arrayLiteral: .optionOnScreenOnly)
 if let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] {
     for window in windowList {
         if let name = window[kCGWindowOwnerName as String] as? String,
-           (name.contains("Bae") || name.contains("bae")),
+           name.contains("bae"),
            let num = window[kCGWindowNumber as String] as? Int {
             print(num)
             break
@@ -294,13 +294,13 @@ if let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[S
     if output.status.success() {
         let wid = String::from_utf8_lossy(&output.stdout).trim().to_string();
         if !wid.is_empty() {
-            println!("Found Bae CGWindowID: {}", wid);
+            println!("Found bae CGWindowID: {}", wid);
             return Some(wid);
         }
     }
 
     eprintln!(
-        "Warning: Could not get Bae CGWindowID: {}",
+        "Warning: Could not get bae CGWindowID: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     None
@@ -311,7 +311,7 @@ fn resize_bae_window(width: u32, height: u32) {
     let script = format!(
         r#"
         tell application "System Events"
-            set baeProcess to first process whose name is "bae" or name is "Bae"
+            set baeProcess to first process whose name is "bae"
             tell baeProcess
                 set frontmost to true
                 if (count of windows) > 0 then
@@ -328,7 +328,7 @@ fn resize_bae_window(width: u32, height: u32) {
 
     match output {
         Ok(out) if out.status.success() => {
-            println!("Resized Bae window to {}x{}", width, height);
+            println!("Resized bae window to {}x{}", width, height);
         }
         Ok(out) => {
             eprintln!(

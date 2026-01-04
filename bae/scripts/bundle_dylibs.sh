@@ -4,7 +4,7 @@ set -euo pipefail
 # Bundle Homebrew dylibs into macOS app, fix paths, and merge Info.plist
 # Run after: dx bundle --release
 
-APP_PATH="${1:-target/dx/bae/bundle/macos/bundle/macos/Bae.app}"
+APP_PATH="${1:-target/dx/bae/bundle/macos/bundle/macos/bae.app}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 FRAMEWORKS_DIR="$APP_PATH/Contents/Frameworks"

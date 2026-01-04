@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>Bae uses your local network for BitTorrent peer-to-peer music sharing and seeding.</string>
+    <string>bae uses your local network for BitTorrent peer discovery.</string>
 </dict>
 </plist>
 

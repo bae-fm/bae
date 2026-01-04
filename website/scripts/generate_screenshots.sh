@@ -11,12 +11,12 @@ BAE_DIR="$REPO_ROOT/bae"
 
 echo "Generating screenshots..."
 echo "Website directory: $WEBSITE_DIR"
-echo "Bae directory: $BAE_DIR"
+echo "bae directory: $BAE_DIR"
 
 # Build the bae app if needed
 cd "$BAE_DIR"
 
-if [ ! -f "target/release/bae" ] && [ ! -f "target/dx/bae/bundle/macos/bundle/macos/Bae.app/Contents/MacOS/Bae" ]; then
+if [ ! -f "target/release/bae" ] && [ ! -f "target/dx/bae/bundle/macos/bundle/macos/bae.app/Contents/MacOS/bae" ]; then
     echo "Building bae app..."
     cargo build --release --bin bae
 fi
