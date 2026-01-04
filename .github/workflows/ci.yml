@@ -55,6 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.changes.outputs.website }}
+      screenshots_changed: ${{ steps.changes.outputs.screenshots }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -68,6 +69,9 @@ jobs:
         filters: |
           website:
             - 'website/**'
+          screenshots:
+            - 'website/fixtures/screenshots/**'
+            - 'bae/src/bin/generate_screenshots.rs'
 
   test:
     name: Test
@@ -365,12 +369,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Generate screenshots when website files change or on release
+  # Generate screenshots when screenshot fixtures change or on release
   generate-screenshots:
     name: Generate Screenshots
     if: |
       github.ref == 'refs/heads/main' &&
-      (needs.check-website.outputs.changed == 'true' || needs.check-version.outputs.should_release == 'true')
+      (needs.check-website.outputs.screenshots_changed == 'true' || needs.check-version.outputs.should_release == 'true')
     runs-on: macos-latest
     needs: [check-website, check-version]
     permissions:
@@ -412,11 +416,15 @@ jobs:
         retention-days: 7
 
   # Deploy website when website files change or on release
+  # always() is needed because generate-screenshots may be skipped (docs-only changes)
+  # and we still want to deploy. We guard against failures with the result checks.
   deploy-website:
     name: Deploy Website
     if: |
+      always() &&
       github.ref == 'refs/heads/main' &&
-      (needs.check-website.outputs.changed == 'true' || needs.check-version.outputs.should_release == 'true')
+      (needs.check-website.outputs.changed == 'true' || needs.check-version.outputs.should_release == 'true') &&
+      (needs.generate-screenshots.result == 'success' || needs.generate-screenshots.result == 'skipped')
     runs-on: ubuntu-latest
     needs: [check-website, check-version, generate-screenshots]
     permissions:
@@ -427,6 +435,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Download screenshots
+      if: needs.generate-screenshots.result == 'success'
       uses: actions/download-artifact@v4
       with:
         name: website-screenshots
