@@ -175,6 +175,12 @@ impl StreamingAudioBuffer {
         inner.eof
     }
 
+    /// Check if buffer has been cancelled.
+    pub fn is_cancelled(&self) -> bool {
+        let inner = self.inner.lock().unwrap();
+        inner.cancelled
+    }
+
     /// Get number of bytes available to read (without blocking).
     pub fn available(&self) -> usize {
         let inner = self.inner.lock().unwrap();
