@@ -1,12 +1,12 @@
-// macOS-only modules (used by TitleBar)
-#[cfg(target_os = "macos")]
+// Context providers used by App component (cross-platform)
 pub mod active_imports_context;
+pub mod library_search_context;
+
+// macOS-only modules (used by TitleBar)
 #[cfg(target_os = "macos")]
 pub mod imports_button;
 #[cfg(target_os = "macos")]
 pub mod imports_dropdown;
-#[cfg(target_os = "macos")]
-pub mod library_search_context;
 #[cfg(target_os = "macos")]
 pub mod title_bar;
 
