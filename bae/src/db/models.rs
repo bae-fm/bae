@@ -229,7 +229,7 @@ pub struct DbFile {
 /// Stores format information needed for playback. One record per track (1:1 with track).
 ///
 /// **FLAC headers** are stored for CUE/FLAC tracks where we need to prepend them during playback
-/// (track audio starts mid-file, decoder needs headers). Also stored for regular FLAC for smart seek.
+/// (track audio starts mid-file, decoder needs headers). Also stored for regular FLAC for seeking.
 ///
 /// **Seektables** enable frame-accurate seeking. Built during import by scanning every FLAC frame
 /// (~93ms precision, vs ~10s for embedded seektables). Both byte and sample offsets are track-relative
@@ -263,7 +263,7 @@ pub struct DbAudioFormat {
     pub sample_rate: Option<i64>,
     /// Dense seektable for frame-accurate seeking.
     /// JSON array of {sample_number, byte_offset} entries built by scanning FLAC frames.
-    /// Enables smart seek: prepend headers + data from frame boundary.
+    /// Enables seeking: prepend headers + data from frame boundary.
     pub seektable_json: Option<String>,
     /// Byte offset where audio data starts in the file (after headers).
     /// Seektable byte offsets are relative to this position.

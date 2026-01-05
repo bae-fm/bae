@@ -836,7 +836,7 @@ impl ImportService {
                         flac_info.audio_data_end,
                     );
 
-                // Create per-track adjusted seektable for smart seek support.
+                // Create per-track adjusted seektable for seek support.
                 // Filter to entries within this track's byte range and adjust both
                 // byte offsets AND sample numbers to be track-relative:
                 // - byte 0 = first byte of track audio data
@@ -899,7 +899,7 @@ impl ImportService {
                     .await
                     .map_err(|e| format!("Failed to insert audio format: {}", e))?;
             } else {
-                // For regular FLAC files (not CUE), extract headers and seektable for smart seek
+                // For regular FLAC files (not CUE), extract headers and seektable for seek support
                 let (flac_headers, sample_rate, seektable_json, audio_data_start) = if format
                     == "flac"
                 {

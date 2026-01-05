@@ -316,22 +316,22 @@ fn chunk_nonce(
     nonce
 }
 
-/// Calculate the encrypted byte range needed for a plaintext byte range.
-/// Returns (encrypted_start, encrypted_end) including the nonce header.
-pub fn encrypted_range_for_plaintext(start: u64, end: u64) -> (u64, u64) {
-    let start_chunk = start / CHUNK_SIZE as u64;
-    let end_chunk = (end.saturating_sub(1)) / CHUNK_SIZE as u64;
-
-    let enc_start = sodium_ffi::NPUBBYTES as u64 + start_chunk * ENCRYPTED_CHUNK_SIZE as u64;
-    let enc_end = sodium_ffi::NPUBBYTES as u64 + (end_chunk + 1) * ENCRYPTED_CHUNK_SIZE as u64;
-
-    // Always need the nonce header
-    (0, enc_end.max(enc_start))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Calculate the encrypted byte range needed for a plaintext byte range.
+    /// Returns (encrypted_start, encrypted_end) including the nonce header.
+    fn encrypted_range_for_plaintext(start: u64, end: u64) -> (u64, u64) {
+        let start_chunk = start / CHUNK_SIZE as u64;
+        let end_chunk = (end.saturating_sub(1)) / CHUNK_SIZE as u64;
+
+        let enc_start = sodium_ffi::NPUBBYTES as u64 + start_chunk * ENCRYPTED_CHUNK_SIZE as u64;
+        let enc_end = sodium_ffi::NPUBBYTES as u64 + (end_chunk + 1) * ENCRYPTED_CHUNK_SIZE as u64;
+
+        // Always need the nonce header
+        (0, enc_end.max(enc_start))
+    }
 
     fn test_key() -> [u8; 32] {
         // Fixed test key for reproducibility

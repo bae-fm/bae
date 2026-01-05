@@ -1932,12 +1932,12 @@ mod tests {
         }
     }
 
-    /// Test smart seek: adjusting seektable when seeking mid-track.
+    /// Test seek: adjusting seektable when seeking mid-track.
     ///
     /// When seeking, we copy audio from the seek position and prepend headers.
     /// The seektable must be adjusted so offsets are relative to the new start.
     #[test]
-    fn test_smart_seek_seektable_adjustment() {
+    fn test_seek_seektable_adjustment() {
         init();
 
         // Create a longer FLAC file to have more frames
@@ -1988,7 +1988,7 @@ mod tests {
 
         assert!(
             total_samples >= min_expected,
-            "Smart seek decode produced too few samples: {} (expected at least {})",
+            "Seek decode produced too few samples: {} (expected at least {})",
             total_samples,
             min_expected
         );
