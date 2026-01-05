@@ -211,26 +211,16 @@ unsafe fn decode_audio_avio(
     let sample_rate = (*codec_ctx).sample_rate as u32;
     let channels = (*codecpar).ch_layout.nb_channels as u32;
 
-    // Determine bits per sample from format
-    let (bits_per_sample, is_float) = match (*codec_ctx).sample_fmt {
-        AVSampleFormat::AV_SAMPLE_FMT_U8 | AVSampleFormat::AV_SAMPLE_FMT_U8P => (8, false),
-        AVSampleFormat::AV_SAMPLE_FMT_S16 | AVSampleFormat::AV_SAMPLE_FMT_S16P => (16, false),
-        AVSampleFormat::AV_SAMPLE_FMT_S32 | AVSampleFormat::AV_SAMPLE_FMT_S32P => (32, false),
-        AVSampleFormat::AV_SAMPLE_FMT_FLT | AVSampleFormat::AV_SAMPLE_FMT_FLTP => (32, true),
-        AVSampleFormat::AV_SAMPLE_FMT_DBL | AVSampleFormat::AV_SAMPLE_FMT_DBLP => (64, true),
-        AVSampleFormat::AV_SAMPLE_FMT_S64 | AVSampleFormat::AV_SAMPLE_FMT_S64P => (64, false),
-        _ => (16, false),
+    // Determine bits per sample from format (for metadata only, actual extraction uses frame format)
+    let bits_per_sample = match (*codec_ctx).sample_fmt {
+        AVSampleFormat::AV_SAMPLE_FMT_U8 | AVSampleFormat::AV_SAMPLE_FMT_U8P => 8,
+        AVSampleFormat::AV_SAMPLE_FMT_S16 | AVSampleFormat::AV_SAMPLE_FMT_S16P => 16,
+        AVSampleFormat::AV_SAMPLE_FMT_S32 | AVSampleFormat::AV_SAMPLE_FMT_S32P => 32,
+        AVSampleFormat::AV_SAMPLE_FMT_FLT | AVSampleFormat::AV_SAMPLE_FMT_FLTP => 32,
+        AVSampleFormat::AV_SAMPLE_FMT_DBL | AVSampleFormat::AV_SAMPLE_FMT_DBLP => 64,
+        AVSampleFormat::AV_SAMPLE_FMT_S64 | AVSampleFormat::AV_SAMPLE_FMT_S64P => 64,
+        _ => 16,
     };
-
-    let is_planar = matches!(
-        (*codec_ctx).sample_fmt,
-        AVSampleFormat::AV_SAMPLE_FMT_U8P
-            | AVSampleFormat::AV_SAMPLE_FMT_S16P
-            | AVSampleFormat::AV_SAMPLE_FMT_S32P
-            | AVSampleFormat::AV_SAMPLE_FMT_FLTP
-            | AVSampleFormat::AV_SAMPLE_FMT_DBLP
-            | AVSampleFormat::AV_SAMPLE_FMT_S64P
-    );
 
     // Calculate sample boundaries
     let start_sample = start_ms.map(|ms| (ms * sample_rate as u64) / 1000);
@@ -295,8 +285,7 @@ unsafe fn decode_audio_avio(
             }
 
             if collecting {
-                let frame_samples_vec =
-                    extract_samples_from_raw_frame(frame, channels as usize, is_float, is_planar);
+                let frame_samples_vec = extract_samples_from_raw_frame(frame, channels as usize);
 
                 // Calculate which samples to take based on range
                 let skip_start = if let Some(start) = start_sample {
@@ -339,8 +328,7 @@ unsafe fn decode_audio_avio(
     avcodec_send_packet(codec_ctx, ptr::null());
     while avcodec_receive_frame(codec_ctx, frame) >= 0 {
         if collecting {
-            let frame_samples_vec =
-                extract_samples_from_raw_frame(frame, channels as usize, is_float, is_planar);
+            let frame_samples_vec = extract_samples_from_raw_frame(frame, channels as usize);
             samples.extend_from_slice(&frame_samples_vec);
         }
     }
@@ -373,21 +361,38 @@ unsafe fn decode_audio_avio(
 unsafe fn extract_samples_from_raw_frame(
     frame: *const ffmpeg_sys_next::AVFrame,
     channels: usize,
-    is_float: bool,
-    is_planar: bool,
 ) -> Vec<i32> {
+    use ffmpeg_sys_next::{av_get_bytes_per_sample, AVSampleFormat};
+
     let num_samples = (*frame).nb_samples as usize;
     let mut samples = Vec::with_capacity(num_samples * channels);
-    // Detect actual bytes per sample from linesize
-    let actual_bytes_per_sample = if num_samples > 0 && (*frame).linesize[0] > 0 {
-        if is_planar {
-            (*frame).linesize[0] as usize / num_samples
-        } else {
-            (*frame).linesize[0] as usize / (num_samples * channels)
-        }
+
+    // Get format info directly from the frame
+    let format: AVSampleFormat = std::mem::transmute((*frame).format);
+    let bytes_per_sample = av_get_bytes_per_sample(format);
+    let actual_bytes_per_sample = if bytes_per_sample > 0 {
+        bytes_per_sample as usize
     } else {
-        4 // Default to 32-bit
+        4 // Default fallback
     };
+
+    let is_float = matches!(
+        format,
+        AVSampleFormat::AV_SAMPLE_FMT_FLT
+            | AVSampleFormat::AV_SAMPLE_FMT_FLTP
+            | AVSampleFormat::AV_SAMPLE_FMT_DBL
+            | AVSampleFormat::AV_SAMPLE_FMT_DBLP
+    );
+
+    let is_planar = matches!(
+        format,
+        AVSampleFormat::AV_SAMPLE_FMT_U8P
+            | AVSampleFormat::AV_SAMPLE_FMT_S16P
+            | AVSampleFormat::AV_SAMPLE_FMT_S32P
+            | AVSampleFormat::AV_SAMPLE_FMT_FLTP
+            | AVSampleFormat::AV_SAMPLE_FMT_DBLP
+            | AVSampleFormat::AV_SAMPLE_FMT_S64P
+    );
 
     if is_planar {
         // Interleave from separate channel planes
@@ -432,11 +437,18 @@ unsafe fn read_sample(
         (f * i32::MAX as f32) as i32
     } else {
         match bytes_per_sample {
-            1 => (*(ptr as *const i8) as i32) << 24,
-            2 => (*(ptr as *const i16) as i32) << 16,
+            1 => (*(ptr as *const i8) as i32) * 256, // Scale 8-bit to 16-bit range
+            2 => *(ptr as *const i16) as i32,        // Keep 16-bit in native range
             3 => {
+                // 24-bit little-endian, sign-extend to i32
                 let b = std::slice::from_raw_parts(ptr, 3);
-                ((b[0] as i32) << 8) | ((b[1] as i32) << 16) | ((b[2] as i32) << 24)
+                let val = (b[0] as i32) | ((b[1] as i32) << 8) | ((b[2] as i32) << 16);
+                // Sign extend from 24-bit
+                if val & 0x800000 != 0 {
+                    val | 0xFF000000u32 as i32
+                } else {
+                    val
+                }
             }
             4 => *(ptr as *const i32),
             _ => 0,
@@ -981,5 +993,56 @@ mod tests {
                 "Sample numbers should be monotonically increasing"
             );
         }
+    }
+
+    /// Test that FLAC encode/decode is lossless - samples should match exactly.
+    ///
+    /// This catches any sample conversion bugs: wrong byte order, wrong scaling,
+    /// wrong format detection, etc. If anything is wrong, values won't match.
+    #[test]
+    fn test_flac_roundtrip_is_lossless() {
+        init();
+
+        // Create a 440Hz sine wave - uses the full 16-bit range
+        let sample_rate = 44100u32;
+        let duration_samples = sample_rate as usize; // 1 second
+        let amplitude = 30000i32; // Near max 16-bit
+
+        let original: Vec<i32> = (0..duration_samples)
+            .map(|i| {
+                let t = i as f64 / sample_rate as f64;
+                (amplitude as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+            })
+            .collect();
+
+        // Encode to FLAC and decode back
+        let flac_data = encode_to_flac(&original, sample_rate, 1, 16).unwrap();
+        let decoded = decode_audio(&flac_data, None, None).unwrap();
+
+        // FLAC is lossless - samples should match exactly
+        let compare_len = original.len().min(decoded.samples.len());
+        assert!(compare_len > 0, "No samples to compare");
+
+        let mut mismatches = 0;
+        let mut max_diff = 0i32;
+        for (orig, dec) in original
+            .iter()
+            .zip(decoded.samples.iter())
+            .take(compare_len)
+        {
+            let diff = (orig - dec).abs();
+            if diff > 0 {
+                mismatches += 1;
+                max_diff = max_diff.max(diff);
+            }
+        }
+
+        assert!(
+            max_diff < 2, // Allow tiny rounding errors
+            "FLAC roundtrip should be lossless. {} samples differ, max diff: {}. \
+             This indicates a bug in sample conversion (wrong byte order, scaling, or format).",
+            mismatches,
+            max_diff
+        );
     }
 }
