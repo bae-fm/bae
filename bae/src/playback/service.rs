@@ -2,13 +2,13 @@ use crate::db::DbTrack;
 use crate::encryption::EncryptionService;
 use crate::library::LibraryManager;
 use crate::playback::cpal_output::AudioOutput;
+use crate::playback::data_source::{
+    AudioDataReader, AudioReadConfig, CloudStorageReader, LocalFileReader,
+};
 use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::{create_streaming_pair, PcmSource, PlaybackError, StreamingPcmSource};
-use crate::storage::{
-    create_storage_reader, download_encrypted_to_streaming_buffer, download_to_streaming_buffer,
-    download_to_streaming_buffer_with_range,
-};
+use crate::storage::create_storage_reader;
 use cpal::traits::StreamTrait;
 use std::collections::VecDeque;
 use std::sync::{mpsc, Arc, Mutex};
@@ -615,16 +615,289 @@ impl PlaybackService {
             }
         };
 
-        match &storage_profile {
+        // Get audio format metadata (headers, seektable, byte ranges)
+        let audio_format = match self
+            .library_manager
+            .get_audio_format_by_track_id(track_id)
+            .await
+        {
+            Ok(af) => af,
+            Err(e) => {
+                error!("Failed to get audio format: {}", e);
+                self.stop().await;
+                return;
+            }
+        };
+
+        // Find the audio file
+        let files = match self
+            .library_manager
+            .get_files_for_release(&track.release_id)
+            .await
+        {
+            Ok(files) => files,
+            Err(e) => {
+                error!("Failed to get files: {}", e);
+                self.stop().await;
+                return;
+            }
+        };
+
+        let audio_file = match files.iter().find(|f| {
+            let ext = f.format.to_lowercase();
+            (ext == "flac" || ext == "mp3" || ext == "wav" || ext == "ogg")
+                && f.source_path.is_some()
+        }) {
+            Some(f) => f,
             None => {
-                self.play_track_streaming_local(track_id, track, is_natural_transition)
-                    .await;
+                error!("No audio file with source_path found");
+                self.stop().await;
+                return;
+            }
+        };
+
+        let source_path = audio_file.source_path.clone().unwrap();
+        let pregap_ms = audio_format.as_ref().and_then(|af| af.pregap_ms);
+
+        let (start_byte, end_byte) = audio_format
+            .as_ref()
+            .and_then(|af| match (af.start_byte_offset, af.end_byte_offset) {
+                (Some(s), Some(e)) => Some((Some(s as u64), Some(e as u64))),
+                _ => None,
+            })
+            .unwrap_or((None, None));
+
+        // Load all headers (for seek support)
+        let all_flac_headers = audio_format.as_ref().and_then(|af| af.flac_headers.clone());
+
+        // Headers to prepend during playback (only for CUE/FLAC where buffer doesn't have them)
+        let needs_headers = audio_format.as_ref().is_some_and(|af| af.needs_headers);
+        let flac_headers = if needs_headers {
+            all_flac_headers.clone()
+        } else {
+            None
+        };
+
+        let seektable: Option<Vec<crate::audio_codec::SeekEntry>> = audio_format
+            .as_ref()
+            .and_then(|af| af.seektable_json.as_ref())
+            .and_then(|json| serde_json::from_str(json).ok());
+
+        let file_size = if let (Some(start), Some(end)) = (start_byte, end_byte) {
+            end - start
+        } else {
+            audio_file.file_size as u64
+        };
+        let headers_len = flac_headers.as_ref().map(|h| h.len() as u64).unwrap_or(0);
+
+        // Create sparse buffer for streaming
+        let buffer = create_sparse_buffer();
+
+        let read_config = AudioReadConfig {
+            path: source_path.clone(),
+            flac_headers: flac_headers.clone(),
+            start_byte,
+            end_byte,
+        };
+
+        // Create appropriate data reader based on storage profile
+        let reader: Box<dyn AudioDataReader> = match &storage_profile {
+            None => {
+                // Non-storage: read local file directly (no encryption)
+                Box::new(LocalFileReader::new(read_config))
+            }
+            Some(profile)
+                if !profile.encrypted && profile.location == crate::db::StorageLocation::Local =>
+            {
+                // Unencrypted local storage: read directly
+                Box::new(LocalFileReader::new(read_config))
             }
             Some(profile) => {
-                self.play_track_streaming(track_id, track, profile, is_natural_transition)
-                    .await;
+                // Encrypted or cloud storage: use CloudStorageReader (handles decryption)
+                let storage = match create_storage_reader(profile).await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        error!("Failed to create storage reader: {}", e);
+                        self.stop().await;
+                        return;
+                    }
+                };
+                Box::new(CloudStorageReader::new(
+                    read_config,
+                    storage,
+                    Arc::new(self.encryption_service.clone()),
+                    profile.encrypted,
+                ))
             }
+        };
+
+        // Start reading data into buffer
+        reader.start_reading(buffer.clone());
+
+        // Create ring buffer for decoded audio
+        let (mut sink, source) = create_streaming_pair(44100, 2);
+
+        // Spawn decoder thread
+        let decoder_buffer = buffer.clone();
+        let decoder_headers = flac_headers.clone();
+        let decoder_seektable = seektable.clone();
+        std::thread::spawn(move || {
+            if let Err(e) = crate::audio_codec::decode_audio_streaming_with_seektable(
+                decoder_buffer,
+                &mut sink,
+                decoder_headers,
+                decoder_seektable,
+            ) {
+                error!("Streaming decode failed: {}", e);
+            }
+        });
+
+        // Store state for seek support
+        self.current_sparse_buffer = Some(buffer);
+        self.current_streaming_file_size = Some(file_size + headers_len);
+        self.current_streaming_source_path = Some(source_path.clone());
+        self.current_flac_headers = all_flac_headers; // Always store headers for seek
+        self.current_sample_rate = audio_format
+            .as_ref()
+            .and_then(|af| af.sample_rate.map(|r| r as u32));
+        self.current_seektable_json = audio_format
+            .as_ref()
+            .and_then(|af| af.seektable_json.clone());
+        self.current_audio_data_start = audio_format
+            .as_ref()
+            .and_then(|af| af.audio_data_start.map(|s| s as u64));
+
+        let source = Arc::new(Mutex::new(source));
+        let (source_sample_rate, source_channels) = {
+            let guard = source.lock().unwrap();
+            (guard.sample_rate(), guard.channels())
+        };
+
+        let start_position = calculate_start_position(pregap_ms, is_natural_transition);
+
+        if let Some(stream) = self.stream.take() {
+            drop(stream);
         }
+
+        let (position_tx, position_rx) = mpsc::channel();
+        let (completion_tx, completion_rx) = mpsc::channel();
+        let (position_tx_async, mut position_rx_async) = tokio_mpsc::unbounded_channel();
+        let (completion_tx_async, mut completion_rx_async) = tokio_mpsc::unbounded_channel();
+
+        // Bridge sync channels to async
+        tokio::spawn({
+            let position_rx = Arc::new(std::sync::Mutex::new(position_rx));
+            async move {
+                loop {
+                    let rx = position_rx.clone();
+                    match tokio::task::spawn_blocking(move || rx.lock().unwrap().recv()).await {
+                        Ok(Ok(pos)) => {
+                            let _ = position_tx_async.send(pos);
+                        }
+                        _ => break,
+                    }
+                }
+            }
+        });
+
+        tokio::spawn({
+            let completion_rx = Arc::new(std::sync::Mutex::new(completion_rx));
+            async move {
+                loop {
+                    let rx = completion_rx.clone();
+                    match tokio::task::spawn_blocking(move || rx.lock().unwrap().recv()).await {
+                        Ok(Ok(())) => {
+                            let _ = completion_tx_async.send(());
+                        }
+                        _ => break,
+                    }
+                }
+            }
+        });
+
+        // Create streaming audio output
+        let stream = match self.audio_output.create_streaming_stream(
+            source.clone(),
+            source_sample_rate,
+            source_channels,
+            position_tx,
+            completion_tx,
+        ) {
+            Ok(stream) => stream,
+            Err(e) => {
+                error!("Failed to create streaming audio stream: {:?}", e);
+                self.stop().await;
+                return;
+            }
+        };
+
+        if let Err(e) = stream.play() {
+            error!("Failed to start streaming playback: {:?}", e);
+            self.stop().await;
+            return;
+        }
+
+        self.audio_output
+            .send_command(crate::playback::cpal_output::AudioCommand::Play);
+        self.stream = Some(stream);
+        self.current_track = Some(track.clone());
+        self.current_streaming_source = Some(source);
+        self.current_position = Some(start_position);
+        self.current_pregap_ms = pregap_ms;
+        self.is_paused = false;
+        *self.current_position_shared.lock().unwrap() = Some(start_position);
+
+        let track_duration = track
+            .duration_ms
+            .map(|ms| std::time::Duration::from_millis(ms as u64))
+            .unwrap_or(std::time::Duration::from_secs(300));
+        self.current_duration = Some(track_duration);
+        self.current_decoded_duration = Some(track_duration);
+
+        let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
+            state: PlaybackState::Playing {
+                track: track.clone(),
+                position: start_position,
+                duration: Some(track_duration),
+                decoded_duration: track_duration,
+                pregap_ms,
+            },
+        });
+
+        // Preload next track
+        let track_id_owned = track_id.to_string();
+        if let Some(next_id) = self.queue.front().cloned() {
+            self.preload_next_track(&next_id).await;
+        }
+
+        info!("Streaming playback started for track: {}", track_id_owned);
+
+        // Monitor position and completion
+        let progress_tx = self.progress_tx.clone();
+        let current_position_shared = self.current_position_shared.clone();
+        let position_generation = self.position_generation.clone();
+        let gen = position_generation.load(std::sync::atomic::Ordering::SeqCst);
+
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    Some(position) = position_rx_async.recv() => {
+                        if position_generation.load(std::sync::atomic::Ordering::SeqCst) == gen {
+                            *current_position_shared.lock().unwrap() = Some(position);
+                            let _ = progress_tx.send(PlaybackProgress::PositionUpdate { position, track_id: track_id_owned.clone() });
+                        }
+                    }
+                    Some(()) = completion_rx_async.recv() => {
+                        if position_generation.load(std::sync::atomic::Ordering::SeqCst) == gen {
+                            info!("Streaming track completed: {}", track_id_owned);
+                            let _ = progress_tx.send(PlaybackProgress::TrackCompleted { track_id: track_id_owned.clone() });
+                        }
+                        break;
+                    }
+                    else => break,
+                }
+            }
+        });
     }
     /// Decode raw audio bytes to PCM source
     ///
@@ -1910,672 +2183,6 @@ impl PlaybackService {
         } else {
             Ok(file_data)
         }
-    }
-
-    /// Play a track using streaming playback from local source_path.
-    ///
-    /// Used when no storage profile is set (files played directly from disk).
-    async fn play_track_streaming_local(
-        &mut self,
-        track_id: &str,
-        track: DbTrack,
-        is_natural_transition: bool,
-    ) {
-        info!(
-            "Playing track (streaming local): {} (natural_transition: {})",
-            track_id, is_natural_transition
-        );
-
-        let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
-            state: PlaybackState::Loading {
-                track_id: track_id.to_string(),
-            },
-        });
-
-        // Get audio format for CUE/FLAC metadata
-        let audio_format = match self
-            .library_manager
-            .get_audio_format_by_track_id(track_id)
-            .await
-        {
-            Ok(af) => af,
-            Err(e) => {
-                error!("Failed to get audio format: {}", e);
-                self.stop().await;
-                return;
-            }
-        };
-
-        let pregap_ms = audio_format.as_ref().and_then(|af| af.pregap_ms);
-
-        // Find the audio file with source_path
-        let files = match self
-            .library_manager
-            .get_files_for_release(&track.release_id)
-            .await
-        {
-            Ok(files) => files,
-            Err(e) => {
-                error!("Failed to get files: {}", e);
-                self.stop().await;
-                return;
-            }
-        };
-
-        let audio_file = match files.iter().find(|f| {
-            let ext = f.format.to_lowercase();
-            (ext == "flac" || ext == "mp3" || ext == "wav" || ext == "ogg")
-                && f.source_path.is_some()
-        }) {
-            Some(f) => f,
-            None => {
-                error!("No audio file with source_path found");
-                self.stop().await;
-                return;
-            }
-        };
-
-        let source_path = audio_file.source_path.clone().unwrap();
-
-        // Determine byte range for CUE/FLAC if applicable
-        let (start_byte, end_byte) = if let Some(af) = &audio_format {
-            if let (Some(start), Some(end)) = (af.start_byte_offset, af.end_byte_offset) {
-                (Some(start as u64), Some(end as u64))
-            } else {
-                (None, None)
-            }
-        } else {
-            (None, None)
-        };
-
-        // Check if we need to prepend FLAC headers
-        let flac_headers = audio_format
-            .as_ref()
-            .filter(|af| af.needs_headers)
-            .and_then(|af| af.flac_headers.clone());
-
-        // Get file size for seek calculations
-        let file_size = match tokio::fs::metadata(&source_path).await {
-            Ok(meta) => {
-                if let (Some(start), Some(end)) = (start_byte, end_byte) {
-                    // CUE/FLAC track: use byte range size
-                    end - start
-                } else {
-                    meta.len()
-                }
-            }
-            Err(e) => {
-                error!("Failed to get file metadata: {}", e);
-                self.stop().await;
-                return;
-            }
-        };
-
-        // Create sparse buffer for smart seek support
-        let buffer = create_sparse_buffer();
-
-        // Spawn local file reader task
-        let read_buffer = buffer.clone();
-        let read_path = source_path.clone();
-        let headers_len = flac_headers.as_ref().map(|h| h.len() as u64).unwrap_or(0);
-        tokio::spawn(async move {
-            use tokio::io::{AsyncReadExt, AsyncSeekExt};
-
-            let mut file = match tokio::fs::File::open(&read_path).await {
-                Ok(f) => f,
-                Err(e) => {
-                    error!("Failed to open file {}: {}", read_path, e);
-                    read_buffer.cancel();
-                    return;
-                }
-            };
-
-            // If we have FLAC headers to prepend, add them first at offset 0
-            let mut buffer_pos: u64 = 0;
-            if let Some(headers) = flac_headers {
-                read_buffer.append_at(buffer_pos, &headers);
-                buffer_pos += headers.len() as u64;
-            }
-
-            // Seek to start position if needed
-            let start = start_byte.unwrap_or(0);
-            if start > 0 {
-                if let Err(e) = file.seek(std::io::SeekFrom::Start(start)).await {
-                    error!("Failed to seek: {}", e);
-                    read_buffer.cancel();
-                    return;
-                }
-            }
-
-            let end = end_byte;
-            let mut file_pos = start;
-            let mut chunk = vec![0u8; 65536];
-
-            loop {
-                if read_buffer.is_cancelled() {
-                    return;
-                }
-
-                let to_read = if let Some(end) = end {
-                    chunk.len().min((end - file_pos) as usize)
-                } else {
-                    chunk.len()
-                };
-
-                if to_read == 0 {
-                    break;
-                }
-
-                match file.read(&mut chunk[..to_read]).await {
-                    Ok(0) => break, // EOF
-                    Ok(n) => {
-                        read_buffer.append_at(buffer_pos, &chunk[..n]);
-                        buffer_pos += n as u64;
-                        file_pos += n as u64;
-                    }
-                    Err(e) => {
-                        error!("Read error: {}", e);
-                        break;
-                    }
-                }
-            }
-
-            read_buffer.set_total_size(buffer_pos);
-            read_buffer.mark_eof();
-        });
-
-        // Create ring buffer pair
-        let (mut sink, source) = create_streaming_pair(44100, 2);
-
-        // Spawn decoder thread
-        let decoder_buffer = buffer.clone();
-        std::thread::spawn(move || {
-            if let Err(e) =
-                crate::audio_codec::decode_audio_streaming_sparse(decoder_buffer, &mut sink)
-            {
-                error!("Streaming decode failed: {}", e);
-            }
-        });
-
-        // Store buffer, file size, source path, and seek metadata for smart seek
-        self.current_sparse_buffer = Some(buffer);
-        self.current_streaming_file_size = Some(file_size + headers_len);
-        self.current_streaming_source_path = Some(source_path.clone());
-        self.current_flac_headers = audio_format.as_ref().and_then(|af| af.flac_headers.clone());
-        self.current_sample_rate = audio_format
-            .as_ref()
-            .and_then(|af| af.sample_rate.map(|r| r as u32));
-        self.current_seektable_json = audio_format
-            .as_ref()
-            .and_then(|af| af.seektable_json.clone());
-        self.current_audio_data_start = audio_format
-            .as_ref()
-            .and_then(|af| af.audio_data_start.map(|s| s as u64));
-
-        // Wait for initial buffering
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-
-        let source = Arc::new(Mutex::new(source));
-
-        let (source_sample_rate, source_channels) = {
-            let guard = source.lock().unwrap();
-            (guard.sample_rate(), guard.channels())
-        };
-
-        let start_position = calculate_start_position(pregap_ms, is_natural_transition);
-
-        if let Some(stream) = self.stream.take() {
-            drop(stream);
-        }
-
-        let (position_tx, position_rx) = mpsc::channel();
-        let (completion_tx, completion_rx) = mpsc::channel();
-        let (position_tx_async, mut position_rx_async) = tokio_mpsc::unbounded_channel();
-        let (completion_tx_async, mut completion_rx_async) = tokio_mpsc::unbounded_channel();
-
-        let position_rx_clone = position_rx;
-        tokio::spawn(async move {
-            let position_rx = Arc::new(std::sync::Mutex::new(position_rx_clone));
-            loop {
-                let rx = position_rx.clone();
-                match tokio::task::spawn_blocking(move || rx.lock().unwrap().recv()).await {
-                    Ok(Ok(pos)) => {
-                        let _ = position_tx_async.send(pos);
-                    }
-                    Ok(Err(_)) | Err(_) => break,
-                }
-            }
-        });
-
-        let completion_rx_clone = completion_rx;
-        tokio::spawn(async move {
-            let completion_rx = Arc::new(std::sync::Mutex::new(completion_rx_clone));
-            loop {
-                let rx = completion_rx.clone();
-                match tokio::task::spawn_blocking(move || rx.lock().unwrap().recv()).await {
-                    Ok(Ok(())) => {
-                        let _ = completion_tx_async.send(());
-                    }
-                    Ok(Err(_)) | Err(_) => break,
-                }
-            }
-        });
-
-        let stream = match self.audio_output.create_streaming_stream(
-            source.clone(),
-            source_sample_rate,
-            source_channels,
-            position_tx,
-            completion_tx,
-        ) {
-            Ok(stream) => stream,
-            Err(e) => {
-                error!("Failed to create streaming audio stream: {:?}", e);
-                self.stop().await;
-                return;
-            }
-        };
-
-        if let Err(e) = stream.play() {
-            error!("Failed to start streaming playback: {:?}", e);
-            self.stop().await;
-            return;
-        }
-
-        self.audio_output
-            .send_command(crate::playback::cpal_output::AudioCommand::Play);
-        self.stream = Some(stream);
-        self.current_track = Some(track.clone());
-        self.current_streaming_source = Some(source);
-        self.current_position = Some(start_position);
-        self.current_pregap_ms = pregap_ms;
-        self.is_paused = false;
-        *self.current_position_shared.lock().unwrap() = Some(start_position);
-
-        let track_duration = track
-            .duration_ms
-            .map(|ms| std::time::Duration::from_millis(ms as u64))
-            .unwrap_or(std::time::Duration::from_secs(300));
-
-        self.current_duration = Some(track_duration);
-        self.current_decoded_duration = Some(track_duration);
-
-        let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
-            state: PlaybackState::Playing {
-                track: track.clone(),
-                position: start_position,
-                duration: Some(track_duration),
-                decoded_duration: track_duration,
-                pregap_ms,
-            },
-        });
-
-        // Increment generation for new playback session
-        let gen = self
-            .position_generation
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
-            + 1;
-
-        let progress_tx = self.progress_tx.clone();
-        let track_id_owned = track_id.to_string();
-        let current_position_for_listener = self.current_position_shared.clone();
-        let position_generation = self.position_generation.clone();
-
-        tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    Some(position) = position_rx_async.recv() => {
-                        if position_generation.load(std::sync::atomic::Ordering::SeqCst) == gen {
-                            *current_position_for_listener.lock().unwrap() = Some(position);
-                            let _ = progress_tx.send(PlaybackProgress::PositionUpdate {
-                                position,
-                                track_id: track_id_owned.clone(),
-                            });
-                        }
-                    }
-                    Some(()) = completion_rx_async.recv() => {
-                        if position_generation.load(std::sync::atomic::Ordering::SeqCst) == gen {
-                            info!("Streaming track completed: {}", track_id_owned);
-                            let _ = progress_tx.send(PlaybackProgress::TrackCompleted {
-                                track_id: track_id_owned.clone(),
-                            });
-                        }
-                        break;
-                    }
-                    else => break,
-                }
-            }
-        });
-
-        if let Some(next_track_id) = self.queue.front().cloned() {
-            self.preload_next_track(&next_track_id).await;
-        }
-
-        info!("Streaming local playback started for track: {}", track_id);
-    }
-
-    /// Play a track using streaming playback with a storage profile.
-    ///
-    /// This method streams audio from storage, enabling playback to start
-    /// before the full file is downloaded. Uses a pipeline:
-    /// 1. Download task fills SparseStreamingBuffer with append_at()
-    /// 2. Decoder thread reads from buffer, outputs to ring buffer
-    /// 3. cpal callback pulls from ring buffer
-    async fn play_track_streaming(
-        &mut self,
-        track_id: &str,
-        track: DbTrack,
-        storage_profile: &crate::db::DbStorageProfile,
-        is_natural_transition: bool,
-    ) {
-        info!(
-            "Playing track (streaming): {} (natural_transition: {})",
-            track_id, is_natural_transition
-        );
-
-        let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
-            state: PlaybackState::Loading {
-                track_id: track_id.to_string(),
-            },
-        });
-
-        // Get audio format for CUE/FLAC metadata
-        let audio_format = match self
-            .library_manager
-            .get_audio_format_by_track_id(track_id)
-            .await
-        {
-            Ok(af) => af,
-            Err(e) => {
-                error!("Failed to get audio format: {}", e);
-                self.stop().await;
-                return;
-            }
-        };
-
-        let pregap_ms = audio_format.as_ref().and_then(|af| af.pregap_ms);
-
-        // Find the audio file
-        let files = match self
-            .library_manager
-            .get_files_for_release(&track.release_id)
-            .await
-        {
-            Ok(files) => files,
-            Err(e) => {
-                error!("Failed to get files: {}", e);
-                self.stop().await;
-                return;
-            }
-        };
-
-        let audio_file = match files
-            .iter()
-            .find(|f| f.format.to_lowercase() == "flac" && f.source_path.is_some())
-        {
-            Some(f) => f,
-            None => {
-                error!("No FLAC file found for release {}", track.release_id);
-                self.stop().await;
-                return;
-            }
-        };
-
-        let source_path = match &audio_file.source_path {
-            Some(p) => p.clone(),
-            None => {
-                error!("No source path for audio file");
-                self.stop().await;
-                return;
-            }
-        };
-
-        // Determine byte range for CUE/FLAC if applicable
-        let (start_byte, end_byte) = if let Some(af) = &audio_format {
-            if let (Some(start), Some(end)) = (af.start_byte_offset, af.end_byte_offset) {
-                (Some(start as u64), Some(end as u64))
-            } else {
-                (None, None)
-            }
-        } else {
-            (None, None)
-        };
-
-        // Calculate file size for seek calculations
-        let file_size = if let (Some(start), Some(end)) = (start_byte, end_byte) {
-            // CUE/FLAC track: use byte range size
-            end - start
-        } else {
-            // Use file size from database (stored during import)
-            audio_file.file_size as u64
-        };
-
-        // Create sparse buffer for smart seek support
-        let buffer = create_sparse_buffer();
-
-        // Spawn download task
-        let storage = match create_storage_reader(storage_profile).await {
-            Ok(s) => s,
-            Err(e) => {
-                error!("Failed to create storage reader: {}", e);
-                self.stop().await;
-                return;
-            }
-        };
-
-        let download_buffer = buffer.clone();
-        let download_path = source_path.clone();
-        let is_encrypted = storage_profile.encrypted;
-        let encryption_service = self.encryption_service.clone();
-
-        tokio::spawn(async move {
-            let result = if is_encrypted {
-                download_encrypted_to_streaming_buffer(
-                    storage,
-                    &download_path,
-                    download_buffer,
-                    &encryption_service,
-                    start_byte.unwrap_or(0),
-                    end_byte,
-                )
-                .await
-            } else if let (Some(start), Some(end)) = (start_byte, end_byte) {
-                download_to_streaming_buffer_with_range(
-                    storage,
-                    &download_path,
-                    download_buffer,
-                    start,
-                    end,
-                )
-                .await
-            } else {
-                download_to_streaming_buffer(storage, &download_path, download_buffer).await
-            };
-
-            if let Err(e) = result {
-                error!("Streaming download failed: {:?}", e);
-            }
-        });
-
-        // Create ring buffer pair
-        // Use default sample rate/channels, will be updated when decoder reports actual values
-        let (mut sink, source) = create_streaming_pair(44100, 2);
-
-        // Store buffer, file size, source path, and seek metadata for smart seek support
-        self.current_sparse_buffer = Some(buffer.clone());
-        self.current_streaming_file_size = Some(file_size);
-        self.current_streaming_source_path = Some(source_path.clone());
-        self.current_flac_headers = audio_format.as_ref().and_then(|af| af.flac_headers.clone());
-        self.current_sample_rate = audio_format
-            .as_ref()
-            .and_then(|af| af.sample_rate.map(|r| r as u32));
-        self.current_seektable_json = audio_format
-            .as_ref()
-            .and_then(|af| af.seektable_json.clone());
-        self.current_audio_data_start = audio_format
-            .as_ref()
-            .and_then(|af| af.audio_data_start.map(|s| s as u64));
-
-        // Spawn decoder thread
-        let decoder_buffer = buffer.clone();
-        std::thread::spawn(move || {
-            if let Err(e) =
-                crate::audio_codec::decode_audio_streaming_sparse(decoder_buffer, &mut sink)
-            {
-                error!("Streaming decode failed: {}", e);
-            }
-        });
-
-        // Wait a bit for initial buffering before creating stream
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
-        let source = Arc::new(Mutex::new(source));
-
-        // Get actual audio info from the source
-        let (source_sample_rate, source_channels) = {
-            let guard = source.lock().unwrap();
-            (guard.sample_rate(), guard.channels())
-        };
-
-        // Calculate start position
-        let start_position = calculate_start_position(pregap_ms, is_natural_transition);
-
-        // Clean up old stream
-        if let Some(stream) = self.stream.take() {
-            drop(stream);
-        }
-
-        // Create channels for position/completion
-        let (position_tx, position_rx) = mpsc::channel();
-        let (completion_tx, completion_rx) = mpsc::channel();
-        let (position_tx_async, mut position_rx_async) = tokio_mpsc::unbounded_channel();
-        let (completion_tx_async, mut completion_rx_async) = tokio_mpsc::unbounded_channel();
-
-        // Bridge sync channels to async
-        let position_rx_clone = position_rx;
-        tokio::spawn(async move {
-            let position_rx = Arc::new(std::sync::Mutex::new(position_rx_clone));
-            loop {
-                let rx = position_rx.clone();
-                match tokio::task::spawn_blocking(move || rx.lock().unwrap().recv()).await {
-                    Ok(Ok(pos)) => {
-                        let _ = position_tx_async.send(pos);
-                    }
-                    Ok(Err(_)) | Err(_) => break,
-                }
-            }
-        });
-
-        let completion_rx_clone = completion_rx;
-        tokio::spawn(async move {
-            let completion_rx = Arc::new(std::sync::Mutex::new(completion_rx_clone));
-            loop {
-                let rx = completion_rx.clone();
-                match tokio::task::spawn_blocking(move || rx.lock().unwrap().recv()).await {
-                    Ok(Ok(())) => {
-                        let _ = completion_tx_async.send(());
-                    }
-                    Ok(Err(_)) | Err(_) => break,
-                }
-            }
-        });
-
-        // Create streaming audio stream
-        let stream = match self.audio_output.create_streaming_stream(
-            source.clone(),
-            source_sample_rate,
-            source_channels,
-            position_tx,
-            completion_tx,
-        ) {
-            Ok(stream) => stream,
-            Err(e) => {
-                error!("Failed to create streaming audio stream: {:?}", e);
-                self.stop().await;
-                return;
-            }
-        };
-
-        if let Err(e) = stream.play() {
-            error!("Failed to start streaming playback: {:?}", e);
-            self.stop().await;
-            return;
-        }
-
-        self.audio_output
-            .send_command(crate::playback::cpal_output::AudioCommand::Play);
-        self.stream = Some(stream);
-        self.current_track = Some(track.clone());
-        self.current_streaming_source = Some(source);
-        self.current_position = Some(start_position);
-        self.current_pregap_ms = pregap_ms;
-        self.is_paused = false;
-        *self.current_position_shared.lock().unwrap() = Some(start_position);
-
-        // Get duration from track metadata
-        let track_duration = track
-            .duration_ms
-            .map(|ms| std::time::Duration::from_millis(ms as u64))
-            .unwrap_or(std::time::Duration::from_secs(300)); // Default 5 min if unknown
-
-        self.current_duration = Some(track_duration);
-        // For streaming, we don't know decoded duration until complete
-        self.current_decoded_duration = Some(track_duration);
-
-        let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
-            state: PlaybackState::Playing {
-                track: track.clone(),
-                position: start_position,
-                duration: Some(track_duration),
-                decoded_duration: track_duration,
-                pregap_ms,
-            },
-        });
-
-        // Increment generation for new playback session
-        let gen = self
-            .position_generation
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
-            + 1;
-
-        // Spawn completion listener
-        let progress_tx = self.progress_tx.clone();
-        let track_id_owned = track_id.to_string();
-        let current_position_for_listener = self.current_position_shared.clone();
-        let position_generation = self.position_generation.clone();
-
-        tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    Some(position) = position_rx_async.recv() => {
-                        if position_generation.load(std::sync::atomic::Ordering::SeqCst) == gen {
-                            *current_position_for_listener.lock().unwrap() = Some(position);
-                            let _ = progress_tx.send(PlaybackProgress::PositionUpdate {
-                                position,
-                                track_id: track_id_owned.clone(),
-                            });
-                        }
-                    }
-                    Some(()) = completion_rx_async.recv() => {
-                        if position_generation.load(std::sync::atomic::Ordering::SeqCst) == gen {
-                            info!("Streaming track completed: {}", track_id_owned);
-                            let _ = progress_tx.send(PlaybackProgress::TrackCompleted {
-                                track_id: track_id_owned.clone(),
-                            });
-                        }
-                        break;
-                    }
-                    else => break,
-                }
-            }
-        });
-
-        // Preload next track if available
-        if let Some(next_track_id) = self.queue.front().cloned() {
-            self.preload_next_track(&next_track_id).await;
-        }
-
-        info!("Streaming playback started for track: {}", track_id);
     }
 }
 

@@ -17,10 +17,13 @@ pub struct DecodedAudio {
     pub bits_per_sample: u32,
 }
 
-/// A seek point entry mapping sample number to byte offset
-#[derive(Debug, Clone, Copy)]
+/// A seek point entry mapping sample number to byte offset.
+/// Deserializes from JSON with fields "sample" and "byte".
+#[derive(Debug, Clone, Copy, serde::Deserialize)]
 pub struct SeekEntry {
+    #[serde(rename = "sample")]
     pub sample_number: u64,
+    #[serde(rename = "byte")]
     pub byte_offset: u64,
 }
 
@@ -938,80 +941,440 @@ fn compute_flac_crc8(data: &[u8]) -> u8 {
     crc
 }
 
-/// Decode audio from a streaming buffer and push f32 samples to sink.
+// =============================================================================
+// Streaming Decoder Infrastructure
+// =============================================================================
+
+/// FLAC streaming decoder - decodes frames incrementally using seektable.
 ///
-/// This function runs in a blocking thread, reading from the sparse streaming buffer
-/// as data becomes available, decoding with FFmpeg, and pushing f32 samples
-/// to the ring buffer sink. The sparse buffer supports non-contiguous ranges
-/// and seeking within buffered data.
+/// Uses pre-computed seektable from import to know exact frame boundaries,
+/// avoiding the need to scan for sync codes during playback.
+pub struct FlacStreamingDecoder {
+    /// FLAC headers to prepend when decoding frames
+    headers: Vec<u8>,
+    /// Frame boundaries from seektable: byte offsets relative to audio_data_start
+    frame_offsets: Vec<u64>,
+    /// Current frame index we're working on
+    current_frame: usize,
+    /// Accumulated bytes for current frame
+    pending: Vec<u8>,
+    /// Sample rate from streaminfo
+    sample_rate: u32,
+    /// Number of channels from streaminfo
+    channels: u32,
+    /// Scaling factor for i32 -> f32 conversion
+    scale: f32,
+    /// Total frames decoded (for logging)
+    frames_decoded: u64,
+    /// Total samples output
+    samples_output: u64,
+}
+
+impl FlacStreamingDecoder {
+    /// Create a new FLAC streaming decoder with headers and seektable.
+    ///
+    /// The seektable provides frame boundaries, eliminating sync code scanning.
+    pub fn new(headers: Vec<u8>, seektable: &[SeekEntry]) -> Result<Self, String> {
+        if headers.len() < 4 || &headers[0..4] != b"fLaC" {
+            return Err("Invalid FLAC headers: missing fLaC signature".to_string());
+        }
+
+        // Parse streaminfo from headers
+        let (sample_rate, channels, bits_per_sample) = parse_streaminfo(&headers)?;
+
+        // Extract frame byte offsets from seektable
+        let frame_offsets: Vec<u64> = seektable.iter().map(|e| e.byte_offset).collect();
+
+        if frame_offsets.is_empty() {
+            return Err("Empty seektable".to_string());
+        }
+
+        let scale = match bits_per_sample {
+            16 => 1.0 / (i16::MAX as f32),
+            24 => 1.0 / (8388607.0), // 2^23 - 1
+            32 => 1.0 / (i32::MAX as f32),
+            _ => 1.0 / (i16::MAX as f32),
+        };
+
+        debug!(
+            "FlacStreamingDecoder: {}Hz, {}ch, {}bit, {} frames in seektable",
+            sample_rate,
+            channels,
+            bits_per_sample,
+            frame_offsets.len()
+        );
+
+        Ok(Self {
+            headers,
+            frame_offsets,
+            current_frame: 0,
+            pending: Vec::with_capacity(65536),
+            sample_rate,
+            channels,
+            scale,
+            frames_decoded: 0,
+            samples_output: 0,
+        })
+    }
+
+    /// Get audio info
+    pub fn audio_info(&self) -> StreamingAudioInfo {
+        StreamingAudioInfo {
+            sample_rate: self.sample_rate,
+            channels: self.channels,
+        }
+    }
+
+    /// Feed bytes to the decoder and return any complete decoded samples.
+    ///
+    /// Uses seektable to know frame boundaries - when we have all bytes for
+    /// a frame, we decode it immediately.
+    pub fn feed(&mut self, data: &[u8]) -> Result<Vec<f32>, String> {
+        self.pending.extend_from_slice(data);
+
+        let mut output = Vec::new();
+
+        // Process complete frames
+        while let Some(samples) = self.try_decode_next_frame()? {
+            output.extend(samples);
+        }
+
+        Ok(output)
+    }
+
+    /// Finish decoding - process any remaining buffered data as final frame.
+    pub fn finish(&mut self) -> Result<Vec<f32>, String> {
+        let mut output = Vec::new();
+
+        // Decode any remaining complete frames
+        while let Some(samples) = self.try_decode_next_frame()? {
+            output.extend(samples);
+        }
+
+        // Try to decode remaining pending data as final frame
+        if !self.pending.is_empty() && self.pending.len() > 16 {
+            match self.decode_frame_data(&self.pending.clone()) {
+                Ok(samples) => {
+                    output.extend(samples);
+                    self.pending.clear();
+                }
+                Err(e) => {
+                    debug!(
+                        "Final frame decode failed: {} ({} bytes)",
+                        e,
+                        self.pending.len()
+                    );
+                }
+            }
+        }
+
+        info!(
+            "FlacStreamingDecoder finished: {} frames, {} samples",
+            self.frames_decoded, self.samples_output
+        );
+
+        Ok(output)
+    }
+
+    /// Try to decode the next frame if we have enough bytes.
+    fn try_decode_next_frame(&mut self) -> Result<Option<Vec<f32>>, String> {
+        // Check if we have another frame boundary
+        if self.current_frame + 1 >= self.frame_offsets.len() {
+            return Ok(None);
+        }
+
+        let frame_start = self.frame_offsets[self.current_frame];
+        let frame_end = self.frame_offsets[self.current_frame + 1];
+        let frame_size = (frame_end - frame_start) as usize;
+
+        // Do we have enough bytes?
+        if self.pending.len() < frame_size {
+            return Ok(None);
+        }
+
+        // Extract frame data
+        let frame_data: Vec<u8> = self.pending.drain(..frame_size).collect();
+
+        // Decode it
+        let samples = self.decode_frame_data(&frame_data)?;
+        self.current_frame += 1;
+
+        Ok(Some(samples))
+    }
+
+    /// Decode a single FLAC frame by prepending headers.
+    fn decode_frame_data(&mut self, frame_data: &[u8]) -> Result<Vec<f32>, String> {
+        // Build minimal valid FLAC: headers + frame
+        let mut flac_data = Vec::with_capacity(self.headers.len() + frame_data.len());
+        flac_data.extend_from_slice(&self.headers);
+        flac_data.extend_from_slice(frame_data);
+
+        let decoded = decode_audio(&flac_data, None, None)?;
+
+        self.frames_decoded += 1;
+        self.samples_output += decoded.samples.len() as u64;
+
+        // Convert to f32
+        let f32_samples: Vec<f32> = decoded
+            .samples
+            .iter()
+            .map(|&s| s as f32 * self.scale)
+            .collect();
+
+        Ok(f32_samples)
+    }
+}
+
+/// Parse STREAMINFO block from FLAC headers.
+fn parse_streaminfo(headers: &[u8]) -> Result<(u32, u32, u32), String> {
+    if headers.len() < 42 {
+        return Err("FLAC headers too short for STREAMINFO".to_string());
+    }
+
+    let mut pos = 4; // Skip fLaC signature
+
+    loop {
+        if pos + 4 > headers.len() {
+            return Err("Unexpected end of FLAC headers".to_string());
+        }
+
+        let header_byte = headers[pos];
+        let is_last = (header_byte & 0x80) != 0;
+        let block_type = header_byte & 0x7F;
+        let block_size =
+            u32::from_be_bytes([0, headers[pos + 1], headers[pos + 2], headers[pos + 3]]) as usize;
+
+        if block_type == 0 && block_size >= 18 {
+            // STREAMINFO block
+            let block = &headers[pos + 4..pos + 4 + block_size.min(headers.len() - pos - 4)];
+            if block.len() < 18 {
+                return Err("STREAMINFO block too short".to_string());
+            }
+
+            let sample_rate =
+                ((block[10] as u32) << 12) | ((block[11] as u32) << 4) | ((block[12] as u32) >> 4);
+            let channels = ((block[12] >> 1) & 0x07) + 1;
+            let bits_per_sample = (((block[12] & 0x01) << 4) | ((block[13] >> 4) & 0x0F)) + 1;
+
+            return Ok((sample_rate, channels as u32, bits_per_sample as u32));
+        }
+
+        pos += 4 + block_size;
+        if is_last {
+            break;
+        }
+    }
+
+    Err("STREAMINFO block not found in FLAC headers".to_string())
+}
+
+/// Decode audio from a streaming buffer using seektable-based frame decoding.
+///
+/// If seektable is provided, uses it for precise frame boundaries.
+/// Otherwise falls back to sync code scanning.
 pub fn decode_audio_streaming_sparse(
     buffer: SharedSparseBuffer,
     sink: &mut StreamingPcmSink,
 ) -> Result<StreamingAudioInfo, String> {
-    // Read all data from sparse buffer (blocking until EOF or cancelled)
-    let mut audio_data = Vec::new();
-    let mut read_buf = [0u8; 32768]; // 32KB chunks
+    decode_audio_streaming_with_seektable(buffer, sink, None, None)
+}
 
+/// Decode audio with optional seektable for frame boundaries.
+///
+/// When seektable is provided, we know exact frame boundaries from import
+/// and can decode frames as soon as their bytes arrive - no scanning needed.
+pub fn decode_audio_streaming_with_seektable(
+    buffer: SharedSparseBuffer,
+    sink: &mut StreamingPcmSink,
+    headers: Option<Vec<u8>>,
+    seektable: Option<Vec<SeekEntry>>,
+) -> Result<StreamingAudioInfo, String> {
+    let mut read_buf = [0u8; 32768];
+
+    // If headers provided, use them; otherwise read from buffer
+    let (headers, initial_audio) = if let Some(h) = headers {
+        (h, Vec::new())
+    } else {
+        // Read headers from buffer
+        let mut header_buf = Vec::new();
+        loop {
+            if sink.is_cancelled() {
+                return Err("Decode cancelled".to_string());
+            }
+
+            match buffer.read(&mut read_buf) {
+                Some(0) => return Err("EOF before FLAC headers complete".to_string()),
+                Some(n) => {
+                    header_buf.extend_from_slice(&read_buf[..n]);
+
+                    if header_buf.len() >= 4 && &header_buf[0..4] == b"fLaC" {
+                        if let Some(end) = find_flac_headers_end(&header_buf) {
+                            let headers = header_buf[..end].to_vec();
+                            let initial = header_buf[end..].to_vec();
+                            break (headers, initial);
+                        }
+                    } else if header_buf.len() >= 4 {
+                        return Err("Invalid FLAC: missing fLaC signature".to_string());
+                    }
+                }
+                None => return Err("Buffer cancelled".to_string()),
+            }
+        }
+    };
+
+    debug!(
+        "Streaming decoder: {} bytes headers, seektable: {}",
+        headers.len(),
+        seektable.as_ref().map(|s| s.len()).unwrap_or(0)
+    );
+
+    // Use seektable if provided, otherwise build one by scanning
+    let seektable = match seektable {
+        Some(st) if !st.is_empty() => st,
+        _ => {
+            // No seektable - fall back to batch decode (legacy behavior)
+            warn!("No seektable provided, falling back to batch decode");
+            return decode_audio_streaming_batch(buffer, sink, headers, initial_audio);
+        }
+    };
+
+    // Create seektable-based decoder
+    let mut decoder = FlacStreamingDecoder::new(headers, &seektable)?;
+    let info = decoder.audio_info();
+
+    // Process any initial audio data
+    if !initial_audio.is_empty() {
+        let samples = decoder.feed(&initial_audio)?;
+        if !samples.is_empty() {
+            push_samples_to_sink(sink, &samples)?;
+        }
+    }
+
+    // Continue reading and decoding
     loop {
         if sink.is_cancelled() {
             return Err("Decode cancelled".to_string());
         }
 
         match buffer.read(&mut read_buf) {
-            Some(0) => break, // EOF
+            Some(0) => break,
             Some(n) => {
-                audio_data.extend_from_slice(&read_buf[..n]);
+                let samples = decoder.feed(&read_buf[..n])?;
+                if !samples.is_empty() {
+                    push_samples_to_sink(sink, &samples)?;
+                }
             }
             None => return Err("Buffer cancelled".to_string()),
         }
     }
 
-    if audio_data.is_empty() {
-        return Err("No audio data received".to_string());
+    let final_samples = decoder.finish()?;
+    if !final_samples.is_empty() {
+        push_samples_to_sink(sink, &final_samples)?;
     }
 
-    debug!(
-        "Sparse streaming decoder received {} bytes",
-        audio_data.len()
+    sink.mark_finished();
+
+    info!(
+        "Streaming decode complete: {}Hz, {} channels",
+        info.sample_rate, info.channels
     );
 
-    // Decode the audio data
-    let decoded = decode_audio(&audio_data, None, None)?;
+    Ok(info)
+}
+
+/// Fallback: batch decode when no seektable available (legacy behavior).
+fn decode_audio_streaming_batch(
+    buffer: SharedSparseBuffer,
+    sink: &mut StreamingPcmSink,
+    headers: Vec<u8>,
+    initial_audio: Vec<u8>,
+) -> Result<StreamingAudioInfo, String> {
+    let mut audio_data = initial_audio;
+    let mut read_buf = [0u8; 32768];
+
+    // Read all remaining data
+    loop {
+        if sink.is_cancelled() {
+            return Err("Decode cancelled".to_string());
+        }
+
+        match buffer.read(&mut read_buf) {
+            Some(0) => break,
+            Some(n) => audio_data.extend_from_slice(&read_buf[..n]),
+            None => return Err("Buffer cancelled".to_string()),
+        }
+    }
+
+    // Build complete FLAC and decode
+    let mut flac_data = headers;
+    flac_data.extend(audio_data);
+
+    debug!("Batch decode: {} bytes total", flac_data.len());
+
+    let decoded = decode_audio(&flac_data, None, None)?;
 
     let info = StreamingAudioInfo {
         sample_rate: decoded.sample_rate,
         channels: decoded.channels,
     };
 
-    // Convert i32 samples to f32 and push to sink
     let scale = 1.0 / (i32::MAX as f32);
     let f32_samples: Vec<f32> = decoded.samples.iter().map(|&s| s as f32 * scale).collect();
 
-    debug!(
-        "Pushing {} f32 samples to streaming sink",
-        f32_samples.len()
-    );
-
-    // Push samples in chunks to allow cancellation checks
-    const CHUNK_SIZE: usize = 8192;
-    for chunk in f32_samples.chunks(CHUNK_SIZE) {
-        if sink.is_cancelled() {
-            warn!("Sparse streaming decode cancelled during push");
-            return Err("Cancelled".to_string());
-        }
-        sink.push_samples_blocking(chunk);
-    }
-
+    push_samples_to_sink(sink, &f32_samples)?;
     sink.mark_finished();
 
     info!(
-        "Sparse streaming decode complete: {} samples, {}Hz, {} channels",
+        "Batch decode complete: {} samples, {}Hz, {} channels",
         f32_samples.len(),
         info.sample_rate,
         info.channels
     );
 
     Ok(info)
+}
+
+/// Find the end of FLAC headers (start of audio data).
+fn find_flac_headers_end(data: &[u8]) -> Option<usize> {
+    if data.len() < 8 || &data[0..4] != b"fLaC" {
+        return None;
+    }
+
+    let mut pos = 4;
+
+    loop {
+        if pos + 4 > data.len() {
+            return None;
+        }
+
+        let header_byte = data[pos];
+        let is_last = (header_byte & 0x80) != 0;
+        let block_size =
+            u32::from_be_bytes([0, data[pos + 1], data[pos + 2], data[pos + 3]]) as usize;
+
+        let block_end = pos + 4 + block_size;
+        if block_end > data.len() {
+            return None;
+        }
+
+        pos = block_end;
+        if is_last {
+            return Some(pos);
+        }
+    }
+}
+
+/// Push samples to sink in chunks, checking for cancellation.
+fn push_samples_to_sink(sink: &mut StreamingPcmSink, samples: &[f32]) -> Result<(), String> {
+    const CHUNK_SIZE: usize = 8192;
+    for chunk in samples.chunks(CHUNK_SIZE) {
+        if sink.is_cancelled() {
+            return Err("Cancelled".to_string());
+        }
+        sink.push_samples_blocking(chunk);
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -1181,6 +1544,195 @@ mod tests {
         assert!(
             (decoded_samples.len() as i64 - samples.len() as i64).abs() < 1000,
             "Sample count mismatch: {} vs {}",
+            decoded_samples.len(),
+            samples.len()
+        );
+    }
+
+    #[test]
+    fn test_flac_streaming_decoder_with_seektable() {
+        use crate::playback::create_streaming_pair_with_capacity;
+        use crate::playback::sparse_buffer::create_sparse_buffer;
+        use std::thread;
+
+        init();
+
+        // Create test FLAC data
+        let samples: Vec<i32> = (0..44100)
+            .map(|i| ((i as f64 * 0.01).sin() * 10000.0) as i32)
+            .collect();
+        let flac_data = encode_to_flac(&samples, 44100, 1, 16).unwrap();
+
+        // Build seektable from the FLAC data
+        let seektable = build_seektable(&flac_data).unwrap();
+        assert!(!seektable.is_empty(), "Seektable should not be empty");
+
+        // Extract headers
+        let headers_end = find_flac_headers_end(&flac_data).unwrap();
+        let headers = flac_data[..headers_end].to_vec();
+        let audio_data = flac_data[headers_end..].to_vec();
+
+        // Create streaming infrastructure
+        let buffer = create_sparse_buffer();
+        let (mut sink, mut source) = create_streaming_pair_with_capacity(44100, 1, 100000);
+
+        // Spawn decoder thread with seektable
+        let decoder_buffer = buffer.clone();
+        let decoder_seektable = Some(seektable);
+        let decoder_headers = Some(headers.clone());
+        let decoder_handle = thread::spawn(move || {
+            decode_audio_streaming_with_seektable(
+                decoder_buffer,
+                &mut sink,
+                decoder_headers,
+                decoder_seektable,
+            )
+        });
+
+        // Feed ONLY audio data (headers provided separately)
+        buffer.append_at(0, &audio_data);
+        buffer.set_total_size(audio_data.len() as u64);
+        buffer.mark_eof();
+
+        // Wait for decoder
+        let result = decoder_handle.join().unwrap();
+        assert!(
+            result.is_ok(),
+            "Decode with seektable failed: {:?}",
+            result.err()
+        );
+
+        let info = result.unwrap();
+        assert_eq!(info.sample_rate, 44100);
+        assert_eq!(info.channels, 1);
+
+        // Pull samples from source
+        let mut decoded_samples = Vec::new();
+        let mut buf = [0.0f32; 1024];
+        loop {
+            let n = source.pull_samples(&mut buf);
+            if n == 0 && source.is_finished() {
+                break;
+            }
+            decoded_samples.extend_from_slice(&buf[..n]);
+        }
+
+        // Should have approximately the same number of samples
+        assert!(
+            (decoded_samples.len() as i64 - samples.len() as i64).abs() < 1000,
+            "Sample count mismatch with seektable: {} vs {}",
+            decoded_samples.len(),
+            samples.len()
+        );
+    }
+
+    #[test]
+    fn test_flac_streaming_decoder_incremental_feed() {
+        init();
+
+        // Create test FLAC data
+        let samples: Vec<i32> = (0..44100)
+            .map(|i| ((i as f64 * 0.01).sin() * 10000.0) as i32)
+            .collect();
+        let flac_data = encode_to_flac(&samples, 44100, 1, 16).unwrap();
+
+        // Build seektable
+        let seektable = build_seektable(&flac_data).unwrap();
+        assert!(!seektable.is_empty(), "Seektable should not be empty");
+
+        // Extract headers
+        let headers_end = find_flac_headers_end(&flac_data).unwrap();
+        let headers = flac_data[..headers_end].to_vec();
+        let audio_data = &flac_data[headers_end..];
+
+        // Create decoder
+        let mut decoder = FlacStreamingDecoder::new(headers, &seektable).unwrap();
+
+        // Feed data in small chunks (simulating streaming)
+        let chunk_size = 4096;
+        let mut all_samples = Vec::new();
+
+        for chunk in audio_data.chunks(chunk_size) {
+            let samples = decoder.feed(chunk).unwrap();
+            all_samples.extend(samples);
+        }
+
+        // Finish decoding
+        let final_samples = decoder.finish().unwrap();
+        all_samples.extend(final_samples);
+
+        // Should have decoded some samples
+        assert!(
+            !all_samples.is_empty(),
+            "Should have decoded samples incrementally"
+        );
+
+        // Verify reasonable sample count
+        let expected_samples = samples.len();
+        assert!(
+            (all_samples.len() as i64 - expected_samples as i64).abs() < 5000,
+            "Incremental decode sample count off: {} vs expected ~{}",
+            all_samples.len(),
+            expected_samples
+        );
+    }
+
+    #[test]
+    fn test_seektable_fallback_to_batch() {
+        use crate::playback::create_streaming_pair_with_capacity;
+        use crate::playback::sparse_buffer::create_sparse_buffer;
+        use std::thread;
+
+        init();
+
+        // Create test FLAC data
+        let samples: Vec<i32> = (0..44100)
+            .map(|i| ((i as f64 * 0.01).sin() * 10000.0) as i32)
+            .collect();
+        let flac_data = encode_to_flac(&samples, 44100, 1, 16).unwrap();
+
+        // Create streaming infrastructure
+        let buffer = create_sparse_buffer();
+        let (mut sink, mut source) = create_streaming_pair_with_capacity(44100, 1, 100000);
+
+        // Spawn decoder thread WITHOUT seektable (should fallback to batch)
+        let decoder_buffer = buffer.clone();
+        let decoder_handle = thread::spawn(move || {
+            decode_audio_streaming_with_seektable(
+                decoder_buffer,
+                &mut sink,
+                None, // No headers
+                None, // No seektable - should fallback
+            )
+        });
+
+        // Feed complete FLAC data
+        buffer.append_at(0, &flac_data);
+        buffer.set_total_size(flac_data.len() as u64);
+        buffer.mark_eof();
+
+        // Wait for decoder
+        let result = decoder_handle.join().unwrap();
+        assert!(result.is_ok(), "Batch fallback failed: {:?}", result.err());
+
+        let info = result.unwrap();
+        assert_eq!(info.sample_rate, 44100);
+        assert_eq!(info.channels, 1);
+
+        // Pull samples
+        let mut decoded_samples = Vec::new();
+        let mut buf = [0.0f32; 1024];
+        loop {
+            let n = source.pull_samples(&mut buf);
+            if n == 0 && source.is_finished() {
+                break;
+            }
+            decoded_samples.extend_from_slice(&buf[..n]);
+        }
+
+        assert!(
+            (decoded_samples.len() as i64 - samples.len() as i64).abs() < 1000,
+            "Batch fallback sample count mismatch: {} vs {}",
             decoded_samples.len(),
             samples.len()
         );

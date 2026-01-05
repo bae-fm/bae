@@ -1,4 +1,5 @@
 mod cpal_output;
+pub mod data_source;
 mod error;
 mod pcm_source;
 pub mod progress;

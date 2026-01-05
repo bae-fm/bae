@@ -6,8 +6,5 @@
 mod reader;
 mod traits;
 
-pub use reader::{
-    create_storage_reader, download_encrypted_to_streaming_buffer, download_to_streaming_buffer,
-    download_to_streaming_buffer_with_range,
-};
+pub use reader::create_storage_reader;
 pub use traits::{ReleaseStorage, ReleaseStorageImpl};
