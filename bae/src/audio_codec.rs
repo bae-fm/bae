@@ -1,12 +1,10 @@
 //! Unified audio codec module using FFmpeg.
 //!
 //! Provides decoding (any format to PCM), encoding (PCM to FLAC), and
-//! seektable generation. Uses temp files for in-memory operations since
-//! FFmpeg's high-level API is file-oriented.
+//! seektable generation. Uses custom AVIO for in-memory decoding.
 
-use std::io::Write;
-use std::path::Path;
-use tempfile::NamedTempFile;
+use std::os::raw::{c_int, c_void};
+use std::ptr;
 use tracing::{debug, info};
 
 /// Decoded audio metadata and samples
@@ -30,6 +28,58 @@ pub fn init() {
     ffmpeg_next::init().expect("Failed to initialize FFmpeg");
 }
 
+// --- AVIO custom I/O implementation ---
+
+/// Context for AVIO callbacks - holds the buffer and read position
+struct AvioContext {
+    data: *const u8,
+    size: usize,
+    pos: usize,
+}
+
+/// AVIO read callback - reads bytes from our memory buffer
+unsafe extern "C" fn avio_read_callback(
+    opaque: *mut c_void,
+    buf: *mut u8,
+    buf_size: c_int,
+) -> c_int {
+    let ctx = &mut *(opaque as *mut AvioContext);
+    let remaining = ctx.size - ctx.pos;
+    let to_read = (buf_size as usize).min(remaining);
+
+    if to_read == 0 {
+        return ffmpeg_sys_next::AVERROR_EOF;
+    }
+
+    ptr::copy_nonoverlapping(ctx.data.add(ctx.pos), buf, to_read);
+    ctx.pos += to_read;
+    to_read as c_int
+}
+
+/// AVIO seek callback - seeks within our memory buffer
+unsafe extern "C" fn avio_seek_callback(opaque: *mut c_void, offset: i64, whence: c_int) -> i64 {
+    let ctx = &mut *(opaque as *mut AvioContext);
+
+    // AVSEEK_SIZE returns the buffer size
+    if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
+        return ctx.size as i64;
+    }
+
+    let new_pos = match whence {
+        0 => offset as usize,                     // SEEK_SET
+        1 => (ctx.pos as i64 + offset) as usize,  // SEEK_CUR
+        2 => (ctx.size as i64 + offset) as usize, // SEEK_END
+        _ => return -1,
+    };
+
+    if new_pos > ctx.size {
+        return -1;
+    }
+
+    ctx.pos = new_pos;
+    new_pos as i64
+}
+
 /// Decode any audio format to PCM samples.
 ///
 /// Supports FLAC, MP3, APE, AAC/M4A, OGG Vorbis, WAV, AIFF, and more.
@@ -40,63 +90,147 @@ pub fn decode_audio(
     start_ms: Option<u64>,
     end_ms: Option<u64>,
 ) -> Result<DecodedAudio, String> {
-    // Write data to temp file
-    let mut temp_file =
-        NamedTempFile::new().map_err(|e| format!("Failed to create temp file: {}", e))?;
-    temp_file
-        .write_all(data)
-        .map_err(|e| format!("Failed to write temp file: {}", e))?;
-    let temp_path = temp_file.path();
-
-    decode_audio_file(temp_path, start_ms, end_ms)
+    decode_audio_from_memory(data, start_ms, end_ms)
 }
 
-/// Decode an audio file to PCM samples
-fn decode_audio_file(
-    path: &Path,
+/// Decode audio from a memory buffer using custom AVIO
+fn decode_audio_from_memory(
+    data: &[u8],
     start_ms: Option<u64>,
     end_ms: Option<u64>,
 ) -> Result<DecodedAudio, String> {
-    use ffmpeg_next::media::Type;
+    unsafe { decode_audio_avio(data, start_ms, end_ms) }
+}
 
-    let path_str = path
-        .to_str()
-        .ok_or_else(|| "Invalid path encoding".to_string())?;
+/// Internal AVIO-based decode implementation
+unsafe fn decode_audio_avio(
+    data: &[u8],
+    start_ms: Option<u64>,
+    end_ms: Option<u64>,
+) -> Result<DecodedAudio, String> {
+    use ffmpeg_sys_next::*;
 
-    let mut ictx = ffmpeg_next::format::input(&path_str)
-        .map_err(|e| format!("Failed to open audio file: {}", e))?;
+    // Create our context for callbacks
+    let mut avio_ctx = Box::new(AvioContext {
+        data: data.as_ptr(),
+        size: data.len(),
+        pos: 0,
+    });
+
+    // Allocate AVIO buffer (FFmpeg will manage this)
+    let avio_buffer_size = 32768;
+    let avio_buffer = av_malloc(avio_buffer_size) as *mut u8;
+    if avio_buffer.is_null() {
+        return Err("Failed to allocate AVIO buffer".to_string());
+    }
+
+    // Create custom AVIO context
+    let avio = avio_alloc_context(
+        avio_buffer,
+        avio_buffer_size as c_int,
+        0, // read-only
+        avio_ctx.as_mut() as *mut AvioContext as *mut c_void,
+        Some(avio_read_callback),
+        None, // no write
+        Some(avio_seek_callback),
+    );
+    if avio.is_null() {
+        av_free(avio_buffer as *mut c_void);
+        return Err("Failed to create AVIO context".to_string());
+    }
+
+    // Create format context
+    let mut fmt_ctx = avformat_alloc_context();
+    if fmt_ctx.is_null() {
+        av_free(avio as *mut c_void);
+        return Err("Failed to allocate format context".to_string());
+    }
+    (*fmt_ctx).pb = avio;
+
+    // Open input (NULL filename since we're using custom I/O)
+    let ret = avformat_open_input(&mut fmt_ctx, ptr::null(), ptr::null_mut(), ptr::null_mut());
+    if ret < 0 {
+        avformat_free_context(fmt_ctx);
+        return Err(format!("Failed to open input: {}", av_err_str(ret)));
+    }
+
+    // Find stream info
+    let ret = avformat_find_stream_info(fmt_ctx, ptr::null_mut());
+    if ret < 0 {
+        avformat_close_input(&mut fmt_ctx);
+        return Err(format!("Failed to find stream info: {}", av_err_str(ret)));
+    }
 
     // Find best audio stream
-    let input_stream = ictx
-        .streams()
-        .best(Type::Audio)
-        .ok_or("No audio stream found")?;
+    let stream_index = av_find_best_stream(
+        fmt_ctx,
+        AVMediaType::AVMEDIA_TYPE_AUDIO,
+        -1,
+        -1,
+        ptr::null_mut(),
+        0,
+    );
+    if stream_index < 0 {
+        avformat_close_input(&mut fmt_ctx);
+        return Err("No audio stream found".to_string());
+    }
 
-    let stream_index = input_stream.index();
+    let stream = *(*fmt_ctx).streams.add(stream_index as usize);
+    let codecpar = (*stream).codecpar;
 
-    // Get stream parameters
-    let codec_params = input_stream.parameters();
-    let decoder_context = ffmpeg_next::codec::context::Context::from_parameters(codec_params)
-        .map_err(|e| format!("Failed to create decoder context: {}", e))?;
+    // Find decoder
+    let codec = avcodec_find_decoder((*codecpar).codec_id);
+    if codec.is_null() {
+        avformat_close_input(&mut fmt_ctx);
+        return Err("Decoder not found".to_string());
+    }
 
-    let mut decoder = decoder_context
-        .decoder()
-        .audio()
-        .map_err(|e| format!("Failed to create audio decoder: {}", e))?;
+    // Allocate codec context
+    let codec_ctx = avcodec_alloc_context3(codec);
+    if codec_ctx.is_null() {
+        avformat_close_input(&mut fmt_ctx);
+        return Err("Failed to allocate codec context".to_string());
+    }
 
-    let sample_rate = decoder.rate();
-    let channels = decoder.channels() as u32;
+    // Copy codec parameters
+    let ret = avcodec_parameters_to_context(codec_ctx, codecpar);
+    if ret < 0 {
+        avcodec_free_context(&mut (codec_ctx as *mut _));
+        avformat_close_input(&mut fmt_ctx);
+        return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
+    }
+
+    // Open codec
+    let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
+    if ret < 0 {
+        avcodec_free_context(&mut (codec_ctx as *mut _));
+        avformat_close_input(&mut fmt_ctx);
+        return Err(format!("Failed to open codec: {}", av_err_str(ret)));
+    }
+
+    let sample_rate = (*codec_ctx).sample_rate as u32;
+    let channels = (*codecpar).ch_layout.nb_channels as u32;
 
     // Determine bits per sample from format
-    let (bits_per_sample, is_float) = match decoder.format() {
-        ffmpeg_next::format::Sample::I16(_) => (16, false),
-        ffmpeg_next::format::Sample::I32(_) => (32, false),
-        ffmpeg_next::format::Sample::I64(_) => (64, false),
-        ffmpeg_next::format::Sample::F32(_) => (32, true),
-        ffmpeg_next::format::Sample::F64(_) => (64, true),
-        ffmpeg_next::format::Sample::U8(_) => (8, false),
-        ffmpeg_next::format::Sample::None => (16, false), // Default fallback
+    let (bits_per_sample, is_float) = match (*codec_ctx).sample_fmt {
+        AVSampleFormat::AV_SAMPLE_FMT_U8 | AVSampleFormat::AV_SAMPLE_FMT_U8P => (8, false),
+        AVSampleFormat::AV_SAMPLE_FMT_S16 | AVSampleFormat::AV_SAMPLE_FMT_S16P => (16, false),
+        AVSampleFormat::AV_SAMPLE_FMT_S32 | AVSampleFormat::AV_SAMPLE_FMT_S32P => (32, false),
+        AVSampleFormat::AV_SAMPLE_FMT_FLT | AVSampleFormat::AV_SAMPLE_FMT_FLTP => (32, true),
+        AVSampleFormat::AV_SAMPLE_FMT_DBL | AVSampleFormat::AV_SAMPLE_FMT_DBLP => (64, true),
+        AVSampleFormat::AV_SAMPLE_FMT_S64 | AVSampleFormat::AV_SAMPLE_FMT_S64P => (64, false),
+        _ => (16, false),
     };
+
+    let is_planar = matches!(
+        (*codec_ctx).sample_fmt,
+        AVSampleFormat::AV_SAMPLE_FMT_U8P
+            | AVSampleFormat::AV_SAMPLE_FMT_S16P
+            | AVSampleFormat::AV_SAMPLE_FMT_S32P
+            | AVSampleFormat::AV_SAMPLE_FMT_FLTP
+            | AVSampleFormat::AV_SAMPLE_FMT_DBLP
+            | AVSampleFormat::AV_SAMPLE_FMT_S64P
+    );
 
     // Calculate sample boundaries
     let start_sample = start_ms.map(|ms| (ms * sample_rate as u64) / 1000);
@@ -105,28 +239,44 @@ fn decode_audio_file(
     // Seek to start position if specified
     if let Some(start_ms) = start_ms {
         let timestamp = (start_ms as i64) * 1000; // microseconds
-        if ictx.seek(timestamp, ..).is_err() {
-            debug!("Seek failed, will decode from beginning");
+        av_seek_frame(fmt_ctx, -1, timestamp, AVSEEK_FLAG_BACKWARD as c_int);
+    }
+
+    // Allocate frame and packet
+    let frame = av_frame_alloc();
+    let packet = av_packet_alloc();
+    if frame.is_null() || packet.is_null() {
+        if !frame.is_null() {
+            av_frame_free(&mut (frame as *mut _));
         }
+        if !packet.is_null() {
+            av_packet_free(&mut (packet as *mut _));
+        }
+        avcodec_free_context(&mut (codec_ctx as *mut _));
+        avformat_close_input(&mut fmt_ctx);
+        return Err("Failed to allocate frame/packet".to_string());
     }
 
     let mut samples: Vec<i32> = Vec::new();
     let mut current_sample: u64 = 0;
     let mut collecting = start_sample.is_none();
 
-    // Process packets
-    for (stream, packet) in ictx.packets() {
-        if stream.index() != stream_index {
+    // Read and decode packets
+    while av_read_frame(fmt_ctx, packet) >= 0 {
+        if (*packet).stream_index != stream_index {
+            av_packet_unref(packet);
             continue;
         }
 
-        decoder
-            .send_packet(&packet)
-            .map_err(|e| format!("Failed to send packet: {}", e))?;
+        let ret = avcodec_send_packet(codec_ctx, packet);
+        av_packet_unref(packet);
 
-        let mut decoded = ffmpeg_next::util::frame::audio::Audio::empty();
-        while decoder.receive_frame(&mut decoded).is_ok() {
-            let frame_samples = decoded.samples() as u64;
+        if ret < 0 {
+            continue;
+        }
+
+        while avcodec_receive_frame(codec_ctx, frame) >= 0 {
+            let frame_samples = (*frame).nb_samples as u64;
             let frame_start = current_sample;
             let frame_end = current_sample + frame_samples;
 
@@ -145,9 +295,8 @@ fn decode_audio_file(
             }
 
             if collecting {
-                // Extract samples based on format
                 let frame_samples_vec =
-                    extract_samples_from_frame(&decoded, channels as usize, is_float);
+                    extract_samples_from_raw_frame(frame, channels as usize, is_float, is_planar);
 
                 // Calculate which samples to take based on range
                 let skip_start = if let Some(start) = start_sample {
@@ -187,21 +336,27 @@ fn decode_audio_file(
     }
 
     // Flush decoder
-    decoder
-        .send_eof()
-        .map_err(|e| format!("Failed to send EOF: {}", e))?;
-
-    let mut decoded = ffmpeg_next::util::frame::audio::Audio::empty();
-    while decoder.receive_frame(&mut decoded).is_ok() {
+    avcodec_send_packet(codec_ctx, ptr::null());
+    while avcodec_receive_frame(codec_ctx, frame) >= 0 {
         if collecting {
             let frame_samples_vec =
-                extract_samples_from_frame(&decoded, channels as usize, is_float);
+                extract_samples_from_raw_frame(frame, channels as usize, is_float, is_planar);
             samples.extend_from_slice(&frame_samples_vec);
         }
     }
 
+    // Cleanup
+    av_frame_free(&mut (frame as *mut _));
+    av_packet_free(&mut (packet as *mut _));
+    avcodec_free_context(&mut (codec_ctx as *mut _));
+    avformat_close_input(&mut fmt_ctx);
+    // Note: avformat_close_input frees the AVIO context and buffer
+
+    // Keep avio_ctx alive until here (prevent drop during FFmpeg operations)
+    drop(avio_ctx);
+
     debug!(
-        "Decoded {} samples ({} frames) from audio file",
+        "Decoded {} samples ({} frames) from audio",
         samples.len(),
         samples.len() / channels.max(1) as usize
     );
@@ -214,92 +369,90 @@ fn decode_audio_file(
     })
 }
 
-/// Extract samples from a decoded frame as i32
-fn extract_samples_from_frame(
-    frame: &ffmpeg_next::util::frame::audio::Audio,
+/// Extract samples from a raw AVFrame as i32
+unsafe fn extract_samples_from_raw_frame(
+    frame: *const ffmpeg_sys_next::AVFrame,
     channels: usize,
     is_float: bool,
+    is_planar: bool,
 ) -> Vec<i32> {
-    let num_samples = frame.samples();
+    let num_samples = (*frame).nb_samples as usize;
     let mut samples = Vec::with_capacity(num_samples * channels);
-
-    // Get the data from the frame
-    // For packed format, all samples are in plane 0
-    // For planar format, each channel is in a separate plane
-    let is_planar = frame.is_planar();
+    // Detect actual bytes per sample from linesize
+    let actual_bytes_per_sample = if num_samples > 0 && (*frame).linesize[0] > 0 {
+        if is_planar {
+            (*frame).linesize[0] as usize / num_samples
+        } else {
+            (*frame).linesize[0] as usize / (num_samples * channels)
+        }
+    } else {
+        4 // Default to 32-bit
+    };
 
     if is_planar {
         // Interleave from separate channel planes
         for i in 0..num_samples {
             for ch in 0..channels {
-                let plane = frame.data(ch);
-                if is_float {
-                    // F32 planar
-                    let offset = i * 4;
-                    if offset + 4 <= plane.len() {
-                        let f = f32::from_ne_bytes([
-                            plane[offset],
-                            plane[offset + 1],
-                            plane[offset + 2],
-                            plane[offset + 3],
-                        ]);
-                        samples.push((f * i32::MAX as f32) as i32);
-                    }
-                } else {
-                    // Integer planar (typically S16P or S32P)
-                    let bytes_per_sample = frame.format().bytes();
-                    let offset = i * bytes_per_sample;
-                    if offset + bytes_per_sample <= plane.len() {
-                        let sample = match bytes_per_sample {
-                            2 => i16::from_ne_bytes([plane[offset], plane[offset + 1]]) as i32,
-                            4 => i32::from_ne_bytes([
-                                plane[offset],
-                                plane[offset + 1],
-                                plane[offset + 2],
-                                plane[offset + 3],
-                            ]),
-                            _ => 0,
-                        };
-                        samples.push(sample);
-                    }
+                let plane = (*frame).data[ch] as *const u8;
+                if plane.is_null() {
+                    samples.push(0);
+                    continue;
                 }
+
+                let sample = read_sample(plane, i, actual_bytes_per_sample, is_float);
+                samples.push(sample);
             }
         }
     } else {
         // Packed format - all samples interleaved in plane 0
-        let data = frame.data(0);
-        let bytes_per_sample = frame.format().bytes();
-
-        for i in 0..(num_samples * channels) {
-            let offset = i * bytes_per_sample;
-            if offset + bytes_per_sample <= data.len() {
-                let sample = if is_float {
-                    let f = f32::from_ne_bytes([
-                        data[offset],
-                        data[offset + 1],
-                        data[offset + 2],
-                        data[offset + 3],
-                    ]);
-                    (f * i32::MAX as f32) as i32
-                } else {
-                    match bytes_per_sample {
-                        1 => (data[offset] as i8) as i32 * 256,
-                        2 => i16::from_ne_bytes([data[offset], data[offset + 1]]) as i32,
-                        4 => i32::from_ne_bytes([
-                            data[offset],
-                            data[offset + 1],
-                            data[offset + 2],
-                            data[offset + 3],
-                        ]),
-                        _ => 0,
-                    }
-                };
+        let data = (*frame).data[0] as *const u8;
+        if !data.is_null() {
+            for i in 0..(num_samples * channels) {
+                let sample = read_sample(data, i, actual_bytes_per_sample, is_float);
                 samples.push(sample);
             }
         }
     }
 
     samples
+}
+
+/// Read a single sample from raw bytes and convert to i32
+unsafe fn read_sample(
+    data: *const u8,
+    index: usize,
+    bytes_per_sample: usize,
+    is_float: bool,
+) -> i32 {
+    let offset = index * bytes_per_sample;
+    let ptr = data.add(offset);
+
+    if is_float {
+        let f = *(ptr as *const f32);
+        (f * i32::MAX as f32) as i32
+    } else {
+        match bytes_per_sample {
+            1 => (*(ptr as *const i8) as i32) << 24,
+            2 => (*(ptr as *const i16) as i32) << 16,
+            3 => {
+                let b = std::slice::from_raw_parts(ptr, 3);
+                ((b[0] as i32) << 8) | ((b[1] as i32) << 16) | ((b[2] as i32) << 24)
+            }
+            4 => *(ptr as *const i32),
+            _ => 0,
+        }
+    }
+}
+
+/// Convert FFmpeg error code to string
+fn av_err_str(errnum: i32) -> String {
+    unsafe {
+        let mut buf = [0i8; 256];
+        ffmpeg_sys_next::av_strerror(errnum, buf.as_mut_ptr(), buf.len());
+        std::ffi::CStr::from_ptr(buf.as_ptr())
+            .to_string_lossy()
+            .into_owned()
+    }
 }
 
 /// Encode PCM samples to FLAC format.
