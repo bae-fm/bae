@@ -168,12 +168,12 @@ jobs:
         if [[ "$RUNNER_OS" == "macOS" ]]; then
           if [[ -d "/opt/homebrew" ]]; then
             export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
-            export CPATH="/opt/homebrew/include"
             export LIBRARY_PATH="/opt/homebrew/lib"
+            export BINDGEN_EXTRA_CLANG_ARGS="-I/opt/homebrew/include"
           else
             export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
-            export CPATH="/usr/local/include"
             export LIBRARY_PATH="/usr/local/lib"
+            export BINDGEN_EXTRA_CLANG_ARGS="-I/usr/local/include"
           fi
         fi
         cargo clippy --lib -- -D warnings
@@ -208,12 +208,12 @@ jobs:
         if [[ "$RUNNER_OS" == "macOS" ]]; then
           if [[ -d "/opt/homebrew" ]]; then
             export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
-            export CPATH="/opt/homebrew/include"
             export LIBRARY_PATH="/opt/homebrew/lib"
+            export BINDGEN_EXTRA_CLANG_ARGS="-I/opt/homebrew/include"
           else
             export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
-            export CPATH="/usr/local/include"
             export LIBRARY_PATH="/usr/local/lib"
+            export BINDGEN_EXTRA_CLANG_ARGS="-I/usr/local/include"
           fi
         fi
         cargo test --features test-utils --verbose
@@ -301,12 +301,12 @@ jobs:
       run: |
         if [[ -d "/opt/homebrew" ]]; then
           export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
-          export CPATH="/opt/homebrew/include"
           export LIBRARY_PATH="/opt/homebrew/lib"
+          export BINDGEN_EXTRA_CLANG_ARGS="-I/opt/homebrew/include"
         else
           export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
-          export CPATH="/usr/local/include"
           export LIBRARY_PATH="/usr/local/lib"
+          export BINDGEN_EXTRA_CLANG_ARGS="-I/usr/local/include"
         fi
         dx bundle --release
 
