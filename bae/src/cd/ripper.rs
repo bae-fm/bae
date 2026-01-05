@@ -292,7 +292,7 @@ impl CdRipper {
         }
         Ok((samples, errors))
     }
-    /// Encode samples to FLAC using libFLAC
+    /// Encode samples to FLAC using FFmpeg
     fn encode_to_flac(
         &self,
         samples: &[i32],
@@ -300,7 +300,7 @@ impl CdRipper {
         channels: u32,
         bits_per_sample: u32,
     ) -> Result<Vec<u8>, RipError> {
-        crate::flac_encoder::encode_to_flac(samples, sample_rate, channels, bits_per_sample)
+        crate::audio_codec::encode_to_flac(samples, sample_rate, channels, bits_per_sample)
             .map_err(RipError::Flac)
     }
 }

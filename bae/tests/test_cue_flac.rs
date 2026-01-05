@@ -757,7 +757,7 @@ fn copy_cue_flac_fixture_with_seektable(dir: &Path) {
 #[tokio::test]
 async fn test_cue_flac_track2_samples_match_ground_truth() {
     use bae::cue_flac::CueFlacProcessor;
-    use bae::flac_decoder::decode_flac_range;
+    use bae::audio_codec::decode_audio;
 
     tracing_init();
 
@@ -791,7 +791,7 @@ async fn test_cue_flac_track2_samples_match_ground_truth() {
     // === GROUND TRUTH ===
     // Decode the entire FLAC and extract samples starting at track 2's position
     info!("Decoding entire FLAC for ground truth...");
-    let full_decode = decode_flac_range(&flac_data, None, None).expect("decode full flac");
+    let full_decode = decode_audio(&flac_data, None, None).expect("decode full flac");
     let channels = full_decode.channels as usize;
     let sample_rate = full_decode.sample_rate;
 
@@ -843,7 +843,7 @@ async fn test_cue_flac_track2_samples_match_ground_truth() {
         "Decoding extracted track ({} bytes with headers)...",
         flac_with_headers.len()
     );
-    let track_decode = decode_flac_range(&flac_with_headers, None, None).expect("decode track");
+    let track_decode = decode_audio(&flac_with_headers, None, None).expect("decode track");
     let actual_samples = &track_decode.samples;
 
     info!(
@@ -947,7 +947,7 @@ async fn test_cue_flac_track2_samples_match_ground_truth() {
 #[tokio::test]
 async fn test_cue_flac_track_start_positions() {
     use bae::cue_flac::CueFlacProcessor;
-    use bae::flac_decoder::decode_flac_range;
+    use bae::audio_codec::decode_audio;
 
     tracing_init();
 
@@ -963,7 +963,7 @@ async fn test_cue_flac_track_start_positions() {
     let flac_data = std::fs::read(&flac_path).expect("read flac");
     let flac_info = CueFlacProcessor::analyze_flac(&flac_path).expect("analyze flac");
     let dense_seektable = CueFlacProcessor::build_dense_seektable(&flac_data, &flac_info);
-    let full_decode = decode_flac_range(&flac_data, None, None).expect("decode full");
+    let full_decode = decode_audio(&flac_data, None, None).expect("decode full");
     let channels = full_decode.channels as usize;
     let sample_rate = full_decode.sample_rate;
 
@@ -1013,7 +1013,7 @@ async fn test_cue_flac_track_start_positions() {
         let mut flac_with_headers = headers.headers.clone();
         flac_with_headers.extend_from_slice(track_bytes);
 
-        let extracted = decode_flac_range(&flac_with_headers, None, None).expect("decode");
+        let extracted = decode_audio(&flac_with_headers, None, None).expect("decode");
 
         // Skip lead-in samples (the fix!)
         let skip_samples = if frame_offset_samples > 0 {
@@ -1057,7 +1057,7 @@ async fn test_cue_flac_track_start_positions() {
 #[tokio::test]
 async fn test_cue_flac_gapless_track_boundary() {
     use bae::cue_flac::CueFlacProcessor;
-    use bae::flac_decoder::decode_flac_range;
+    use bae::audio_codec::decode_audio;
 
     tracing_init();
 
@@ -1076,7 +1076,7 @@ async fn test_cue_flac_gapless_track_boundary() {
     let headers = CueFlacProcessor::extract_flac_headers(&flac_path).expect("headers");
 
     // Decode full file as ground truth
-    let full_decode = decode_flac_range(&flac_data, None, None).expect("decode full");
+    let full_decode = decode_audio(&flac_data, None, None).expect("decode full");
     let channels = full_decode.channels as usize;
     let sample_rate = full_decode.sample_rate;
 
@@ -1126,13 +1126,13 @@ async fn test_cue_flac_gapless_track_boundary() {
     let t1_bytes = &flac_data[t1_start_byte as usize..t1_end_byte as usize];
     let mut t1_flac = headers.headers.clone();
     t1_flac.extend_from_slice(t1_bytes);
-    let t1_decode = decode_flac_range(&t1_flac, None, None).expect("decode track 1");
+    let t1_decode = decode_audio(&t1_flac, None, None).expect("decode track 1");
 
     // Extract and decode Track 2
     let t2_bytes = &flac_data[t2_start_byte as usize..t2_end_byte as usize];
     let mut t2_flac = headers.headers.clone();
     t2_flac.extend_from_slice(t2_bytes);
-    let t2_decode = decode_flac_range(&t2_flac, None, None).expect("decode track 2");
+    let t2_decode = decode_audio(&t2_flac, None, None).expect("decode track 2");
 
     // Skip lead-in samples from frame boundary alignment, then trim to exact sample count
     let t1_skip = if t1_frame_offset > 0 {

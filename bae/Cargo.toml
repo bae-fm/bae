@@ -47,8 +47,8 @@ nom = "7.1"              # Parser combinator for CUE format
 id3 = "1.14"            # MP3 tag reading
 discid = "0.5"          # Calculate MusicBrainz DiscIDs from TOC data
 regex = "1.11"          # Regular expressions for album name cleaning
-libflac-sys = "0.3.4"    # FFI bindings to libFLAC for seektable generation
-libc = "0.2"            # C types for libflac-sys FFI
+ffmpeg-next = "7.1"      # Audio decoding/encoding (FLAC, MP3, APE, etc)
+libc = "0.2"            # C types for FFI bindings
 crc32fast = "1.4"       # Fast CRC32 calculation for EAC-style log files
 if-addrs = "0.14"       # Network interface enumeration for validation
 chardetng = "0.1"       # Encoding detection for text files
@@ -61,6 +61,7 @@ getrandom = { version = "0.2", features = ["js"] }
 libcdio-sys = "0.5"     # FFI bindings to libcdio for CD drive access (requires libcdio system library)
 rayon = "1.10"          # Parallel processing for CUE/FLAC splitting
 cpal = "0.15"           # Cross-platform audio I/O
+rtrb = "0.3"            # Lock-free SPSC ring buffer for real-time audio
 dotenvy = "0.15"        # .env file loading for dev mode
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }  # Logging configuration
@@ -70,6 +71,7 @@ tokio-stream = "0.1.17"
 souvlaki = "0.8"
 bincode = "1.3"
 cxx = "1.0"
+tempfile = "3.8"  # Temp files for FFmpeg audio processing
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tracing-oslog = "0.3"  # macOS unified logging (accessible via `log` CLI)

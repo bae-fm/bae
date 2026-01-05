@@ -3,6 +3,7 @@ pub mod config;
 #[doc(hidden)]
 pub mod ui;
 pub use ui::AppContext;
+pub mod audio_codec;
 pub mod cache;
 pub mod cd;
 pub mod cloud_storage;
@@ -11,9 +12,6 @@ pub mod db;
 pub mod discogs;
 pub mod encryption;
 pub mod fixtures;
-pub mod flac_decoder;
-pub mod flac_encoder;
-pub mod flac_frame_scanner;
 pub mod import;
 pub mod library;
 pub mod musicbrainz;

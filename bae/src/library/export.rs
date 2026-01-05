@@ -127,7 +127,7 @@ impl ExportService {
         .await
         .map_err(|e| e.to_string())?;
 
-        let flac_data = crate::flac_encoder::encode_to_flac(
+        let flac_data = crate::audio_codec::encode_to_flac(
             pcm_source.raw_samples(),
             pcm_source.sample_rate(),
             pcm_source.channels(),

@@ -121,8 +121,8 @@ pub async fn load_track_audio(
         file_data
     };
 
-    debug!("Decoding {} bytes of FLAC data to PCM", audio_data.len());
-    let decoded = decode_flac_to_pcm(&audio_data).await?;
+    debug!("Decoding {} bytes of audio data to PCM", audio_data.len());
+    let decoded = decode_audio_to_pcm(&audio_data).await?;
 
     info!(
         "Successfully decoded track {}: {} samples, {}Hz, {} channels",
@@ -140,13 +140,13 @@ pub async fn load_track_audio(
     )))
 }
 
-/// Decode FLAC data to PCM using libFLAC
-pub(crate) async fn decode_flac_to_pcm(
-    flac_data: &[u8],
-) -> Result<crate::flac_decoder::DecodedFlac, PlaybackError> {
-    let flac_data = flac_data.to_vec();
+/// Decode audio data to PCM using FFmpeg
+pub(crate) async fn decode_audio_to_pcm(
+    audio_data: &[u8],
+) -> Result<crate::audio_codec::DecodedAudio, PlaybackError> {
+    let audio_data = audio_data.to_vec();
     tokio::task::spawn_blocking(move || {
-        crate::flac_decoder::decode_flac_range(&flac_data, None, None)
+        crate::audio_codec::decode_audio(&audio_data, None, None)
     })
     .await
     .map_err(PlaybackError::task)?

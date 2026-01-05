@@ -297,16 +297,14 @@ impl CueFlacProcessor {
     ///
     /// By scanning every frame (~93ms at 44.1kHz), we get the precision needed
     /// for both use cases. The seektable is stored in the DB and used at playback.
-    /// Build a dense seektable by scanning FLAC frames using libFLAC.
+    /// Build a dense seektable by scanning FLAC frames using FFmpeg.
     ///
-    /// This uses the official FLAC library to iterate through all frames,
-    /// which is more reliable than manual sync-code scanning because libFLAC
-    /// properly validates frame headers and CRCs.
+    /// This uses FFmpeg to iterate through audio packets and collect their
+    /// byte positions for building a seektable.
     pub fn build_dense_seektable(file_data: &[u8], _flac_info: &FlacInfo) -> DenseSeektable {
-        match crate::flac_frame_scanner::scan_flac_frames(file_data) {
-            Ok(scan_result) => {
-                let entries: Vec<SeekPoint> = scan_result
-                    .seektable
+        match crate::audio_codec::build_seektable(file_data) {
+            Ok(entries) => {
+                let entries: Vec<SeekPoint> = entries
                     .into_iter()
                     .map(|e| SeekPoint {
                         sample_number: e.sample_number,
@@ -316,7 +314,7 @@ impl CueFlacProcessor {
                 DenseSeektable { entries }
             }
             Err(e) => {
-                tracing::warn!("libFLAC scan failed: {}, returning empty seektable", e);
+                tracing::warn!("FFmpeg scan failed: {}, returning empty seektable", e);
                 DenseSeektable {
                     entries: Vec::new(),
                 }

@@ -4,6 +4,7 @@
 extern "C" {}
 use crate::db::Database;
 use tracing::{error, info, warn};
+mod audio_codec;
 mod cache;
 mod cd;
 mod cloud_storage;
@@ -14,9 +15,6 @@ mod discogs;
 mod encryption;
 #[cfg(feature = "demo")]
 mod fixtures;
-mod flac_decoder;
-mod flac_encoder;
-mod flac_frame_scanner;
 mod import;
 mod library;
 mod media_controls;
@@ -100,6 +98,9 @@ fn configure_logging() {
 fn main() {
     let config = config::Config::load();
     configure_logging();
+
+    // Initialize FFmpeg for audio processing
+    audio_codec::init();
     let screenshot_mode = std::env::var("BAE_SCREENSHOT_MODE").is_ok();
     if screenshot_mode {
         info!("Screenshot mode enabled - disabling network features");

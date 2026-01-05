@@ -88,12 +88,12 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev libasound2-dev libdiscid-dev libcdio-dev libiso9660-dev libudf-dev libsodium-dev pkg-config libtorrent-rasterbar-dev libboost-all-dev
+        sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev libasound2-dev libdiscid-dev libcdio-dev libiso9660-dev libudf-dev libsodium-dev pkg-config libtorrent-rasterbar-dev libboost-all-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libavfilter-dev
 
     - name: Install macOS dependencies
       if: runner.os == 'macOS'
       run: |
-        brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost
+        brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost ffmpeg
 
     # Windows uses MSYS2/MinGW for CD libraries (libcdio, libdiscid) since they're not in vcpkg
     - name: Setup MSYS2 (Windows)
@@ -109,6 +109,7 @@ jobs:
           mingw-w64-x86_64-libtorrent-rasterbar
           mingw-w64-x86_64-boost
           mingw-w64-x86_64-pkg-config
+          mingw-w64-x86_64-ffmpeg
 
     - name: Install MinGW Rust target (Windows)
       if: runner.os == 'Windows'
@@ -235,7 +236,7 @@ jobs:
 
     - name: Install macOS dependencies
       run: |
-        brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost
+        brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost ffmpeg
 
     - name: Install Rust (uses rust-toolchain.toml)
       run: rustup show
@@ -428,7 +429,7 @@ jobs:
 
     - name: Install macOS dependencies
       run: |
-        brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost
+        brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost ffmpeg
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
