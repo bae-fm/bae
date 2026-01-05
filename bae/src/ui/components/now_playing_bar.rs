@@ -452,6 +452,15 @@ pub fn NowPlayingBar() -> Element {
                                 playback_error.set(None);
                             });
                         }
+                        PlaybackProgress::DecodeStats { error_count, .. } => {
+                            // Log decode errors for debugging, could show in UI later
+                            if error_count > 0 {
+                                tracing::warn!(
+                                    "Track had {} decode errors (audio may be corrupted)",
+                                    error_count
+                                );
+                            }
+                        }
                     }
                 }
             });

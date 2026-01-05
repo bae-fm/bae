@@ -4,9 +4,47 @@
 //! seektable generation. Uses custom AVIO for in-memory decoding.
 
 use crate::playback::{SharedSparseBuffer, StreamingPcmSink};
+use std::cell::Cell;
 use std::os::raw::{c_int, c_void};
 use std::ptr;
 use tracing::{debug, info, warn};
+
+// Thread-local FFmpeg error counter for per-decode error tracking
+thread_local! {
+    static FFMPEG_DECODE_ERRORS: Cell<u32> = const { Cell::new(0) };
+}
+
+/// Reset the thread-local FFmpeg error counter
+fn reset_ffmpeg_errors() {
+    FFMPEG_DECODE_ERRORS.with(|c| c.set(0));
+}
+
+/// Get current FFmpeg error count for this thread
+fn get_ffmpeg_errors() -> u32 {
+    FFMPEG_DECODE_ERRORS.with(|c| c.get())
+}
+
+/// Custom FFmpeg log callback that counts errors per-thread
+unsafe extern "C" fn ffmpeg_log_callback(
+    _avcl: *mut c_void,
+    level: c_int,
+    _fmt: *const i8,
+    _vl: *mut i8,
+) {
+    // AV_LOG_ERROR = 16
+    if level <= 16 {
+        FFMPEG_DECODE_ERRORS.with(|c| c.set(c.get() + 1));
+    }
+}
+
+/// Install our custom FFmpeg log callback
+fn install_ffmpeg_log_callback() {
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+    INIT.call_once(|| unsafe {
+        ffmpeg_sys_next::av_log_set_callback(Some(ffmpeg_log_callback));
+    });
+}
 
 /// Decoded audio metadata and samples
 #[derive(Debug, Clone)]
@@ -1189,6 +1227,10 @@ pub fn decode_audio_streaming_with_seektable(
     headers: Option<Vec<u8>>,
     seektable: Option<Vec<SeekEntry>>,
 ) -> Result<StreamingAudioInfo, String> {
+    // Install FFmpeg error callback and reset error counter for this decode
+    install_ffmpeg_log_callback();
+    reset_ffmpeg_errors();
+
     let mut read_buf = [0u8; 32768];
 
     // If headers provided, use them; otherwise read from buffer
@@ -1273,11 +1315,21 @@ pub fn decode_audio_streaming_with_seektable(
         push_samples_to_sink(sink, &final_samples)?;
     }
 
+    // Record FFmpeg error count from this decode
+    let error_count = get_ffmpeg_errors();
+    if error_count > 0 {
+        warn!(
+            "Streaming decode had {} FFmpeg errors (frames may be corrupted)",
+            error_count
+        );
+    }
+    sink.set_decode_error_count(error_count);
+
     sink.mark_finished();
 
     info!(
-        "Streaming decode complete: {}Hz, {} channels",
-        info.sample_rate, info.channels
+        "Streaming decode complete: {}Hz, {} channels, {} errors",
+        info.sample_rate, info.channels, error_count
     );
 
     Ok(info)

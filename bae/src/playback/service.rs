@@ -879,6 +879,7 @@ impl PlaybackService {
         let current_position_shared = self.current_position_shared.clone();
         let position_generation = self.position_generation.clone();
         let gen = position_generation.load(std::sync::atomic::Ordering::SeqCst);
+        let streaming_source = self.current_streaming_source.clone();
 
         tokio::spawn(async move {
             loop {
@@ -891,8 +892,19 @@ impl PlaybackService {
                     }
                     Some(()) = completion_rx_async.recv() => {
                         if position_generation.load(std::sync::atomic::Ordering::SeqCst) == gen {
-                            info!("Streaming track completed: {}", track_id_owned);
+                            // Get decode error count from streaming source
+                            let error_count = streaming_source
+                                .as_ref()
+                                .and_then(|s| s.lock().ok())
+                                .map(|g| g.decode_error_count())
+                                .unwrap_or(0);
+
+                            info!("Streaming track completed: {} ({} decode errors)", track_id_owned, error_count);
                             let _ = progress_tx.send(PlaybackProgress::TrackCompleted { track_id: track_id_owned.clone() });
+                            let _ = progress_tx.send(PlaybackProgress::DecodeStats {
+                                track_id: track_id_owned.clone(),
+                                error_count,
+                            });
                         }
                         break;
                     }

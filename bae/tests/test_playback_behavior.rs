@@ -424,30 +424,8 @@ impl CueFlacTestFixture {
             _temp_dir: temp_dir,
         })
     }
-
-    /// Wait for playback position to reach at least the given threshold
-    async fn wait_for_position_progress(
-        &mut self,
-        min_position: Duration,
-        timeout_duration: Duration,
-    ) -> bool {
-        let deadline = Instant::now() + timeout_duration;
-        while Instant::now() < deadline {
-            let remaining = deadline - Instant::now();
-            match timeout(remaining, self.progress_rx.recv()).await {
-                Ok(Some(PlaybackProgress::PositionUpdate { position, .. })) => {
-                    if position >= min_position {
-                        return true;
-                    }
-                }
-                Ok(Some(_)) => continue,
-                Ok(None) => return false,
-                Err(_) => return false,
-            }
-        }
-        false
-    }
 }
+
 #[tokio::test]
 async fn test_pause_then_seek_stays_paused() {
     if should_skip_audio_tests() {
@@ -578,19 +556,37 @@ async fn test_auto_advance_to_next_track() {
     fixture
         .playback_handle
         .seek(Duration::from_secs(4) + Duration::from_millis(500));
-    let next_track_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track, .. } = s {
-                    track.id == second_track_id
-                } else {
-                    false
+
+    // Wait for auto-advance and collect decode stats
+    let mut total_decode_errors = 0u32;
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut advanced = false;
+
+    while Instant::now() < deadline {
+        let remaining = deadline - Instant::now();
+        match timeout(remaining, fixture.progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::StateChanged { state })) => {
+                if let PlaybackState::Playing { track, .. } = state {
+                    if track.id == second_track_id {
+                        advanced = true;
+                        break;
+                    }
                 }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-    if next_track_state.is_some() {
+            }
+            Ok(Some(PlaybackProgress::DecodeStats { error_count, .. })) => {
+                total_decode_errors += error_count;
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) | Err(_) => break,
+        }
+    }
+
+    if advanced {
+        assert_eq!(
+            total_decode_errors, 0,
+            "Auto-advance test had {} decode errors",
+            total_decode_errors
+        );
     } else {
         debug!("Auto-advance test inconclusive - may need valid FLAC files");
     }
@@ -1272,16 +1268,41 @@ async fn test_cue_flac_playback() {
     // Play track 1
     fixture.playback_handle.play(track_id.clone());
 
-    // Wait for playback to progress significantly
+    // Wait for playback to progress and then complete
     // This exercises the CUE/FLAC code path with byte range extraction and header prepending
-    // If headers are doubled or corrupted, FFmpeg will fail to decode and playback won't progress
-    let progressed = fixture
-        .wait_for_position_progress(Duration::from_millis(500), Duration::from_secs(5))
-        .await;
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut progressed = false;
+    let mut decode_error_count: Option<u32> = None;
 
-    assert!(
-        progressed,
-        "CUE/FLAC playback should progress beyond 500ms - \
-         failure indicates decode errors (possibly doubled headers bug)"
+    while Instant::now() < deadline {
+        let remaining = deadline - Instant::now();
+        match timeout(remaining, fixture.progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::PositionUpdate { position, .. })) => {
+                if position >= Duration::from_millis(500) {
+                    progressed = true;
+                }
+            }
+            Ok(Some(PlaybackProgress::DecodeStats { error_count, .. })) => {
+                decode_error_count = Some(error_count);
+                break; // Got stats, we're done
+            }
+            Ok(Some(PlaybackProgress::TrackCompleted { .. })) => {
+                // Track completed, DecodeStats should follow
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) | Err(_) => break,
+        }
+    }
+
+    assert!(progressed, "CUE/FLAC playback should progress beyond 500ms");
+
+    // Check FFmpeg decode errors - should be 0 for valid CUE/FLAC playback
+    // If headers are doubled/corrupted, FFmpeg will log errors even though playback continues
+    let error_count = decode_error_count.unwrap_or(0);
+    assert_eq!(
+        error_count, 0,
+        "CUE/FLAC playback had {} FFmpeg decode errors - \
+         this indicates corrupted data (possibly doubled headers bug)",
+        error_count
     );
 }

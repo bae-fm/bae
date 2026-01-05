@@ -25,6 +25,8 @@ pub struct StreamingState {
     finished: AtomicBool,
     /// Whether playback was cancelled
     cancelled: AtomicBool,
+    /// Count of FFmpeg decode errors (frames that failed to decode)
+    decode_error_count: AtomicU32,
 }
 
 impl StreamingState {
@@ -35,6 +37,7 @@ impl StreamingState {
             position_samples: AtomicU64::new(0),
             finished: AtomicBool::new(false),
             cancelled: AtomicBool::new(false),
+            decode_error_count: AtomicU32::new(0),
         }
     }
 
@@ -56,6 +59,14 @@ impl StreamingState {
 
     pub fn is_cancelled(&self) -> bool {
         self.cancelled.load(Ordering::Acquire)
+    }
+
+    pub fn decode_error_count(&self) -> u32 {
+        self.decode_error_count.load(Ordering::Relaxed)
+    }
+
+    pub fn set_decode_error_count(&self, count: u32) {
+        self.decode_error_count.store(count, Ordering::Relaxed);
     }
 }
 
@@ -115,6 +126,11 @@ impl StreamingPcmSink {
     /// Signal that all samples have been pushed (EOF).
     pub fn mark_finished(&self) {
         self.state.finished.store(true, Ordering::Release);
+    }
+
+    /// Set the decode error count (called at end of decode with FFmpeg error count)
+    pub fn set_decode_error_count(&self, count: u32) {
+        self.state.set_decode_error_count(count);
     }
 
     /// Check if cancelled.
@@ -182,6 +198,11 @@ impl StreamingPcmSource {
     #[cfg(test)]
     pub fn is_cancelled(&self) -> bool {
         self.state.is_cancelled()
+    }
+
+    /// Get the count of FFmpeg decode errors that occurred
+    pub fn decode_error_count(&self) -> u32 {
+        self.state.decode_error_count()
     }
 
     /// Get current playback position as Duration.
