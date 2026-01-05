@@ -164,6 +164,14 @@ jobs:
       if: runner.os != 'Windows'
       working-directory: ./bae
       run: |
+        # Set PKG_CONFIG_PATH for macOS Homebrew (arm64 vs x86_64)
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
+          if [[ -d "/opt/homebrew/lib/pkgconfig" ]]; then
+            export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
+          else
+            export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
+          fi
+        fi
         cargo clippy --lib -- -D warnings
         cargo clippy --bin bae -- -D warnings
         for test_file in tests/*.rs; do
@@ -191,7 +199,16 @@ jobs:
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
       working-directory: ./bae
-      run: cargo test --features test-utils --verbose
+      run: |
+        # Set PKG_CONFIG_PATH for macOS Homebrew (arm64 vs x86_64)
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
+          if [[ -d "/opt/homebrew/lib/pkgconfig" ]]; then
+            export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
+          else
+            export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
+          fi
+        fi
+        cargo test --features test-utils --verbose
 
     - name: Run tests (Windows)
       if: runner.os == 'Windows'
