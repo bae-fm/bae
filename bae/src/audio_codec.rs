@@ -1737,4 +1737,78 @@ mod tests {
             samples.len()
         );
     }
+
+    /// Test streaming decode when buffer contains full FLAC data (headers + audio).
+    /// The decoder should read headers from buffer (pass None for headers param).
+    /// This is the standard pattern - buffer always has headers, decoder reads them.
+    #[test]
+    fn test_streaming_decode_headers_in_buffer() {
+        use crate::playback::create_streaming_pair_with_capacity;
+        use crate::playback::sparse_buffer::create_sparse_buffer;
+        use std::thread;
+
+        init();
+
+        // Create test FLAC data
+        let samples: Vec<i32> = (0..44100)
+            .map(|i| ((i as f64 * 0.01).sin() * 10000.0) as i32)
+            .collect();
+        let flac_data = encode_to_flac(&samples, 44100, 1, 16).unwrap();
+
+        // Build seektable
+        let seektable = build_seektable(&flac_data).unwrap();
+
+        // For this test, we simulate CUE/FLAC where the reader prepends headers to buffer.
+        // The buffer contains: [headers][audio_data]
+        // The decoder should read headers from buffer (pass None).
+
+        let buffer = create_sparse_buffer();
+        let (mut sink, mut source) = create_streaming_pair_with_capacity(44100, 1, 100000);
+
+        let decoder_buffer = buffer.clone();
+        let decoder_seektable = Some(seektable);
+        let decoder_handle = thread::spawn(move || {
+            decode_audio_streaming_with_seektable(
+                decoder_buffer,
+                &mut sink,
+                None, // Headers are in buffer, decoder reads them
+                decoder_seektable,
+            )
+        });
+
+        // Buffer contains full FLAC data (headers + audio)
+        buffer.append_at(0, &flac_data);
+        buffer.set_total_size(flac_data.len() as u64);
+        buffer.mark_eof();
+
+        // Wait for decoder
+        let result = decoder_handle.join().unwrap();
+        assert!(
+            result.is_ok(),
+            "Decode with headers in buffer failed: {:?}",
+            result.err()
+        );
+
+        let info = result.unwrap();
+        assert_eq!(info.sample_rate, 44100);
+        assert_eq!(info.channels, 1);
+
+        // Pull samples
+        let mut decoded_samples = Vec::new();
+        let mut buf = [0.0f32; 1024];
+        loop {
+            let n = source.pull_samples(&mut buf);
+            if n == 0 && source.is_finished() {
+                break;
+            }
+            decoded_samples.extend_from_slice(&buf[..n]);
+        }
+
+        assert!(
+            (decoded_samples.len() as i64 - samples.len() as i64).abs() < 1000,
+            "Sample count mismatch with headers in buffer: {} vs {}",
+            decoded_samples.len(),
+            samples.len()
+        );
+    }
 }

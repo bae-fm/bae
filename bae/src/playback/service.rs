@@ -738,14 +738,16 @@ impl PlaybackService {
         let (mut sink, source) = create_streaming_pair(44100, 2);
 
         // Spawn decoder thread
+        // Spawn decoder thread
+        // Buffer always has headers (reader prepends for byte ranges, or file has them).
+        // Decoder reads headers from buffer.
         let decoder_buffer = buffer.clone();
-        let decoder_headers = flac_headers.clone();
         let decoder_seektable = seektable.clone();
         std::thread::spawn(move || {
             if let Err(e) = crate::audio_codec::decode_audio_streaming_with_seektable(
                 decoder_buffer,
                 &mut sink,
-                decoder_headers,
+                None, // Headers are in buffer
                 decoder_seektable,
             ) {
                 error!("Streaming decode failed: {}", e);
@@ -1600,13 +1602,35 @@ impl PlaybackService {
                         // Wait briefly for new download to start buffering
                         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-                        // Restart decoder from new buffer position
+                        // Create seek buffer with headers prepended
+                        let seek_buffer = create_sparse_buffer();
+                        let mut write_pos = 0u64;
+                        if let Some(ref headers) = self.current_flac_headers {
+                            seek_buffer.append_at(0, headers);
+                            write_pos = headers.len() as u64;
+                        }
+
+                        // Copy downloaded data to seek buffer
+                        buffer.seek(target_byte);
+                        let mut temp_buf = vec![0u8; 65536];
+                        loop {
+                            match buffer.read(&mut temp_buf) {
+                                Some(0) => break,
+                                Some(n) => {
+                                    seek_buffer.append_at(write_pos, &temp_buf[..n]);
+                                    write_pos += n as u64;
+                                }
+                                None => break,
+                            }
+                        }
+                        seek_buffer.mark_eof();
+
+                        // Restart decoder from seek buffer (has headers)
                         let (mut sink, source) = create_streaming_pair(44100, 2);
-                        let decoder_buffer = buffer.clone();
 
                         std::thread::spawn(move || {
                             if let Err(e) = crate::audio_codec::decode_audio_streaming_sparse(
-                                decoder_buffer,
+                                seek_buffer,
                                 &mut sink,
                             ) {
                                 error!("Seek past buffer decode failed: {}", e);
