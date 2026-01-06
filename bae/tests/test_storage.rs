@@ -147,6 +147,27 @@ async fn test_storageless_import() {
 
     info!("✓ All {} tracks are Complete", tracks.len());
 
+    // Verify audio_format records exist with file_id linkage
+    for track in &tracks {
+        let audio_format = library_manager
+            .get_audio_format_by_track_id(&track.id)
+            .await
+            .expect("get audio_format");
+        assert!(
+            audio_format.is_some(),
+            "Track '{}' should have an audio_format record",
+            track.title
+        );
+        let af = audio_format.unwrap();
+        assert!(
+            af.file_id.is_some(),
+            "Track '{}' audio_format should have a file_id",
+            track.title
+        );
+    }
+
+    info!("✓ All tracks have audio_format records with file_id");
+
     // Verify no release_storage record (storageless)
     let release_storage = database
         .get_release_storage(&release_id)
@@ -262,6 +283,19 @@ async fn test_storageless_delete_preserves_files() {
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks after import");
+
+    // Verify audio_format records exist with file_id linkage
+    for track in &tracks {
+        let audio_format = library_manager
+            .get_audio_format_by_track_id(&track.id)
+            .await
+            .expect("get audio_format");
+        assert!(
+            audio_format.is_some(),
+            "Track '{}' should have an audio_format record",
+            track.title
+        );
+    }
 
     // Files should still exist after import
     for path in &original_files {
@@ -522,10 +556,12 @@ async fn run_storage_test(location: StorageLocation, encrypted: bool) {
             .expect("Failed to get audio format")
             .expect("Audio format should exist for track");
         assert_eq!(audio_format.format, "flac", "Should be FLAC format");
-        info!(
-            "✓ Track '{}' has audio format (single-file-per-track)",
+        assert!(
+            audio_format.file_id.is_some(),
+            "Track '{}' audio_format should have a file_id",
             track.title
         );
+        info!("✓ Track '{}' has audio format with file_id", track.title);
     }
 
     let images = library_manager
@@ -817,10 +853,12 @@ async fn verify_roundtrip(
             .expect("Failed to get audio format")
             .expect("Audio format should exist for single-file track");
         assert_eq!(audio_format.format, "flac", "Should be FLAC format");
-        info!(
-            "✓ Track '{}' has audio format (single-file-per-track)",
+        assert!(
+            audio_format.file_id.is_some(),
+            "Track '{}' audio_format should have a file_id",
             track.title
         );
+        info!("✓ Track '{}' has audio format with file_id", track.title);
     }
     info!("✓ Roundtrip verification passed");
 }

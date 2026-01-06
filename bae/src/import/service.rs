@@ -1061,10 +1061,8 @@ impl ImportService {
             );
         }
 
-        if cue_flac_metadata.is_some() {
-            self.persist_track_metadata(tracks_to_files, cue_flac_metadata, &file_ids)
-                .await?;
-        }
+        self.persist_track_metadata(tracks_to_files, cue_flac_metadata, &file_ids)
+            .await?;
 
         for track_file in tracks_to_files {
             library_manager
