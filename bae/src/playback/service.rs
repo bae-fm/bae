@@ -321,6 +321,7 @@ impl PlaybackService {
                             self.emit_queue_update();
                         }
                     }
+                    self.is_paused = false;
                     self.play_track(&track_id, false).await; // Direct selection: skip pregap
                 }
                 PlaybackCommand::PlayAlbum(track_ids) => {
@@ -333,6 +334,7 @@ impl PlaybackService {
                     }
                     if let Some(first_track) = self.queue.pop_front() {
                         self.emit_queue_update();
+                        self.is_paused = false;
                         self.play_track(&first_track, false).await; // Direct selection: skip pregap
                     } else {
                         self.emit_queue_update();
@@ -407,6 +409,7 @@ impl PlaybackService {
                         "AutoAdvance command received (natural transition), queue length: {}",
                         self.queue.len()
                     );
+                    self.is_paused = false; // Natural transition continues playing
                     if let Some(preloaded_track_id) = self.next_track_id.clone() {
                         if self.next_streaming_source.is_some() {
                             info!("Using preloaded track: {}", preloaded_track_id);
@@ -580,8 +583,8 @@ impl PlaybackService {
     }
     async fn play_track(&mut self, track_id: &str, is_natural_transition: bool) {
         info!(
-            "Playing track: {} (natural_transition: {})",
-            track_id, is_natural_transition
+            "Playing track: {} (natural_transition: {}, is_paused: {})",
+            track_id, is_natural_transition, self.is_paused
         );
         let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
             state: PlaybackState::Loading {
@@ -893,15 +896,12 @@ impl PlaybackService {
             return;
         }
 
-        self.audio_output
-            .send_command(crate::playback::cpal_output::AudioCommand::Play);
         self.stream = Some(stream);
         self.current_track = Some(track.clone());
         self.current_streaming_source = Some(source);
         // Position starts at position_offset (pregap_ms if skipped, 0 if natural transition)
         self.current_position = Some(position_offset);
         self.current_pregap_ms = pregap_ms;
-        self.is_paused = false;
         *self.current_position_shared.lock().unwrap() = Some(position_offset);
 
         let track_duration = track
@@ -911,15 +911,31 @@ impl PlaybackService {
         self.current_duration = Some(track_duration);
         self.current_decoded_duration = Some(track_duration);
 
-        let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
-            state: PlaybackState::Playing {
-                track: track.clone(),
-                position: position_offset,
-                duration: Some(track_duration),
-                decoded_duration: track_duration,
-                pregap_ms,
-            },
-        });
+        if self.is_paused {
+            self.audio_output
+                .send_command(crate::playback::cpal_output::AudioCommand::Pause);
+            let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
+                state: PlaybackState::Paused {
+                    track: track.clone(),
+                    position: position_offset,
+                    duration: Some(track_duration),
+                    decoded_duration: track_duration,
+                    pregap_ms,
+                },
+            });
+        } else {
+            self.audio_output
+                .send_command(crate::playback::cpal_output::AudioCommand::Play);
+            let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
+                state: PlaybackState::Playing {
+                    track: track.clone(),
+                    position: position_offset,
+                    duration: Some(track_duration),
+                    decoded_duration: track_duration,
+                    pregap_ms,
+                },
+            });
+        }
 
         // Preload next track
         let track_id_owned = track_id.to_string();
@@ -1361,29 +1377,42 @@ impl PlaybackService {
             return;
         }
 
-        self.audio_output
-            .send_command(crate::playback::cpal_output::AudioCommand::Play);
         self.stream = Some(stream);
         self.current_track = Some(track.clone());
         self.current_streaming_source = Some(source);
         // Natural transition: start at position 0 (INDEX 00, pregap plays)
         self.current_position = Some(start_position);
         self.current_pregap_ms = pregap_ms;
-        self.is_paused = false;
         *self.current_position_shared.lock().unwrap() = Some(start_position);
 
         self.current_duration = Some(duration);
         self.current_decoded_duration = Some(duration);
 
-        let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
-            state: PlaybackState::Playing {
-                track: track.clone(),
-                position: start_position,
-                duration: Some(duration),
-                decoded_duration: duration,
-                pregap_ms,
-            },
-        });
+        if self.is_paused {
+            self.audio_output
+                .send_command(crate::playback::cpal_output::AudioCommand::Pause);
+            let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
+                state: PlaybackState::Paused {
+                    track: track.clone(),
+                    position: start_position,
+                    duration: Some(duration),
+                    decoded_duration: duration,
+                    pregap_ms,
+                },
+            });
+        } else {
+            self.audio_output
+                .send_command(crate::playback::cpal_output::AudioCommand::Play);
+            let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
+                state: PlaybackState::Playing {
+                    track: track.clone(),
+                    position: start_position,
+                    duration: Some(duration),
+                    decoded_duration: duration,
+                    pregap_ms,
+                },
+            });
+        }
 
         // Start completion listener
         let track_id_owned = track_id.to_string();

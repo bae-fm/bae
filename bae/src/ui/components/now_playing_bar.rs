@@ -1,3 +1,4 @@
+use super::super::LOADING_SPINNER_DELAY_MS;
 use super::queue_sidebar::QueueSidebarState;
 use super::use_playback_service;
 use crate::db::DbTrack;
@@ -5,6 +6,7 @@ use crate::library::use_library_manager;
 use crate::playback::{PlaybackProgress, PlaybackState};
 use crate::ui::{image_url, Route};
 use dioxus::prelude::*;
+
 #[component]
 fn PlaybackControlsZone(
     on_previous: EventHandler<()>,
@@ -16,6 +18,27 @@ fn PlaybackControlsZone(
     is_loading: ReadSignal<bool>,
     is_stopped: ReadSignal<bool>,
 ) -> Element {
+    // Delayed loading state - only show spinner after delay to avoid flicker
+    let mut show_spinner = use_signal(|| false);
+
+    use_effect(move || {
+        let loading = is_loading();
+        if loading {
+            spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(LOADING_SPINNER_DELAY_MS))
+                    .await;
+                if is_loading() {
+                    show_spinner.set(true);
+                }
+            });
+        } else {
+            show_spinner.set(false);
+        }
+    });
+
+    // Fixed-size button class for consistent dimensions
+    let main_btn_base = "w-10 h-10 rounded flex items-center justify-center";
+
     rsx! {
         div { class: "flex items-center gap-2",
             button {
@@ -25,15 +48,15 @@ fn PlaybackControlsZone(
                 "⏮"
             }
             if is_playing() {
-                if is_loading() {
+                if show_spinner() {
                     button {
-                        class: "px-4 py-2 bg-blue-600 rounded opacity-50 flex items-center justify-center",
+                        class: "{main_btn_base} bg-blue-600 opacity-50",
                         disabled: true,
                         div { class: "animate-spin rounded-full h-4 w-4 border-b-2 border-white" }
                     }
                 } else {
                     button {
-                        class: "px-4 py-2 bg-blue-600 rounded hover:bg-blue-500",
+                        class: "{main_btn_base} bg-blue-600 hover:bg-blue-500",
                         onclick: move |_| on_pause.call(()),
                         "⏸"
                     }
@@ -41,19 +64,19 @@ fn PlaybackControlsZone(
             } else {
                 if is_stopped() {
                     button {
-                        class: "px-4 py-2 bg-gray-700 rounded opacity-50",
+                        class: "{main_btn_base} bg-gray-700 opacity-50",
                         disabled: true,
                         "▶"
                     }
-                } else if is_loading() {
+                } else if show_spinner() {
                     button {
-                        class: "px-4 py-2 bg-green-600 rounded opacity-50 flex items-center justify-center",
+                        class: "{main_btn_base} bg-green-600 opacity-50",
                         disabled: true,
                         div { class: "animate-spin rounded-full h-4 w-4 border-b-2 border-white" }
                     }
                 } else {
                     button {
-                        class: "px-4 py-2 bg-green-600 rounded hover:bg-green-500",
+                        class: "{main_btn_base} bg-green-600 hover:bg-green-500",
                         onclick: move |_| on_resume.call(()),
                         "▶"
                     }

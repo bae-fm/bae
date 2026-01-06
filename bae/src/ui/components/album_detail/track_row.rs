@@ -45,6 +45,26 @@ pub fn TrackRow(track: DbTrack, release_id: String) -> Element {
             if loading_track_id == &track_id_for_loading
         )
     });
+
+    // Delayed spinner - only show after delay to avoid flicker on fast loads
+    let mut show_spinner = use_signal(|| false);
+    use_effect(move || {
+        let loading = is_loading();
+        if loading {
+            spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(
+                    crate::ui::LOADING_SPINNER_DELAY_MS,
+                ))
+                .await;
+                if is_loading() {
+                    show_spinner.set(true);
+                }
+            });
+        } else {
+            show_spinner.set(false);
+        }
+    });
+
     use_effect({
         let track_id_for_effect = track_id.clone();
         let playback = playback.clone();
@@ -142,7 +162,7 @@ pub fn TrackRow(track: DbTrack, release_id: String) -> Element {
             }
             div { class: "relative flex items-center w-full",
                 if is_complete {
-                    if is_loading() {
+                    if show_spinner() {
                         div { class: "w-6 flex items-center justify-center",
                             div { class: "animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400" }
                         }

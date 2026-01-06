@@ -426,6 +426,215 @@ impl CueFlacTestFixture {
     }
 }
 
+// ============================================================================
+// Pause state preservation tests
+// ============================================================================
+// These tests verify that Next/Previous preserve pause state while fresh Play
+// and AutoAdvance always start playing.
+
+#[tokio::test]
+async fn test_next_while_paused_stays_paused() {
+    // When paused and pressing Next, the next track should start paused
+    if should_skip_audio_tests() {
+        debug!("Skipping audio test - no audio device available");
+        return;
+    }
+
+    let mut fixture = match PlaybackTestFixture::new().await {
+        Ok(f) => f,
+        Err(e) => {
+            debug!("Failed to set up test fixture: {}", e);
+            return;
+        }
+    };
+
+    if fixture.track_ids.len() < 2 {
+        debug!("Need at least 2 tracks for next-while-paused test");
+        return;
+    }
+
+    let first_track_id = fixture.track_ids[0].clone();
+    let second_track_id = fixture.track_ids[1].clone();
+
+    // Start playing first track
+    fixture.playback_handle.play(first_track_id.clone());
+    let _playing_state = fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { .. }),
+            Duration::from_secs(5),
+        )
+        .await;
+
+    // Pause
+    fixture.playback_handle.pause();
+    let paused_state = fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Paused { .. }),
+            Duration::from_secs(2),
+        )
+        .await;
+    assert!(paused_state.is_some(), "Should be paused");
+
+    // Press Next while paused
+    fixture.playback_handle.next();
+
+    // Should transition to second track in Paused state (not Playing)
+    let next_track_state = fixture
+        .wait_for_state(
+            |s| {
+                if let PlaybackState::Paused { track, .. } = s {
+                    track.id == second_track_id
+                } else {
+                    false
+                }
+            },
+            Duration::from_secs(5),
+        )
+        .await;
+
+    assert!(
+        next_track_state.is_some(),
+        "Next while paused should switch to next track but stay paused"
+    );
+}
+
+#[tokio::test]
+async fn test_previous_while_paused_stays_paused() {
+    // When paused and pressing Previous, the previous track should start paused
+    if should_skip_audio_tests() {
+        debug!("Skipping audio test - no audio device available");
+        return;
+    }
+
+    let mut fixture = match PlaybackTestFixture::new().await {
+        Ok(f) => f,
+        Err(e) => {
+            debug!("Failed to set up test fixture: {}", e);
+            return;
+        }
+    };
+
+    if fixture.track_ids.len() < 2 {
+        debug!("Need at least 2 tracks for previous-while-paused test");
+        return;
+    }
+
+    let first_track_id = fixture.track_ids[0].clone();
+    let second_track_id = fixture.track_ids[1].clone();
+
+    // Start on second track
+    fixture.playback_handle.play(second_track_id.clone());
+    let _playing_state = fixture
+        .wait_for_state(
+            |s| {
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.id == second_track_id
+                } else {
+                    false
+                }
+            },
+            Duration::from_secs(5),
+        )
+        .await;
+
+    // Pause
+    fixture.playback_handle.pause();
+    let paused_state = fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Paused { .. }),
+            Duration::from_secs(2),
+        )
+        .await;
+    assert!(paused_state.is_some(), "Should be paused");
+
+    // Press Previous while paused (within 3 seconds, so goes to previous track)
+    fixture.playback_handle.previous();
+
+    // Should transition to first track in Paused state (not Playing)
+    let previous_track_state = fixture
+        .wait_for_state(
+            |s| {
+                if let PlaybackState::Paused { track, .. } = s {
+                    track.id == first_track_id
+                } else {
+                    false
+                }
+            },
+            Duration::from_secs(5),
+        )
+        .await;
+
+    assert!(
+        previous_track_state.is_some(),
+        "Previous while paused should switch to previous track but stay paused"
+    );
+}
+
+#[tokio::test]
+async fn test_fresh_play_always_starts_playing() {
+    // Fresh play should always start playing, even if previously paused
+    if should_skip_audio_tests() {
+        debug!("Skipping audio test - no audio device available");
+        return;
+    }
+
+    let mut fixture = match PlaybackTestFixture::new().await {
+        Ok(f) => f,
+        Err(e) => {
+            debug!("Failed to set up test fixture: {}", e);
+            return;
+        }
+    };
+
+    if fixture.track_ids.len() < 2 {
+        debug!("Need at least 2 tracks for fresh play test");
+        return;
+    }
+
+    let first_track_id = fixture.track_ids[0].clone();
+    let second_track_id = fixture.track_ids[1].clone();
+
+    // Start playing first track
+    fixture.playback_handle.play(first_track_id.clone());
+    let _playing_state = fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { .. }),
+            Duration::from_secs(5),
+        )
+        .await;
+
+    // Pause
+    fixture.playback_handle.pause();
+    let paused_state = fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Paused { .. }),
+            Duration::from_secs(2),
+        )
+        .await;
+    assert!(paused_state.is_some(), "Should be paused");
+
+    // Fresh play of a different track should start Playing (not Paused)
+    fixture.playback_handle.play(second_track_id.clone());
+
+    let new_play_state = fixture
+        .wait_for_state(
+            |s| {
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.id == second_track_id
+                } else {
+                    false
+                }
+            },
+            Duration::from_secs(5),
+        )
+        .await;
+
+    assert!(
+        new_play_state.is_some(),
+        "Fresh play should always start playing, not paused"
+    );
+}
+
 #[tokio::test]
 async fn test_pause_then_seek_stays_paused() {
     if should_skip_audio_tests() {
