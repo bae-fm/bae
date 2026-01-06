@@ -466,30 +466,47 @@ pub fn NowPlayingBar() -> Element {
             });
         }
     });
-    let track = use_memo(move || match state() {
-        PlaybackState::Playing { ref track, .. } | PlaybackState::Paused { ref track, .. } => {
-            Some(track.clone())
+    // Use signals to preserve track info during Loading state transitions.
+    // This prevents the flickery "Loading..." flash when changing tracks.
+    let mut track = use_signal(|| None::<DbTrack>);
+    let mut position = use_signal(|| None::<std::time::Duration>);
+    let mut duration = use_signal(|| None::<std::time::Duration>);
+    let mut pregap_ms = use_signal(|| None::<i64>);
+
+    // Update signals based on state, preserving values during Loading
+    use_effect(move || {
+        match state() {
+            PlaybackState::Playing {
+                track: ref t,
+                position: pos,
+                duration: dur,
+                pregap_ms: pregap,
+                ..
+            }
+            | PlaybackState::Paused {
+                track: ref t,
+                position: pos,
+                duration: dur,
+                pregap_ms: pregap,
+                ..
+            } => {
+                track.set(Some(t.clone()));
+                position.set(Some(pos));
+                duration.set(dur);
+                pregap_ms.set(pregap);
+            }
+            PlaybackState::Loading { .. } => {
+                // Keep previous values - don't update anything
+            }
+            PlaybackState::Stopped => {
+                track.set(None);
+                position.set(None);
+                duration.set(None);
+                pregap_ms.set(None);
+            }
         }
-        _ => None,
     });
-    let position = use_memo(move || match state() {
-        PlaybackState::Playing { position, .. } | PlaybackState::Paused { position, .. } => {
-            Some(position)
-        }
-        _ => None,
-    });
-    let duration = use_memo(move || match state() {
-        PlaybackState::Playing { duration, .. } | PlaybackState::Paused { duration, .. } => {
-            duration
-        }
-        _ => None,
-    });
-    let pregap_ms = use_memo(move || match state() {
-        PlaybackState::Playing { pregap_ms, .. } | PlaybackState::Paused { pregap_ms, .. } => {
-            pregap_ms
-        }
-        _ => None,
-    });
+
     let is_playing = use_memo(move || matches!(state(), PlaybackState::Playing { .. }));
     let is_paused = use_memo(move || matches!(state(), PlaybackState::Paused { .. }));
     let is_loading = use_memo(move || matches!(state(), PlaybackState::Loading { .. }));
