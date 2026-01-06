@@ -1352,7 +1352,7 @@ impl PlaybackService {
 ///
 /// Uses linear interpolation assuming constant bitrate.
 /// This is approximate but works well for CBR audio like FLAC.
-pub fn calculate_byte_offset_for_seek(
+fn calculate_byte_offset_for_seek(
     seek_time: std::time::Duration,
     track_duration: std::time::Duration,
     file_size: u64,
@@ -1370,7 +1370,7 @@ pub fn calculate_byte_offset_for_seek(
 /// Returns (byte_offset, sample_offset) where:
 /// - byte: frame-aligned position in the file
 /// - sample_offset: samples to skip after decoding to reach exact target
-pub fn find_frame_boundary_for_seek(
+fn find_frame_boundary_for_seek(
     seek_time: std::time::Duration,
     sample_rate: u32,
     seektable_json: &str,
@@ -1384,7 +1384,7 @@ pub fn find_frame_boundary_for_seek(
 /// Returns (byte_offset, sample_offset) where:
 /// - byte: frame-aligned position in the file
 /// - sample_offset: samples to skip after decoding to reach exact target
-pub fn find_frame_boundary(
+fn find_frame_boundary(
     entries: &[crate::audio_codec::SeekEntry],
     seek_time: std::time::Duration,
     sample_rate: u32,
@@ -1419,7 +1419,7 @@ pub fn find_frame_boundary(
 /// CD-like pregap behavior:
 /// - Direct selection (play, next, previous): skip pregap, start at INDEX 01
 /// - Natural transition (auto-advance): play pregap from INDEX 00
-pub fn pregap_seek_position(
+fn pregap_seek_position(
     pregap_ms: Option<i64>,
     is_natural_transition: bool,
 ) -> Option<std::time::Duration> {
