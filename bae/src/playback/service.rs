@@ -662,6 +662,10 @@ impl PlaybackService {
             }
         };
         let pregap_ms = audio_format.as_ref().and_then(|af| af.pregap_ms);
+        let sample_rate = audio_format
+            .as_ref()
+            .and_then(|af| af.sample_rate.map(|r| r as u32))
+            .unwrap_or(44100);
 
         let (start_byte, end_byte) = audio_format
             .as_ref()
@@ -695,6 +699,30 @@ impl PlaybackService {
             .as_ref()
             .and_then(|af| af.seektable_json.as_ref())
             .and_then(|json| serde_json::from_str(json).ok());
+
+        // For direct selection with pregap, calculate byte offset to skip to
+        // We load the full track (including pregap) but start decoder at pregap offset
+        // This allows seeking back into pregap later (hidden track support)
+        let pregap_skip_duration = pregap_seek_position(pregap_ms, is_natural_transition);
+        let pregap_byte_offset: Option<u64> = if let Some(pregap_duration) = pregap_skip_duration {
+            if let Some(ref entries) = seektable {
+                if let Some((byte_offset, _sample_offset)) =
+                    find_frame_boundary(entries, pregap_duration, sample_rate)
+                {
+                    info!(
+                        "Pregap skip: will start decoder at byte offset {} for {:?} pregap",
+                        byte_offset, pregap_duration
+                    );
+                    Some(byte_offset)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         let file_size = if let (Some(start), Some(end)) = (start_byte, end_byte) {
             end - start
@@ -750,19 +778,18 @@ impl PlaybackService {
         // Create ring buffer for decoded audio
         let (mut sink, source) = create_streaming_pair(44100, 2);
 
-        // Spawn decoder thread
-        // Spawn decoder thread
-        // Buffer always has headers (reader prepends for byte ranges, or file has them).
-        // Decoder reads headers from buffer.
+        // Spawn decoder thread using AVIO-based streaming decode
+        // FFmpeg handles all frame boundary detection - no seektable needed
         let decoder_buffer = buffer.clone();
-        let decoder_seektable = seektable.clone().unwrap_or_default();
+        let decoder_skip_to = pregap_byte_offset.map(|offset| headers_len + offset);
         std::thread::spawn(move || {
-            if let Err(e) = crate::audio_codec::decode_audio_streaming(
-                decoder_buffer,
-                &mut sink,
-                None, // Headers are in buffer
-                decoder_seektable,
-            ) {
+            // If skipping pregap, seek buffer past headers to the pregap offset
+            if let Some(skip_position) = decoder_skip_to {
+                decoder_buffer.seek(skip_position);
+            }
+            if let Err(e) =
+                crate::audio_codec::decode_audio_streaming_simple(decoder_buffer, &mut sink)
+            {
                 error!("Streaming decode failed: {}", e);
             }
         });
@@ -775,6 +802,7 @@ impl PlaybackService {
         self.current_sample_rate = audio_format
             .as_ref()
             .and_then(|af| af.sample_rate.map(|r| r as u32));
+        // Store original seektable - not adjusted, so seeks can go anywhere including pregap
         self.current_seektable_json = audio_format
             .as_ref()
             .and_then(|af| af.seektable_json.clone());
@@ -795,9 +823,14 @@ impl PlaybackService {
             (guard.sample_rate(), guard.channels())
         };
 
-        // Check if we need to seek to skip the pregap (direct selection with pregap)
-        let pregap_seek = pregap_seek_position(pregap_ms, is_natural_transition);
-        let start_position = pregap_seek.unwrap_or(std::time::Duration::ZERO);
+        // Initial position depends on whether we skipped pregap at decoder start
+        // If we skipped (pregap_byte_offset.is_some()), we start at pregap_ms
+        // Otherwise (natural transition), we start at 0
+        let start_position = if pregap_byte_offset.is_some() {
+            std::time::Duration::from_millis(pregap_ms.unwrap_or(0).max(0) as u64)
+        } else {
+            std::time::Duration::ZERO
+        };
 
         if let Some(stream) = self.stream.take() {
             drop(stream);
@@ -866,6 +899,7 @@ impl PlaybackService {
         self.stream = Some(stream);
         self.current_track = Some(track.clone());
         self.current_streaming_source = Some(source);
+        // Position starts at start_position (pregap_ms if skipped, 0 if natural transition)
         self.current_position = Some(start_position);
         self.current_pregap_ms = pregap_ms;
         self.is_paused = false;
@@ -887,12 +921,6 @@ impl PlaybackService {
                 pregap_ms,
             },
         });
-
-        // Seek to skip pregap if needed (direct selection with pregap)
-        if let Some(seek_pos) = pregap_seek {
-            info!("Seeking to skip pregap: {:?}", seek_pos);
-            self.seek(seek_pos).await;
-        }
 
         // Preload next track
         let track_id_owned = track_id.to_string();
@@ -1033,12 +1061,6 @@ impl PlaybackService {
             None
         };
 
-        // Load seektable from audio format
-        let seektable: Option<Vec<crate::audio_codec::SeekEntry>> = audio_format
-            .as_ref()
-            .and_then(|af| af.seektable_json.as_ref())
-            .and_then(|json| serde_json::from_str(json).ok());
-
         let file_size = if let (Some(start), Some(end)) = (start_byte, end_byte) {
             end - start
         } else {
@@ -1092,16 +1114,12 @@ impl PlaybackService {
         // Create ring buffer for decoded audio
         let (mut sink, source) = create_streaming_pair(44100, 2);
 
-        // Spawn decoder thread
+        // Spawn decoder thread using AVIO-based streaming decode
         let decoder_buffer = buffer.clone();
-        let decoder_seektable = seektable.clone().unwrap_or_default();
         std::thread::spawn(move || {
-            if let Err(e) = crate::audio_codec::decode_audio_streaming(
-                decoder_buffer,
-                &mut sink,
-                None, // Headers are in buffer
-                decoder_seektable,
-            ) {
+            if let Err(e) =
+                crate::audio_codec::decode_audio_streaming_simple(decoder_buffer, &mut sink)
+            {
                 error!("Preload streaming decode failed: {}", e);
             }
         });
@@ -1222,7 +1240,19 @@ impl PlaybackService {
         track: DbTrack,
         is_natural_transition: bool,
     ) {
-        let pregap_ms = self.next_pregap_ms.take();
+        let pregap_ms = self.next_pregap_ms;
+
+        // If we need to skip pregap (direct selection), the preloaded state won't work
+        // because it was set up for auto-advance (starting at byte 0).
+        // Fall back to play_track which handles pregap at decoder start.
+        if !is_natural_transition && pregap_ms.is_some_and(|p| p > 0) {
+            info!("Pregap skip needed for preloaded track - falling back to play_track");
+            self.clear_next_track_state();
+            self.play_track(track_id, is_natural_transition).await;
+            return;
+        }
+
+        self.next_pregap_ms = None;
         let duration = self
             .next_duration
             .take()
@@ -1261,9 +1291,8 @@ impl PlaybackService {
             (guard.sample_rate(), guard.channels())
         };
 
-        // Check if we need to seek to skip the pregap (direct selection with pregap)
-        let pregap_seek = pregap_seek_position(pregap_ms, is_natural_transition);
-        let start_position = pregap_seek.unwrap_or(std::time::Duration::ZERO);
+        // This path is only used for natural transitions (auto-advance) where we play from the beginning
+        let start_position = std::time::Duration::ZERO;
 
         let (position_tx, position_rx) = mpsc::channel();
         let (completion_tx, completion_rx) = mpsc::channel();
@@ -1334,6 +1363,7 @@ impl PlaybackService {
         self.stream = Some(stream);
         self.current_track = Some(track.clone());
         self.current_streaming_source = Some(source);
+        // Natural transition: start at position 0 (INDEX 00, pregap plays)
         self.current_position = Some(start_position);
         self.current_pregap_ms = pregap_ms;
         self.is_paused = false;
@@ -1351,12 +1381,6 @@ impl PlaybackService {
                 pregap_ms,
             },
         });
-
-        // Seek to skip pregap if needed (direct selection with pregap)
-        if let Some(seek_pos) = pregap_seek {
-            info!("Seeking to skip pregap (preloaded): {:?}", seek_pos);
-            self.seek(seek_pos).await;
-        }
 
         // Start completion listener
         let track_id_owned = track_id.to_string();
@@ -1648,27 +1672,15 @@ impl PlaybackService {
                 );
             }
             info!(
-                "Seek: original seektable has {} entries, rel_seek_byte={}",
+                "Seek: seektable has {} entries, rel_seek_byte={}",
                 original_seektable.len(),
                 rel_seek_byte
             );
 
-            let seek_seektable =
-                crate::audio_codec::adjust_seektable_for_seek(&original_seektable, rel_seek_byte);
-
-            info!(
-                "Seek: adjusted seektable has {} entries, first offset={}",
-                seek_seektable.len(),
-                seek_seektable.first().map(|e| e.byte).unwrap_or(u64::MAX)
-            );
-
             std::thread::spawn(move || {
-                if let Err(e) = crate::audio_codec::decode_audio_streaming(
-                    seek_buffer,
-                    &mut sink,
-                    None, // Headers already in buffer
-                    seek_seektable,
-                ) {
+                if let Err(e) =
+                    crate::audio_codec::decode_audio_streaming_simple(seek_buffer, &mut sink)
+                {
                     error!("Seek decode failed: {}", e);
                 }
             });
@@ -1905,24 +1917,10 @@ impl PlaybackService {
                 let (mut sink, source) = create_streaming_pair(44100, 2);
 
                 // Parse and adjust seektable for seek position
-                let rel_seek_byte = target_byte.saturating_sub(audio_data_start);
-                let original_seektable: Vec<crate::audio_codec::SeekEntry> = self
-                    .current_seektable_json
-                    .as_ref()
-                    .and_then(|json| serde_json::from_str(json).ok())
-                    .unwrap_or_default();
-                let seek_seektable = crate::audio_codec::adjust_seektable_for_seek(
-                    &original_seektable,
-                    rel_seek_byte,
-                );
-
                 std::thread::spawn(move || {
-                    if let Err(e) = crate::audio_codec::decode_audio_streaming(
-                        seek_buffer,
-                        &mut sink,
-                        None, // Headers already in buffer
-                        seek_seektable,
-                    ) {
+                    if let Err(e) =
+                        crate::audio_codec::decode_audio_streaming_simple(seek_buffer, &mut sink)
+                    {
                         error!("Seek past buffer decode failed: {}", e);
                     }
                 });
@@ -2093,6 +2091,19 @@ pub fn find_frame_boundary_for_seek(
     seektable_json: &str,
 ) -> Option<(u64, u64)> {
     let entries: Vec<crate::audio_codec::SeekEntry> = serde_json::from_str(seektable_json).ok()?;
+    find_frame_boundary(&entries, seek_time, sample_rate)
+}
+
+/// Find frame-aligned byte offset from a seektable Vec.
+///
+/// Returns (byte_offset, sample_offset) where:
+/// - byte: frame-aligned position in the file
+/// - sample_offset: samples to skip after decoding to reach exact target
+pub fn find_frame_boundary(
+    entries: &[crate::audio_codec::SeekEntry],
+    seek_time: std::time::Duration,
+    sample_rate: u32,
+) -> Option<(u64, u64)> {
     if entries.is_empty() {
         return None;
     }

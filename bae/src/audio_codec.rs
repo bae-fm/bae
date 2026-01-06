@@ -7,7 +7,7 @@ use crate::playback::{SharedSparseBuffer, StreamingPcmSink};
 use std::cell::Cell;
 use std::os::raw::{c_int, c_void};
 use std::ptr;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 // Thread-local FFmpeg error counter for per-decode error tracking
 thread_local! {
@@ -60,36 +60,6 @@ pub struct DecodedAudio {
 pub struct SeekEntry {
     pub sample: u64,
     pub byte: u64,
-}
-
-/// Adjust seektable for a seek operation.
-///
-/// When seeking to a position, we need to filter the seektable to only include
-/// entries from the target frame onwards, and adjust byte offsets to be relative
-/// to the new starting point.
-///
-/// # Arguments
-/// * `seektable` - Original seektable with byte offsets relative to audio_data_start
-/// * `seek_frame_byte` - The byte offset of the frame we're seeking to (relative to audio_data_start)
-///
-/// # Returns
-/// Adjusted seektable starting from the seek position with offsets relative to it.
-pub fn adjust_seektable_for_seek(seektable: &[SeekEntry], seek_frame_byte: u64) -> Vec<SeekEntry> {
-    seektable
-        .iter()
-        .filter(|e| e.byte >= seek_frame_byte)
-        .map(|e| SeekEntry {
-            sample: e.sample,
-            byte: e.byte - seek_frame_byte,
-        })
-        .collect()
-}
-
-/// Information about streaming audio being decoded
-#[derive(Debug, Clone)]
-pub struct StreamingAudioInfo {
-    pub sample_rate: u32,
-    pub channels: u32,
 }
 
 /// Initialize FFmpeg (call once at startup)
@@ -147,6 +117,42 @@ unsafe extern "C" fn avio_seek_callback(opaque: *mut c_void, offset: i64, whence
 
     ctx.pos = new_pos;
     new_pos as i64
+}
+
+// --- Streaming AVIO for SparseBuffer ---
+
+/// Context for streaming AVIO - reads from SparseBuffer which blocks waiting for data
+struct StreamingAvioContext {
+    buffer: SharedSparseBuffer,
+    cancelled: std::sync::atomic::AtomicBool,
+}
+
+/// AVIO read callback for streaming - reads from SparseBuffer, blocking until data available
+unsafe extern "C" fn streaming_avio_read_callback(
+    opaque: *mut c_void,
+    buf: *mut u8,
+    buf_size: c_int,
+) -> c_int {
+    let ctx = &*(opaque as *const StreamingAvioContext);
+
+    if ctx.cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+        return ffmpeg_sys_next::AVERROR_EOF;
+    }
+
+    let mut temp_buf = vec![0u8; buf_size as usize];
+    match ctx.buffer.read(&mut temp_buf) {
+        Some(0) => ffmpeg_sys_next::AVERROR_EOF,
+        Some(n) => {
+            ptr::copy_nonoverlapping(temp_buf.as_ptr(), buf, n);
+            n as c_int
+        }
+        None => {
+            // Buffer cancelled
+            ctx.cancelled
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+            ffmpeg_sys_next::AVERROR_EOF
+        }
+    }
 }
 
 /// Decode any audio format to PCM samples.
@@ -412,7 +418,7 @@ unsafe fn decode_audio_avio(
     // Keep avio_ctx alive until here (prevent drop during FFmpeg operations)
     drop(avio_ctx);
 
-    debug!(
+    trace!(
         "Decoded {} samples ({} frames) from audio",
         samples.len(),
         samples.len() / channels.max(1) as usize
@@ -1000,375 +1006,255 @@ fn compute_flac_crc8(data: &[u8]) -> u8 {
 }
 
 // =============================================================================
-// Streaming Decoder Infrastructure
+// AVIO-based Streaming Decode (new, simpler approach)
 // =============================================================================
 
-/// FLAC streaming decoder - decodes frames incrementally using seektable.
+/// Decode audio from a SparseBuffer using FFmpeg's AVIO.
 ///
-/// Uses pre-computed seektable from import to know exact frame boundaries,
-/// avoiding the need to scan for sync codes during playback.
-pub struct FlacStreamingDecoder {
-    /// FLAC headers to prepend when decoding frames
-    headers: Vec<u8>,
-    /// Frame boundaries from seektable: byte offsets relative to audio_data_start
-    frame_offsets: Vec<u64>,
-    /// Current frame index we're working on
-    current_frame: usize,
-    /// Accumulated bytes for current frame
-    pending: Vec<u8>,
-    /// Sample rate from streaminfo
-    sample_rate: u32,
-    /// Number of channels from streaminfo
-    channels: u32,
-    /// Scaling factor for i32 -> f32 conversion
-    scale: f32,
-    /// Total frames decoded (for logging)
-    frames_decoded: u64,
-    /// Total samples output
-    samples_output: u64,
-}
-
-impl FlacStreamingDecoder {
-    /// Create a new FLAC streaming decoder with headers and seektable.
-    ///
-    /// The seektable provides frame boundaries, eliminating sync code scanning.
-    pub fn new(headers: Vec<u8>, seektable: &[SeekEntry]) -> Result<Self, String> {
-        if headers.len() < 4 || &headers[0..4] != b"fLaC" {
-            return Err("Invalid FLAC headers: missing fLaC signature".to_string());
-        }
-
-        // Parse streaminfo from headers
-        let (sample_rate, channels, bits_per_sample) = parse_streaminfo(&headers)?;
-
-        // Extract frame byte offsets from seektable
-        let frame_offsets: Vec<u64> = seektable.iter().map(|e| e.byte).collect();
-
-        if frame_offsets.is_empty() {
-            return Err("Empty seektable".to_string());
-        }
-
-        let scale = match bits_per_sample {
-            16 => 1.0 / (i16::MAX as f32),
-            24 => 1.0 / (8388607.0), // 2^23 - 1
-            32 => 1.0 / (i32::MAX as f32),
-            _ => 1.0 / (i16::MAX as f32),
-        };
-
-        debug!(
-            "FlacStreamingDecoder: {}Hz, {}ch, {}bit, {} frames in seektable",
-            sample_rate,
-            channels,
-            bits_per_sample,
-            frame_offsets.len()
-        );
-
-        Ok(Self {
-            headers,
-            frame_offsets,
-            current_frame: 0,
-            pending: Vec::with_capacity(65536),
-            sample_rate,
-            channels,
-            scale,
-            frames_decoded: 0,
-            samples_output: 0,
-        })
-    }
-
-    /// Get audio info
-    pub fn audio_info(&self) -> StreamingAudioInfo {
-        StreamingAudioInfo {
-            sample_rate: self.sample_rate,
-            channels: self.channels,
-        }
-    }
-
-    /// Feed bytes to the decoder and return any complete decoded samples.
-    ///
-    /// Uses seektable to know frame boundaries - when we have all bytes for
-    /// a frame, we decode it immediately.
-    pub fn feed(&mut self, data: &[u8]) -> Result<Vec<f32>, String> {
-        self.pending.extend_from_slice(data);
-
-        let mut output = Vec::new();
-
-        // Process complete frames
-        while let Some(samples) = self.try_decode_next_frame()? {
-            output.extend(samples);
-        }
-
-        Ok(output)
-    }
-
-    /// Finish decoding - process any remaining buffered data as final frame.
-    pub fn finish(&mut self) -> Result<Vec<f32>, String> {
-        let mut output = Vec::new();
-
-        // Decode any remaining complete frames
-        while let Some(samples) = self.try_decode_next_frame()? {
-            output.extend(samples);
-        }
-
-        // Try to decode remaining pending data as final frame
-        if !self.pending.is_empty() && self.pending.len() > 16 {
-            match self.decode_frame_data(&self.pending.clone()) {
-                Ok(samples) => {
-                    output.extend(samples);
-                    self.pending.clear();
-                }
-                Err(e) => {
-                    debug!(
-                        "Final frame decode failed: {} ({} bytes)",
-                        e,
-                        self.pending.len()
-                    );
-                }
-            }
-        }
-
-        info!(
-            "FlacStreamingDecoder finished: {} frames, {} samples",
-            self.frames_decoded, self.samples_output
-        );
-
-        Ok(output)
-    }
-
-    /// Try to decode the next frame if we have enough bytes.
-    fn try_decode_next_frame(&mut self) -> Result<Option<Vec<f32>>, String> {
-        // Check if we have another frame boundary
-        if self.current_frame + 1 >= self.frame_offsets.len() {
-            return Ok(None);
-        }
-
-        let frame_start = self.frame_offsets[self.current_frame];
-        let frame_end = self.frame_offsets[self.current_frame + 1];
-        let frame_size = (frame_end - frame_start) as usize;
-
-        // Do we have enough bytes?
-        if self.pending.len() < frame_size {
-            return Ok(None);
-        }
-
-        // Extract frame data
-        let frame_data: Vec<u8> = self.pending.drain(..frame_size).collect();
-
-        // Decode it
-        let samples = self.decode_frame_data(&frame_data)?;
-        self.current_frame += 1;
-
-        Ok(Some(samples))
-    }
-
-    /// Decode a single FLAC frame by prepending headers.
-    fn decode_frame_data(&mut self, frame_data: &[u8]) -> Result<Vec<f32>, String> {
-        // Build minimal valid FLAC: headers + frame
-        let mut flac_data = Vec::with_capacity(self.headers.len() + frame_data.len());
-        flac_data.extend_from_slice(&self.headers);
-        flac_data.extend_from_slice(frame_data);
-
-        let decoded = decode_audio(&flac_data, None, None)?;
-
-        self.frames_decoded += 1;
-        self.samples_output += decoded.samples.len() as u64;
-
-        // Convert to f32
-        let f32_samples: Vec<f32> = decoded
-            .samples
-            .iter()
-            .map(|&s| s as f32 * self.scale)
-            .collect();
-
-        Ok(f32_samples)
-    }
-}
-
-/// Parse STREAMINFO block from FLAC headers.
-fn parse_streaminfo(headers: &[u8]) -> Result<(u32, u32, u32), String> {
-    if headers.len() < 42 {
-        return Err("FLAC headers too short for STREAMINFO".to_string());
-    }
-
-    let mut pos = 4; // Skip fLaC signature
-
-    loop {
-        if pos + 4 > headers.len() {
-            return Err("Unexpected end of FLAC headers".to_string());
-        }
-
-        let header_byte = headers[pos];
-        let is_last = (header_byte & 0x80) != 0;
-        let block_type = header_byte & 0x7F;
-        let block_size =
-            u32::from_be_bytes([0, headers[pos + 1], headers[pos + 2], headers[pos + 3]]) as usize;
-
-        if block_type == 0 && block_size >= 18 {
-            // STREAMINFO block
-            let block = &headers[pos + 4..pos + 4 + block_size.min(headers.len() - pos - 4)];
-            if block.len() < 18 {
-                return Err("STREAMINFO block too short".to_string());
-            }
-
-            let sample_rate =
-                ((block[10] as u32) << 12) | ((block[11] as u32) << 4) | ((block[12] as u32) >> 4);
-            let channels = ((block[12] >> 1) & 0x07) + 1;
-            let bits_per_sample = (((block[12] & 0x01) << 4) | ((block[13] >> 4) & 0x0F)) + 1;
-
-            return Ok((sample_rate, channels as u32, bits_per_sample as u32));
-        }
-
-        pos += 4 + block_size;
-        if is_last {
-            break;
-        }
-    }
-
-    Err("STREAMINFO block not found in FLAC headers".to_string())
-}
-
-/// Decode audio from a streaming buffer using seektable-based frame decoding.
-/// Decode audio using seektable for frame boundaries.
-///
-/// The seektable provides exact frame boundaries from import, allowing us to
-/// decode frames as soon as their bytes arrive - no scanning needed.
-///
-/// Seektable is required - all tracks should have one from import.
-pub fn decode_audio_streaming(
+/// FFmpeg handles all frame boundary detection internally.
+/// Seektable is NOT needed - just feed bytes, get samples.
+pub fn decode_audio_streaming_simple(
     buffer: SharedSparseBuffer,
     sink: &mut StreamingPcmSink,
-    headers: Option<Vec<u8>>,
-    seektable: Vec<SeekEntry>,
-) -> Result<StreamingAudioInfo, String> {
-    // Install FFmpeg error callback and reset error counter for this decode
+) -> Result<(), String> {
     install_ffmpeg_log_callback();
     reset_ffmpeg_errors();
 
-    let mut read_buf = [0u8; 32768];
+    unsafe { decode_audio_streaming_avio(buffer, sink) }
+}
 
-    // If headers provided, use them; otherwise read from buffer
-    let (headers, initial_audio) = if let Some(h) = headers {
-        (h, Vec::new())
-    } else {
-        // Read headers from buffer
-        let mut header_buf = Vec::new();
-        loop {
-            if sink.is_cancelled() {
-                return Err("Decode cancelled".to_string());
-            }
+/// Internal AVIO-based streaming decode
+unsafe fn decode_audio_streaming_avio(
+    buffer: SharedSparseBuffer,
+    sink: &mut StreamingPcmSink,
+) -> Result<(), String> {
+    use ffmpeg_sys_next::*;
 
-            match buffer.read(&mut read_buf) {
-                Some(0) => return Err("EOF before FLAC headers complete".to_string()),
-                Some(n) => {
-                    header_buf.extend_from_slice(&read_buf[..n]);
+    // Create streaming AVIO context
+    let avio_ctx = Box::new(StreamingAvioContext {
+        buffer: buffer.clone(),
+        cancelled: std::sync::atomic::AtomicBool::new(false),
+    });
+    let avio_ctx_ptr = Box::into_raw(avio_ctx);
 
-                    if header_buf.len() >= 4 && &header_buf[0..4] == b"fLaC" {
-                        if let Some(end) = find_flac_headers_end(&header_buf) {
-                            let headers = header_buf[..end].to_vec();
-                            let initial = header_buf[end..].to_vec();
-                            break (headers, initial);
-                        }
-                    } else if header_buf.len() >= 4 {
-                        return Err("Invalid FLAC: missing fLaC signature".to_string());
-                    }
-                }
-                None => return Err("Buffer cancelled".to_string()),
-            }
+    // Allocate AVIO buffer
+    let avio_buffer_size = 32768;
+    let avio_buffer = av_malloc(avio_buffer_size) as *mut u8;
+    if avio_buffer.is_null() {
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err("Failed to allocate AVIO buffer".to_string());
+    }
+
+    // Create custom AVIO context (no seek - streaming only)
+    let avio = avio_alloc_context(
+        avio_buffer,
+        avio_buffer_size as c_int,
+        0,
+        avio_ctx_ptr as *mut c_void,
+        Some(streaming_avio_read_callback),
+        None,
+        None, // No seek for streaming
+    );
+    if avio.is_null() {
+        av_free(avio_buffer as *mut c_void);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err("Failed to create AVIO context".to_string());
+    }
+
+    // Create format context
+    let mut fmt_ctx = avformat_alloc_context();
+    if fmt_ctx.is_null() {
+        av_free(avio as *mut c_void);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err("Failed to allocate format context".to_string());
+    }
+    (*fmt_ctx).pb = avio;
+
+    // Open input
+    let ret = avformat_open_input(&mut fmt_ctx, ptr::null(), ptr::null_mut(), ptr::null_mut());
+    if ret < 0 {
+        avformat_free_context(fmt_ctx);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err(format!("Failed to open input: {}", av_err_str(ret)));
+    }
+
+    // Find stream info
+    let ret = avformat_find_stream_info(fmt_ctx, ptr::null_mut());
+    if ret < 0 {
+        avformat_close_input(&mut fmt_ctx);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err(format!("Failed to find stream info: {}", av_err_str(ret)));
+    }
+
+    // Find audio stream
+    let stream_index = av_find_best_stream(
+        fmt_ctx,
+        AVMediaType::AVMEDIA_TYPE_AUDIO,
+        -1,
+        -1,
+        ptr::null_mut(),
+        0,
+    );
+    if stream_index < 0 {
+        avformat_close_input(&mut fmt_ctx);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err("No audio stream found".to_string());
+    }
+
+    let stream = *(*fmt_ctx).streams.add(stream_index as usize);
+    let codecpar = (*stream).codecpar;
+
+    // Find decoder
+    let codec = avcodec_find_decoder((*codecpar).codec_id);
+    if codec.is_null() {
+        avformat_close_input(&mut fmt_ctx);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err("Decoder not found".to_string());
+    }
+
+    // Allocate codec context
+    let codec_ctx = avcodec_alloc_context3(codec);
+    if codec_ctx.is_null() {
+        avformat_close_input(&mut fmt_ctx);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err("Failed to allocate codec context".to_string());
+    }
+
+    // Copy codec parameters
+    let ret = avcodec_parameters_to_context(codec_ctx, codecpar);
+    if ret < 0 {
+        avcodec_free_context(&mut (codec_ctx as *mut _));
+        avformat_close_input(&mut fmt_ctx);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
+    }
+
+    // Open codec
+    let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
+    if ret < 0 {
+        avcodec_free_context(&mut (codec_ctx as *mut _));
+        avformat_close_input(&mut fmt_ctx);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err(format!("Failed to open codec: {}", av_err_str(ret)));
+    }
+
+    let sample_rate = (*codec_ctx).sample_rate as u32;
+    let channels = (*codecpar).ch_layout.nb_channels as u32;
+
+    debug!("Streaming AVIO decoder: {}Hz, {}ch", sample_rate, channels);
+
+    // Allocate frame and packet
+    let frame = av_frame_alloc();
+    let packet = av_packet_alloc();
+    if frame.is_null() || packet.is_null() {
+        if !frame.is_null() {
+            av_frame_free(&mut (frame as *mut _));
         }
+        if !packet.is_null() {
+            av_packet_free(&mut (packet as *mut _));
+        }
+        avcodec_free_context(&mut (codec_ctx as *mut _));
+        avformat_close_input(&mut fmt_ctx);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err("Failed to allocate frame/packet".to_string());
+    }
+
+    // Scaling factor for sample conversion
+    let bits_per_sample = match (*codec_ctx).sample_fmt {
+        AVSampleFormat::AV_SAMPLE_FMT_S16 | AVSampleFormat::AV_SAMPLE_FMT_S16P => 16,
+        AVSampleFormat::AV_SAMPLE_FMT_S32 | AVSampleFormat::AV_SAMPLE_FMT_S32P => 32,
+        _ => 16,
+    };
+    let scale = match bits_per_sample {
+        16 => 1.0 / (i16::MAX as f32),
+        24 => 1.0 / 8388607.0,
+        32 => 1.0 / (i32::MAX as f32),
+        _ => 1.0 / (i16::MAX as f32),
     };
 
-    debug!(
-        "Streaming decoder: {} bytes headers, seektable: {} entries",
-        headers.len(),
-        seektable.len()
-    );
+    let mut samples_output: u64 = 0;
 
-    if seektable.is_empty() {
-        return Err("Seektable is required but empty".to_string());
-    }
-
-    // Create seektable-based decoder
-    let mut decoder = FlacStreamingDecoder::new(headers, &seektable)?;
-    let info = decoder.audio_info();
-
-    // Process any initial audio data
-    if !initial_audio.is_empty() {
-        let samples = decoder.feed(&initial_audio)?;
-        if !samples.is_empty() {
-            push_samples_to_sink(sink, &samples)?;
-        }
-    }
-
-    // Continue reading and decoding
-    loop {
+    // Read and decode packets
+    while av_read_frame(fmt_ctx, packet) >= 0 {
+        // Check for cancellation
         if sink.is_cancelled() {
-            return Err("Decode cancelled".to_string());
+            av_packet_unref(packet);
+            break;
         }
 
-        match buffer.read(&mut read_buf) {
-            Some(0) => break,
-            Some(n) => {
-                let samples = decoder.feed(&read_buf[..n])?;
-                if !samples.is_empty() {
-                    push_samples_to_sink(sink, &samples)?;
+        if (*packet).stream_index != stream_index {
+            av_packet_unref(packet);
+            continue;
+        }
+
+        let ret = avcodec_send_packet(codec_ctx, packet);
+        av_packet_unref(packet);
+
+        if ret < 0 {
+            continue;
+        }
+
+        while avcodec_receive_frame(codec_ctx, frame) >= 0 {
+            if sink.is_cancelled() {
+                break;
+            }
+
+            let frame_samples = extract_samples_from_raw_frame(frame, channels as usize);
+            samples_output += frame_samples.len() as u64;
+
+            // Convert to f32 and push to sink
+            let f32_samples: Vec<f32> = frame_samples.iter().map(|&s| s as f32 * scale).collect();
+
+            if !f32_samples.is_empty() {
+                if let Err(e) = push_samples_to_sink(sink, &f32_samples) {
+                    warn!("Failed to push samples: {}", e);
+                    break;
                 }
             }
-            None => return Err("Buffer cancelled".to_string()),
         }
     }
 
-    let final_samples = decoder.finish()?;
-    if !final_samples.is_empty() {
-        push_samples_to_sink(sink, &final_samples)?;
+    // Flush decoder
+    avcodec_send_packet(codec_ctx, ptr::null());
+    while avcodec_receive_frame(codec_ctx, frame) >= 0 {
+        if sink.is_cancelled() {
+            break;
+        }
+
+        let frame_samples = extract_samples_from_raw_frame(frame, channels as usize);
+        samples_output += frame_samples.len() as u64;
+
+        let f32_samples: Vec<f32> = frame_samples.iter().map(|&s| s as f32 * scale).collect();
+
+        if !f32_samples.is_empty() {
+            let _ = push_samples_to_sink(sink, &f32_samples);
+        }
     }
 
-    // Record FFmpeg error count from this decode
+    // Cleanup
+    av_frame_free(&mut (frame as *mut _));
+    av_packet_free(&mut (packet as *mut _));
+    avcodec_free_context(&mut (codec_ctx as *mut _));
+    avformat_close_input(&mut fmt_ctx);
+    let _ = Box::from_raw(avio_ctx_ptr);
+
+    // Record error count
     let error_count = get_ffmpeg_errors();
     if error_count > 0 {
-        warn!(
-            "Streaming decode had {} FFmpeg errors (frames may be corrupted)",
-            error_count
-        );
+        warn!("Streaming AVIO decode had {} FFmpeg errors", error_count);
     }
     sink.set_decode_error_count(error_count);
 
-    sink.mark_finished();
+    if !sink.is_cancelled() {
+        sink.mark_finished();
+    }
 
     info!(
-        "Streaming decode complete: {}Hz, {} channels, {} errors",
-        info.sample_rate, info.channels, error_count
+        "Streaming AVIO decode complete: {}Hz, {}ch, {} samples, {} errors",
+        sample_rate, channels, samples_output, error_count
     );
 
-    Ok(info)
-}
-
-/// Find the end of FLAC headers (start of audio data).
-fn find_flac_headers_end(data: &[u8]) -> Option<usize> {
-    if data.len() < 8 || &data[0..4] != b"fLaC" {
-        return None;
-    }
-
-    let mut pos = 4;
-
-    loop {
-        if pos + 4 > data.len() {
-            return None;
-        }
-
-        let header_byte = data[pos];
-        let is_last = (header_byte & 0x80) != 0;
-        let block_size =
-            u32::from_be_bytes([0, data[pos + 1], data[pos + 2], data[pos + 3]]) as usize;
-
-        let block_end = pos + 4 + block_size;
-        if block_end > data.len() {
-            return None;
-        }
-
-        pos = block_end;
-        if is_last {
-            return Some(pos);
-        }
-    }
+    Ok(())
 }
 
 /// Push samples to sink in chunks, checking for cancellation.
@@ -1448,70 +1334,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_adjust_seektable_for_seek() {
-        // Create a sample seektable: frames at bytes 0, 4096, 8192, 12288, 16384
-        let seektable = vec![
-            SeekEntry { sample: 0, byte: 0 },
-            SeekEntry {
-                sample: 4096,
-                byte: 4096,
-            },
-            SeekEntry {
-                sample: 8192,
-                byte: 8192,
-            },
-            SeekEntry {
-                sample: 12288,
-                byte: 12288,
-            },
-            SeekEntry {
-                sample: 16384,
-                byte: 16384,
-            },
-        ];
-
-        // Seek to frame at byte 8192 (3rd frame)
-        let adjusted = adjust_seektable_for_seek(&seektable, 8192);
-
-        assert_eq!(
-            adjusted.len(),
-            3,
-            "Should have 3 entries from frame 3 onwards"
-        );
-        assert_eq!(adjusted[0].byte, 0, "First entry should be at offset 0");
-        assert_eq!(
-            adjusted[0].sample, 8192,
-            "First entry sample should be 8192"
-        );
-        assert_eq!(
-            adjusted[1].byte, 4096,
-            "Second entry should be at offset 4096"
-        );
-        assert_eq!(
-            adjusted[2].byte, 8192,
-            "Third entry should be at offset 8192"
-        );
-
-        // Seek to exact frame boundary
-        let adjusted = adjust_seektable_for_seek(&seektable, 4096);
-        assert_eq!(adjusted.len(), 4);
-        assert_eq!(adjusted[0].byte, 0);
-        assert_eq!(adjusted[0].sample, 4096);
-
-        // Seek past all frames
-        let adjusted = adjust_seektable_for_seek(&seektable, 20000);
-        assert!(
-            adjusted.is_empty(),
-            "Should have no entries when seeking past end"
-        );
-
-        // Seek to byte 0 (no adjustment needed)
-        let adjusted = adjust_seektable_for_seek(&seektable, 0);
-        assert_eq!(adjusted.len(), 5);
-        assert_eq!(adjusted[0].byte, 0);
-    }
-
     /// Test that FLAC encode/decode is lossless - samples should match exactly.
     ///
     /// This catches any sample conversion bugs: wrong byte order, wrong scaling,
@@ -1577,18 +1399,14 @@ mod tests {
             .collect();
         let flac_data = encode_to_flac(&samples, 44100, 1, 16).unwrap();
 
-        // Build seektable
-        let seektable = build_seektable(&flac_data).unwrap();
-
         // Create streaming infrastructure with sparse buffer
         let buffer = create_sparse_buffer();
         let (mut sink, mut source) = create_streaming_pair_with_capacity(44100, 1, 100000);
 
-        // Spawn decoder thread
+        // Spawn decoder thread using new AVIO-based streaming decode
         let decoder_buffer = buffer.clone();
-        let decoder_handle = thread::spawn(move || {
-            decode_audio_streaming(decoder_buffer, &mut sink, None, seektable)
-        });
+        let decoder_handle =
+            thread::spawn(move || decode_audio_streaming_simple(decoder_buffer, &mut sink));
 
         // Feed data to buffer (simulating download)
         buffer.append_at(0, &flac_data);
@@ -1598,10 +1416,6 @@ mod tests {
         // Wait for decoder
         let result = decoder_handle.join().unwrap();
         assert!(result.is_ok(), "Decode failed: {:?}", result.err());
-
-        let info = result.unwrap();
-        assert_eq!(info.sample_rate, 44100);
-        assert_eq!(info.channels, 1);
 
         // Pull samples from source
         let mut decoded_samples = Vec::new();
@@ -1620,384 +1434,6 @@ mod tests {
             "Sample count mismatch: {} vs {}",
             decoded_samples.len(),
             samples.len()
-        );
-    }
-
-    #[test]
-    fn test_flac_streaming_decoder_with_seektable() {
-        use crate::playback::create_streaming_pair_with_capacity;
-        use crate::playback::sparse_buffer::create_sparse_buffer;
-        use std::thread;
-
-        init();
-
-        // Create test FLAC data
-        let samples: Vec<i32> = (0..44100)
-            .map(|i| ((i as f64 * 0.01).sin() * 10000.0) as i32)
-            .collect();
-        let flac_data = encode_to_flac(&samples, 44100, 1, 16).unwrap();
-
-        // Build seektable from the FLAC data
-        let seektable = build_seektable(&flac_data).unwrap();
-        assert!(!seektable.is_empty(), "Seektable should not be empty");
-
-        // Extract headers
-        let headers_end = find_flac_headers_end(&flac_data).unwrap();
-        let headers = flac_data[..headers_end].to_vec();
-        let audio_data = flac_data[headers_end..].to_vec();
-
-        // Create streaming infrastructure
-        let buffer = create_sparse_buffer();
-        let (mut sink, mut source) = create_streaming_pair_with_capacity(44100, 1, 100000);
-
-        // Spawn decoder thread with seektable
-        let decoder_buffer = buffer.clone();
-        let decoder_headers = Some(headers.clone());
-        let decoder_handle = thread::spawn(move || {
-            decode_audio_streaming(decoder_buffer, &mut sink, decoder_headers, seektable)
-        });
-
-        // Feed ONLY audio data (headers provided separately)
-        buffer.append_at(0, &audio_data);
-        buffer.set_total_size(audio_data.len() as u64);
-        buffer.mark_eof();
-
-        // Wait for decoder
-        let result = decoder_handle.join().unwrap();
-        assert!(
-            result.is_ok(),
-            "Decode with seektable failed: {:?}",
-            result.err()
-        );
-
-        let info = result.unwrap();
-        assert_eq!(info.sample_rate, 44100);
-        assert_eq!(info.channels, 1);
-
-        // Pull samples from source
-        let mut decoded_samples = Vec::new();
-        let mut buf = [0.0f32; 1024];
-        loop {
-            let n = source.pull_samples(&mut buf);
-            if n == 0 && source.is_finished() {
-                break;
-            }
-            decoded_samples.extend_from_slice(&buf[..n]);
-        }
-
-        // Should have approximately the same number of samples
-        assert!(
-            (decoded_samples.len() as i64 - samples.len() as i64).abs() < 1000,
-            "Sample count mismatch with seektable: {} vs {}",
-            decoded_samples.len(),
-            samples.len()
-        );
-    }
-
-    #[test]
-    fn test_flac_streaming_decoder_incremental_feed() {
-        init();
-
-        // Create test FLAC data
-        let samples: Vec<i32> = (0..44100)
-            .map(|i| ((i as f64 * 0.01).sin() * 10000.0) as i32)
-            .collect();
-        let flac_data = encode_to_flac(&samples, 44100, 1, 16).unwrap();
-
-        // Build seektable
-        let seektable = build_seektable(&flac_data).unwrap();
-        assert!(!seektable.is_empty(), "Seektable should not be empty");
-
-        // Extract headers
-        let headers_end = find_flac_headers_end(&flac_data).unwrap();
-        let headers = flac_data[..headers_end].to_vec();
-        let audio_data = &flac_data[headers_end..];
-
-        // Create decoder
-        let mut decoder = FlacStreamingDecoder::new(headers, &seektable).unwrap();
-
-        // Feed data in small chunks (simulating streaming)
-        let chunk_size = 4096;
-        let mut all_samples = Vec::new();
-
-        for chunk in audio_data.chunks(chunk_size) {
-            let samples = decoder.feed(chunk).unwrap();
-            all_samples.extend(samples);
-        }
-
-        // Finish decoding
-        let final_samples = decoder.finish().unwrap();
-        all_samples.extend(final_samples);
-
-        // Should have decoded some samples
-        assert!(
-            !all_samples.is_empty(),
-            "Should have decoded samples incrementally"
-        );
-
-        // Verify reasonable sample count
-        let expected_samples = samples.len();
-        assert!(
-            (all_samples.len() as i64 - expected_samples as i64).abs() < 5000,
-            "Incremental decode sample count off: {} vs expected ~{}",
-            all_samples.len(),
-            expected_samples
-        );
-    }
-
-    /// Test streaming decode when buffer contains full FLAC data (headers + audio).
-    /// The decoder should read headers from buffer (pass None for headers param).
-    /// This is the standard pattern - buffer always has headers, decoder reads them.
-    #[test]
-    fn test_streaming_decode_headers_in_buffer() {
-        use crate::playback::create_streaming_pair_with_capacity;
-        use crate::playback::sparse_buffer::create_sparse_buffer;
-        use std::thread;
-
-        init();
-
-        // Create test FLAC data
-        let samples: Vec<i32> = (0..44100)
-            .map(|i| ((i as f64 * 0.01).sin() * 10000.0) as i32)
-            .collect();
-        let flac_data = encode_to_flac(&samples, 44100, 1, 16).unwrap();
-
-        // Build seektable
-        let seektable = build_seektable(&flac_data).unwrap();
-
-        // For this test, we simulate CUE/FLAC where the reader prepends headers to buffer.
-        // The buffer contains: [headers][audio_data]
-        // The decoder should read headers from buffer (pass None).
-
-        let buffer = create_sparse_buffer();
-        let (mut sink, mut source) = create_streaming_pair_with_capacity(44100, 1, 100000);
-
-        let decoder_buffer = buffer.clone();
-        let decoder_handle = thread::spawn(move || {
-            decode_audio_streaming(
-                decoder_buffer,
-                &mut sink,
-                None, // Headers are in buffer, decoder reads them
-                seektable,
-            )
-        });
-
-        // Buffer contains full FLAC data (headers + audio)
-        buffer.append_at(0, &flac_data);
-        buffer.set_total_size(flac_data.len() as u64);
-        buffer.mark_eof();
-
-        // Wait for decoder
-        let result = decoder_handle.join().unwrap();
-        assert!(
-            result.is_ok(),
-            "Decode with headers in buffer failed: {:?}",
-            result.err()
-        );
-
-        let info = result.unwrap();
-        assert_eq!(info.sample_rate, 44100);
-        assert_eq!(info.channels, 1);
-
-        // Pull samples
-        let mut decoded_samples = Vec::new();
-        let mut buf = [0.0f32; 1024];
-        loop {
-            let n = source.pull_samples(&mut buf);
-            if n == 0 && source.is_finished() {
-                break;
-            }
-            decoded_samples.extend_from_slice(&buf[..n]);
-        }
-
-        assert!(
-            (decoded_samples.len() as i64 - samples.len() as i64).abs() < 1000,
-            "Sample count mismatch with headers in buffer: {} vs {}",
-            decoded_samples.len(),
-            samples.len()
-        );
-    }
-
-    /// Test that CUE/FLAC byte-range extraction requires adjusted seektable offsets.
-    ///
-    /// Bug: When playing a track from a CUE/FLAC album, the seektable contains
-    /// byte offsets for the entire album file. If we extract bytes 172239464-186031289
-    /// (track 9), the seektable still has offsets starting at 0, so the decoder
-    /// extracts wrong byte ranges and produces 0 samples.
-    ///
-    /// This test uses FlacStreamingDecoder directly to avoid threading complexity.
-    #[test]
-    fn test_streaming_decode_cue_flac_byte_range_seektable() {
-        init();
-
-        // Generate a longer FLAC file to simulate an album (multiple tracks worth)
-        let samples: Vec<i32> = (0..44100 * 30) // 30 seconds of audio
-            .map(|i| ((i as f64 * 0.01).sin() * 10000.0) as i32)
-            .collect();
-
-        let flac_data = encode_to_flac(&samples, 44100, 1, 16).unwrap();
-
-        // Build seektable for the full album
-        let full_seektable = build_seektable(&flac_data).unwrap();
-        assert!(
-            full_seektable.len() > 10,
-            "Need enough frames to test: got {}",
-            full_seektable.len()
-        );
-
-        // Find headers end (audio data start)
-        let audio_data_start = find_flac_headers_end(&flac_data).unwrap();
-        let headers = flac_data[0..audio_data_start].to_vec();
-
-        // Simulate extracting a "track" from the middle of the album.
-        // Pick frame indices somewhere in the middle.
-        let start_frame_idx = full_seektable.len() / 3;
-        let end_frame_idx = (full_seektable.len() * 2) / 3;
-
-        let track_start_byte = full_seektable[start_frame_idx].byte;
-        let track_end_byte = if end_frame_idx < full_seektable.len() {
-            full_seektable[end_frame_idx].byte
-        } else {
-            flac_data.len() as u64 - audio_data_start as u64
-        };
-
-        // Extract the track's audio data (from the middle of the album)
-        let track_audio_data = &flac_data[(audio_data_start + track_start_byte as usize)
-            ..(audio_data_start + track_end_byte as usize)];
-
-        // Filter seektable to only include entries within our track range,
-        // and adjust offsets to be relative to the track's start.
-        let adjusted_seektable: Vec<SeekEntry> = full_seektable
-            .iter()
-            .filter(|e| e.byte >= track_start_byte && e.byte < track_end_byte)
-            .map(|e| SeekEntry {
-                sample: e.sample - full_seektable[start_frame_idx].sample,
-                byte: e.byte - track_start_byte,
-            })
-            .collect();
-
-        assert!(
-            !adjusted_seektable.is_empty(),
-            "Adjusted seektable should not be empty: start={}, end={}, track_start_byte={}, track_end_byte={}",
-            start_frame_idx, end_frame_idx, track_start_byte, track_end_byte
-        );
-
-        // Test 1: With ADJUSTED seektable (correct) - should decode successfully
-        {
-            let mut decoder = FlacStreamingDecoder::new(headers.clone(), &adjusted_seektable)
-                .expect("Should create decoder with adjusted seektable");
-
-            // Feed all track audio data
-            let samples = decoder.feed(track_audio_data).unwrap();
-            let final_samples = decoder.finish().unwrap();
-
-            let total_samples = samples.len() + final_samples.len();
-            let expected_frames = end_frame_idx - start_frame_idx;
-
-            assert!(
-                total_samples > expected_frames * 1000, // At least 1000 samples per frame (conservative)
-                "Adjusted seektable should produce good output: {} samples from {} frames",
-                total_samples,
-                expected_frames
-            );
-        }
-
-        // Test 2: With FULL ALBUM seektable (the actual bug) - should fail
-        //
-        // This reproduces what happens in production: we pass the entire album's
-        // seektable (starting from byte 0) but feed track data that starts mid-album.
-        // The decoder uses frame_offsets[0] = 0, but the first byte of our buffer
-        // is actually from byte 172239464, which is mid-frame garbage.
-        {
-            // Use the FULL album seektable, not sliced
-            let mut decoder = FlacStreamingDecoder::new(headers.clone(), &full_seektable)
-                .expect("Should create decoder");
-
-            // Feed the track audio data - but decoder thinks it starts at byte 0
-            // It will try to decode frame 0 (bytes 0-4096) from our buffer,
-            // but our buffer actually contains bytes 172239464+ which is mid-frame
-            let samples = decoder.feed(track_audio_data).unwrap();
-            let final_samples = decoder.finish().unwrap();
-
-            let total_samples = samples.len() + final_samples.len();
-
-            // With full album seektable, decoder extracts wrong frame boundaries
-            // because it thinks data starts at byte 0 but it actually starts mid-album
-            assert!(
-                total_samples < 10000,
-                "Full album seektable with mid-album track data should produce very few samples \
-                 (got {}). This is the bug: seektable offsets aren't adjusted for byte-range tracks.",
-                total_samples
-            );
-        }
-    }
-
-    /// Test seek: adjusting seektable when seeking mid-track.
-    ///
-    /// When seeking, we copy audio from the seek position and prepend headers.
-    /// The seektable must be adjusted so offsets are relative to the new start.
-    #[test]
-    fn test_seek_seektable_adjustment() {
-        init();
-
-        // Create a longer FLAC file to have more frames
-        let duration_samples = 44100 * 5; // 5 seconds
-        let samples: Vec<i32> = (0..duration_samples)
-            .map(|i| ((i as f64 * 0.01).sin() * 10000.0) as i32)
-            .collect();
-        let flac_data = encode_to_flac(&samples, 44100, 1, 16).unwrap();
-
-        let seektable = build_seektable(&flac_data).unwrap();
-        assert!(seektable.len() >= 5, "Need at least 5 frames for seek test");
-
-        let headers_end = find_flac_headers_end(&flac_data).unwrap();
-        let headers = flac_data[..headers_end].to_vec();
-        let audio_data = &flac_data[headers_end..];
-
-        // Seek to frame 3 (index 3)
-        let seek_frame_idx = 3;
-        let seek_frame_byte = seektable[seek_frame_idx].byte;
-
-        // Audio data from seek position onwards
-        let seek_audio = &audio_data[seek_frame_byte as usize..];
-
-        // Adjust seektable using the public function
-        let adjusted_seektable = adjust_seektable_for_seek(&seektable, seek_frame_byte);
-
-        assert!(
-            !adjusted_seektable.is_empty(),
-            "Adjusted seektable should not be empty"
-        );
-        assert_eq!(
-            adjusted_seektable[0].byte, 0,
-            "First entry should be at offset 0"
-        );
-
-        // Decode with adjusted seektable
-        let mut decoder = FlacStreamingDecoder::new(headers.clone(), &adjusted_seektable)
-            .expect("Should create decoder");
-
-        let samples = decoder.feed(seek_audio).unwrap();
-        let final_samples = decoder.finish().unwrap();
-        let total_samples = samples.len() + final_samples.len();
-
-        // Should have decoded a reasonable number of samples
-        // We're decoding from frame 3 onwards, so roughly (total_frames - 3) / total_frames of samples
-        let expected_fraction = (seektable.len() - seek_frame_idx) as f64 / seektable.len() as f64;
-        let min_expected = (duration_samples as f64 * expected_fraction * 0.5) as usize;
-
-        assert!(
-            total_samples >= min_expected,
-            "Seek decode produced too few samples: {} (expected at least {})",
-            total_samples,
-            min_expected
-        );
-
-        // Verify we got actual audio, not silence
-        let non_zero = samples.iter().filter(|&&s| s.abs() > 0.001).count();
-        assert!(
-            non_zero > samples.len() / 2,
-            "Decoded samples should not be mostly silence"
         );
     }
 }
