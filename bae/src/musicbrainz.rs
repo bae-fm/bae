@@ -263,7 +263,34 @@ pub async fn lookup_release_by_id(
         .json()
         .await
         .map_err(|e| MusicBrainzError::Api(format!("Failed to parse JSON: {}", e)))?;
-    debug!("MusicBrainz release response: {:#}", json);
+    #[cfg(debug_assertions)]
+    {
+        let temp_path = std::env::temp_dir().join("musicbrainz_release_response.json");
+        if let Ok(json_str) = serde_json::to_string_pretty(&json) {
+            let _ = std::fs::write(&temp_path, json_str);
+            debug!("MusicBrainz release response written to {:?}", temp_path);
+        }
+    }
+    let title = json
+        .get("title")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+    let artist = json
+        .get("artist-credit")
+        .and_then(|ac| ac.as_array())
+        .and_then(|credits| credits.first())
+        .and_then(|credit| credit.get("name"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+    let relation_count = json
+        .get("relations")
+        .and_then(|r| r.as_array())
+        .map(|arr| arr.len())
+        .unwrap_or(0);
+    debug!(
+        "MusicBrainz release response: {} - {} ({} relations), release_id: {}",
+        artist, title, relation_count, release_id
+    );
     let release_id_str = json
         .get("id")
         .and_then(|v| v.as_str())
@@ -603,7 +630,26 @@ pub async fn search_releases_with_params(
         .json()
         .await
         .map_err(|e| MusicBrainzError::Api(format!("Failed to parse JSON: {}", e)))?;
-    debug!("MusicBrainz search response: {:#}", json);
+    #[cfg(debug_assertions)]
+    {
+        let temp_path = std::env::temp_dir().join("musicbrainz_search_response.json");
+        if let Ok(json_str) = serde_json::to_string_pretty(&json) {
+            let _ = std::fs::write(&temp_path, json_str);
+            debug!("MusicBrainz search response written to {:?}", temp_path);
+        }
+    }
+    let release_count = json
+        .get("releases")
+        .and_then(|r| r.as_array())
+        .map(|arr| arr.len())
+        .unwrap_or(0);
+    let has_error = json.get("error").is_some();
+    debug!(
+        "MusicBrainz search response: {} releases{}, query: {}",
+        release_count,
+        if has_error { ", has error" } else { "" },
+        query
+    );
     if let Some(error_msg) = json.get("error").and_then(|e| e.as_str()) {
         warn!("MusicBrainz API returned error: {}", error_msg);
         return Err(MusicBrainzError::Api(format!(
