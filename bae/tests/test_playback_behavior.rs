@@ -1566,7 +1566,7 @@ async fn test_cue_flac_seek() {
 
     // Wait for seek to complete and track to finish (or timeout)
     // We need to check DecodeStats specifically for our track (track 2), not subsequent tracks
-    let deadline = Instant::now() + Duration::from_secs(20);
+    let mut deadline = Instant::now() + Duration::from_secs(20);
     let mut decode_error_count: Option<u32> = None;
     let mut track_completed = false;
 
@@ -1588,7 +1588,8 @@ async fn test_cue_flac_seek() {
             })) => {
                 if completed_track_id == track_id {
                     track_completed = true;
-                    // DecodeStats should follow for this track
+                    // DecodeStats should follow shortly - extend deadline to ensure we catch it
+                    deadline = Instant::now() + Duration::from_secs(2);
                 }
             }
             Ok(Some(_)) => continue,
