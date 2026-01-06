@@ -823,10 +823,9 @@ impl PlaybackService {
             (guard.sample_rate(), guard.channels())
         };
 
-        // Initial position depends on whether we skipped pregap at decoder start
-        // If we skipped (pregap_byte_offset.is_some()), we start at pregap_ms
-        // Otherwise (natural transition), we start at 0
-        let start_position = if pregap_byte_offset.is_some() {
+        // Position offset: when we skip pregap, decoder positions start at 0 but actual
+        // track position is pregap_ms. Add this offset to convert decoder-relative to track-relative.
+        let position_offset = if pregap_byte_offset.is_some() {
             std::time::Duration::from_millis(pregap_ms.unwrap_or(0).max(0) as u64)
         } else {
             std::time::Duration::ZERO
@@ -899,11 +898,11 @@ impl PlaybackService {
         self.stream = Some(stream);
         self.current_track = Some(track.clone());
         self.current_streaming_source = Some(source);
-        // Position starts at start_position (pregap_ms if skipped, 0 if natural transition)
-        self.current_position = Some(start_position);
+        // Position starts at position_offset (pregap_ms if skipped, 0 if natural transition)
+        self.current_position = Some(position_offset);
         self.current_pregap_ms = pregap_ms;
         self.is_paused = false;
-        *self.current_position_shared.lock().unwrap() = Some(start_position);
+        *self.current_position_shared.lock().unwrap() = Some(position_offset);
 
         let track_duration = track
             .duration_ms
@@ -915,7 +914,7 @@ impl PlaybackService {
         let _ = self.progress_tx.send(PlaybackProgress::StateChanged {
             state: PlaybackState::Playing {
                 track: track.clone(),
-                position: start_position,
+                position: position_offset,
                 duration: Some(track_duration),
                 decoded_duration: track_duration,
                 pregap_ms,
@@ -931,6 +930,8 @@ impl PlaybackService {
         info!("Streaming playback started for track: {}", track_id_owned);
 
         // Monitor position and completion
+        // Note: positions from decoder are relative (starting from 0),
+        // so we add position_offset (from last seek or pregap skip) to get actual track position
         let progress_tx = self.progress_tx.clone();
         let current_position_shared = self.current_position_shared.clone();
         let position_generation = self.position_generation.clone();
@@ -940,10 +941,12 @@ impl PlaybackService {
         tokio::spawn(async move {
             loop {
                 tokio::select! {
-                    Some(position) = position_rx_async.recv() => {
+                    Some(pos) = position_rx_async.recv() => {
                         if position_generation.load(std::sync::atomic::Ordering::SeqCst) == gen {
-                            *current_position_shared.lock().unwrap() = Some(position);
-                            let _ = progress_tx.send(PlaybackProgress::PositionUpdate { position, track_id: track_id_owned.clone() });
+                            // Add offset to convert decoder-relative to track-relative position
+                            let actual_pos = position_offset + pos;
+                            *current_position_shared.lock().unwrap() = Some(actual_pos);
+                            let _ = progress_tx.send(PlaybackProgress::PositionUpdate { position: actual_pos, track_id: track_id_owned.clone() });
                         }
                     }
                     Some(()) = completion_rx_async.recv() => {
@@ -1387,10 +1390,8 @@ impl PlaybackService {
         let progress_tx = self.progress_tx.clone();
         let streaming_source = self.current_streaming_source.clone();
         let position_shared = self.current_position_shared.clone();
-        let generation = self
-            .position_generation
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let position_generation = self.position_generation.clone();
+        let generation = position_generation.load(std::sync::atomic::Ordering::SeqCst);
 
         info!(
             "Play preloaded: Spawning completion listener task for track: {}",
