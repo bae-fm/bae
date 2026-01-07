@@ -10,7 +10,7 @@ export default defineConfig({
 			title: 'bae',
 			description: 'Your music library, beautifully organized',
 			social: [
-				{ icon: 'github', label: 'GitHub', href: 'https://github.com/baebaebaebaebae/bae' }
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/bae-fm/bae' }
 			],
 			customCss: ['./src/styles/custom.css'],
 			sidebar: [
