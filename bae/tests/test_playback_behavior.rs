@@ -1,6 +1,6 @@
 #![cfg(feature = "test-utils")]
 mod support;
-use crate::support::tracing_init;
+use crate::support::{test_encryption_service, tracing_init};
 use bae::cache::{CacheConfig, CacheManager};
 use bae::db::{Database, DbStorageProfile};
 use bae::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
@@ -49,7 +49,8 @@ impl PlaybackTestFixture {
         };
         let _cache_manager = CacheManager::with_config(cache_config).await?;
         let database_arc = Arc::new(database);
-        let library_manager = LibraryManager::new((*database_arc).clone());
+        let library_manager =
+            LibraryManager::new((*database_arc).clone(), test_encryption_service());
         let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
         let library_manager_arc = Arc::new(library_manager);
         let runtime_handle = tokio::runtime::Handle::current();
@@ -352,7 +353,8 @@ impl CueFlacTestFixture {
         };
         let _cache_manager = CacheManager::with_config(cache_config).await?;
         let database_arc = Arc::new(database);
-        let library_manager = LibraryManager::new((*database_arc).clone());
+        let library_manager =
+            LibraryManager::new((*database_arc).clone(), test_encryption_service());
         let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
         let library_manager_arc = Arc::new(library_manager);
         let runtime_handle = tokio::runtime::Handle::current();

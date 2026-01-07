@@ -4,6 +4,8 @@
 //! Tests:
 //! - Local/Cloud storage with encryption permutations
 //! - Storageless (files stay in place, no encryption)
+mod support;
+use crate::support::test_encryption_service;
 use bae::cache::CacheManager;
 use bae::cloud_storage::CloudStorage;
 use bae::db::{Database, DbStorageProfile, ImportStatus, StorageLocation};
@@ -76,7 +78,7 @@ async fn test_storageless_import() {
         .await
         .expect("database");
     let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
-    let library_manager = LibraryManager::new(database.clone());
+    let library_manager = LibraryManager::new(database.clone(), test_encryption_service());
     let shared_library_manager = bae::library::SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
 
@@ -227,7 +229,7 @@ async fn test_storageless_delete_preserves_files() {
         .await
         .expect("database");
     let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
-    let library_manager = LibraryManager::new(database.clone());
+    let library_manager = LibraryManager::new(database.clone(), test_encryption_service());
     let shared_library_manager = bae::library::SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
 
@@ -370,7 +372,7 @@ async fn run_storage_test(location: StorageLocation, encrypted: bool) {
     let _cache_manager = CacheManager::with_config(cache_config)
         .await
         .expect("Failed to create cache manager");
-    let library_manager = LibraryManager::new(database.clone());
+    let library_manager = LibraryManager::new(database.clone(), test_encryption_service());
     let shared_library_manager = bae::library::SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
     let storage_profile =
@@ -903,7 +905,7 @@ async fn run_real_album_test(album_dir: PathBuf, location: StorageLocation, encr
         .await
         .expect("Failed to create database");
     let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
-    let library_manager = LibraryManager::new(database.clone());
+    let library_manager = LibraryManager::new(database.clone(), test_encryption_service());
     let shared_library_manager = bae::library::SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
     let storage_profile =

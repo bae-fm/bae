@@ -263,7 +263,6 @@ pub fn TrackRow(track: DbTrack, release_id: String) -> Element {
                                         let track_id_clone = track_id.clone();
                                         let library_manager_clone = library_manager.clone();
                                         let cache_clone = app_context.cache.clone();
-                                        let encryption_service_clone = app_context.encryption_service.clone();
                                         let mut is_exporting_clone = is_exporting;
                                         let mut show_menu_clone = show_menu;
                                         move |_| {
@@ -272,7 +271,6 @@ pub fn TrackRow(track: DbTrack, release_id: String) -> Element {
                                                 let track_id = track_id_clone.clone();
                                                 let library_manager_clone = library_manager_clone.clone();
                                                 let cache_clone = cache_clone.clone();
-                                                let encryption_service_clone = encryption_service_clone.clone();
                                                 spawn(async move {
                                                     is_exporting_clone.set(true);
                                                     if let Some(file_handle) = AsyncFileDialog::new()
@@ -285,12 +283,7 @@ pub fn TrackRow(track: DbTrack, release_id: String) -> Element {
                                                         let output_path = file_handle.path().to_path_buf();
                                                         match library_manager_clone
                                                             .get()
-                                                            .export_track(
-                                                                &track_id,
-                                                                &output_path,
-                                                                &cache_clone,
-                                                                &encryption_service_clone,
-                                                            )
+                                                            .export_track(&track_id, &output_path, &cache_clone)
                                                             .await
                                                         {
                                                             Ok(_) => {

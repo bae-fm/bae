@@ -56,8 +56,11 @@ async fn create_database(config: &config::Config) -> Database {
 }
 
 /// Initialize library manager with all dependencies
-fn create_library_manager(database: Database) -> SharedLibraryManager {
-    let library_manager = library::LibraryManager::new(database);
+fn create_library_manager(
+    database: Database,
+    encryption_service: encryption::EncryptionService,
+) -> SharedLibraryManager {
+    let library_manager = library::LibraryManager::new(database, encryption_service);
     info!("Library manager created");
     let shared_library = SharedLibraryManager::new(library_manager);
     info!("SharedLibraryManager created");
@@ -111,11 +114,10 @@ fn main() {
     info!("Building dependencies...");
     let cache_manager = runtime_handle.block_on(create_cache_manager());
     let database = runtime_handle.block_on(create_database(&config));
-    let library_manager = create_library_manager(database.clone());
-
     let encryption_service = encryption::EncryptionService::new(&config).expect(
         "Failed to initialize encryption service. Check your encryption key configuration.",
     );
+    let library_manager = create_library_manager(database.clone(), encryption_service.clone());
 
     let torrent_manager = if screenshot_mode {
         torrent::LazyTorrentManager::new_noop(runtime_handle.clone())
@@ -141,7 +143,6 @@ fn main() {
     let media_controls = match media_controls::setup_media_controls(
         playback_handle.clone(),
         library_manager.clone(),
-        encryption_service.clone(),
         runtime_handle.clone(),
     ) {
         Ok(controls) => {

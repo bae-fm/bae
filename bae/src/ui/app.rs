@@ -1,4 +1,3 @@
-use crate::encryption::EncryptionService;
 use crate::library::SharedLibraryManager;
 use crate::ui::components::import::ImportWorkflowManager;
 use crate::ui::components::*;
@@ -44,12 +43,10 @@ fn mime_type_for_extension(ext: &str) -> &'static str {
 #[derive(Clone)]
 struct ImageServices {
     library_manager: SharedLibraryManager,
-    encryption_service: EncryptionService,
 }
 pub fn make_config(context: &AppContext) -> DioxusConfig {
     let services = ImageServices {
         library_manager: context.library_manager.clone(),
-        encryption_service: context.encryption_service.clone(),
     };
     DioxusConfig::default()
         .with_window(make_window())
@@ -140,7 +137,7 @@ async fn serve_image(
     let data = services
         .library_manager
         .get()
-        .fetch_image_bytes(image_id, &services.encryption_service)
+        .fetch_image_bytes(image_id)
         .await
         .map_err(|e| format!("Failed to fetch image: {}", e))?;
 

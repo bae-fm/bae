@@ -1,4 +1,3 @@
-use crate::encryption::EncryptionService;
 use crate::library::SharedLibraryManager;
 use crate::playback::{PlaybackHandle, PlaybackProgress, PlaybackState};
 use souvlaki::{
@@ -13,7 +12,6 @@ use tracing::{error, info, trace};
 pub fn setup_media_controls(
     playback_handle: PlaybackHandle,
     library_manager: SharedLibraryManager,
-    encryption_service: EncryptionService,
     runtime_handle: tokio::runtime::Handle,
 ) -> Result<Arc<Mutex<MediaControls>>, souvlaki::Error> {
     let current_state = Arc::new(Mutex::new(PlaybackState::Stopped));
@@ -22,7 +20,6 @@ pub fn setup_media_controls(
     let library_manager_for_metadata = library_manager.clone();
     let current_state_for_controls = current_state.clone();
     let current_state_for_progress = current_state.clone();
-    let encryption_service_for_metadata = encryption_service;
     let config = PlatformConfig {
         dbus_name: "com.bae.app",
         display_name: "bae",
@@ -111,7 +108,6 @@ pub fn setup_media_controls(
             let mut progress_rx = playback_handle_for_progress.subscribe_progress();
             let current_state = current_state_for_progress;
             let library_manager = library_manager_for_metadata;
-            let encryption_service = encryption_service_for_metadata;
             while let Some(progress) = progress_rx.recv().await {
                 match progress {
                     PlaybackProgress::StateChanged { state } => {
@@ -157,7 +153,6 @@ pub fn setup_media_controls(
                                 update_media_metadata(
                                     &controls_shared,
                                     &library_manager,
-                                    &encryption_service,
                                     track,
                                     duration,
                                 )
@@ -218,7 +213,6 @@ fn update_playback_position(
 async fn update_media_metadata(
     controls: &Arc<Mutex<MediaControls>>,
     library_manager: &SharedLibraryManager,
-    encryption_service: &EncryptionService,
     track: &crate::db::DbTrack,
     duration: Option<std::time::Duration>,
 ) {
@@ -271,13 +265,8 @@ async fn update_media_metadata(
         }
     };
 
-    let cover_url = resolve_cover_file_url(
-        library_manager,
-        encryption_service,
-        &track.release_id,
-        cover_image_id,
-    )
-    .await;
+    let cover_url =
+        resolve_cover_file_url(library_manager, &track.release_id, cover_image_id).await;
     let title = track.title.clone();
     let artist_str = artist_name.as_deref();
     let album_str = album_name.as_deref();
@@ -307,7 +296,6 @@ async fn update_media_metadata(
 /// Downloads from cloud and/or decrypts if needed, caching the result.
 async fn resolve_cover_file_url(
     library_manager: &SharedLibraryManager,
-    encryption_service: &EncryptionService,
     release_id: &str,
     cover_image_id: Option<String>,
 ) -> Option<String> {
@@ -327,11 +315,7 @@ async fn resolve_cover_file_url(
     }
 
     // Fetch bytes (handles S3 download + decryption)
-    let data = match library_manager
-        .get()
-        .fetch_image_bytes(&image_id, encryption_service)
-        .await
-    {
+    let data = match library_manager.get().fetch_image_bytes(&image_id).await {
         Ok(d) => d,
         Err(e) => {
             error!("Failed to fetch cover image: {}", e);

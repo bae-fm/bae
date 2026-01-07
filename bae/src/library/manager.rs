@@ -35,11 +35,20 @@ pub enum LibraryError {
 #[derive(Debug, Clone)]
 pub struct LibraryManager {
     database: Database,
+    encryption_service: EncryptionService,
 }
 impl LibraryManager {
     /// Create a new library manager
-    pub fn new(database: Database) -> Self {
-        LibraryManager { database }
+    pub fn new(database: Database, encryption_service: EncryptionService) -> Self {
+        LibraryManager {
+            database,
+            encryption_service,
+        }
+    }
+
+    /// Get a reference to the encryption service
+    pub fn encryption_service(&self) -> &EncryptionService {
+        &self.encryption_service
     }
     /// Get a reference to the database
     pub fn database(&self) -> &Database {
@@ -322,11 +331,7 @@ impl LibraryManager {
     }
 
     /// Fetch image bytes from storage, handling S3 download and decryption as needed
-    pub async fn fetch_image_bytes(
-        &self,
-        image_id: &str,
-        encryption_service: &EncryptionService,
-    ) -> Result<Vec<u8>, LibraryError> {
+    pub async fn fetch_image_bytes(&self, image_id: &str) -> Result<Vec<u8>, LibraryError> {
         let image = self
             .get_image_by_id(image_id)
             .await?
@@ -370,7 +375,7 @@ impl LibraryManager {
             .map(|p| p.encrypted)
             .unwrap_or(false)
         {
-            encryption_service.decrypt(&raw_data)?
+            self.encryption_service.decrypt(&raw_data)?
         } else {
             raw_data
         };
@@ -469,11 +474,16 @@ impl LibraryManager {
         release_id: &str,
         target_dir: &Path,
         cache: &CacheManager,
-        encryption_service: &EncryptionService,
     ) -> Result<(), LibraryError> {
-        ExportService::export_release(release_id, target_dir, self, cache, encryption_service)
-            .await
-            .map_err(LibraryError::Import)
+        ExportService::export_release(
+            release_id,
+            target_dir,
+            self,
+            cache,
+            &self.encryption_service,
+        )
+        .await
+        .map_err(LibraryError::Import)
     }
     /// Export a single track as a FLAC file
     ///
@@ -484,7 +494,6 @@ impl LibraryManager {
         track_id: &str,
         output_path: &Path,
         cache: &CacheManager,
-        encryption_service: &EncryptionService,
     ) -> Result<(), LibraryError> {
         // Get storage profile for track's release
         let track = self
@@ -506,7 +515,7 @@ impl LibraryManager {
             self,
             storage,
             cache,
-            encryption_service,
+            &self.encryption_service,
         )
         .await
         .map_err(LibraryError::Import)
@@ -633,7 +642,8 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
         let database = Database::new(db_path.to_str().unwrap()).await.unwrap();
-        let manager = LibraryManager::new(database);
+        let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
+        let manager = LibraryManager::new(database, encryption_service);
         (manager, temp_dir)
     }
 

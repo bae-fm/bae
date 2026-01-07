@@ -85,7 +85,6 @@ pub fn AlbumCoverSection(
                                             let release_id = release_id.clone();
                                             let library_manager = library_manager.clone();
                                             let cache = app_context.cache.clone();
-                                            let encryption_service = app_context.encryption_service.clone();
                                             move |evt| {
                                                 evt.stop_propagation();
                                                 show_dropdown.set(false);
@@ -93,7 +92,6 @@ pub fn AlbumCoverSection(
                                                     let release_id = release_id.clone();
                                                     let library_manager = library_manager.clone();
                                                     let cache = cache.clone();
-                                                    let encryption_service = encryption_service.clone();
                                                     spawn(async move {
                                                         is_exporting.set(true);
                                                         export_error.set(None);
@@ -105,12 +103,7 @@ pub fn AlbumCoverSection(
                                                             let target_dir = folder_handle.path().to_path_buf();
                                                             match library_manager
                                                                 .get()
-                                                                .export_release(
-                                                                    &release_id,
-                                                                    &target_dir,
-                                                                    &cache,
-                                                                    &encryption_service,
-                                                                )
+                                                                .export_release(&release_id, &target_dir, &cache)
                                                                 .await
                                                             {
                                                                 Ok(_) => {

@@ -1,6 +1,6 @@
 #![cfg(feature = "test-utils")]
 mod support;
-use crate::support::tracing_init;
+use crate::support::{test_encryption_service, tracing_init};
 use bae::db::{Database, DbAlbum, DbRelease, DbTrack, ImportStatus};
 use bae::library::{LibraryManager, SharedLibraryManager};
 use chrono::Utc;
@@ -14,7 +14,7 @@ async fn setup_test_environment() -> (SharedLibraryManager, Database, TempDir) {
     let database = Database::new(db_path.to_str().unwrap())
         .await
         .expect("Failed to create database");
-    let library_manager = LibraryManager::new(database.clone());
+    let library_manager = LibraryManager::new(database.clone(), test_encryption_service());
     let shared_library_manager = SharedLibraryManager::new(library_manager);
     (shared_library_manager, database, temp_dir)
 }

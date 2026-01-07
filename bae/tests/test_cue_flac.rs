@@ -9,7 +9,7 @@
 //! These tests use storageless imports for simplicity (the CUE/FLAC handling
 //! is independent of storage configuration).
 mod support;
-use crate::support::tracing_init;
+use crate::support::{test_encryption_service, tracing_init};
 use bae::db::{Database, ImportStatus};
 use bae::discogs::models::{DiscogsRelease, DiscogsTrack};
 use bae::encryption::EncryptionService;
@@ -38,7 +38,7 @@ async fn test_cue_flac_records_track_positions() {
         .await
         .expect("database");
     let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
-    let library_manager = LibraryManager::new(database.clone());
+    let library_manager = LibraryManager::new(database.clone(), test_encryption_service());
     let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
@@ -189,7 +189,7 @@ async fn test_cue_flac_playback_uses_track_positions() {
     let _cache_manager = bae::cache::CacheManager::with_config(cache_config)
         .await
         .expect("cache");
-    let library_manager = LibraryManager::new(database.clone());
+    let library_manager = LibraryManager::new(database.clone(), test_encryption_service());
     let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
@@ -344,7 +344,7 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let _cache_manager = bae::cache::CacheManager::with_config(cache_config)
         .await
         .expect("cache");
-    let library_manager = LibraryManager::new(database.clone());
+    let library_manager = LibraryManager::new(database.clone(), test_encryption_service());
     let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
@@ -483,7 +483,7 @@ async fn test_cue_flac_byte_ranges_have_no_gaps() {
         .await
         .expect("database");
     let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
-    let library_manager = LibraryManager::new(database.clone());
+    let library_manager = LibraryManager::new(database.clone(), test_encryption_service());
     let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
@@ -638,7 +638,7 @@ async fn test_cue_flac_builds_dense_seektable() {
         .await
         .expect("database");
     let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
-    let library_manager = LibraryManager::new(database.clone());
+    let library_manager = LibraryManager::new(database.clone(), test_encryption_service());
     let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
