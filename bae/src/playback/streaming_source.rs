@@ -27,6 +27,8 @@ pub struct StreamingState {
     cancelled: AtomicBool,
     /// Count of FFmpeg decode errors (frames that failed to decode)
     decode_error_count: AtomicU32,
+    /// Total samples decoded (for verifying decode actually produced audio)
+    samples_decoded: AtomicU64,
 }
 
 impl StreamingState {
@@ -38,6 +40,7 @@ impl StreamingState {
             finished: AtomicBool::new(false),
             cancelled: AtomicBool::new(false),
             decode_error_count: AtomicU32::new(0),
+            samples_decoded: AtomicU64::new(0),
         }
     }
 
@@ -67,6 +70,14 @@ impl StreamingState {
 
     pub fn set_decode_error_count(&self, count: u32) {
         self.decode_error_count.store(count, Ordering::Relaxed);
+    }
+
+    pub fn samples_decoded(&self) -> u64 {
+        self.samples_decoded.load(Ordering::Relaxed)
+    }
+
+    pub fn set_samples_decoded(&self, count: u64) {
+        self.samples_decoded.store(count, Ordering::Relaxed);
     }
 }
 
@@ -134,6 +145,11 @@ impl StreamingPcmSink {
     /// Set the decode error count (called at end of decode with FFmpeg error count)
     pub fn set_decode_error_count(&self, count: u32) {
         self.state.set_decode_error_count(count);
+    }
+
+    /// Set the total samples decoded (called at end of decode)
+    pub fn set_samples_decoded(&self, count: u64) {
+        self.state.set_samples_decoded(count);
     }
 
     /// Check if cancelled.
@@ -206,6 +222,11 @@ impl StreamingPcmSource {
     /// Get the count of FFmpeg decode errors that occurred
     pub fn decode_error_count(&self) -> u32 {
         self.state.decode_error_count()
+    }
+
+    /// Get the total samples decoded
+    pub fn samples_decoded(&self) -> u64 {
+        self.state.samples_decoded()
     }
 
     /// Get current playback position as Duration.

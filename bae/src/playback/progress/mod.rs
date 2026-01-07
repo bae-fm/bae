@@ -44,7 +44,9 @@ pub enum PlaybackProgress {
     /// Sent when track finishes or is stopped, includes FFmpeg error count
     DecodeStats {
         track_id: String,
-        /// Number of FFmpeg decode errors (corrupted/skipped frames)
+        /// Number of fatal FFmpeg decode errors
         error_count: u32,
+        /// Total samples decoded (to verify audio was actually produced)
+        samples_decoded: u64,
     },
 }

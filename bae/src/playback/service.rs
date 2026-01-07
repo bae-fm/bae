@@ -436,19 +436,20 @@ impl PlaybackService {
                     }
                     Some(()) = completion_rx_async.recv() => {
                         if position_generation.load(std::sync::atomic::Ordering::SeqCst) == gen {
-                            let error_count = streaming_source
+                            let (error_count, samples_decoded) = streaming_source
                                 .as_ref()
                                 .and_then(|s| s.lock().ok())
-                                .map(|g| g.decode_error_count())
-                                .unwrap_or(0);
+                                .map(|g| (g.decode_error_count(), g.samples_decoded()))
+                                .unwrap_or((0, 0));
 
-                            info!("Track completed: {} ({} decode errors)", track_id, error_count);
+                            info!("Track completed: {} ({} decode errors, {} samples)", track_id, error_count, samples_decoded);
                             let _ = progress_tx.send(PlaybackProgress::TrackCompleted {
                                 track_id: track_id.clone(),
                             });
                             let _ = progress_tx.send(PlaybackProgress::DecodeStats {
                                 track_id: track_id.clone(),
                                 error_count,
+                                samples_decoded,
                             });
                         }
                         break;

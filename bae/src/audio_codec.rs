@@ -24,7 +24,7 @@ fn get_ffmpeg_errors() -> u32 {
     FFMPEG_DECODE_ERRORS.with(|c| c.get())
 }
 
-/// Custom FFmpeg log callback that counts errors per-thread (Linux x86_64)
+/// Custom FFmpeg log callback that counts fatal errors per-thread (Linux x86_64)
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 unsafe extern "C" fn ffmpeg_log_callback(
     _avcl: *mut c_void,
@@ -32,13 +32,14 @@ unsafe extern "C" fn ffmpeg_log_callback(
     _fmt: *const i8,
     _vl: *mut ffmpeg_sys_next::__va_list_tag,
 ) {
-    // AV_LOG_ERROR = 16
-    if level <= 16 {
+    // Only count AV_LOG_FATAL (8) and AV_LOG_PANIC (0).
+    // AV_LOG_ERROR (16) includes recoverable sync errors during seeking.
+    if level <= 8 {
         FFMPEG_DECODE_ERRORS.with(|c| c.set(c.get() + 1));
     }
 }
 
-/// Custom FFmpeg log callback that counts errors per-thread (other platforms)
+/// Custom FFmpeg log callback that counts fatal errors per-thread (other platforms)
 #[cfg(not(all(target_os = "linux", target_arch = "x86_64")))]
 unsafe extern "C" fn ffmpeg_log_callback(
     _avcl: *mut c_void,
@@ -46,8 +47,9 @@ unsafe extern "C" fn ffmpeg_log_callback(
     _fmt: *const i8,
     _vl: *mut i8,
 ) {
-    // AV_LOG_ERROR = 16
-    if level <= 16 {
+    // Only count AV_LOG_FATAL (8) and AV_LOG_PANIC (0).
+    // AV_LOG_ERROR (16) includes recoverable sync errors during seeking.
+    if level <= 8 {
         FFMPEG_DECODE_ERRORS.with(|c| c.set(c.get() + 1));
     }
 }
@@ -1517,19 +1519,23 @@ unsafe fn decode_audio_streaming_avio(
     avformat_close_input(&mut fmt_ctx);
     let _ = Box::from_raw(avio_ctx_ptr);
 
-    // Record error count
+    // Record fatal error count (AV_LOG_FATAL and worse)
     let error_count = get_ffmpeg_errors();
     if error_count > 0 {
-        warn!("Streaming AVIO decode had {} FFmpeg errors", error_count);
+        warn!(
+            "Streaming AVIO decode had {} fatal FFmpeg errors",
+            error_count
+        );
     }
     sink.set_decode_error_count(error_count);
+    sink.set_samples_decoded(samples_output);
 
     if !sink.is_cancelled() {
         sink.mark_finished();
     }
 
     info!(
-        "Streaming AVIO decode complete: {}Hz, {}ch, {} samples, {} errors",
+        "Streaming AVIO decode complete: {}Hz, {}ch, {} samples, {} fatal errors",
         sample_rate, channels, samples_output, error_count
     );
 

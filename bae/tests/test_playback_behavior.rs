@@ -1569,7 +1569,7 @@ async fn test_cue_flac_seek() {
     // Wait for seek to complete and track to finish (or timeout)
     // We need to check DecodeStats specifically for our track (track 2), not subsequent tracks
     let mut deadline = Instant::now() + Duration::from_secs(20);
-    let mut decode_error_count: Option<u32> = None;
+    let mut decode_stats: Option<(u32, u64)> = None;
     let mut track_completed = false;
 
     while Instant::now() < deadline {
@@ -1577,10 +1577,11 @@ async fn test_cue_flac_seek() {
         match timeout(remaining, fixture.progress_rx.recv()).await {
             Ok(Some(PlaybackProgress::DecodeStats {
                 error_count,
+                samples_decoded,
                 track_id: stats_track_id,
             })) => {
                 if stats_track_id == track_id {
-                    decode_error_count = Some(error_count);
+                    decode_stats = Some((error_count, samples_decoded));
                     break;
                 }
                 // Stats for a different track (auto-advanced), keep waiting
@@ -1604,17 +1605,28 @@ async fn test_cue_flac_seek() {
         "Track 2 should complete (either normally or after failed seek decode)"
     );
 
-    // If we got DecodeStats for our track, check the error count
+    // If we got DecodeStats for our track, check the error count and samples decoded
     // If we didn't get DecodeStats (bug: smart seek doesn't emit stats), the test should also fail
-    let error_count = decode_error_count.expect(
+    let (error_count, samples_decoded) = decode_stats.expect(
         "Should receive DecodeStats for track 2 - \
          if missing, smart seek completion may not be emitting stats",
     );
     assert_eq!(
         error_count, 0,
-        "CUE/FLAC seek had {} FFmpeg decode errors - \
+        "CUE/FLAC seek had {} fatal FFmpeg errors - \
          likely seektable offsets are wrong for mid-album track",
         error_count
+    );
+
+    // After seeking to 5s in a 10s track, we should have ~5s of audio remaining
+    // At 44100Hz stereo, that's ~441000 samples. Allow some tolerance.
+    let min_expected_samples = 44100 * 2 * 3; // At least 3 seconds of stereo audio
+    assert!(
+        samples_decoded >= min_expected_samples,
+        "CUE/FLAC seek produced only {} samples, expected at least {} - \
+         likely silent playback bug (decode succeeded but produced no audio)",
+        samples_decoded,
+        min_expected_samples
     );
 }
 
