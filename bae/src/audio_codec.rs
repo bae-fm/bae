@@ -565,12 +565,28 @@ struct WriteAvioContext {
     pos: usize,
 }
 
-/// AVIO write callback - writes bytes to our memory buffer
+/// AVIO write callback - writes bytes to our memory buffer (Linux)
+#[cfg(target_os = "linux")]
+unsafe extern "C" fn avio_write_callback(
+    opaque: *mut c_void,
+    buf: *mut u8,
+    buf_size: c_int,
+) -> c_int {
+    avio_write_callback_impl(opaque, buf as *const u8, buf_size)
+}
+
+/// AVIO write callback - writes bytes to our memory buffer (macOS/other)
+#[cfg(not(target_os = "linux"))]
 unsafe extern "C" fn avio_write_callback(
     opaque: *mut c_void,
     buf: *const u8,
     buf_size: c_int,
 ) -> c_int {
+    avio_write_callback_impl(opaque, buf, buf_size)
+}
+
+/// Shared implementation for write callback
+unsafe fn avio_write_callback_impl(opaque: *mut c_void, buf: *const u8, buf_size: c_int) -> c_int {
     let ctx = &mut *(opaque as *mut WriteAvioContext);
     let size = buf_size as usize;
 
