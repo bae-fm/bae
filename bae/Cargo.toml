@@ -1,6 +1,6 @@
 [package]
 name = "bae"
-version = "2026.1.9"
+version = "2026.1.10"
 authors = ["dima"]
 edition = "2021"
 build = "build.rs"
