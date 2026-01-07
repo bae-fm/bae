@@ -182,9 +182,9 @@ impl Database {
                 pregap_ms INTEGER,
                 frame_offset_samples INTEGER,
                 exact_sample_count INTEGER,
-                sample_rate INTEGER,
-                seektable_json TEXT,
-                audio_data_start INTEGER,
+                sample_rate INTEGER NOT NULL,
+                seektable_json TEXT NOT NULL,
+                audio_data_start INTEGER NOT NULL,
                 file_id TEXT REFERENCES files(id),
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE

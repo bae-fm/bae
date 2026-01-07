@@ -260,14 +260,14 @@ pub struct DbAudioFormat {
     /// at track boundaries may extend past the logical track end.
     pub exact_sample_count: Option<i64>,
     /// Sample rate in Hz (for time-to-sample conversion during seek)
-    pub sample_rate: Option<i64>,
+    pub sample_rate: i64,
     /// Dense seektable for frame-accurate seeking.
     /// JSON array of {sample_number, byte_offset} entries built by scanning FLAC frames.
     /// Enables seeking: prepend headers + data from frame boundary.
-    pub seektable_json: Option<String>,
+    pub seektable_json: String,
     /// Byte offset where audio data starts in the file (after headers).
     /// Seektable byte offsets are relative to this position.
-    pub audio_data_start: Option<i64>,
+    pub audio_data_start: i64,
     /// FK to DbFile containing this track's audio data.
     /// Links to files.id to get the actual source_path.
     pub file_id: Option<String>,
@@ -521,9 +521,9 @@ impl DbAudioFormat {
         format: &str,
         flac_headers: Option<Vec<u8>>,
         needs_headers: bool,
-        sample_rate: Option<i64>,
-        seektable_json: Option<String>,
-        audio_data_start: Option<i64>,
+        sample_rate: i64,
+        seektable_json: String,
+        audio_data_start: i64,
     ) -> Self {
         Self::new_full(
             track_id,
@@ -552,9 +552,9 @@ impl DbAudioFormat {
         pregap_ms: Option<i64>,
         frame_offset_samples: Option<i64>,
         exact_sample_count: Option<i64>,
-        sample_rate: Option<i64>,
-        seektable_json: Option<String>,
-        audio_data_start: Option<i64>,
+        sample_rate: i64,
+        seektable_json: String,
+        audio_data_start: i64,
     ) -> Self {
         Self::new_full(
             track_id,
@@ -589,9 +589,9 @@ impl DbAudioFormat {
         pregap_ms: Option<i64>,
         frame_offset_samples: Option<i64>,
         exact_sample_count: Option<i64>,
-        sample_rate: Option<i64>,
-        seektable_json: Option<String>,
-        audio_data_start: Option<i64>,
+        sample_rate: i64,
+        seektable_json: String,
+        audio_data_start: i64,
         file_id: Option<String>,
     ) -> Self {
         DbAudioFormat {

@@ -139,10 +139,10 @@ struct PreparedTrack {
     buffer: SharedSparseBuffer,
     /// FLAC headers for seek support (prepended when restarting decoder)
     flac_headers: Option<Vec<u8>>,
-    /// Dense seektable for frame-accurate seeking
-    seektable_json: Option<String>,
-    /// Sample rate for time-to-sample conversion
-    sample_rate: Option<u32>,
+    /// Dense seektable for frame-accurate seeking (JSON array of {sample, byte} entries)
+    seektable_json: String,
+    /// Sample rate in Hz for time-to-sample conversion
+    sample_rate: u32,
     /// Byte offset in buffer where audio data starts (after headers)
     audio_data_start: u64,
     /// Total size of audio data in buffer (for seek calculations)
@@ -176,11 +176,12 @@ async fn prepare_track(
     let audio_format = library_manager
         .get_audio_format_by_track_id(track_id)
         .await
-        .map_err(PlaybackError::database)?;
+        .map_err(PlaybackError::database)?
+        .ok_or_else(|| PlaybackError::not_found("Audio format", track_id))?;
 
     let file_id = audio_format
+        .file_id
         .as_ref()
-        .and_then(|af| af.file_id.as_ref())
         .ok_or_else(|| PlaybackError::not_found("file_id in audio_format", track_id))?;
 
     let audio_file = library_manager
@@ -193,21 +194,19 @@ async fn prepare_track(
         .source_path
         .ok_or_else(|| PlaybackError::not_found("source_path", track_id))?;
 
-    let pregap_ms = audio_format.as_ref().and_then(|af| af.pregap_ms);
+    let pregap_ms = audio_format.pregap_ms;
 
-    let (start_byte, end_byte) = audio_format
-        .as_ref()
-        .and_then(|af| match (af.start_byte_offset, af.end_byte_offset) {
-            (Some(s), Some(e)) => Some((Some(s as u64), Some(e as u64))),
-            _ => None,
-        })
-        .unwrap_or((None, None));
+    let (start_byte, end_byte) =
+        match (audio_format.start_byte_offset, audio_format.end_byte_offset) {
+            (Some(s), Some(e)) => (Some(s as u64), Some(e as u64)),
+            _ => (None, None),
+        };
 
     // Load all headers (for seek support)
-    let all_flac_headers = audio_format.as_ref().and_then(|af| af.flac_headers.clone());
+    let all_flac_headers = audio_format.flac_headers.clone();
 
     // Headers to prepend during playback (only for CUE/FLAC where buffer doesn't have them)
-    let needs_headers = audio_format.as_ref().is_some_and(|af| af.needs_headers);
+    let needs_headers = audio_format.needs_headers;
     let flac_headers = if needs_headers {
         all_flac_headers.clone()
     } else {
@@ -259,10 +258,7 @@ async fn prepare_track(
     let audio_data_start = if needs_headers {
         headers_len
     } else {
-        audio_format
-            .as_ref()
-            .and_then(|af| af.audio_data_start.map(|s| s as u64))
-            .unwrap_or(0)
+        audio_format.audio_data_start as u64
     };
 
     let duration = track
@@ -274,12 +270,8 @@ async fn prepare_track(
         track,
         buffer,
         flac_headers: all_flac_headers,
-        seektable_json: audio_format
-            .as_ref()
-            .and_then(|af| af.seektable_json.clone()),
-        sample_rate: audio_format
-            .as_ref()
-            .and_then(|af| af.sample_rate.map(|r| r as u32)),
+        seektable_json: audio_format.seektable_json.clone(),
+        sample_rate: audio_format.sample_rate as u32,
         audio_data_start,
         file_size: file_size + headers_len,
         source_path,
@@ -832,17 +824,12 @@ impl PlaybackService {
             };
 
         // Calculate pregap byte offset if needed (direct selection skips pregap)
-        let sample_rate = prepared.sample_rate.unwrap_or(44100);
         let pregap_skip_duration = pregap_seek_position(prepared.pregap_ms, is_natural_transition);
         let pregap_byte_offset: Option<u64> = pregap_skip_duration.and_then(|pregap_duration| {
-            prepared
-                .seektable_json
-                .as_ref()
-                .and_then(|json| {
-                    serde_json::from_str::<Vec<crate::audio_codec::SeekEntry>>(json).ok()
-                })
+            serde_json::from_str::<Vec<crate::audio_codec::SeekEntry>>(&prepared.seektable_json)
+                .ok()
                 .and_then(|entries| {
-                    find_frame_boundary(&entries, pregap_duration, sample_rate).map(
+                    find_frame_boundary(&entries, pregap_duration, prepared.sample_rate).map(
                         |(byte_offset, _)| {
                             info!(
                                 "Pregap skip: will start decoder at byte offset {} for {:?} pregap",
@@ -854,8 +841,8 @@ impl PlaybackService {
                 })
         });
 
-        // Create decoder sink/source
-        let (mut sink, source) = create_streaming_pair(44100, 2);
+        // Create decoder sink/source with track's actual sample rate
+        let (mut sink, source) = create_streaming_pair(prepared.sample_rate, 2);
 
         // Spawn decoder thread
         let decoder_buffer = prepared.buffer.clone();
@@ -939,7 +926,7 @@ impl PlaybackService {
             };
 
         // Create decoder sink/source and start decoder eagerly for gapless playback
-        let (mut sink, source) = create_streaming_pair(44100, 2);
+        let (mut sink, source) = create_streaming_pair(prepared.sample_rate, 2);
         let decoder_buffer = prepared.buffer.clone();
         std::thread::spawn(move || {
             if let Err(e) =
@@ -1180,22 +1167,15 @@ impl PlaybackService {
 
         // Try frame-accurate seek using seektable, fall back to linear interpolation
         let audio_data_start = prepared.audio_data_start;
-        let (target_byte, _sample_offset) = if let (Some(sample_rate), Some(ref seektable)) =
-            (prepared.sample_rate, &prepared.seektable_json)
+        let (target_byte, _sample_offset) = if let Some((frame_byte, offset)) =
+            find_frame_boundary_for_seek(position, prepared.sample_rate, &prepared.seektable_json)
         {
-            if let Some((frame_byte, offset)) =
-                find_frame_boundary_for_seek(position, sample_rate, seektable)
-            {
-                let file_byte = audio_data_start + frame_byte;
-                info!(
+            let file_byte = audio_data_start + frame_byte;
+            info!(
                     "Seek using seektable: position {:?}, frame_byte {}, file_byte {}, sample_offset {}",
                     position, frame_byte, file_byte, offset
                 );
-                (file_byte, offset)
-            } else {
-                let byte = calculate_byte_offset_for_seek(position, track_duration, file_size);
-                (byte, 0)
-            }
+            (file_byte, offset)
         } else {
             let byte = calculate_byte_offset_for_seek(position, track_duration, file_size);
             (byte, 0)
@@ -1212,7 +1192,7 @@ impl PlaybackService {
             .await;
 
         // Spawn decoder on the seek buffer
-        let (mut sink, source) = create_streaming_pair(44100, 2);
+        let (mut sink, source) = create_streaming_pair(prepared.sample_rate, 2);
         std::thread::spawn(move || {
             if let Err(e) =
                 crate::audio_codec::decode_audio_streaming_simple(seek_buffer, &mut sink)

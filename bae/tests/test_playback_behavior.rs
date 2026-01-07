@@ -1729,3 +1729,226 @@ async fn test_direct_play_skips_pregap_cue_flac() {
         threshold, pregap, positions
     );
 }
+
+// ============================================================================
+// Sample rate handling tests
+// ============================================================================
+
+/// Test fixture for high sample rate (96kHz) FLAC playback.
+/// This catches bugs where the playback pipeline assumes 44.1kHz.
+struct HighSampleRateTestFixture {
+    playback_handle: bae::playback::PlaybackHandle,
+    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    track_id: String,
+    _temp_dir: TempDir,
+}
+
+impl HighSampleRateTestFixture {
+    async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        tracing_init();
+        let temp_dir = TempDir::new()?;
+        let db_path = temp_dir.path().join("test.db");
+        let cache_dir = temp_dir.path().join("cache");
+        std::fs::create_dir_all(&cache_dir)?;
+        let album_dir = temp_dir.path().join("album");
+        std::fs::create_dir_all(&album_dir)?;
+
+        let database = Database::new(db_path.to_str().unwrap()).await?;
+        let encryption_service = EncryptionService::new_with_key(&[0u8; 32]);
+        let cache_config = CacheConfig {
+            cache_dir,
+            max_size_bytes: 1024 * 1024 * 1024,
+            max_files: 10000,
+        };
+        let _cache_manager = CacheManager::with_config(cache_config).await?;
+        let database_arc = Arc::new(database);
+        let library_manager =
+            LibraryManager::new((*database_arc).clone(), test_encryption_service());
+        let shared_library_manager = SharedLibraryManager::new(library_manager.clone());
+        let library_manager_arc = Arc::new(library_manager);
+        let runtime_handle = tokio::runtime::Handle::current();
+
+        // Copy 96kHz fixture
+        let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("fixtures")
+            .join("flac")
+            .join("96khz_test.flac");
+        let test_path = album_dir.join("01 96kHz Track.flac");
+        std::fs::copy(&fixture_path, &test_path).unwrap_or_else(|_| {
+            panic!(
+                "96kHz FLAC fixture not found: {}\n\
+                 Run: ./scripts/generate_high_sample_rate_flac.sh",
+                fixture_path.display()
+            );
+        });
+
+        // Create release with one track
+        let discogs_release = DiscogsRelease {
+            id: "high-sample-rate-test".to_string(),
+            title: "96kHz Test Album".to_string(),
+            year: Some(2024),
+            genre: vec![],
+            style: vec![],
+            format: vec![],
+            country: Some("US".to_string()),
+            label: vec!["Test Label".to_string()],
+            cover_image: None,
+            thumb: None,
+            artists: vec![DiscogsArtist {
+                name: "Test Artist".to_string(),
+                id: "test-artist-1".to_string(),
+            }],
+            tracklist: vec![DiscogsTrack {
+                position: "1".to_string(),
+                title: "96kHz Track".to_string(),
+                duration: Some("0:03".to_string()),
+            }],
+            master_id: "test-master-96khz".to_string(),
+        };
+
+        let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
+        let import_handle = bae::import::ImportService::start(
+            runtime_handle.clone(),
+            shared_library_manager.clone(),
+            encryption_service.clone(),
+            torrent_manager,
+            database_arc,
+        );
+
+        let import_id = uuid::Uuid::new_v4().to_string();
+        let (_album_id, release_id) = import_handle
+            .send_request(ImportRequest::Folder {
+                import_id,
+                discogs_release: Some(discogs_release),
+                mb_release: None,
+                folder: album_dir.clone(),
+                master_year: 2024,
+                cover_art_url: None,
+                storage_profile_id: None, // Local playback
+                selected_cover_filename: None,
+            })
+            .await?;
+
+        let mut progress_rx = import_handle.subscribe_release(release_id.clone());
+        while let Some(progress) = progress_rx.recv().await {
+            match progress {
+                bae::import::ImportProgress::Complete { .. } => break,
+                bae::import::ImportProgress::Failed { error, .. } => {
+                    return Err(format!("Import failed: {}", error).into());
+                }
+                _ => {}
+            }
+        }
+
+        let albums = library_manager_arc.get_albums().await?;
+        let releases = library_manager_arc
+            .get_releases_for_album(&albums[0].id)
+            .await?;
+        let tracks = library_manager_arc.get_tracks(&releases[0].id).await?;
+        let track_id = tracks[0].id.clone();
+
+        // Verify the audio format was correctly detected as 96kHz
+        let audio_format = library_manager_arc
+            .get_audio_format_by_track_id(&track_id)
+            .await?
+            .expect("Audio format should be detected for 96kHz track");
+        assert_eq!(
+            audio_format.sample_rate, 96000,
+            "Import should detect 96kHz sample rate, got {}",
+            audio_format.sample_rate
+        );
+
+        std::env::set_var("MUTE_TEST_AUDIO", "1");
+        let playback_handle = bae::playback::PlaybackService::start(
+            library_manager_arc.as_ref().clone(),
+            encryption_service,
+            runtime_handle,
+        );
+        playback_handle.set_volume(0.0);
+        let progress_rx = playback_handle.subscribe_progress();
+
+        Ok(Self {
+            playback_handle,
+            progress_rx,
+            track_id,
+            _temp_dir: temp_dir,
+        })
+    }
+}
+
+/// Test that high sample rate (96kHz) FLAC files report correct position/duration.
+///
+/// Bug: `create_streaming_pair(44100, 2)` is hardcoded, ignoring the actual
+/// sample rate from the audio file. This causes position calculation to be wrong:
+/// - 96kHz track produces 96000 samples/sec
+/// - Position calculates as `samples / 44100` instead of `samples / 96000`
+/// - A 3-second track appears to be ~6.5 seconds long
+///
+/// This test verifies that a 3-second 96kHz track completes with position ~3s,
+/// not ~6.5s.
+#[tokio::test]
+async fn test_high_sample_rate_position_calculation() {
+    if should_skip_audio_tests() {
+        debug!("Skipping audio test - no audio device available");
+        return;
+    }
+
+    let mut fixture = match HighSampleRateTestFixture::new().await {
+        Ok(f) => f,
+        Err(e) => {
+            debug!("Failed to set up high sample rate test fixture: {}", e);
+            return;
+        }
+    };
+
+    // Play the 96kHz track (3 seconds duration)
+    fixture.playback_handle.play(fixture.track_id.clone());
+
+    // Wait for track to complete and capture final position
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut final_position: Option<Duration> = None;
+    let mut track_completed = false;
+
+    while Instant::now() < deadline {
+        let remaining = deadline - Instant::now();
+        match timeout(remaining, fixture.progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::PositionUpdate { position, .. })) => {
+                final_position = Some(position);
+            }
+            Ok(Some(PlaybackProgress::TrackCompleted { .. })) => {
+                track_completed = true;
+                // Wait a bit for any final position update
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                break;
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) | Err(_) => break,
+        }
+    }
+
+    assert!(track_completed, "Track should complete");
+
+    let position = final_position.expect("Should have received position updates");
+    debug!("Final position at track completion: {:?}", position);
+
+    // The track is 3 seconds at 96kHz. With the bug (44.1kHz assumed), position
+    // would show ~6.5 seconds (3 * 96000 / 44100 = 6.53).
+    // With correct sample rate, position should be ~3 seconds.
+    let position_secs = position.as_secs_f64();
+
+    assert!(
+        position_secs < 5.0,
+        "96kHz track position calculation is wrong: final position {:.2}s exceeds 5s. \
+         Expected ~3s for a 3-second track. This indicates the streaming source is using \
+         hardcoded 44.1kHz sample rate instead of the track's 96kHz. \
+         (Position = samples / wrong_rate = frames / 44100 instead of frames / 96000)",
+        position_secs
+    );
+
+    assert!(
+        position_secs >= 2.5,
+        "96kHz track position too low: {:.2}s (expected ~3s)",
+        position_secs
+    );
+}

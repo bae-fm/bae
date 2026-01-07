@@ -869,7 +869,8 @@ impl ImportService {
                     })
                     .collect();
 
-                let seektable_json = serde_json::to_string(&track_seektable).ok();
+                let seektable_json = serde_json::to_string(&track_seektable)
+                    .map_err(|e| format!("Failed to serialize seektable: {}", e))?;
 
                 // Look up file_id by filename
                 let filename = track_file
@@ -889,9 +890,9 @@ impl ImportService {
                     pregap_ms,
                     Some(frame_offset_samples),
                     Some(exact_sample_count),
-                    Some(flac_info.sample_rate as i64),
+                    flac_info.sample_rate as i64,
                     seektable_json,
-                    Some(flac_info.audio_data_start as i64),
+                    flac_info.audio_data_start as i64,
                 )
                 .with_file_id(file_id.as_deref().unwrap_or(""));
                 library_manager
@@ -900,44 +901,31 @@ impl ImportService {
                     .map_err(|e| format!("Failed to insert audio format: {}", e))?;
             } else {
                 // For regular FLAC files (not CUE), extract headers and seektable for seek support
-                let (flac_headers, sample_rate, seektable_json, audio_data_start) = if format
-                    == "flac"
-                {
-                    let headers = crate::cue_flac::CueFlacProcessor::extract_flac_headers(
-                        &track_file.file_path,
-                    )
-                    .ok()
-                    .map(|h| h.headers);
+                if format != "flac" {
+                    return Err(format!(
+                        "Unsupported audio format '{}' - only FLAC is supported",
+                        format
+                    ));
+                }
 
-                    // Build seektable for frame-accurate seeking
-                    let file_data = std::fs::read(&track_file.file_path).ok();
-                    let (sample_rate, seektable, audio_start) = if let Some(data) = file_data {
-                        let flac_info =
-                            crate::cue_flac::CueFlacProcessor::analyze_flac(&track_file.file_path)
-                                .ok();
-                        if let Some(info) = flac_info {
-                            let seektable =
-                                crate::cue_flac::CueFlacProcessor::build_dense_seektable(
-                                    &data, &info,
-                                );
-                            // Serialize seektable to JSON
-                            let json = serde_json::to_string(&seektable.entries).ok();
-                            (
-                                Some(info.sample_rate as i64),
-                                json,
-                                Some(info.audio_data_start as i64),
-                            )
-                        } else {
-                            (None, None, None)
-                        }
-                    } else {
-                        (None, None, None)
-                    };
+                let flac_headers =
+                    crate::cue_flac::CueFlacProcessor::extract_flac_headers(&track_file.file_path)
+                        .ok()
+                        .map(|h| h.headers);
 
-                    (headers, sample_rate, seektable, audio_start)
-                } else {
-                    (None, None, None, None)
-                };
+                // Analyze FLAC to get sample rate and build seektable
+                let file_data = std::fs::read(&track_file.file_path)
+                    .map_err(|e| format!("Failed to read FLAC file: {}", e))?;
+
+                let flac_info =
+                    crate::cue_flac::CueFlacProcessor::analyze_flac(&track_file.file_path)
+                        .map_err(|e| format!("Failed to analyze FLAC: {}", e))?;
+
+                let seektable = crate::cue_flac::CueFlacProcessor::build_dense_seektable(
+                    &file_data, &flac_info,
+                );
+                let seektable_json = serde_json::to_string(&seektable.entries)
+                    .map_err(|e| format!("Failed to serialize seektable: {}", e))?;
 
                 // Look up file_id by filename
                 let filename = track_file
@@ -952,9 +940,9 @@ impl ImportService {
                     &format,
                     flac_headers,
                     false,
-                    sample_rate,
+                    flac_info.sample_rate as i64,
                     seektable_json,
-                    audio_data_start,
+                    flac_info.audio_data_start as i64,
                 )
                 .with_file_id(file_id.as_deref().unwrap_or(""));
                 library_manager
