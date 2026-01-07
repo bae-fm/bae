@@ -2,6 +2,13 @@ name: Deploy Website
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      screenshots_artifact:
+        description: 'Name of artifact containing screenshots (optional)'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   deploy:
@@ -13,6 +20,13 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Download screenshots
+      if: inputs.screenshots_artifact != ''
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.screenshots_artifact }}
+        path: website/public/screenshots/
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -29,7 +43,7 @@ jobs:
       working-directory: ./website
       run: npm run build
 
-    - name: Deploy website to Vercel
+    - name: Deploy to Vercel
       uses: amondnet/vercel-action@v25
       with:
         vercel-token: ${{ secrets.VERCEL_TOKEN }}

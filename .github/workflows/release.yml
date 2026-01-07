@@ -230,6 +230,13 @@ jobs:
         fi
         cargo run --release --bin generate_screenshots
 
+    - name: Upload screenshots
+      uses: actions/upload-artifact@v4
+      with:
+        name: website-screenshots
+        path: website/public/screenshots/
+        retention-days: 1
+
     - name: Create git tag
       run: |
         VERSION="${{ needs.calculate-version.outputs.version }}"
@@ -254,16 +261,10 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build website
-      working-directory: ./website
-      run: npm run build
-
-    - name: Deploy website to Vercel
-      uses: amondnet/vercel-action@v25
-      with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-        working-directory: ./website
-        scope: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-args: '--prod'
+  deploy-website:
+    name: Deploy Website
+    needs: [release]
+    uses: ./.github/workflows/deploy-website.yml
+    with:
+      screenshots_artifact: website-screenshots
+    secrets: inherit
