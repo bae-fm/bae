@@ -5,6 +5,9 @@ name = "bae"
 identifier = "com.bae.app"
 publisher = "bae"
 
+[bundle.macos]
+bundle_name = "bae"
+
 [web.app]
 
 # HTML title tag content
