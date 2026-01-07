@@ -73,6 +73,7 @@ pub struct FlacHeaders {
 #[derive(Debug, Clone)]
 pub struct FlacInfo {
     pub sample_rate: u32,
+    pub bits_per_sample: u32,
     pub total_samples: u64,
     pub audio_data_start: u64,
     pub audio_data_end: u64,
@@ -227,6 +228,7 @@ impl CueFlacProcessor {
 
         let mut pos = 4;
         let mut sample_rate = 0u32;
+        let mut bits_per_sample = 0u32;
         let mut total_samples = 0u64;
         let audio_data_start: u64;
 
@@ -258,6 +260,9 @@ impl CueFlacProcessor {
                 sample_rate = ((block[10] as u32) << 12)
                     | ((block[11] as u32) << 4)
                     | ((block[12] as u32) >> 4);
+                // Bits per sample - 1: bits 103-107 (5 bits, spans bytes 12-13)
+                bits_per_sample =
+                    ((((block[12] & 0x01) as u32) << 4) | (((block[13] & 0xF0) >> 4) as u32)) + 1;
                 // Total samples: bits 108-143 (36 bits)
                 total_samples = (((block[13] & 0x0F) as u64) << 32)
                     | ((block[14] as u64) << 24)
@@ -273,8 +278,15 @@ impl CueFlacProcessor {
             }
         }
 
+        if bits_per_sample == 0 {
+            return Err(CueFlacError::Flac(
+                "Could not determine bits per sample from FLAC".to_string(),
+            ));
+        }
+
         Ok(FlacInfo {
             sample_rate,
+            bits_per_sample,
             total_samples,
             audio_data_start,
             audio_data_end: file_data.len() as u64,

@@ -261,6 +261,8 @@ pub struct DbAudioFormat {
     pub exact_sample_count: Option<i64>,
     /// Sample rate in Hz (for time-to-sample conversion during seek)
     pub sample_rate: i64,
+    /// Bits per sample (16, 24, etc.)
+    pub bits_per_sample: i64,
     /// Dense seektable for frame-accurate seeking.
     /// JSON array of {sample_number, byte_offset} entries built by scanning FLAC frames.
     /// Enables seeking: prepend headers + data from frame boundary.
@@ -522,6 +524,7 @@ impl DbAudioFormat {
         flac_headers: Option<Vec<u8>>,
         needs_headers: bool,
         sample_rate: i64,
+        bits_per_sample: i64,
         seektable_json: String,
         audio_data_start: i64,
     ) -> Self {
@@ -536,6 +539,7 @@ impl DbAudioFormat {
             None,
             None,
             sample_rate,
+            bits_per_sample,
             seektable_json,
             audio_data_start,
             None,
@@ -553,6 +557,7 @@ impl DbAudioFormat {
         frame_offset_samples: Option<i64>,
         exact_sample_count: Option<i64>,
         sample_rate: i64,
+        bits_per_sample: i64,
         seektable_json: String,
         audio_data_start: i64,
     ) -> Self {
@@ -567,6 +572,7 @@ impl DbAudioFormat {
             frame_offset_samples,
             exact_sample_count,
             sample_rate,
+            bits_per_sample,
             seektable_json,
             audio_data_start,
             None,
@@ -590,6 +596,7 @@ impl DbAudioFormat {
         frame_offset_samples: Option<i64>,
         exact_sample_count: Option<i64>,
         sample_rate: i64,
+        bits_per_sample: i64,
         seektable_json: String,
         audio_data_start: i64,
         file_id: Option<String>,
@@ -606,6 +613,7 @@ impl DbAudioFormat {
             frame_offset_samples,
             exact_sample_count,
             sample_rate,
+            bits_per_sample,
             seektable_json,
             audio_data_start,
             file_id,

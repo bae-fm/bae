@@ -183,6 +183,7 @@ impl Database {
                 frame_offset_samples INTEGER,
                 exact_sample_count INTEGER,
                 sample_rate INTEGER NOT NULL,
+                bits_per_sample INTEGER NOT NULL,
                 seektable_json TEXT NOT NULL,
                 audio_data_start INTEGER NOT NULL,
                 file_id TEXT REFERENCES files(id),
@@ -1054,8 +1055,8 @@ impl Database {
         sqlx::query(
             r#"
             INSERT INTO audio_formats (
-                id, track_id, format, flac_headers, needs_headers, start_byte_offset, end_byte_offset, pregap_ms, frame_offset_samples, exact_sample_count, sample_rate, seektable_json, audio_data_start, file_id, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                id, track_id, format, flac_headers, needs_headers, start_byte_offset, end_byte_offset, pregap_ms, frame_offset_samples, exact_sample_count, sample_rate, bits_per_sample, seektable_json, audio_data_start, file_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&audio_format.id)
@@ -1069,6 +1070,7 @@ impl Database {
         .bind(audio_format.frame_offset_samples)
         .bind(audio_format.exact_sample_count)
         .bind(audio_format.sample_rate)
+        .bind(audio_format.bits_per_sample)
         .bind(&audio_format.seektable_json)
         .bind(audio_format.audio_data_start)
         .bind(&audio_format.file_id)
@@ -1099,6 +1101,7 @@ impl Database {
                 frame_offset_samples: row.get("frame_offset_samples"),
                 exact_sample_count: row.get("exact_sample_count"),
                 sample_rate: row.get("sample_rate"),
+                bits_per_sample: row.get("bits_per_sample"),
                 seektable_json: row.get("seektable_json"),
                 audio_data_start: row.get("audio_data_start"),
                 file_id: row.get("file_id"),

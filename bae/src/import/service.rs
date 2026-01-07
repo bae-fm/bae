@@ -891,6 +891,7 @@ impl ImportService {
                     Some(frame_offset_samples),
                     Some(exact_sample_count),
                     flac_info.sample_rate as i64,
+                    flac_info.bits_per_sample as i64,
                     seektable_json,
                     flac_info.audio_data_start as i64,
                 )
@@ -941,6 +942,7 @@ impl ImportService {
                     flac_headers,
                     false,
                     flac_info.sample_rate as i64,
+                    flac_info.bits_per_sample as i64,
                     seektable_json,
                     flac_info.audio_data_start as i64,
                 )
