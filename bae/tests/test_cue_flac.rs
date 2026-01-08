@@ -936,6 +936,116 @@ async fn test_cue_flac_track2_samples_match_ground_truth() {
     );
 }
 
+/// Test that seeking within a CUE/FLAC track and decoding produces correct audio.
+///
+/// This verifies the seektable-based seeking produces the correct samples by comparing
+/// against ground truth (full decode of the file at the same position).
+#[tokio::test]
+async fn test_cue_flac_seek_within_track2_produces_correct_samples() {
+    use bae::audio_codec::{decode_audio, SeekEntry};
+    use bae::cue_flac::CueFlacProcessor;
+
+    tracing_init();
+
+    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
+    let flac_path = fixture_dir.join("Test Album.flac");
+    let cue_path = fixture_dir.join("Test Album.cue");
+
+    if !flac_path.exists() || !cue_path.exists() {
+        panic!("Fixture not found. Run: ./scripts/generate_cue_flac_fixture.sh");
+    }
+
+    // Parse CUE to get track 2's timing
+    let cue_sheet = CueFlacProcessor::parse_cue_sheet(&cue_path).expect("parse cue");
+    let track2_cue = &cue_sheet.tracks[1]; // 0-indexed
+    let track2_start_ms = track2_cue.audio_start_ms();
+
+    info!(
+        "Track 2 '{}' starts at {}ms",
+        track2_cue.title, track2_start_ms
+    );
+
+    // Read and analyze the FLAC
+    let flac_data = std::fs::read(&flac_path).expect("read flac");
+    let flac_info = CueFlacProcessor::analyze_flac(&flac_path).expect("analyze flac");
+    let sample_rate = flac_info.sample_rate;
+    let channels = 2usize;
+
+    // Build file-absolute seektable (sample 0 = file start)
+    let dense_seektable = CueFlacProcessor::build_dense_seektable(&flac_data, &flac_info);
+    let seektable_entries: Vec<SeekEntry> = dense_seektable.entries;
+
+    // === GROUND TRUTH ===
+    // Decode entire file and extract samples at track2_start + 3s
+    let full_decode = decode_audio(&flac_data, None, None).expect("decode");
+    let seek_within_track_ms: u64 = 3000; // Seek 3 seconds into track 2
+    let absolute_seek_ms = track2_start_ms + seek_within_track_ms;
+    let absolute_seek_sample = (absolute_seek_ms * sample_rate as u64 / 1000) as usize * channels;
+
+    info!(
+        "Ground truth: seeking {}ms into track 2 = {}ms into file = sample {}",
+        seek_within_track_ms, absolute_seek_ms, absolute_seek_sample
+    );
+
+    let truth_samples = &full_decode.samples[absolute_seek_sample..];
+
+    // Find frame boundary using file-absolute position
+    let target_sample = absolute_seek_ms * sample_rate as u64 / 1000;
+    let mut best_idx = 0;
+    for (i, entry) in seektable_entries.iter().enumerate() {
+        if entry.sample <= target_sample {
+            best_idx = i;
+        } else {
+            break;
+        }
+    }
+    let frame = &seektable_entries[best_idx];
+    let sample_offset = target_sample.saturating_sub(frame.sample);
+    let frame_byte = frame.byte;
+
+    info!(
+        "Seektable lookup: target_sample {}, frame_byte {}, sample_offset {}",
+        target_sample, frame_byte, sample_offset
+    );
+
+    // Decode from the seek position and verify samples match ground truth
+    let headers = CueFlacProcessor::extract_flac_headers(&flac_path).expect("extract headers");
+    let file_byte = flac_info.audio_data_start + frame_byte;
+    let seek_bytes = &flac_data[file_byte as usize..];
+
+    let mut flac_with_headers = headers.headers.clone();
+    flac_with_headers.extend_from_slice(seek_bytes);
+
+    let seeked_decode = decode_audio(&flac_with_headers, None, None).expect("decode seeked");
+
+    // Skip sample_offset samples (frame alignment)
+    let skip_interleaved = sample_offset as usize * channels;
+    let actual_samples = &seeked_decode.samples[skip_interleaved..];
+
+    // Compare first 0.5s of audio
+    let compare_count = (sample_rate as usize / 2 * channels)
+        .min(actual_samples.len())
+        .min(truth_samples.len());
+
+    let mut mismatches = 0;
+    for i in 0..compare_count {
+        if actual_samples[i] != truth_samples[i] {
+            mismatches += 1;
+        }
+    }
+
+    assert_eq!(
+        mismatches, 0,
+        "Seek produced wrong samples: {} of {} mismatch",
+        mismatches, compare_count
+    );
+
+    info!(
+        "✅ Seek within track 2 produces correct samples ({} compared)",
+        compare_count
+    );
+}
+
 /// Test that extracted track audio starts at the correct position for all scenarios.
 ///
 /// Tests 2x2 matrix:

@@ -155,6 +155,9 @@ struct PreparedTrack {
     duration: std::time::Duration,
     /// True if this track uses local file storage (fast seek via direct file read)
     is_local_storage: bool,
+    /// For CUE/FLAC: track's start byte position in original file.
+    /// Used to convert buffer-relative seek position to file-absolute position.
+    track_start_byte_offset: Option<u64>,
 }
 
 /// Fetch track metadata, create buffer, start reading audio data.
@@ -283,6 +286,7 @@ async fn prepare_track(
         pregap_ms,
         duration,
         is_local_storage,
+        track_start_byte_offset: start_byte,
     })
 }
 
@@ -1182,31 +1186,46 @@ impl PlaybackService {
         }
 
         // Try frame-accurate seek using seektable, fall back to linear interpolation
+        // The seektable is track-relative (sample 0 = track start, byte 0 = track start in buffer)
         let audio_data_start = prepared.audio_data_start;
-        let (target_byte, sample_offset) = if let Some((frame_byte, offset)) =
+        let (buffer_byte, sample_offset) = if let Some((frame_byte, offset)) =
             find_frame_boundary_for_seek(position, prepared.sample_rate, &prepared.seektable_json)
         {
-            let file_byte = audio_data_start + frame_byte;
+            // frame_byte is track-relative, add audio_data_start to get buffer position
+            let buffer_pos = audio_data_start + frame_byte;
             info!(
-                    "Seek using seektable: position {:?}, frame_byte {}, file_byte {}, sample_offset {}",
-                    position, frame_byte, file_byte, offset
-                );
-            (file_byte, offset)
+                "Seek using seektable: position {:?}, frame_byte {}, buffer_pos {}, sample_offset {}",
+                position, frame_byte, buffer_pos, offset
+            );
+            (buffer_pos, offset)
         } else {
             let byte = calculate_byte_offset_for_seek(position, track_duration, file_size);
             (byte, 0)
         };
 
+        // For CUE/FLAC, convert buffer position to file position for LocalFileReader
+        // The buffer has [headers][track data], but we need to seek in the original file
+        let file_byte = if let Some(track_start) = prepared.track_start_byte_offset {
+            // frame_byte is track-relative, so file position = track_start + frame_byte
+            let frame_byte = buffer_byte.saturating_sub(audio_data_start);
+            track_start + frame_byte
+        } else {
+            // Regular FLAC: buffer position == file position
+            buffer_byte
+        };
+
         info!(
-            "Seek: position {:?}, target_byte {}, file_size {}, audio_data_start {}, local={}",
-            position, target_byte, file_size, audio_data_start, prepared.is_local_storage
+            "Seek: position {:?}, buffer_byte {}, file_byte {}, file_size {}, local={}, track_start={:?}",
+            position, buffer_byte, file_byte, file_size, prepared.is_local_storage, prepared.track_start_byte_offset
         );
 
         // Create seek buffer - fast path for local files, slow path for cloud
         let seek_buffer = if prepared.is_local_storage {
-            self.create_seek_buffer_for_local(prepared, target_byte)
+            // Local files: seek directly in file using file_byte
+            self.create_seek_buffer_for_local(prepared, file_byte)
         } else {
-            self.create_seek_buffer_from_existing(prepared, target_byte)
+            // Cloud: read from existing buffer using buffer_byte
+            self.create_seek_buffer_from_existing(prepared, buffer_byte)
                 .await
         };
 
@@ -1892,5 +1911,78 @@ mod tests {
         // - User hears 0.5s of audio they shouldn't (glitch)
         //
         // Current bug: sample_offset is computed but stored in _sample_offset (ignored)
+    }
+
+    /// Test that CUE/FLAC seek correctly converts buffer position to file position.
+    ///
+    /// For CUE/FLAC tracks:
+    /// - The seektable is track-relative (sample 0 = track start, byte 0 = track data start)
+    /// - The buffer has [headers][track data from start_byte_offset to end_byte_offset]
+    /// - When seeking in LocalFileReader, we need file-absolute position, not buffer position
+    ///
+    /// The bug was: create_seek_buffer_for_local used buffer_byte directly as file position,
+    /// so seeking in track 4 (at file byte 569MB) would instead seek to byte 0+frame_byte
+    /// in the file, landing in track 1!
+    #[test]
+    fn test_cue_flac_seek_buffer_to_file_position() {
+        // Simulate track 4 Barbarian which starts at byte 569,483,167 in the file
+        let track_start_byte_offset: u64 = 569_483_167;
+        let headers_len: u64 = 86;
+        let sample_rate = 96000u32;
+
+        // Build a track-relative seektable (as CUE/FLAC import creates)
+        // sample 0 = track start, byte 0 = start of track data in buffer
+        let seektable: Vec<crate::audio_codec::SeekEntry> = (0..100)
+            .map(|sec| crate::audio_codec::SeekEntry {
+                sample: sec * sample_rate as u64,
+                byte: sec * 1_000_000, // ~1MB per second (compressed)
+            })
+            .collect();
+        let seektable_json = serde_json::to_string(&seektable).unwrap();
+
+        // User seeks to 60s into the track
+        let seek_position = std::time::Duration::from_secs(60);
+
+        // Seektable lookup (track-relative)
+        let (frame_byte, _sample_offset) =
+            find_frame_boundary_for_seek(seek_position, sample_rate, &seektable_json).unwrap();
+
+        // frame_byte is track-relative: 60MB (60 seconds at 1MB/s)
+        assert_eq!(frame_byte, 60_000_000, "frame_byte should be 60MB");
+
+        // Buffer position = headers + frame_byte
+        let buffer_byte = headers_len + frame_byte;
+        assert_eq!(buffer_byte, 60_000_086);
+
+        // === THE BUG ===
+        // Old code used buffer_byte as file position for LocalFileReader:
+        // This would seek to file byte 60,000,086 which is in track 1!
+
+        // === THE FIX ===
+        // File position = track_start_byte_offset + frame_byte
+        let file_byte = track_start_byte_offset + frame_byte;
+        assert_eq!(
+            file_byte, 629_483_167,
+            "file_byte should be in track 4's range"
+        );
+
+        // Verify file_byte is within track 4's range (569MB - 713MB)
+        let track_end_byte_offset: u64 = 713_915_001;
+        assert!(
+            file_byte >= track_start_byte_offset && file_byte < track_end_byte_offset,
+            "file_byte {} should be in track 4 range [{}, {})",
+            file_byte,
+            track_start_byte_offset,
+            track_end_byte_offset
+        );
+
+        // The bug would have put us in track 1's range (0 - 67MB)
+        let track1_end: u64 = 67_301_338;
+        assert!(
+            buffer_byte < track1_end,
+            "Bug: buffer_byte {} used as file position would land in track 1 (ends at {})",
+            buffer_byte,
+            track1_end
+        );
     }
 }
