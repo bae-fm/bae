@@ -79,7 +79,17 @@ impl SparseStreamingBuffer {
         let mut inner = self.inner.lock().unwrap();
         let new_end = offset + bytes.len() as u64;
 
-        // Find insertion point and check for merges
+        // Fast path: appending at the end of the last range (common case for sequential streaming)
+        if let Some(last) = inner.ranges.last_mut() {
+            if offset == last.end() {
+                // Directly extend the last range - O(bytes.len()) not O(buffer_size)
+                last.data.extend_from_slice(bytes);
+                self.data_available.notify_all();
+                return;
+            }
+        }
+
+        // Slow path: need to find insertion point and possibly merge
         let mut insert_idx = inner.ranges.len();
         let mut merge_start_idx = None;
         let mut merge_end_idx = None;
