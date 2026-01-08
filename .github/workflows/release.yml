@@ -49,10 +49,16 @@ jobs:
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "::notice::Next version will be $VERSION"
 
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ inputs.commit || github.sha }}
+
   release:
     name: Build and Release
     runs-on: macos-latest
-    needs: [calculate-version]
+    needs: [calculate-version, ci]
     permissions:
       contents: write
 
