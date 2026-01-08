@@ -202,12 +202,33 @@ jobs:
         
         xcrun stapler staple "$DMG_PATH"
 
+    - name: Verify app bundle is properly bundled
+      working-directory: ./bae
+      run: |
+        set -euo pipefail
+        APP_PATH="target/dx/bae/bundle/macos/bundle/macos/bae.app"
+        if [[ ! -d "$APP_PATH" ]]; then
+          echo "Error: App bundle not found at $APP_PATH"
+          exit 1
+        fi
+        # Check that required libraries are bundled
+        if [[ ! -f "$APP_PATH/Contents/Frameworks/libsharpyuv.0.dylib" ]]; then
+          echo "Error: libsharpyuv.0.dylib not found in bundle"
+          exit 1
+        fi
+        if [[ ! -f "$APP_PATH/Contents/Frameworks/libjxl_cms.0.11.dylib" ]]; then
+          echo "Error: libjxl_cms.0.11.dylib not found in bundle"
+          exit 1
+        fi
+        echo "✓ App bundle verification passed"
+
     - name: Generate screenshots
       working-directory: ./bae
       env:
         BAE_SCREENSHOT_FIXTURES_DIR: ../website/fixtures/screenshots
         BAE_SCREENSHOT_OUTPUT_DIR: ../website/public/screenshots
       run: |
+        set -euo pipefail
         if [[ -d "/opt/homebrew" ]]; then
           export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
           export LIBRARY_PATH="/opt/homebrew/lib"
