@@ -228,6 +228,14 @@ if [[ -f "$CUSTOM_PLIST" ]]; then
     echo "Merging custom Info.plist entries..."
     
     # Extract keys from custom plist and add them to the bundle's plist
+    # Using PlistBuddy to add CFBundleDisplayName (ensures lowercase display name)
+    if /usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$CUSTOM_PLIST" &>/dev/null; then
+        VALUE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$CUSTOM_PLIST")
+        /usr/libexec/PlistBuddy -c "Delete :CFBundleDisplayName" "$INFO_PLIST" 2>/dev/null || true
+        /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string '$VALUE'" "$INFO_PLIST"
+        echo "  ✓ Added CFBundleDisplayName"
+    fi
+    
     # Using PlistBuddy to add NSLocalNetworkUsageDescription
     if /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$CUSTOM_PLIST" &>/dev/null; then
         VALUE=$(/usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$CUSTOM_PLIST")

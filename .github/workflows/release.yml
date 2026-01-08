@@ -176,8 +176,8 @@ jobs:
         DMG_TEMP=$(mktemp -d)
         trap "rm -rf $DMG_TEMP" EXIT
         
-        # Copy app bundle to temp directory
-        cp -R "$APP_PATH" "$DMG_TEMP/"
+        # Copy app bundle to temp directory, ensuring lowercase name
+        cp -R "$APP_PATH" "$DMG_TEMP/bae.app"
         
         # Create Applications folder symlink
         ln -s /Applications "$DMG_TEMP/Applications"
