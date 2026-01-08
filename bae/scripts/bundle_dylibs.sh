@@ -24,6 +24,73 @@ PROCESSED_FILE=$(mktemp)
 DYLIB_LIST=$(mktemp)
 trap "rm -f $PROCESSED_FILE $DYLIB_LIST" EXIT
 
+resolve_rpath() {
+    local dylib_path="$1"
+    local rpath_ref="$2"
+    
+    # Extract rpath from the dylib
+    local rpaths
+    rpaths=$(otool -l "$dylib_path" 2>/dev/null | grep -A 2 "LC_RPATH" | grep "path" | awk '{print $2}' || true)
+    
+    # Get directory containing the dylib
+    local dylib_dir
+    dylib_dir=$(dirname "$dylib_path")
+    
+    # Extract library name from rpath reference (e.g., @rpath/libsharpyuv.0.dylib -> libsharpyuv.0.dylib)
+    local lib_name
+    lib_name=$(echo "$rpath_ref" | sed 's|@rpath/||')
+    
+    # Try resolving @rpath references
+    # First, check if rpath is @loader_path/../lib (common pattern)
+    # For /opt/homebrew/lib/libwebpmux.3.dylib, @loader_path is /opt/homebrew/lib
+    # So @loader_path/../lib resolves to /opt/homebrew/lib (same directory)
+    if echo "$rpaths" | grep -q "@loader_path/../lib"; then
+        local resolved="$dylib_dir/$lib_name"
+        if [[ -f "$resolved" ]]; then
+            echo "$resolved"
+            return
+        fi
+    fi
+    
+    # Try common Homebrew locations
+    for base in "/opt/homebrew/lib" "/usr/local/lib"; do
+        local candidate="$base/$lib_name"
+        if [[ -f "$candidate" ]]; then
+            echo "$candidate"
+            return
+        fi
+    done
+    
+    # Try resolving each rpath
+    for rpath in $rpaths; do
+        local resolved_rpath
+        if [[ "$rpath" == "@loader_path"* ]]; then
+            # Replace @loader_path with actual directory
+            resolved_rpath=$(echo "$rpath" | sed "s|@loader_path|$dylib_dir|")
+        elif [[ "$rpath" == "@executable_path"* ]]; then
+            # Skip executable path references (not applicable here)
+            continue
+        else
+            resolved_rpath="$rpath"
+        fi
+        
+        local candidate="$resolved_rpath/$lib_name"
+        if [[ -f "$candidate" ]]; then
+            echo "$candidate"
+            return
+        fi
+    done
+    
+    # Last resort: try same directory as the dylib
+    local same_dir="$dylib_dir/$lib_name"
+    if [[ -f "$same_dir" ]]; then
+        echo "$same_dir"
+        return
+    fi
+    
+    return 1
+}
+
 process_dylib() {
     local dylib_path="$1"
     local dylib_name
@@ -53,8 +120,21 @@ process_dylib() {
     deps=$(otool -L "$real_path" | tail -n +2 | awk '{print $1}' | grep -v "/System" | grep -v "/usr/lib" | grep -v "$dylib_name") || true
     
     for dep in $deps; do
-        if [[ -n "$dep" && -f "$dep" ]]; then
-            process_dylib "$dep"
+        local resolved_dep="$dep"
+        
+        # Resolve @rpath references
+        if [[ "$dep" == "@rpath"* ]]; then
+            local resolved
+            if resolved=$(resolve_rpath "$real_path" "$dep"); then
+                resolved_dep="$resolved"
+            else
+                echo "  Warning: Could not resolve $dep for $dylib_name"
+                continue
+            fi
+        fi
+        
+        if [[ -n "$resolved_dep" && -f "$resolved_dep" ]]; then
+            process_dylib "$resolved_dep"
         fi
     done
 }
@@ -96,6 +176,21 @@ while IFS='|' read -r _ bundled_name; do
             "@executable_path/../Frameworks/$dep_name" \
             "$bundled_path" 2>/dev/null || true
     done < "$DYLIB_LIST"
+    
+    # Also fix any remaining @rpath references that point to bundled libraries
+    local rpath_deps
+    rpath_deps=$(otool -L "$bundled_path" | tail -n +2 | awk '{print $1}' | grep "^@rpath/" || true)
+    for rpath_dep in $rpath_deps; do
+        local lib_name
+        lib_name=$(echo "$rpath_dep" | sed 's|@rpath/||')
+        # Check if this library is already bundled
+        if grep -q "|$lib_name$" "$DYLIB_LIST"; then
+            install_name_tool -change \
+                "$rpath_dep" \
+                "@executable_path/../Frameworks/$lib_name" \
+                "$bundled_path" 2>/dev/null || true
+        fi
+    done
 done < "$DYLIB_LIST"
 
 echo ""
