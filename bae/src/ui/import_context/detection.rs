@@ -312,7 +312,7 @@ async fn handle_discid_lookup_result(
 /// Categorize torrent files into tracks, artwork, documents, and other
 fn categorize_torrent_files(files: &[crate::torrent::ffi::TorrentFileInfo]) -> CategorizedFileInfo {
     use crate::ui::components::import::AudioContentInfo;
-    let audio_extensions = ["flac", "mp3", "wav", "m4a", "aac", "ogg"];
+    let audio_extensions = ["flac"];
     let image_extensions = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
     let document_extensions = ["cue", "log", "txt", "nfo", "m3u", "m3u8"];
     let mut tracks = Vec::new();

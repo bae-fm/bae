@@ -44,7 +44,7 @@ pub async fn load_track_audio(
         .iter()
         .find(|f| {
             let ext = f.format.to_lowercase();
-            ext == "flac" || ext == "mp3" || ext == "m4a" || ext == "ogg" || ext == "wav"
+            ext == "flac"
         })
         .ok_or_else(|| PlaybackError::not_found("Audio file", track_id))?;
 

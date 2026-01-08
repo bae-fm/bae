@@ -9,7 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 const MAX_RECURSION_DEPTH: usize = 10;
-const AUDIO_EXTENSIONS: &[&str] = &["flac", "mp3", "wav", "m4a", "aac", "ogg"];
+const AUDIO_EXTENSIONS: &[&str] = &["flac"];
 const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp", "gif", "bmp"];
 const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "txt", "nfo", "m3u", "m3u8"];
 /// A file discovered during folder scanning
@@ -27,7 +27,7 @@ pub struct ScannedFile {
 pub struct ScannedCueFlacPair {
     /// The CUE sheet file
     pub cue_file: ScannedFile,
-    /// The audio file (FLAC, WAV, etc.)
+    /// The audio file
     pub audio_file: ScannedFile,
     /// Number of tracks defined in the CUE sheet
     pub track_count: usize,
@@ -360,8 +360,8 @@ mod tests {
     #[test]
     fn test_is_audio_file() {
         assert!(is_audio_file(Path::new("track.flac")));
-        assert!(is_audio_file(Path::new("track.mp3")));
         assert!(is_audio_file(Path::new("track.FLAC")));
+        assert!(!is_audio_file(Path::new("track.mp3")));
         assert!(!is_audio_file(Path::new("cover.jpg")));
         assert!(!is_audio_file(Path::new("notes.txt")));
     }

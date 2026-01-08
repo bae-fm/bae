@@ -143,7 +143,7 @@ fn map_tracks_to_individual_files(
 }
 /// Filter audio files from a list of paths
 fn filter_audio_files(paths: &[PathBuf]) -> Vec<PathBuf> {
-    let audio_extensions = ["mp3", "flac", "wav", "m4a", "aac", "ogg"];
+    let audio_extensions = ["flac"];
     let mut audio_files: Vec<PathBuf> = paths
         .iter()
         .filter(|path| {
@@ -262,7 +262,8 @@ mod tests {
         ]);
         let result = map_tracks_to_files(&tracks, &discovered_files).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Mixed audio formats detected"));
+        // Non-FLAC files are filtered out, so we get a track count mismatch
+        assert!(result.unwrap_err().contains("Track count mismatch"));
     }
     #[tokio::test]
     async fn test_map_tracks_to_files_cue_flac() {

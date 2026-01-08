@@ -512,7 +512,7 @@ async fn stream_track_audio(
         .iter()
         .find(|f| {
             let ext = f.format.to_lowercase();
-            ext == "flac" || ext == "mp3" || ext == "m4a" || ext == "ogg" || ext == "wav"
+            ext == "flac"
         })
         .ok_or_else(|| format!("No audio file found for track {}", track_id))?;
 

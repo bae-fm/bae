@@ -117,7 +117,7 @@ fn find_matching_flac_for_cue<'a>(
             "CUE references file with stem: '{}', looking for match",
             file_stem
         );
-        for ext in &["flac", "wav", "ape", "wv"] {
+        for ext in &["flac"] {
             if let Some(flac_path) = audio_files.iter().find(|p| {
                 p.extension()
                     .and_then(|e| e.to_str())

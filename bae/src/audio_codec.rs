@@ -174,7 +174,6 @@ unsafe extern "C" fn streaming_avio_read_callback(
 
 /// Decode any audio format to PCM samples.
 ///
-/// Supports FLAC, MP3, APE, AAC/M4A, OGG Vorbis, WAV, AIFF, and more.
 /// If start_ms/end_ms are provided, only that time range is decoded.
 /// Returns interleaved i32 samples.
 pub fn decode_audio(
