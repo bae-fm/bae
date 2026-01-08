@@ -178,10 +178,8 @@ while IFS='|' read -r _ bundled_name; do
     done < "$DYLIB_LIST"
     
     # Also fix any remaining @rpath references that point to bundled libraries
-    local rpath_deps
     rpath_deps=$(otool -L "$bundled_path" | tail -n +2 | awk '{print $1}' | grep "^@rpath/" || true)
     for rpath_dep in $rpath_deps; do
-        local lib_name
         lib_name=$(echo "$rpath_dep" | sed 's|@rpath/||')
         # Check if this library is already bundled
         if grep -q "|$lib_name$" "$DYLIB_LIST"; then
