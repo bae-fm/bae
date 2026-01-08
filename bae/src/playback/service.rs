@@ -897,8 +897,7 @@ impl PlaybackService {
             if let Some(skip_position) = decoder_skip_to {
                 decoder_buffer.seek(skip_position);
             }
-            if let Err(e) =
-                crate::audio_codec::decode_audio_streaming_simple(decoder_buffer, &mut sink, 0)
+            if let Err(e) = crate::audio_codec::decode_audio_streaming(decoder_buffer, &mut sink, 0)
             {
                 error!("Streaming decode failed: {}", e);
             }
@@ -975,8 +974,7 @@ impl PlaybackService {
         let (mut sink, source, _ready) = create_streaming_pair(prepared.sample_rate, 2);
         let decoder_buffer = prepared.buffer.clone();
         std::thread::spawn(move || {
-            if let Err(e) =
-                crate::audio_codec::decode_audio_streaming_simple(decoder_buffer, &mut sink, 0)
+            if let Err(e) = crate::audio_codec::decode_audio_streaming(decoder_buffer, &mut sink, 0)
             {
                 error!("Preload streaming decode failed: {}", e);
             }
@@ -1268,11 +1266,9 @@ impl PlaybackService {
         // to reach the exact seek position (not just the frame boundary)
         let (mut sink, source, ready_rx) = create_streaming_pair(prepared.sample_rate, 2);
         std::thread::spawn(move || {
-            if let Err(e) = crate::audio_codec::decode_audio_streaming_simple(
-                seek_buffer,
-                &mut sink,
-                sample_offset,
-            ) {
+            if let Err(e) =
+                crate::audio_codec::decode_audio_streaming(seek_buffer, &mut sink, sample_offset)
+            {
                 error!("Seek decode failed: {}", e);
             }
         });

@@ -181,15 +181,7 @@ pub fn decode_audio(
     start_ms: Option<u64>,
     end_ms: Option<u64>,
 ) -> Result<DecodedAudio, String> {
-    decode_audio_from_memory(data, start_ms, end_ms)
-}
-
-/// Decode audio from a memory buffer using custom AVIO
-fn decode_audio_from_memory(
-    data: &[u8],
-    start_ms: Option<u64>,
-    end_ms: Option<u64>,
-) -> Result<DecodedAudio, String> {
+    // Safety: FFmpeg operations are contained within this function
     unsafe { decode_audio_avio(data, start_ms, end_ms) }
 }
 
@@ -1306,7 +1298,7 @@ fn compute_flac_crc8(data: &[u8]) -> u8 {
 ///
 /// `samples_to_skip`: Number of samples to discard before outputting.
 /// Used after seeking to a frame boundary to reach the exact seek position.
-pub fn decode_audio_streaming_simple(
+pub fn decode_audio_streaming(
     buffer: SharedSparseBuffer,
     sink: &mut StreamingPcmSink,
     samples_to_skip: u64,
@@ -1314,11 +1306,11 @@ pub fn decode_audio_streaming_simple(
     install_ffmpeg_log_callback();
     reset_ffmpeg_errors();
 
-    unsafe { decode_audio_streaming_avio(buffer, sink, samples_to_skip) }
+    unsafe { decode_audio_streaming_impl(buffer, sink, samples_to_skip) }
 }
 
 /// Internal AVIO-based streaming decode
-unsafe fn decode_audio_streaming_avio(
+unsafe fn decode_audio_streaming_impl(
     buffer: SharedSparseBuffer,
     sink: &mut StreamingPcmSink,
     samples_to_skip: u64,
@@ -1746,7 +1738,7 @@ mod tests {
         // Spawn decoder thread using new AVIO-based streaming decode
         let decoder_buffer = buffer.clone();
         let decoder_handle =
-            thread::spawn(move || decode_audio_streaming_simple(decoder_buffer, &mut sink, 0));
+            thread::spawn(move || decode_audio_streaming(decoder_buffer, &mut sink, 0));
 
         // Feed data to buffer (simulating download)
         buffer.append_at(0, &flac_data);
@@ -1846,9 +1838,8 @@ mod tests {
 
         let (mut sink, mut source, _ready) =
             create_streaming_pair_with_capacity(sample_rate, channels, 500000);
-        let decoder_handle = thread::spawn(move || {
-            decode_audio_streaming_simple(seek_buffer, &mut sink, sample_offset)
-        });
+        let decoder_handle =
+            thread::spawn(move || decode_audio_streaming(seek_buffer, &mut sink, sample_offset));
 
         let result = decoder_handle.join().unwrap();
         assert!(result.is_ok(), "Seek decode failed: {:?}", result.err());
