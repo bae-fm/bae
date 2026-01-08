@@ -2210,9 +2210,6 @@ async fn test_playback_cpu_usage_is_reasonable() {
 
     let track_id = fixture.track_ids[0].clone();
 
-    // Get initial CPU time using getrusage
-    let initial_cpu = get_process_cpu_time();
-
     // Start playback
     fixture.playback_handle.play(track_id.clone());
 
@@ -2239,14 +2236,13 @@ async fn test_playback_cpu_usage_is_reasonable() {
     // Wait a moment for seek to complete
     tokio::time::sleep(Duration::from_millis(500)).await;
 
-    // Let playback run for a measured period
+    // Measure CPU during steady-state playback (after startup/seek are done)
     let measure_start = Instant::now();
+    let initial_cpu = get_process_cpu_time();
     let measure_duration = Duration::from_secs(3);
     tokio::time::sleep(measure_duration).await;
-    let wall_time = measure_start.elapsed();
-
-    // Get final CPU time
     let final_cpu = get_process_cpu_time();
+    let wall_time = measure_start.elapsed();
     let cpu_time = final_cpu.saturating_sub(initial_cpu);
 
     // Calculate CPU percentage (100% = 1 core fully utilized)
