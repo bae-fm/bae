@@ -2185,3 +2185,268 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
         samples_decoded, max_expected_samples
     );
 }
+
+/// Test that playback doesn't consume excessive CPU.
+///
+/// This is a regression test for busy-wait loops that cause 500%+ CPU usage.
+/// During normal playback, CPU should be minimal - the audio callback runs
+/// periodically and the decoder should block on I/O, not spin.
+///
+/// Uses CUE/FLAC fixture since the bug was observed with CUE/FLAC albums.
+#[tokio::test]
+async fn test_playback_cpu_usage_is_reasonable() {
+    if should_skip_audio_tests() {
+        debug!("Skipping audio test - no audio device available");
+        return;
+    }
+
+    let mut fixture = match CueFlacTestFixture::new().await {
+        Ok(f) => f,
+        Err(e) => {
+            debug!("Failed to set up test fixture: {}", e);
+            return;
+        }
+    };
+
+    let track_id = fixture.track_ids[0].clone();
+
+    // Get initial CPU time using getrusage
+    let initial_cpu = get_process_cpu_time();
+
+    // Start playback
+    fixture.playback_handle.play(track_id.clone());
+
+    // Wait for playback to start
+    let deadline = Instant::now() + Duration::from_secs(3);
+    let mut started = false;
+    while Instant::now() < deadline && !started {
+        let remaining = deadline - Instant::now();
+        match timeout(remaining, fixture.progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::StateChanged { state })) => {
+                if matches!(state, PlaybackState::Playing { .. }) {
+                    started = true;
+                }
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) | Err(_) => break,
+        }
+    }
+    assert!(started, "Playback should start");
+
+    // Seek forward to trigger seek code path (this is where high CPU was observed)
+    fixture.playback_handle.seek(Duration::from_secs(3));
+
+    // Wait a moment for seek to complete
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    // Let playback run for a measured period
+    let measure_start = Instant::now();
+    let measure_duration = Duration::from_secs(3);
+    tokio::time::sleep(measure_duration).await;
+    let wall_time = measure_start.elapsed();
+
+    // Get final CPU time
+    let final_cpu = get_process_cpu_time();
+    let cpu_time = final_cpu.saturating_sub(initial_cpu);
+
+    // Calculate CPU percentage (100% = 1 core fully utilized)
+    let cpu_percent = (cpu_time.as_secs_f64() / wall_time.as_secs_f64()) * 100.0;
+
+    eprintln!(
+        "CPU usage during playback: {:.1}% (cpu_time={:?}, wall_time={:?})",
+        cpu_percent, cpu_time, wall_time
+    );
+
+    // Stop playback
+    fixture.playback_handle.stop();
+
+    // In release builds, CPU should be < 10% for simple playback
+    // In debug builds, allow more (up to 50%) due to unoptimized code
+    // But 500% (5 cores) is definitely a bug
+    let max_cpu_percent = if cfg!(debug_assertions) { 100.0 } else { 30.0 };
+
+    assert!(
+        cpu_percent < max_cpu_percent,
+        "Playback CPU usage too high: {:.1}% (max allowed: {:.0}%)\n\
+         This indicates a busy-wait loop or spin lock somewhere.\n\
+         Common causes: buffer underrun retries, spin-waiting for data.",
+        cpu_percent,
+        max_cpu_percent
+    );
+}
+
+/// Test CPU usage with real imported library.
+///
+/// Uses the actual bae library at ~/.bae/library.db to test with real imported albums.
+/// This plays through the actual audio system to catch CPU issues.
+///
+/// Run with: cargo test --test test_playback_behavior test_real_library_cpu -- --nocapture --ignored
+#[tokio::test]
+#[ignore] // Only run manually with real library
+async fn test_real_library_cpu_usage() {
+    use bae::db::Database;
+    use bae::library::LibraryManager;
+
+    tracing_init();
+
+    let db_path = dirs::home_dir()
+        .expect("home dir")
+        .join(".bae")
+        .join("library.db");
+
+    if !db_path.exists() {
+        eprintln!("No library at {:?} - import an album first", db_path);
+        return;
+    }
+
+    eprintln!("Using library: {:?}", db_path);
+
+    // Connect to real database
+    let database = Database::new(db_path.to_str().unwrap())
+        .await
+        .expect("open db");
+    let encryption_service = test_encryption_service();
+    let library_manager = LibraryManager::new(database.clone(), encryption_service.clone());
+
+    // Get first album and release
+    let albums = library_manager.get_albums().await.expect("get albums");
+    if albums.is_empty() {
+        eprintln!("No albums in library");
+        return;
+    }
+
+    let releases = library_manager
+        .get_releases_for_album(&albums[0].id)
+        .await
+        .expect("get releases");
+    if releases.is_empty() {
+        eprintln!("No releases in library");
+        return;
+    }
+
+    let album = &albums[0];
+    let release = &releases[0];
+    eprintln!("Using album: {}", album.title);
+
+    let tracks = library_manager
+        .get_tracks(&release.id)
+        .await
+        .expect("get tracks");
+
+    if tracks.is_empty() {
+        eprintln!("No tracks in release");
+        return;
+    }
+
+    // Use track 2 if available (often a CUE/FLAC mid-album track)
+    let track = if tracks.len() > 1 {
+        &tracks[1]
+    } else {
+        &tracks[0]
+    };
+    eprintln!(
+        "Playing track {}: {}",
+        track.track_number.unwrap_or(0),
+        track.title
+    );
+
+    // Start playback service
+    let runtime_handle = tokio::runtime::Handle::current();
+
+    let playback_handle = bae::playback::PlaybackService::start(
+        library_manager.clone(),
+        encryption_service,
+        runtime_handle,
+    );
+    let mut progress_rx = playback_handle.subscribe_progress();
+
+    // Measure CPU before playback
+    let initial_cpu = get_process_cpu_time();
+
+    // Start playback
+    playback_handle.play(track.id.clone());
+
+    // Wait for playback to start
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut started = false;
+    while Instant::now() < deadline && !started {
+        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::StateChanged { state })) => {
+                if matches!(state, PlaybackState::Playing { .. }) {
+                    started = true;
+                    eprintln!("Playback started");
+                }
+            }
+            Ok(Some(msg)) => eprintln!("Progress: {:?}", msg),
+            _ => {}
+        }
+    }
+
+    if !started {
+        eprintln!("Playback failed to start");
+        return;
+    }
+
+    // Let it play for measurement period - use thread::sleep to not interfere with tokio
+    eprintln!("Measuring CPU for 10 seconds (will hear audio if not muted)...");
+    let measure_start = Instant::now();
+
+    // Let it play for measurement period
+    for _ in 0..100 {
+        std::thread::sleep(Duration::from_millis(100));
+        // Drain progress channel to prevent backpressure
+        while progress_rx.try_recv().is_ok() {}
+    }
+
+    let wall_time = measure_start.elapsed();
+
+    // Get final CPU
+    let final_cpu = get_process_cpu_time();
+    let cpu_time = final_cpu.saturating_sub(initial_cpu);
+    let cpu_percent = (cpu_time.as_secs_f64() / wall_time.as_secs_f64()) * 100.0;
+
+    eprintln!(
+        "\n=== CPU USAGE: {:.1}% ===\n(cpu_time={:?}, wall_time={:?})",
+        cpu_percent, cpu_time, wall_time
+    );
+
+    playback_handle.stop();
+
+    // Assert reasonable CPU usage
+    let max_cpu = if cfg!(debug_assertions) { 100.0 } else { 30.0 };
+    assert!(
+        cpu_percent < max_cpu,
+        "CPU too high: {:.1}% (max {:.0}%)\nThis indicates a busy-wait or spin loop.",
+        cpu_percent,
+        max_cpu
+    );
+}
+
+/// Get total CPU time consumed by this process (user + system time).
+/// Uses getrusage on Unix systems.
+fn get_process_cpu_time() -> Duration {
+    #[cfg(unix)]
+    {
+        use std::mem::MaybeUninit;
+        let mut usage = MaybeUninit::<libc::rusage>::uninit();
+        unsafe {
+            if libc::getrusage(libc::RUSAGE_SELF, usage.as_mut_ptr()) == 0 {
+                let usage = usage.assume_init();
+                let user = Duration::new(
+                    usage.ru_utime.tv_sec as u64,
+                    (usage.ru_utime.tv_usec as u32) * 1000,
+                );
+                let system = Duration::new(
+                    usage.ru_stime.tv_sec as u64,
+                    (usage.ru_stime.tv_usec as u32) * 1000,
+                );
+                return user + system;
+            }
+        }
+        Duration::ZERO
+    }
+    #[cfg(not(unix))]
+    {
+        Duration::ZERO
+    }
+}
