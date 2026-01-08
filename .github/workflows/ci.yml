@@ -183,12 +183,19 @@ jobs:
             export BINDGEN_EXTRA_CLANG_ARGS="-I/usr/local/include"
           fi
         fi
-        cargo test --features test-utils --verbose
+        # Skip CPU test in debug mode - measurements only meaningful in release
+        cargo test --features test-utils --verbose -- --skip test_playback_cpu
+        # Run CPU usage test in release mode for accurate measurements
+        cargo test --release --features test-utils --test test_playback_cpu --verbose
 
     - name: Run tests (Windows)
       if: runner.os == 'Windows'
       working-directory: ./bae
-      run: cargo test --target x86_64-pc-windows-gnu --features test-utils --verbose
+      run: |
+        # Skip CPU test in debug mode - measurements only meaningful in release
+        cargo test --target x86_64-pc-windows-gnu --features test-utils --verbose -- --skip test_playback_cpu
+        # Run CPU usage test in release mode for accurate measurements
+        cargo test --release --target x86_64-pc-windows-gnu --features test-utils --test test_playback_cpu --verbose
 
   security:
     name: Security Audit
