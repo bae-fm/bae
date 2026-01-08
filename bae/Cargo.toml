@@ -93,6 +93,11 @@ name = "test_playback_behavior"
 path = "tests/test_playback_behavior.rs"
 required-features = ["test-utils"]
 
+[[test]]
+name = "test_playback_cpu"
+path = "tests/test_playback_cpu.rs"
+required-features = ["test-utils"]
+
 [features]
 default = ["desktop"]
 desktop = ["dioxus/desktop"]
