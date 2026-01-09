@@ -61,7 +61,6 @@ jobs:
     needs: [calculate-version, ci]
     permissions:
       contents: write
-      workflows: write
 
     steps:
     - name: Checkout code
