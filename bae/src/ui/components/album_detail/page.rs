@@ -161,10 +161,17 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
         navigator().push(Route::Library {});
     });
 
-    // Delete album callback (triggers confirmation dialog in view)
-    let on_delete_album = EventHandler::new(move |_album_id: String| {
-        // The view handles showing the confirmation dialog
-        // This callback is just a pass-through since the view manages the dialog state
+    // Delete album callback
+    let on_delete_album = EventHandler::new({
+        let library_manager = library_manager.clone();
+        move |album_id: String| {
+            let library_manager = library_manager.clone();
+            spawn(async move {
+                if let Err(e) = library_manager.get().delete_album(&album_id).await {
+                    error!("Failed to delete album: {}", e);
+                }
+            });
+        }
     });
 
     rsx! {

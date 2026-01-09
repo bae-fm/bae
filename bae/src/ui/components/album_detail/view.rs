@@ -1,5 +1,6 @@
 use super::album_cover_section::AlbumCoverSection;
 use super::album_metadata::AlbumMetadata;
+use super::delete_album_dialog::DeleteAlbumDialog;
 use super::delete_release_dialog::DeleteReleaseDialog;
 use super::export_error_toast::ExportErrorToast;
 use super::play_album_button::PlayAlbumButton;
@@ -52,6 +53,7 @@ pub fn AlbumDetailView(
     let is_deleting = use_signal(|| false);
     let is_exporting = use_signal(|| false);
     let mut export_error = use_signal(|| None::<String>);
+    let mut show_album_delete_confirm = use_signal(|| false);
     let mut show_release_delete_confirm = use_signal(|| None::<String>);
     let mut show_release_info_modal = use_signal(|| None::<String>);
 
@@ -78,7 +80,9 @@ pub fn AlbumDetailView(
                         first_release_id: releases.first().map(|r| r.id.clone()),
                         has_single_release: releases.len() == 1,
                         on_export: on_export_release,
-                        on_delete: on_delete_album,
+                        on_delete_album: EventHandler::new(move |_: String| {
+                            show_album_delete_confirm.set(true);
+                        }),
                         on_view_release_info: EventHandler::new(move |id: String| {
                             show_release_info_modal.set(Some(id));
                         }),
@@ -213,6 +217,20 @@ pub fn AlbumDetailView(
                         }
                     }
                 }
+            }
+        }
+        // Delete album dialog
+        if show_album_delete_confirm() {
+            DeleteAlbumDialog {
+                album_id: album.id.clone(),
+                release_count: releases.len(),
+                is_deleting,
+                on_confirm: move |album_id: String| {
+                    show_album_delete_confirm.set(false);
+                    on_delete_album.call(album_id);
+                    on_album_deleted.call(());
+                },
+                on_cancel: move |_| show_album_delete_confirm.set(false),
             }
         }
         // Delete release dialog

@@ -14,7 +14,7 @@ pub fn AlbumCoverSection(
     has_single_release: bool,
     // Callbacks - all required
     on_export: EventHandler<String>,
-    on_delete: EventHandler<String>,
+    on_delete_album: EventHandler<String>,
     on_view_release_info: EventHandler<String>,
 ) -> Element {
     let mut show_dropdown = use_signal(|| false);
@@ -95,7 +95,7 @@ pub fn AlbumCoverSection(
                                     move |evt| {
                                         evt.stop_propagation();
                                         show_dropdown.set(false);
-                                        on_delete.call(album_id.clone());
+                                        on_delete_album.call(album_id.clone());
                                     }
                                 },
                                 "Delete Album"
