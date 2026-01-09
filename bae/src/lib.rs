@@ -11,7 +11,6 @@ pub mod cue_flac;
 pub mod db;
 pub mod discogs;
 pub mod encryption;
-pub mod fixtures;
 pub mod import;
 pub mod library;
 pub mod musicbrainz;

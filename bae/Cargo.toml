@@ -14,11 +14,6 @@ path = "src/lib.rs"
 name = "bae"
 path = "src/main.rs"
 
-[[bin]]
-name = "generate_screenshots"
-path = "src/bin/generate_screenshots.rs"
-
-
 [dependencies]
 dioxus = { version = "0.7.2", features = ["router", "desktop"] }
 reqwest = { version = "0.12", features = ["json"] }
@@ -102,7 +97,6 @@ required-features = ["test-utils"]
 default = ["desktop"]
 desktop = ["dioxus/desktop"]
 web = ["dioxus/web"]
-demo = []  # Embeds fixture data for screenshots, no database needed
 test-utils = []  # Feature for test helper APIs
 
 [lints.clippy]

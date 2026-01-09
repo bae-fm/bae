@@ -13,8 +13,6 @@ mod cue_flac;
 mod db;
 mod discogs;
 mod encryption;
-#[cfg(feature = "demo")]
-mod fixtures;
 mod import;
 mod library;
 mod media_controls;
