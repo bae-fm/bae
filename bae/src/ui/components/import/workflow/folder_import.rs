@@ -90,7 +90,10 @@ pub fn FolderImport() -> Element {
                         }
                     }
                     if *is_looking_up.read() && *import_phase.read() == ImportPhase::MetadataDetection {
-                        DetectingMetadata { message: "Looking up release...".to_string() }
+                        DetectingMetadata {
+                            message: "Looking up release...".to_string(),
+                            on_skip: |_| {},
+                        }
                     }
                     if *import_phase.read() == ImportPhase::ManualSearch
                         && discid_lookup_error.read().is_some()

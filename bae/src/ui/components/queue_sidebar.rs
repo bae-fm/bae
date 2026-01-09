@@ -3,7 +3,7 @@
 //! Props-based component for displaying the playback queue.
 
 use super::album_detail::utils::format_duration;
-use crate::ui::display_types::{QueueItem, Track};
+use crate::ui::display_types::QueueItem;
 use dioxus::prelude::*;
 
 /// Shared state for queue sidebar visibility
@@ -13,23 +13,22 @@ pub struct QueueSidebarState {
 }
 
 /// Queue sidebar view (pure, props-based)
+/// All callbacks are required - pass noops if not needed.
 #[component]
 pub fn QueueSidebarView(
     is_open: bool,
     current_track: Option<QueueItem>,
     queue: Vec<QueueItem>,
     current_track_id: Option<String>,
-    // Callbacks (optional for demo mode)
-    #[props(into)] on_close: Option<EventHandler<()>>,
-    #[props(into)] on_clear: Option<EventHandler<()>>,
-    #[props(into)] on_remove: Option<EventHandler<usize>>,
-    #[props(into)] on_track_click: Option<EventHandler<String>>, // album_id
+    // Callbacks - all required
+    on_close: EventHandler<()>,
+    on_clear: EventHandler<()>,
+    on_remove: EventHandler<usize>,
+    on_track_click: EventHandler<String>,
 ) -> Element {
     if !is_open {
         return rsx! {};
     }
-
-    let has_actions = on_clear.is_some();
 
     rsx! {
         div { class: "fixed top-0 right-0 h-full w-80 bg-gray-900 border-l border-gray-700 z-50 flex flex-col shadow-2xl",
@@ -47,6 +46,7 @@ pub fn QueueSidebarView(
                             index: 0,
                             is_current: true,
                             on_click: on_track_click,
+                            on_remove,
                         }
                     } else {
                         div { class: "px-4 py-3 text-gray-500 text-sm", "Nothing playing" }
@@ -75,26 +75,16 @@ pub fn QueueSidebarView(
                 }
             }
             // Footer with controls
-            if has_actions {
-                div { class: "flex items-center justify-between p-4 border-t border-gray-700",
-                    button {
-                        class: "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600 text-sm",
-                        onclick: move |_| {
-                            if let Some(ref h) = on_clear {
-                                h.call(());
-                            }
-                        },
-                        "Clear"
-                    }
-                    button {
-                        class: "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600",
-                        onclick: move |_| {
-                            if let Some(ref h) = on_close {
-                                h.call(());
-                            }
-                        },
-                        "☰"
-                    }
+            div { class: "flex items-center justify-between p-4 border-t border-gray-700",
+                button {
+                    class: "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600 text-sm",
+                    onclick: move |_| on_clear.call(()),
+                    "Clear"
+                }
+                button {
+                    class: "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600",
+                    onclick: move |_| on_close.call(()),
+                    "☰"
                 }
             }
         }
@@ -106,11 +96,9 @@ fn QueueItemView(
     item: QueueItem,
     index: usize,
     is_current: bool,
-    #[props(into)] on_click: Option<EventHandler<String>>,
-    #[props(into)] on_remove: Option<EventHandler<usize>>,
+    on_click: EventHandler<String>,
+    on_remove: EventHandler<usize>,
 ) -> Element {
-    let clickable = on_click.is_some();
-
     rsx! {
         div { class: if is_current { "flex items-center gap-3 p-3 border-b border-gray-700 bg-blue-500/10 hover:bg-blue-500/15 group" } else { "flex items-center gap-3 p-3 border-b border-gray-700 hover:bg-gray-800 group" },
             // Album cover
@@ -131,16 +119,10 @@ fn QueueItemView(
             div { class: "flex-1 min-w-0",
                 div { class: "flex items-center gap-2",
                     button {
-                        class: if is_current { "font-medium text-blue-300 hover:text-blue-200 text-left truncate flex-1" } else if clickable { "font-medium text-white hover:text-blue-300 text-left truncate flex-1" } else { "font-medium text-white text-left truncate flex-1" },
-                        disabled: !clickable,
+                        class: if is_current { "font-medium text-blue-300 hover:text-blue-200 text-left truncate flex-1" } else { "font-medium text-white hover:text-blue-300 text-left truncate flex-1" },
                         onclick: {
-                            let on_click = on_click;
                             let track_id = item.track.id.clone();
-                            move |_| {
-                                if let Some(ref h) = on_click {
-                                    h.call(track_id.clone());
-                                }
-                            }
+                            move |_| on_click.call(track_id.clone())
                         },
                         "{item.track.title}"
                     }
@@ -155,17 +137,10 @@ fn QueueItemView(
                 div { class: "text-sm text-gray-400 truncate", "{item.album_title}" }
             }
             // Remove button (only for non-current tracks)
-            if !is_current && on_remove.is_some() {
+            if !is_current {
                 button {
                     class: "px-2 py-1 text-sm text-gray-400 hover:text-red-400 rounded opacity-0 group-hover:opacity-100 transition-opacity",
-                    onclick: {
-                        let on_remove = on_remove;
-                        move |_| {
-                            if let Some(ref h) = on_remove {
-                                h.call(index);
-                            }
-                        }
-                    },
+                    onclick: move |_| on_remove.call(index),
                     "✕"
                 }
             }
@@ -174,7 +149,7 @@ fn QueueItemView(
 }
 
 // ============================================================================
-// Real mode wrapper - handles state subscription and data loading
+// Wrapper - handles state subscription (non-demo only, included via Navbar cfg)
 // ============================================================================
 
 #[cfg(not(feature = "demo"))]
@@ -185,6 +160,8 @@ use crate::db::{DbAlbum, DbTrack};
 use crate::library::use_library_manager;
 #[cfg(not(feature = "demo"))]
 use crate::playback::PlaybackState;
+#[cfg(not(feature = "demo"))]
+use crate::ui::display_types::Track;
 #[cfg(not(feature = "demo"))]
 use crate::ui::{image_url, Route};
 
@@ -346,26 +323,6 @@ pub fn QueueSidebar() -> Element {
             on_clear: move |_| (clear_fn)(),
             on_remove: move |idx: usize| playback.remove_from_queue(idx),
             on_track_click,
-        }
-    }
-}
-
-// ============================================================================
-// Demo mode - render empty queue
-// ============================================================================
-
-#[cfg(feature = "demo")]
-#[component]
-pub fn QueueSidebar() -> Element {
-    let sidebar_state = use_context::<QueueSidebarState>();
-    let is_open = sidebar_state.is_open;
-
-    rsx! {
-        QueueSidebarView {
-            is_open: is_open(),
-            current_track: None,
-            queue: Vec::new(),
-            current_track_id: None,
         }
     }
 }

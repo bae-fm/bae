@@ -161,6 +161,12 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
         navigator().push(Route::Library {});
     });
 
+    // Delete album callback (triggers confirmation dialog in view)
+    let on_delete_album = EventHandler::new(move |_album_id: String| {
+        // The view handles showing the confirmation dialog
+        // This callback is just a pass-through since the view manages the dialog state
+    });
+
     rsx! {
         PageContainer {
             BackButton {}
@@ -245,6 +251,7 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
                             on_release_select,
                             on_album_deleted,
                             on_export_release,
+                            on_delete_album,
                             on_delete_release,
                             on_track_play,
                             on_track_pause,
@@ -449,6 +456,11 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
         });
     };
 
+    // Noop callbacks for demo mode
+    let noop = |_: ()| {};
+    let noop_string = |_: String| {};
+    let noop_vec = |_: Vec<String>| {};
+
     rsx! {
         PageContainer {
             BackButton {}
@@ -463,7 +475,18 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
                     import_error,
                     playback: PlaybackDisplay::Stopped,
                     on_release_select,
-                                // No callbacks in demo mode - actions are hidden
+                    on_album_deleted: noop,
+                    on_export_release: noop_string,
+                    on_delete_album: noop_string,
+                    on_delete_release: noop_string,
+                    on_track_play: noop_string,
+                    on_track_pause: noop,
+                    on_track_resume: noop,
+                    on_track_add_next: noop_string,
+                    on_track_add_to_queue: noop_string,
+                    on_track_export: noop_string,
+                    on_play_album: noop_vec,
+                    on_add_album_to_queue: noop_vec,
                 }
             } else {
                 AlbumDetailError { message: "Album not found in demo data".to_string() }

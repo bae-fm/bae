@@ -8,6 +8,7 @@ use crate::ui::display_types::{PlaybackDisplay, Track};
 use dioxus::prelude::*;
 
 /// Now playing bar view (pure, props-based)
+/// All callbacks are required - pass noops if not needed.
 #[component]
 pub fn NowPlayingBarView(
     // Track info
@@ -19,21 +20,19 @@ pub fn NowPlayingBarView(
     position_ms: u64,
     duration_ms: u64,
     #[props(default)] pregap_ms: Option<i64>,
-    // Callbacks (optional for demo mode)
-    #[props(into)] on_previous: Option<EventHandler<()>>,
-    #[props(into)] on_pause: Option<EventHandler<()>>,
-    #[props(into)] on_resume: Option<EventHandler<()>>,
-    #[props(into)] on_next: Option<EventHandler<()>>,
-    #[props(into)] on_seek: Option<EventHandler<u64>>,
-    #[props(into)] on_toggle_queue: Option<EventHandler<()>>,
-    #[props(into)] on_track_click: Option<EventHandler<String>>,
+    // Callbacks - all required
+    on_previous: EventHandler<()>,
+    on_pause: EventHandler<()>,
+    on_resume: EventHandler<()>,
+    on_next: EventHandler<()>,
+    on_seek: EventHandler<u64>,
+    on_toggle_queue: EventHandler<()>,
+    on_track_click: EventHandler<String>,
 ) -> Element {
     let is_playing = matches!(playback, PlaybackDisplay::Playing { .. });
     let is_paused = matches!(playback, PlaybackDisplay::Paused { .. });
     let is_loading = matches!(playback, PlaybackDisplay::Loading { .. });
     let is_stopped = matches!(playback, PlaybackDisplay::Stopped);
-
-    let has_controls = on_previous.is_some();
 
     rsx! {
         div { class: "fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-4 border-t border-gray-700",
@@ -51,30 +50,28 @@ pub fn NowPlayingBarView(
 
                 AlbumCoverThumbnailView {
                     cover_url: cover_url.clone(),
-                    on_click: on_track_click
-                        .map(|h| {
-                            let track_id = track.as_ref().map(|t| t.id.clone());
-                            EventHandler::new(move |_: ()| {
-                                if let Some(ref id) = track_id {
-                                    h.call(id.clone());
-                                }
-                            })
-                        }),
+                    on_click: {
+                        let track_id = track.as_ref().map(|t| t.id.clone());
+                        EventHandler::new(move |_: ()| {
+                            if let Some(ref id) = track_id {
+                                on_track_click.call(id.clone());
+                            }
+                        })
+                    },
                 }
 
                 TrackInfoView {
                     track: track.clone(),
                     artist_name: artist_name.clone(),
                     is_loading,
-                    on_click: on_track_click
-                        .map(|h| {
-                            let track_id = track.as_ref().map(|t| t.id.clone());
-                            EventHandler::new(move |_: ()| {
-                                if let Some(ref id) = track_id {
-                                    h.call(id.clone());
-                                }
-                            })
-                        }),
+                    on_click: {
+                        let track_id = track.as_ref().map(|t| t.id.clone());
+                        EventHandler::new(move |_: ()| {
+                            if let Some(ref id) = track_id {
+                                on_track_click.call(id.clone());
+                            }
+                        })
+                    },
                 }
 
                 PositionView {
@@ -84,16 +81,10 @@ pub fn NowPlayingBarView(
                     on_seek,
                 }
 
-                if has_controls {
-                    button {
-                        class: "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600",
-                        onclick: move |_| {
-                            if let Some(ref h) = on_toggle_queue {
-                                h.call(());
-                            }
-                        },
-                        "☰"
-                    }
+                button {
+                    class: "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600",
+                    onclick: move |_| on_toggle_queue.call(()),
+                    "☰"
                 }
             }
         }
@@ -106,10 +97,10 @@ fn PlaybackControlsView(
     is_paused: bool,
     is_loading: bool,
     is_stopped: bool,
-    #[props(into)] on_previous: Option<EventHandler<()>>,
-    #[props(into)] on_pause: Option<EventHandler<()>>,
-    #[props(into)] on_resume: Option<EventHandler<()>>,
-    #[props(into)] on_next: Option<EventHandler<()>>,
+    on_previous: EventHandler<()>,
+    on_pause: EventHandler<()>,
+    on_resume: EventHandler<()>,
+    on_next: EventHandler<()>,
 ) -> Element {
     let mut show_spinner = use_signal(|| false);
     let is_loading_signal = use_signal(move || is_loading);
@@ -130,18 +121,13 @@ fn PlaybackControlsView(
     });
 
     let main_btn_base = "w-10 h-10 rounded flex items-center justify-center";
-    let has_controls = on_previous.is_some();
 
     rsx! {
         div { class: "flex items-center gap-2",
             button {
-                class: if is_loading || !has_controls { "px-3 py-2 bg-gray-700 rounded opacity-50" } else { "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600" },
-                disabled: is_loading || !has_controls,
-                onclick: move |_| {
-                    if let Some(ref h) = on_previous {
-                        h.call(());
-                    }
-                },
+                class: if is_loading { "px-3 py-2 bg-gray-700 rounded opacity-50" } else { "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600" },
+                disabled: is_loading,
+                onclick: move |_| on_previous.call(()),
                 "⏮"
             }
             if is_playing {
@@ -154,12 +140,7 @@ fn PlaybackControlsView(
                 } else {
                     button {
                         class: "{main_btn_base} bg-blue-600 hover:bg-blue-500",
-                        disabled: !has_controls,
-                        onclick: move |_| {
-                            if let Some(ref h) = on_pause {
-                                h.call(());
-                            }
-                        },
+                        onclick: move |_| on_pause.call(()),
                         "⏸"
                     }
                 }
@@ -179,24 +160,15 @@ fn PlaybackControlsView(
                 } else {
                     button {
                         class: "{main_btn_base} bg-green-600 hover:bg-green-500",
-                        disabled: !has_controls,
-                        onclick: move |_| {
-                            if let Some(ref h) = on_resume {
-                                h.call(());
-                            }
-                        },
+                        onclick: move |_| on_resume.call(()),
                         "▶"
                     }
                 }
             }
             button {
-                class: if is_loading || !has_controls { "px-3 py-2 bg-gray-700 rounded opacity-50" } else { "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600" },
-                disabled: is_loading || !has_controls,
-                onclick: move |_| {
-                    if let Some(ref h) = on_next {
-                        h.call(());
-                    }
-                },
+                class: if is_loading { "px-3 py-2 bg-gray-700 rounded opacity-50" } else { "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600" },
+                disabled: is_loading,
+                onclick: move |_| on_next.call(()),
                 "⏭"
             }
         }
@@ -204,19 +176,11 @@ fn PlaybackControlsView(
 }
 
 #[component]
-fn AlbumCoverThumbnailView(
-    cover_url: Option<String>,
-    #[props(into)] on_click: Option<EventHandler<()>>,
-) -> Element {
-    let clickable = on_click.is_some();
+fn AlbumCoverThumbnailView(cover_url: Option<String>, on_click: EventHandler<()>) -> Element {
     rsx! {
         div {
-            class: if clickable { "w-10 h-10 bg-gray-700 rounded-sm flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity" } else { "w-10 h-10 bg-gray-700 rounded-sm flex items-center justify-center overflow-hidden flex-shrink-0" },
-            onclick: move |_| {
-                if let Some(ref h) = on_click {
-                    h.call(());
-                }
-            },
+            class: "w-10 h-10 bg-gray-700 rounded-sm flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity",
+            onclick: move |_| on_click.call(()),
             if let Some(ref url) = cover_url {
                 img {
                     src: "{url}",
@@ -235,19 +199,14 @@ fn TrackInfoView(
     track: Option<Track>,
     artist_name: String,
     is_loading: bool,
-    #[props(into)] on_click: Option<EventHandler<()>>,
+    on_click: EventHandler<()>,
 ) -> Element {
-    let clickable = on_click.is_some();
     rsx! {
         div { class: "flex-1",
             if let Some(ref track) = track {
                 div {
-                    class: if clickable { "font-semibold cursor-pointer hover:text-blue-300 transition-colors" } else { "font-semibold" },
-                    onclick: move |_| {
-                        if let Some(ref h) = on_click {
-                            h.call(());
-                        }
-                    },
+                    class: "font-semibold cursor-pointer hover:text-blue-300 transition-colors",
+                    onclick: move |_| on_click.call(()),
                     "{track.title}"
                 }
                 div { class: "text-sm text-gray-400", "{artist_name}" }
@@ -291,7 +250,7 @@ fn PositionView(
     position_ms: u64,
     duration_ms: u64,
     pregap_ms: Option<i64>,
-    #[props(into)] on_seek: Option<EventHandler<u64>>,
+    on_seek: EventHandler<u64>,
 ) -> Element {
     let mut local_position_ms = use_signal(|| position_ms);
     let mut is_seeking = use_signal(|| false);
@@ -303,7 +262,6 @@ fn PositionView(
     });
 
     let has_position = position_ms > 0 || duration_ms > 0;
-    let has_seek = on_seek.is_some();
 
     rsx! {
         if has_position {
@@ -327,15 +285,10 @@ fn PositionView(
                                 min: "0",
                                 max: "{duration_ms / 1000}",
                                 value: "{adjusted_pos / 1000}",
-                                disabled: !has_seek,
-                                onmousedown: move |_| {
-                                    is_seeking.set(true);
-                                },
+                                onmousedown: move |_| is_seeking.set(true),
                                 onmouseup: move |_| {
                                     if is_seeking() {
-                                        if let Some(ref h) = on_seek {
-                                            h.call(local_position_ms());
-                                        }
+                                        on_seek.call(local_position_ms());
                                         is_seeking.set(false);
                                     }
                                 },
@@ -366,7 +319,7 @@ fn PositionView(
 }
 
 // ============================================================================
-// Real mode wrapper - handles state subscription
+// Wrapper - handles state subscription (non-demo only, included via Navbar cfg)
 // ============================================================================
 
 #[cfg(not(feature = "demo"))]
@@ -655,24 +608,5 @@ fn update_position_after_seek(
             state.set(new_state);
         }
         _ => {}
-    }
-}
-
-// ============================================================================
-// Demo mode - render view with stopped state
-// ============================================================================
-
-#[cfg(feature = "demo")]
-#[component]
-pub fn NowPlayingBar() -> Element {
-    rsx! {
-        NowPlayingBarView {
-            track: None,
-            artist_name: "".to_string(),
-            cover_url: None,
-            playback: PlaybackDisplay::Stopped,
-            position_ms: 0,
-            duration_ms: 0,
-        }
     }
 }

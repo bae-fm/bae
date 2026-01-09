@@ -30,7 +30,7 @@ pub use library::Library;
 #[cfg(target_os = "macos")]
 pub use library_search_context::use_library_search;
 pub use navbar::Navbar;
-pub use now_playing_bar::NowPlayingBar;
+#[cfg(not(feature = "demo"))]
 pub use playback_hooks::{use_playback_service, use_playback_state};
 pub use settings::Settings;
 #[cfg(target_os = "macos")]

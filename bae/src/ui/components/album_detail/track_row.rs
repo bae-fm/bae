@@ -15,13 +15,13 @@ pub fn TrackRow(
     is_paused: bool,
     is_loading: bool,
     show_spinner: bool,
-    // Callbacks (optional for demo mode)
-    #[props(into)] on_play: Option<EventHandler<String>>,
-    #[props(into)] on_pause: Option<EventHandler<()>>,
-    #[props(into)] on_resume: Option<EventHandler<()>>,
-    #[props(into)] on_add_next: Option<EventHandler<String>>,
-    #[props(into)] on_add_to_queue: Option<EventHandler<String>>,
-    #[props(into)] on_export: Option<EventHandler<String>>,
+    // Callbacks - all required, pass noops if not needed
+    on_play: EventHandler<String>,
+    on_pause: EventHandler<()>,
+    on_resume: EventHandler<()>,
+    on_add_next: EventHandler<String>,
+    on_add_to_queue: EventHandler<String>,
+    on_export: EventHandler<String>,
 ) -> Element {
     let is_active = is_playing || is_paused;
     let is_available = track.is_available;
@@ -51,27 +51,13 @@ pub fn TrackRow(
                     } else if is_playing {
                         button {
                             class: "w-6 h-6 rounded-full border border-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10",
-                            onclick: {
-                                let on_pause = on_pause;
-                                move |_| {
-                                    if let Some(handler) = &on_pause {
-                                        handler.call(());
-                                    }
-                                }
-                            },
+                            onclick: move |_| on_pause.call(()),
                             "⏸"
                         }
                     } else if is_paused {
                         button {
                             class: "w-6 h-6 rounded-full border border-blue-400 flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 transition-colors",
-                            onclick: {
-                                let on_resume = on_resume;
-                                move |_| {
-                                    if let Some(handler) = &on_resume {
-                                        handler.call(());
-                                    }
-                                }
-                            },
+                            onclick: move |_| on_resume.call(()),
                             span { style: "margin-left: 2px; margin-top: 1px; font-size: 0.65rem;",
                                 "▶"
                             }
@@ -81,12 +67,7 @@ pub fn TrackRow(
                             class: "w-6 h-6 rounded-full border border-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10",
                             onclick: {
                                 let track_id = track.id.clone();
-                                let on_play = on_play;
-                                move |_| {
-                                    if let Some(handler) = &on_play {
-                                        handler.call(track_id.clone());
-                                    }
-                                }
+                                move |_| on_play.call(track_id.clone())
                             },
                             span { style: "margin-left: 2px; margin-top: 1px; font-size: 0.65rem;",
                                 "▶"
@@ -141,8 +122,8 @@ pub fn TrackRow(
                     }
                 }
 
-                // Menu (only in non-demo mode)
-                if is_available && on_export.is_some() {
+                // Context menu
+                if is_available {
                     TrackMenu {
                         track_id: track.id.clone(),
                         on_export,
@@ -156,13 +137,12 @@ pub fn TrackRow(
 }
 
 /// Track context menu (export, play next, add to queue)
-#[cfg(not(feature = "demo"))]
 #[component]
 fn TrackMenu(
     track_id: String,
-    on_export: Option<EventHandler<String>>,
-    on_add_next: Option<EventHandler<String>>,
-    on_add_to_queue: Option<EventHandler<String>>,
+    on_export: EventHandler<String>,
+    on_add_next: EventHandler<String>,
+    on_add_to_queue: EventHandler<String>,
 ) -> Element {
     let mut show_menu = use_signal(|| false);
 
@@ -175,63 +155,41 @@ fn TrackMenu(
             }
             if show_menu() {
                 div { class: "absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded shadow-lg z-10 min-w-32",
-                    if let Some(ref handler) = on_export {
-                        button {
-                            class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
-                            onclick: {
-                                let track_id = track_id.clone();
-                                let handler = *handler;
-                                move |_| {
-                                    show_menu.set(false);
-                                    handler.call(track_id.clone());
-                                }
-                            },
-                            "Export File"
-                        }
+                    button {
+                        class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
+                        onclick: {
+                            let track_id = track_id.clone();
+                            move |_| {
+                                show_menu.set(false);
+                                on_export.call(track_id.clone());
+                            }
+                        },
+                        "Export File"
                     }
-                    if let Some(ref handler) = on_add_next {
-                        button {
-                            class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
-                            onclick: {
-                                let track_id = track_id.clone();
-                                let handler = *handler;
-                                move |_| {
-                                    show_menu.set(false);
-                                    handler.call(track_id.clone());
-                                }
-                            },
-                            "Play Next"
-                        }
+                    button {
+                        class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
+                        onclick: {
+                            let track_id = track_id.clone();
+                            move |_| {
+                                show_menu.set(false);
+                                on_add_next.call(track_id.clone());
+                            }
+                        },
+                        "Play Next"
                     }
-                    if let Some(ref handler) = on_add_to_queue {
-                        button {
-                            class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
-                            onclick: {
-                                let track_id = track_id.clone();
-                                let handler = *handler;
-                                move |_| {
-                                    show_menu.set(false);
-                                    handler.call(track_id.clone());
-                                }
-                            },
-                            "Add to Queue"
-                        }
+                    button {
+                        class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
+                        onclick: {
+                            let track_id = track_id.clone();
+                            move |_| {
+                                show_menu.set(false);
+                                on_add_to_queue.call(track_id.clone());
+                            }
+                        },
+                        "Add to Queue"
                     }
                 }
             }
         }
     }
-}
-
-/// Stub for demo mode - menu is hidden
-#[cfg(feature = "demo")]
-#[component]
-fn TrackMenu(
-    track_id: String,
-    on_export: Option<EventHandler<String>>,
-    on_add_next: Option<EventHandler<String>>,
-    on_add_to_queue: Option<EventHandler<String>>,
-) -> Element {
-    // In demo mode, don't render the menu
-    rsx! {}
 }

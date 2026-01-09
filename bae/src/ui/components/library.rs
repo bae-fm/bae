@@ -5,12 +5,16 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 
 /// Library view component - pure rendering, no data fetching
+/// All callbacks are required - pass noops if not needed.
 #[component]
 pub fn LibraryView(
     albums: Vec<Album>,
     artists_by_album: HashMap<String, Vec<Artist>>,
     loading: bool,
     error: Option<String>,
+    // Callbacks - all required
+    on_play_album: EventHandler<String>,
+    on_add_album_to_queue: EventHandler<String>,
 ) -> Element {
     rsx! {
         div { class: "container mx-auto p-6",
@@ -39,7 +43,12 @@ pub fn LibraryView(
                     }
                 }
             } else {
-                AlbumGrid { albums, artists_by_album }
+                AlbumGrid {
+                    albums,
+                    artists_by_album,
+                    on_play_album,
+                    on_add_album_to_queue,
+                }
             }
         }
     }
@@ -47,13 +56,20 @@ pub fn LibraryView(
 
 /// Grid component to display albums
 #[component]
-fn AlbumGrid(albums: Vec<Album>, artists_by_album: HashMap<String, Vec<Artist>>) -> Element {
+fn AlbumGrid(
+    albums: Vec<Album>,
+    artists_by_album: HashMap<String, Vec<Artist>>,
+    on_play_album: EventHandler<String>,
+    on_add_album_to_queue: EventHandler<String>,
+) -> Element {
     rsx! {
         div { class: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6",
             for album in albums {
                 AlbumCard {
                     album: album.clone(),
                     artists: artists_by_album.get(&album.id).cloned().unwrap_or_default(),
+                    on_play: on_play_album,
+                    on_add_to_queue: on_add_album_to_queue,
                 }
             }
         }
@@ -65,6 +81,8 @@ fn AlbumGrid(albums: Vec<Album>, artists_by_album: HashMap<String, Vec<Artist>>)
 #[component]
 pub fn LibraryPage() -> Element {
     use crate::library::use_library_manager;
+    use crate::ui::components::album_detail::utils::get_album_track_ids;
+    use crate::ui::components::use_playback_service;
     use tracing::debug;
 
     let mut albums = use_signal(Vec::<Album>::new);
@@ -73,10 +91,12 @@ pub fn LibraryPage() -> Element {
     let mut error = use_signal(|| None::<String>);
 
     let library_manager = use_library_manager();
+    let playback = use_playback_service();
 
+    let library_manager_for_effect = library_manager.clone();
     use_effect(move || {
         debug!("Starting load_albums effect");
-        let library_manager = library_manager.clone();
+        let library_manager = library_manager_for_effect.clone();
         spawn(async move {
             debug!("Inside async spawn, fetching albums");
             loading.set(true);
@@ -106,12 +126,43 @@ pub fn LibraryPage() -> Element {
         });
     });
 
+    // Callbacks
+    let on_play_album = {
+        let library_manager = library_manager.clone();
+        let playback = playback.clone();
+        move |album_id: String| {
+            let library_manager = library_manager.clone();
+            let playback = playback.clone();
+            spawn(async move {
+                if let Ok(track_ids) = get_album_track_ids(&library_manager, &album_id).await {
+                    playback.play_album(track_ids);
+                }
+            });
+        }
+    };
+
+    let on_add_album_to_queue = {
+        let library_manager = library_manager.clone();
+        let playback = playback.clone();
+        move |album_id: String| {
+            let library_manager = library_manager.clone();
+            let playback = playback.clone();
+            spawn(async move {
+                if let Ok(track_ids) = get_album_track_ids(&library_manager, &album_id).await {
+                    playback.add_to_queue(track_ids);
+                }
+            });
+        }
+    };
+
     rsx! {
         LibraryView {
             albums: albums(),
             artists_by_album: artists_by_album(),
             loading: loading(),
             error: error(),
+            on_play_album,
+            on_add_album_to_queue,
         }
     }
 }
@@ -131,6 +182,8 @@ pub fn LibraryPage() -> Element {
             artists_by_album,
             loading: false,
             error: None,
+            on_play_album: |_| {},
+            on_add_album_to_queue: |_| {},
         }
     }
 }

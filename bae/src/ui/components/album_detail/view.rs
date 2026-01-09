@@ -10,6 +10,7 @@ use crate::ui::display_types::{Album, Artist, File, Image, PlaybackDisplay, Rele
 use dioxus::prelude::*;
 
 /// Album detail view component (pure, props-based)
+/// All callbacks are required - pass noops if actions are not needed.
 #[component]
 pub fn AlbumDetailView(
     // Album data (display types)
@@ -25,21 +26,21 @@ pub fn AlbumDetailView(
     #[props(default)] playback: PlaybackDisplay,
     // Navigation callback
     on_release_select: EventHandler<String>,
-    // Album-level callbacks (all optional - None in demo mode)
-    #[props(into)] on_album_deleted: Option<EventHandler<()>>,
-    #[props(into)] on_export_release: Option<EventHandler<String>>,
-    #[props(into)] on_delete_album: Option<EventHandler<String>>,
-    #[props(into)] on_delete_release: Option<EventHandler<String>>,
-    // Track playback callbacks (all optional - None in demo mode)
-    #[props(into)] on_track_play: Option<EventHandler<String>>,
-    #[props(into)] on_track_pause: Option<EventHandler<()>>,
-    #[props(into)] on_track_resume: Option<EventHandler<()>>,
-    #[props(into)] on_track_add_next: Option<EventHandler<String>>,
-    #[props(into)] on_track_add_to_queue: Option<EventHandler<String>>,
-    #[props(into)] on_track_export: Option<EventHandler<String>>,
+    // Album-level callbacks
+    on_album_deleted: EventHandler<()>,
+    on_export_release: EventHandler<String>,
+    on_delete_album: EventHandler<String>,
+    on_delete_release: EventHandler<String>,
+    // Track playback callbacks
+    on_track_play: EventHandler<String>,
+    on_track_pause: EventHandler<()>,
+    on_track_resume: EventHandler<()>,
+    on_track_add_next: EventHandler<String>,
+    on_track_add_to_queue: EventHandler<String>,
+    on_track_export: EventHandler<String>,
     // Album playback callbacks
-    #[props(into)] on_play_album: Option<EventHandler<Vec<String>>>,
-    #[props(into)] on_add_album_to_queue: Option<EventHandler<Vec<String>>>,
+    on_play_album: EventHandler<Vec<String>>,
+    on_add_album_to_queue: EventHandler<Vec<String>>,
     // Release info modal data (loaded by page, passed here)
     #[props(default)] modal_files: Vec<File>,
     #[props(default)] modal_images: Vec<Image>,
@@ -220,19 +221,12 @@ pub fn AlbumDetailView(
                     is_last_release: releases.len() == 1,
                     is_deleting,
                     on_confirm: {
-                        let on_delete_release = on_delete_release;
-                        let on_album_deleted = on_album_deleted;
                         let is_last = releases.len() == 1;
                         move |release_id: String| {
                             show_release_delete_confirm.set(None);
-                            if let Some(ref handler) = on_delete_release {
-                                handler.call(release_id);
-                            }
-                            // If last release, also trigger album deleted
+                            on_delete_release.call(release_id);
                             if is_last {
-                                if let Some(ref handler) = on_album_deleted {
-                                    handler.call(());
-                                }
+                                on_album_deleted.call(());
                             }
                         }
                     },
