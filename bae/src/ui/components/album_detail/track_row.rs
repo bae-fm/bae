@@ -1,13 +1,14 @@
 //! Track row component - displays a single track in the tracklist
 
 use super::utils::format_duration;
-use crate::ui::display_types::{Artist, Track};
+use crate::ui::display_types::{Artist, Track, TrackImportState};
 use dioxus::prelude::*;
 
 /// Individual track row component (props-based, pure rendering)
 #[component]
 pub fn TrackRow(
-    track: Track,
+    // Track signal for reactive updates
+    track: Signal<Track>,
     artists: Vec<Artist>,
     release_id: String,
     // Album context
@@ -25,8 +26,22 @@ pub fn TrackRow(
     on_add_to_queue: EventHandler<String>,
     on_export: EventHandler<String>,
 ) -> Element {
+    // Read track from signal - this makes the component reactive to track changes
+    let track = track();
     let is_active = is_playing || is_paused;
-    let is_available = track.is_available;
+
+    // Determine availability from import state
+    let is_available = match track.import_state {
+        TrackImportState::Complete => true,
+        TrackImportState::Importing(_) => false,
+        TrackImportState::None => track.is_available,
+    };
+
+    // Get import progress percentage if importing
+    let import_progress = match track.import_state {
+        TrackImportState::Importing(pct) => Some(pct),
+        _ => None,
+    };
 
     let row_class = if is_available {
         if is_active {
@@ -113,11 +128,14 @@ pub fn TrackRow(
                     }
                 }
 
-                // Duration
+                // Duration / Import progress
                 div {
                     class: "text-sm font-mono",
                     class: if is_importing { "text-gray-600" } else { "text-gray-400" },
-                    if let Some(duration_ms) = track.duration_ms {
+                    if let Some(pct) = import_progress {
+                        // Show import progress percentage
+                        "{pct}%"
+                    } else if let Some(duration_ms) = track.duration_ms {
                         {format_duration(duration_ms)}
                     } else {
                         "—:—"

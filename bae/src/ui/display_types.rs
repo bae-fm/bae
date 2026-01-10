@@ -79,6 +79,18 @@ impl From<&DbArtist> for Artist {
     }
 }
 
+/// Track import state for UI display
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub enum TrackImportState {
+    /// Track import not started or not applicable
+    #[default]
+    None,
+    /// Track is being imported with progress percentage
+    Importing(u8),
+    /// Track import completed
+    Complete,
+}
+
 /// Track display info
 #[derive(Clone, Debug, PartialEq)]
 pub struct Track {
@@ -88,30 +100,44 @@ pub struct Track {
     pub disc_number: Option<i32>,
     pub duration_ms: Option<i64>,
     pub is_available: bool,
+    /// Import state for reactive UI updates during import
+    pub import_state: TrackImportState,
 }
 
 impl From<DbTrack> for Track {
     fn from(db: DbTrack) -> Self {
+        let is_available = db.import_status == ImportStatus::Complete;
         Track {
             id: db.id,
             title: db.title,
             track_number: db.track_number,
             disc_number: db.disc_number,
             duration_ms: db.duration_ms,
-            is_available: db.import_status == ImportStatus::Complete,
+            is_available,
+            import_state: if is_available {
+                TrackImportState::Complete
+            } else {
+                TrackImportState::None
+            },
         }
     }
 }
 
 impl From<&DbTrack> for Track {
     fn from(db: &DbTrack) -> Self {
+        let is_available = db.import_status == ImportStatus::Complete;
         Track {
             id: db.id.clone(),
             title: db.title.clone(),
             track_number: db.track_number,
             disc_number: db.disc_number,
             duration_ms: db.duration_ms,
-            is_available: db.import_status == ImportStatus::Complete,
+            is_available,
+            import_state: if is_available {
+                TrackImportState::Complete
+            } else {
+                TrackImportState::None
+            },
         }
     }
 }

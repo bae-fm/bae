@@ -21,7 +21,7 @@ use crate::library::{use_import_service, use_library_manager};
 #[cfg(not(feature = "demo"))]
 use crate::ui::components::{use_playback_service, use_playback_state};
 #[cfg(not(feature = "demo"))]
-use crate::ui::display_types::{Album, Artist, PlaybackDisplay, Release, Track};
+use crate::ui::display_types::{Album, Artist, PlaybackDisplay, Release, Track, TrackImportState};
 #[cfg(not(feature = "demo"))]
 use crate::AppContext;
 #[cfg(not(feature = "demo"))]
@@ -35,7 +35,11 @@ use tracing::error;
 pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>) -> Element {
     let maybe_release_id = use_memo(move || maybe_not_empty(release_id()));
     let data = use_album_detail_data(album_id, maybe_release_id);
-    let import_state = use_release_import_state(data.album_resource, data.selected_release_id);
+    let import_state = use_release_import_state(
+        data.album_resource,
+        data.selected_release_id,
+        data.tracks_resource,
+    );
 
     // Playback state and service
     let playback_state = use_playback_state();
@@ -211,14 +215,6 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
                                 release_id: new_release_id,
                             });
                     };
-                    let db_tracks = data
-                        .tracks_resource
-                        .value()
-                        .read()
-                        .as_ref()
-                        .and_then(|r| r.as_ref().ok())
-                        .cloned()
-                        .unwrap_or_default();
                     let mut album_with_cover = album.clone();
                     if let Some(cover_id) = import_state.cover_image_id.read().as_ref() {
                         album_with_cover.cover_image_id = Some(cover_id.clone());
@@ -244,13 +240,20 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
                             release
                         })
                         .collect();
-                    let display_tracks: Vec<Track> = db_tracks.iter().map(Track::from).collect();
+                    // Get track signals - these are reactive per-track
+                    let track_signals: Vec<Signal<Track>> = import_state
+
+                        .track_signals
+                        .read()
+                        .values()
+                        .copied()
+                        .collect();
                     rsx! {
                         AlbumDetailView {
                             album: display_album,
                             releases: display_releases,
                             artists: display_artists,
-                            tracks: display_tracks,
+                            track_signals,
                             selected_release_id,
                             import_progress: import_state.progress,
                             import_error: import_state.import_error,
@@ -360,17 +363,36 @@ struct ReleaseImportState {
     cover_image_id: Signal<Option<String>>,
     /// Error message if import failed
     import_error: Signal<Option<String>>,
+    /// Per-track signals for granular reactivity - indexed by track ID
+    /// This is a Signal so we can update the map when tracks load
+    track_signals: Signal<std::collections::HashMap<String, Signal<Track>>>,
 }
 
 #[cfg(not(feature = "demo"))]
 fn use_release_import_state(
     album_resource: Resource<Result<(DbAlbum, Vec<DbRelease>), LibraryError>>,
     selected_release_id: Memo<Option<String>>,
+    tracks_resource: Resource<Result<Vec<DbTrack>, LibraryError>>,
 ) -> ReleaseImportState {
     let mut progress = use_signal(|| None::<u8>);
     let mut cover_image_id = use_signal(|| None::<String>);
     let mut import_error = use_signal(|| None::<String>);
+    let mut track_signals = use_signal(std::collections::HashMap::<String, Signal<Track>>::new);
     let import_service = use_import_service();
+
+    // Rebuild per-track signals when tracks load
+    use_effect(move || {
+        if let Some(Ok(db_tracks)) = tracks_resource.value().read().as_ref() {
+            let mut new_map = std::collections::HashMap::new();
+            for db_track in db_tracks {
+                let track = Track::from(db_track);
+                new_map.insert(track.id.clone(), Signal::new(track));
+            }
+            track_signals.set(new_map);
+        }
+    });
+
+    // Subscribe to import progress events
     use_effect(move || {
         let releases_data = album_resource
             .value()
@@ -392,25 +414,49 @@ fn use_release_import_state(
         if is_importing {
             let release_id = release.id.clone();
             let import_service = import_service.clone();
+            let track_signals = track_signals;
             spawn(async move {
                 let mut progress_rx = import_service.subscribe_release(release_id);
                 while let Some(progress_event) = progress_rx.recv().await {
                     match progress_event {
                         ImportProgress::Progress {
+                            id: track_id,
                             percent,
                             phase: _phase,
                             ..
                         } => {
+                            // Update overall progress
                             progress.set(Some(percent));
+
+                            // Update per-track import state
+                            if let Some(mut track_signal) =
+                                track_signals.read().get(&track_id).copied()
+                            {
+                                let mut track = track_signal();
+                                track.import_state = TrackImportState::Importing(percent);
+                                track_signal.set(track);
+                            }
                         }
                         ImportProgress::Complete {
+                            id,
                             cover_image_id: cid,
                             release_id: rid,
                             ..
                         } => {
-                            if rid.is_none() {
-                                if let Some(id) = cid {
-                                    cover_image_id.set(Some(id));
+                            if rid.is_some() {
+                                // Track completion - mark as available
+                                if let Some(mut track_signal) =
+                                    track_signals.read().get(&id).copied()
+                                {
+                                    let mut track = track_signal();
+                                    track.import_state = TrackImportState::Complete;
+                                    track.is_available = true;
+                                    track_signal.set(track);
+                                }
+                            } else {
+                                // Release completion
+                                if let Some(cover_id) = cid {
+                                    cover_image_id.set(Some(cover_id));
                                 }
                                 progress.set(None);
                                 break;
@@ -429,10 +475,12 @@ fn use_release_import_state(
             progress.set(None);
         }
     });
+
     ReleaseImportState {
         progress,
         cover_image_id,
         import_error,
+        track_signals,
     }
 }
 
@@ -450,6 +498,10 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
     let artists = demo_data::get_artists_for_album(&album_id_val);
     let releases = demo_data::get_releases_for_album(&album_id_val);
     let tracks = demo_data::get_tracks_for_album(&album_id_val);
+
+    // Convert tracks to signals for the view
+    let track_signals: Vec<Signal<crate::ui::display_types::Track>> =
+        tracks.into_iter().map(Signal::new).collect();
 
     let selected_release_id = releases.first().map(|r| r.id.clone());
     let import_progress = use_signal(|| None::<u8>);
@@ -476,7 +528,7 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
                     album,
                     releases,
                     artists,
-                    tracks,
+                    track_signals: track_signals.clone(),
                     selected_release_id,
                     import_progress,
                     import_error,

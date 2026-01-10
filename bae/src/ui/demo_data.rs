@@ -3,7 +3,7 @@
 //! Provides static fixture data for rendering the UI without a database.
 //! Used when the `demo` feature is enabled.
 
-use crate::ui::display_types::{Album, Artist, Track};
+use crate::ui::display_types::{Album, Artist, Track, TrackImportState};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -141,6 +141,7 @@ fn get_demo_data() -> &'static DemoData {
                         disc_number: Some(1),
                         duration_ms: Some(180_000 + (i as i64 * 30_000)), // Fake durations 3:00-5:30
                         is_available: true,
+                        import_state: TrackImportState::Complete,
                     }
                 })
                 .collect();
