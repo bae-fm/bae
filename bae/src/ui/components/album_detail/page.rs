@@ -151,7 +151,17 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
     // Delete release callback
     let on_delete_release = EventHandler::new({
         let library_manager = library_manager.clone();
+        let playback = playback.clone();
         move |release_id: String| {
+            // Stop playback if current track belongs to the release being deleted
+            if let crate::playback::PlaybackState::Playing { ref track, .. }
+            | crate::playback::PlaybackState::Paused { ref track, .. } = playback_state()
+            {
+                if track.release_id == release_id {
+                    playback.stop();
+                }
+            }
+
             let library_manager = library_manager.clone();
             spawn(async move {
                 if let Err(e) = library_manager.get().delete_release(&release_id).await {
@@ -168,7 +178,19 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
     // Delete album callback
     let on_delete_album = EventHandler::new({
         let library_manager = library_manager.clone();
+        let playback = playback.clone();
         move |album_id: String| {
+            // Stop playback if current track belongs to the album being deleted
+            if let crate::playback::PlaybackState::Playing { ref track, .. }
+            | crate::playback::PlaybackState::Paused { ref track, .. } = playback_state()
+            {
+                if let Some(Ok((_, releases))) = data.album_resource.value().read().as_ref() {
+                    if releases.iter().any(|r| r.id == track.release_id) {
+                        playback.stop();
+                    }
+                }
+            }
+
             let library_manager = library_manager.clone();
             spawn(async move {
                 if let Err(e) = library_manager.get().delete_album(&album_id).await {
