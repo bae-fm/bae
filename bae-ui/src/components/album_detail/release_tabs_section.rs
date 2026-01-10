@@ -105,20 +105,22 @@ pub fn ReleaseTabsSection(
                                                     on_delete_release.call(release_id.clone());
                                                 }
                                             },
-                                            on_start_seeding: on_start_seeding.map(|handler| {
-                                                let release_id = release_id_for_menu.clone();
-                                                EventHandler::new(move |_: ()| {
-                                                    show_release_dropdown.set(None);
-                                                    handler.call(release_id.clone());
-                                                })
-                                            }),
-                                            on_stop_seeding: on_stop_seeding.map(|handler| {
-                                                let release_id = release_id_for_menu.clone();
-                                                EventHandler::new(move |_: ()| {
-                                                    show_release_dropdown.set(None);
-                                                    handler.call(release_id.clone());
-                                                })
-                                            }),
+                                            on_start_seeding: on_start_seeding
+                                                .map(|handler| {
+                                                    let release_id = release_id_for_menu.clone();
+                                                    EventHandler::new(move |_: ()| {
+                                                        show_release_dropdown.set(None);
+                                                        handler.call(release_id.clone());
+                                                    })
+                                                }),
+                                            on_stop_seeding: on_stop_seeding
+                                                .map(|handler| {
+                                                    let release_id = release_id_for_menu.clone();
+                                                    EventHandler::new(move |_: ()| {
+                                                        show_release_dropdown.set(None);
+                                                        handler.call(release_id.clone());
+                                                    })
+                                                }),
                                         }
                                     }
                                 }
@@ -165,41 +167,41 @@ fn ReleaseActionMenu(
                 "Release Info"
             }
             if has_torrent {
-                    if is_seeding {
-                        if let Some(ref handler) = on_stop_seeding {
-                            button {
-                                class: "w-full px-4 py-2 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm",
-                                disabled: is_deleting() || is_exporting(),
-                                onclick: {
-                                    let handler = *handler;
-                                    move |evt| {
-                                        evt.stop_propagation();
-                                        if !is_deleting() && !is_exporting() {
-                                            handler.call(());
-                                        }
+                if is_seeding {
+                    if let Some(ref handler) = on_stop_seeding {
+                        button {
+                            class: "w-full px-4 py-2 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm",
+                            disabled: is_deleting() || is_exporting(),
+                            onclick: {
+                                let handler = *handler;
+                                move |evt| {
+                                    evt.stop_propagation();
+                                    if !is_deleting() && !is_exporting() {
+                                        handler.call(());
                                     }
-                                },
-                                "Stop Seeding"
-                            }
-                        }
-                    } else {
-                        if let Some(ref handler) = on_start_seeding {
-                            button {
-                                class: "w-full px-4 py-2 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm",
-                                disabled: is_deleting() || is_exporting(),
-                                onclick: {
-                                    let handler = *handler;
-                                    move |evt| {
-                                        evt.stop_propagation();
-                                        if !is_deleting() && !is_exporting() {
-                                            handler.call(());
-                                        }
-                                    }
-                                },
-                                "Start Seeding"
-                            }
+                                }
+                            },
+                            "Stop Seeding"
                         }
                     }
+                } else {
+                    if let Some(ref handler) = on_start_seeding {
+                        button {
+                            class: "w-full px-4 py-2 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm",
+                            disabled: is_deleting() || is_exporting(),
+                            onclick: {
+                                let handler = *handler;
+                                move |evt| {
+                                    evt.stop_propagation();
+                                    if !is_deleting() && !is_exporting() {
+                                        handler.call(());
+                                    }
+                                }
+                            },
+                            "Start Seeding"
+                        }
+                    }
+                }
             }
             button {
                 class: "w-full px-4 py-2 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm",

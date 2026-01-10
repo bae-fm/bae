@@ -209,8 +209,7 @@ fn DemoLayout() -> Element {
                     on_track_click: move |_track_id: String| {},
                 }
             },
-            // Main content with padding for title bar
-            div { class: "pt-10", Outlet::<Route> {} }
+            Outlet::<Route> {}
         }
     }
 }
@@ -303,7 +302,7 @@ pub fn App() -> Element {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
-        div { class: "min-h-screen bg-gray-900", Router::<Route> {} }
+        div { class: "min-h-screen", Router::<Route> {} }
     }
 }
 

@@ -28,9 +28,7 @@ pub fn App() -> Element {
             ActiveImportsProvider {
                 ImportContextProvider {
                     LibrarySearchContextProvider {
-                        div { class: if cfg!(target_os = "macos") { "pb-24 pt-10 h-screen overflow-y-auto" } else { "pb-24 h-screen overflow-y-auto" },
-                            Router::<Route> {}
-                        }
+                        div { class: "h-screen overflow-y-auto", Router::<Route> {} }
                     }
                 }
             }

@@ -29,7 +29,9 @@ pub fn LibraryView(
                 LoadingSpinner { message: "Loading your music library...".to_string() }
             } else if let Some(err) = error {
                 ErrorDisplay { message: err }
-                p { class: "text-sm mt-2 text-gray-400", "Make sure you've imported some albums first!" }
+                p { class: "text-sm mt-2 text-gray-400",
+                    "Make sure you've imported some albums first!"
+                }
             } else if albums.is_empty() {
                 div { class: "text-center py-12",
                     div { class: "text-gray-400 text-6xl mb-4", "🎵" }
