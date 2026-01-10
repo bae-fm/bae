@@ -92,10 +92,15 @@ jobs:
         cache: 'npm'
         cache-dependency-path: |
           bae/package-lock.json
+          bae-demo/package-lock.json
           website/package-lock.json
 
     - name: Install Node dependencies (app)
       working-directory: ./bae
+      run: npm ci
+
+    - name: Install Node dependencies (demo)
+      working-directory: ./bae-demo
       run: npm ci
 
     - name: Install Node dependencies (website)

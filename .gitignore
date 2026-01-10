@@ -23,6 +23,7 @@ node_modules/
 
 # Generated Tailwind CSS
 bae/assets/tailwind.css
+bae-demo/assets/tailwind.css
 
 # Website build artifacts
 website/dist/

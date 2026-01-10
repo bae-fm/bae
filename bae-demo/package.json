@@ -1,0 +1,11 @@
+{
+  "name": "bae-demo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "tailwind:watch": "npx tailwindcss -i tailwind.css -o assets/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.1.18"
+  }
+}
