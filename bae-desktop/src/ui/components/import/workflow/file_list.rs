@@ -55,6 +55,7 @@ pub fn categorized_files_from_scanned(
 mod tests {
     use super::*;
     use bae_core::import::folder_scanner::scan_for_releases;
+    use std::path::Path;
 
     #[test]
     fn test_categorized_files_from_scanned_preserves_cue_flac_pairs() {

@@ -362,7 +362,10 @@ pub fn FolderImport() -> Element {
         .iter()
         .map(|f| {
             let path = std::path::Path::new(&*folder_path.read()).join(&f.name);
-            (f.name.clone(), format!("file://{}", path.display()))
+            (
+                f.name.clone(),
+                crate::ui::local_file_url::local_file_url(&path),
+            )
         })
         .collect();
 
