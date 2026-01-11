@@ -91,14 +91,14 @@ jobs:
 
     - name: Build app bundle
       working-directory: ./bae-desktop
-      run: |
-        dx bundle --release
-        # Dioxus outputs Bae.app (PascalCase), rename to bae.app (lowercase)
-        mv target/dx/bae/bundle/macos/bundle/macos/Bae.app target/dx/bae/bundle/macos/bundle/macos/bae.app
+      run: dx bundle --release
+
+    - name: Rename app bundle to lowercase
+      run: mv target/dx/bae/bundle/macos/bundle/macos/Bae.app target/dx/bae/bundle/macos/bundle/macos/bae.app
 
     - name: Bundle dylibs into app
       working-directory: ./bae-desktop
-      run: ./scripts/bundle_dylibs.sh target/dx/bae/bundle/macos/bundle/macos/bae.app
+      run: ./scripts/bundle_dylibs.sh ../target/dx/bae/bundle/macos/bundle/macos/bae.app
 
     - name: Import Apple certificate
       env:
@@ -121,7 +121,7 @@ jobs:
       env:
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        APP_PATH="bae-desktop/target/dx/bae/bundle/macos/bundle/macos/bae.app"
+        APP_PATH="target/dx/bae/bundle/macos/bundle/macos/bae.app"
         IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
         echo "Using signing identity: $IDENTITY"
         
@@ -136,7 +136,7 @@ jobs:
       env:
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        APP_PATH="bae-desktop/target/dx/bae/bundle/macos/bundle/macos/bae.app"
+        APP_PATH="target/dx/bae/bundle/macos/bundle/macos/bae.app"
         DMG_PATH="bae-desktop/target/bae.dmg"
         IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
         
@@ -222,7 +222,6 @@ jobs:
         EOF
 
     - name: Verify app bundle is properly bundled
-      working-directory: ./bae-desktop
       run: |
         set -euo pipefail
         APP_PATH="target/dx/bae/bundle/macos/bundle/macos/bae.app"
