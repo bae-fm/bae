@@ -51,16 +51,12 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost ffmpeg switchaudio-osx
-        # Try to install BlackHole virtual audio (may fail on CI due to kernel extension requirements)
-        brew install blackhole-2ch || echo "BlackHole installation failed - tests may skip audio"
 
     - name: Setup virtual audio device (macOS)
       if: runner.os == 'macOS'
       run: |
-        # List available audio devices
-        SwitchAudioSource -a || true
-        # Try to set BlackHole as default output (if available)
-        SwitchAudioSource -s "BlackHole 2ch" 2>/dev/null || echo "BlackHole not available, using default audio device"
+        SwitchAudioSource -a
+        SwitchAudioSource -s "Null Audio Device"
 
     # Windows uses MSYS2/MinGW for CD libraries (libcdio, libdiscid) since they're not in vcpkg
     - name: Setup MSYS2 (Windows)
