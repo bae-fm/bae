@@ -125,7 +125,10 @@ jobs:
 
     - name: Build app bundle
       working-directory: ./bae-desktop
-      run: dx bundle --release
+      run: |
+        dx bundle --release
+        # Dioxus outputs Bae.app (PascalCase), rename to bae.app (lowercase)
+        mv target/dx/bae/bundle/macos/bundle/macos/Bae.app target/dx/bae/bundle/macos/bundle/macos/bae.app
 
     - name: Bundle dylibs into app
       working-directory: ./bae-desktop
