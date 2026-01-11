@@ -117,7 +117,8 @@ impl CueFlacProcessor {
         let mut cue_files = Vec::new();
         for path in file_paths {
             if let Some(extension) = path.extension() {
-                match extension.to_str() {
+                let ext_lower = extension.to_str().map(|s| s.to_lowercase());
+                match ext_lower.as_deref() {
                     Some("flac") => flac_files.push(path.clone()),
                     Some("cue") => cue_files.push(path.clone()),
                     _ => {}
@@ -1057,5 +1058,116 @@ FILE "Test Artist - Test Album.flac" WAVE
             "Byte offset should be within 93ms of track start. Got frame at {}ms, wanted {}ms, diff={}ms",
             frame_time_ms, track2_start_ms, diff_ms
         );
+    }
+
+    #[test]
+    fn test_detect_cue_flac_from_paths_lowercase() {
+        use std::path::PathBuf;
+
+        let paths = vec![
+            PathBuf::from("/music/album.flac"),
+            PathBuf::from("/music/album.cue"),
+            PathBuf::from("/music/cover.jpg"),
+        ];
+
+        let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
+
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(pairs[0].flac_path, PathBuf::from("/music/album.flac"));
+        assert_eq!(pairs[0].cue_path, PathBuf::from("/music/album.cue"));
+    }
+
+    #[test]
+    fn test_detect_cue_flac_from_paths_uppercase() {
+        use std::path::PathBuf;
+
+        let paths = vec![
+            PathBuf::from("/music/album.FLAC"),
+            PathBuf::from("/music/album.CUE"),
+            PathBuf::from("/music/cover.jpg"),
+        ];
+
+        let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
+
+        assert_eq!(
+            pairs.len(),
+            1,
+            "Should detect CUE/FLAC pair with uppercase extensions"
+        );
+        assert_eq!(pairs[0].flac_path, PathBuf::from("/music/album.FLAC"));
+        assert_eq!(pairs[0].cue_path, PathBuf::from("/music/album.CUE"));
+    }
+
+    #[test]
+    fn test_detect_cue_flac_from_paths_mixed_case() {
+        use std::path::PathBuf;
+
+        let paths = vec![
+            PathBuf::from("/music/album.Flac"),
+            PathBuf::from("/music/album.Cue"),
+        ];
+
+        let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
+
+        assert_eq!(
+            pairs.len(),
+            1,
+            "Should detect CUE/FLAC pair with mixed case extensions"
+        );
+    }
+
+    #[test]
+    fn test_detect_cue_flac_from_paths_no_match() {
+        use std::path::PathBuf;
+
+        let paths = vec![
+            PathBuf::from("/music/album.flac"),
+            PathBuf::from("/music/different.cue"),
+        ];
+
+        let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
+
+        assert_eq!(
+            pairs.len(),
+            0,
+            "Should not match CUE/FLAC with different stems"
+        );
+    }
+
+    #[test]
+    fn test_detect_cue_flac_from_paths_multiple_pairs() {
+        use std::path::PathBuf;
+
+        let paths = vec![
+            PathBuf::from("/music/disc1.flac"),
+            PathBuf::from("/music/disc1.cue"),
+            PathBuf::from("/music/disc2.flac"),
+            PathBuf::from("/music/disc2.cue"),
+        ];
+
+        let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
+
+        assert_eq!(pairs.len(), 2, "Should detect multiple CUE/FLAC pairs");
+    }
+
+    #[test]
+    fn test_detect_cue_flac_from_paths_with_spaces_and_dashes() {
+        use std::path::PathBuf;
+
+        let paths = vec![
+            PathBuf::from("/music/Some Artist - Some Album.cue"),
+            PathBuf::from("/music/Some Artist - Some Album.flac"),
+            PathBuf::from("/music/front.jpg"),
+        ];
+
+        let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
+
+        assert_eq!(
+            pairs.len(),
+            1,
+            "Should detect CUE/FLAC pair with spaces and dashes in filename"
+        );
+        assert!(pairs[0].flac_path.to_string_lossy().contains("Some Artist"));
+        assert!(pairs[0].cue_path.to_string_lossy().contains("Some Artist"));
     }
 }
