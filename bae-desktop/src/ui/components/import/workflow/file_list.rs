@@ -50,3 +50,38 @@ pub fn categorized_files_from_scanned(
         other: convert(&categorized.other),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bae_core::import::folder_scanner::scan_for_releases;
+
+    #[test]
+    fn test_categorized_files_from_scanned_preserves_cue_flac_pairs() {
+        let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("bae-core")
+            .join("tests")
+            .join("fixtures")
+            .join("cue_flac");
+
+        let releases = scan_for_releases(fixture_dir).unwrap();
+        assert_eq!(releases.len(), 1);
+
+        let files = categorized_files_from_scanned(&releases[0].files);
+
+        match files.audio {
+            AudioContentInfo::CueFlacPairs(pairs) => {
+                assert_eq!(pairs.len(), 1, "Should have 1 CUE/FLAC pair");
+                assert!(pairs[0].track_count > 0, "Should have track count");
+            }
+            AudioContentInfo::TrackFiles(tracks) => {
+                panic!(
+                    "Expected CueFlacPairs but got TrackFiles with {} files",
+                    tracks.len()
+                );
+            }
+        }
+    }
+}

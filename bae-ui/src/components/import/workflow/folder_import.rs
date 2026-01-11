@@ -1,12 +1,13 @@
 //! Folder import workflow view
 
 use super::{
-    ConfirmationView, DetectingMetadataView, DiscIdLookupErrorView, ExactLookupView, FileListView,
+    ConfirmationView, DetectingMetadataView, DiscIdLookupErrorView, ExactLookupView,
     ImportErrorDisplayView, ManualSearchPanelView, ReleaseSelectorView, SelectedSourceView,
+    SmartFileDisplayView,
 };
 use crate::display_types::{
-    ArtworkFile, CategorizedFileInfo, DetectedRelease, FileInfo, FolderMetadata, ImportPhase,
-    MatchCandidate, SearchSource, SearchTab, SelectedCover, StorageProfileInfo,
+    ArtworkFile, CategorizedFileInfo, DetectedRelease, FolderMetadata, ImportPhase, MatchCandidate,
+    SearchSource, SearchTab, SelectedCover, StorageProfileInfo,
 };
 use crate::FolderSelectorView;
 use dioxus::prelude::*;
@@ -20,6 +21,10 @@ pub struct FolderImportViewProps {
     pub folder_path: String,
     // Files in the folder
     pub folder_files: CategorizedFileInfo,
+    // Image data for gallery (filename, display_url)
+    pub image_data: Vec<(String, String)>,
+    // Text file contents keyed by filename - parent provides all content upfront
+    pub text_file_contents: std::collections::HashMap<String, String>,
     // Phase-specific state
     // FolderSelection phase
     pub is_dragging: bool,
@@ -119,7 +124,11 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
                                 h4 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3",
                                     "Files"
                                 }
-                                FileListView { files: get_all_files(&props.folder_files) }
+                                SmartFileDisplayView {
+                                    files: props.folder_files.clone(),
+                                    image_data: props.image_data.clone(),
+                                    text_file_contents: props.text_file_contents.clone(),
+                                }
                             }
                         }
                     }
@@ -219,31 +228,4 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
             }
         }
     }
-}
-
-fn get_all_files(categorized: &CategorizedFileInfo) -> Vec<FileInfo> {
-    let mut files = Vec::new();
-    match &categorized.audio {
-        crate::display_types::AudioContentInfo::CueFlacPairs(pairs) => {
-            for pair in pairs {
-                files.push(FileInfo {
-                    name: pair.cue_name.clone(),
-                    size: 0,
-                    format: "CUE".to_string(),
-                });
-                files.push(FileInfo {
-                    name: pair.flac_name.clone(),
-                    size: pair.total_size,
-                    format: "FLAC".to_string(),
-                });
-            }
-        }
-        crate::display_types::AudioContentInfo::TrackFiles(tracks) => {
-            files.extend(tracks.clone());
-        }
-    }
-    files.extend(categorized.artwork.clone());
-    files.extend(categorized.documents.clone());
-    files.extend(categorized.other.clone());
-    files
 }

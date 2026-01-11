@@ -322,11 +322,47 @@ pub fn FolderImport() -> Element {
         }
     };
 
+    // Text file contents - loaded async when folder changes
+    let text_file_contents_resource = use_resource(move || {
+        let folder = folder_path.read().clone();
+        let files = folder_files.read().clone();
+        async move {
+            let mut contents = std::collections::HashMap::new();
+
+            // Load CUE files from CUE/FLAC pairs
+            if let bae_ui::display_types::AudioContentInfo::CueFlacPairs(pairs) = &files.audio {
+                for pair in pairs {
+                    let path = std::path::Path::new(&folder).join(&pair.cue_name);
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        contents.insert(pair.cue_name.clone(), content);
+                    }
+                }
+            }
+
+            // Load document files
+            for doc in &files.documents {
+                let path = std::path::Path::new(&folder).join(&doc.name);
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    contents.insert(doc.name.clone(), content);
+                }
+            }
+
+            contents
+        }
+    });
+
+    let text_file_contents = text_file_contents_resource
+        .read()
+        .clone()
+        .unwrap_or_default();
+
     rsx! {
         FolderImportView {
             phase: to_display_phase(&import_phase.read()),
             folder_path: folder_path.read().clone(),
             folder_files: display_folder_files,
+            image_data: vec![],
+            text_file_contents,
             is_dragging: *is_dragging.read(),
             on_folder_select_click: on_folder_select,
             detected_releases: display_detected_releases,

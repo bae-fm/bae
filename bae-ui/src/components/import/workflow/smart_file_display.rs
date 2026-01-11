@@ -1,5 +1,6 @@
 //! Smart file display view component
 
+use super::{ImageLightboxView, TextFileModalView};
 use crate::display_types::{AudioContentInfo, CategorizedFileInfo, CueFlacPairInfo, FileInfo};
 use dioxus::prelude::*;
 
@@ -16,37 +17,48 @@ fn format_file_size(bytes: u64) -> String {
 }
 
 /// Smart file display view - shows categorized files with expandable sections
+///
+/// Handles its own modal state for viewing text files and images.
 #[component]
 pub fn SmartFileDisplayView(
     /// Categorized file info
     files: CategorizedFileInfo,
     /// Image data for gallery (filename, display_url)
     image_data: Vec<(String, String)>,
-    /// Whether to show other files section
-    show_other_files: bool,
-    /// Called when a text file is clicked (filename, filepath)
-    on_text_file_click: EventHandler<(String, String)>,
-    /// Called when an image thumbnail is clicked (index)
-    on_image_click: EventHandler<usize>,
-    /// Called when show/hide other files is toggled
-    on_toggle_other_files: EventHandler<()>,
+    /// Text file contents keyed by filename - parent provides all content upfront
+    text_file_contents: std::collections::HashMap<String, String>,
 ) -> Element {
+    let mut show_other_files = use_signal(|| false);
+    let mut viewing_text_file = use_signal(|| None::<String>);
+    let mut viewing_image_index = use_signal(|| None::<usize>);
+
     if files.is_empty() {
         return rsx! {
             div { class: "text-gray-400 text-center py-8", "No files found" }
         };
     }
 
+    // Get content for currently viewed text file
+    let text_file_content = viewing_text_file
+        .read()
+        .as_ref()
+        .and_then(|name| text_file_contents.get(name).cloned());
+
     rsx! {
         div { class: "space-y-3",
             // Audio content
             AudioContentView {
                 audio: files.audio.clone(),
-                on_cue_click: move |(name, path)| on_text_file_click.call((name, path)),
+                on_cue_click: {
+                    let mut viewing_text_file = viewing_text_file;
+                    move |(name, _path): (String, String)| {
+                        viewing_text_file.set(Some(name));
+                    }
+                },
             }
 
             // Artwork gallery
-            if !files.artwork.is_empty() {
+            if !files.artwork.is_empty() && !image_data.is_empty() {
                 div { class: "grid grid-cols-3 gap-2",
                     for (idx , (filename , url)) in image_data.iter().enumerate() {
                         GalleryThumbnailView {
@@ -54,7 +66,10 @@ pub fn SmartFileDisplayView(
                             filename: filename.clone(),
                             url: url.clone(),
                             index: idx,
-                            on_click: move |idx| on_image_click.call(idx),
+                            on_click: {
+                                let mut viewing_image_index = viewing_image_index;
+                                move |idx| viewing_image_index.set(Some(idx))
+                            },
                         }
                     }
                 }
@@ -65,7 +80,12 @@ pub fn SmartFileDisplayView(
                 TextFileItemView {
                     key: "{doc.name}",
                     file: doc.clone(),
-                    on_click: move |(name, path)| on_text_file_click.call((name, path)),
+                    on_click: {
+                        let mut viewing_text_file = viewing_text_file;
+                        move |(name, _path): (String, String)| {
+                            viewing_text_file.set(Some(name));
+                        }
+                    },
                 }
             }
 
@@ -74,17 +94,17 @@ pub fn SmartFileDisplayView(
                 div { class: "pt-2",
                     button {
                         class: "w-full px-3 py-2 text-sm text-gray-400 hover:text-gray-300 bg-gray-900/50 hover:bg-gray-800/50 border border-gray-800 hover:border-gray-700 rounded transition-colors",
-                        onclick: move |_| on_toggle_other_files.call(()),
+                        onclick: move |_| show_other_files.toggle(),
                         div { class: "flex items-center justify-between",
                             span {
-                                if show_other_files {
+                                if *show_other_files.read() {
                                     {format!("Hide other files ({})", files.other.len())}
                                 } else {
                                     {format!("Show other files ({})", files.other.len())}
                                 }
                             }
                             span { class: "text-xs",
-                                if show_other_files {
+                                if *show_other_files.read() {
                                     "▲"
                                 } else {
                                     "▼"
@@ -92,7 +112,7 @@ pub fn SmartFileDisplayView(
                             }
                         }
                     }
-                    if show_other_files {
+                    if *show_other_files.read() {
                         div { class: "mt-3 space-y-2",
                             for file in files.other.iter() {
                                 OtherFileItemView { key: "{file.name}", file: file.clone() }
@@ -100,6 +120,25 @@ pub fn SmartFileDisplayView(
                         }
                     }
                 }
+            }
+        }
+
+        // Text file modal
+        if let Some(filename) = viewing_text_file.read().clone() {
+            TextFileModalView {
+                filename: filename.clone(),
+                content: text_file_content.unwrap_or_else(|| "File not available".to_string()),
+                on_close: move |_| viewing_text_file.set(None),
+            }
+        }
+
+        // Image lightbox
+        if let Some(index) = *viewing_image_index.read() {
+            ImageLightboxView {
+                images: image_data.clone(),
+                current_index: index,
+                on_close: move |_| viewing_image_index.set(None),
+                on_navigate: move |new_idx| viewing_image_index.set(Some(new_idx)),
             }
         }
     }
