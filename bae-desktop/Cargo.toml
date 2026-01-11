@@ -13,9 +13,7 @@ path = "src/main.rs"
 bae-core = { path = "../bae-core" }
 bae-ui = { path = "../bae-ui" }
 dioxus = { version = "0.7.2", features = ["router", "desktop"] }
-# On Linux, rfd's default features include async-std for ashpd. Since we use tokio,
-# we disable defaults and explicitly enable the tokio feature instead.
-rfd = { version = "0.16", default-features = false, features = ["xdg-portal", "tokio"] }
+rfd = "0.17"
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1.41"
 keyring = { version = "3.6.3", features = ["apple-native"] }
