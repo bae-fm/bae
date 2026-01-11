@@ -1,25 +1,15 @@
 #!/bin/sh
 
-# Run checks in bae directory
-cd bae
+# Run checks in bae-core directory
+cd bae-core
 
-echo "Running cargo fmt check (bae)..."
+echo "Running cargo fmt check (bae-core)..."
 cargo fmt -- --check
 
 if [ $? -ne 0 ]; then
     echo ""
     echo "❌ Commit rejected: Code is not formatted correctly"
-    echo "Run 'cargo fmt' in the bae directory to fix formatting"
-    exit 1
-fi
-
-echo "Running dx fmt check (bae)..."
-dx fmt --check
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: RSX code is not formatted correctly"
-    echo "Run 'dx fmt' in the bae directory to fix formatting"
+    echo "Run 'cargo fmt' in the bae-core directory to fix formatting"
     exit 1
 fi
 
@@ -54,6 +44,41 @@ for test in tests/*.rs; do
         exit 1
     fi
 done
+
+cd ..
+
+# Run checks in bae-desktop directory
+echo "Running cargo fmt check (bae-desktop)..."
+cd bae-desktop
+
+cargo fmt -- --check
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Commit rejected: Code is not formatted correctly in bae-desktop"
+    echo "Run 'cargo fmt' in the bae-desktop directory to fix formatting"
+    exit 1
+fi
+
+echo "Running dx fmt check (bae-desktop)..."
+dx fmt --check
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Commit rejected: RSX code is not formatted correctly in bae-desktop"
+    echo "Run 'dx fmt' in the bae-desktop directory to fix formatting"
+    exit 1
+fi
+
+echo "Running cargo clippy on bae-desktop..."
+BINDGEN_EXTRA_CLANG_ARGS="-I/opt/homebrew/include" cargo clippy -- -D warnings -A unexpected_cfgs -A deprecated
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Commit rejected: Clippy found warnings in bae-desktop"
+    echo "Fix the warnings above and try again"
+    exit 1
+fi
 
 cd ..
 
@@ -113,7 +138,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-cd ../bae
+cd ../bae-core
 
 echo "Running tests..."
 cargo test --features test-utils

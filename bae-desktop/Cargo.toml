@@ -1,0 +1,44 @@
+[package]
+name = "bae-desktop"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+build = "build.rs"
+
+[[bin]]
+name = "bae"
+path = "src/main.rs"
+
+[dependencies]
+bae-core = { path = "../bae-core" }
+bae-ui = { path = "../bae-ui" }
+dioxus = { version = "0.7.2", features = ["router", "desktop"] }
+# On Linux, rfd's default features include async-std for ashpd. Since we use tokio,
+# we disable defaults and explicitly enable the tokio feature instead.
+rfd = { version = "0.16", default-features = false, features = ["xdg-portal", "tokio"] }
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1.41"
+keyring = { version = "3.6.3", features = ["apple-native"] }
+urlencoding = "2.1"
+axum = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3.31"
+uuid = { version = "1.0", features = ["v4"] }
+dirs = "5.0"
+
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))'.dependencies]
+souvlaki = "0.8"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+tracing-oslog = "0.3"
+objc = "0.2"
+cocoa = "0.25"
+
+[lints.clippy]
+too_many_arguments = "allow"
+
+[lints.rust]
+unexpected_cfgs = "allow"
