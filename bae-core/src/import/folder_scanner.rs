@@ -319,6 +319,17 @@ fn collect_files_into_vectors(
         .map_err(|e| format!("Failed to read dir {:?}: {}", current_dir, e))?;
     for entry in entries.flatten() {
         let path = entry.path();
+
+        // Skip hidden files and directories (e.g. .bae, .DS_Store)
+        if path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|n| n.starts_with('.'))
+            .unwrap_or(false)
+        {
+            continue;
+        }
+
         if path.is_file() {
             if is_noise_file(&path) {
                 continue;
@@ -370,5 +381,47 @@ mod tests {
         assert!(is_cue_file(Path::new("album.cue")));
         assert!(is_cue_file(Path::new("album.CUE")));
         assert!(!is_cue_file(Path::new("album.flac")));
+    }
+
+    #[test]
+    fn test_collect_release_files_skips_hidden() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path();
+
+        // Create visible files
+        std::fs::write(root.join("track.flac"), b"fake flac").unwrap();
+        std::fs::write(root.join("cover.jpg"), b"cover image").unwrap();
+
+        // Create hidden file that should be ignored
+        std::fs::write(root.join(".DS_Store"), b"mac junk").unwrap();
+
+        // Create .bae hidden directory with files that should be ignored
+        let bae_dir = root.join(".bae");
+        std::fs::create_dir(&bae_dir).unwrap();
+        std::fs::write(bae_dir.join("cache.db"), b"cache data").unwrap();
+        std::fs::write(bae_dir.join("cover.jpg"), b"cached image").unwrap();
+
+        let files = collect_release_files(root).unwrap();
+
+        // Check audio files
+        let audio_paths: Vec<_> = match &files.audio {
+            AudioContent::TrackFiles(tracks) => {
+                tracks.iter().map(|f| f.relative_path.as_str()).collect()
+            }
+            AudioContent::CueFlacPairs(_) => vec![],
+        };
+        assert_eq!(audio_paths, vec!["track.flac"]);
+
+        // Check artwork
+        let artwork_paths: Vec<_> = files
+            .artwork
+            .iter()
+            .map(|f| f.relative_path.as_str())
+            .collect();
+        assert_eq!(artwork_paths, vec!["cover.jpg"]);
+
+        // Check nothing from hidden dirs/files leaked through
+        assert!(files.documents.is_empty());
+        assert!(files.other.is_empty());
     }
 }
