@@ -39,8 +39,7 @@ pub struct ActiveImportsState {
     pub is_loading: Signal<bool>,
 }
 impl ActiveImportsState {
-    /// Dismiss/remove an import from the list (used by ImportsDropdown on macOS)
-    #[cfg(target_os = "macos")]
+    /// Dismiss/remove an import from the list (used by ImportsDropdown)
     pub fn dismiss(&self, import_id: &str) {
         let mut imports = self.imports;
         imports.with_mut(|list| {
@@ -186,8 +185,7 @@ fn handle_progress_event(imports: Signal<Vec<ActiveImport>>, event: ImportProgre
         }
     }
 }
-/// Hook to access active imports state (used by TitleBar components on macOS)
-#[cfg(target_os = "macos")]
+/// Hook to access active imports state (used by TitleBar components)
 pub fn use_active_imports() -> ActiveImportsState {
     use_context::<ActiveImportsState>()
 }
