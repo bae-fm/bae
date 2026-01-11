@@ -53,7 +53,7 @@ jobs:
         brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost ffmpeg switchaudio-osx
         # Try to install BlackHole virtual audio (may fail on CI due to kernel extension requirements)
         brew install blackhole-2ch || echo "BlackHole installation failed - tests may skip audio"
-    
+
     - name: Setup virtual audio device (macOS)
       if: runner.os == 'macOS'
       run: |
@@ -95,10 +95,6 @@ jobs:
     - name: Cache Rust dependencies
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: |
-          bae -> target
-          bae-ui -> target
-          bae-demo -> target
         shared-key: rust-cache
         cache-directories: ~/.cargo/bin
 
@@ -107,11 +103,14 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: bae/package-lock.json
+        cache-dependency-path: |
+          bae-desktop/package-lock.json
+          bae-demo/package-lock.json
 
     - name: Install Node dependencies
-      working-directory: ./bae
-      run: npm ci
+      run: |
+        (cd bae-desktop && npm ci)
+        (cd bae-demo && npm ci)
 
     - name: Install Dioxus CLI
       run: |
@@ -122,105 +121,69 @@ jobs:
         fi
       shell: bash
 
-    - name: Check Rust formatting (bae)
-      working-directory: ./bae
-      run: cargo fmt -- --check
+    - name: Check Rust formatting
+      run: cargo fmt --all -- --check
 
-    - name: Check RSX formatting (bae)
-      working-directory: ./bae
-      run: dx fmt --check
+    - name: Check RSX formatting
+      run: |
+        (cd bae-desktop && dx fmt --check)
+        (cd bae-demo && dx fmt --check)
 
-    - name: Check Rust formatting (bae-ui)
-      working-directory: ./bae-ui
-      run: cargo fmt -- --check
-
-    - name: Check Rust formatting (bae-demo)
-      working-directory: ./bae-demo
-      run: cargo fmt -- --check
-
-    - name: Check RSX formatting (bae-demo)
-      working-directory: ./bae-demo
-      run: dx fmt --check
+    - name: Set macOS environment
+      if: runner.os == 'macOS'
+      run: |
+        if [[ -d "/opt/homebrew" ]]; then
+          echo "PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=/opt/homebrew/lib" >> $GITHUB_ENV
+          echo "FFMPEG_DIR=/opt/homebrew" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I/opt/homebrew/include" >> $GITHUB_ENV
+        else
+          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=/usr/local/lib" >> $GITHUB_ENV
+          echo "FFMPEG_DIR=/usr/local" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I/usr/local/include" >> $GITHUB_ENV
+        fi
 
     - name: Run Clippy (Linux/macOS)
       if: runner.os != 'Windows'
-      working-directory: ./bae
       run: |
-        # Set env vars for macOS Homebrew (arm64 vs x86_64)
-        if [[ "$RUNNER_OS" == "macOS" ]]; then
-          if [[ -d "/opt/homebrew" ]]; then
-            export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
-            export LIBRARY_PATH="/opt/homebrew/lib"
-            export FFMPEG_DIR="/opt/homebrew"
-          else
-            export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
-            export LIBRARY_PATH="/usr/local/lib"
-            export FFMPEG_DIR="/usr/local"
-          fi
-        fi
-        cargo clippy --lib -- -D warnings
-        cargo clippy --bin bae -- -D warnings
-        for test_file in tests/*.rs; do
+        cargo clippy --workspace -- -D warnings
+        # Check integration tests with test-utils feature
+        for test_file in bae-core/tests/*.rs; do
           if [ -f "$test_file" ]; then
             test_name=$(basename "$test_file" .rs)
             echo "Checking integration test: $test_name"
-            cargo clippy --test "$test_name" --features test-utils -- -D warnings
+            cargo clippy -p bae-core --test "$test_name" --features bae-core/test-utils -- -D warnings
           fi
         done
 
-    - name: Run Clippy on bae-ui (Linux/macOS)
-      if: runner.os != 'Windows'
-      working-directory: ./bae-ui
-      run: cargo clippy -- -D warnings
-
-    - name: Run Clippy on bae-demo (Linux/macOS)
-      if: runner.os != 'Windows'
-      working-directory: ./bae-demo
-      run: cargo clippy -- -D warnings
-
     - name: Run Clippy (Windows)
       if: runner.os == 'Windows'
-      working-directory: ./bae
       shell: cmd
       run: |
-        cargo clippy --target x86_64-pc-windows-gnu --lib -- -D warnings
-        cargo clippy --target x86_64-pc-windows-gnu --bin bae -- -D warnings
-        for %%f in (tests\*.rs) do (
+        cargo clippy --workspace --target x86_64-pc-windows-gnu -- -D warnings
+        for %%f in (bae-core\tests\*.rs) do (
           for %%n in ("%%~nf") do (
             echo Checking integration test: %%~n
-            cargo clippy --target x86_64-pc-windows-gnu --test "%%~n" --features test-utils -- -D warnings
+            cargo clippy -p bae-core --target x86_64-pc-windows-gnu --test "%%~n" --features bae-core/test-utils -- -D warnings
           )
         )
 
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
-      working-directory: ./bae
       run: |
-        # Set env vars for macOS Homebrew (arm64 vs x86_64)
-        if [[ "$RUNNER_OS" == "macOS" ]]; then
-          if [[ -d "/opt/homebrew" ]]; then
-            export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
-            export LIBRARY_PATH="/opt/homebrew/lib"
-            export BINDGEN_EXTRA_CLANG_ARGS="-I/opt/homebrew/include"
-          else
-            export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
-            export LIBRARY_PATH="/usr/local/lib"
-            export BINDGEN_EXTRA_CLANG_ARGS="-I/usr/local/include"
-          fi
-        fi
         # Skip CPU test in debug mode - measurements only meaningful in release
-        cargo test --features test-utils --verbose -- --skip test_playback_cpu
+        cargo test -p bae-core --features bae-core/test-utils --verbose -- --skip test_playback_cpu
         # Run CPU usage test in release mode for accurate measurements
-        cargo test --release --features test-utils --test test_playback_cpu --verbose
+        cargo test -p bae-core --release --features bae-core/test-utils --test test_playback_cpu --verbose
 
     - name: Run tests (Windows)
       if: runner.os == 'Windows'
-      working-directory: ./bae
       run: |
         # Skip CPU test in debug mode - measurements only meaningful in release
-        cargo test --target x86_64-pc-windows-gnu --features test-utils --verbose -- --skip test_playback_cpu
+        cargo test -p bae-core --target x86_64-pc-windows-gnu --features bae-core/test-utils --verbose -- --skip test_playback_cpu
         # Run CPU usage test in release mode for accurate measurements
-        cargo test --release --target x86_64-pc-windows-gnu --features test-utils --test test_playback_cpu --verbose
+        cargo test -p bae-core --release --target x86_64-pc-windows-gnu --features bae-core/test-utils --test test_playback_cpu --verbose
 
   security:
     name: Security Audit
@@ -237,12 +200,10 @@ jobs:
     - name: Cache Rust dependencies
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: bae -> target
         shared-key: rust-cache
 
     - name: Install cargo-audit
       run: cargo install cargo-audit
 
     - name: Run security audit
-      working-directory: ./bae
       run: cargo audit --ignore RUSTSEC-2023-0071

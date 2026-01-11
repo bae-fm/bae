@@ -78,10 +78,6 @@ jobs:
     - name: Cache Rust dependencies
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: |
-          bae -> target
-          bae-ui -> target
-          bae-demo -> target
         shared-key: rust-cache
         cache-directories: ~/.cargo/bin
 
@@ -91,21 +87,15 @@ jobs:
         node-version: '20'
         cache: 'npm'
         cache-dependency-path: |
-          bae/package-lock.json
+          bae-desktop/package-lock.json
           bae-demo/package-lock.json
           website/package-lock.json
 
-    - name: Install Node dependencies (app)
-      working-directory: ./bae
-      run: npm ci
-
-    - name: Install Node dependencies (demo)
-      working-directory: ./bae-demo
-      run: npm ci
-
-    - name: Install Node dependencies (website)
-      working-directory: ./website
-      run: npm ci
+    - name: Install Node dependencies
+      run: |
+        (cd bae-desktop && npm ci)
+        (cd bae-demo && npm ci)
+        (cd website && npm ci)
 
     - name: Install Dioxus CLI
       run: |
@@ -113,37 +103,39 @@ jobs:
           cargo install dioxus-cli
         fi
 
+    - name: Set macOS environment
+      run: |
+        if [[ -d "/opt/homebrew" ]]; then
+          echo "PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=/opt/homebrew/lib" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I/opt/homebrew/include" >> $GITHUB_ENV
+        else
+          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=/usr/local/lib" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I/usr/local/include" >> $GITHUB_ENV
+        fi
+
     - name: Set release version
       run: |
         VERSION="${{ needs.calculate-version.outputs.version }}"
         echo "BAE_VERSION=$VERSION" >> $GITHUB_ENV
         # Patch Cargo.toml for bundle metadata (not committed)
-        sed -i '' "s/^version = .*/version = \"$VERSION\"/" bae/Cargo.toml
+        sed -i '' "s/^version = .*/version = \"$VERSION\"/" bae-desktop/Cargo.toml
         echo "Building version $VERSION"
 
     - name: Build app bundle
-      working-directory: ./bae
-      run: |
-        if [[ -d "/opt/homebrew" ]]; then
-          export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
-          export LIBRARY_PATH="/opt/homebrew/lib"
-          export BINDGEN_EXTRA_CLANG_ARGS="-I/opt/homebrew/include"
-        else
-          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
-          export LIBRARY_PATH="/usr/local/lib"
-          export BINDGEN_EXTRA_CLANG_ARGS="-I/usr/local/include"
-        fi
-        dx bundle --release
+      working-directory: ./bae-desktop
+      run: dx bundle --release
 
     - name: Bundle dylibs into app
-      working-directory: ./bae
+      working-directory: ./bae-desktop
       run: ./scripts/bundle_dylibs.sh target/dx/bae/bundle/macos/bundle/macos/bae.app
 
     - name: Upload unsigned build (backup)
       uses: actions/upload-artifact@v4
       with:
         name: bae-macOS-unsigned
-        path: bae/target/dx/bae/bundle/macos/bundle/macos/bae.app
+        path: bae-desktop/target/dx/bae/bundle/macos/bundle/macos/bae.app
         retention-days: 7
 
     - name: Import Apple certificate
@@ -167,7 +159,7 @@ jobs:
       env:
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        APP_PATH="bae/target/dx/bae/bundle/macos/bundle/macos/bae.app"
+        APP_PATH="bae-desktop/target/dx/bae/bundle/macos/bundle/macos/bae.app"
         IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
         echo "Using signing identity: $IDENTITY"
         
@@ -182,8 +174,8 @@ jobs:
       env:
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        APP_PATH="bae/target/dx/bae/bundle/macos/bundle/macos/bae.app"
-        DMG_PATH="bae/target/bae.dmg"
+        APP_PATH="bae-desktop/target/dx/bae/bundle/macos/bundle/macos/bae.app"
+        DMG_PATH="bae-desktop/target/bae.dmg"
         IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
         
         # Create temporary directory for DMG contents
@@ -206,7 +198,7 @@ jobs:
         APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        DMG_PATH="bae/target/bae.dmg"
+        DMG_PATH="bae-desktop/target/bae.dmg"
         
         xcrun notarytool submit "$DMG_PATH" \
           --apple-id "$APPLE_ID" \
@@ -227,7 +219,7 @@ jobs:
       env:
         SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
       run: |
-        DMG_PATH="bae/target/bae.dmg"
+        DMG_PATH="bae-desktop/target/bae.dmg"
         
         # Sign the DMG and capture the signature
         SIGNATURE=$(echo "$SPARKLE_PRIVATE_KEY" | /tmp/sparkle/bin/sign_update "$DMG_PATH" -f -)
@@ -242,7 +234,7 @@ jobs:
         VERSION="${{ needs.calculate-version.outputs.version }}"
         DMG_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/bae.dmg"
         
-        cat > bae/target/appcast.xml << EOF
+        cat > bae-desktop/target/appcast.xml << EOF
         <?xml version="1.0" encoding="utf-8"?>
         <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
           <channel>
@@ -268,7 +260,7 @@ jobs:
         EOF
 
     - name: Verify app bundle is properly bundled
-      working-directory: ./bae
+      working-directory: ./bae-desktop
       run: |
         set -euo pipefail
         APP_PATH="target/dx/bae/bundle/macos/bundle/macos/bae.app"
@@ -320,7 +312,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: bae-macOS-signed
-        path: bae/target/bae.dmg
+        path: bae-desktop/target/bae.dmg
         retention-days: 30
 
     - name: Create GitHub Release
@@ -328,8 +320,8 @@ jobs:
       with:
         tag_name: v${{ needs.calculate-version.outputs.version }}
         files: |
-          bae/target/bae.dmg
-          bae/target/appcast.xml
+          bae-desktop/target/bae.dmg
+          bae-desktop/target/appcast.xml
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

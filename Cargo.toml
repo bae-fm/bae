@@ -1,0 +1,3 @@
+[workspace]
+members = ["bae-core", "bae-ui", "bae-desktop", "bae-demo"]
+resolver = "2"
