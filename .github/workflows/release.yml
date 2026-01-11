@@ -137,7 +137,7 @@ jobs:
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
         APP_PATH="target/dx/bae/bundle/macos/bundle/macos/bae.app"
-        DMG_PATH="bae-desktop/target/bae.dmg"
+        DMG_PATH="target/bae.dmg"
         IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
         
         # Create temporary directory for DMG contents
@@ -160,7 +160,7 @@ jobs:
         APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        DMG_PATH="bae-desktop/target/bae.dmg"
+        DMG_PATH="target/bae.dmg"
         
         xcrun notarytool submit "$DMG_PATH" \
           --apple-id "$APPLE_ID" \
@@ -181,7 +181,7 @@ jobs:
       env:
         SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
       run: |
-        DMG_PATH="bae-desktop/target/bae.dmg"
+        DMG_PATH="target/bae.dmg"
         
         # Sign the DMG and capture the signature
         SIGNATURE=$(echo "$SPARKLE_PRIVATE_KEY" | /tmp/sparkle/bin/sign_update "$DMG_PATH" -f -)
@@ -196,7 +196,7 @@ jobs:
         VERSION="${{ needs.calculate-version.outputs.version }}"
         DMG_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/bae.dmg"
         
-        cat > bae-desktop/target/appcast.xml << EOF
+        cat > target/appcast.xml << EOF
         <?xml version="1.0" encoding="utf-8"?>
         <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
           <channel>
@@ -273,7 +273,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: bae-macOS-signed
-        path: bae-desktop/target/bae.dmg
+        path: target/bae.dmg
         retention-days: 30
 
     - name: Create GitHub Release
@@ -281,8 +281,8 @@ jobs:
       with:
         tag_name: v${{ needs.calculate-version.outputs.version }}
         files: |
-          bae-desktop/target/bae.dmg
-          bae-desktop/target/appcast.xml
+          target/bae.dmg
+          target/appcast.xml
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
