@@ -362,12 +362,16 @@ pub fn FolderImport() -> Element {
         .iter()
         .map(|f| {
             let path = std::path::Path::new(&*folder_path.read()).join(&f.name);
-            (
-                f.name.clone(),
-                crate::ui::local_file_url::local_file_url(&path),
-            )
+            let url = crate::ui::local_file_url::local_file_url(&path);
+            tracing::debug!("Generated image URL for {}: {}", f.name, url);
+            (f.name.clone(), url)
         })
         .collect();
+    tracing::debug!(
+        "image_data has {} entries, artwork has {} entries",
+        image_data.len(),
+        display_folder_files.artwork.len()
+    );
 
     rsx! {
         FolderImportView {

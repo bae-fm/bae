@@ -64,11 +64,19 @@ pub fn make_config(context: &AppContext) -> DioxusConfig {
         .with_disable_drag_drop_handler(false)
         .with_custom_protocol("bae", move |_webview_id, request| {
             let uri = request.uri().to_string();
-            if uri.starts_with("bae://local") {
+            tracing::trace!("bae:// protocol request: {:?}", uri);
+            if uri.starts_with("bae://local/") {
                 let encoded_path = uri.strip_prefix("bae://local").unwrap_or("");
-                let path = urlencoding::decode(encoded_path)
-                    .map(|s| s.into_owned())
-                    .unwrap_or_else(|_| encoded_path.to_string());
+                // Decode each path segment and rejoin with /
+                let path: String = encoded_path
+                    .split('/')
+                    .map(|segment| {
+                        urlencoding::decode(segment)
+                            .map(|s| s.into_owned())
+                            .unwrap_or_else(|_| segment.to_string())
+                    })
+                    .collect::<Vec<_>>()
+                    .join("/");
                 match std::fs::read(&path) {
                     Ok(data) => {
                         let mime_type = std::path::Path::new(&path)

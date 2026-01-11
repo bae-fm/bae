@@ -13,13 +13,20 @@ pub fn image_url(image_id: &str) -> String {
     format!("bae://image/{}", image_id)
 }
 
-/// Convert a local file path to a bae://local URL.
+/// Convert a local file path to a bae://local/path URL.
 ///
-/// The path is URL-encoded so it can contain spaces and special characters.
+/// Path components are URL-encoded so they can contain spaces and special characters.
+/// The slashes are preserved so the webview recognizes this as a valid URL path.
 pub fn local_file_url(path: &Path) -> String {
-    let path_str = path.to_string_lossy();
-    let encoded = urlencoding::encode(&path_str);
-    format!("bae://local{}", encoded)
+    let encoded_segments: Vec<String> = path
+        .components()
+        .filter_map(|c| match c {
+            std::path::Component::Normal(s) => s.to_str(),
+            _ => None,
+        })
+        .map(|s| urlencoding::encode(s).into_owned())
+        .collect();
+    format!("bae://local/{}", encoded_segments.join("/"))
 }
 
 #[cfg(test)]
@@ -35,12 +42,12 @@ mod tests {
     #[test]
     fn test_local_file_url_simple() {
         let url = local_file_url(Path::new("/path/to/file.jpg"));
-        assert_eq!(url, "bae://local%2Fpath%2Fto%2Ffile.jpg");
+        assert_eq!(url, "bae://local/path/to/file.jpg");
     }
 
     #[test]
     fn test_local_file_url_with_spaces() {
         let url = local_file_url(Path::new("/Users/test/My Music/cover.jpg"));
-        assert_eq!(url, "bae://local%2FUsers%2Ftest%2FMy%20Music%2Fcover.jpg");
+        assert_eq!(url, "bae://local/Users/test/My%20Music/cover.jpg");
     }
 }
