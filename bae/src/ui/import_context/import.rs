@@ -2,7 +2,6 @@ use super::state::{ImportContext, SelectedCover};
 use crate::discogs::DiscogsRelease;
 use crate::import::{ImportProgress, ImportRequest, MatchCandidate, MatchSource};
 use crate::ui::components::import::ImportSource;
-use crate::ui::local_file_url;
 use crate::ui::Route;
 use dioxus::prelude::*;
 use dioxus::router::Navigator;
@@ -89,16 +88,11 @@ pub async fn confirm_and_start_import(
     let storage_profile_id = ctx.storage_profile_id().read().clone();
     let metadata = ctx.detected_metadata().read().clone();
     let master_year = metadata.as_ref().and_then(|m| m.year).unwrap_or(1970);
-    let folder_path_for_cover = ctx.folder_path().read().clone();
     let (cover_art_url, selected_cover_filename) = match ctx.selected_cover().read().clone() {
         Some(SelectedCover::Remote {
             url,
             expected_filename,
         }) => (Some(url), Some(expected_filename)),
-        Some(SelectedCover::Local { filename }) => {
-            let local_path = format!("{}/{}", folder_path_for_cover, filename);
-            (Some(local_file_url(&local_path)), Some(filename))
-        }
         None => (None, None),
     };
     let request = match import_source {

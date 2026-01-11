@@ -10,9 +10,7 @@ use crate::library::SharedLibraryManager;
 use crate::musicbrainz::MbRelease;
 use crate::torrent::ffi::TorrentInfo;
 use crate::ui::components::dialog_context::DialogContext;
-use crate::ui::components::import::{
-    CategorizedFileInfo, ImportSource, SearchSource, TorrentInputMode,
-};
+use crate::ui::components::import::{CategorizedFileInfo, ImportSource, SearchSource};
 use dioxus::prelude::*;
 use dioxus::router::Navigator;
 use std::path::PathBuf;
@@ -25,11 +23,6 @@ pub enum SelectedCover {
         url: String,
         /// The filename the cover will be downloaded to (e.g. ".bae/cover-mb.jpg")
         expected_filename: String,
-    },
-    /// Local artwork file from the album folder
-    Local {
-        /// Relative path from album folder (e.g. "scans/front.jpg")
-        filename: String,
     },
 }
 /// Compute the expected filename for a remote cover download.
@@ -106,7 +99,6 @@ pub struct ImportContext {
     pub(crate) torrent_metadata: Signal<Option<TorrentImportMetadata>>,
     pub(crate) torrent_info_hash: Signal<Option<String>>,
     pub(crate) torrent_info: Signal<Option<TorrentInfo>>,
-    pub(crate) torrent_input_mode: Signal<TorrentInputMode>,
     pub(crate) magnet_link: Signal<String>,
     pub(crate) cd_toc_info: Signal<Option<(String, u8, u8)>>,
     pub(crate) storage_profile_id: Signal<Option<String>>,
@@ -167,7 +159,6 @@ impl ImportContext {
             torrent_metadata: Signal::new(None),
             torrent_info_hash: Signal::new(None),
             torrent_info: Signal::new(None),
-            torrent_input_mode: Signal::new(TorrentInputMode::File),
             magnet_link: Signal::new(String::new()),
             cd_toc_info: Signal::new(None),
             storage_profile_id: Signal::new(None),
@@ -267,9 +258,6 @@ impl ImportContext {
     pub fn is_looking_up(&self) -> Signal<bool> {
         self.is_looking_up
     }
-    pub fn is_importing(&self) -> Signal<bool> {
-        self.is_importing
-    }
     pub fn preparing_step(&self) -> Signal<Option<PrepareStep>> {
         self.preparing_step
     }
@@ -297,13 +285,6 @@ impl ImportContext {
             expected_filename,
         }));
     }
-    /// Set a local cover by filename (relative path from album folder)
-    pub fn set_local_cover(&self, filename: &str) {
-        let mut signal = self.selected_cover;
-        signal.set(Some(SelectedCover::Local {
-            filename: filename.to_string(),
-        }));
-    }
     pub fn torrent_source(&self) -> Signal<Option<TorrentSource>> {
         self.torrent_source
     }
@@ -315,10 +296,6 @@ impl ImportContext {
     }
     pub fn storage_profile_id(&self) -> Signal<Option<String>> {
         self.storage_profile_id
-    }
-    pub fn set_storage_profile_id(&self, value: Option<String>) {
-        let mut signal = self.storage_profile_id;
-        signal.set(value);
     }
     pub fn set_search_artist(&self, value: String) {
         let mut signal = self.search_artist;
@@ -490,13 +467,6 @@ impl ImportContext {
         let mut signal = self.torrent_info;
         signal.set(value);
     }
-    pub fn torrent_input_mode(&self) -> Signal<TorrentInputMode> {
-        self.torrent_input_mode
-    }
-    pub fn set_torrent_input_mode(&self, value: TorrentInputMode) {
-        let mut signal = self.torrent_input_mode;
-        signal.set(value);
-    }
     pub fn magnet_link(&self) -> Signal<String> {
         self.magnet_link
     }
@@ -568,7 +538,6 @@ impl ImportContext {
         self.set_torrent_metadata(None);
         self.set_torrent_info_hash(None);
         self.set_torrent_info(None);
-        self.set_torrent_input_mode(TorrentInputMode::File);
         self.set_magnet_link(String::new());
         self.set_cd_toc_info(None);
         self.set_manual_match_candidates(Vec::new());
@@ -777,31 +746,15 @@ mod tests {
         assert_eq!(filename, ".bae/cover-mb.jpg");
     }
     #[test]
-    fn test_selected_cover_local_stores_filename() {
-        let cover = SelectedCover::Local {
-            filename: "scans/front.jpg".to_string(),
-        };
-        if let SelectedCover::Local { filename } = cover {
-            assert_eq!(filename, "scans/front.jpg");
-        } else {
-            panic!("Expected Local variant");
-        }
-    }
-    #[test]
     fn test_selected_cover_remote_stores_expected_filename() {
-        let cover = SelectedCover::Remote {
+        let SelectedCover::Remote {
+            url,
+            expected_filename,
+        } = SelectedCover::Remote {
             url: "https://example.com/cover.jpeg".to_string(),
             expected_filename: ".bae/cover-mb.jpeg".to_string(),
         };
-        if let SelectedCover::Remote {
-            url,
-            expected_filename,
-        } = cover
-        {
-            assert_eq!(url, "https://example.com/cover.jpeg");
-            assert_eq!(expected_filename, ".bae/cover-mb.jpeg");
-        } else {
-            panic!("Expected Remote variant");
-        }
+        assert_eq!(url, "https://example.com/cover.jpeg");
+        assert_eq!(expected_filename, ".bae/cover-mb.jpeg");
     }
 }

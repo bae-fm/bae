@@ -8,8 +8,7 @@ use crate::library::use_library_manager;
 use crate::playback::{PlaybackProgress, PlaybackState};
 use crate::ui::display_types::{PlaybackDisplay, Track};
 use crate::ui::{image_url, Route};
-use bae_ui::NowPlayingBarView;
-use bae_ui::QueueSidebarState;
+use bae_ui::{NowPlayingBarView, QueueSidebarState};
 use dioxus::prelude::*;
 
 /// Now Playing Bar wrapper that handles state subscription
@@ -150,6 +149,8 @@ pub fn NowPlayingBar() -> Element {
             position_ms: position_ms(),
             duration_ms: duration_ms(),
             pregap_ms: pregap_ms(),
+            playback_error: playback_error(),
+            on_dismiss_error: move |_| playback_error.set(None),
             on_previous: move |_| playback_for_prev.previous(),
             on_pause: move |_| playback_for_pause.pause(),
             on_resume: move |_| playback_for_resume.resume(),
@@ -160,18 +161,6 @@ pub fn NowPlayingBar() -> Element {
                 queue_sidebar_open.is_open.set(!current);
             },
             on_track_click,
-        }
-        if let Some(error) = playback_error() {
-            div { class: "fixed bottom-20 right-4 bg-red-600 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md",
-                div { class: "flex items-center justify-between gap-4",
-                    span { {error} }
-                    button {
-                        class: "text-white hover:text-gray-200",
-                        onclick: move |_| playback_error.set(None),
-                        "✕"
-                    }
-                }
-            }
         }
     }
 }

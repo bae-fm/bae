@@ -15,11 +15,11 @@ pub use source_selector::{ImportSource, ImportSourceSelectorView};
 pub use torrent_input::{TorrentInputMode, TorrentInputView};
 pub use view::ImportView;
 pub use workflow::{
-    CdRipperView, CdTocDisplayView, CdTocInfo, ConfirmationView, DetectingMetadataView,
-    DiscIdLookupErrorView, ExactLookupView, FileListView, FolderImportView, FolderImportViewProps,
-    ImageLightboxView, ImportErrorDisplayView, ManualSearchPanelView, MatchItemView, MatchListView,
-    MetadataDetectionPromptView, MetadataDisplayView, ReleaseSelectorView,
-    SearchSourceSelectorView, SelectedSourceView, SmartFileDisplayView, TextFileModalView,
-    TorrentFilesDisplayView, TorrentInfoDisplayView, TorrentTrackerDisplayView,
-    TrackerConnectionStatus, TrackerStatus,
+    CdImportView, CdImportViewProps, CdRipperView, CdTocDisplayView, CdTocInfo, ConfirmationView,
+    DetectingMetadataView, DiscIdLookupErrorView, ExactLookupView, FileListView, FolderImportView,
+    FolderImportViewProps, ImageLightboxView, ImportErrorDisplayView, ManualSearchPanelView,
+    MatchItemView, MatchListView, MetadataDetectionPromptView, MetadataDisplayView,
+    ReleaseSelectorView, SearchSourceSelectorView, SelectedSourceView, SmartFileDisplayView,
+    TextFileModalView, TorrentFilesDisplayView, TorrentImportView, TorrentImportViewProps,
+    TorrentInfoDisplayView, TorrentTrackerDisplayView, TrackerConnectionStatus, TrackerStatus,
 };

@@ -2,6 +2,7 @@
 //!
 //! Pure, props-based component for displaying current playback state.
 
+use crate::components::error_toast::ErrorToast;
 use crate::display_types::{PlaybackDisplay, Track};
 use dioxus::prelude::*;
 
@@ -18,6 +19,9 @@ pub fn NowPlayingBarView(
     position_ms: u64,
     duration_ms: u64,
     #[props(default)] pregap_ms: Option<i64>,
+    // Error display
+    #[props(default)] playback_error: Option<String>,
+    #[props(default)] on_dismiss_error: Option<EventHandler<()>>,
     // Callbacks - all required
     on_previous: EventHandler<()>,
     on_pause: EventHandler<()>,
@@ -84,6 +88,17 @@ pub fn NowPlayingBarView(
                     onclick: move |_| on_toggle_queue.call(()),
                     "☰"
                 }
+            }
+        }
+        if let Some(error) = playback_error {
+            ErrorToast {
+                title: None,
+                message: error,
+                on_dismiss: move |_| {
+                    if let Some(handler) = on_dismiss_error {
+                        handler.call(());
+                    }
+                },
             }
         }
     }

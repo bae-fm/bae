@@ -2,6 +2,7 @@
 //!
 //! Pure, props-based components for the import workflow UI.
 
+mod cd_import;
 mod cd_ripper;
 mod cd_toc_display;
 mod confirmation;
@@ -19,7 +20,9 @@ mod shared;
 mod smart_file_display;
 mod text_file_modal;
 mod torrent_display;
+mod torrent_import;
 
+pub use cd_import::{CdImportView, CdImportViewProps};
 pub use cd_ripper::CdRipperView;
 pub use cd_toc_display::{CdTocDisplayView, CdTocInfo};
 pub use confirmation::ConfirmationView;
@@ -42,3 +45,4 @@ pub use torrent_display::{
     MetadataDetectionPromptView, TorrentFilesDisplayView, TorrentInfoDisplayView,
     TorrentTrackerDisplayView, TrackerConnectionStatus, TrackerStatus,
 };
+pub use torrent_import::{TorrentImportView, TorrentImportViewProps};

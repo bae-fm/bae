@@ -4,6 +4,7 @@ pub mod album_card;
 pub mod album_detail;
 pub mod app_layout;
 pub mod dialog;
+pub mod error_toast;
 pub mod helpers;
 pub mod import;
 pub mod imports;
@@ -22,6 +23,7 @@ pub use album_detail::{
 };
 pub use app_layout::AppLayoutView;
 pub use dialog::GlobalDialogView;
+pub use error_toast::ErrorToast;
 pub use helpers::{BackButton, ErrorDisplay, LoadingSpinner, PageContainer};
 pub use import::{
     CdDriveStatus, CdSelectorView, ConfirmationView, DetectingMetadataView, DiscIdLookupErrorView,
