@@ -1,3 +1,5 @@
+//! CD import workflow - handles CD ripping imports
+
 use super::inputs::CdRipper;
 use super::shared::{
     Confirmation, DiscIdLookupError, ErrorDisplay, ExactLookup, ManualSearch, SelectedSource,
@@ -5,10 +7,12 @@ use super::shared::{
 use crate::import::MatchCandidate;
 use crate::ui::components::import::ImportSource;
 use crate::ui::import_context::{detection, ImportContext, ImportPhase};
+use bae_ui::components::import::{CdTocDisplayView, CdTocInfo};
 use dioxus::prelude::*;
 use std::path::PathBuf;
 use std::rc::Rc;
 use tracing::{info, warn};
+
 #[component]
 pub fn CdImport() -> Element {
     let import_context = use_context::<Rc<ImportContext>>();
@@ -23,6 +27,7 @@ pub fn CdImport() -> Element {
     let import_error_message = import_context.import_error_message();
     let duplicate_album_id = import_context.duplicate_album_id();
     let cd_toc_info = import_context.cd_toc_info();
+
     let on_drive_select = {
         let import_context = import_context.clone();
         move |drive_path: PathBuf| {
@@ -59,6 +64,7 @@ pub fn CdImport() -> Element {
             });
         }
     };
+
     let on_confirm_from_manual = {
         let import_context = import_context.clone();
         move |candidate: MatchCandidate| {
@@ -74,12 +80,24 @@ pub fn CdImport() -> Element {
             });
         }
     };
+
     let on_change_folder = {
         let import_context_clone = import_context.clone();
         EventHandler::new(move |()| {
             import_context_clone.reset();
         })
     };
+
+    // Prepare TOC info for view
+    let toc_info = cd_toc_info
+        .read()
+        .as_ref()
+        .map(|(disc_id, first_track, last_track)| CdTocInfo {
+            disc_id: disc_id.clone(),
+            first_track: *first_track,
+            last_track: *last_track,
+        });
+
     rsx! {
         div { class: "space-y-6",
             if *import_phase.read() == ImportPhase::FolderSelection {
@@ -98,33 +116,9 @@ pub fn CdImport() -> Element {
                         title: "Selected CD".to_string(),
                         path: folder_path,
                         on_clear: on_change_folder,
-                        if let Some((disc_id, first_track, last_track)) = cd_toc_info.read().as_ref() {
-                            div { class: "mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg",
-                                div { class: "space-y-2",
-                                    div { class: "flex items-center",
-                                        span { class: "text-sm font-medium text-gray-700 w-24",
-                                            "DiscID:"
-                                        }
-                                        span { class: "text-sm text-gray-900 font-mono",
-                                            "{disc_id}"
-                                        }
-                                    }
-                                    div { class: "flex items-center",
-                                        span { class: "text-sm font-medium text-gray-700 w-24",
-                                            "Tracks:"
-                                        }
-                                        span { class: "text-sm text-gray-900",
-                                            "{last_track - first_track + 1} tracks ({first_track}-{last_track})"
-                                        }
-                                    }
-                                }
-                            }
-                        } else if *is_looking_up.read() {
-                            div { class: "mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg text-center",
-                                p { class: "text-sm text-gray-600", "Reading CD table of contents..." }
-                            }
-                        }
+                        CdTocDisplayView { toc: toc_info, is_reading: *is_looking_up.read() }
                     }
+
                     if *import_phase.read() == ImportPhase::ExactLookup {
                         ExactLookup {
                             is_looking_up,
@@ -138,6 +132,7 @@ pub fn CdImport() -> Element {
                             },
                         }
                     }
+
                     if *import_phase.read() == ImportPhase::ManualSearch {
                         if import_context.discid_lookup_error().read().is_some() {
                             DiscIdLookupError {
@@ -172,6 +167,7 @@ pub fn CdImport() -> Element {
                             },
                         }
                     }
+
                     if *import_phase.read() == ImportPhase::Confirmation {
                         Confirmation {
                             confirmed_candidate,
@@ -191,6 +187,7 @@ pub fn CdImport() -> Element {
                             },
                         }
                     }
+
                     ErrorDisplay {
                         error_message: import_error_message,
                         duplicate_album_id,

@@ -1,12 +1,24 @@
-//! CD ripper component for selecting drive and ripping CD
+//! CD ripper wrapper - handles drive detection and delegates UI to CdRipperView
+
 use crate::cd::CdDrive;
+use bae_ui::components::import::CdRipperView;
+use bae_ui::display_types::CdDriveInfo;
 use dioxus::prelude::*;
 use std::path::PathBuf;
+
+fn to_display_drive(drive: &CdDrive) -> CdDriveInfo {
+    CdDriveInfo {
+        device_path: drive.device_path.to_string_lossy().to_string(),
+        name: drive.name.clone(),
+    }
+}
+
 #[component]
 pub fn CdRipper(on_drive_select: EventHandler<PathBuf>, on_error: EventHandler<String>) -> Element {
     let mut drives = use_signal(Vec::<CdDrive>::new);
     let mut selected_drive = use_signal(|| None::<PathBuf>);
     let mut is_scanning = use_signal(|| false);
+
     use_effect(move || {
         spawn(async move {
             is_scanning.set(true);
@@ -43,41 +55,23 @@ pub fn CdRipper(on_drive_select: EventHandler<PathBuf>, on_error: EventHandler<S
             is_scanning.set(false);
         });
     });
+
+    let display_drives: Vec<CdDriveInfo> = drives.read().iter().map(to_display_drive).collect();
+    let selected_path = selected_drive
+        .read()
+        .as_ref()
+        .map(|p| p.to_string_lossy().to_string());
+
     rsx! {
-        div { class: "space-y-4",
-            if *is_scanning.read() {
-                div { class: "text-center py-4 text-gray-400", "Scanning for CD drives..." }
-            } else {
-                div { class: "space-y-4",
-                    if drives.read().is_empty() {
-                        div { class: "text-center py-8 text-gray-400", "No CD drives detected" }
-                    } else {
-                        div { class: "space-y-2",
-                            label { class: "block text-sm font-medium text-gray-300",
-                                "Select CD Drive"
-                            }
-                            select {
-                                class: "w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500",
-                                onchange: move |evt| {
-                                    let value = evt.value();
-                                    if !value.is_empty() {
-                                        let path = PathBuf::from(value);
-                                        selected_drive.set(Some(path.clone()));
-                                        on_drive_select.call(path.clone());
-                                    }
-                                },
-                                for drive in drives.read().iter() {
-                                    option {
-                                        value: "{drive.device_path.display()}",
-                                        selected: selected_drive.read().as_ref().map(|p| p == &drive.device_path).unwrap_or(false),
-                                        "{drive.name}"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        CdRipperView {
+            is_scanning: *is_scanning.read(),
+            drives: display_drives,
+            selected_drive: selected_path,
+            on_drive_select: move |path: String| {
+                let path_buf = PathBuf::from(&path);
+                selected_drive.set(Some(path_buf.clone()));
+                on_drive_select.call(path_buf);
+            },
         }
     }
 }

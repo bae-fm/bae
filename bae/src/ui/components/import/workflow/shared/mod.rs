@@ -1,4 +1,4 @@
-mod confirmation;
+pub mod confirmation;
 mod detecting_metadata;
 mod error_display;
 mod exact_lookup;

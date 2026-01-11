@@ -1,7 +1,7 @@
 use super::state::ImportContext;
 use super::types::ImportPhase;
 use crate::import::MatchCandidate;
-use crate::ui::components::import::{ImportSource, TorrentInputMode};
+use crate::ui::components::import::ImportSource;
 use dioxus::prelude::*;
 use std::rc::Rc;
 /// Check if there is unclean state for the current import source
@@ -39,27 +39,6 @@ pub fn try_switch_import_source(ctx: &Rc<ImportContext>, source: ImportSource) {
     } else {
         ctx.set_selected_import_source(source);
         ctx.reset();
-    }
-}
-/// Try to switch torrent input mode, showing dialog if magnet link is not empty
-pub fn try_switch_torrent_input_mode(ctx: &Rc<ImportContext>, mode: TorrentInputMode) {
-    let current_mode = *ctx.torrent_input_mode().read();
-    if current_mode == TorrentInputMode::Magnet && !ctx.magnet_link().read().is_empty() {
-        let ctx_for_callback = Rc::clone(ctx);
-        ctx.dialog.show_with_callback(
-            "Watch out!".to_string(),
-            "If you switch to Torrent File mode, you will lose the magnet link you entered."
-                .to_string(),
-            "Switch Mode".to_string(),
-            "Cancel".to_string(),
-            move || {
-                ctx_for_callback.set_torrent_input_mode(mode);
-                ctx_for_callback.set_magnet_link(String::new());
-            },
-        );
-    } else {
-        ctx.set_torrent_input_mode(mode);
-        ctx.set_magnet_link(String::new());
     }
 }
 /// Select an exact match candidate by index and move to confirmation.

@@ -4,5 +4,5 @@ mod workflow;
 pub use import_source_selector::{ImportSource, TorrentInputMode};
 pub use import_workflow_manager::ImportWorkflowManager;
 pub use workflow::{
-    AudioContentInfo, CategorizedFileInfo, CueFlacPairInfo, FileInfo, SearchSource,
+    categorized_files_from_scanned, AudioContentInfo, CategorizedFileInfo, FileInfo, SearchSource,
 };

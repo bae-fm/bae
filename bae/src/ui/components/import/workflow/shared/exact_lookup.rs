@@ -1,6 +1,10 @@
-use super::super::match_list::MatchList;
+//! Exact lookup wrapper - reads signals and delegates to ExactLookupView
+
 use crate::import::MatchCandidate;
+use crate::ui::components::import::workflow::shared::confirmation::to_display_candidate;
+use bae_ui::components::import::ExactLookupView;
 use dioxus::prelude::*;
+
 #[component]
 pub fn ExactLookup(
     is_looking_up: ReadSignal<bool>,
@@ -8,29 +12,18 @@ pub fn ExactLookup(
     selected_match_index: ReadSignal<Option<usize>>,
     on_select: EventHandler<usize>,
 ) -> Element {
-    if *is_looking_up.read() {
-        rsx! {
-            div { class: "bg-gray-800 rounded-lg shadow p-6 text-center",
-                p { class: "text-gray-400", "Looking up release by DiscID..." }
-            }
-        }
-    } else if !exact_match_candidates.read().is_empty() {
-        rsx! {
-            div { class: "bg-gray-900 rounded-lg shadow p-6",
-                h3 { class: "text-lg font-semibold text-white mb-4", "Multiple Exact Matches Found" }
-                p { class: "text-sm text-gray-400 mb-4", "Select the correct release:" }
-                div { class: "mt-4",
-                    MatchList {
-                        candidates: exact_match_candidates.read().clone(),
-                        selected_index: selected_match_index.read().as_ref().copied(),
-                        on_select: move |index| on_select.call(index),
-                    }
-                }
-            }
-        }
-    } else {
-        rsx! {
-            div {}
+    let display_candidates: Vec<bae_ui::display_types::MatchCandidate> = exact_match_candidates
+        .read()
+        .iter()
+        .map(to_display_candidate)
+        .collect();
+
+    rsx! {
+        ExactLookupView {
+            is_looking_up: *is_looking_up.read(),
+            exact_match_candidates: display_candidates,
+            selected_match_index: *selected_match_index.read(),
+            on_select: move |index| on_select.call(index),
         }
     }
 }

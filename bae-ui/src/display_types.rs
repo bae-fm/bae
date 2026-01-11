@@ -195,6 +195,8 @@ pub struct FolderMetadata {
     pub album: Option<String>,
     pub year: Option<u32>,
     pub track_count: Option<u32>,
+    pub discid: Option<String>,
+    pub confidence: f32,
     /// Tokens extracted from folder name for search suggestions
     pub folder_tokens: Vec<String>,
 }
@@ -244,8 +246,8 @@ impl Default for AudioContentInfo {
 pub struct CategorizedFileInfo {
     /// Audio content - CUE/FLAC pairs or track files
     pub audio: AudioContentInfo,
-    /// Artwork/image files (with resolved display URLs)
-    pub artwork: Vec<ArtworkFile>,
+    /// Artwork/image files
+    pub artwork: Vec<FileInfo>,
     /// Document files (.log, .txt, .nfo) - CUE files in pairs are NOT here
     pub documents: Vec<FileInfo>,
     /// Everything else
@@ -265,18 +267,6 @@ impl CategorizedFileInfo {
     /// Check if empty
     pub fn is_empty(&self) -> bool {
         self.total_count() == 0
-    }
-
-    /// Get artwork as FileInfo for display in file lists
-    pub fn artwork_as_file_info(&self) -> Vec<FileInfo> {
-        self.artwork
-            .iter()
-            .map(|a| FileInfo {
-                name: a.name.clone(),
-                size: 0,
-                format: "Image".to_string(),
-            })
-            .collect()
     }
 }
 
@@ -324,4 +314,11 @@ pub enum SelectedCover {
 pub struct DetectedRelease {
     pub name: String,
     pub path: String,
+}
+
+/// CD drive info for selection UI
+#[derive(Clone, Debug, PartialEq)]
+pub struct CdDriveInfo {
+    pub device_path: String,
+    pub name: String,
 }

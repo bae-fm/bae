@@ -5,7 +5,9 @@ use crate::import::{
 };
 use crate::musicbrainz::{lookup_by_discid, ExternalUrls, MbRelease};
 use crate::torrent::parse_torrent_info;
-use crate::ui::components::import::{CategorizedFileInfo, FileInfo};
+use crate::ui::components::import::{
+    categorized_files_from_scanned, CategorizedFileInfo, FileInfo,
+};
 use dioxus::prelude::*;
 use std::path::PathBuf;
 use tracing::{info, warn};
@@ -159,7 +161,7 @@ pub async fn load_folder_for_import(
     let folder_contents = detect_folder_contents(release.path.clone())
         .map_err(|e| format!("Failed to detect folder contents: {}", e))?;
     let metadata = folder_contents.metadata;
-    let files = CategorizedFileInfo::from_scanned(&release.files);
+    let files = categorized_files_from_scanned(&release.files);
     info!(
         "Detected metadata: artist={:?}, album={:?}, year={:?}, mb_discid={:?}",
         metadata.artist, metadata.album, metadata.year, metadata.mb_discid
@@ -207,7 +209,7 @@ pub async fn load_selected_release(
         (
             release.name.clone(),
             release.path.clone(),
-            CategorizedFileInfo::from_scanned(&release.files),
+            categorized_files_from_scanned(&release.files),
         )
     };
     info!("Loading release: {} ({:?})", release_name, release_path);

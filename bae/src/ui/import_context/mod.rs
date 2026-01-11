@@ -7,7 +7,7 @@ pub mod types;
 use crate::ui::components::dialog_context::DialogContext;
 use crate::ui::AppContext;
 use dioxus::prelude::*;
-pub use state::ImportContext;
+pub use state::{ImportContext, SearchTab};
 use std::rc::Rc;
 pub use types::ImportPhase;
 /// Provider component to make search context available throughout the app

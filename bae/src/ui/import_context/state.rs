@@ -728,9 +728,6 @@ impl ImportContext {
     pub fn try_switch_import_source(self: &Rc<Self>, source: ImportSource) {
         navigation::try_switch_import_source(self, source)
     }
-    pub fn try_switch_torrent_input_mode(self: &Rc<Self>, mode: TorrentInputMode) {
-        navigation::try_switch_torrent_input_mode(self, mode)
-    }
     pub fn select_exact_match(&self, index: usize) {
         navigation::select_exact_match(self, index)
     }

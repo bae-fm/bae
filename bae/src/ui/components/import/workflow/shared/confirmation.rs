@@ -1,17 +1,78 @@
+//! Confirmation wrapper - reads context and delegates to ConfirmationView
+
 use crate::db::DbStorageProfile;
 use crate::import::{MatchCandidate, MatchSource};
 use crate::ui::import_context::state::SelectedCover;
 use crate::ui::import_context::ImportContext;
 use crate::ui::local_file_url;
 use crate::ui::Route;
+use bae_ui::components::import::ConfirmationView;
+use bae_ui::display_types::{ArtworkFile, MatchSourceType, StorageProfileInfo};
 use dioxus::prelude::*;
 use std::rc::Rc;
+
+/// Convert bae MatchCandidate to bae-ui display type
+pub fn to_display_candidate(candidate: &MatchCandidate) -> bae_ui::display_types::MatchCandidate {
+    let (source_type, format, country, label, catalog_number, original_year) =
+        match &candidate.source {
+            MatchSource::MusicBrainz(release) => (
+                MatchSourceType::MusicBrainz,
+                release.format.clone(),
+                release.country.clone(),
+                release.label.clone(),
+                release.catalog_number.clone(),
+                release.first_release_date.clone(),
+            ),
+            MatchSource::Discogs(result) => (
+                MatchSourceType::Discogs,
+                result.format.as_ref().map(|v| v.join(", ")),
+                result.country.clone(),
+                result.label.as_ref().map(|v| v.join(", ")),
+                None, // Discogs search results don't have catalog number
+                None,
+            ),
+        };
+
+    bae_ui::display_types::MatchCandidate {
+        title: candidate.title(),
+        artist: match &candidate.source {
+            MatchSource::MusicBrainz(r) => r.artist.clone(),
+            MatchSource::Discogs(r) => r.title.split(" - ").next().unwrap_or("").to_string(),
+        },
+        year: candidate.year(),
+        cover_url: candidate.cover_art_url(),
+        format,
+        country,
+        label,
+        catalog_number,
+        source_type,
+        original_year,
+    }
+}
+
+/// Convert bae SelectedCover to bae-ui display type
+fn to_display_selected_cover(
+    cover: &SelectedCover,
+    source_name: &str,
+) -> bae_ui::display_types::SelectedCover {
+    match cover {
+        SelectedCover::Remote { url, .. } => bae_ui::display_types::SelectedCover::Remote {
+            url: url.clone(),
+            source: source_name.to_string(),
+        },
+        SelectedCover::Local { filename } => bae_ui::display_types::SelectedCover::Local {
+            filename: filename.clone(),
+        },
+    }
+}
+
 #[component]
 pub fn Confirmation(
     confirmed_candidate: ReadSignal<Option<MatchCandidate>>,
     on_edit: EventHandler<()>,
     on_confirm: EventHandler<()>,
 ) -> Element {
+    let navigator = use_navigator();
     let import_context = use_context::<Rc<ImportContext>>();
     let is_importing = import_context.is_importing();
     let preparing_step = import_context.preparing_step();
@@ -19,6 +80,8 @@ pub fn Confirmation(
     let folder_path = import_context.folder_path();
     let mut storage_profiles: Signal<Vec<DbStorageProfile>> = use_signal(Vec::new);
     let selected_profile_id = import_context.storage_profile_id();
+
+    // Load storage profiles on mount
     {
         let import_context = import_context.clone();
         use_effect(move || {
@@ -45,7 +108,10 @@ pub fn Confirmation(
             });
         });
     }
+
     let selected_cover = import_context.selected_cover();
+
+    // Auto-select remote cover if none selected
     {
         let import_context = import_context.clone();
         use_effect(move || {
@@ -62,225 +128,102 @@ pub fn Confirmation(
             }
         });
     }
-    if let Some(candidate) = confirmed_candidate.read().as_ref() {
-        let remote_cover_url = candidate.cover_art_url();
-        let release_year = candidate.year();
-        let original_year = match &candidate.source {
-            MatchSource::MusicBrainz(release) => release.first_release_date.clone(),
-            MatchSource::Discogs(_) => None,
-        };
-        let cover_source = match &candidate.source {
-            MatchSource::MusicBrainz(_) => "musicbrainz",
-            MatchSource::Discogs(_) => "discogs",
-        };
-        let artwork_files = folder_files.read().artwork.clone();
-        let folder_path_str = folder_path.read().clone();
-        let display_cover_url = match selected_cover.read().as_ref() {
-            Some(SelectedCover::Local { filename }) => {
-                let path = format!("{}/{}", folder_path_str, filename);
-                Some(local_file_url(&path))
+
+    let Some(candidate) = confirmed_candidate.read().as_ref().cloned() else {
+        return rsx! {};
+    };
+
+    let remote_cover_url = candidate.cover_art_url();
+    let folder_path_str = folder_path.read().clone();
+
+    // Convert artwork files to ArtworkFile with resolved URLs
+    let artwork_files: Vec<ArtworkFile> = folder_files
+        .read()
+        .artwork
+        .iter()
+        .map(|f| {
+            let path = format!("{}/{}", folder_path_str, f.name);
+            ArtworkFile {
+                name: f.name.clone(),
+                display_url: local_file_url(&path),
             }
-            Some(SelectedCover::Remote { url, .. }) => Some(url.clone()),
-            None => remote_cover_url.clone(),
-        };
-        rsx! {
-            div { class: "bg-gray-800 rounded-lg shadow p-6",
-                h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide mb-4",
-                    "Selected Release"
-                }
-                div { class: "bg-gray-900 rounded-lg p-5 mb-4 border border-gray-700",
-                    div { class: "flex gap-6",
-                        if let Some(ref url) = display_cover_url {
-                            div { class: "flex-shrink-0 w-32 h-32 rounded-lg border border-gray-600 shadow-lg overflow-hidden",
-                                img {
-                                    src: "{url}",
-                                    alt: "Album cover",
-                                    class: "w-full h-full object-cover",
-                                }
-                            }
-                        } else {
-                            div { class: "flex-shrink-0 w-32 h-32 rounded-lg border border-gray-600 shadow-lg bg-gray-700 flex items-center justify-center",
-                                span { class: "text-gray-500 text-4xl", "🎵" }
-                            }
-                        }
-                        div { class: "flex-1 space-y-3",
-                            p { class: "text-xl font-semibold text-white", "{candidate.title()}" }
-                            div { class: "space-y-1 text-sm text-gray-300",
-                                if let Some(ref orig_year) = original_year {
-                                    p {
-                                        span { class: "text-gray-400", "Original: " }
-                                        span { class: "text-white", "{orig_year}" }
-                                    }
-                                }
-                                if let Some(ref year) = release_year {
-                                    p {
-                                        span { class: "text-gray-400", "This Release: " }
-                                        span { class: "text-white", "{year}" }
-                                    }
-                                }
-                                {
-                                    let (format_text, country_text, label_text) = match &candidate.source {
-                                        MatchSource::MusicBrainz(release) => {
-                                            (release.format.clone(), release.country.clone(), release.label.clone())
-                                        }
-                                        MatchSource::Discogs(_) => (None, None, None),
-                                    };
-                                    rsx! {
-                                        if let Some(ref fmt) = format_text {
-                                            p {
-                                                span { class: "text-gray-400", "Format: " }
-                                                span { class: "text-white", "{fmt}" }
-                                            }
-                                        }
-                                        if let Some(ref country) = country_text {
-                                            p {
-                                                span { class: "text-gray-400", "Country: " }
-                                                span { class: "text-white", "{country}" }
-                                            }
-                                        }
-                                        if let Some(ref label) = label_text {
-                                            p {
-                                                span { class: "text-gray-400", "Label: " }
-                                                span { class: "text-white", "{label}" }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if !artwork_files.is_empty() || remote_cover_url.is_some() {
-                    div { class: "mb-4",
-                        h4 { class: "text-sm font-medium text-gray-400 mb-2", "Cover Art" }
-                        div { class: "flex flex-wrap gap-2",
-                            if let Some(ref url) = remote_cover_url {
-                                {
-                                    let is_selected = matches!(
-                                        selected_cover.read().as_ref(),
-                                        Some(SelectedCover::Remote { .. })
-                                    );
-                                    let url_for_click = url.clone();
-                                    let source_for_click = cover_source.to_string();
-                                    let ctx = import_context.clone();
-                                    rsx! {
-                                        button {
-                                            class: if is_selected { "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden" } else { "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden" },
-                                            onclick: move |_| ctx.set_remote_cover(&url_for_click, &source_for_click),
-                                            img {
-                                                src: "{url}",
-                                                alt: "Remote cover",
-                                                class: "w-full h-full object-cover",
-                                            }
-                                            if is_selected {
-                                                div { class: "absolute top-0 right-0 bg-green-500 text-white text-xs px-1 rounded-bl",
-                                                    "✓"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            for img in artwork_files.iter() {
-                                {
-                                    let img_name = img.name.clone();
-                                    let is_selected = matches!(
-                                        selected_cover.read().as_ref(),
-                                        Some(SelectedCover::Local { filename })
-                                        if filename == &img_name
-                                    );
-                                    let img_path = format!("{}/{}", folder_path_str, img.name);
-                                    let img_url = local_file_url(&img_path);
-                                    let name_for_click = img.name.clone();
-                                    let ctx = import_context.clone();
-                                    rsx! {
-                                        button {
-                                            class: if is_selected { "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden" } else { "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden" },
-                                            onclick: move |_| ctx.set_local_cover(&name_for_click),
-                                            img {
-                                                src: "{img_url}",
-                                                alt: "{img.name}",
-                                                class: "w-full h-full object-cover",
-                                            }
-                                            if is_selected {
-                                                div { class: "absolute top-0 right-0 bg-green-500 text-white text-xs px-1 rounded-bl",
-                                                    "✓"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        p { class: "text-xs text-gray-500 mt-1",
-                            "Click an image to set it as the album cover"
-                        }
-                    }
-                }
-                div { class: "mb-4 flex items-center gap-3",
-                    label { class: "text-sm text-gray-400", "Storage:" }
-                    select {
-                        class: "bg-gray-700 text-white rounded px-3 py-1.5 text-sm border border-gray-600 focus:border-blue-500 focus:outline-none",
-                        disabled: *is_importing.read(),
-                        onchange: {
-                            let import_context = import_context.clone();
-                            move |evt: Event<FormData>| {
-                                let value = evt.value();
-                                if value == "__none__" {
-                                    import_context.set_storage_profile_id(None);
-                                } else if !value.is_empty() {
-                                    import_context.set_storage_profile_id(Some(value));
-                                }
-                            }
-                        },
-                        option {
-                            key: "__none__",
-                            value: "__none__",
-                            selected: selected_profile_id.read().is_none(),
-                            "No Storage (files stay in place)"
-                        }
-                        for profile in storage_profiles.read().iter() {
-                            option {
-                                key: "{profile.id}",
-                                value: "{profile.id}",
-                                selected: selected_profile_id.read().as_ref() == Some(&profile.id),
-                                "{profile.name}"
-                            }
-                        }
-                    }
-                    Link {
-                        to: Route::Settings {},
-                        class: "text-xs text-indigo-400 hover:text-indigo-300 transition-colors",
-                        "Configure"
-                    }
-                }
-                div { class: "flex justify-end gap-3 items-center",
-                    if *is_importing.read() {
-                        if let Some(step) = *preparing_step.read() {
-                            span { class: "text-sm text-gray-400", {step.display_text()} }
-                        }
-                    }
-                    button {
-                        class: "px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors border border-gray-600",
-                        disabled: *is_importing.read(),
-                        onclick: move |_| on_edit.call(()),
-                        "Edit"
-                    }
-                    button {
-                        class: if *is_importing.read() { "px-6 py-2 bg-green-600 text-white rounded-lg transition-colors opacity-75 cursor-not-allowed flex items-center gap-2" } else { "px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2" },
-                        disabled: *is_importing.read(),
-                        onclick: move |_| on_confirm.call(()),
-                        if *is_importing.read() {
-                            div { class: "animate-spin rounded-full h-4 w-4 border-b-2 border-white" }
-                        }
-                        "Import"
-                    }
-                }
-            }
+        })
+        .collect();
+
+    // Compute display cover URL
+    let display_cover_url = match selected_cover.read().as_ref() {
+        Some(SelectedCover::Local { filename }) => {
+            let path = format!("{}/{}", folder_path_str, filename);
+            Some(local_file_url(&path))
         }
-    } else {
-        rsx! {
-            div {}
+        Some(SelectedCover::Remote { url, .. }) => Some(url.clone()),
+        None => remote_cover_url.clone(),
+    };
+
+    // Convert storage profiles to display type
+    let profiles: Vec<StorageProfileInfo> = storage_profiles
+        .read()
+        .iter()
+        .map(|p| StorageProfileInfo {
+            id: p.id.clone(),
+            name: p.name.clone(),
+            is_default: p.is_default,
+        })
+        .collect();
+
+    let display_candidate = to_display_candidate(&candidate);
+    let cover_source_name = match &candidate.source {
+        MatchSource::MusicBrainz(_) => "musicbrainz",
+        MatchSource::Discogs(_) => "discogs",
+    };
+    let display_selected_cover = selected_cover
+        .read()
+        .as_ref()
+        .map(|c| to_display_selected_cover(c, cover_source_name));
+    let preparing_text = preparing_step
+        .read()
+        .as_ref()
+        .map(|s| s.display_text().to_string());
+
+    rsx! {
+        ConfirmationView {
+            candidate: display_candidate,
+            selected_cover: display_selected_cover,
+            display_cover_url,
+            artwork_files,
+            remote_cover_url,
+            storage_profiles: profiles,
+            selected_profile_id: selected_profile_id.read().clone(),
+            is_importing: *is_importing.read(),
+            preparing_step_text: preparing_text,
+            on_select_remote_cover: {
+                let import_context = import_context.clone();
+                let source = match &candidate.source {
+                    MatchSource::MusicBrainz(_) => "musicbrainz",
+                    MatchSource::Discogs(_) => "discogs",
+                };
+                let source = source.to_string();
+                move |url: String| {
+                    import_context.set_remote_cover(&url, &source);
+                }
+            },
+            on_select_local_cover: {
+                let import_context = import_context.clone();
+                move |filename: String| {
+                    import_context.set_local_cover(&filename);
+                }
+            },
+            on_storage_profile_change: {
+                let import_context = import_context.clone();
+                move |profile_id: Option<String>| {
+                    import_context.set_storage_profile_id(profile_id);
+                }
+            },
+            on_edit: move |_| on_edit.call(()),
+            on_confirm: move |_| on_confirm.call(()),
+            on_configure_storage: move |_| {
+                navigator.push(Route::Settings {});
+            },
         }
     }
 }

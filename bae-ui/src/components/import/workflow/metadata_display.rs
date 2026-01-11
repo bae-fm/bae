@@ -1,14 +1,19 @@
-use crate::import::FolderMetadata;
+//! Metadata display view component
+
+use crate::display_types::FolderMetadata;
 use dioxus::prelude::*;
+
+/// Display detected folder metadata
 #[component]
-pub fn MetadataDisplay(metadata: FolderMetadata) -> Element {
-    let confidence_color = if metadata.confidence >= 70.0 {
+pub fn MetadataDisplayView(metadata: FolderMetadata) -> Element {
+    let confidence_color = if metadata.confidence >= 70.0_f32 {
         "text-green-600"
-    } else if metadata.confidence >= 40.0 {
+    } else if metadata.confidence >= 40.0_f32 {
         "text-yellow-600"
     } else {
         "text-red-600"
     };
+
     rsx! {
         div { class: "bg-white rounded-lg shadow p-6 mb-6",
             h3 { class: "text-lg font-semibold text-gray-900 mb-4", "Detected Metadata" }

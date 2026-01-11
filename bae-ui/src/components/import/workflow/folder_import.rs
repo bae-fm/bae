@@ -5,8 +5,8 @@ use super::{
     ImportErrorDisplayView, ManualSearchPanelView, ReleaseSelectorView, SelectedSourceView,
 };
 use crate::display_types::{
-    CategorizedFileInfo, DetectedRelease, FileInfo, FolderMetadata, ImportPhase, MatchCandidate,
-    SearchSource, SearchTab, SelectedCover, StorageProfileInfo,
+    ArtworkFile, CategorizedFileInfo, DetectedRelease, FileInfo, FolderMetadata, ImportPhase,
+    MatchCandidate, SearchSource, SearchTab, SelectedCover, StorageProfileInfo,
 };
 use crate::FolderSelectorView;
 use dioxus::prelude::*;
@@ -69,6 +69,8 @@ pub struct FolderImportViewProps {
     pub confirmed_candidate: Option<MatchCandidate>,
     pub selected_cover: Option<SelectedCover>,
     pub display_cover_url: Option<String>,
+    /// Artwork files with resolved display URLs for cover selection
+    pub artwork_files: Vec<ArtworkFile>,
     pub storage_profiles: Vec<StorageProfileInfo>,
     pub selected_profile_id: Option<String>,
     pub is_importing: bool,
@@ -117,9 +119,7 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
                                 h4 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3",
                                     "Files"
                                 }
-                                FileListView {
-                                    files: get_all_files(&props.folder_files),
-                                }
+                                FileListView { files: get_all_files(&props.folder_files) }
                             }
                         }
                     }
@@ -170,7 +170,11 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
                             on_catalog_number_change: props.on_catalog_number_change,
                             search_barcode: props.search_barcode.clone(),
                             on_barcode_change: props.on_barcode_change,
-                            search_tokens: props.detected_metadata.as_ref().map(|m| m.folder_tokens.clone()).unwrap_or_default(),
+                            search_tokens: props
+                                .detected_metadata
+                                .as_ref()
+                                .map(|m| m.folder_tokens.clone())
+                                .unwrap_or_default(),
                             is_searching: props.is_searching,
                             error_message: props.search_error.clone(),
                             has_searched: props.has_searched,
@@ -189,7 +193,7 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
                                 candidate: candidate.clone(),
                                 selected_cover: props.selected_cover.clone(),
                                 display_cover_url: props.display_cover_url.clone(),
-                                artwork_files: props.folder_files.artwork.clone(),
+                                artwork_files: props.artwork_files.clone(),
                                 remote_cover_url: candidate.cover_url.clone(),
                                 storage_profiles: props.storage_profiles.clone(),
                                 selected_profile_id: props.selected_profile_id.clone(),
@@ -238,7 +242,7 @@ fn get_all_files(categorized: &CategorizedFileInfo) -> Vec<FileInfo> {
             files.extend(tracks.clone());
         }
     }
-    files.extend(categorized.artwork_as_file_info());
+    files.extend(categorized.artwork.clone());
     files.extend(categorized.documents.clone());
     files.extend(categorized.other.clone());
     files

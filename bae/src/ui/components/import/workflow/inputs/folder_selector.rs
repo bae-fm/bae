@@ -1,19 +1,26 @@
+//! Folder selector wrapper - handles drag/drop and file dialog, delegates UI to FolderSelectorView
+
+use bae_ui::FolderSelectorView;
 use dioxus::prelude::*;
 use rfd::AsyncFileDialog;
 use std::path::Path;
+
 #[component]
 pub fn FolderSelector(on_select: EventHandler<String>, on_error: EventHandler<String>) -> Element {
     let mut is_dragging = use_signal(|| false);
     let mut drag_counter = use_signal(|| 0i32);
+
     let on_drag_enter = move |evt: dioxus::html::DragEvent| {
         evt.prevent_default();
         let current = *drag_counter.read();
         drag_counter.set(current + 1);
         is_dragging.set(true);
     };
+
     let on_drag_over = move |evt: dioxus::html::DragEvent| {
         evt.prevent_default();
     };
+
     let on_drag_leave = move |evt: dioxus::html::DragEvent| {
         evt.prevent_default();
         let current: i32 = *drag_counter.read();
@@ -22,6 +29,7 @@ pub fn FolderSelector(on_select: EventHandler<String>, on_error: EventHandler<St
             is_dragging.set(false);
         }
     };
+
     let on_drop = {
         let mut is_dragging = is_dragging;
         let mut drag_counter = drag_counter;
@@ -30,19 +38,24 @@ pub fn FolderSelector(on_select: EventHandler<String>, on_error: EventHandler<St
             evt.prevent_default();
             is_dragging.set(false);
             drag_counter.set(0);
+
             let data = evt.data();
             tracing::info!("Got drag data");
+
             use dioxus::html::HasFileData;
             let files = data.files();
             tracing::info!("Files count: {}", files.len());
+
             if files.is_empty() {
                 tracing::warn!("No files in drop event");
                 on_error.call("No files or folders were dropped.".to_string());
                 return;
             }
+
             let first_file = &files[0];
             let first_path = first_file.path();
             tracing::info!("First file path: {}", first_path.display());
+
             let path = Path::new(&first_path);
             let resolved_path = if path.is_absolute() {
                 tracing::info!("Path is absolute: {}", path.display());
@@ -64,12 +77,14 @@ pub fn FolderSelector(on_select: EventHandler<String>, on_error: EventHandler<St
                         path.to_path_buf()
                     })
             };
+
             tracing::info!(
                 "Resolved path: {}, exists: {}, is_dir: {}",
                 resolved_path.display(),
                 resolved_path.exists(),
                 resolved_path.is_dir()
             );
+
             if resolved_path.exists() && resolved_path.is_dir() {
                 tracing::info!("Calling on_select with: {}", resolved_path.display());
                 on_select.call(resolved_path.to_string_lossy().to_string());
@@ -94,14 +109,14 @@ pub fn FolderSelector(on_select: EventHandler<String>, on_error: EventHandler<St
                     resolved_path.exists(),
                     resolved_path.is_dir()
                 );
-                on_error
-                    .call(
-                        "Could not resolve folder path from drag-and-drop. Please use the 'Select Folder' button below."
-                            .to_string(),
-                    );
+                on_error.call(
+                    "Could not resolve folder path from drag-and-drop. Please use the 'Select Folder' button below."
+                        .to_string(),
+                );
             }
         }
     };
+
     let on_button_click = move |_| {
         spawn(async move {
             if let Some(folder_handle) = AsyncFileDialog::new()
@@ -114,45 +129,17 @@ pub fn FolderSelector(on_select: EventHandler<String>, on_error: EventHandler<St
             }
         });
     };
-    let drag_classes = if *is_dragging.read() {
-        "border-blue-500 bg-blue-900/20 border-solid"
-    } else {
-        "border-gray-600 border-dashed"
-    };
+
+    // Wrap the view in a drop zone
     rsx! {
         div {
-            class: "border-2 rounded-lg p-12 transition-all duration-200 {drag_classes}",
             ondragenter: on_drag_enter,
             ondragover: on_drag_over,
             ondragleave: on_drag_leave,
             ondrop: on_drop,
-            div { class: "flex flex-col items-center justify-center space-y-6",
-                div { class: "w-16 h-16 text-gray-400",
-                    svg {
-                        xmlns: "http://www.w3.org/2000/svg",
-                        fill: "none",
-                        view_box: "0 0 24 24",
-                        stroke_width: "1.5",
-                        stroke: "currentColor",
-                        class: "w-full h-full",
-                        path {
-                            stroke_linecap: "round",
-                            stroke_linejoin: "round",
-                            d: "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5m-7.5 0h15",
-                        }
-                    }
-                }
-                div { class: "text-center space-y-2",
-                    h3 { class: "text-lg font-semibold text-gray-200", "Select your music folder" }
-                    p { class: "text-sm text-gray-400",
-                        "Click the button below to choose a folder containing your music files"
-                    }
-                }
-                button {
-                    class: "px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium",
-                    onclick: on_button_click,
-                    "Select Folder"
-                }
+            FolderSelectorView {
+                is_dragging: *is_dragging.read(),
+                on_select_click: on_button_click,
             }
         }
     }

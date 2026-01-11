@@ -1,36 +1,34 @@
-use super::match_list::MatchList;
-use super::source_selector::SearchSourceSelector;
+//! Manual search panel wrapper - reads context and delegates to ManualSearchPanelView
+
 use crate::import::MatchCandidate;
 use crate::musicbrainz::extract_search_tokens;
-use crate::ui::import_context::state::SearchTab;
+use crate::ui::components::import::workflow::shared::confirmation::to_display_candidate;
 use crate::ui::import_context::ImportContext;
+use bae_ui::components::import::ManualSearchPanelView;
+use bae_ui::display_types::{SearchSource, SearchTab};
 use dioxus::prelude::*;
 use std::rc::Rc;
-#[component]
-fn ClearButton(value: Signal<String>, input_ref: Signal<Option<Rc<MountedData>>>) -> Element {
-    rsx! {
-        button {
-            class: "absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-3",
-            onclick: move |_| {
-                value.set(String::new());
-                if let Some(input) = input_ref.read().as_ref() {
-                    drop(input.set_focus(true));
-                }
-            },
-            "✕"
-        }
+
+use crate::ui::components::import::SearchSource as BaeSearchSource;
+use crate::ui::import_context::SearchTab as BaeSearchTab;
+
+/// Convert bae SearchSource to bae-ui display type
+fn to_display_search_source(source: &BaeSearchSource) -> SearchSource {
+    match source {
+        BaeSearchSource::MusicBrainz => SearchSource::MusicBrainz,
+        BaeSearchSource::Discogs => SearchSource::Discogs,
     }
 }
-/// Which search field is currently focused (for pill insertion)
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum FocusedField {
-    Artist,
-    Album,
-    Year,
-    Label,
-    CatalogNumber,
-    Barcode,
+
+/// Convert bae SearchTab to bae-ui display type
+fn to_display_search_tab(tab: &BaeSearchTab) -> SearchTab {
+    match tab {
+        BaeSearchTab::General => SearchTab::General,
+        BaeSearchTab::CatalogNumber => SearchTab::CatalogNumber,
+        BaeSearchTab::Barcode => SearchTab::Barcode,
+    }
 }
+
 #[component]
 pub fn ManualSearchPanel(
     detected_metadata: Signal<Option<crate::import::FolderMetadata>>,
@@ -39,423 +37,200 @@ pub fn ManualSearchPanel(
     selected_index: Signal<Option<usize>>,
 ) -> Element {
     let import_context = use_context::<Rc<ImportContext>>();
-    let mut search_artist = import_context.search_artist();
-    let mut search_album = import_context.search_album();
-    let mut search_year = import_context.search_year();
-    let mut search_label = import_context.search_label();
-    let mut search_catalog_number = import_context.search_catalog_number();
-    let mut search_barcode = import_context.search_barcode();
-    let mut active_tab = import_context.search_tab();
+    let search_artist = import_context.search_artist();
+    let search_album = import_context.search_album();
+    let search_year = import_context.search_year();
+    let search_label = import_context.search_label();
+    let search_catalog_number = import_context.search_catalog_number();
+    let search_barcode = import_context.search_barcode();
+    let active_tab = import_context.search_tab();
     let search_source = import_context.search_source();
     let match_candidates = import_context.manual_match_candidates();
     let mut is_searching = use_signal(|| false);
     let error_message = import_context.error_message();
-    let mut focused_field = use_signal(|| None::<FocusedField>);
-    let mut artist_input_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
-    let mut album_input_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
-    let mut year_input_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
-    let mut label_input_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
-    let catno_input_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
-    let barcode_input_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
-    let search_tokens = use_memo(move || {
-        detected_metadata
-            .read()
-            .as_ref()
-            .map(extract_search_tokens)
-            .unwrap_or_default()
-    });
-    let mut perform_general_search = {
-        let import_context = import_context.clone();
-        move || {
-            let artist = search_artist.read().clone();
-            let album = search_album.read().clone();
-            let year = search_year.read().clone();
-            let label = search_label.read().clone();
-            if artist.trim().is_empty()
-                && album.trim().is_empty()
-                && year.trim().is_empty()
-                && label.trim().is_empty()
-            {
-                import_context
-                    .set_error_message(Some("Please fill in at least one field".to_string()));
-                return;
-            }
-            is_searching.set(true);
-            import_context.set_error_message(None);
-            import_context.set_manual_match_candidates(Vec::new());
-            let import_context_clone = import_context.clone();
-            let source = search_source.read().clone();
-            let mut is_searching_clone = is_searching;
-            spawn(async move {
-                match import_context_clone
-                    .search_general(source, artist, album, year, label)
-                    .await
-                {
-                    Ok(candidates) => {
-                        import_context_clone.set_manual_match_candidates(candidates);
-                    }
-                    Err(e) => {
-                        import_context_clone
-                            .set_error_message(Some(format!("Search failed: {}", e)));
-                    }
-                }
-                import_context_clone.set_has_searched(true);
-                is_searching_clone.set(false);
-            });
-        }
-    };
-    let mut perform_catno_search = {
-        let import_context = import_context.clone();
-        move || {
-            let catno = search_catalog_number.read().clone();
-            if catno.trim().is_empty() {
-                import_context.set_error_message(Some("Please enter a catalog number".to_string()));
-                return;
-            }
-            is_searching.set(true);
-            import_context.set_error_message(None);
-            import_context.set_manual_match_candidates(Vec::new());
-            let import_context_clone = import_context.clone();
-            let source = search_source.read().clone();
-            let mut is_searching_clone = is_searching;
-            spawn(async move {
-                match import_context_clone
-                    .search_by_catalog_number(source, catno)
-                    .await
-                {
-                    Ok(candidates) => {
-                        import_context_clone.set_manual_match_candidates(candidates);
-                    }
-                    Err(e) => {
-                        import_context_clone
-                            .set_error_message(Some(format!("Search failed: {}", e)));
-                    }
-                }
-                import_context_clone.set_has_searched(true);
-                is_searching_clone.set(false);
-            });
-        }
-    };
-    let mut perform_barcode_search = {
-        let import_context = import_context.clone();
-        move || {
-            let barcode = search_barcode.read().clone();
-            if barcode.trim().is_empty() {
-                import_context.set_error_message(Some("Please enter a barcode".to_string()));
-                return;
-            }
-            is_searching.set(true);
-            import_context.set_error_message(None);
-            import_context.set_manual_match_candidates(Vec::new());
-            let import_context_clone = import_context.clone();
-            let source = search_source.read().clone();
-            let mut is_searching_clone = is_searching;
-            spawn(async move {
-                match import_context_clone
-                    .search_by_barcode(source, barcode)
-                    .await
-                {
-                    Ok(candidates) => {
-                        import_context_clone.set_manual_match_candidates(candidates);
-                    }
-                    Err(e) => {
-                        import_context_clone
-                            .set_error_message(Some(format!("Search failed: {}", e)));
-                    }
-                }
-                import_context_clone.set_has_searched(true);
-                is_searching_clone.set(false);
-            });
-        }
-    };
     let has_searched = import_context.has_searched();
+
+    let search_tokens: Vec<String> = detected_metadata
+        .read()
+        .as_ref()
+        .map(extract_search_tokens)
+        .unwrap_or_default();
+
+    // Search handlers
+    let mut perform_search = {
+        let import_context = import_context.clone();
+        move || {
+            let tab = *active_tab.read();
+            let source = search_source.read().clone();
+
+            match tab {
+                BaeSearchTab::General => {
+                    let artist = search_artist.read().clone();
+                    let album = search_album.read().clone();
+                    let year = search_year.read().clone();
+                    let label = search_label.read().clone();
+
+                    if artist.trim().is_empty()
+                        && album.trim().is_empty()
+                        && year.trim().is_empty()
+                        && label.trim().is_empty()
+                    {
+                        import_context.set_error_message(Some(
+                            "Please fill in at least one field".to_string(),
+                        ));
+                        return;
+                    }
+
+                    is_searching.set(true);
+                    import_context.set_error_message(None);
+                    import_context.set_manual_match_candidates(Vec::new());
+
+                    let ctx = import_context.clone();
+                    let mut is_searching = is_searching;
+                    spawn(async move {
+                        match ctx.search_general(source, artist, album, year, label).await {
+                            Ok(candidates) => ctx.set_manual_match_candidates(candidates),
+                            Err(e) => ctx.set_error_message(Some(format!("Search failed: {}", e))),
+                        }
+                        ctx.set_has_searched(true);
+                        is_searching.set(false);
+                    });
+                }
+                BaeSearchTab::CatalogNumber => {
+                    let catno = search_catalog_number.read().clone();
+                    if catno.trim().is_empty() {
+                        import_context
+                            .set_error_message(Some("Please enter a catalog number".to_string()));
+                        return;
+                    }
+
+                    is_searching.set(true);
+                    import_context.set_error_message(None);
+                    import_context.set_manual_match_candidates(Vec::new());
+
+                    let ctx = import_context.clone();
+                    let mut is_searching = is_searching;
+                    spawn(async move {
+                        match ctx.search_by_catalog_number(source, catno).await {
+                            Ok(candidates) => ctx.set_manual_match_candidates(candidates),
+                            Err(e) => ctx.set_error_message(Some(format!("Search failed: {}", e))),
+                        }
+                        ctx.set_has_searched(true);
+                        is_searching.set(false);
+                    });
+                }
+                BaeSearchTab::Barcode => {
+                    let barcode = search_barcode.read().clone();
+                    if barcode.trim().is_empty() {
+                        import_context
+                            .set_error_message(Some("Please enter a barcode".to_string()));
+                        return;
+                    }
+
+                    is_searching.set(true);
+                    import_context.set_error_message(None);
+                    import_context.set_manual_match_candidates(Vec::new());
+
+                    let ctx = import_context.clone();
+                    let mut is_searching = is_searching;
+                    spawn(async move {
+                        match ctx.search_by_barcode(source, barcode).await {
+                            Ok(candidates) => ctx.set_manual_match_candidates(candidates),
+                            Err(e) => ctx.set_error_message(Some(format!("Search failed: {}", e))),
+                        }
+                        ctx.set_has_searched(true);
+                        is_searching.set(false);
+                    });
+                }
+            }
+        }
+    };
+
+    // Convert candidates to display type
+    let display_candidates: Vec<bae_ui::display_types::MatchCandidate> = match_candidates
+        .read()
+        .iter()
+        .map(to_display_candidate)
+        .collect();
+
     rsx! {
-        div { class: "bg-gray-800 rounded-lg shadow p-6 space-y-4",
-            div { class: "flex justify-between items-center",
-                h3 { class: "text-lg font-semibold text-white", "Search for Release" }
-                SearchSourceSelector {
-                    selected_source: search_source,
-                    on_select: move |source| {
-                        import_context.set_search_source(source);
-                        import_context.set_manual_match_candidates(Vec::new());
-                        import_context.set_error_message(None);
-                    },
+        ManualSearchPanelView {
+            search_source: to_display_search_source(&search_source.read()),
+            on_search_source_change: {
+                let import_context = import_context.clone();
+                move |source: SearchSource| {
+                    let bae_source = match source {
+                        SearchSource::MusicBrainz => BaeSearchSource::MusicBrainz,
+                        SearchSource::Discogs => BaeSearchSource::Discogs,
+                    };
+                    import_context.set_search_source(bae_source);
+                    import_context.set_manual_match_candidates(Vec::new());
+                    import_context.set_error_message(None);
                 }
-            }
-            div { class: "flex border-b border-gray-700",
-                button {
-                    class: if *active_tab.read() == SearchTab::General { "px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500" } else { "px-4 py-2 text-sm font-medium text-gray-400 hover:text-white" },
-                    onclick: move |_| {
-                        active_tab.set(SearchTab::General);
-                    },
-                    "General"
+            },
+            active_tab: to_display_search_tab(&active_tab.read()),
+            on_tab_change: {
+                let import_context = import_context.clone();
+                move |tab: SearchTab| {
+                    let bae_tab = match tab {
+                        SearchTab::General => BaeSearchTab::General,
+                        SearchTab::CatalogNumber => BaeSearchTab::CatalogNumber,
+                        SearchTab::Barcode => BaeSearchTab::Barcode,
+                    };
+                    import_context.set_search_tab(bae_tab);
                 }
-                button {
-                    class: if *active_tab.read() == SearchTab::CatalogNumber { "px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500" } else { "px-4 py-2 text-sm font-medium text-gray-400 hover:text-white" },
-                    onclick: move |_| {
-                        active_tab.set(SearchTab::CatalogNumber);
-                    },
-                    "Catalog #"
+            },
+            search_artist: search_artist.read().clone(),
+            on_artist_change: {
+                let import_context = import_context.clone();
+                move |value: String| import_context.set_search_artist(value)
+            },
+            search_album: search_album.read().clone(),
+            on_album_change: {
+                let import_context = import_context.clone();
+                move |value: String| import_context.set_search_album(value)
+            },
+            search_year: search_year.read().clone(),
+            on_year_change: {
+                let import_context = import_context.clone();
+                move |value: String| import_context.set_search_year(value)
+            },
+            search_label: search_label.read().clone(),
+            on_label_change: {
+                let import_context = import_context.clone();
+                move |value: String| import_context.set_search_label(value)
+            },
+            search_catalog_number: search_catalog_number.read().clone(),
+            on_catalog_number_change: {
+                let import_context = import_context.clone();
+                move |value: String| import_context.set_search_catalog_number(value)
+            },
+            search_barcode: search_barcode.read().clone(),
+            on_barcode_change: {
+                let import_context = import_context.clone();
+                move |value: String| import_context.set_search_barcode(value)
+            },
+            search_tokens,
+            is_searching: *is_searching.read(),
+            error_message: error_message.read().clone(),
+            has_searched: *has_searched.read(),
+            match_candidates: display_candidates,
+            selected_index: *selected_index.read(),
+            on_match_select: move |index: usize| {
+                selected_index.set(Some(index));
+                on_match_select.call(index);
+            },
+            on_search: move |_| perform_search(),
+            on_confirm: move |candidate: bae_ui::display_types::MatchCandidate| {
+                // Find the original bae candidate by title match
+                if let Some(bae_candidate) = match_candidates
+                    .read()
+                    .iter()
+                    .find(|c| c.title() == candidate.title)
+                {
+                    on_confirm.call(bae_candidate.clone());
                 }
-                button {
-                    class: if *active_tab.read() == SearchTab::Barcode { "px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500" } else { "px-4 py-2 text-sm font-medium text-gray-400 hover:text-white" },
-                    onclick: move |_| {
-                        active_tab.set(SearchTab::Barcode);
-                    },
-                    "Barcode"
-                }
-            }
-            if !search_tokens.read().is_empty() {
-                div { class: "flex flex-wrap gap-2",
-                    for token in search_tokens.read().iter() {
-                        {
-                            let token_clone = token.clone();
-                            let is_enabled = focused_field.read().is_some();
-                            let pill_class = if is_enabled {
-                                "px-3 py-1 text-sm bg-gray-700 text-gray-300 rounded-full hover:bg-gray-600 hover:text-white transition-colors border border-gray-600 cursor-pointer"
-                            } else {
-                                "px-3 py-1 text-sm bg-gray-800 text-gray-500 rounded-full border border-gray-700 cursor-not-allowed opacity-60"
-                            };
-                            rsx! {
-                                button {
-                                    class: "{pill_class}",
-                                    disabled: !is_enabled,
-                                    title: if is_enabled { "Click to fill focused field" } else { "Focus a field first, then click to fill" },
-                                    onmousedown: move |e| {
-                                        e.prevent_default();
-                                        if let Some(field) = *focused_field.read() {
-                                            match field {
-                                                FocusedField::Artist => {
-                                                    search_artist.set(token_clone.clone());
-                                                    if let Some(input) = album_input_ref.read().as_ref() {
-                                                        std::mem::drop(input.set_focus(true));
-                                                    }
-                                                }
-                                                FocusedField::Album => {
-                                                    search_album.set(token_clone.clone());
-                                                    if let Some(input) = year_input_ref.read().as_ref() {
-                                                        std::mem::drop(input.set_focus(true));
-                                                    }
-                                                }
-                                                FocusedField::Year => {
-                                                    search_year.set(token_clone.clone());
-                                                    if let Some(input) = label_input_ref.read().as_ref() {
-                                                        std::mem::drop(input.set_focus(true));
-                                                    }
-                                                }
-                                                FocusedField::Label => {
-                                                    search_label.set(token_clone.clone());
-                                                }
-                                                FocusedField::CatalogNumber => {
-                                                    search_catalog_number.set(token_clone.clone());
-                                                }
-                                                FocusedField::Barcode => {
-                                                    search_barcode.set(token_clone.clone());
-                                                }
-                                            }
-                                        }
-                                    },
-                                    "{token}"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            div { class: "space-y-3",
-                match *active_tab.read() {
-                    SearchTab::General => rsx! {
-                        div { class: "grid grid-cols-2 gap-3",
-                            div {
-                                label { class: "block text-sm font-medium text-gray-300 mb-1", "Artist" }
-                                div { class: "relative",
-                                    input {
-                                        r#type: "text",
-                                        class: "w-full px-4 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white",
-                                        value: "{search_artist}",
-                                        oninput: move |e| search_artist.set(e.value()),
-                                        onfocus: move |_| focused_field.set(Some(FocusedField::Artist)),
-                                        onblur: move |_| focused_field.set(None),
-                                        onmounted: move |element| {
-                                            let data = element.data();
-                                            artist_input_ref.set(Some(data.clone()));
-                                        },
-                                    }
-                                    if !search_artist.read().is_empty() {
-                                        ClearButton { value: search_artist, input_ref: artist_input_ref }
-                                    }
-                                }
-                            }
-                            div {
-                                label { class: "block text-sm font-medium text-gray-300 mb-1", "Album" }
-                                div { class: "relative",
-                                    input {
-                                        r#type: "text",
-                                        class: "w-full px-4 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white",
-                                        value: "{search_album}",
-                                        oninput: move |e| search_album.set(e.value()),
-                                        onfocus: move |_| focused_field.set(Some(FocusedField::Album)),
-                                        onblur: move |_| focused_field.set(None),
-                                        onmounted: move |element| album_input_ref.set(Some(element.data())),
-                                    }
-                                    if !search_album.read().is_empty() {
-                                        ClearButton { value: search_album, input_ref: album_input_ref }
-                                    }
-                                }
-                            }
-                            div {
-                                label { class: "block text-sm font-medium text-gray-300 mb-1", "Year" }
-                                div { class: "relative",
-                                    input {
-                                        r#type: "text",
-                                        class: "w-full px-4 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white",
-                                        value: "{search_year}",
-                                        oninput: move |e| search_year.set(e.value()),
-                                        onfocus: move |_| focused_field.set(Some(FocusedField::Year)),
-                                        onblur: move |_| focused_field.set(None),
-                                        onmounted: move |element| year_input_ref.set(Some(element.data())),
-                                    }
-                                    if !search_year.read().is_empty() {
-                                        ClearButton { value: search_year, input_ref: year_input_ref }
-                                    }
-                                }
-                            }
-                            div {
-                                label { class: "block text-sm font-medium text-gray-300 mb-1", "Label" }
-                                div { class: "relative",
-                                    input {
-                                        r#type: "text",
-                                        class: "w-full px-4 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white",
-                                        value: "{search_label}",
-                                        oninput: move |e| search_label.set(e.value()),
-                                        onfocus: move |_| focused_field.set(Some(FocusedField::Label)),
-                                        onblur: move |_| focused_field.set(None),
-                                        onmounted: move |element| label_input_ref.set(Some(element.data())),
-                                    }
-                                    if !search_label.read().is_empty() {
-                                        ClearButton { value: search_label, input_ref: label_input_ref }
-                                    }
-                                }
-                            }
-                        }
-                        div { class: "flex justify-end pt-2",
-                            button {
-                                class: "px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed",
-                                disabled: *is_searching.read(),
-                                onclick: move |_| perform_general_search(),
-                                if *is_searching.read() {
-                                    "Searching..."
-                                } else {
-                                    "Search"
-                                }
-                            }
-                        }
-                    },
-                    SearchTab::CatalogNumber => rsx! {
-                        div { class: "flex gap-3",
-                            div { class: "flex-1 relative",
-                                input {
-                                    key: "catno-input",
-                                    r#type: "text",
-                                    class: "w-full px-4 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white",
-                                    value: "{search_catalog_number}",
-                                    oninput: move |e| search_catalog_number.set(e.value()),
-                                    onfocus: move |_| focused_field.set(Some(FocusedField::CatalogNumber)),
-                                    onblur: move |_| focused_field.set(None),
-                                    onmounted: |element| {
-                                        println!("catno-input mounted");
-                                        drop(element.set_focus(true));
-                                    },
-                                }
-                                if !search_catalog_number.read().is_empty() {
-                                    ClearButton { value: search_catalog_number, input_ref: catno_input_ref }
-                                }
-                            }
-                            button {
-                                class: "px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed",
-                                disabled: *is_searching.read(),
-                                onclick: move |_| perform_catno_search(),
-                                if *is_searching.read() {
-                                    "Searching..."
-                                } else {
-                                    "Search"
-                                }
-                            }
-                        }
-                    },
-                    SearchTab::Barcode => rsx! {
-                        div { class: "flex gap-3",
-                            div { class: "flex-1 relative",
-                                input {
-                                    key: "barcode-input",
-                                    r#type: "text",
-                                    class: "w-full px-4 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white",
-                                    value: "{search_barcode}",
-                                    oninput: move |e| search_barcode.set(e.value()),
-                                    onfocus: move |_| focused_field.set(Some(FocusedField::Barcode)),
-                                    onblur: move |_| focused_field.set(None),
-                                    onmounted: |element| {
-                                        drop(element.set_focus(true));
-                                    },
-                                }
-                                if !search_barcode.read().is_empty() {
-                                    ClearButton { value: search_barcode, input_ref: barcode_input_ref }
-                                }
-                            }
-                            button {
-                                class: "px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed",
-                                disabled: *is_searching.read(),
-                                onclick: move |_| perform_barcode_search(),
-                                if *is_searching.read() {
-                                    "Searching..."
-                                } else {
-                                    "Search"
-                                }
-                            }
-                        }
-                    },
-                }
-            }
-            if let Some(ref error) = error_message.read().as_ref() {
-                div { class: "bg-red-900/30 border border-red-700 rounded-lg p-4",
-                    p { class: "text-sm text-red-300 select-text", "Error: {error}" }
-                }
-            }
-            if *is_searching.read() {
-                div { class: "text-center py-8",
-                    p { class: "text-gray-400", "Searching..." }
-                }
-            } else if match_candidates.read().is_empty() && *has_searched.read() {
-                div { class: "text-center py-8",
-                    p { class: "text-gray-400", "No results found" }
-                }
-            } else if !match_candidates.read().is_empty() {
-                div { class: "space-y-4 mt-4",
-                    MatchList {
-                        candidates: match_candidates.read().clone(),
-                        selected_index: selected_index.read().as_ref().copied(),
-                        on_select: move |index| {
-                            selected_index.set(Some(index));
-                            on_match_select.call(index);
-                        },
-                    }
-                    if selected_index.read().is_some() {
-                        div { class: "flex justify-end",
-                            button {
-                                class: "px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700",
-                                onclick: move |_| {
-                                    if let Some(index) = selected_index.read().as_ref().copied() {
-                                        if let Some(candidate) = match_candidates.read().get(index) {
-                                            on_confirm.call(candidate.clone());
-                                        }
-                                    }
-                                },
-                                "Confirm Selection"
-                            }
-                        }
-                    }
-                }
-            }
+            },
         }
     }
 }
