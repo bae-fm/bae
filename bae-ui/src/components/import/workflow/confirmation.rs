@@ -129,11 +129,7 @@ pub fn ConfirmationView(
                                 let url_for_click = url.clone();
                                 rsx! {
                                     button {
-                                        class: if is_selected {
-                                            "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden"
-                                        } else {
-                                            "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden"
-                                        },
+                                        class: if is_selected { "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden" } else { "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden" },
                                         onclick: move |_| on_select_remote_cover.call(url_for_click.clone()),
                                         img {
                                             src: "{url}",
@@ -156,18 +152,15 @@ pub fn ConfirmationView(
                                 let img_name = img.name.clone();
                                 let is_selected = matches!(
                                     selected_cover.as_ref(),
-                                    Some(SelectedCover::Local { filename }) if filename == &img_name
+                                    Some(SelectedCover::Local { filename })
+                                    if filename == &img_name
                                 );
                                 let img_url = img.display_url.clone();
                                 let name_for_click = img.name.clone();
                                 rsx! {
                                     button {
                                         key: "{img_name}",
-                                        class: if is_selected {
-                                            "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden"
-                                        } else {
-                                            "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden"
-                                        },
+                                        class: if is_selected { "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden" } else { "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden" },
                                         onclick: move |_| on_select_local_cover.call(name_for_click.clone()),
                                         img {
                                             src: "{img_url}",
@@ -240,11 +233,7 @@ pub fn ConfirmationView(
                     "Edit"
                 }
                 button {
-                    class: if is_importing {
-                        "px-6 py-2 bg-green-600 text-white rounded-lg transition-colors opacity-75 cursor-not-allowed flex items-center gap-2"
-                    } else {
-                        "px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                    },
+                    class: if is_importing { "px-6 py-2 bg-green-600 text-white rounded-lg transition-colors opacity-75 cursor-not-allowed flex items-center gap-2" } else { "px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2" },
                     disabled: is_importing,
                     onclick: move |_| on_confirm.call(()),
                     if is_importing {

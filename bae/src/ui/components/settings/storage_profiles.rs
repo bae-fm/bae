@@ -1,7 +1,44 @@
+//! Storage Profiles section wrapper - handles persistence, delegates UI to StorageProfilesSectionView
+
 use crate::db::{DbStorageProfile, StorageLocation};
 use crate::library::use_library_manager;
+use bae_ui::{StorageProfile, StorageProfilesSectionView};
 use dioxus::prelude::*;
 use tracing::{error, info};
+
+/// Convert bae StorageLocation to bae-ui StorageLocation
+fn to_display_location(loc: StorageLocation) -> bae_ui::StorageLocation {
+    match loc {
+        StorageLocation::Local => bae_ui::StorageLocation::Local,
+        StorageLocation::Cloud => bae_ui::StorageLocation::Cloud,
+    }
+}
+
+/// Convert bae-ui StorageLocation to bae StorageLocation
+fn from_display_location(loc: bae_ui::StorageLocation) -> StorageLocation {
+    match loc {
+        bae_ui::StorageLocation::Local => StorageLocation::Local,
+        bae_ui::StorageLocation::Cloud => StorageLocation::Cloud,
+    }
+}
+
+/// Convert DbStorageProfile to bae-ui StorageProfile
+fn to_display_profile(p: &DbStorageProfile) -> StorageProfile {
+    StorageProfile {
+        id: p.id.clone(),
+        name: p.name.clone(),
+        location: to_display_location(p.location),
+        location_path: p.location_path.clone(),
+        encrypted: p.encrypted,
+        is_default: p.is_default,
+        cloud_bucket: p.cloud_bucket.clone(),
+        cloud_region: p.cloud_region.clone(),
+        cloud_endpoint: p.cloud_endpoint.clone(),
+        cloud_access_key: p.cloud_access_key.clone(),
+        cloud_secret_key: p.cloud_secret_key.clone(),
+    }
+}
+
 /// Storage Profiles section - CRUD for profiles
 #[component]
 pub fn StorageProfilesSection() -> Element {
@@ -11,6 +48,7 @@ pub fn StorageProfilesSection() -> Element {
     let mut is_creating = use_signal(|| false);
     let mut is_loading = use_signal(|| true);
     let mut refresh_trigger = use_signal(|| 0u32);
+
     let lm = library_manager.clone();
     use_effect(move || {
         let _ = *refresh_trigger.read();
@@ -24,624 +62,144 @@ pub fn StorageProfilesSection() -> Element {
             is_loading.set(false);
         });
     });
-    rsx! {
-        div { class: "max-w-2xl",
-            div { class: "flex items-center justify-between mb-6",
-                h2 { class: "text-xl font-semibold text-white", "Storage Profiles" }
-                if !*is_creating.read() && editing_profile.read().is_none() {
-                    button {
-                        class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors flex items-center gap-2",
-                        onclick: move |_| {
-                            is_creating.set(true);
-                            editing_profile.set(None);
-                        },
-                        svg {
-                            class: "w-5 h-5",
-                            fill: "none",
-                            stroke: "currentColor",
-                            view_box: "0 0 24 24",
-                            path {
-                                stroke_linecap: "round",
-                                stroke_linejoin: "round",
-                                stroke_width: "2",
-                                d: "M12 4v16m8-8H4",
-                            }
-                        }
-                        "New Profile"
+
+    let display_profiles: Vec<StorageProfile> =
+        profiles.read().iter().map(to_display_profile).collect();
+
+    let display_editing = editing_profile.read().as_ref().map(to_display_profile);
+
+    // Handle save from the view - profile data comes back as bae-ui::StorageProfile
+    let handle_save = {
+        let lm = library_manager.clone();
+        move |profile: StorageProfile| {
+            let lm = lm.clone();
+            let is_new = profile.id.is_empty();
+            spawn(async move {
+                let result = if is_new {
+                    // Create new profile
+                    let location = from_display_location(profile.location);
+                    let db_profile = if location == StorageLocation::Local {
+                        DbStorageProfile::new_local(
+                            &profile.name,
+                            &profile.location_path,
+                            profile.encrypted,
+                        )
+                    } else {
+                        let endpoint = profile.cloud_endpoint.as_deref();
+                        DbStorageProfile::new_cloud(
+                            &profile.name,
+                            profile.cloud_bucket.as_deref().unwrap_or(""),
+                            profile.cloud_region.as_deref().unwrap_or(""),
+                            endpoint,
+                            profile.cloud_access_key.as_deref().unwrap_or(""),
+                            profile.cloud_secret_key.as_deref().unwrap_or(""),
+                            profile.encrypted,
+                        )
                     }
-                }
-            }
-            if *is_creating.read() {
-                ProfileEditor {
-                    profile: None,
-                    on_save: move |_| {
+                    .with_default(profile.is_default);
+                    lm.insert_storage_profile(&db_profile).await
+                } else {
+                    // Update existing profile
+                    let mut db_profile = DbStorageProfile {
+                        id: profile.id.clone(),
+                        name: profile.name.clone(),
+                        location: from_display_location(profile.location),
+                        location_path: profile.location_path.clone(),
+                        encrypted: profile.encrypted,
+                        is_default: profile.is_default,
+                        cloud_bucket: profile.cloud_bucket.clone(),
+                        cloud_region: profile.cloud_region.clone(),
+                        cloud_endpoint: profile.cloud_endpoint.clone(),
+                        cloud_access_key: profile.cloud_access_key.clone(),
+                        cloud_secret_key: profile.cloud_secret_key.clone(),
+                        created_at: chrono::Utc::now(),
+                        updated_at: chrono::Utc::now(),
+                    };
+
+                    if db_profile.location == StorageLocation::Local {
+                        db_profile.cloud_bucket = None;
+                        db_profile.cloud_region = None;
+                        db_profile.cloud_endpoint = None;
+                        db_profile.cloud_access_key = None;
+                        db_profile.cloud_secret_key = None;
+                    }
+
+                    lm.update_storage_profile(&db_profile).await
+                };
+
+                match result {
+                    Ok(()) => {
+                        info!("Saved storage profile: {}", profile.name);
                         is_creating.set(false);
+                        editing_profile.set(None);
                         refresh_trigger.set(refresh_trigger() + 1);
-                    },
-                    on_cancel: move |_| {
-                        editing_profile.set(None);
-                        is_creating.set(false);
-                    },
+                    }
+                    Err(e) => {
+                        error!("Failed to save profile: {}", e);
+                    }
                 }
-            } else if let Some(profile) = editing_profile.read().clone() {
-                ProfileEditor {
-                    profile: Some(profile),
-                    on_save: move |_| {
-                        editing_profile.set(None);
+            });
+        }
+    };
+
+    let handle_delete = {
+        let lm = library_manager.clone();
+        move |profile_id: String| {
+            let lm = lm.clone();
+            spawn(async move {
+                match lm.delete_storage_profile(&profile_id).await {
+                    Ok(()) => {
+                        info!("Deleted profile: {}", profile_id);
                         refresh_trigger.set(refresh_trigger() + 1);
-                    },
-                    on_cancel: move |_| {
-                        editing_profile.set(None);
-                        is_creating.set(false);
-                    },
-                }
-            }
-            if !*is_creating.read() && editing_profile.read().is_none() {
-                if *is_loading.read() {
-                    div { class: "bg-gray-800 rounded-lg p-6 text-center text-gray-400",
-                        "Loading profiles..."
                     }
-                } else if profiles.read().is_empty() {
-                    div { class: "bg-gray-800 rounded-lg p-6 text-center",
-                        p { class: "text-gray-400 mb-4", "No storage profiles configured" }
-                        p { class: "text-sm text-gray-500",
-                            "Create a profile to define how releases are stored."
-                        }
-                    }
-                } else {
-                    div { class: "space-y-3",
-                        for profile in profiles.read().iter() {
-                            ProfileCard {
-                                key: "{profile.id}",
-                                profile: profile.clone(),
-                                on_edit: move |p: DbStorageProfile| {
-                                    editing_profile.set(Some(p));
-                                    is_creating.set(false);
-                                },
-                                on_refresh: move |_| {
-                                    refresh_trigger.set(refresh_trigger() + 1);
-                                },
-                            }
-                        }
-                    }
+                    Err(e) => error!("Failed to delete profile: {}", e),
                 }
-            }
-            div { class: "mt-6 p-4 bg-gray-700/50 rounded-lg",
-                p { class: "text-sm text-gray-400",
-                    "Storage profiles determine how release files are stored. You can have multiple profiles "
-                    "for different use cases (e.g., local development, cloud backup). The default profile "
-                    "is used for new imports."
-                }
-            }
+            });
         }
-    }
-}
-#[component]
-fn ProfileCard(
-    profile: DbStorageProfile,
-    on_edit: EventHandler<DbStorageProfile>,
-    on_refresh: EventHandler<()>,
-) -> Element {
-    let library_manager = use_library_manager();
-    let mut is_deleting = use_signal(|| false);
-    let mut show_delete_confirm = use_signal(|| false);
-    let profile_for_edit = profile.clone();
-    let profile_id_for_default = profile.id.clone();
-    let profile_id_for_delete = profile.id.clone();
-    rsx! {
-        div { class: "bg-gray-800 rounded-lg p-4",
-            div { class: "flex items-start justify-between",
-                div { class: "flex-1",
-                    div { class: "flex items-center gap-3",
-                        h3 { class: "text-lg font-medium text-white", "{profile.name}" }
-                        if profile.is_default {
-                            span { class: "px-2 py-0.5 bg-indigo-900 text-indigo-300 rounded text-xs",
-                                "Default"
-                            }
-                        }
+    };
+
+    let handle_set_default = {
+        let lm = library_manager.clone();
+        move |profile_id: String| {
+            let lm = lm.clone();
+            spawn(async move {
+                match lm.set_default_storage_profile(&profile_id).await {
+                    Ok(()) => {
+                        info!("Set default profile: {}", profile_id);
+                        refresh_trigger.set(refresh_trigger() + 1);
                     }
-                    div { class: "flex flex-wrap gap-2 mt-2",
-                        span { class: "px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs",
-                            match profile.location {
-                                StorageLocation::Local => "Local",
-                                StorageLocation::Cloud => "Cloud",
-                            }
-                        }
-                        if profile.encrypted {
-                            span { class: "px-2 py-1 bg-green-900 text-green-300 rounded text-xs",
-                                "Encrypted"
-                            }
-                        }
-                    }
-                    p { class: "text-sm text-gray-500 mt-2 font-mono", "{profile.location_path}" }
+                    Err(e) => error!("Failed to set default profile: {}", e),
                 }
-                div { class: "flex items-center gap-2",
-                    if !profile.is_default {
-                        button {
-                            class: "p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors",
-                            title: "Set as default",
-                            onclick: {
-                                let lm = library_manager.clone();
-                                let pid = profile_id_for_default.clone();
-                                move |_| {
-                                    let lm = lm.clone();
-                                    let pid = pid.clone();
-                                    spawn(async move {
-                                        match lm.set_default_storage_profile(&pid).await {
-                                            Ok(()) => {
-                                                info!("Set default profile: {}", pid);
-                                                on_refresh.call(());
-                                            }
-                                            Err(e) => error!("Failed to set default profile: {}", e),
-                                        }
-                                    });
-                                }
-                            },
-                            svg {
-                                class: "w-5 h-5",
-                                fill: "none",
-                                stroke: "currentColor",
-                                view_box: "0 0 24 24",
-                                path {
-                                    stroke_linecap: "round",
-                                    stroke_linejoin: "round",
-                                    stroke_width: "2",
-                                    d: "M5 13l4 4L19 7",
-                                }
-                            }
-                        }
-                    }
-                    button {
-                        class: "p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors",
-                        title: "Edit",
-                        onclick: {
-                            let p = profile_for_edit.clone();
-                            move |_| on_edit.call(p.clone())
-                        },
-                        svg {
-                            class: "w-5 h-5",
-                            fill: "none",
-                            stroke: "currentColor",
-                            view_box: "0 0 24 24",
-                            path {
-                                stroke_linecap: "round",
-                                stroke_linejoin: "round",
-                                stroke_width: "2",
-                                d: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
-                            }
-                        }
-                    }
-                    button {
-                        class: "p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-lg transition-colors",
-                        title: "Delete",
-                        onclick: move |_| show_delete_confirm.set(true),
-                        svg {
-                            class: "w-5 h-5",
-                            fill: "none",
-                            stroke: "currentColor",
-                            view_box: "0 0 24 24",
-                            path {
-                                stroke_linecap: "round",
-                                stroke_linejoin: "round",
-                                stroke_width: "2",
-                                d: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
-                            }
-                        }
-                    }
-                }
-            }
-            if *show_delete_confirm.read() {
-                div { class: "mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg",
-                    p { class: "text-sm text-red-300 mb-3",
-                        "Are you sure you want to delete this profile?"
-                    }
-                    div { class: "flex gap-2",
-                        button {
-                            class: "px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-500 transition-colors text-sm disabled:opacity-50",
-                            disabled: *is_deleting.read(),
-                            onclick: {
-                                let lm = library_manager.clone();
-                                let pid = profile_id_for_delete.clone();
-                                move |_| {
-                                    let lm = lm.clone();
-                                    let pid = pid.clone();
-                                    spawn(async move {
-                                        is_deleting.set(true);
-                                        match lm.delete_storage_profile(&pid).await {
-                                            Ok(()) => {
-                                                info!("Deleted profile: {}", pid);
-                                                on_refresh.call(());
-                                            }
-                                            Err(e) => error!("Failed to delete profile: {}", e),
-                                        }
-                                        is_deleting.set(false);
-                                        show_delete_confirm.set(false);
-                                    });
-                                }
-                            },
-                            if *is_deleting.read() {
-                                "Deleting..."
-                            } else {
-                                "Delete"
-                            }
-                        }
-                        button {
-                            class: "px-3 py-1.5 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors text-sm",
-                            onclick: move |_| show_delete_confirm.set(false),
-                            "Cancel"
-                        }
-                    }
-                }
-            }
+            });
         }
-    }
-}
-#[component]
-fn ProfileEditor(
-    profile: Option<DbStorageProfile>,
-    on_save: EventHandler<()>,
-    on_cancel: EventHandler<()>,
-) -> Element {
-    let library_manager = use_library_manager();
-    let is_edit = profile.is_some();
-    let mut name = use_signal(|| profile.as_ref().map(|p| p.name.clone()).unwrap_or_default());
-    let mut location = use_signal(|| {
-        profile
-            .as_ref()
-            .map(|p| p.location)
-            .unwrap_or(StorageLocation::Cloud)
-    });
-    let mut location_path = use_signal(|| {
-        profile
-            .as_ref()
-            .map(|p| p.location_path.clone())
-            .unwrap_or_default()
-    });
-    let mut cloud_bucket = use_signal(|| {
-        profile
-            .as_ref()
-            .and_then(|p| p.cloud_bucket.clone())
-            .unwrap_or_default()
-    });
-    let mut cloud_region = use_signal(|| {
-        profile
-            .as_ref()
-            .and_then(|p| p.cloud_region.clone())
-            .unwrap_or_default()
-    });
-    let mut cloud_endpoint = use_signal(|| {
-        profile
-            .as_ref()
-            .and_then(|p| p.cloud_endpoint.clone())
-            .unwrap_or_default()
-    });
-    let mut cloud_access_key = use_signal(|| {
-        profile
-            .as_ref()
-            .and_then(|p| p.cloud_access_key.clone())
-            .unwrap_or_default()
-    });
-    let mut cloud_secret_key = use_signal(|| {
-        profile
-            .as_ref()
-            .and_then(|p| p.cloud_secret_key.clone())
-            .unwrap_or_default()
-    });
-    let mut show_secrets = use_signal(|| false);
-    let mut encrypted = use_signal(|| profile.as_ref().map(|p| p.encrypted).unwrap_or(true));
-    let mut is_default = use_signal(|| profile.as_ref().map(|p| p.is_default).unwrap_or(false));
-    let mut is_saving = use_signal(|| false);
-    let mut save_error = use_signal(|| Option::<String>::None);
+    };
+
+    let handle_edit = move |profile: StorageProfile| {
+        // Find the original DbStorageProfile
+        if let Some(db_profile) = profiles.read().iter().find(|p| p.id == profile.id).cloned() {
+            editing_profile.set(Some(db_profile));
+            is_creating.set(false);
+        }
+    };
+
     rsx! {
-        div { class: "bg-gray-800 rounded-lg p-6 mb-6",
-            h3 { class: "text-lg font-medium text-white mb-4",
-                if is_edit {
-                    "Edit Profile"
-                } else {
-                    "New Profile"
-                }
-            }
-            div { class: "space-y-4",
-                div {
-                    label { class: "block text-sm font-medium text-gray-400 mb-2", "Name" }
-                    input {
-                        r#type: "text",
-                        autocomplete: "off",
-                        class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
-                        placeholder: "My Storage Profile",
-                        value: "{name}",
-                        oninput: move |e| name.set(e.value()),
-                    }
-                }
-                div {
-                    label { class: "block text-sm font-medium text-gray-400 mb-2", "Storage Type" }
-                    div { class: "flex flex-col gap-3",
-                        label { class: "flex items-center gap-2 cursor-pointer",
-                            input {
-                                r#type: "radio",
-                                name: "location",
-                                class: "text-indigo-600 focus:ring-indigo-500",
-                                checked: *location.read() == StorageLocation::Cloud,
-                                onchange: move |_| location.set(StorageLocation::Cloud),
-                            }
-                            span { class: "text-white", "Cloud (S3)" }
-                        }
-                        label { class: "flex items-center gap-2 cursor-pointer",
-                            input {
-                                r#type: "radio",
-                                name: "location",
-                                class: "text-indigo-600 focus:ring-indigo-500",
-                                checked: *location.read() == StorageLocation::Local,
-                                onchange: move |_| location.set(StorageLocation::Local),
-                            }
-                            span { class: "text-white", "Local Filesystem" }
-                        }
-                    }
-                }
-                if *location.read() == StorageLocation::Local {
-                    div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2",
-                            "Directory Path"
-                        }
-                        input {
-                            r#type: "text",
-                            autocomplete: "off",
-                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
-                            placeholder: "/path/to/storage",
-                            value: "{location_path}",
-                            oninput: move |e| location_path.set(e.value()),
-                        }
-                    }
-                } else {
-                    div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2",
-                            "Bucket Name"
-                        }
-                        input {
-                            r#type: "text",
-                            autocomplete: "off",
-                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
-                            placeholder: "my-music-bucket",
-                            value: "{cloud_bucket}",
-                            oninput: move |e| cloud_bucket.set(e.value()),
-                        }
-                    }
-                    div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2",
-                            "Region"
-                        }
-                        input {
-                            r#type: "text",
-                            autocomplete: "off",
-                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
-                            placeholder: "us-east-1",
-                            value: "{cloud_region}",
-                            oninput: move |e| cloud_region.set(e.value()),
-                        }
-                    }
-                    div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2",
-                            "Custom Endpoint (optional)"
-                        }
-                        input {
-                            r#type: "text",
-                            autocomplete: "off",
-                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
-                            placeholder: "https://minio.example.com",
-                            value: "{cloud_endpoint}",
-                            oninput: move |e| cloud_endpoint.set(e.value()),
-                        }
-                        p { class: "text-xs text-gray-500 mt-1", "Leave empty for AWS S3" }
-                    }
-                    div { class: "flex items-center justify-between",
-                        span { class: "text-sm font-medium text-gray-400", "Credentials" }
-                        button {
-                            r#type: "button",
-                            class: "text-sm text-indigo-400 hover:text-indigo-300",
-                            onclick: move |_| {
-                                let current = *show_secrets.read();
-                                show_secrets.set(!current);
-                            },
-                            if *show_secrets.read() {
-                                "Hide"
-                            } else {
-                                "Show"
-                            }
-                        }
-                    }
-                    div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2",
-                            "Access Key ID"
-                        }
-                        input {
-                            r#type: if *show_secrets.read() { "text" } else { "password" },
-                            autocomplete: "off",
-                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono",
-                            placeholder: "AKIAIOSFODNN7EXAMPLE",
-                            value: "{cloud_access_key}",
-                            oninput: move |e| cloud_access_key.set(e.value()),
-                        }
-                    }
-                    div {
-                        label { class: "block text-sm font-medium text-gray-400 mb-2",
-                            "Secret Access Key"
-                        }
-                        input {
-                            r#type: if *show_secrets.read() { "text" } else { "password" },
-                            autocomplete: "off",
-                            class: "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono",
-                            placeholder: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-                            value: "{cloud_secret_key}",
-                            oninput: move |e| cloud_secret_key.set(e.value()),
-                        }
-                    }
-                }
-                div { class: "space-y-3",
-                    label { class: "flex items-start gap-3 cursor-pointer",
-                        input {
-                            r#type: "checkbox",
-                            class: "rounded text-indigo-600 focus:ring-indigo-500 bg-gray-700 border-gray-600 mt-0.5",
-                            checked: *encrypted.read(),
-                            onchange: move |e| encrypted.set(e.checked()),
-                        }
-                        div {
-                            span { class: "text-white block", "Encrypted" }
-                            span { class: "text-xs text-gray-500",
-                                "AES-256 encryption. Data is unreadable without your key."
-                            }
-                        }
-                    }
-                }
-                div {
-                    label { class: "flex items-center gap-2 cursor-pointer",
-                        input {
-                            r#type: "checkbox",
-                            class: "rounded text-indigo-600 focus:ring-indigo-500 bg-gray-700 border-gray-600",
-                            checked: *is_default.read(),
-                            onchange: move |e| is_default.set(e.checked()),
-                        }
-                        span { class: "text-white", "Set as default" }
-                    }
-                }
-                if let Some(error) = save_error.read().as_ref() {
-                    div { class: "p-3 bg-red-900/30 border border-red-700 rounded-lg text-sm text-red-300",
-                        "{error}"
-                    }
-                }
-                div { class: "flex gap-3 pt-2",
-                    button {
-                        class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-                        disabled: *is_saving.read(),
-                        onclick: {
-                            let lm = library_manager.clone();
-                            let existing_profile = profile.clone();
-                            move |_| {
-                                let new_name = name.read().clone();
-                                let new_location = *location.read();
-                                let new_location_path = location_path.read().clone();
-                                let new_cloud_bucket = cloud_bucket.read().clone();
-                                let new_cloud_region = cloud_region.read().clone();
-                                let new_cloud_endpoint = cloud_endpoint.read().clone();
-                                let new_cloud_access_key = cloud_access_key.read().clone();
-                                let new_cloud_secret_key = cloud_secret_key.read().clone();
-                                let new_encrypted = *encrypted.read();
-                                let new_is_default = *is_default.read();
-                                let existing = existing_profile.clone();
-                                let lm = lm.clone();
-                                spawn(async move {
-                                    is_saving.set(true);
-                                    save_error.set(None);
-                                    if new_name.trim().is_empty() {
-                                        save_error.set(Some("Name is required".to_string()));
-                                        is_saving.set(false);
-                                        return;
-                                    }
-                                    if new_location == StorageLocation::Local {
-                                        if new_location_path.trim().is_empty() {
-                                            save_error.set(Some("Directory path is required".to_string()));
-                                            is_saving.set(false);
-                                            return;
-                                        }
-                                    } else {
-                                        if new_cloud_bucket.trim().is_empty() {
-                                            save_error.set(Some("Bucket name is required".to_string()));
-                                            is_saving.set(false);
-                                            return;
-                                        }
-                                        if new_cloud_region.trim().is_empty() {
-                                            save_error.set(Some("Region is required".to_string()));
-                                            is_saving.set(false);
-                                            return;
-                                        }
-                                        if new_cloud_access_key.trim().is_empty() {
-                                            save_error.set(Some("Access key is required".to_string()));
-                                            is_saving.set(false);
-                                            return;
-                                        }
-                                        if new_cloud_secret_key.trim().is_empty() {
-                                            save_error.set(Some("Secret key is required".to_string()));
-                                            is_saving.set(false);
-                                            return;
-                                        }
-                                    }
-                                    let result = if let Some(mut profile) = existing {
-                                        profile.name = new_name.clone();
-                                        profile.location = new_location;
-                                        profile.location_path = new_location_path;
-                                        profile.encrypted = new_encrypted;
-                                        profile.is_default = new_is_default;
-                                        if new_location == StorageLocation::Cloud {
-                                            profile.cloud_bucket = Some(new_cloud_bucket);
-                                            profile.cloud_region = Some(new_cloud_region);
-                                            profile.cloud_endpoint = if new_cloud_endpoint.trim().is_empty()
-                                            {
-                                                None
-                                            } else {
-                                                Some(new_cloud_endpoint)
-                                            };
-                                            profile.cloud_access_key = Some(new_cloud_access_key);
-                                            profile.cloud_secret_key = Some(new_cloud_secret_key);
-                                        } else {
-                                            profile.cloud_bucket = None;
-                                            profile.cloud_region = None;
-                                            profile.cloud_endpoint = None;
-                                            profile.cloud_access_key = None;
-                                            profile.cloud_secret_key = None;
-                                        }
-                                        lm.update_storage_profile(&profile).await
-                                    } else {
-                                        let profile = if new_location == StorageLocation::Local {
-                                            DbStorageProfile::new_local(
-                                                &new_name,
-                                                &new_location_path,
-                                                new_encrypted,
-                                            )
-                                        } else {
-                                            let endpoint = if new_cloud_endpoint.trim().is_empty() {
-                                                None
-                                            } else {
-                                                Some(new_cloud_endpoint.as_str())
-                                            };
-                                            DbStorageProfile::new_cloud(
-                                                &new_name,
-                                                &new_cloud_bucket,
-                                                &new_cloud_region,
-                                                endpoint,
-                                                &new_cloud_access_key,
-                                                &new_cloud_secret_key,
-                                                new_encrypted,
-                                            )
-                                        }
-                                            .with_default(new_is_default);
-                                        lm.insert_storage_profile(&profile).await
-                                    };
-                                    match result {
-                                        Ok(()) => {
-                                            info!("Saved storage profile: {}", new_name);
-                                            on_save.call(());
-                                        }
-                                        Err(e) => {
-                                            error!("Failed to save profile: {}", e);
-                                            save_error.set(Some(e.to_string()));
-                                        }
-                                    }
-                                    is_saving.set(false);
-                                });
-                            }
-                        },
-                        if *is_saving.read() {
-                            "Saving..."
-                        } else {
-                            "Save"
-                        }
-                    }
-                    button {
-                        class: "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
-                        onclick: move |_| on_cancel.call(()),
-                        "Cancel"
-                    }
-                }
-            }
+        StorageProfilesSectionView {
+            profiles: display_profiles,
+            is_loading: *is_loading.read(),
+            editing_profile: display_editing,
+            is_creating: *is_creating.read(),
+            on_create: move |_| {
+                is_creating.set(true);
+                editing_profile.set(None);
+            },
+            on_edit: handle_edit,
+            on_delete: handle_delete,
+            on_set_default: handle_set_default,
+            on_save: handle_save,
+            on_cancel_edit: move |_| {
+                editing_profile.set(None);
+                is_creating.set(false);
+            },
         }
     }
 }

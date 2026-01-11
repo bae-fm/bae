@@ -75,15 +75,11 @@ pub fn StorageProfilesSectionView(
             }
 
             if is_creating {
-                StorageProfileEditorView {
-                    profile: None,
-                    on_save: on_save,
-                    on_cancel: on_cancel_edit,
-                }
+                StorageProfileEditorView { profile: None, on_save, on_cancel: on_cancel_edit }
             } else if let Some(ref profile) = editing_profile {
                 StorageProfileEditorView {
                     profile: Some(profile.clone()),
-                    on_save: on_save,
+                    on_save,
                     on_cancel: on_cancel_edit,
                 }
             }
@@ -106,9 +102,9 @@ pub fn StorageProfilesSectionView(
                             ProfileCard {
                                 key: "{profile.id}",
                                 profile: profile.clone(),
-                                on_edit: on_edit,
-                                on_delete: on_delete,
-                                on_set_default: on_set_default,
+                                on_edit,
+                                on_delete,
+                                on_set_default,
                             }
                         }
                     }
@@ -402,7 +398,11 @@ pub fn StorageProfileEditorView(
     rsx! {
         div { class: "bg-gray-800 rounded-lg p-6 mb-6",
             h3 { class: "text-lg font-medium text-white mb-4",
-                if is_edit { "Edit Profile" } else { "New Profile" }
+                if is_edit {
+                    "Edit Profile"
+                } else {
+                    "New Profile"
+                }
             }
             div { class: "space-y-4",
                 div {
@@ -505,7 +505,11 @@ pub fn StorageProfileEditorView(
                             r#type: "button",
                             class: "text-sm text-indigo-400 hover:text-indigo-300",
                             onclick: move |_| show_secrets.toggle(),
-                            if *show_secrets.read() { "Hide" } else { "Show" }
+                            if *show_secrets.read() {
+                                "Hide"
+                            } else {
+                                "Show"
+                            }
                         }
                     }
                     div {

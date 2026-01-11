@@ -29,12 +29,10 @@ pub fn ImportsDropdownView(
         }
 
         // Dropdown panel
-        div {
-            class: "absolute top-full right-0 mt-2 w-96 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-[1700] overflow-hidden",
+        div { class: "absolute top-full right-0 mt-2 w-96 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-[1700] overflow-hidden",
 
             // Header
-            div {
-                class: "px-4 py-3 bg-gray-800/50 border-b border-gray-700 flex items-center justify-between",
+            div { class: "px-4 py-3 bg-gray-800/50 border-b border-gray-700 flex items-center justify-between",
                 div { class: "flex items-center gap-2",
                     svg {
                         class: "h-4 w-4 text-indigo-400",

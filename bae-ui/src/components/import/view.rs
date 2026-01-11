@@ -16,10 +16,7 @@ pub fn ImportView(
                 h1 { class: "text-2xl font-bold text-white", "Import" }
             }
             div { class: "bg-gray-900 rounded-lg shadow p-4",
-                ImportSourceSelectorView {
-                    selected_source,
-                    on_source_select,
-                }
+                ImportSourceSelectorView { selected_source, on_source_select }
                 {children}
             }
         }

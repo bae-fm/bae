@@ -49,7 +49,7 @@ pub fn ReleaseSelectorView(
 
             // Release list
             div { class: "space-y-2 max-h-96 overflow-y-auto",
-                for (index, release) in releases.iter().enumerate() {
+                for (index , release) in releases.iter().enumerate() {
                     {
                         let is_selected = selected_indices.contains(&index);
                         let checkbox_class = if is_selected {
@@ -94,11 +94,7 @@ pub fn ReleaseSelectorView(
             // Import button
             div { class: "flex justify-center pt-4",
                 button {
-                    class: if selected_indices.is_empty() {
-                        "px-6 py-3 bg-gray-700 text-gray-500 rounded-lg cursor-not-allowed"
-                    } else {
-                        "px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    },
+                    class: if selected_indices.is_empty() { "px-6 py-3 bg-gray-700 text-gray-500 rounded-lg cursor-not-allowed" } else { "px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors" },
                     disabled: selected_indices.is_empty(),
                     onclick: {
                         let indices = selected_indices.clone();

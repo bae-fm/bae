@@ -68,8 +68,7 @@ pub fn ImportsButtonView(
                 }
             }
             span { "Imports" }
-            span {
-                class: "{badge_color} text-white text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1.5",
+            span { class: "{badge_color} text-white text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1.5",
                 "{count}"
             }
         }

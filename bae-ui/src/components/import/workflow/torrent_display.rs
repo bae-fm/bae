@@ -70,7 +70,11 @@ pub fn TorrentTrackerDisplayView(trackers: Vec<TrackerStatus>) -> Element {
                 onclick: move |_| expanded.toggle(),
                 div { class: "flex items-center gap-3",
                     span { class: "text-xs text-gray-400",
-                        if *expanded.read() { "▼" } else { "▶" }
+                        if *expanded.read() {
+                            "▼"
+                        } else {
+                            "▶"
+                        }
                     }
                     h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide",
                         "Trackers"
@@ -99,10 +103,7 @@ pub fn TorrentTrackerDisplayView(trackers: Vec<TrackerStatus>) -> Element {
             if *expanded.read() {
                 div { class: "mt-3 space-y-2",
                     for tracker in trackers.iter() {
-                        TrackerItemView {
-                            key: "{tracker.url}",
-                            tracker: tracker.clone(),
-                        }
+                        TrackerItemView { key: "{tracker.url}", tracker: tracker.clone() }
                     }
                 }
             }
@@ -127,11 +128,7 @@ fn TrackerItemView(tracker: TrackerStatus) -> Element {
                 div { class: "flex items-center gap-4 ml-4",
                     span {
                         class: "text-xs px-2 py-1 rounded",
-                        class: if tracker.status == TrackerConnectionStatus::Connected {
-                            "bg-green-900/30 text-green-400 border border-green-700"
-                        } else {
-                            "bg-yellow-900/30 text-yellow-400 border border-yellow-700"
-                        },
+                        class: if tracker.status == TrackerConnectionStatus::Connected { "bg-green-900/30 text-green-400 border border-green-700" } else { "bg-yellow-900/30 text-yellow-400 border border-yellow-700" },
                         {status_text}
                     }
                     span { class: "text-xs text-gray-400",
@@ -189,7 +186,11 @@ pub fn TorrentInfoDisplayView(info: TorrentInfo) -> Element {
                     "Details"
                 }
                 span { class: "text-xs text-gray-400",
-                    if *expanded.read() { "▼" } else { "▶" }
+                    if *expanded.read() {
+                        "▼"
+                    } else {
+                        "▶"
+                    }
                 }
             }
             if *expanded.read() {
@@ -232,7 +233,11 @@ pub fn TorrentInfoDisplayView(info: TorrentInfo) -> Element {
                                 "Private"
                             }
                             p { class: "text-sm font-medium tracking-tight text-white bg-gray-800 px-3 py-2 rounded border border-gray-700",
-                                if info.is_private { "Yes" } else { "No" }
+                                if info.is_private {
+                                    "Yes"
+                                } else {
+                                    "No"
+                                }
                             }
                         }
                     }
@@ -306,7 +311,11 @@ pub fn TorrentFilesDisplayView(files: Vec<TorrentFileInfo>) -> Element {
                     "Files"
                 }
                 span { class: "text-xs text-gray-400",
-                    if *expanded.read() { "▼" } else { "▶" }
+                    if *expanded.read() {
+                        "▼"
+                    } else {
+                        "▶"
+                    }
                 }
             }
             if *expanded.read() {

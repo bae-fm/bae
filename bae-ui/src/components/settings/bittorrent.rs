@@ -112,7 +112,11 @@ pub fn BitTorrentSectionView(
                         div { class: "flex items-center",
                             span { class: "text-gray-400 w-36", "UPnP / NAT-PMP:" }
                             span { class: if settings.enable_upnp || settings.enable_natpmp { "text-green-400" } else { "text-gray-500" },
-                                if settings.enable_upnp || settings.enable_natpmp { "Enabled" } else { "Disabled" }
+                                if settings.enable_upnp || settings.enable_natpmp {
+                                    "Enabled"
+                                } else {
+                                    "Disabled"
+                                }
                             }
                         }
                     }
@@ -276,7 +280,11 @@ fn SectionSaveButtons(
                     class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                     disabled: !has_changes || is_saving,
                     onclick: move |_| on_save.call(()),
-                    if is_saving { "Saving..." } else { "Save" }
+                    if is_saving {
+                        "Saving..."
+                    } else {
+                        "Save"
+                    }
                 }
                 button {
                     class: "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
@@ -318,7 +326,11 @@ fn LimitDisplay(label: &'static str, value: Option<i32>) -> Element {
         div { class: "flex items-center",
             span { class: "text-gray-400 w-48", "{label}" }
             span { class: "text-white",
-                if let Some(v) = value { "{v}" } else { "Unlimited" }
+                if let Some(v) = value {
+                    "{v}"
+                } else {
+                    "Unlimited"
+                }
             }
         }
     }

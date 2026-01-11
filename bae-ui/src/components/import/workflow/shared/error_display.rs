@@ -61,9 +61,7 @@ pub fn ImportErrorDisplayView(
 
     rsx! {
         div { class: "bg-red-50 border border-red-200 rounded-lg p-4",
-            p { class: "text-sm text-red-700 select-text break-words font-mono",
-                "Error: {error}"
-            }
+            p { class: "text-sm text-red-700 select-text break-words font-mono", "Error: {error}" }
             if let Some(ref dup_id) = duplicate_album_id {
                 div { class: "mt-2",
                     button {

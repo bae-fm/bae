@@ -38,20 +38,12 @@ pub fn TorrentInputView(
             // Mode tabs
             div { class: "flex space-x-4 mb-4",
                 button {
-                    class: if input_mode == TorrentInputMode::File {
-                        "px-4 py-2 bg-blue-600 text-white rounded-lg"
-                    } else {
-                        "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600"
-                    },
+                    class: if input_mode == TorrentInputMode::File { "px-4 py-2 bg-blue-600 text-white rounded-lg" } else { "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600" },
                     onclick: move |_| on_mode_change.call(TorrentInputMode::File),
                     "File"
                 }
                 button {
-                    class: if input_mode == TorrentInputMode::Magnet {
-                        "px-4 py-2 bg-blue-600 text-white rounded-lg"
-                    } else {
-                        "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600"
-                    },
+                    class: if input_mode == TorrentInputMode::Magnet { "px-4 py-2 bg-blue-600 text-white rounded-lg" } else { "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600" },
                     onclick: move |_| on_mode_change.call(TorrentInputMode::Magnet),
                     "Magnet Link"
                 }
@@ -78,9 +70,7 @@ pub fn TorrentInputView(
                             }
                             div { class: "text-center space-y-2",
                                 h3 { class: "text-lg font-semibold text-gray-200", "Select a torrent file" }
-                                p { class: "text-sm text-gray-400",
-                                    "Drop a .torrent file here or click to browse"
-                                }
+                                p { class: "text-sm text-gray-400", "Drop a .torrent file here or click to browse" }
                             }
                             button {
                                 class: "px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium",
@@ -93,9 +83,7 @@ pub fn TorrentInputView(
                 TorrentInputMode::Magnet => rsx! {
                     div { class: "space-y-4",
                         div {
-                            label { class: "block text-sm font-medium text-gray-400 mb-2",
-                                "Magnet Link"
-                            }
+                            label { class: "block text-sm font-medium text-gray-400 mb-2", "Magnet Link" }
                             input {
                                 r#type: "text",
                                 class: "w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm",

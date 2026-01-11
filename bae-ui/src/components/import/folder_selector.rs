@@ -18,8 +18,7 @@ pub fn FolderSelectorView(
     };
 
     rsx! {
-        div {
-            class: "border-2 rounded-lg p-12 transition-all duration-200 {drag_classes}",
+        div { class: "border-2 rounded-lg p-12 transition-all duration-200 {drag_classes}",
             div { class: "flex flex-col items-center justify-center space-y-6",
                 div { class: "w-16 h-16 text-gray-400",
                     svg {
