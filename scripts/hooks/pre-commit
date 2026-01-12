@@ -1,154 +1,109 @@
-#!/bin/sh
+#!/bin/bash
+
+set -e
+
+TMPFILE=$(mktemp)
+trap "rm -f $TMPFILE" EXIT
+
+run_check() {
+    local name="$1"
+    shift
+    if "$@" > "$TMPFILE" 2>&1; then
+        return 0
+    else
+        echo ""
+        echo "❌ $name failed:"
+        cat "$TMPFILE"
+        return 1
+    fi
+}
 
 # Run checks in bae-core directory
 cd bae-core
 
-echo "Running cargo fmt check (bae-core)..."
-cargo fmt -- --check
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: Code is not formatted correctly"
+run_check "cargo fmt (bae-core)" cargo fmt -- --check || {
     echo "Run 'cargo fmt' in the bae-core directory to fix formatting"
     exit 1
-fi
+}
 
-echo "Running cargo clippy on library..."
-cargo clippy --lib -- -D warnings -A unexpected_cfgs -A deprecated
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: Clippy found warnings in library code"
+run_check "clippy lib (bae-core)" cargo clippy --lib -- -D warnings -A unexpected_cfgs -A deprecated || {
     echo "Fix the warnings above and try again"
     exit 1
-fi
+}
 
-echo "Running cargo clippy on unit tests..."
-cargo clippy --tests --features test-utils -- -D warnings -A unexpected_cfgs -A deprecated
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: Clippy found warnings in unit test code"
+run_check "clippy tests (bae-core)" cargo clippy --tests --features test-utils -- -D warnings -A unexpected_cfgs -A deprecated || {
     echo "Fix the warnings above and try again"
     exit 1
-fi
+}
 
-echo "Running cargo clippy on integration tests..."
 for test in tests/*.rs; do
     testname=$(basename "$test" .rs)
-    cargo clippy --test "$testname" --features test-utils -- -D warnings -A unexpected_cfgs -A deprecated
-    if [ $? -ne 0 ]; then
-        echo ""
-        echo "❌ Commit rejected: Clippy found warnings in integration test: $testname"
-        echo "Fix the warnings above and try again"
+    run_check "clippy integration test: $testname" cargo clippy --test "$testname" --features test-utils -- -D warnings -A unexpected_cfgs -A deprecated || {
         exit 1
-    fi
+    }
 done
 
 cd ..
 
 # Run checks in bae-desktop directory
-echo "Running cargo fmt check (bae-desktop)..."
 cd bae-desktop
 
-cargo fmt -- --check
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: Code is not formatted correctly in bae-desktop"
+run_check "cargo fmt (bae-desktop)" cargo fmt -- --check || {
     echo "Run 'cargo fmt' in the bae-desktop directory to fix formatting"
     exit 1
-fi
+}
 
-echo "Running dx fmt check (bae-desktop)..."
-dx fmt --check
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: RSX code is not formatted correctly in bae-desktop"
+run_check "dx fmt (bae-desktop)" dx fmt --check || {
     echo "Run 'dx fmt' in the bae-desktop directory to fix formatting"
     exit 1
-fi
+}
 
-echo "Running cargo clippy on bae-desktop..."
-BINDGEN_EXTRA_CLANG_ARGS="-I/opt/homebrew/include" cargo clippy -- -D warnings -A unexpected_cfgs -A deprecated
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: Clippy found warnings in bae-desktop"
+run_check "clippy (bae-desktop)" env BINDGEN_EXTRA_CLANG_ARGS="-I/opt/homebrew/include" cargo clippy -- -D warnings -A unexpected_cfgs -A deprecated || {
     echo "Fix the warnings above and try again"
     exit 1
-fi
+}
 
 cd ..
 
 # Run checks in bae-ui directory
-echo "Running cargo fmt check (bae-ui)..."
 cd bae-ui
-cargo fmt -- --check
 
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: Code is not formatted correctly in bae-ui"
+run_check "cargo fmt (bae-ui)" cargo fmt -- --check || {
     echo "Run 'cargo fmt' in the bae-ui directory to fix formatting"
     exit 1
-fi
+}
 
-echo "Running cargo clippy on bae-ui..."
-cargo clippy -- -D warnings
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: Clippy found warnings in bae-ui"
+run_check "clippy (bae-ui)" cargo clippy -- -D warnings || {
     echo "Fix the warnings above and try again"
     exit 1
-fi
+}
 
 cd ..
 
 # Run checks in bae-demo directory
-echo "Running cargo fmt check (bae-demo)..."
 cd bae-demo
-cargo fmt -- --check
 
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: Code is not formatted correctly in bae-demo"
+run_check "cargo fmt (bae-demo)" cargo fmt -- --check || {
     echo "Run 'cargo fmt' in the bae-demo directory to fix formatting"
     exit 1
-fi
+}
 
-echo "Running dx fmt check (bae-demo)..."
-dx fmt --check
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: RSX code is not formatted correctly in bae-demo"
+run_check "dx fmt (bae-demo)" dx fmt --check || {
     echo "Run 'dx fmt' in the bae-demo directory to fix formatting"
     exit 1
-fi
+}
 
-echo "Running cargo clippy on bae-demo..."
-cargo clippy -- -D warnings
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: Clippy found warnings in bae-demo"
+run_check "clippy (bae-demo)" cargo clippy -- -D warnings || {
     echo "Fix the warnings above and try again"
     exit 1
-fi
+}
 
 cd ../bae-core
 
-echo "Running tests..."
-cargo test --features test-utils
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "❌ Commit rejected: Tests failed"
+run_check "tests (bae-core)" cargo test --features test-utils || {
     echo "Fix the failing tests and try again"
     exit 1
-fi
+}
 
 echo "✅ All checks passed"
 exit 0
