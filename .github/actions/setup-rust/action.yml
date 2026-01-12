@@ -32,7 +32,7 @@ runs:
       if: inputs.install-dioxus == 'true'
       shell: bash
       run: |
-        if command -v dx &> /dev/null && dx --version | grep -q "0.7.2"; then
+        if [[ -x "$HOME/.cargo/bin/dx" ]] && "$HOME/.cargo/bin/dx" --version | grep -q "0.7.2"; then
           echo "dioxus-cli 0.7.2 already installed"
         else
           cargo binstall dioxus-cli@0.7.2 --no-confirm
