@@ -1,6 +1,6 @@
-//! FolderImportView mock with phase controls
+//! FolderImportView mock component
 
-use super::mock_header::MockHeader;
+use super::controls::{MockCheckbox, MockEnumButtons, MockLayout};
 use bae_ui::{
     ArtworkFile, AudioContentInfo, CategorizedFileInfo, DetectedRelease, FileInfo,
     FolderImportView, FolderMetadata, ImportPhase, MatchCandidate, MatchSourceType, SearchSource,
@@ -10,23 +10,21 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 
 #[component]
-pub fn FolderImportMock() -> Element {
-    // Phase control
-    let mut phase = use_signal(|| ImportPhase::FolderSelection);
-
-    // Folder selection state
-    let mut is_dragging = use_signal(|| false);
-
-    // Release selection state
+pub fn FolderImportMock(
+    phase: Signal<ImportPhase>,
+    is_dragging: Signal<bool>,
+    is_detecting_metadata: Signal<bool>,
+    is_loading_exact_matches: Signal<bool>,
+    is_retrying_discid_lookup: Signal<bool>,
+    is_searching: Signal<bool>,
+    has_searched: Signal<bool>,
+    is_importing: Signal<bool>,
+    show_error: Signal<bool>,
+    show_discid_error: Signal<bool>,
+) -> Element {
+    // Local state (not persisted to URL)
     let mut selected_release_indices = use_signal(Vec::<usize>::new);
-
-    // Loading states
-    let mut is_detecting_metadata = use_signal(|| false);
-    let mut is_loading_exact_matches = use_signal(|| false);
-    let mut is_retrying_discid_lookup = use_signal(|| false);
     let mut selected_match_index = use_signal(|| None::<usize>);
-
-    // Manual search state
     let mut search_source = use_signal(|| SearchSource::MusicBrainz);
     let mut search_tab = use_signal(|| SearchTab::General);
     let mut search_artist = use_signal(|| "The Midnight Signal".to_string());
@@ -35,17 +33,8 @@ pub fn FolderImportMock() -> Element {
     let mut search_label = use_signal(String::new);
     let mut search_catalog_number = use_signal(String::new);
     let mut search_barcode = use_signal(String::new);
-    let mut is_searching = use_signal(|| false);
-    let mut has_searched = use_signal(|| false);
-
-    // Confirmation state
     let mut selected_cover = use_signal(|| None::<SelectedCover>);
     let mut selected_profile_id = use_signal(|| Some("profile-1".to_string()));
-    let mut is_importing = use_signal(|| false);
-
-    // Error state
-    let mut show_error = use_signal(|| false);
-    let mut show_discid_error = use_signal(|| false);
 
     // Mock data
     let folder_path = "/Users/demo/Music/The Midnight Signal - Neon Frequencies (2023)".to_string();
@@ -141,7 +130,6 @@ pub fn FolderImportMock() -> Element {
     } else {
         vec![]
     };
-
     let confirmed_candidate = exact_match_candidates.first().cloned();
 
     let detected_metadata = Some(FolderMetadata {
@@ -194,189 +182,113 @@ pub fn FolderImportMock() -> Element {
         None
     };
 
-    rsx! {
-        div { class: "min-h-screen bg-gray-900 text-white",
-            // Controls panel at top
-            div { class: "sticky top-0 z-50 bg-gray-800 border-b border-gray-700 p-4",
-                div { class: "max-w-4xl mx-auto",
-                    MockHeader { title: "FolderImportView".to_string() }
-                    div { class: "flex flex-wrap gap-2 mb-3",
-                        for (phase_option , label) in [
-                            (ImportPhase::FolderSelection, "Folder Selection"),
-                            (ImportPhase::ReleaseSelection, "Release Selection"),
-                            (ImportPhase::MetadataDetection, "Metadata Detection"),
-                            (ImportPhase::ExactLookup, "Exact Lookup"),
-                            (ImportPhase::ManualSearch, "Manual Search"),
-                            (ImportPhase::Confirmation, "Confirmation"),
-                        ]
-                        {
-                            button {
-                                class: if phase() == phase_option { "px-3 py-1.5 text-sm rounded bg-blue-600 text-white" } else { "px-3 py-1.5 text-sm rounded bg-gray-700 text-gray-300 hover:bg-gray-600" },
-                                onclick: move |_| phase.set(phase_option),
-                                "{label}"
-                            }
-                        }
-                    }
-                    div { class: "flex flex-wrap gap-4 text-sm",
-                        label { class: "flex items-center gap-2 text-gray-400",
-                            input {
-                                r#type: "checkbox",
-                                checked: is_dragging(),
-                                onchange: move |e| is_dragging.set(e.checked()),
-                            }
-                            "Dragging"
-                        }
-                        label { class: "flex items-center gap-2 text-gray-400",
-                            input {
-                                r#type: "checkbox",
-                                checked: is_detecting_metadata(),
-                                onchange: move |e| is_detecting_metadata.set(e.checked()),
-                            }
-                            "Detecting Metadata"
-                        }
-                        label { class: "flex items-center gap-2 text-gray-400",
-                            input {
-                                r#type: "checkbox",
-                                checked: is_loading_exact_matches(),
-                                onchange: move |e| is_loading_exact_matches.set(e.checked()),
-                            }
-                            "Loading Exact Matches"
-                        }
-                        label { class: "flex items-center gap-2 text-gray-400",
-                            input {
-                                r#type: "checkbox",
-                                checked: is_retrying_discid_lookup(),
-                                onchange: move |e| is_retrying_discid_lookup.set(e.checked()),
-                            }
-                            "Retrying DiscID"
-                        }
-                        label { class: "flex items-center gap-2 text-gray-400",
-                            input {
-                                r#type: "checkbox",
-                                checked: is_searching(),
-                                onchange: move |e| is_searching.set(e.checked()),
-                            }
-                            "Searching"
-                        }
-                        label { class: "flex items-center gap-2 text-gray-400",
-                            input {
-                                r#type: "checkbox",
-                                checked: has_searched(),
-                                onchange: move |e| has_searched.set(e.checked()),
-                            }
-                            "Has Results"
-                        }
-                        label { class: "flex items-center gap-2 text-gray-400",
-                            input {
-                                r#type: "checkbox",
-                                checked: is_importing(),
-                                onchange: move |e| is_importing.set(e.checked()),
-                            }
-                            "Importing"
-                        }
-                        label { class: "flex items-center gap-2 text-gray-400",
-                            input {
-                                r#type: "checkbox",
-                                checked: show_error(),
-                                onchange: move |e| show_error.set(e.checked()),
-                            }
-                            "Error"
-                        }
-                        label { class: "flex items-center gap-2 text-gray-400",
-                            input {
-                                r#type: "checkbox",
-                                checked: show_discid_error(),
-                                onchange: move |e| show_discid_error.set(e.checked()),
-                            }
-                            "DiscID Error"
-                        }
-                    }
-                }
-            }
+    let phase_options = vec![
+        (ImportPhase::FolderSelection, "Folder Selection"),
+        (ImportPhase::ReleaseSelection, "Release Selection"),
+        (ImportPhase::MetadataDetection, "Metadata Detection"),
+        (ImportPhase::ExactLookup, "Exact Lookup"),
+        (ImportPhase::ManualSearch, "Manual Search"),
+        (ImportPhase::Confirmation, "Confirmation"),
+    ];
 
-            // Component render area
-            div { class: "max-w-4xl mx-auto p-6",
-                FolderImportView {
-                    phase: phase(),
-                    folder_path: folder_path.clone(),
-                    folder_files: folder_files.clone(),
-                    image_data: vec![
-                        (
-                            "cover.jpg".to_string(),
-                            "/covers/the-midnight-signal_neon-frequencies.png".to_string(),
-                        ),
-                        (
-                            "back.jpg".to_string(),
-                            "/covers/velvet-mathematics_proof-by-induction.png".to_string(),
-                        ),
-                    ],
-                    text_file_contents: HashMap::new(),
-                    is_dragging: is_dragging(),
-                    on_folder_select_click: |_| {},
-                    detected_releases: detected_releases.clone(),
-                    selected_release_indices: selected_release_indices(),
-                    on_release_selection_change: move |indices| selected_release_indices.set(indices),
-                    on_releases_import: |_| {},
-                    is_detecting_metadata: is_detecting_metadata(),
-                    on_skip_detection: |_| {},
-                    is_loading_exact_matches: is_loading_exact_matches(),
-                    exact_match_candidates: exact_match_candidates.clone(),
-                    selected_match_index: selected_match_index(),
-                    on_exact_match_select: move |idx| selected_match_index.set(Some(idx)),
-                    detected_metadata: detected_metadata.clone(),
-                    search_source: search_source(),
-                    on_search_source_change: move |src| search_source.set(src),
-                    search_tab: search_tab(),
-                    on_search_tab_change: move |tab| search_tab.set(tab),
-                    search_artist: search_artist(),
-                    on_artist_change: move |v| search_artist.set(v),
-                    search_album: search_album(),
-                    on_album_change: move |v| search_album.set(v),
-                    search_year: search_year(),
-                    on_year_change: move |v| search_year.set(v),
-                    search_label: search_label(),
-                    on_label_change: move |v| search_label.set(v),
-                    search_catalog_number: search_catalog_number(),
-                    on_catalog_number_change: move |v| search_catalog_number.set(v),
-                    search_barcode: search_barcode(),
-                    on_barcode_change: move |v| search_barcode.set(v),
-                    is_searching: is_searching(),
-                    search_error: None,
-                    has_searched: has_searched(),
-                    manual_match_candidates,
-                    on_manual_match_select: move |idx| selected_match_index.set(Some(idx)),
-                    on_search: move |_| is_searching.set(true),
-                    on_manual_confirm: |_| {},
-                    discid_lookup_error,
-                    is_retrying_discid_lookup: is_retrying_discid_lookup(),
-                    on_retry_discid_lookup: |_| {},
-                    confirmed_candidate,
-                    selected_cover: selected_cover(),
-                    display_cover_url: Some("/covers/the-midnight-signal_neon-frequencies.png".to_string()),
-                    artwork_files,
-                    storage_profiles,
-                    selected_profile_id: selected_profile_id(),
-                    is_importing: is_importing(),
-                    preparing_step_text: if is_importing() { Some("Encoding tracks...".to_string()) } else { None },
-                    on_select_remote_cover: move |url| {
-                        selected_cover
-                            .set(
-                                Some(SelectedCover::Remote {
-                                    url,
-                                    source: "MusicBrainz".to_string(),
-                                }),
-                            )
-                    },
-                    on_select_local_cover: move |filename| selected_cover.set(Some(SelectedCover::Local { filename })),
-                    on_storage_profile_change: move |id| selected_profile_id.set(id),
-                    on_edit: |_| {},
-                    on_confirm: |_| {},
-                    on_configure_storage: |_| {},
-                    on_clear: move |_| phase.set(ImportPhase::FolderSelection),
-                    import_error,
-                    duplicate_album_id: None,
-                    on_view_duplicate: |_| {},
+    rsx! {
+        MockLayout {
+            title: "FolderImportView".to_string(),
+            max_width: "4xl",
+            controls: rsx! {
+                MockEnumButtons { options: phase_options, value: phase }
+                div { class: "flex flex-wrap gap-4 text-sm",
+                    MockCheckbox { label: "Dragging", value: is_dragging }
+                    MockCheckbox { label: "Detecting Metadata", value: is_detecting_metadata }
+                    MockCheckbox { label: "Loading Exact Matches", value: is_loading_exact_matches }
+                    MockCheckbox { label: "Retrying DiscID", value: is_retrying_discid_lookup }
+                    MockCheckbox { label: "Searching", value: is_searching }
+                    MockCheckbox { label: "Has Results", value: has_searched }
+                    MockCheckbox { label: "Importing", value: is_importing }
+                    MockCheckbox { label: "Error", value: show_error }
+                    MockCheckbox { label: "DiscID Error", value: show_discid_error }
                 }
+            },
+            FolderImportView {
+                phase: phase(),
+                folder_path: folder_path.clone(),
+                folder_files: folder_files.clone(),
+                image_data: vec![
+                    (
+                        "cover.jpg".to_string(),
+                        "/covers/the-midnight-signal_neon-frequencies.png".to_string(),
+                    ),
+                    (
+                        "back.jpg".to_string(),
+                        "/covers/velvet-mathematics_proof-by-induction.png".to_string(),
+                    ),
+                ],
+                text_file_contents: HashMap::new(),
+                is_dragging: is_dragging(),
+                on_folder_select_click: |_| {},
+                detected_releases: detected_releases.clone(),
+                selected_release_indices: selected_release_indices(),
+                on_release_selection_change: move |indices| selected_release_indices.set(indices),
+                on_releases_import: |_| {},
+                is_detecting_metadata: is_detecting_metadata(),
+                on_skip_detection: |_| {},
+                is_loading_exact_matches: is_loading_exact_matches(),
+                exact_match_candidates: exact_match_candidates.clone(),
+                selected_match_index: selected_match_index(),
+                on_exact_match_select: move |idx| selected_match_index.set(Some(idx)),
+                detected_metadata: detected_metadata.clone(),
+                search_source: search_source(),
+                on_search_source_change: move |src| search_source.set(src),
+                search_tab: search_tab(),
+                on_search_tab_change: move |tab| search_tab.set(tab),
+                search_artist: search_artist(),
+                on_artist_change: move |v| search_artist.set(v),
+                search_album: search_album(),
+                on_album_change: move |v| search_album.set(v),
+                search_year: search_year(),
+                on_year_change: move |v| search_year.set(v),
+                search_label: search_label(),
+                on_label_change: move |v| search_label.set(v),
+                search_catalog_number: search_catalog_number(),
+                on_catalog_number_change: move |v| search_catalog_number.set(v),
+                search_barcode: search_barcode(),
+                on_barcode_change: move |v| search_barcode.set(v),
+                is_searching: is_searching(),
+                search_error: None,
+                has_searched: has_searched(),
+                manual_match_candidates,
+                on_manual_match_select: move |idx| selected_match_index.set(Some(idx)),
+                on_search: move |_| is_searching.set(true),
+                on_manual_confirm: |_| {},
+                discid_lookup_error,
+                is_retrying_discid_lookup: is_retrying_discid_lookup(),
+                on_retry_discid_lookup: |_| {},
+                confirmed_candidate,
+                selected_cover: selected_cover(),
+                display_cover_url: Some("/covers/the-midnight-signal_neon-frequencies.png".to_string()),
+                artwork_files,
+                storage_profiles,
+                selected_profile_id: selected_profile_id(),
+                is_importing: is_importing(),
+                preparing_step_text: if is_importing() { Some("Encoding tracks...".to_string()) } else { None },
+                on_select_remote_cover: move |url| {
+                    selected_cover
+                        .set(
+                            Some(SelectedCover::Remote {
+                                url,
+                                source: "MusicBrainz".to_string(),
+                            }),
+                        )
+                },
+                on_select_local_cover: move |filename| selected_cover.set(Some(SelectedCover::Local { filename })),
+                on_storage_profile_change: move |id| selected_profile_id.set(id),
+                on_edit: |_| {},
+                on_confirm: |_| {},
+                on_configure_storage: |_| {},
+                on_clear: move |_| phase.set(ImportPhase::FolderSelection),
+                import_error,
+                duplicate_album_id: None,
+                on_view_duplicate: |_| {},
             }
         }
     }

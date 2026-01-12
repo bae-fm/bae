@@ -33,10 +33,10 @@ pub enum Route {
     // Mock routes (no app layout, with controls)
     #[route("/mocks")]
     MockIndex {},
-    #[route("/mock/folder-import")]
-    MockFolderImport {},
-    #[route("/mock/album-detail")]
-    MockAlbumDetail {},
+    #[route("/mock/folder-import?:state")]
+    MockFolderImport { state: Option<String> },
+    #[route("/mock/album-detail?:state")]
+    MockAlbumDetail { state: Option<String> },
 }
 
 #[component]
