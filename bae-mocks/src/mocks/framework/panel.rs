@@ -37,10 +37,59 @@ fn set_stored_viewport(width: u32) {
     }
 }
 
+/// All available mock pages - add new mocks here
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MockPage {
+    Library,
+    AlbumDetail,
+    FolderImport,
+}
+
+impl MockPage {
+    /// All variants - update when adding new mocks
+    pub const ALL: &[MockPage] = &[
+        MockPage::Library,
+        MockPage::AlbumDetail,
+        MockPage::FolderImport,
+    ];
+
+    /// Display name shown in UI
+    pub fn label(self) -> &'static str {
+        match self {
+            MockPage::Library => "LibraryView",
+            MockPage::AlbumDetail => "AlbumDetailView",
+            MockPage::FolderImport => "FolderImportView",
+        }
+    }
+
+    /// URL key for serialization
+    pub fn key(self) -> &'static str {
+        match self {
+            MockPage::Library => "library",
+            MockPage::AlbumDetail => "album-detail",
+            MockPage::FolderImport => "folder-import",
+        }
+    }
+
+    /// Convert to Route
+    pub fn to_route(self, state: Option<String>) -> Route {
+        match self {
+            MockPage::Library => Route::MockLibrary { state },
+            MockPage::AlbumDetail => Route::MockAlbumDetail { state },
+            MockPage::FolderImport => Route::MockFolderImport { state },
+        }
+    }
+
+    /// Parse from key string
+    pub fn from_key(key: &str) -> Option<MockPage> {
+        MockPage::ALL.iter().find(|p| p.key() == key).copied()
+    }
+}
+
 /// Main mock panel component that renders controls, presets, and viewport
 #[component]
 pub fn MockPanel(
-    title: String,
+    current_mock: MockPage,
     registry: ControlRegistry,
     #[props(default = "4xl")] max_width: &'static str,
     children: Element,
@@ -70,7 +119,7 @@ pub fn MockPanel(
                                 "Component mocks"
                             }
                             span { class: "text-gray-600", "/" }
-                            span { class: "text-white font-medium", "{title}" }
+                            MockDropdown { current_mock }
                         }
                         div { class: "ml-auto flex items-center gap-3",
                             ViewportDropdown { viewport_width }
@@ -101,6 +150,31 @@ pub fn MockPanel(
             // Content area
             div { class: "{max_w_class} mx-auto p-6",
                 MockViewport { width: viewport_width(), {children} }
+            }
+        }
+    }
+}
+
+/// Dropdown for switching between mocks
+#[component]
+fn MockDropdown(current_mock: MockPage) -> Element {
+    let nav = use_navigator();
+
+    rsx! {
+        select {
+            class: "bg-transparent text-white font-medium text-sm appearance-none cursor-pointer pr-4 focus:outline-none",
+            style: "background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E\"); background-position: right center; background-repeat: no-repeat; background-size: 1.25em;",
+            onchange: move |e| {
+                if let Some(page) = MockPage::from_key(&e.value()) {
+                    nav.push(page.to_route(None));
+                }
+            },
+            for page in MockPage::ALL {
+                option {
+                    value: page.key(),
+                    selected: *page == current_mock,
+                    "{page.label()}"
+                }
             }
         }
     }

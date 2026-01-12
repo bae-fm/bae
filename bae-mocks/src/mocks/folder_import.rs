@@ -1,6 +1,6 @@
 //! FolderImportView mock component
 
-use super::framework::{ControlRegistryBuilder, MockPanel, Preset};
+use super::framework::{ControlRegistryBuilder, MockPage, MockPanel, Preset};
 use bae_ui::{
     ArtworkFile, AudioContentInfo, CategorizedFileInfo, DetectedRelease, FileInfo,
     FolderImportView, FolderMetadata, ImportPhase, MatchCandidate, MatchSourceType, SearchSource,
@@ -254,7 +254,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
 
     rsx! {
         MockPanel {
-            title: "FolderImportView".to_string(),
+            current_mock: MockPage::FolderImport,
             registry,
             max_width: "4xl",
             FolderImportView {

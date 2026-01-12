@@ -10,7 +10,6 @@ mod preset;
 mod registry;
 mod viewport;
 
-pub use panel::MockPanel;
+pub use panel::{MockPage, MockPanel};
 pub use preset::Preset;
 pub use registry::ControlRegistryBuilder;
-// MockViewport is used by MockPanel internally

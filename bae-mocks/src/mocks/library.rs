@@ -1,6 +1,6 @@
 //! LibraryView mock component
 
-use super::framework::{ControlRegistryBuilder, MockPanel, Preset};
+use super::framework::{ControlRegistryBuilder, MockPage, MockPanel, Preset};
 use bae_ui::{Album, Artist, LibraryView};
 use dioxus::prelude::*;
 use std::collections::HashMap;
@@ -52,7 +52,7 @@ pub fn LibraryMock(initial_state: Option<String>) -> Element {
 
     rsx! {
         MockPanel {
-            title: "LibraryView".to_string(),
+            current_mock: MockPage::Library,
             registry,
             max_width: "6xl",
             LibraryView {

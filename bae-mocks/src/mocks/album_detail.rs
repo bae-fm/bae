@@ -1,6 +1,6 @@
 //! AlbumDetailView mock component
 
-use super::framework::{ControlRegistryBuilder, MockPanel, Preset};
+use super::framework::{ControlRegistryBuilder, MockPage, MockPanel, Preset};
 use bae_ui::{Album, AlbumDetailView, Artist, PlaybackDisplay, Release, Track, TrackImportState};
 use dioxus::prelude::*;
 
@@ -126,7 +126,7 @@ pub fn AlbumDetailMock(initial_state: Option<String>) -> Element {
 
     rsx! {
         MockPanel {
-            title: "AlbumDetailView".to_string(),
+            current_mock: MockPage::AlbumDetail,
             registry,
             max_width: "6xl",
             AlbumDetailView {
