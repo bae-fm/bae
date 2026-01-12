@@ -15,13 +15,17 @@ trap "rm -f $TMPFILE" EXIT
 CHANGED_FILES=$(git --no-pager diff --cached --name-only)
 
 has_changes_in() {
-    echo "$CHANGED_FILES" | grep -q "^$1/" && return 0
+    if echo "$CHANGED_FILES" | grep -q "^$1/"; then
+        echo "Changes detected in $1"
+        return 0
+    fi
     return 1
 }
 
 run_check() {
     local name="$1"
     shift
+    echo "Running $name..."
     if "$@" > "$TMPFILE" 2>&1; then
         return 0
     else
