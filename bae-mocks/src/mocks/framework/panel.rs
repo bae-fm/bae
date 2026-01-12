@@ -5,6 +5,38 @@ use super::viewport::{MockViewport, DEFAULT_BREAKPOINTS};
 use crate::Route;
 use dioxus::prelude::*;
 
+const COLLAPSED_KEY: &str = "mock_panel_collapsed";
+const VIEWPORT_KEY: &str = "mock_panel_viewport";
+
+fn get_storage() -> Option<web_sys::Storage> {
+    web_sys::window().and_then(|w| w.local_storage().ok().flatten())
+}
+
+fn get_stored_collapsed() -> bool {
+    get_storage()
+        .and_then(|s| s.get_item(COLLAPSED_KEY).ok().flatten())
+        .is_some_and(|v| v == "true")
+}
+
+fn set_stored_collapsed(collapsed: bool) {
+    if let Some(storage) = get_storage() {
+        let _ = storage.set_item(COLLAPSED_KEY, if collapsed { "true" } else { "false" });
+    }
+}
+
+fn get_stored_viewport() -> u32 {
+    get_storage()
+        .and_then(|s| s.get_item(VIEWPORT_KEY).ok().flatten())
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0)
+}
+
+fn set_stored_viewport(width: u32) {
+    if let Some(storage) = get_storage() {
+        let _ = storage.set_item(VIEWPORT_KEY, &width.to_string());
+    }
+}
+
 /// Main mock panel component that renders controls, presets, and viewport
 #[component]
 pub fn MockPanel(
@@ -13,7 +45,8 @@ pub fn MockPanel(
     #[props(default = "4xl")] max_width: &'static str,
     children: Element,
 ) -> Element {
-    let viewport_width = use_signal(|| 0u32); // 0 = full width
+    let viewport_width = use_signal(get_stored_viewport);
+    let mut collapsed = use_signal(get_stored_collapsed);
 
     let max_w_class = match max_width {
         "4xl" => "max-w-4xl",
@@ -21,31 +54,44 @@ pub fn MockPanel(
         _ => max_width,
     };
 
+    let header_mb = if collapsed() { "" } else { "mb-3" };
+
     rsx! {
         div { class: "min-h-screen bg-gray-900 text-white",
             // Controls panel
             div { class: "sticky top-0 z-50 bg-gray-800 border-b border-gray-700 p-4",
                 div { class: "{max_w_class} mx-auto",
                     // Header row with title and viewport
-                    div { class: "flex items-center gap-3 mb-3",
+                    div { class: "flex items-center gap-3 {header_mb}",
                         Link {
                             to: Route::MockIndex {},
                             class: "text-gray-400 hover:text-white",
                             "←"
                         }
                         h1 { class: "text-lg font-semibold text-white", "{title}" }
-                        div { class: "ml-auto",
+                        div { class: "ml-auto flex items-center gap-3",
                             ViewportDropdown { viewport_width }
+                            button {
+                                class: "text-gray-400 hover:text-white px-2",
+                                onclick: move |_| {
+                                    let new_val = !collapsed();
+                                    set_stored_collapsed(new_val);
+                                    collapsed.set(new_val);
+                                },
+                                if collapsed() { "▼" } else { "▲" }
+                            }
                         }
                     }
 
-                    // Presets row
-                    if !registry.presets.is_empty() {
-                        PresetBar { registry: registry.clone() }
-                    }
+                    if !collapsed() {
+                        // Presets row
+                        if !registry.presets.is_empty() {
+                            PresetBar { registry: registry.clone() }
+                        }
 
-                    // Controls row
-                    ControlsRow { registry: registry.clone() }
+                        // Controls row
+                        ControlsRow { registry: registry.clone() }
+                    }
                 }
             }
 
@@ -138,6 +184,7 @@ fn ViewportDropdown(mut viewport_width: Signal<u32>) -> Element {
             value: current.to_string(),
             onchange: move |e| {
                 if let Ok(w) = e.value().parse::<u32>() {
+                    set_stored_viewport(w);
                     viewport_width.set(w);
                 }
             },
