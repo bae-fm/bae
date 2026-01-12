@@ -26,6 +26,7 @@ static UPDATE_DOWNLOADING: std::sync::atomic::AtomicBool =
 static DELEGATE_CLASS_REGISTERED: std::sync::Once = std::sync::Once::new();
 
 /// Update state for menu display
+#[cfg(target_os = "macos")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UpdateState {
     /// No update activity
@@ -37,19 +38,13 @@ pub enum UpdateState {
 }
 
 /// Returns the current update state
+#[cfg(target_os = "macos")]
 pub fn update_state() -> UpdateState {
-    #[cfg(target_os = "macos")]
-    {
-        if UPDATE_READY.load(std::sync::atomic::Ordering::SeqCst) {
-            UpdateState::Ready
-        } else if UPDATE_DOWNLOADING.load(std::sync::atomic::Ordering::SeqCst) {
-            UpdateState::Downloading
-        } else {
-            UpdateState::Idle
-        }
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
+    if UPDATE_READY.load(std::sync::atomic::Ordering::SeqCst) {
+        UpdateState::Ready
+    } else if UPDATE_DOWNLOADING.load(std::sync::atomic::Ordering::SeqCst) {
+        UpdateState::Downloading
+    } else {
         UpdateState::Idle
     }
 }
