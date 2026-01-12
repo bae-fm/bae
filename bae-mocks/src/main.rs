@@ -10,7 +10,7 @@ mod pages;
 use dioxus::prelude::*;
 use pages::{
     AlbumDetail, DemoLayout, Import, Library, MockAlbumDetail, MockFolderImport, MockIndex,
-    Settings,
+    MockLibrary, Settings,
 };
 
 pub const FAVICON: Asset = asset!("/assets/favicon.ico");
@@ -37,6 +37,8 @@ pub enum Route {
     MockFolderImport { state: Option<String> },
     #[route("/mock/album-detail?:state")]
     MockAlbumDetail { state: Option<String> },
+    #[route("/mock/library?:state")]
+    MockLibrary { state: Option<String> },
 }
 
 #[component]

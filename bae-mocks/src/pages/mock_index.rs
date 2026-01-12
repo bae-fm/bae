@@ -1,6 +1,6 @@
 //! Mock pages with URL state persistence
 
-use crate::mocks::{AlbumDetailMock, FolderImportMock};
+use crate::mocks::{AlbumDetailMock, FolderImportMock, LibraryMock};
 use crate::Route;
 use dioxus::prelude::*;
 
@@ -11,20 +11,22 @@ pub fn MockIndex() -> Element {
             h1 { class: "text-2xl font-bold mb-6", "Component Mocks" }
             div { class: "space-y-2",
                 Link {
-                    to: Route::MockFolderImport {
-                        state: None,
-                    },
+                    to: Route::MockLibrary { state: None },
                     class: "block p-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors",
-                    div { class: "font-medium", "FolderImportView" }
-                    div { class: "text-sm text-gray-400", "Folder import workflow with all phases" }
+                    div { class: "font-medium", "LibraryView" }
+                    div { class: "text-sm text-gray-400", "Album grid with loading/error/empty states" }
                 }
                 Link {
-                    to: Route::MockAlbumDetail {
-                        state: None,
-                    },
+                    to: Route::MockAlbumDetail { state: None },
                     class: "block p-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors",
                     div { class: "font-medium", "AlbumDetailView" }
                     div { class: "text-sm text-gray-400", "Album detail page with tracks and controls" }
+                }
+                Link {
+                    to: Route::MockFolderImport { state: None },
+                    class: "block p-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors",
+                    div { class: "font-medium", "FolderImportView" }
+                    div { class: "text-sm text-gray-400", "Folder import workflow with all phases" }
                 }
             }
         }
@@ -50,5 +52,16 @@ pub fn MockFolderImport(state: Option<String>) -> Element {
 pub fn MockAlbumDetail(state: Option<String>) -> Element {
     rsx! {
         AlbumDetailMock { initial_state: state }
+    }
+}
+
+// ============================================================================
+// Library page wrapper
+// ============================================================================
+
+#[component]
+pub fn MockLibrary(state: Option<String>) -> Element {
+    rsx! {
+        LibraryMock { initial_state: state }
     }
 }
