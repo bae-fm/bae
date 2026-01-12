@@ -5,7 +5,7 @@ use super::playback_hooks::PlaybackStateProvider;
 use super::queue_sidebar::QueueSidebarState;
 use crate::ui::import_context::ImportContextProvider;
 #[cfg(target_os = "macos")]
-use crate::ui::window_activation::setup_transparent_titlebar;
+use crate::ui::window_activation::{setup_app_menu, setup_transparent_titlebar};
 use crate::ui::{Route, FAVICON, MAIN_CSS, TAILWIND_CSS};
 use dioxus::prelude::*;
 use tracing::debug;
@@ -19,6 +19,7 @@ pub fn App() -> Element {
     #[cfg(target_os = "macos")]
     use_effect(move || {
         setup_transparent_titlebar();
+        setup_app_menu();
     });
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
