@@ -2,8 +2,22 @@
 
 set -e
 
+# Dependency graph (update when crate dependencies change):
+#   bae-core: no local deps
+#   bae-ui: no local deps
+#   bae-desktop: depends on bae-core, bae-ui
+#   bae-demo: depends on bae-ui
+
 TMPFILE=$(mktemp)
 trap "rm -f $TMPFILE" EXIT
+
+# Get changed files (staged for commit)
+CHANGED_FILES=$(git --no-pager diff --cached --name-only)
+
+has_changes_in() {
+    echo "$CHANGED_FILES" | grep -q "^$1/" && return 0
+    return 1
+}
 
 run_check() {
     local name="$1"
@@ -18,92 +32,100 @@ run_check() {
     fi
 }
 
-# Run checks in bae-core directory
-cd bae-core
+# bae-core checks
+if has_changes_in "bae-core"; then
+    cd bae-core
 
-run_check "cargo fmt (bae-core)" cargo fmt -- --check || {
-    echo "Run 'cargo fmt' in the bae-core directory to fix formatting"
-    exit 1
-}
-
-run_check "clippy lib (bae-core)" cargo clippy --lib -- -D warnings -A unexpected_cfgs -A deprecated || {
-    echo "Fix the warnings above and try again"
-    exit 1
-}
-
-run_check "clippy tests (bae-core)" cargo clippy --tests --features test-utils -- -D warnings -A unexpected_cfgs -A deprecated || {
-    echo "Fix the warnings above and try again"
-    exit 1
-}
-
-for test in tests/*.rs; do
-    testname=$(basename "$test" .rs)
-    run_check "clippy integration test: $testname" cargo clippy --test "$testname" --features test-utils -- -D warnings -A unexpected_cfgs -A deprecated || {
+    run_check "cargo fmt (bae-core)" cargo fmt -- --check || {
+        echo "Run 'cargo fmt' in the bae-core directory to fix formatting"
         exit 1
     }
-done
 
-cd ..
+    run_check "clippy lib (bae-core)" cargo clippy --lib -- -D warnings -A unexpected_cfgs -A deprecated || {
+        echo "Fix the warnings above and try again"
+        exit 1
+    }
 
-# Run checks in bae-desktop directory
-cd bae-desktop
+    run_check "clippy tests (bae-core)" cargo clippy --tests --features test-utils -- -D warnings -A unexpected_cfgs -A deprecated || {
+        echo "Fix the warnings above and try again"
+        exit 1
+    }
 
-run_check "cargo fmt (bae-desktop)" cargo fmt -- --check || {
-    echo "Run 'cargo fmt' in the bae-desktop directory to fix formatting"
-    exit 1
-}
+    for test in tests/*.rs; do
+        testname=$(basename "$test" .rs)
+        run_check "clippy integration test: $testname" cargo clippy --test "$testname" --features test-utils -- -D warnings -A unexpected_cfgs -A deprecated || {
+            exit 1
+        }
+    done
 
-run_check "dx fmt (bae-desktop)" dx fmt --check || {
-    echo "Run 'dx fmt' in the bae-desktop directory to fix formatting"
-    exit 1
-}
+    run_check "tests (bae-core)" cargo test --features test-utils || {
+        echo "Fix the failing tests and try again"
+        exit 1
+    }
 
-run_check "clippy (bae-desktop)" env BINDGEN_EXTRA_CLANG_ARGS="-I/opt/homebrew/include" cargo clippy -- -D warnings -A unexpected_cfgs -A deprecated || {
-    echo "Fix the warnings above and try again"
-    exit 1
-}
+    cd ..
+fi
 
-cd ..
+# bae-ui checks
+if has_changes_in "bae-ui"; then
+    cd bae-ui
 
-# Run checks in bae-ui directory
-cd bae-ui
+    run_check "cargo fmt (bae-ui)" cargo fmt -- --check || {
+        echo "Run 'cargo fmt' in the bae-ui directory to fix formatting"
+        exit 1
+    }
 
-run_check "cargo fmt (bae-ui)" cargo fmt -- --check || {
-    echo "Run 'cargo fmt' in the bae-ui directory to fix formatting"
-    exit 1
-}
+    run_check "clippy (bae-ui)" cargo clippy -- -D warnings || {
+        echo "Fix the warnings above and try again"
+        exit 1
+    }
 
-run_check "clippy (bae-ui)" cargo clippy -- -D warnings || {
-    echo "Fix the warnings above and try again"
-    exit 1
-}
+    cd ..
+fi
 
-cd ..
+# bae-desktop checks (depends on bae-core, bae-ui)
+if has_changes_in "bae-desktop" || has_changes_in "bae-core" || has_changes_in "bae-ui"; then
+    cd bae-desktop
 
-# Run checks in bae-demo directory
-cd bae-demo
+    run_check "cargo fmt (bae-desktop)" cargo fmt -- --check || {
+        echo "Run 'cargo fmt' in the bae-desktop directory to fix formatting"
+        exit 1
+    }
 
-run_check "cargo fmt (bae-demo)" cargo fmt -- --check || {
-    echo "Run 'cargo fmt' in the bae-demo directory to fix formatting"
-    exit 1
-}
+    run_check "dx fmt (bae-desktop)" dx fmt --check || {
+        echo "Run 'dx fmt' in the bae-desktop directory to fix formatting"
+        exit 1
+    }
 
-run_check "dx fmt (bae-demo)" dx fmt --check || {
-    echo "Run 'dx fmt' in the bae-demo directory to fix formatting"
-    exit 1
-}
+    run_check "clippy (bae-desktop)" env BINDGEN_EXTRA_CLANG_ARGS="-I/opt/homebrew/include" cargo clippy -- -D warnings -A unexpected_cfgs -A deprecated || {
+        echo "Fix the warnings above and try again"
+        exit 1
+    }
 
-run_check "clippy (bae-demo)" cargo clippy -- -D warnings || {
-    echo "Fix the warnings above and try again"
-    exit 1
-}
+    cd ..
+fi
 
-cd ../bae-core
+# bae-demo checks (depends on bae-ui)
+if has_changes_in "bae-demo" || has_changes_in "bae-ui"; then
+    cd bae-demo
 
-run_check "tests (bae-core)" cargo test --features test-utils || {
-    echo "Fix the failing tests and try again"
-    exit 1
-}
+    run_check "cargo fmt (bae-demo)" cargo fmt -- --check || {
+        echo "Run 'cargo fmt' in the bae-demo directory to fix formatting"
+        exit 1
+    }
+
+    run_check "dx fmt (bae-demo)" dx fmt --check || {
+        echo "Run 'dx fmt' in the bae-demo directory to fix formatting"
+        exit 1
+    }
+
+    run_check "clippy (bae-demo)" cargo clippy -- -D warnings || {
+        echo "Fix the warnings above and try again"
+        exit 1
+    }
+
+    cd ..
+fi
 
 echo "✅ All checks passed"
 exit 0
