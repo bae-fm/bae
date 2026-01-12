@@ -3,8 +3,7 @@
 //! Provides:
 //! - ControlRegistry: Typed control bag with automatic URL sync
 //! - Presets: Named state configurations for quick switching
-//! - MockPanel: Auto-generated control panel UI
-//! - MockViewport: Responsive viewport switching
+//! - MockPanel: Auto-generated control panel UI with built-in viewport switching
 
 mod panel;
 mod preset;

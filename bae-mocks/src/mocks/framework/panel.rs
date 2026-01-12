@@ -2,7 +2,7 @@
 
 use super::registry::ControlRegistry;
 use super::viewport::{MockViewport, DEFAULT_BREAKPOINTS};
-use crate::mocks::mock_header::MockHeader;
+use crate::Route;
 use dioxus::prelude::*;
 
 /// Main mock panel component that renders controls, presets, and viewport
@@ -10,10 +10,11 @@ use dioxus::prelude::*;
 pub fn MockPanel(
     title: String,
     registry: ControlRegistry,
-    #[props(default = false)] viewport_enabled: bool,
     #[props(default = "4xl")] max_width: &'static str,
     children: Element,
 ) -> Element {
+    let viewport_width = use_signal(|| 0u32); // 0 = full width
+
     let max_w_class = match max_width {
         "4xl" => "max-w-4xl",
         "6xl" => "max-w-6xl",
@@ -25,7 +26,18 @@ pub fn MockPanel(
             // Controls panel
             div { class: "sticky top-0 z-50 bg-gray-800 border-b border-gray-700 p-4",
                 div { class: "{max_w_class} mx-auto",
-                    MockHeader { title }
+                    // Header row with title and viewport
+                    div { class: "flex items-center gap-3 mb-3",
+                        Link {
+                            to: Route::MockIndex {},
+                            class: "text-gray-400 hover:text-white",
+                            "←"
+                        }
+                        h1 { class: "text-lg font-semibold text-white", "{title}" }
+                        div { class: "ml-auto",
+                            ViewportDropdown { viewport_width }
+                        }
+                    }
 
                     // Presets row
                     if !registry.presets.is_empty() {
@@ -39,11 +51,7 @@ pub fn MockPanel(
 
             // Content area
             div { class: "{max_w_class} mx-auto p-6",
-                if viewport_enabled {
-                    MockViewport { breakpoints: DEFAULT_BREAKPOINTS.to_vec(), {children} }
-                } else {
-                    {children}
-                }
+                MockViewport { width: viewport_width(), {children} }
             }
         }
     }
@@ -103,7 +111,7 @@ fn ControlsRow(registry: ControlRegistry) -> Element {
             }
         }
 
-        // Bool controls as checkboxes
+        // Bool controls
         if !bool_controls.is_empty() {
             div { class: "flex flex-wrap gap-4 text-sm",
                 for control in bool_controls {
@@ -113,6 +121,31 @@ fn ControlsRow(registry: ControlRegistry) -> Element {
                         label: control.label,
                         doc: control.doc,
                     }
+                }
+            }
+        }
+    }
+}
+
+/// Viewport dropdown selector
+#[component]
+fn ViewportDropdown(mut viewport_width: Signal<u32>) -> Element {
+    let current = viewport_width();
+
+    rsx! {
+        select {
+            class: "bg-gray-700 text-gray-300 text-sm rounded px-2 py-1 border border-gray-600",
+            value: current.to_string(),
+            onchange: move |e| {
+                if let Ok(w) = e.value().parse::<u32>() {
+                    viewport_width.set(w);
+                }
+            },
+            for bp in DEFAULT_BREAKPOINTS {
+                option {
+                    value: bp.width.to_string(),
+                    selected: current == bp.width,
+                    if bp.width > 0 { "{bp.name} ({bp.width}px)" } else { "{bp.name}" }
                 }
             }
         }

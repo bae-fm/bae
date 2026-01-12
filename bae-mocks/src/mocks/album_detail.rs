@@ -129,7 +129,6 @@ pub fn AlbumDetailMock(initial_state: Option<String>) -> Element {
             title: "AlbumDetailView".to_string(),
             registry,
             max_width: "6xl",
-            viewport_enabled: true,
             AlbumDetailView {
                 album,
                 releases,

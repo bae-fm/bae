@@ -257,7 +257,6 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
             title: "FolderImportView".to_string(),
             registry,
             max_width: "4xl",
-            viewport_enabled: true,
             FolderImportView {
                 phase,
                 folder_path: folder_path.clone(),

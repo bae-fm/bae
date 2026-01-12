@@ -23,36 +23,14 @@ pub const DEFAULT_BREAKPOINTS: &[Breakpoint] = &[
     Breakpoint::new("Full", 0),
 ];
 
-/// Viewport wrapper with breakpoint switching
+/// Viewport container - just applies width constraint
 #[component]
-pub fn MockViewport(
-    #[props(default = DEFAULT_BREAKPOINTS.to_vec())] breakpoints: Vec<Breakpoint>,
-    children: Element,
-) -> Element {
-    let mut current_width = use_signal(|| 0u32); // 0 = full width
-
+pub fn MockViewport(width: u32, children: Element) -> Element {
     rsx! {
-        div { class: "flex flex-col",
-            // Breakpoint buttons
-            div { class: "flex gap-1 mb-3",
-                for bp in breakpoints {
-                    button {
-                        class: if current_width() == bp.width { "px-2 py-1 text-xs rounded bg-purple-600 text-white" } else { "px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600" },
-                        onclick: move |_| current_width.set(bp.width),
-                        "{bp.name}"
-                        if bp.width > 0 {
-                            span { class: "ml-1 text-gray-400", "({bp.width}px)" }
-                        }
-                    }
-                }
-            }
-
-            // Viewport container
-            div {
-                class: "bg-gray-950 rounded-lg overflow-hidden",
-                style: if current_width() > 0 { format!("width: {}px; margin: 0 auto;", current_width()) } else { String::new() },
-                {children}
-            }
+        div {
+            class: "bg-gray-950 rounded-lg overflow-hidden",
+            style: if width > 0 { format!("width: {}px; margin: 0 auto;", width) } else { String::new() },
+            {children}
         }
     }
 }
