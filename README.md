@@ -78,7 +78,7 @@ Dev mode activates automatically when `.env` exists.
 
 ```bash
 cd bae-mocks
-npm run start    # builds and serves at http://localhost:8080
+dx serve
 ```
 
 To run Playwright screenshot tests:
