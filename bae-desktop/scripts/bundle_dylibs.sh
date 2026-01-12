@@ -269,7 +269,13 @@ fi
 
 # Bundle Sparkle.framework for auto-updates
 BUNDLE_SPARKLE="$SCRIPT_DIR/bundle_sparkle.sh"
-if [[ -x "$BUNDLE_SPARKLE" ]]; then
-    echo ""
-    "$BUNDLE_SPARKLE" "$APP_PATH"
+if [[ ! -f "$BUNDLE_SPARKLE" ]]; then
+    echo "Error: bundle_sparkle.sh not found at $BUNDLE_SPARKLE"
+    exit 1
 fi
+if [[ ! -x "$BUNDLE_SPARKLE" ]]; then
+    echo "Error: bundle_sparkle.sh is not executable"
+    exit 1
+fi
+echo ""
+"$BUNDLE_SPARKLE" "$APP_PATH"
