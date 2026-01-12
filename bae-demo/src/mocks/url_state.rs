@@ -28,33 +28,6 @@ pub fn build_state(pairs: &[(String, String)]) -> String {
         .join(",")
 }
 
-/// Get a value from parsed state
-pub fn get_state_value<'a>(pairs: &'a [(String, String)], key: &str) -> Option<&'a str> {
-    pairs
-        .iter()
-        .find(|(k, _)| k == key)
-        .map(|(_, v)| v.as_str())
-}
-
-/// Get bool from state
-pub fn get_state_bool(pairs: &[(String, String)], key: &str, default: bool) -> bool {
-    get_state_value(pairs, key)
-        .map(|v| v == "1" || v == "true")
-        .unwrap_or(default)
-}
-
-/// Get enum from state using a parser function
-pub fn get_state_enum<T>(
-    pairs: &[(String, String)],
-    key: &str,
-    default: T,
-    from_str: fn(&str) -> Option<T>,
-) -> T {
-    get_state_value(pairs, key)
-        .and_then(from_str)
-        .unwrap_or(default)
-}
-
 /// Builder to collect state changes and produce a state string
 pub struct StateBuilder {
     pairs: Vec<(String, String)>,
@@ -72,10 +45,8 @@ impl StateBuilder {
         }
     }
 
-    pub fn set_enum<T: std::fmt::Debug + PartialEq>(&mut self, key: &str, value: &T, default: &T) {
-        if value != default {
-            self.pairs.push((key.to_string(), format!("{:?}", value)));
-        }
+    pub fn set_string(&mut self, key: &str, value: &str) {
+        self.pairs.push((key.to_string(), value.to_string()));
     }
 
     pub fn build(mut self) -> String {

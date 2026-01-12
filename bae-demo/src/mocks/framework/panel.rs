@@ -1,0 +1,170 @@
+//! Auto-generated control panel UI
+
+use super::registry::ControlRegistry;
+use super::viewport::{MockViewport, DEFAULT_BREAKPOINTS};
+use crate::mocks::mock_header::MockHeader;
+use dioxus::prelude::*;
+
+/// Main mock panel component that renders controls, presets, and viewport
+#[component]
+pub fn MockPanel(
+    title: String,
+    registry: ControlRegistry,
+    #[props(default = false)] viewport_enabled: bool,
+    #[props(default = "4xl")] max_width: &'static str,
+    children: Element,
+) -> Element {
+    let max_w_class = match max_width {
+        "4xl" => "max-w-4xl",
+        "6xl" => "max-w-6xl",
+        _ => max_width,
+    };
+
+    rsx! {
+        div { class: "min-h-screen bg-gray-900 text-white",
+            // Controls panel
+            div { class: "sticky top-0 z-50 bg-gray-800 border-b border-gray-700 p-4",
+                div { class: "{max_w_class} mx-auto",
+                    MockHeader { title }
+
+                    // Presets row
+                    if !registry.presets.is_empty() {
+                        PresetBar { registry: registry.clone() }
+                    }
+
+                    // Controls row
+                    ControlsRow { registry: registry.clone() }
+                }
+            }
+
+            // Content area
+            div { class: "{max_w_class} mx-auto p-6",
+                if viewport_enabled {
+                    MockViewport { breakpoints: DEFAULT_BREAKPOINTS.to_vec(), {children} }
+                } else {
+                    {children}
+                }
+            }
+        }
+    }
+}
+
+/// Preset buttons bar
+#[component]
+fn PresetBar(registry: ControlRegistry) -> Element {
+    rsx! {
+        div { class: "flex flex-wrap gap-2 mb-3",
+            span { class: "text-xs text-gray-500 self-center mr-2", "Presets:" }
+            for preset in &registry.presets {
+                button {
+                    class: "px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600",
+                    onclick: {
+                        let preset = preset.clone();
+                        let registry = registry.clone();
+                        move |_| registry.apply_preset(&preset)
+                    },
+                    "{preset.name}"
+                }
+            }
+        }
+    }
+}
+
+/// Auto-generated controls row
+#[component]
+fn ControlsRow(registry: ControlRegistry) -> Element {
+    // Separate enum controls (buttons) from bool controls (checkboxes)
+    let enum_controls: Vec<_> = registry
+        .controls
+        .iter()
+        .filter(|c| c.enum_options.is_some())
+        .collect();
+    let bool_controls: Vec<_> = registry
+        .controls
+        .iter()
+        .filter(|c| c.enum_options.is_none())
+        .collect();
+
+    rsx! {
+        // Enum controls as button groups
+        for control in enum_controls {
+            div { class: "flex flex-wrap gap-2 mb-3",
+                if let Some(options) = &control.enum_options {
+                    for (value , label) in options {
+                        EnumButton {
+                            registry: registry.clone(),
+                            control_key: control.key,
+                            value,
+                            label,
+                            doc: control.doc,
+                        }
+                    }
+                }
+            }
+        }
+
+        // Bool controls as checkboxes
+        if !bool_controls.is_empty() {
+            div { class: "flex flex-wrap gap-4 text-sm",
+                for control in bool_controls {
+                    BoolCheckbox {
+                        registry: registry.clone(),
+                        control_key: control.key,
+                        label: control.label,
+                        doc: control.doc,
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Individual enum button - reads signal reactively
+#[component]
+fn EnumButton(
+    registry: ControlRegistry,
+    control_key: &'static str,
+    value: &'static str,
+    label: &'static str,
+    doc: Option<&'static str>,
+) -> Element {
+    // Reading inside component body creates reactive subscription
+    let is_selected = registry.get_string(control_key) == value;
+
+    rsx! {
+        button {
+            class: if is_selected { "px-3 py-1.5 text-sm rounded bg-blue-600 text-white" } else { "px-3 py-1.5 text-sm rounded bg-gray-700 text-gray-300 hover:bg-gray-600" },
+            onclick: move |_| registry.set_string(control_key, value.to_string()),
+            title: doc.unwrap_or(""),
+            "{label}"
+        }
+    }
+}
+
+/// Individual bool checkbox - reads signal reactively
+#[component]
+fn BoolCheckbox(
+    registry: ControlRegistry,
+    control_key: &'static str,
+    label: &'static str,
+    doc: Option<&'static str>,
+) -> Element {
+    // Reading inside component body creates reactive subscription
+    let current = registry.get_bool(control_key);
+
+    rsx! {
+        label {
+            class: "flex items-center gap-2 text-gray-400",
+            title: doc.unwrap_or(""),
+            input {
+                r#type: "checkbox",
+                checked: current,
+                onchange: move |e| registry.set_bool(control_key, e.checked()),
+            }
+            "{label}"
+            if doc.is_some() {
+                span { class: "text-gray-600", "ⓘ" }
+            }
+        }
+    }
+}

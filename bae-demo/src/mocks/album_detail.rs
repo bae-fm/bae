@@ -1,16 +1,43 @@
 //! AlbumDetailView mock component
 
-use super::controls::{MockEnumButtons, MockLayout, MockSelect};
-use crate::pages::PlaybackState;
+use super::framework::{ControlRegistryBuilder, MockPanel, Preset};
 use bae_ui::{Album, AlbumDetailView, Artist, PlaybackDisplay, Release, Track, TrackImportState};
 use dioxus::prelude::*;
 
 #[component]
-pub fn AlbumDetailMock(playback_state: Signal<PlaybackState>) -> Element {
+pub fn AlbumDetailMock(initial_state: Option<String>) -> Element {
+    // Build control registry with URL sync
+    let registry = ControlRegistryBuilder::new()
+        .enum_control(
+            "playback",
+            "Playback",
+            "Stopped",
+            vec![
+                ("Stopped", "Stopped"),
+                ("Playing", "Playing"),
+                ("Paused", "Paused"),
+                ("Loading", "Loading"),
+            ],
+        )
+        .with_presets(vec![
+            Preset::new("Default"),
+            Preset::new("Playing").set_string("playback", "Playing"),
+            Preset::new("Paused").set_string("playback", "Paused"),
+            Preset::new("Loading").set_string("playback", "Loading"),
+        ])
+        .build(initial_state);
+
+    // Set up URL sync
+    registry.use_url_sync_album_detail();
+
+    // Local state
     let position_ms = use_signal(|| 45_000u64);
     let import_progress = use_signal(|| None::<u8>);
     let import_error = use_signal(|| None::<String>);
     let mut selected_release_id = use_signal(|| Some("release-1".to_string()));
+
+    // Parse playback state from registry
+    let playback_state = registry.get_string("playback");
 
     // Mock data
     let album = Album {
@@ -79,49 +106,30 @@ pub fn AlbumDetailMock(playback_state: Signal<PlaybackState>) -> Element {
     })
     .collect();
 
-    let playback = match playback_state() {
-        PlaybackState::Stopped => PlaybackDisplay::Stopped,
-        PlaybackState::Playing => PlaybackDisplay::Playing {
+    let playback = match playback_state.as_str() {
+        "Stopped" => PlaybackDisplay::Stopped,
+        "Playing" => PlaybackDisplay::Playing {
             track_id: "track-1".to_string(),
             position_ms: position_ms(),
             duration_ms: 198_000,
         },
-        PlaybackState::Paused => PlaybackDisplay::Paused {
+        "Paused" => PlaybackDisplay::Paused {
             track_id: "track-1".to_string(),
             position_ms: position_ms(),
             duration_ms: 198_000,
         },
-        PlaybackState::Loading => PlaybackDisplay::Loading {
+        "Loading" => PlaybackDisplay::Loading {
             track_id: "track-1".to_string(),
         },
+        _ => PlaybackDisplay::Stopped,
     };
 
-    let playback_options = vec![
-        (PlaybackState::Stopped, "Stopped"),
-        (PlaybackState::Playing, "Playing"),
-        (PlaybackState::Paused, "Paused"),
-        (PlaybackState::Loading, "Loading"),
-    ];
-
-    let release_options = vec![
-        ("release-1".to_string(), "CD Edition"),
-        ("release-2".to_string(), "Digital Deluxe"),
-    ];
-
     rsx! {
-        MockLayout {
+        MockPanel {
             title: "AlbumDetailView".to_string(),
+            registry,
             max_width: "6xl",
-            controls: rsx! {
-                MockEnumButtons { options: playback_options, value: playback_state }
-                div { class: "flex flex-wrap gap-4 text-sm",
-                    MockSelect {
-                        label: "Release",
-                        options: release_options,
-                        value: selected_release_id,
-                    }
-                }
-            },
+            viewport_enabled: true,
             AlbumDetailView {
                 album,
                 releases,

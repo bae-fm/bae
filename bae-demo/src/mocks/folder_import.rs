@@ -1,6 +1,6 @@
 //! FolderImportView mock component
 
-use super::controls::{MockCheckbox, MockEnumButtons, MockLayout};
+use super::framework::{ControlRegistryBuilder, MockPanel, Preset};
 use bae_ui::{
     ArtworkFile, AudioContentInfo, CategorizedFileInfo, DetectedRelease, FileInfo,
     FolderImportView, FolderMetadata, ImportPhase, MatchCandidate, MatchSourceType, SearchSource,
@@ -10,18 +10,65 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 
 #[component]
-pub fn FolderImportMock(
-    phase: Signal<ImportPhase>,
-    is_dragging: Signal<bool>,
-    is_detecting_metadata: Signal<bool>,
-    is_loading_exact_matches: Signal<bool>,
-    is_retrying_discid_lookup: Signal<bool>,
-    is_searching: Signal<bool>,
-    has_searched: Signal<bool>,
-    is_importing: Signal<bool>,
-    show_error: Signal<bool>,
-    show_discid_error: Signal<bool>,
-) -> Element {
+pub fn FolderImportMock(initial_state: Option<String>) -> Element {
+    // Build control registry with URL sync
+    let registry = ControlRegistryBuilder::new()
+        .enum_control(
+            "phase",
+            "Phase",
+            "FolderSelection",
+            vec![
+                ("FolderSelection", "Folder Selection"),
+                ("ReleaseSelection", "Release Selection"),
+                ("MetadataDetection", "Metadata Detection"),
+                ("ExactLookup", "Exact Lookup"),
+                ("ManualSearch", "Manual Search"),
+                ("Confirmation", "Confirmation"),
+            ],
+        )
+        .bool_control("dragging", "Dragging", false)
+        .bool_control("detecting", "Detecting Metadata", false)
+        .doc("Shows spinner during metadata detection")
+        .bool_control("loading", "Loading Exact Matches", false)
+        .doc("Shows spinner during exact match lookup")
+        .bool_control("retrying", "Retrying DiscID", false)
+        .doc("Shows retry state for DiscID lookup")
+        .bool_control("searching", "Searching", false)
+        .doc("Shows spinner during manual search")
+        .bool_control("results", "Has Results", false)
+        .doc("Shows search results in manual search phase")
+        .bool_control("importing", "Importing", false)
+        .doc("Shows progress during import")
+        .bool_control("error", "Error", false)
+        .doc("Shows error banner")
+        .bool_control("discid_error", "DiscID Error", false)
+        .doc("Shows DiscID lookup error")
+        .with_presets(vec![
+            Preset::new("Default"),
+            Preset::new("Detecting")
+                .set_string("phase", "MetadataDetection")
+                .set_bool("detecting", true),
+            Preset::new("Loading Matches")
+                .set_string("phase", "ExactLookup")
+                .set_bool("loading", true),
+            Preset::new("Searching")
+                .set_string("phase", "ManualSearch")
+                .set_bool("searching", true),
+            Preset::new("With Results")
+                .set_string("phase", "ManualSearch")
+                .set_bool("results", true),
+            Preset::new("Importing")
+                .set_string("phase", "Confirmation")
+                .set_bool("importing", true),
+            Preset::new("Error")
+                .set_string("phase", "Confirmation")
+                .set_bool("error", true),
+        ])
+        .build(initial_state);
+
+    // Set up URL sync
+    registry.use_url_sync_folder_import();
+
     // Local state (not persisted to URL)
     let mut selected_release_indices = use_signal(Vec::<usize>::new);
     let mut selected_match_index = use_signal(|| None::<usize>);
@@ -35,6 +82,27 @@ pub fn FolderImportMock(
     let mut search_barcode = use_signal(String::new);
     let mut selected_cover = use_signal(|| None::<SelectedCover>);
     let mut selected_profile_id = use_signal(|| Some("profile-1".to_string()));
+
+    // Parse phase from registry
+    let phase = match registry.get_string("phase").as_str() {
+        "FolderSelection" => ImportPhase::FolderSelection,
+        "ReleaseSelection" => ImportPhase::ReleaseSelection,
+        "MetadataDetection" => ImportPhase::MetadataDetection,
+        "ExactLookup" => ImportPhase::ExactLookup,
+        "ManualSearch" => ImportPhase::ManualSearch,
+        "Confirmation" => ImportPhase::Confirmation,
+        _ => ImportPhase::FolderSelection,
+    };
+
+    let is_dragging = registry.get_bool("dragging");
+    let is_detecting_metadata = registry.get_bool("detecting");
+    let is_loading_exact_matches = registry.get_bool("loading");
+    let is_retrying_discid_lookup = registry.get_bool("retrying");
+    let is_searching = registry.get_bool("searching");
+    let has_searched = registry.get_bool("results");
+    let is_importing = registry.get_bool("importing");
+    let show_error = registry.get_bool("error");
+    let show_discid_error = registry.get_bool("discid_error");
 
     // Mock data
     let folder_path = "/Users/demo/Music/The Midnight Signal - Neon Frequencies (2023)".to_string();
@@ -125,7 +193,7 @@ pub fn FolderImportMock(
         },
     ];
 
-    let manual_match_candidates = if has_searched() {
+    let manual_match_candidates = if has_searched {
         exact_match_candidates.clone()
     } else {
         vec![]
@@ -171,46 +239,27 @@ pub fn FolderImportMock(
         },
     ];
 
-    let import_error = if show_error() {
+    let import_error = if show_error {
         Some("Failed to import: Network timeout".to_string())
     } else {
         None
     };
-    let discid_lookup_error = if show_discid_error() {
+    let discid_lookup_error = if show_discid_error {
         Some("DiscID lookup failed: No matching release found".to_string())
     } else {
         None
     };
 
-    let phase_options = vec![
-        (ImportPhase::FolderSelection, "Folder Selection"),
-        (ImportPhase::ReleaseSelection, "Release Selection"),
-        (ImportPhase::MetadataDetection, "Metadata Detection"),
-        (ImportPhase::ExactLookup, "Exact Lookup"),
-        (ImportPhase::ManualSearch, "Manual Search"),
-        (ImportPhase::Confirmation, "Confirmation"),
-    ];
+    let registry_for_clear = registry.clone();
 
     rsx! {
-        MockLayout {
+        MockPanel {
             title: "FolderImportView".to_string(),
+            registry,
             max_width: "4xl",
-            controls: rsx! {
-                MockEnumButtons { options: phase_options, value: phase }
-                div { class: "flex flex-wrap gap-4 text-sm",
-                    MockCheckbox { label: "Dragging", value: is_dragging }
-                    MockCheckbox { label: "Detecting Metadata", value: is_detecting_metadata }
-                    MockCheckbox { label: "Loading Exact Matches", value: is_loading_exact_matches }
-                    MockCheckbox { label: "Retrying DiscID", value: is_retrying_discid_lookup }
-                    MockCheckbox { label: "Searching", value: is_searching }
-                    MockCheckbox { label: "Has Results", value: has_searched }
-                    MockCheckbox { label: "Importing", value: is_importing }
-                    MockCheckbox { label: "Error", value: show_error }
-                    MockCheckbox { label: "DiscID Error", value: show_discid_error }
-                }
-            },
+            viewport_enabled: true,
             FolderImportView {
-                phase: phase(),
+                phase,
                 folder_path: folder_path.clone(),
                 folder_files: folder_files.clone(),
                 image_data: vec![
@@ -224,15 +273,15 @@ pub fn FolderImportMock(
                     ),
                 ],
                 text_file_contents: HashMap::new(),
-                is_dragging: is_dragging(),
+                is_dragging,
                 on_folder_select_click: |_| {},
                 detected_releases: detected_releases.clone(),
                 selected_release_indices: selected_release_indices(),
                 on_release_selection_change: move |indices| selected_release_indices.set(indices),
                 on_releases_import: |_| {},
-                is_detecting_metadata: is_detecting_metadata(),
+                is_detecting_metadata,
                 on_skip_detection: |_| {},
-                is_loading_exact_matches: is_loading_exact_matches(),
+                is_loading_exact_matches,
                 exact_match_candidates: exact_match_candidates.clone(),
                 selected_match_index: selected_match_index(),
                 on_exact_match_select: move |idx| selected_match_index.set(Some(idx)),
@@ -253,15 +302,18 @@ pub fn FolderImportMock(
                 on_catalog_number_change: move |v| search_catalog_number.set(v),
                 search_barcode: search_barcode(),
                 on_barcode_change: move |v| search_barcode.set(v),
-                is_searching: is_searching(),
+                is_searching,
                 search_error: None,
-                has_searched: has_searched(),
+                has_searched,
                 manual_match_candidates,
                 on_manual_match_select: move |idx| selected_match_index.set(Some(idx)),
-                on_search: move |_| is_searching.set(true),
+                on_search: {
+                    let registry = registry_for_clear.clone();
+                    move |_| registry.set_bool("searching", true)
+                },
                 on_manual_confirm: |_| {},
                 discid_lookup_error,
-                is_retrying_discid_lookup: is_retrying_discid_lookup(),
+                is_retrying_discid_lookup,
                 on_retry_discid_lookup: |_| {},
                 confirmed_candidate,
                 selected_cover: selected_cover(),
@@ -269,8 +321,8 @@ pub fn FolderImportMock(
                 artwork_files,
                 storage_profiles,
                 selected_profile_id: selected_profile_id(),
-                is_importing: is_importing(),
-                preparing_step_text: if is_importing() { Some("Encoding tracks...".to_string()) } else { None },
+                is_importing,
+                preparing_step_text: if is_importing { Some("Encoding tracks...".to_string()) } else { None },
                 on_select_remote_cover: move |url| {
                     selected_cover
                         .set(
@@ -280,12 +332,12 @@ pub fn FolderImportMock(
                             }),
                         )
                 },
-                on_select_local_cover: move |filename| selected_cover.set(Some(SelectedCover::Local { filename })),
+                on_select_local_cover: move |filename| { selected_cover.set(Some(SelectedCover::Local { filename })) },
                 on_storage_profile_change: move |id| selected_profile_id.set(id),
                 on_edit: |_| {},
                 on_confirm: |_| {},
                 on_configure_storage: |_| {},
-                on_clear: move |_| phase.set(ImportPhase::FolderSelection),
+                on_clear: move |_| registry_for_clear.set_string("phase", "FolderSelection".to_string()),
                 import_error,
                 duplicate_album_id: None,
                 on_view_duplicate: |_| {},
