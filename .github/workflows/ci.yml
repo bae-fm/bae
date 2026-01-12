@@ -91,6 +91,7 @@ jobs:
 
     - name: Check RSX formatting
       run: |
+        export PATH="$HOME/.cargo/bin:$PATH"
         (cd bae-desktop && dx fmt --check)
         (cd bae-demo && dx fmt --check)
 
