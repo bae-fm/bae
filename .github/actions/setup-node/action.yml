@@ -17,14 +17,14 @@ runs:
         cache: 'npm'
         cache-dependency-path: |
           bae-desktop/package-lock.json
-          bae-demo/package-lock.json
+          bae-mocks/package-lock.json
           website/package-lock.json
 
     - name: Install Node dependencies
       shell: bash
       run: |
         (cd bae-desktop && npm ci)
-        (cd bae-demo && npm ci)
+        (cd bae-mocks && npm ci)
         if [[ "${{ inputs.include-website }}" == "true" ]]; then
           (cd website && npm ci)
         fi
