@@ -7,12 +7,12 @@ use dioxus::prelude::*;
 /// Displays exact lookup results (e.g., from DiscID lookup)
 #[component]
 pub fn ExactLookupView(
-    is_looking_up: bool,
+    is_loading: bool,
     exact_match_candidates: Vec<MatchCandidate>,
     selected_match_index: Option<usize>,
     on_select: EventHandler<usize>,
 ) -> Element {
-    if is_looking_up {
+    if is_loading {
         return rsx! {
             div { class: "bg-gray-800 rounded-lg shadow p-6 text-center",
                 p { class: "text-gray-400", "Looking up release by DiscID..." }

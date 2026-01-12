@@ -30,7 +30,8 @@ pub struct TorrentImportViewProps {
     pub on_file_select: EventHandler<()>,
     pub on_magnet_submit: EventHandler<String>,
     // ExactLookup phase
-    pub is_looking_up: bool,
+    /// True while fetching exact match candidates from MusicBrainz/Discogs
+    pub is_loading_exact_matches: bool,
     pub exact_match_candidates: Vec<MatchCandidate>,
     pub selected_match_index: Option<usize>,
     pub on_exact_match_select: EventHandler<usize>,
@@ -61,6 +62,8 @@ pub struct TorrentImportViewProps {
     pub on_manual_confirm: EventHandler<MatchCandidate>,
     // DiscID lookup error
     pub discid_lookup_error: Option<String>,
+    /// True while retrying a failed DiscID lookup
+    pub is_retrying_discid_lookup: bool,
     pub on_retry_discid_lookup: EventHandler<()>,
     // Metadata detection prompt (for cue files)
     pub show_metadata_detection_prompt: bool,
@@ -119,7 +122,7 @@ pub fn TorrentImportView(props: TorrentImportViewProps) -> Element {
 
                     if props.phase == ImportPhase::ExactLookup {
                         ExactLookupView {
-                            is_looking_up: props.is_looking_up,
+                            is_loading: props.is_loading_exact_matches,
                             exact_match_candidates: props.exact_match_candidates.clone(),
                             selected_match_index: props.selected_match_index,
                             on_select: props.on_exact_match_select,
@@ -130,7 +133,7 @@ pub fn TorrentImportView(props: TorrentImportViewProps) -> Element {
                         if props.discid_lookup_error.is_some() {
                             DiscIdLookupErrorView {
                                 error_message: props.discid_lookup_error.clone(),
-                                is_retrying: props.is_looking_up,
+                                is_retrying: props.is_retrying_discid_lookup,
                                 on_retry: props.on_retry_discid_lookup,
                             }
                         }

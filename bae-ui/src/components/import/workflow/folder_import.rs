@@ -35,10 +35,12 @@ pub struct FolderImportViewProps {
     pub on_release_selection_change: EventHandler<Vec<usize>>,
     pub on_releases_import: EventHandler<Vec<usize>>,
     // MetadataDetection phase
-    pub is_detecting: bool,
+    /// True while automatically detecting metadata from folder/files
+    pub is_detecting_metadata: bool,
     pub on_skip_detection: EventHandler<()>,
     // ExactLookup phase
-    pub is_looking_up: bool,
+    /// True while fetching exact match candidates from MusicBrainz/Discogs
+    pub is_loading_exact_matches: bool,
     pub exact_match_candidates: Vec<MatchCandidate>,
     pub selected_match_index: Option<usize>,
     pub on_exact_match_select: EventHandler<usize>,
@@ -69,6 +71,8 @@ pub struct FolderImportViewProps {
     pub on_manual_confirm: EventHandler<MatchCandidate>,
     // DiscID lookup error
     pub discid_lookup_error: Option<String>,
+    /// True while retrying a failed DiscID lookup
+    pub is_retrying_discid_lookup: bool,
     pub on_retry_discid_lookup: EventHandler<()>,
     // Confirmation phase
     pub confirmed_candidate: Option<MatchCandidate>,
@@ -134,7 +138,7 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
                     }
 
                     // MetadataDetection phase
-                    if props.is_looking_up && props.phase == ImportPhase::MetadataDetection {
+                    if props.is_detecting_metadata && props.phase == ImportPhase::MetadataDetection {
                         DetectingMetadataView {
                             message: "Looking up release...".to_string(),
                             on_skip: props.on_skip_detection,
@@ -145,7 +149,7 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
                     if props.phase == ImportPhase::ManualSearch && props.discid_lookup_error.is_some() {
                         DiscIdLookupErrorView {
                             error_message: props.discid_lookup_error.clone(),
-                            is_retrying: props.is_looking_up,
+                            is_retrying: props.is_retrying_discid_lookup,
                             on_retry: props.on_retry_discid_lookup,
                         }
                     }
@@ -153,7 +157,7 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
                     // ExactLookup phase
                     if props.phase == ImportPhase::ExactLookup {
                         ExactLookupView {
-                            is_looking_up: props.is_looking_up,
+                            is_loading: props.is_loading_exact_matches,
                             exact_match_candidates: props.exact_match_candidates.clone(),
                             selected_match_index: props.selected_match_index,
                             on_select: props.on_exact_match_select,

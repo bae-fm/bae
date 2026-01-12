@@ -25,7 +25,8 @@ pub struct CdImportViewProps {
     pub selected_drive: Option<String>,
     pub on_drive_select: EventHandler<String>,
     // ExactLookup phase
-    pub is_looking_up: bool,
+    /// True while fetching exact match candidates from MusicBrainz/Discogs
+    pub is_loading_exact_matches: bool,
     pub exact_match_candidates: Vec<MatchCandidate>,
     pub selected_match_index: Option<usize>,
     pub on_exact_match_select: EventHandler<usize>,
@@ -56,6 +57,8 @@ pub struct CdImportViewProps {
     pub on_manual_confirm: EventHandler<MatchCandidate>,
     // DiscID lookup error
     pub discid_lookup_error: Option<String>,
+    /// True while retrying a failed DiscID lookup
+    pub is_retrying_discid_lookup: bool,
     pub on_retry_discid_lookup: EventHandler<()>,
     // Confirmation phase
     pub confirmed_candidate: Option<MatchCandidate>,
@@ -98,12 +101,12 @@ pub fn CdImportView(props: CdImportViewProps) -> Element {
                         title: "Selected CD".to_string(),
                         path: props.cd_path.clone(),
                         on_clear: props.on_clear,
-                        CdTocDisplayView { toc: props.toc_info.clone(), is_reading: props.is_looking_up }
+                        CdTocDisplayView { toc: props.toc_info.clone(), is_reading: props.is_loading_exact_matches }
                     }
 
                     if props.phase == ImportPhase::ExactLookup {
                         ExactLookupView {
-                            is_looking_up: props.is_looking_up,
+                            is_loading: props.is_loading_exact_matches,
                             exact_match_candidates: props.exact_match_candidates.clone(),
                             selected_match_index: props.selected_match_index,
                             on_select: props.on_exact_match_select,
@@ -114,7 +117,7 @@ pub fn CdImportView(props: CdImportViewProps) -> Element {
                         if props.discid_lookup_error.is_some() {
                             DiscIdLookupErrorView {
                                 error_message: props.discid_lookup_error.clone(),
-                                is_retrying: props.is_looking_up,
+                                is_retrying: props.is_retrying_discid_lookup,
                                 on_retry: props.on_retry_discid_lookup,
                             }
                         }

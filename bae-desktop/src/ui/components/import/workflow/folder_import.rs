@@ -53,6 +53,7 @@ pub fn FolderImport() -> Element {
     let selected_match_index = import_context.selected_match_index();
     let confirmed_candidate = import_context.confirmed_candidate();
     let is_looking_up = import_context.is_looking_up();
+    let is_detecting = import_context.is_detecting();
     let import_error_message = import_context.import_error_message();
     let discid_lookup_error = import_context.discid_lookup_error();
     let duplicate_album_id = import_context.duplicate_album_id();
@@ -386,9 +387,9 @@ pub fn FolderImport() -> Element {
             selected_release_indices: selected_release_indices.read().clone(),
             on_release_selection_change,
             on_releases_import,
-            is_detecting: *is_looking_up.read(),
+            is_detecting_metadata: *is_detecting.read(),
             on_skip_detection: |_| {},
-            is_looking_up: *is_looking_up.read(),
+            is_loading_exact_matches: *is_looking_up.read(),
             exact_match_candidates: display_exact_candidates,
             selected_match_index: *selected_match_index.read(),
             on_exact_match_select,
@@ -456,6 +457,7 @@ pub fn FolderImport() -> Element {
             on_search: move |_| perform_search(),
             on_manual_confirm,
             discid_lookup_error: discid_lookup_error.read().clone(),
+            is_retrying_discid_lookup: *is_looking_up.read(),
             on_retry_discid_lookup,
             confirmed_candidate: display_confirmed,
             selected_cover: None,
