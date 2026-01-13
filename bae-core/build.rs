@@ -1,8 +1,11 @@
-use std::path::Path;
 use std::process::Command;
+
+#[cfg(feature = "torrent")]
+use std::path::Path;
 
 fn main() {
     set_version_env();
+    #[cfg(feature = "torrent")]
     compile_cpp_storage();
     link_libsodium();
 }
@@ -31,6 +34,7 @@ fn set_version_env() {
     println!("cargo:rerun-if-env-changed=BAE_VERSION");
 }
 
+#[cfg(feature = "torrent")]
 fn compile_cpp_storage() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let cpp_dir = Path::new(manifest_dir).join("cpp");

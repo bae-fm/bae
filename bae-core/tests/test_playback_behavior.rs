@@ -8,7 +8,6 @@ use bae_core::encryption::EncryptionService;
 use bae_core::import::ImportRequest;
 use bae_core::library::{LibraryManager, SharedLibraryManager};
 use bae_core::playback::{PlaybackProgress, PlaybackState};
-use bae_core::torrent::LazyTorrentManager;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
@@ -56,12 +55,10 @@ impl PlaybackTestFixture {
         let runtime_handle = tokio::runtime::Handle::current();
         let discogs_release = create_test_album();
         let _track_data = generate_test_flac_files(&album_dir);
-        let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
         let import_handle = bae_core::import::ImportService::start(
             runtime_handle.clone(),
             shared_library_manager.clone(),
             encryption_service.clone(),
-            torrent_manager,
             database_arc,
         );
         let master_year = discogs_release.year.unwrap_or(2024);
@@ -363,12 +360,10 @@ impl CueFlacTestFixture {
         let discogs_release = create_cue_flac_test_album();
         generate_cue_flac_files(&album_dir);
 
-        let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
         let import_handle = bae_core::import::ImportService::start(
             runtime_handle.clone(),
             shared_library_manager.clone(),
             encryption_service.clone(),
-            torrent_manager,
             database_arc,
         );
 
@@ -2000,12 +1995,10 @@ impl HighSampleRateTestFixture {
             master_id: "test-master-96khz".to_string(),
         };
 
-        let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
         let import_handle = bae_core::import::ImportService::start(
             runtime_handle.clone(),
             shared_library_manager.clone(),
             encryption_service.clone(),
-            torrent_manager,
             database_arc,
         );
 

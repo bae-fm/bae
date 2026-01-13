@@ -1,5 +1,6 @@
 pub mod audio_codec;
 pub mod cache;
+#[cfg(feature = "cd-rip")]
 pub mod cd;
 pub mod cloud_storage;
 #[doc(hidden)]
@@ -18,4 +19,5 @@ pub mod storage;
 pub mod subsonic;
 #[cfg(feature = "test-utils")]
 pub mod test_support;
+#[cfg(feature = "torrent")]
 pub mod torrent;

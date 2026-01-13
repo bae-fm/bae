@@ -1,22 +1,32 @@
+#[cfg(feature = "cd-rip")]
 use crate::cd::drive::CdToc;
+#[cfg(feature = "cd-rip")]
 use crate::cd::RipProgress;
-use crate::db::{
-    Database, DbAlbum, DbFile, DbRelease, DbStorageProfile, DbTrack, ImportOperationStatus,
-};
+#[cfg(any(feature = "torrent", feature = "cd-rip"))]
+use crate::db::DbAlbum;
+#[cfg(feature = "cd-rip")]
+use crate::db::DbTrack;
+use crate::db::{Database, DbFile, DbRelease, DbStorageProfile, ImportOperationStatus};
 use crate::encryption::EncryptionService;
-use crate::import::handle::{ImportServiceHandle, TorrentImportMetadata};
+use crate::import::handle::ImportServiceHandle;
+#[cfg(feature = "torrent")]
+use crate::import::handle::TorrentImportMetadata;
+#[cfg(feature = "torrent")]
+use crate::import::types::TorrentSource;
 use crate::import::types::{
-    CueFlacMetadata, DiscoveredFile, ImportCommand, ImportPhase, ImportProgress, TorrentSource,
-    TrackFile,
+    CueFlacMetadata, DiscoveredFile, ImportCommand, ImportPhase, ImportProgress, TrackFile,
 };
 use crate::library::{LibraryManager, SharedLibraryManager};
 use crate::storage::{ReleaseStorage, ReleaseStorageImpl};
+#[cfg(feature = "torrent")]
 use crate::torrent::LazyTorrentManager;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tracing::{error, info, warn};
+#[cfg(any(feature = "torrent", feature = "cd-rip"))]
+use tracing::warn;
+use tracing::{error, info};
 
 /// Calculate track progress percentage based on bytes written.
 ///
@@ -50,6 +60,7 @@ pub struct ImportService {
     /// Shared manager for library database operations
     library_manager: SharedLibraryManager,
     /// Lazy-initialized torrent manager for torrent operations
+    #[cfg(feature = "torrent")]
     torrent_manager: LazyTorrentManager,
     /// Database for storage operations
     database: Arc<Database>,
@@ -64,6 +75,7 @@ impl ImportService {
     /// Creates one worker task that imports validated albums sequentially from a queue.
     /// Multiple imports will be queued and handled one at a time, not concurrently.
     /// Returns a handle that can be cloned and used throughout the app to submit import requests.
+    #[cfg(feature = "torrent")]
     pub fn start(
         runtime_handle: tokio::runtime::Handle,
         library_manager: SharedLibraryManager,
@@ -116,8 +128,60 @@ impl ImportService {
         )
     }
 
+    /// Start the import service worker (without torrent support).
+    #[cfg(not(feature = "torrent"))]
+    pub fn start(
+        runtime_handle: tokio::runtime::Handle,
+        library_manager: SharedLibraryManager,
+        encryption_service: Option<EncryptionService>,
+        database: Arc<Database>,
+    ) -> ImportServiceHandle {
+        let (commands_tx, commands_rx) = mpsc::unbounded_channel();
+        let (progress_tx, progress_rx) = mpsc::unbounded_channel();
+        let progress_tx_for_handle = progress_tx.clone();
+        let library_manager_for_worker = library_manager.clone();
+        let database_for_handle = database.clone();
+
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
+            rt.block_on(async move {
+                let mut service = ImportService {
+                    commands_rx,
+                    progress_tx,
+                    library_manager: library_manager_for_worker,
+                    encryption_service,
+                    database,
+                    #[cfg(feature = "test-utils")]
+                    injected_cloud: None,
+                };
+
+                info!("Worker started");
+                loop {
+                    match service.commands_rx.recv().await {
+                        Some(command) => {
+                            service.do_import(command).await;
+                        }
+                        None => {
+                            info!("Worker receive channel closed");
+                            break;
+                        }
+                    }
+                }
+            });
+        });
+
+        ImportServiceHandle::new(
+            commands_tx,
+            progress_tx_for_handle,
+            progress_rx,
+            library_manager,
+            database_for_handle,
+            runtime_handle,
+        )
+    }
+
     /// Start the import service with an injected cloud storage (for testing).
-    #[cfg(feature = "test-utils")]
+    #[cfg(all(feature = "test-utils", feature = "torrent"))]
     #[allow(dead_code)] // Used by integration tests
     pub fn start_with_cloud(
         _runtime_handle: tokio::runtime::Handle,
@@ -172,6 +236,60 @@ impl ImportService {
         )
     }
 
+    /// Start the import service with an injected cloud storage (for testing, without torrent).
+    #[cfg(all(feature = "test-utils", not(feature = "torrent")))]
+    #[allow(dead_code)] // Used by integration tests
+    pub fn start_with_cloud(
+        _runtime_handle: tokio::runtime::Handle,
+        library_manager: SharedLibraryManager,
+        encryption_service: Option<EncryptionService>,
+        database: Arc<Database>,
+        cloud: Arc<dyn crate::cloud_storage::CloudStorage>,
+    ) -> ImportServiceHandle {
+        let (commands_tx, commands_rx) = mpsc::unbounded_channel();
+        let (progress_tx, progress_rx) = mpsc::unbounded_channel();
+        let progress_tx_for_handle = progress_tx.clone();
+        let library_manager_for_worker = library_manager.clone();
+        let database_for_handle = database.clone();
+        let runtime_handle = tokio::runtime::Handle::current();
+
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
+            rt.block_on(async move {
+                let mut service = ImportService {
+                    commands_rx,
+                    progress_tx,
+                    library_manager: library_manager_for_worker,
+                    encryption_service,
+                    database,
+                    injected_cloud: Some(cloud),
+                };
+
+                info!("Worker started (with injected cloud)");
+                loop {
+                    match service.commands_rx.recv().await {
+                        Some(command) => {
+                            service.do_import(command).await;
+                        }
+                        None => {
+                            info!("Worker receive channel closed");
+                            break;
+                        }
+                    }
+                }
+            });
+        });
+
+        ImportServiceHandle::new(
+            commands_tx,
+            progress_tx_for_handle,
+            progress_rx,
+            library_manager,
+            database_for_handle,
+            runtime_handle,
+        )
+    }
+
     async fn do_import(&self, command: ImportCommand) {
         let (release_id_for_error, import_id_for_error) = match &command {
             ImportCommand::Folder {
@@ -179,7 +297,9 @@ impl ImportService {
                 import_id,
                 ..
             } => (db_release.id.clone(), Some(import_id.clone())),
+            #[cfg(feature = "torrent")]
             ImportCommand::Torrent { db_release, .. } => (db_release.id.clone(), None),
+            #[cfg(feature = "cd-rip")]
             ImportCommand::CD { db_release, .. } => (db_release.id.clone(), None),
         };
 
@@ -227,6 +347,7 @@ impl ImportService {
                     }
                 }
             }
+            #[cfg(feature = "torrent")]
             ImportCommand::Torrent {
                 db_album,
                 db_release,
@@ -274,6 +395,7 @@ impl ImportService {
                     }
                 }
             }
+            #[cfg(feature = "cd-rip")]
             ImportCommand::CD {
                 db_album,
                 db_release,
@@ -1099,6 +1221,7 @@ impl ImportService {
     }
 
     /// Torrent import for None storage
+    #[cfg(feature = "torrent")]
     #[allow(clippy::too_many_arguments)]
     async fn import_torrent_none_storage(
         &self,
@@ -1296,6 +1419,7 @@ impl ImportService {
     }
 
     /// Torrent import using storage profile.
+    #[cfg(feature = "torrent")]
     #[allow(clippy::too_many_arguments)]
     async fn run_torrent_import(
         &self,
@@ -1473,6 +1597,7 @@ impl ImportService {
     }
 
     /// CD import using storage profile.
+    #[cfg(feature = "cd-rip")]
     async fn run_cd_import(
         &self,
         db_album: DbAlbum,
@@ -1621,6 +1746,7 @@ impl ImportService {
     }
 
     /// CD import with no bae storage
+    #[cfg(feature = "cd-rip")]
     async fn run_cd_import_none_storage(
         &self,
         db_album: DbAlbum,

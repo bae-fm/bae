@@ -12,7 +12,10 @@ mod types;
 pub use discogs_matcher::{rank_discogs_matches, rank_mb_matches, MatchCandidate, MatchSource};
 pub use folder_metadata_detector::{detect_folder_contents, detect_metadata, FolderMetadata};
 pub use folder_scanner::{CategorizedFiles, DetectedRelease};
-pub use handle::{ImportServiceHandle, TorrentFileMetadata, TorrentImportMetadata};
+pub use handle::ImportServiceHandle;
+#[cfg(feature = "torrent")]
+pub use handle::{TorrentFileMetadata, TorrentImportMetadata};
 pub use service::ImportService;
-#[allow(unused_imports)] // Used by integration tests
-pub use types::{ImportPhase, ImportProgress, ImportRequest, PrepareStep, TorrentSource};
+#[cfg(feature = "torrent")]
+pub use types::TorrentSource;
+pub use types::{ImportPhase, ImportProgress, ImportRequest, PrepareStep};
