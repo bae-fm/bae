@@ -10,7 +10,7 @@ name = "bae"
 path = "src/main.rs"
 
 [dependencies]
-bae-core = { path = "../bae-core" }
+bae-core = { path = "../bae-core", features = ["torrent", "cd-rip"] }
 bae-ui = { path = "../bae-ui" }
 dioxus = { version = "0.7.2", features = ["router", "desktop"] }
 rfd = "0.17"

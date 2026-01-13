@@ -20,12 +20,16 @@
 //! ## Phase 3: Metadata Persistence
 //! - Store file records with storage paths
 //! - Store track audio format records
+#[cfg(feature = "cd-rip")]
+use crate::cd::drive::CdToc;
+#[cfg(feature = "cd-rip")]
+use crate::db::DbTrack;
+#[cfg(feature = "torrent")]
+use crate::import::handle::TorrentImportMetadata;
 use crate::{
-    cd::drive::CdToc,
     cue_flac::CueSheet,
-    db::{DbAlbum, DbRelease, DbTrack},
+    db::{DbAlbum, DbRelease},
     discogs::DiscogsRelease,
-    import::handle::TorrentImportMetadata,
     musicbrainz::MbRelease,
 };
 use std::{collections::HashMap, path::PathBuf};
@@ -47,6 +51,7 @@ pub enum ImportRequest {
         /// If set, this image will be marked as the album cover instead of using priority logic.
         selected_cover_filename: Option<String>,
     },
+    #[cfg(feature = "torrent")]
     Torrent {
         torrent_source: TorrentSource,
         discogs_release: Option<DiscogsRelease>,
@@ -60,6 +65,7 @@ pub enum ImportRequest {
         /// User-selected cover image filename (relative path from album folder).
         selected_cover_filename: Option<String>,
     },
+    #[cfg(feature = "cd-rip")]
     CD {
         discogs_release: Option<DiscogsRelease>,
         mb_release: Option<MbRelease>,
@@ -74,6 +80,7 @@ pub enum ImportRequest {
 }
 
 /// Source for torrent import
+#[cfg(feature = "torrent")]
 #[derive(Debug, Clone)]
 pub enum TorrentSource {
     File(PathBuf),
@@ -240,6 +247,7 @@ pub enum ImportCommand {
         import_id: String,
     },
     /// Torrent-based import: files arrive incrementally
+    #[cfg(feature = "torrent")]
     Torrent {
         /// Database album record
         db_album: DbAlbum,
@@ -262,6 +270,7 @@ pub enum ImportCommand {
         selected_cover_filename: Option<String>,
     },
     /// CD-based import: service will rip CD first (acquire phase), then process like folder import
+    #[cfg(feature = "cd-rip")]
     CD {
         /// Database album record
         db_album: DbAlbum,

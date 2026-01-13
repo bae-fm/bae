@@ -15,7 +15,6 @@ use bae_core::discogs::models::{DiscogsRelease, DiscogsTrack};
 use bae_core::encryption::EncryptionService;
 use bae_core::import::{ImportProgress, ImportRequest, ImportService};
 use bae_core::library::{LibraryManager, SharedLibraryManager};
-use bae_core::torrent::LazyTorrentManager;
 use std::path::Path;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -43,12 +42,10 @@ async fn test_cue_flac_records_track_positions() {
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
     let database_arc = Arc::new(database.clone());
-    let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
     let import_handle = ImportService::start(
         runtime_handle,
         shared_library_manager,
         encryption_service,
-        torrent_manager,
         database_arc,
     );
     let discogs_release = create_test_discogs_release();
@@ -194,12 +191,10 @@ async fn test_cue_flac_playback_uses_track_positions() {
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
     let database_arc = Arc::new(database.clone());
-    let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
     let import_handle = ImportService::start(
         runtime_handle.clone(),
         shared_library_manager,
         encryption_service.clone(),
-        torrent_manager,
         database_arc,
     );
     let discogs_release = create_test_discogs_release();
@@ -349,12 +344,10 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
     let database_arc = Arc::new(database.clone());
-    let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
     let import_handle = ImportService::start(
         runtime_handle.clone(),
         shared_library_manager,
         encryption_service.clone(),
-        torrent_manager,
         database_arc,
     );
     let discogs_release = create_test_discogs_release();
@@ -488,12 +481,10 @@ async fn test_cue_flac_byte_ranges_have_no_gaps() {
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
     let database_arc = Arc::new(database.clone());
-    let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
     let import_handle = ImportService::start(
         runtime_handle,
         shared_library_manager,
         encryption_service,
-        torrent_manager,
         database_arc,
     );
 
@@ -643,12 +634,10 @@ async fn test_cue_flac_builds_dense_seektable() {
     let library_manager = Arc::new(library_manager);
     let runtime_handle = tokio::runtime::Handle::current();
     let database_arc = Arc::new(database.clone());
-    let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
     let import_handle = ImportService::start(
         runtime_handle,
         shared_library_manager,
         encryption_service,
-        torrent_manager,
         database_arc,
     );
 

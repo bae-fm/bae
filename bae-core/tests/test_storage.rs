@@ -15,7 +15,6 @@ use bae_core::import::{ImportPhase, ImportProgress, ImportRequest, ImportService
 use bae_core::library::LibraryManager;
 use bae_core::storage::create_storage_reader;
 use bae_core::test_support::MockCloudStorage;
-use bae_core::torrent::LazyTorrentManager;
 use std::path::Path;
 use std::sync::Arc;
 use std::{fs, path::PathBuf};
@@ -85,13 +84,11 @@ async fn test_storageless_import() {
 
     let runtime_handle = tokio::runtime::Handle::current();
     let database_arc = Arc::new(database.clone());
-    let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
 
     let import_handle = ImportService::start(
         runtime_handle,
         shared_library_manager,
         encryption_service,
-        torrent_manager,
         database_arc,
     );
 
@@ -237,13 +234,11 @@ async fn test_storageless_delete_preserves_files() {
 
     let runtime_handle = tokio::runtime::Handle::current();
     let database_arc = Arc::new(database.clone());
-    let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
 
     let import_handle = ImportService::start(
         runtime_handle,
         shared_library_manager.clone(),
         encryption_service,
-        torrent_manager,
         database_arc,
     );
 
@@ -391,7 +386,6 @@ async fn run_storage_test(location: StorageLocation, encrypted: bool) {
     );
     let runtime_handle = tokio::runtime::Handle::current();
     let database_arc = Arc::new(database.clone());
-    let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
 
     // Create mock cloud storage for cloud tests
     let mock_cloud: Option<Arc<MockCloudStorage>> = if location == StorageLocation::Cloud {
@@ -405,7 +399,6 @@ async fn run_storage_test(location: StorageLocation, encrypted: bool) {
             runtime_handle,
             shared_library_manager,
             encryption_service.clone(),
-            torrent_manager,
             database_arc,
             cloud.clone(),
         )
@@ -414,7 +407,6 @@ async fn run_storage_test(location: StorageLocation, encrypted: bool) {
             runtime_handle,
             shared_library_manager,
             encryption_service.clone(),
-            torrent_manager,
             database_arc,
         )
     };
@@ -927,12 +919,10 @@ async fn run_real_album_test(album_dir: PathBuf, location: StorageLocation, encr
     );
     let runtime_handle = tokio::runtime::Handle::current();
     let database_arc = Arc::new(database.clone());
-    let torrent_manager = LazyTorrentManager::new_noop(runtime_handle.clone());
     let import_handle = ImportService::start(
         runtime_handle,
         shared_library_manager,
         encryption_service.clone(),
-        torrent_manager,
         database_arc.clone(),
     );
     let (_album_id, release_id) = import_handle

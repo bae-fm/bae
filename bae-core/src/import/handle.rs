@@ -1,14 +1,19 @@
 use crate::cue_flac::CueFlacProcessor;
-use crate::db::{Database, DbImport, DbTorrent, ImageSource, ImportOperationStatus};
+#[cfg(feature = "torrent")]
+use crate::db::DbTorrent;
+use crate::db::{Database, DbImport, ImageSource, ImportOperationStatus};
 use crate::discogs::DiscogsRelease;
 use crate::import::cover_art::download_cover_art_to_bae_folder;
+#[cfg(feature = "cd-rip")]
 use crate::import::discogs_parser::parse_discogs_release;
+#[cfg(feature = "cd-rip")]
 use crate::import::musicbrainz_parser::fetch_and_parse_mb_release;
 use crate::import::progress::ImportProgressHandle;
 use crate::import::track_to_file_mapper::map_tracks_to_files;
+#[cfg(feature = "torrent")]
+use crate::import::types::TorrentSource;
 use crate::import::types::{
-    DiscoveredFile, ImportCommand, ImportProgress, ImportRequest, PrepareStep, TorrentSource,
-    TrackFile,
+    DiscoveredFile, ImportCommand, ImportProgress, ImportRequest, PrepareStep, TrackFile,
 };
 use crate::library::{LibraryManager, SharedLibraryManager};
 use crate::musicbrainz::MbRelease;
@@ -27,6 +32,7 @@ pub struct ImportServiceHandle {
     pub runtime_handle: tokio::runtime::Handle,
 }
 /// Torrent-specific metadata for import
+#[cfg(feature = "torrent")]
 #[derive(Debug, Clone)]
 pub struct TorrentImportMetadata {
     pub info_hash: String,
@@ -39,6 +45,7 @@ pub struct TorrentImportMetadata {
     pub file_list: Vec<TorrentFileMetadata>,
 }
 /// Metadata for a single file in a torrent
+#[cfg(feature = "torrent")]
 #[derive(Debug, Clone)]
 pub struct TorrentFileMetadata {
     pub path: std::path::PathBuf,
@@ -96,6 +103,7 @@ impl ImportServiceHandle {
                 )
                 .await
             }
+            #[cfg(feature = "torrent")]
             ImportRequest::Torrent {
                 torrent_source,
                 discogs_release,
@@ -120,6 +128,7 @@ impl ImportServiceHandle {
                 )
                 .await
             }
+            #[cfg(feature = "cd-rip")]
             ImportRequest::CD {
                 discogs_release,
                 mb_release,
@@ -303,6 +312,7 @@ impl ImportServiceHandle {
             .map_err(|_| "Failed to queue validated album for import".to_string())?;
         Ok((album_id, release_id))
     }
+    #[cfg(feature = "torrent")]
     async fn send_torrent_request(
         &self,
         torrent_source: TorrentSource,
@@ -425,6 +435,7 @@ impl ImportServiceHandle {
             .map_err(|_| "Failed to queue validated torrent for import".to_string())?;
         Ok((album_id, release_id))
     }
+    #[cfg(feature = "cd-rip")]
     async fn send_cd_request(
         &self,
         discogs_release: Option<DiscogsRelease>,
