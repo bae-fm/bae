@@ -76,6 +76,34 @@ impl<T> PartialEq for RenderFn<T> {
     }
 }
 
+/// Function to extract a stable key from an item for DOM reconciliation and scroll-to-item.
+pub struct KeyFn<T>(pub Rc<dyn Fn(&T) -> String>);
+
+impl<T> Clone for KeyFn<T> {
+    fn clone(&self) -> Self {
+        Self(Rc::clone(&self.0))
+    }
+}
+
+impl<T> PartialEq for KeyFn<T> {
+    fn eq(&self, _other: &Self) -> bool {
+        false // Conservative: assume key function may have changed
+    }
+}
+
+/// Handle for imperative control of VirtualGrid (e.g., scroll to item)
+#[derive(Clone)]
+pub struct VirtualGridHandle {
+    scroll_to_key: Rc<dyn Fn(String)>,
+}
+
+impl VirtualGridHandle {
+    /// Scroll to bring the item with the given key into view
+    pub fn scroll_to_item(&self, key: &str) {
+        (self.scroll_to_key)(key.to_string())
+    }
+}
+
 /// Configuration for the virtual grid
 #[derive(Clone, PartialEq)]
 pub struct VirtualGridConfig {
@@ -152,6 +180,8 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
     items: Vec<T>,
     config: VirtualGridConfig,
     render_item: RenderFn<T>,
+    /// Function to extract a stable key from each item (for DOM reconciliation and scroll-to)
+    key_fn: KeyFn<T>,
     #[props(default = "grid-item".to_string())] item_class: String,
     /// Container class - must include height constraint for virtual scrolling to work
     /// (ignored when scroll_target is Window)
@@ -160,6 +190,13 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
     /// Scroll target: Container (default) for own scrollable area, Window for body scrolling
     #[props(default)]
     scroll_target: ScrollTarget,
+    /// Key of item to scroll to on mount
+    #[props(default)]
+    initial_scroll_to: Option<String>,
+    /// Signal to receive handle for imperative scroll control.
+    /// Parent creates with `use_signal(|| None)`, child populates it.
+    #[props(default)]
+    handle: Option<Signal<Option<VirtualGridHandle>>>,
 ) -> Element {
     let mut scroll_top = use_signal(|| 0.0_f64);
     let mut container_width = use_signal(|| 1000.0_f64); // Default until measured
@@ -263,6 +300,80 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
         }
         cfg
     };
+
+    // Build key-to-index map for scroll-to-item functionality
+    let key_to_index: std::collections::HashMap<String, usize> = items
+        .iter()
+        .enumerate()
+        .map(|(i, item)| ((key_fn.0)(item), i))
+        .collect();
+
+    // Helper to scroll to a specific item key
+    let mut scroll_to_item_key = {
+        let key_to_index = key_to_index.clone();
+        let effective_config = effective_config.clone();
+        let container_width = container_width();
+        let element_offset_top = element_offset_top();
+        let scroll_target = scroll_target;
+
+        move |key: String| {
+            if let Some(&index) = key_to_index.get(&key) {
+                let columns = ((container_width + effective_config.gap)
+                    / (effective_config.item_width + effective_config.gap))
+                    .floor()
+                    .max(1.0) as usize;
+                let row = index / columns;
+                let row_height = effective_config.item_height + effective_config.gap;
+                let target_scroll = (row as f64) * row_height;
+
+                #[cfg(target_arch = "wasm32")]
+                {
+                    if let Some(window) = web_sys::window() {
+                        match scroll_target {
+                            ScrollTarget::Window => {
+                                let page_y = element_offset_top + target_scroll;
+                                window.scroll_to_with_x_and_y(0.0, page_y);
+                            }
+                            ScrollTarget::Container => {
+                                // For container scroll, we'd need the element reference
+                                // For now, just update scroll_top signal
+                                scroll_top.set(target_scroll);
+                            }
+                        }
+                    }
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let _ = (scroll_target, element_offset_top);
+                    scroll_top.set(target_scroll);
+                }
+            }
+        }
+    };
+
+    // Provide handle to parent if requested
+    if let Some(mut handle_signal) = handle {
+        let scroll_fn = scroll_to_item_key.clone();
+        let new_handle = VirtualGridHandle {
+            scroll_to_key: Rc::new(move |key| {
+                let mut scroll_fn = scroll_fn.clone();
+                scroll_fn(key)
+            }),
+        };
+        // Only set if not already set (avoid infinite loop)
+        if handle_signal().is_none() {
+            handle_signal.set(Some(new_handle));
+        }
+    }
+
+    // Handle initial_scroll_to on mount
+    let initial_scroll_done = use_hook(|| std::cell::Cell::new(false));
+    if let Some(ref key) = initial_scroll_to {
+        if !initial_scroll_done.get() && container_width() > 0.0 {
+            initial_scroll_done.set(true);
+            scroll_to_item_key(key.clone());
+        }
+    }
 
     // Calculate grid layout
     let layout = GridLayout::calculate(
@@ -419,32 +530,41 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
                 class: "virtual-grid-content min-h-0",
                 style: "{grid_style}",
                 for (i, (idx, item)) in visible_items.into_iter().enumerate() {
-                    if i == 0 {
-                        // First item: measure it to get actual dimensions
-                        div {
-                            key: "{idx}",
-                            class: "{item_class}",
-                            "data-index": "{idx}",
-                            onmounted: move |evt| {
-                                first_item_element.set(Some(evt.data()));
-                                spawn(async move {
-                                    if let Ok(rect) = evt.get_client_rect().await {
-                                        let h = rect.height();
-                                        // Only update if significantly different to avoid loops
-                                        if measured_item_height().is_none_or(|current| (current - h).abs() > 1.0) {
-                                            measured_item_height.set(Some(h));
-                                        }
-                                    }
-                                });
-                            },
-                            {(render_item.0)(item, idx)}
-                        }
-                    } else {
-                        div {
-                            key: "{idx}",
-                            class: "{item_class}",
-                            "data-index": "{idx}",
-                            {(render_item.0)(item, idx)}
+                    {
+                        let item_key = (key_fn.0)(&item);
+                        if i == 0 {
+                            // First item: measure it to get actual dimensions
+                            rsx! {
+                                div {
+                                    key: "{item_key}",
+                                    class: "{item_class}",
+                                    "data-index": "{idx}",
+                                    "data-key": "{item_key}",
+                                    onmounted: move |evt| {
+                                        first_item_element.set(Some(evt.data()));
+                                        spawn(async move {
+                                            if let Ok(rect) = evt.get_client_rect().await {
+                                                let h = rect.height();
+                                                // Only update if significantly different to avoid loops
+                                                if measured_item_height().is_none_or(|current| (current - h).abs() > 1.0) {
+                                                    measured_item_height.set(Some(h));
+                                                }
+                                            }
+                                        });
+                                    },
+                                    {(render_item.0)(item, idx)}
+                                }
+                            }
+                        } else {
+                            rsx! {
+                                div {
+                                    key: "{item_key}",
+                                    class: "{item_class}",
+                                    "data-index": "{idx}",
+                                    "data-key": "{item_key}",
+                                    {(render_item.0)(item, idx)}
+                                }
+                            }
                         }
                     }
                 }

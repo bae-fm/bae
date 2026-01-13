@@ -403,4 +403,24 @@ test.describe('VirtualGrid', () => {
     // Threshold of 5KB catches real leaks while allowing noise
     expect(growthPerCycle, 'Memory growing linearly - leak detected!').toBeLessThan(0.005); // 5 KB
   });
+
+  test('uses stable keys from key_fn for DOM elements', async ({ page }) => {
+    await page.goto('/mock/library?state=albums%3D50');
+    await page.waitForSelector('.virtual-grid-content');
+    await page.waitForTimeout(500);
+
+    // Check that items have data-key attributes (from key_fn)
+    const items = page.locator('.virtual-grid-content > div[data-key]');
+    const count = await items.count();
+    expect(count).toBeGreaterThan(0);
+
+    // Get the first item's key
+    const firstKey = await items.first().getAttribute('data-key');
+    expect(firstKey).toBeTruthy();
+    
+    // Keys should be album IDs (numeric strings in our mock data)
+    expect(firstKey).toMatch(/^\d+$/);
+    
+    console.log(`Found ${count} items with data-key, first key: ${firstKey}`);
+  });
 });

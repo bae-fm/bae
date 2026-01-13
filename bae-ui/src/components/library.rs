@@ -2,7 +2,9 @@
 
 use crate::components::album_card::AlbumCard;
 use crate::components::helpers::{ErrorDisplay, LoadingSpinner, PageContainer};
-use crate::components::virtual_grid::{RenderFn, ScrollTarget, VirtualGrid, VirtualGridConfig};
+use crate::components::virtual_grid::{
+    KeyFn, RenderFn, ScrollTarget, VirtualGrid, VirtualGridConfig,
+};
 use crate::display_types::{Album, Artist};
 use dioxus::prelude::*;
 use std::collections::HashMap;
@@ -108,11 +110,15 @@ fn AlbumGrid(
         }
     }));
 
+    // Key function extracts album ID for stable DOM keys
+    let key_fn = KeyFn(Rc::new(|item: &AlbumGridItem| item.album.id.clone()));
+
     rsx! {
         VirtualGrid {
             items,
             config,
             render_item,
+            key_fn,
             scroll_target: ScrollTarget::Window,
         }
     }
