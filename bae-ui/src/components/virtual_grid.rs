@@ -13,6 +13,43 @@ use std::rc::Rc;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{closure::Closure, JsCast};
 
+/// Cleanup handle for ResizeObserver - disconnects on drop
+#[cfg(target_arch = "wasm32")]
+struct ResizeObserverCleanup {
+    observer: web_sys::ResizeObserver,
+    _callback: Closure<dyn FnMut(js_sys::Array)>,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl Drop for ResizeObserverCleanup {
+    fn drop(&mut self) {
+        self.observer.disconnect();
+    }
+}
+
+/// Cleanup handle for window event listeners - removes listeners on drop
+#[cfg(target_arch = "wasm32")]
+struct WindowListenersCleanup {
+    scroll_callback: Closure<dyn FnMut()>,
+    resize_callback: Closure<dyn FnMut()>,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl Drop for WindowListenersCleanup {
+    fn drop(&mut self) {
+        if let Some(window) = web_sys::window() {
+            let _ = window.remove_event_listener_with_callback(
+                "scroll",
+                self.scroll_callback.as_ref().unchecked_ref(),
+            );
+            let _ = window.remove_event_listener_with_callback(
+                "resize",
+                self.resize_callback.as_ref().unchecked_ref(),
+            );
+        }
+    }
+}
+
 /// Scroll target for the virtual grid
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum ScrollTarget {
@@ -138,13 +175,19 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
     #[cfg(target_arch = "wasm32")]
     let warned_for_item_count = use_hook(|| std::cell::Cell::new(0_usize));
 
+    // Cleanup handles - stored in hooks so they're dropped on unmount
+    // Using Rc<RefCell<...>> because use_hook requires Clone, but Closure isn't Clone
+    #[cfg(target_arch = "wasm32")]
+    let window_listeners_handle =
+        use_hook(|| Rc::new(std::cell::RefCell::new(None::<WindowListenersCleanup>)));
+    #[cfg(target_arch = "wasm32")]
+    let resize_observer_handle =
+        use_hook(|| Rc::new(std::cell::RefCell::new(None::<ResizeObserverCleanup>)));
+
     // Set up window scroll listener when using window scrolling
     #[cfg(target_arch = "wasm32")]
     {
-        let listeners_installed = use_hook(|| std::cell::Cell::new(false));
-        if scroll_target == ScrollTarget::Window && !listeners_installed.get() {
-            listeners_installed.set(true);
-
+        if scroll_target == ScrollTarget::Window && window_listeners_handle.borrow().is_none() {
             if let Some(window) = web_sys::window() {
                 // Initial viewport height measurement
                 if let Ok(inner_height) = window.inner_height() {
@@ -168,16 +211,6 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
                 })
                     as Box<dyn FnMut()>);
 
-                let scroll_options = web_sys::AddEventListenerOptions::new();
-                scroll_options.set_passive(true);
-                window
-                    .add_event_listener_with_callback_and_add_event_listener_options(
-                        "scroll",
-                        scroll_closure.as_ref().unchecked_ref(),
-                        &scroll_options,
-                    )
-                    .ok();
-
                 // Window resize only updates viewport height (container_width is handled by ResizeObserver)
                 // Only update if height changed significantly to avoid excessive re-renders
                 let resize_closure: Closure<dyn FnMut()> = Closure::wrap(Box::new(move || {
@@ -193,6 +226,16 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
                 })
                     as Box<dyn FnMut()>);
 
+                let scroll_options = web_sys::AddEventListenerOptions::new();
+                scroll_options.set_passive(true);
+                window
+                    .add_event_listener_with_callback_and_add_event_listener_options(
+                        "scroll",
+                        scroll_closure.as_ref().unchecked_ref(),
+                        &scroll_options,
+                    )
+                    .ok();
+
                 let resize_options = web_sys::AddEventListenerOptions::new();
                 resize_options.set_passive(true);
                 window
@@ -203,8 +246,11 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
                     )
                     .ok();
 
-                scroll_closure.forget();
-                resize_closure.forget();
+                // Store cleanup handle instead of forgetting
+                *window_listeners_handle.borrow_mut() = Some(WindowListenersCleanup {
+                    scroll_callback: scroll_closure,
+                    resize_callback: resize_closure,
+                });
             }
         }
     }
@@ -327,8 +373,12 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
                             }) as Box<dyn FnMut(js_sys::Array)>);
 
                         if let Ok(observer) = web_sys::ResizeObserver::new(resize_callback.as_ref().unchecked_ref()) {
-                            observer.observe(&element);
-                            resize_callback.forget();
+                            observer.observe(element);
+                            // Store cleanup handle instead of forgetting
+                            *resize_observer_handle.borrow_mut() = Some(ResizeObserverCleanup {
+                                observer,
+                                _callback: resize_callback,
+                            });
                         }
                     }
                 }
