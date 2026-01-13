@@ -347,4 +347,60 @@ test.describe('VirtualGrid', () => {
     expect(items).toBeGreaterThan(0);
     expect(items).toBeLessThan(100); // Still virtualized
   });
+
+  test('cleanup - no memory leak on repeated mount/unmount', async ({ page, browser }) => {
+    test.setTimeout(180000); // 3 minute timeout for stress test
+
+    // Use CDP for accurate heap measurement
+    const client = await page.context().newCDPSession(page);
+    
+    async function getHeapMB(): Promise<number> {
+      // Force GC then measure
+      await client.send('HeapProfiler.collectGarbage');
+      const { usedSize } = await client.send('Runtime.getHeapUsage');
+      return usedSize / 1024 / 1024;
+    }
+
+    // Go to library page
+    await page.goto('/mock/library?state=albums%3D100');
+    await page.waitForSelector('.virtual-grid-content');
+    await page.waitForTimeout(500);
+
+    // Find the cycle input field (it's an int control labeled "Remount Cycle")
+    const cycleInput = page.locator('input[type="number"]').last(); // cycle is the last int control
+    
+    const baseline = await getHeapMB();
+    console.log(`Baseline heap: ${baseline.toFixed(2)} MB`);
+
+    const CYCLES = 100; // Each cycle leaks ~1MB if broken
+    const measurements: { cycle: number; heap: number }[] = [];
+
+    for (let i = 1; i <= CYCLES; i++) {
+      // Type new cycle value - this changes the key, forcing remount
+      await cycleInput.fill(String(i));
+      await page.waitForTimeout(30);
+
+      // Measure every 25 cycles
+      if (i % 25 === 0) {
+        const heap = await getHeapMB();
+        measurements.push({ cycle: i, heap });
+        console.log(`After ${i} cycles: ${heap.toFixed(2)} MB (Δ ${(heap - baseline).toFixed(2)} MB)`);
+      }
+    }
+
+    const final = await getHeapMB();
+    console.log(`\nFINAL: ${final.toFixed(2)} MB after ${CYCLES} cycles`);
+    console.log(`Growth: ${(final - baseline).toFixed(2)} MB`);
+
+    // Check for linear growth (leak signature)
+    // If leaking: heap grows ~linearly with cycles
+    // If not leaking: heap stays roughly flat (GC keeps it bounded)
+    const growthPerCycle = (final - baseline) / CYCLES;
+    console.log(`Growth per cycle: ${(growthPerCycle * 1024).toFixed(2)} KB`);
+
+    // Without leaks, growth should be near 0 (GC cleans up)
+    // With leaks, we see ~14KB per cycle
+    // Threshold of 5KB catches real leaks while allowing noise
+    expect(growthPerCycle, 'Memory growing linearly - leak detected!').toBeLessThan(0.005); // 5 KB
+  });
 });

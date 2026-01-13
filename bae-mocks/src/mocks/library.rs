@@ -20,6 +20,7 @@ pub fn LibraryMock(initial_state: Option<String>) -> Element {
             ],
         )
         .int_control("albums", "Albums", 12, 0, None)
+        .int_control("cycle", "Remount Cycle", 0, 0, None) // Change to force VirtualGrid remount
         .with_presets(vec![
             Preset::new("Default"),
             Preset::new("Loading").set_string("state", "Loading"),
@@ -32,6 +33,7 @@ pub fn LibraryMock(initial_state: Option<String>) -> Element {
 
     let state = registry.get_string("state");
     let album_count = registry.get_int("albums") as usize;
+    let cycle = registry.get_int("cycle");
 
     let loading = state == "Loading";
     let error = if state == "Error" {
@@ -49,6 +51,7 @@ pub fn LibraryMock(initial_state: Option<String>) -> Element {
     rsx! {
         MockPanel { current_mock: MockPage::Library, registry, max_width: "6xl",
             LibraryView {
+                key: "{cycle}", // Change cycle to force complete remount
                 albums,
                 artists_by_album,
                 loading,
