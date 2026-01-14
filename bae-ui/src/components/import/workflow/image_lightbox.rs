@@ -1,5 +1,6 @@
 //! Image lightbox view component
 
+use crate::components::icons::XIcon;
 use dioxus::prelude::*;
 
 /// Image lightbox view for viewing images in full screen
@@ -38,12 +39,12 @@ pub fn ImageLightboxView(
 
             // Close button
             button {
-                class: "absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-2xl",
+                class: "absolute top-4 right-4 text-gray-400 hover:text-white transition-colors",
                 onclick: move |e| {
                     e.stop_propagation();
                     on_close.call(());
                 },
-                "✕"
+                XIcon { class: "w-6 h-6" }
             }
 
             // Image counter

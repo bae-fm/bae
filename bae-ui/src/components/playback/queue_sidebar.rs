@@ -2,6 +2,7 @@
 //!
 //! Pure, props-based component for displaying the playback queue.
 
+use crate::components::icons::{MenuIcon, MusicIcon, XIcon};
 use crate::components::utils::format_duration;
 use crate::display_types::QueueItem;
 use dioxus::prelude::*;
@@ -84,7 +85,7 @@ pub fn QueueSidebarView(
                 button {
                     class: "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600",
                     onclick: move |_| on_close.call(()),
-                    "☰"
+                    MenuIcon { class: "w-5 h-5" }
                 }
             }
         }
@@ -110,8 +111,8 @@ fn QueueItemView(
                         class: "w-full h-full object-cover",
                     }
                 } else {
-                    div { class: "w-full h-full flex items-center justify-center text-gray-500 text-xl",
-                        "🎵"
+                    div { class: "w-full h-full flex items-center justify-center text-gray-500",
+                        MusicIcon { class: "w-6 h-6" }
                     }
                 }
             }
@@ -139,9 +140,9 @@ fn QueueItemView(
             // Remove button (only for non-current tracks)
             if !is_current {
                 button {
-                    class: "px-2 py-1 text-sm text-gray-400 hover:text-red-400 rounded opacity-0 group-hover:opacity-100 transition-opacity",
+                    class: "px-2 py-1 text-gray-400 hover:text-red-400 rounded opacity-0 group-hover:opacity-100 transition-opacity",
                     onclick: move |_| on_remove.call(index),
-                    "✕"
+                    XIcon { class: "w-4 h-4" }
                 }
             }
         }

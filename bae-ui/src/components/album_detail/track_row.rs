@@ -1,5 +1,6 @@
 //! Track row component - displays a single track in the tracklist
 
+use crate::components::icons::{EllipsisIcon, PauseIcon, PlayIcon};
 use crate::components::utils::format_duration;
 use crate::display_types::{Artist, Track, TrackImportState};
 use dioxus::prelude::*;
@@ -69,15 +70,13 @@ pub fn TrackRow(
                         button {
                             class: "w-6 h-6 rounded-full border border-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10",
                             onclick: move |_| on_pause.call(()),
-                            "⏸"
+                            PauseIcon { class: "w-3 h-3" }
                         }
                     } else if is_paused {
                         button {
                             class: "w-6 h-6 rounded-full border border-blue-400 flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 transition-colors",
                             onclick: move |_| on_resume.call(()),
-                            span { style: "margin-left: 2px; margin-top: 1px; font-size: 0.65rem;",
-                                "▶"
-                            }
+                            PlayIcon { class: "w-3 h-3" }
                         }
                     } else {
                         button {
@@ -86,9 +85,7 @@ pub fn TrackRow(
                                 let track_id = track.id.clone();
                                 move |_| on_play.call(track_id.clone())
                             },
-                            span { style: "margin-left: 2px; margin-top: 1px; font-size: 0.65rem;",
-                                "▶"
-                            }
+                            PlayIcon { class: "w-3 h-3" }
                         }
                     }
                 } else {
@@ -169,9 +166,9 @@ fn TrackMenu(
     rsx! {
         div { class: "relative",
             button {
-                class: "px-2 py-1 text-xs text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity",
+                class: "px-2 py-1 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity",
                 onclick: move |_| show_menu.set(!show_menu()),
-                "⋯"
+                EllipsisIcon { class: "w-4 h-4" }
             }
             if show_menu() {
                 div { class: "absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded shadow-lg z-10 min-w-32",

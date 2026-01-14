@@ -6,6 +6,7 @@ pub mod app_layout;
 pub mod dialog;
 pub mod error_toast;
 pub mod helpers;
+pub mod icons;
 pub mod import;
 pub mod imports;
 pub mod library;
@@ -26,6 +27,10 @@ pub use app_layout::AppLayoutView;
 pub use dialog::GlobalDialogView;
 pub use error_toast::ErrorToast;
 pub use helpers::{BackButton, ErrorDisplay, LoadingSpinner, PageContainer};
+pub use icons::{
+    ChevronDownIcon, ChevronRightIcon, EllipsisIcon, FolderIcon, MenuIcon, MusicIcon, PauseIcon,
+    PlayIcon, PlusIcon, SkipBackIcon, SkipForwardIcon, XIcon,
+};
 pub use import::{
     CdDriveStatus, CdSelectorView, ConfirmationView, DetectingMetadataView, DiscIdLookupErrorView,
     ExactLookupView, FileListView, FolderImportView, FolderImportViewProps, FolderSelectorView,

@@ -1,5 +1,6 @@
 //! Generic error toast notification
 
+use crate::components::icons::XIcon;
 use dioxus::prelude::*;
 
 /// A dismissible error toast notification
@@ -24,7 +25,7 @@ pub fn ErrorToast(
                 button {
                     class: "text-white hover:text-gray-200",
                     onclick: move |_| on_dismiss.call(()),
-                    "✕"
+                    XIcon { class: "w-4 h-4" }
                 }
             }
         }

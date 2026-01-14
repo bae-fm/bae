@@ -1,6 +1,7 @@
 //! Torrent-specific display components
 
 use super::file_list::FileListView;
+use crate::components::icons::{ChevronDownIcon, ChevronRightIcon};
 use crate::display_types::{FileInfo, TorrentFileInfo, TorrentInfo};
 use dioxus::prelude::*;
 
@@ -69,11 +70,11 @@ pub fn TorrentTrackerDisplayView(trackers: Vec<TrackerStatus>) -> Element {
                 class: "w-full flex items-center justify-between p-3 bg-gray-800 rounded border border-gray-700 hover:bg-gray-700 transition-colors",
                 onclick: move |_| expanded.toggle(),
                 div { class: "flex items-center gap-3",
-                    span { class: "text-xs text-gray-400",
+                    span { class: "text-gray-400",
                         if *expanded.read() {
-                            "▼"
+                            ChevronDownIcon { class: "w-3 h-3" }
                         } else {
-                            "▶"
+                            ChevronRightIcon { class: "w-3 h-3" }
                         }
                     }
                     h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide",
@@ -185,11 +186,11 @@ pub fn TorrentInfoDisplayView(info: TorrentInfo) -> Element {
                 h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide",
                     "Details"
                 }
-                span { class: "text-xs text-gray-400",
+                span { class: "text-gray-400",
                     if *expanded.read() {
-                        "▼"
+                        ChevronDownIcon { class: "w-3 h-3" }
                     } else {
-                        "▶"
+                        ChevronRightIcon { class: "w-3 h-3" }
                     }
                 }
             }
@@ -310,11 +311,11 @@ pub fn TorrentFilesDisplayView(files: Vec<TorrentFileInfo>) -> Element {
                 h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide",
                     "Files"
                 }
-                span { class: "text-xs text-gray-400",
+                span { class: "text-gray-400",
                     if *expanded.read() {
-                        "▼"
+                        ChevronDownIcon { class: "w-3 h-3" }
                     } else {
-                        "▶"
+                        ChevronRightIcon { class: "w-3 h-3" }
                     }
                 }
             }

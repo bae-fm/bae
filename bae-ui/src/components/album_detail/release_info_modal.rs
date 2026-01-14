@@ -1,5 +1,6 @@
 //! Release info modal with tabs for details, files, and gallery
 
+use crate::components::icons::XIcon;
 use crate::components::utils::format_file_size;
 use crate::display_types::{File, Image, Release};
 use dioxus::prelude::*;
@@ -40,7 +41,7 @@ pub fn ReleaseInfoModal(
                         button {
                             class: "text-gray-400 hover:text-white transition-colors",
                             onclick: move |_| on_close.call(()),
-                            "✕"
+                            XIcon { class: "w-5 h-5" }
                         }
                     }
                     div { class: "flex px-6",

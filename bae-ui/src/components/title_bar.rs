@@ -2,6 +2,7 @@
 //!
 //! Pure, props-based component for the app title bar with navigation and search.
 
+use crate::components::icons::MusicIcon;
 use dioxus::prelude::*;
 
 /// Navigation item for title bar
@@ -179,7 +180,7 @@ fn SearchResultItem(result: SearchResult, on_click: EventHandler<String>) -> Ele
                 }
             } else {
                 div { class: "w-10 h-10 bg-gray-700 rounded flex items-center justify-center flex-shrink-0",
-                    div { class: "text-gray-500 text-xs", "🎵" }
+                    MusicIcon { class: "w-5 h-5 text-gray-500" }
                 }
             }
             div { class: "flex-1 min-w-0",

@@ -1,5 +1,6 @@
 //! Album card component - pure view with callbacks
 
+use crate::components::icons::{EllipsisIcon, MusicIcon, PlayIcon, PlusIcon};
 use crate::display_types::{Album, Artist};
 use dioxus::prelude::*;
 
@@ -58,7 +59,7 @@ pub fn AlbumCard(
                         class: "w-full h-full object-cover",
                     }
                 } else {
-                    div { class: "text-gray-500 text-4xl", "🎵" }
+                    MusicIcon { class: "w-12 h-12 text-gray-500" }
                 }
 
                 // Hover overlay with dropdown trigger
@@ -69,7 +70,7 @@ pub fn AlbumCard(
                             evt.stop_propagation();
                             show_dropdown.set(!show_dropdown());
                         },
-                        "⋯"
+                        EllipsisIcon { class: "w-5 h-5" }
                     }
                 }
 
@@ -121,7 +122,7 @@ fn AlbumCardDropdown(
                         on_close.call(());
                     }
                 },
-                span { "▶" }
+                PlayIcon { class: "w-4 h-4" }
                 span { "Play" }
             }
             button {
@@ -134,7 +135,7 @@ fn AlbumCardDropdown(
                         on_close.call(());
                     }
                 },
-                span { "➕" }
+                PlusIcon { class: "w-4 h-4" }
                 span { "Add to Queue" }
             }
         }

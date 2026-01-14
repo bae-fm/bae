@@ -1,5 +1,6 @@
 //! Play album button component
 
+use crate::components::icons::{ChevronDownIcon, PlayIcon, PlusIcon};
 use dioxus::prelude::*;
 
 /// Play album button with dropdown for "add to queue"
@@ -21,7 +22,7 @@ pub fn PlayAlbumButton(
     } else if import_error().is_some() {
         "Import Failed"
     } else {
-        "▶ Play Album"
+        "Play Album"
     };
 
     rsx! {
@@ -35,6 +36,9 @@ pub fn PlayAlbumButton(
                         let track_ids = track_ids.clone();
                         move |_| on_play_album.call(track_ids.clone())
                     },
+                    if !is_disabled {
+                        PlayIcon { class: "w-4 h-4" }
+                    }
                     "{button_text}"
                 }
                 div { class: "border-l border-blue-500",
@@ -48,7 +52,7 @@ pub fn PlayAlbumButton(
                                 show_play_menu.set(!show_play_menu());
                             }
                         },
-                        "▼"
+                        ChevronDownIcon { class: "w-4 h-4" }
                     }
                 }
             }
@@ -65,7 +69,8 @@ pub fn PlayAlbumButton(
                                 on_add_to_queue.call(track_ids.clone());
                             }
                         },
-                        "➕ Add Album to Queue"
+                        PlusIcon { class: "w-4 h-4" }
+                        "Add Album to Queue"
                     }
                 }
             }

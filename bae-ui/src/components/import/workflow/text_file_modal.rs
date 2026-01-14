@@ -1,5 +1,6 @@
 //! Text file modal view component
 
+use crate::components::icons::XIcon;
 use dioxus::prelude::*;
 
 /// Modal for viewing text file contents (CUE files, logs, etc.)
@@ -26,7 +27,7 @@ pub fn TextFileModalView(
                     button {
                         class: "text-gray-400 hover:text-white transition-colors",
                         onclick: move |_| on_close.call(()),
-                        "✕"
+                        XIcon { class: "w-5 h-5" }
                     }
                 }
 

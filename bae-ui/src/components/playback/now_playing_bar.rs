@@ -3,6 +3,7 @@
 //! Pure, props-based component for displaying current playback state.
 
 use crate::components::error_toast::ErrorToast;
+use crate::components::icons::{MenuIcon, PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon};
 use crate::display_types::{PlaybackDisplay, Track};
 use dioxus::prelude::*;
 
@@ -86,7 +87,7 @@ pub fn NowPlayingBarView(
                 button {
                     class: "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600",
                     onclick: move |_| on_toggle_queue.call(()),
-                    "☰"
+                    MenuIcon { class: "w-5 h-5" }
                 }
             }
         }
@@ -126,7 +127,7 @@ fn PlaybackControlsView(
                 class: if is_loading { "px-3 py-2 bg-gray-700 rounded opacity-50" } else { "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600" },
                 disabled: is_loading,
                 onclick: move |_| on_previous.call(()),
-                "⏮"
+                SkipBackIcon { class: "w-5 h-5" }
             }
             if is_playing {
                 if show_spinner {
@@ -139,7 +140,7 @@ fn PlaybackControlsView(
                     button {
                         class: "{main_btn_base} bg-blue-600 hover:bg-blue-500",
                         onclick: move |_| on_pause.call(()),
-                        "⏸"
+                        PauseIcon { class: "w-5 h-5" }
                     }
                 }
             } else {
@@ -147,7 +148,7 @@ fn PlaybackControlsView(
                     button {
                         class: "{main_btn_base} bg-gray-700 opacity-50",
                         disabled: true,
-                        "▶"
+                        PlayIcon { class: "w-5 h-5" }
                     }
                 } else if show_spinner {
                     button {
@@ -159,7 +160,7 @@ fn PlaybackControlsView(
                     button {
                         class: "{main_btn_base} bg-green-600 hover:bg-green-500",
                         onclick: move |_| on_resume.call(()),
-                        "▶"
+                        PlayIcon { class: "w-5 h-5" }
                     }
                 }
             }
@@ -167,7 +168,7 @@ fn PlaybackControlsView(
                 class: if is_loading { "px-3 py-2 bg-gray-700 rounded opacity-50" } else { "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600" },
                 disabled: is_loading,
                 onclick: move |_| on_next.call(()),
-                "⏭"
+                SkipForwardIcon { class: "w-5 h-5" }
             }
         }
     }
