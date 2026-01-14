@@ -23,6 +23,19 @@ pub struct ControlDef {
     pub doc: Option<&'static str>,
     pub enum_options: Option<Vec<(&'static str, &'static str)>>, // (value, label) for enums
     pub int_range: Option<(i32, Option<i32>)>,                   // (min, max) for int controls
+    /// Conditions that must all be true for this control to be visible.
+    /// Each tuple is (control_key, required_value) - the referenced control must have that value.
+    pub visible_when: Vec<(&'static str, &'static str)>,
+}
+
+impl ControlDef {
+    /// Check if this control should be visible given the current registry state.
+    /// Returns true if all `visible_when` conditions are met (or if there are none).
+    pub fn is_visible(&self, registry: &ControlRegistry) -> bool {
+        self.visible_when
+            .iter()
+            .all(|(key, value)| registry.get_string(key) == *value)
+    }
 }
 
 /// Definition of an action button (not stored in URL params)
@@ -57,6 +70,7 @@ impl ControlRegistryBuilder {
             doc: None,
             enum_options: None,
             int_range: None,
+            visible_when: Vec::new(),
         });
         self
     }
@@ -76,6 +90,7 @@ impl ControlRegistryBuilder {
             doc: None,
             enum_options: Some(options),
             int_range: None,
+            visible_when: Vec::new(),
         });
         self
     }
@@ -96,6 +111,7 @@ impl ControlRegistryBuilder {
             doc: None,
             enum_options: None,
             int_range: Some((min, max)),
+            visible_when: Vec::new(),
         });
         self
     }
@@ -109,6 +125,7 @@ impl ControlRegistryBuilder {
             doc: None,
             enum_options: None,
             int_range: None,
+            visible_when: Vec::new(),
         });
         self
     }
@@ -117,6 +134,16 @@ impl ControlRegistryBuilder {
     pub fn doc(mut self, doc: &'static str) -> Self {
         if let Some(last) = self.controls.last_mut() {
             last.doc = Some(doc);
+        }
+        self
+    }
+
+    /// Add a visibility condition to the last control.
+    /// The control will only be visible when the referenced control has the specified value.
+    /// Multiple calls create an AND condition (all must match).
+    pub fn visible_when(mut self, key: &'static str, value: &'static str) -> Self {
+        if let Some(last) = self.controls.last_mut() {
+            last.visible_when.push((key, value));
         }
         self
     }
@@ -135,6 +162,30 @@ impl ControlRegistryBuilder {
 
     /// Build the registry - must be called inside a component (uses hooks)
     pub fn build(self, initial_state: Option<String>) -> ControlRegistry {
+        // Validate all visible_when conditions reference valid keys and values
+        for control in &self.controls {
+            for (ref_key, ref_value) in &control.visible_when {
+                let ref_control = self.controls.iter().find(|c| c.key == *ref_key);
+                match ref_control {
+                    None => panic!(
+                        "visible_when on '{}' references unknown control '{}'",
+                        control.key, ref_key
+                    ),
+                    Some(ref_ctrl) => {
+                        if let Some(options) = &ref_ctrl.enum_options {
+                            if !options.iter().any(|(v, _)| v == ref_value) {
+                                panic!(
+                                    "visible_when on '{}' references invalid value '{}' for control '{}'. Valid values: {:?}",
+                                    control.key, ref_value, ref_key,
+                                    options.iter().map(|(v, _)| *v).collect::<Vec<_>>()
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let state_pairs = initial_state
             .as_deref()
             .map(parse_state)

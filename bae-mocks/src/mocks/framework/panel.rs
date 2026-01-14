@@ -185,21 +185,21 @@ fn PresetBar(registry: ControlRegistry) -> Element {
 fn ControlsRow(registry: ControlRegistry) -> Element {
     use super::registry::ControlValue;
 
-    // Separate controls by type
+    // Separate controls by type, filtering by visibility
     let enum_controls: Vec<_> = registry
         .controls
         .iter()
-        .filter(|c| c.enum_options.is_some())
+        .filter(|c| c.enum_options.is_some() && c.is_visible(&registry))
         .collect();
     let int_controls: Vec<_> = registry
         .controls
         .iter()
-        .filter(|c| c.int_range.is_some())
+        .filter(|c| c.int_range.is_some() && c.is_visible(&registry))
         .collect();
     let bool_controls: Vec<_> = registry
         .controls
         .iter()
-        .filter(|c| matches!(c.default, ControlValue::Bool(_)))
+        .filter(|c| matches!(c.default, ControlValue::Bool(_)) && c.is_visible(&registry))
         .collect();
     let string_controls: Vec<_> = registry
         .controls
@@ -208,6 +208,7 @@ fn ControlsRow(registry: ControlRegistry) -> Element {
             c.enum_options.is_none()
                 && c.int_range.is_none()
                 && matches!(c.default, ControlValue::String(_))
+                && c.is_visible(&registry)
         })
         .collect();
 

@@ -32,6 +32,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                 ("ReleaseSelection", "Release Selection"),
             ],
         )
+        .visible_when("step", "SelectSource")
         .enum_control(
             "identify_mode",
             "Identify Mode",
@@ -42,21 +43,34 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                 ("ManualSearch", "Manual Search"),
             ],
         )
+        .visible_when("step", "Identify")
         .bool_control("dragging", "Dragging", false)
+        .visible_when("step", "SelectSource")
         .bool_control("loading", "Loading Exact Matches", false)
         .doc("Shows spinner during exact match lookup")
+        .visible_when("step", "Identify")
+        .visible_when("identify_mode", "ExactLookup")
         .bool_control("retrying", "Retrying DiscID", false)
         .doc("Shows retry state for DiscID lookup")
+        .visible_when("step", "Identify")
+        .visible_when("identify_mode", "Detecting")
         .bool_control("searching", "Searching", false)
         .doc("Shows spinner during manual search")
+        .visible_when("step", "Identify")
+        .visible_when("identify_mode", "ManualSearch")
         .bool_control("results", "Has Results", false)
         .doc("Shows search results in manual search")
+        .visible_when("step", "Identify")
+        .visible_when("identify_mode", "ManualSearch")
         .bool_control("importing", "Importing", false)
         .doc("Shows progress during import")
+        .visible_when("step", "Confirm")
         .bool_control("error", "Error", false)
         .doc("Shows error banner")
+        .visible_when("step", "Confirm")
         .bool_control("discid_error", "DiscID Error", false)
         .doc("Shows DiscID lookup error")
+        .visible_when("step", "Identify")
         .with_presets(vec![
             Preset::new("Default"),
             Preset::new("Multi-Release")
