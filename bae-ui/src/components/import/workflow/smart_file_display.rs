@@ -46,7 +46,7 @@ pub fn SmartFileDisplayView(
 
     rsx! {
         // Unified materials grid - all items as square tiles
-        div { class: "grid grid-cols-6 gap-2",
+        div { class: "grid grid-cols-9 gap-1.5",
             // Audio content tile
             AudioTileView {
                 audio: files.audio.clone(),
@@ -132,9 +132,6 @@ fn AudioTileView(audio: AudioContentInfo, on_cue_click: EventHandler<(String, St
             let total_size: u64 = tracks.iter().map(|f| f.size).sum();
             rsx! {
                 div { class: "aspect-square bg-gray-800/50 border border-blue-500/30 rounded flex flex-col items-center justify-center p-1.5",
-                    div { class: "w-7 h-7 bg-blue-600 rounded flex items-center justify-center mb-1",
-                        span { class: "text-white text-sm", "🎼" }
-                    }
                     span { class: "text-xs font-semibold text-blue-300 text-center leading-tight",
                         {format!("{} tracks", tracks.len())}
                     }
@@ -162,9 +159,6 @@ fn CueFlacTileView(pair: CueFlacPairInfo, on_click: EventHandler<(String, String
                 let name = cue_name.clone();
                 move |_| on_click.call((name.clone(), name.clone()))
             },
-            div { class: "w-7 h-7 bg-purple-600 rounded flex items-center justify-center mb-1",
-                span { class: "text-white text-sm", "💿" }
-            }
             span { class: "text-xs font-semibold text-purple-300 text-center leading-tight",
                 {format!("{} tracks", track_count)}
             }
@@ -212,9 +206,6 @@ fn DocumentTileView(file: FileInfo, on_click: EventHandler<(String, String)>) ->
                 let name = filename.clone();
                 move |_| on_click.call((name.clone(), name.clone()))
             },
-            div { class: "w-7 h-7 bg-gray-700 rounded flex items-center justify-center mb-1",
-                span { class: "text-gray-400 text-sm", "📄" }
-            }
             span { class: "text-xs text-white font-medium text-center truncate w-full leading-tight",
                 {file.name.clone()}
             }
@@ -230,9 +221,6 @@ fn DocumentTileView(file: FileInfo, on_click: EventHandler<(String, String)>) ->
 fn OtherFileTileView(file: FileInfo) -> Element {
     rsx! {
         div { class: "aspect-square bg-gray-800/50 border border-gray-700 rounded flex flex-col items-center justify-center p-1.5",
-            div { class: "w-7 h-7 bg-gray-700 rounded flex items-center justify-center mb-1",
-                span { class: "text-gray-500 text-sm", "📁" }
-            }
             span { class: "text-xs text-gray-400 text-center truncate w-full leading-tight",
                 {file.name.clone()}
             }
