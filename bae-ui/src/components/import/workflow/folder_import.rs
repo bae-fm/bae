@@ -163,9 +163,6 @@ pub fn IdentifyStep(props: IdentifyStepProps) -> Element {
                 on_clear: props.on_clear,
                 if !props.folder_files.is_empty() {
                     div { class: "mt-4",
-                        h4 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3",
-                            "Files"
-                        }
                         SmartFileDisplayView {
                             files: props.folder_files.clone(),
                             image_data: props.image_data.clone(),
@@ -306,9 +303,6 @@ pub fn ConfirmStep(props: ConfirmStepProps) -> Element {
                 on_clear: props.on_clear,
                 if !props.folder_files.is_empty() {
                     div { class: "mt-4",
-                        h4 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3",
-                            "Files"
-                        }
                         SmartFileDisplayView {
                             files: props.folder_files.clone(),
                             image_data: props.image_data.clone(),
