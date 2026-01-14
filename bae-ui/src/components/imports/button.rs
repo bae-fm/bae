@@ -2,6 +2,7 @@
 //!
 //! Pure, props-based button that shows active imports count in the title bar.
 
+use crate::components::icons::DownloadIcon;
 use crate::display_types::{ActiveImport, ImportStatus};
 use dioxus::prelude::*;
 
@@ -54,18 +55,7 @@ pub fn ImportsButtonView(
                     }
                 }
             } else {
-                svg {
-                    class: "h-4 w-4",
-                    fill: "none",
-                    stroke: "currentColor",
-                    view_box: "0 0 24 24",
-                    stroke_width: "2",
-                    path {
-                        stroke_linecap: "round",
-                        stroke_linejoin: "round",
-                        d: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
-                    }
-                }
+                DownloadIcon { class: "h-4 w-4" }
             }
             span { "Imports" }
             span { class: "{badge_color} text-white text-xs font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1.5",

@@ -1,5 +1,6 @@
 //! Storage profiles section view
 
+use crate::components::icons::{CheckIcon, PencilIcon, PlusIcon, TrashIcon};
 use dioxus::prelude::*;
 
 /// Storage location type
@@ -57,18 +58,7 @@ pub fn StorageProfilesSectionView(
                     button {
                         class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors flex items-center gap-2",
                         onclick: move |_| on_create.call(()),
-                        svg {
-                            class: "w-5 h-5",
-                            fill: "none",
-                            stroke: "currentColor",
-                            view_box: "0 0 24 24",
-                            path {
-                                stroke_linecap: "round",
-                                stroke_linejoin: "round",
-                                stroke_width: "2",
-                                d: "M12 4v16m8-8H4",
-                            }
-                        }
+                        PlusIcon { class: "w-5 h-5" }
                         "New Profile"
                     }
                 }
@@ -167,18 +157,7 @@ fn ProfileCard(
                                 let pid = profile_id_for_default.clone();
                                 move |_| on_set_default.call(pid.clone())
                             },
-                            svg {
-                                class: "w-5 h-5",
-                                fill: "none",
-                                stroke: "currentColor",
-                                view_box: "0 0 24 24",
-                                path {
-                                    stroke_linecap: "round",
-                                    stroke_linejoin: "round",
-                                    stroke_width: "2",
-                                    d: "M5 13l4 4L19 7",
-                                }
-                            }
+                            CheckIcon { class: "w-5 h-5" }
                         }
                     }
                     button {
@@ -188,35 +167,13 @@ fn ProfileCard(
                             let p = profile_for_edit.clone();
                             move |_| on_edit.call(p.clone())
                         },
-                        svg {
-                            class: "w-5 h-5",
-                            fill: "none",
-                            stroke: "currentColor",
-                            view_box: "0 0 24 24",
-                            path {
-                                stroke_linecap: "round",
-                                stroke_linejoin: "round",
-                                stroke_width: "2",
-                                d: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
-                            }
-                        }
+                        PencilIcon { class: "w-5 h-5" }
                     }
                     button {
                         class: "p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-lg transition-colors",
                         title: "Delete",
                         onclick: move |_| show_delete_confirm.set(true),
-                        svg {
-                            class: "w-5 h-5",
-                            fill: "none",
-                            stroke: "currentColor",
-                            view_box: "0 0 24 24",
-                            path {
-                                stroke_linecap: "round",
-                                stroke_linejoin: "round",
-                                stroke_width: "2",
-                                d: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
-                            }
-                        }
+                        TrashIcon { class: "w-5 h-5" }
                     }
                 }
             }

@@ -28,8 +28,11 @@ pub use dialog::GlobalDialogView;
 pub use error_toast::ErrorToast;
 pub use helpers::{BackButton, ErrorDisplay, LoadingSpinner, PageContainer};
 pub use icons::{
-    ChevronDownIcon, ChevronRightIcon, EllipsisIcon, FolderIcon, MenuIcon, MusicIcon, PauseIcon,
-    PlayIcon, PlusIcon, SkipBackIcon, SkipForwardIcon, XIcon,
+    AlertTriangleIcon, ArrowLeftIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon,
+    ChevronRightIcon, DiscIcon, DownloadIcon, EllipsisIcon, ExternalLinkIcon, FileTextIcon,
+    FolderIcon, InfoIcon, KeyIcon, LoaderIcon, LockIcon, MenuIcon, MusicIcon, PauseIcon,
+    PencilIcon, PlayIcon, PlusIcon, RefreshIcon, SkipBackIcon, SkipForwardIcon, StarIcon,
+    TrashIcon, UploadIcon, XIcon,
 };
 pub use import::{
     CdDriveStatus, CdSelectorView, ConfirmationView, DetectingMetadataView, DiscIdLookupErrorView,

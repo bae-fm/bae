@@ -2,7 +2,7 @@
 //!
 //! Pure, props-based dropdown showing list of active imports with progress.
 
-use crate::components::icons::MusicIcon;
+use crate::components::icons::{CheckIcon, DownloadIcon, FileTextIcon, MusicIcon, XIcon};
 use crate::display_types::{ActiveImport, ImportStatus};
 use dioxus::prelude::*;
 
@@ -35,18 +35,7 @@ pub fn ImportsDropdownView(
             // Header
             div { class: "px-4 py-3 bg-gray-800/50 border-b border-gray-700 flex items-center justify-between",
                 div { class: "flex items-center gap-2",
-                    svg {
-                        class: "h-4 w-4 text-indigo-400",
-                        fill: "none",
-                        stroke: "currentColor",
-                        view_box: "0 0 24 24",
-                        stroke_width: "2",
-                        path {
-                            stroke_linecap: "round",
-                            stroke_linejoin: "round",
-                            d: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
-                        }
-                    }
+                    DownloadIcon { class: "h-4 w-4 text-indigo-400" }
                     h3 { class: "text-sm font-semibold text-white", "Imports" }
                     span { class: "text-xs text-gray-500", "({import_count})" }
                 }
@@ -66,18 +55,7 @@ pub fn ImportsDropdownView(
             // Content
             if imports.is_empty() {
                 div { class: "px-4 py-8 text-center",
-                    svg {
-                        class: "h-10 w-10 text-gray-600 mx-auto mb-3",
-                        fill: "none",
-                        stroke: "currentColor",
-                        view_box: "0 0 24 24",
-                        stroke_width: "1.5",
-                        path {
-                            stroke_linecap: "round",
-                            stroke_linejoin: "round",
-                            d: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-                        }
-                    }
+                    FileTextIcon { class: "h-10 w-10 text-gray-600 mx-auto mb-3" }
                     p { class: "text-gray-500 text-sm", "No active imports" }
                 }
             } else {
@@ -167,35 +145,14 @@ fn ImportItemView(
                     // Status badge
                     if is_complete {
                         div { class: "absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center",
-                            svg {
-                                class: "h-2.5 w-2.5 text-white",
-                                fill: "none",
-                                stroke: "currentColor",
-                                view_box: "0 0 24 24",
-                                stroke_width: "3",
-                                path {
-                                    stroke_linecap: "round",
-                                    stroke_linejoin: "round",
-                                    d: "M5 13l4 4L19 7",
-                                }
-                            }
+                            CheckIcon { class: "h-2.5 w-2.5 text-white" }
                         }
                     } else if is_failed {
                         div { class: "absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center",
-                            svg {
-                                class: "h-2.5 w-2.5 text-white",
-                                fill: "none",
-                                stroke: "currentColor",
-                                view_box: "0 0 24 24",
-                                stroke_width: "3",
-                                path {
-                                    stroke_linecap: "round",
-                                    stroke_linejoin: "round",
-                                    d: "M6 18L18 6M6 6l12 12",
-                                }
-                            }
+                            XIcon { class: "h-2.5 w-2.5 text-white" }
                         }
                     } else {
+                        // Animated spinner for in-progress
                         div { class: "absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center",
                             svg {
                                 class: "h-2.5 w-2.5 text-white animate-spin",
@@ -246,18 +203,7 @@ fn ImportItemView(
                         on_dismiss.call(import_id_for_dismiss.clone());
                     },
                     title: "Dismiss",
-                    svg {
-                        class: "h-4 w-4",
-                        fill: "none",
-                        stroke: "currentColor",
-                        view_box: "0 0 24 24",
-                        stroke_width: "2",
-                        path {
-                            stroke_linecap: "round",
-                            stroke_linejoin: "round",
-                            d: "M6 18L18 6M6 6l12 12",
-                        }
-                    }
+                    XIcon { class: "h-4 w-4" }
                 }
             }
         }

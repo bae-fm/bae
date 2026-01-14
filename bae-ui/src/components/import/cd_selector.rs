@@ -1,5 +1,6 @@
 //! CD selector view component
 
+use crate::components::icons::DiscIcon;
 use dioxus::prelude::*;
 
 /// CD drive status
@@ -116,25 +117,7 @@ pub fn CdSelectorView(
 fn CdIcon() -> Element {
     rsx! {
         div { class: "w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center",
-            svg {
-                class: "w-6 h-6 text-gray-300",
-                fill: "none",
-                stroke: "currentColor",
-                view_box: "0 0 24 24",
-                // CD/disc icon
-                circle {
-                    cx: "12",
-                    cy: "12",
-                    r: "10",
-                    stroke_width: "2",
-                }
-                circle {
-                    cx: "12",
-                    cy: "12",
-                    r: "3",
-                    stroke_width: "2",
-                }
-            }
+            DiscIcon { class: "w-6 h-6 text-gray-300" }
         }
     }
 }

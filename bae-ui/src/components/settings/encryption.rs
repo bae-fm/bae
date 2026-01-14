@@ -1,5 +1,6 @@
 //! Encryption section view
 
+use crate::components::icons::{AlertTriangleIcon, InfoIcon};
 use dioxus::prelude::*;
 
 /// Encryption section view (read-only display)
@@ -48,18 +49,7 @@ pub fn EncryptionSectionView(
                 if is_configured {
                     div { class: "mt-6 p-4 bg-yellow-900/30 border border-yellow-700 rounded-lg",
                         div { class: "flex items-start gap-3",
-                            svg {
-                                class: "w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0",
-                                fill: "none",
-                                stroke: "currentColor",
-                                view_box: "0 0 24 24",
-                                path {
-                                    stroke_linecap: "round",
-                                    stroke_linejoin: "round",
-                                    stroke_width: "2",
-                                    d: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
-                                }
-                            }
+                            AlertTriangleIcon { class: "w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" }
                             div {
                                 p { class: "text-sm text-yellow-200 font-medium",
                                     "Encryption key cannot be changed"
@@ -74,18 +64,7 @@ pub fn EncryptionSectionView(
                 } else {
                     div { class: "mt-6 p-4 bg-blue-900/30 border border-blue-700 rounded-lg",
                         div { class: "flex items-start gap-3",
-                            svg {
-                                class: "w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0",
-                                fill: "none",
-                                stroke: "currentColor",
-                                view_box: "0 0 24 24",
-                                path {
-                                    stroke_linecap: "round",
-                                    stroke_linejoin: "round",
-                                    stroke_width: "2",
-                                    d: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-                                }
-                            }
+                            InfoIcon { class: "w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" }
                             div {
                                 p { class: "text-sm text-blue-200 font-medium",
                                     "No encryption key configured"
