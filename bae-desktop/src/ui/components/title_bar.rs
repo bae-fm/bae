@@ -5,6 +5,7 @@
 
 use crate::ui::components::imports_button::ImportsButton;
 use crate::ui::components::imports_dropdown::ImportsDropdown;
+use crate::ui::components::update_indicator::UpdateIndicator;
 use crate::ui::components::use_library_search;
 use crate::ui::use_library_manager;
 use crate::ui::{image_url, Route};
@@ -194,6 +195,7 @@ pub fn TitleBar() -> Element {
             imports_indicator: rsx! {
                 ImportsButton { is_open: imports_dropdown_open }
                 ImportsDropdown { is_open: imports_dropdown_open }
+                UpdateIndicator {}
             },
             left_padding,
         }

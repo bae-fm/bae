@@ -6,6 +6,7 @@ pub mod library_search_context;
 pub mod imports_button;
 pub mod imports_dropdown;
 pub mod title_bar;
+pub mod update_indicator;
 
 pub mod album_detail;
 pub mod app;
