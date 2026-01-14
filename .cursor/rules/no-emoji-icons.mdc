@@ -1,0 +1,23 @@
+---
+description: Do not use emojis as icons in the UI
+globs:
+alwaysApply: true
+---
+
+Do not use emojis as icons in the UI. Use proper SVG icons instead.
+
+Bad:
+```rust
+span { "🎵" }
+span { "📄" }
+div { "⏸" }
+```
+
+Good:
+```rust
+svg {
+    // proper SVG icon
+}
+```
+
+Emojis render inconsistently across platforms and look unprofessional.
