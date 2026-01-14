@@ -79,6 +79,11 @@ if has_changes_in "bae-ui"; then
         exit 1
     }
 
+    run_check "dx fmt (bae-ui)" dx fmt --check || {
+        echo "Run 'dx fmt' in the bae-ui directory to fix formatting"
+        exit 1
+    }
+
     run_check "clippy (bae-ui)" cargo clippy -- -D warnings || {
         echo "Fix the warnings above and try again"
         exit 1
