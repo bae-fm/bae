@@ -80,9 +80,13 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
             vec![("TrackFiles", "Track Files"), ("CueFlac", "CUE/FLAC")],
         )
         .inline()
+        .hidden_when("step", "SelectSource")
         .int_control("track_count", "Track Count", 5, 1, Some(20))
+        .hidden_when("step", "SelectSource")
         .int_control("image_count", "Image Count", 2, 0, Some(10))
+        .hidden_when("step", "SelectSource")
         .int_control("doc_count", "Doc Count", 1, 0, Some(5))
+        .hidden_when("step", "SelectSource")
         .with_presets(vec![
             Preset::new("Select Folder"),
             Preset::new("Multi-Release")
