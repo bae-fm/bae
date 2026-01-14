@@ -1,6 +1,5 @@
 //! Auto-generated control panel UI
 
-use super::preset::Preset;
 use super::registry::ControlRegistry;
 use super::viewport::{MockViewport, DEFAULT_BREAKPOINTS};
 use crate::storage;
@@ -95,7 +94,7 @@ pub fn MockPanel(
             // Controls panel
             div { class: "sticky top-0 z-50 bg-gray-800 border-b border-gray-700 p-4",
                 div { class: "{max_w_class} mx-auto",
-                    // Header row with breadcrumb and viewport
+                    // Header row with breadcrumb, presets, and viewport
                     div { class: "flex items-center {header_mb}",
                         nav { class: "flex items-center gap-2 text-sm",
                             Link {
@@ -107,6 +106,9 @@ pub fn MockPanel(
                             MockDropdown { current_mock }
                         }
                         div { class: "ml-auto flex items-center gap-3",
+                            if !registry.presets.is_empty() {
+                                PresetDropdown { registry: registry.clone() }
+                            }
                             ViewportDropdown { viewport_width }
                             IconButton {
                                 onclick: move |_| {
@@ -120,11 +122,6 @@ pub fn MockPanel(
                     }
 
                     if !collapsed() {
-                        // Presets row
-                        if !registry.presets.is_empty() {
-                            PresetBar { registry: registry.clone() }
-                        }
-
                         // Controls row
                         ControlsRow { registry: registry.clone() }
                     }
@@ -160,38 +157,38 @@ fn MockDropdown(current_mock: MockPage) -> Element {
     }
 }
 
-/// Preset buttons bar
+/// Preset dropdown - shows current preset name or "Custom"
 #[component]
-fn PresetBar(registry: ControlRegistry) -> Element {
-    rsx! {
-        div { class: "flex flex-wrap gap-2 mb-3",
-            span { class: "text-xs text-gray-500 self-center mr-2", "Presets:" }
-            for preset in &registry.presets {
-                PresetButton { registry: registry.clone(), preset: preset.clone() }
-            }
-        }
-    }
-}
-
-/// Individual preset button - highlights when preset matches current state
-#[component]
-fn PresetButton(registry: ControlRegistry, preset: Preset) -> Element {
-    let is_active = preset.matches(&registry);
-    let class = if is_active {
-        "px-2 py-1 text-xs rounded bg-blue-600 text-white"
-    } else {
-        "px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600"
-    };
+fn PresetDropdown(registry: ControlRegistry) -> Element {
+    // Find which preset matches current state (if any)
+    let active_preset = registry
+        .presets
+        .iter()
+        .find(|p| p.matches(&registry))
+        .map(|p| p.name)
+        .unwrap_or("Custom");
 
     rsx! {
-        button {
-            class,
-            onclick: {
-                let preset = preset.clone();
+        Dropdown {
+            value: active_preset.to_string(),
+            onchange: {
                 let registry = registry.clone();
-                move |_| registry.apply_preset(&preset)
+                move |name: String| {
+                    if let Some(preset) = registry.presets.iter().find(|p| p.name == name) {
+                        registry.apply_preset(preset);
+                    }
+                }
             },
-            "{preset.name}"
+            for preset in &registry.presets {
+                option {
+                    value: preset.name,
+                    selected: preset.name == active_preset,
+                    "{preset.name}"
+                }
+            }
+            if active_preset == "Custom" {
+                option { value: "Custom", selected: true, disabled: true, "Custom" }
+            }
         }
     }
 }
