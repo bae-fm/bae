@@ -215,6 +215,7 @@ fn ControlsRow(registry: ControlRegistry) -> Element {
         // Enum controls as button groups
         for control in enum_controls {
             div { class: "flex flex-wrap gap-2 mb-3",
+                span { class: "text-xs text-gray-500 self-center mr-2", "{control.label}:" }
                 if let Some(options) = &control.enum_options {
                     for (value , label) in options {
                         EnumButton {
