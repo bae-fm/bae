@@ -2,7 +2,7 @@
 
 use super::framework::{ControlRegistryBuilder, MockPage, MockPanel, Preset};
 use bae_ui::{
-    ArtworkFile, AudioContentInfo, CategorizedFileInfo, DetectedRelease, FileInfo,
+    ArtworkFile, AudioContentInfo, CategorizedFileInfo, CueFlacPairInfo, DetectedRelease, FileInfo,
     FolderImportView, FolderMetadata, IdentifyMode, MatchCandidate, MatchSourceType, SearchSource,
     SearchTab, SelectSourceMode, SelectedCover, StorageProfileInfo, WizardStep,
 };
@@ -71,6 +71,16 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         .bool_control("discid_error", "DiscID Error", false)
         .doc("Shows DiscID lookup error")
         .visible_when("step", "Identify")
+        .enum_control(
+            "audio_type",
+            "Audio Type",
+            "TrackFiles",
+            vec![("TrackFiles", "Track Files"), ("CueFlac", "CUE/FLAC")],
+        )
+        .int_control("track_count", "Track Count", 5, 1, Some(20))
+        .visible_when("audio_type", "TrackFiles")
+        .int_control("image_count", "Image Count", 2, 0, Some(10))
+        .int_control("doc_count", "Doc Count", 1, 0, Some(5))
         .with_presets(vec![
             Preset::new("Select Folder"),
             Preset::new("Multi-Release")
@@ -156,54 +166,103 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
     let show_error = registry.get_bool("error");
     let show_discid_error = registry.get_bool("discid_error");
 
+    // File content controls
+    let audio_type = registry.get_string("audio_type");
+    let track_count = registry.get_int("track_count") as usize;
+    let image_count = registry.get_int("image_count") as usize;
+    let doc_count = registry.get_int("doc_count") as usize;
+
     // Mock data
     let folder_path = "/Users/demo/Music/The Midnight Signal - Neon Frequencies (2023)".to_string();
 
+    // Generate audio content based on type
+    let track_names = [
+        "Broadcast",
+        "Static Dreams",
+        "Frequency Drift",
+        "Night Transmission",
+        "Signal Lost",
+        "Wavelength",
+        "Interference",
+        "Clear Channel",
+        "Dead Air",
+        "Transmission End",
+        "Resonance",
+        "Amplitude",
+        "Oscillation",
+        "Harmonic",
+        "Feedback",
+        "White Noise",
+        "Pink Noise",
+        "Brown Noise",
+        "Silence",
+        "Outro",
+    ];
+
+    let audio = if audio_type == "CueFlac" {
+        AudioContentInfo::CueFlacPairs(vec![CueFlacPairInfo {
+            cue_name: "album.cue".to_string(),
+            flac_name: "album.flac".to_string(),
+            track_count,
+            total_size: 450_000_000,
+        }])
+    } else {
+        AudioContentInfo::TrackFiles(
+            (0..track_count)
+                .map(|i| FileInfo {
+                    name: format!(
+                        "{:02} - {}.flac",
+                        i + 1,
+                        track_names.get(i).unwrap_or(&"Track")
+                    ),
+                    size: 28_000_000 + (i as u64 * 2_000_000),
+                    format: "FLAC".to_string(),
+                })
+                .collect(),
+        )
+    };
+
+    // Generate artwork files
+    let image_names = [
+        "cover.jpg",
+        "back.jpg",
+        "cd.jpg",
+        "inlay.jpg",
+        "booklet-01.jpg",
+        "booklet-02.jpg",
+        "booklet-03.jpg",
+        "booklet-04.jpg",
+        "obi.jpg",
+        "matrix.jpg",
+    ];
+    let artwork: Vec<FileInfo> = (0..image_count)
+        .map(|i| FileInfo {
+            name: image_names.get(i).unwrap_or(&"image.jpg").to_string(),
+            size: 2_500_000 - (i as u64 * 200_000),
+            format: "JPEG".to_string(),
+        })
+        .collect();
+
+    // Generate document files
+    let doc_names = [
+        "rip.log",
+        "info.txt",
+        "accurip.txt",
+        "cue.txt",
+        "readme.nfo",
+    ];
+    let documents: Vec<FileInfo> = (0..doc_count)
+        .map(|i| FileInfo {
+            name: doc_names.get(i).unwrap_or(&"file.txt").to_string(),
+            size: 4_500 - (i as u64 * 500),
+            format: if i == 0 { "LOG" } else { "TXT" }.to_string(),
+        })
+        .collect();
+
     let folder_files = CategorizedFileInfo {
-        audio: AudioContentInfo::TrackFiles(vec![
-            FileInfo {
-                name: "01 - Broadcast.flac".to_string(),
-                size: 32_000_000,
-                format: "FLAC".to_string(),
-            },
-            FileInfo {
-                name: "02 - Static Dreams.flac".to_string(),
-                size: 28_500_000,
-                format: "FLAC".to_string(),
-            },
-            FileInfo {
-                name: "03 - Frequency Drift.flac".to_string(),
-                size: 35_200_000,
-                format: "FLAC".to_string(),
-            },
-            FileInfo {
-                name: "04 - Night Transmission.flac".to_string(),
-                size: 29_800_000,
-                format: "FLAC".to_string(),
-            },
-            FileInfo {
-                name: "05 - Signal Lost.flac".to_string(),
-                size: 31_400_000,
-                format: "FLAC".to_string(),
-            },
-        ]),
-        artwork: vec![
-            FileInfo {
-                name: "cover.jpg".to_string(),
-                size: 2_500_000,
-                format: "JPEG".to_string(),
-            },
-            FileInfo {
-                name: "back.jpg".to_string(),
-                size: 1_800_000,
-                format: "JPEG".to_string(),
-            },
-        ],
-        documents: vec![FileInfo {
-            name: "rip.log".to_string(),
-            size: 4_500,
-            format: "LOG".to_string(),
-        }],
+        audio,
+        artwork,
+        documents,
         other: vec![],
     };
 
@@ -256,7 +315,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         artist: Some("The Midnight Signal".to_string()),
         album: Some("Neon Frequencies".to_string()),
         year: Some(2023),
-        track_count: Some(5),
+        track_count: Some(track_count as u32),
         discid: None,
         confidence: 0.85,
         folder_tokens: vec![
@@ -267,16 +326,23 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         ],
     });
 
-    let artwork_files = vec![
-        ArtworkFile {
-            name: "cover.jpg".to_string(),
-            display_url: "/covers/the-midnight-signal_neon-frequencies.png".to_string(),
-        },
-        ArtworkFile {
-            name: "back.jpg".to_string(),
-            display_url: "/covers/velvet-mathematics_proof-by-induction.png".to_string(),
-        },
+    // Generate artwork files for selection (with display URLs)
+    let cover_urls = [
+        "/covers/the-midnight-signal_neon-frequencies.png",
+        "/covers/velvet-mathematics_proof-by-induction.png",
+        "/covers/cassette-sunset_chrome-horizons.png",
+        "/covers/digital-ghosts_memory-leaks.png",
+        "/covers/echo-protocol_recursive-dreams.png",
     ];
+    let artwork_files: Vec<ArtworkFile> = (0..image_count)
+        .map(|i| ArtworkFile {
+            name: image_names.get(i).unwrap_or(&"image.jpg").to_string(),
+            display_url: cover_urls
+                .get(i % cover_urls.len())
+                .unwrap_or(&cover_urls[0])
+                .to_string(),
+        })
+        .collect();
 
     let storage_profiles = vec![
         StorageProfileInfo {
@@ -315,16 +381,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                 identify_mode,
                 folder_path: folder_path.clone(),
                 folder_files: folder_files.clone(),
-                image_data: vec![
-                    (
-                        "cover.jpg".to_string(),
-                        "/covers/the-midnight-signal_neon-frequencies.png".to_string(),
-                    ),
-                    (
-                        "back.jpg".to_string(),
-                        "/covers/velvet-mathematics_proof-by-induction.png".to_string(),
-                    ),
-                ],
+                image_data: artwork_files.iter().map(|f| (f.name.clone(), f.display_url.clone())).collect(),
                 text_file_contents: HashMap::new(),
                 is_dragging,
                 on_folder_select_click: |_| {},
