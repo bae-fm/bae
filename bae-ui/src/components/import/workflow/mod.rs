@@ -28,7 +28,10 @@ pub use cd_toc_display::{CdTocDisplayView, CdTocInfo};
 pub use confirmation::ConfirmationView;
 pub use exact_lookup::ExactLookupView;
 pub use file_list::FileListView;
-pub use folder_import::{FolderImportView, FolderImportViewProps};
+pub use folder_import::{
+    ConfirmStep, ConfirmStepProps, FolderImportView, FolderImportViewProps, IdentifyStep,
+    IdentifyStepProps, SelectSourceStep, SelectSourceStepProps,
+};
 pub use image_lightbox::ImageLightboxView;
 pub use manual_search_panel::ManualSearchPanelView;
 pub use match_item::MatchItemView;

@@ -136,16 +136,40 @@ pub struct ActiveImport {
 // Import Workflow Display Types
 // ============================================================================
 
-/// Import workflow phase for UI display
+/// Wizard step for folder import workflow
+///
+/// The import workflow is a 3-step wizard:
+/// 1. SelectSource - User picks a folder (and selects releases if multi-release)
+/// 2. Identify - System identifies the music; user disambiguates or searches if needed
+/// 3. Confirm - User reviews match, selects cover/profile, and imports
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
-pub enum ImportPhase {
+pub enum WizardStep {
+    #[default]
+    SelectSource,
+    Identify,
+    Confirm,
+}
+
+/// Mode within the Identify step
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub enum IdentifyMode {
+    /// System is detecting metadata (loading state)
+    #[default]
+    Detecting,
+    /// DiscID matched multiple candidates; user picks one
+    ExactLookup,
+    /// No exact match; user searches manually
+    ManualSearch,
+}
+
+/// Sub-mode within SelectSource step
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub enum SelectSourceMode {
+    /// User needs to select a folder
     #[default]
     FolderSelection,
+    /// Folder has multiple releases; user picks which to import
     ReleaseSelection,
-    MetadataDetection,
-    ExactLookup,
-    ManualSearch,
-    Confirmation,
 }
 
 /// Search tab for manual search panel

@@ -3,8 +3,8 @@
 use super::framework::{ControlRegistryBuilder, MockPage, MockPanel, Preset};
 use bae_ui::{
     ArtworkFile, AudioContentInfo, CategorizedFileInfo, DetectedRelease, FileInfo,
-    FolderImportView, FolderMetadata, ImportPhase, MatchCandidate, MatchSourceType, SearchSource,
-    SearchTab, SelectedCover, StorageProfileInfo,
+    FolderImportView, FolderMetadata, IdentifyMode, MatchCandidate, MatchSourceType, SearchSource,
+    SearchTab, SelectSourceMode, SelectedCover, StorageProfileInfo, WizardStep,
 };
 use dioxus::prelude::*;
 use std::collections::HashMap;
@@ -14,21 +14,35 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
     // Build control registry with URL sync
     let registry = ControlRegistryBuilder::new()
         .enum_control(
-            "phase",
-            "Phase",
+            "step",
+            "Step",
+            "SelectSource",
+            vec![
+                ("SelectSource", "Select Source"),
+                ("Identify", "Identify"),
+                ("Confirm", "Confirm"),
+            ],
+        )
+        .enum_control(
+            "select_mode",
+            "Select Mode",
             "FolderSelection",
             vec![
                 ("FolderSelection", "Folder Selection"),
                 ("ReleaseSelection", "Release Selection"),
-                ("MetadataDetection", "Metadata Detection"),
+            ],
+        )
+        .enum_control(
+            "identify_mode",
+            "Identify Mode",
+            "Detecting",
+            vec![
+                ("Detecting", "Detecting"),
                 ("ExactLookup", "Exact Lookup"),
                 ("ManualSearch", "Manual Search"),
-                ("Confirmation", "Confirmation"),
             ],
         )
         .bool_control("dragging", "Dragging", false)
-        .bool_control("detecting", "Detecting Metadata", false)
-        .doc("Shows spinner during metadata detection")
         .bool_control("loading", "Loading Exact Matches", false)
         .doc("Shows spinner during exact match lookup")
         .bool_control("retrying", "Retrying DiscID", false)
@@ -36,7 +50,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         .bool_control("searching", "Searching", false)
         .doc("Shows spinner during manual search")
         .bool_control("results", "Has Results", false)
-        .doc("Shows search results in manual search phase")
+        .doc("Shows search results in manual search")
         .bool_control("importing", "Importing", false)
         .doc("Shows progress during import")
         .bool_control("error", "Error", false)
@@ -45,23 +59,36 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         .doc("Shows DiscID lookup error")
         .with_presets(vec![
             Preset::new("Default"),
+            Preset::new("Multi-Release")
+                .set_string("step", "SelectSource")
+                .set_string("select_mode", "ReleaseSelection"),
             Preset::new("Detecting")
-                .set_string("phase", "MetadataDetection")
-                .set_bool("detecting", true),
+                .set_string("step", "Identify")
+                .set_string("identify_mode", "Detecting"),
+            Preset::new("Exact Matches")
+                .set_string("step", "Identify")
+                .set_string("identify_mode", "ExactLookup"),
             Preset::new("Loading Matches")
-                .set_string("phase", "ExactLookup")
+                .set_string("step", "Identify")
+                .set_string("identify_mode", "ExactLookup")
                 .set_bool("loading", true),
+            Preset::new("Manual Search")
+                .set_string("step", "Identify")
+                .set_string("identify_mode", "ManualSearch"),
             Preset::new("Searching")
-                .set_string("phase", "ManualSearch")
+                .set_string("step", "Identify")
+                .set_string("identify_mode", "ManualSearch")
                 .set_bool("searching", true),
             Preset::new("With Results")
-                .set_string("phase", "ManualSearch")
+                .set_string("step", "Identify")
+                .set_string("identify_mode", "ManualSearch")
                 .set_bool("results", true),
+            Preset::new("Confirm").set_string("step", "Confirm"),
             Preset::new("Importing")
-                .set_string("phase", "Confirmation")
+                .set_string("step", "Confirm")
                 .set_bool("importing", true),
             Preset::new("Error")
-                .set_string("phase", "Confirmation")
+                .set_string("step", "Confirm")
                 .set_bool("error", true),
         ])
         .build(initial_state);
@@ -83,19 +110,30 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
     let mut selected_cover = use_signal(|| None::<SelectedCover>);
     let mut selected_profile_id = use_signal(|| Some("profile-1".to_string()));
 
-    // Parse phase from registry
-    let phase = match registry.get_string("phase").as_str() {
-        "FolderSelection" => ImportPhase::FolderSelection,
-        "ReleaseSelection" => ImportPhase::ReleaseSelection,
-        "MetadataDetection" => ImportPhase::MetadataDetection,
-        "ExactLookup" => ImportPhase::ExactLookup,
-        "ManualSearch" => ImportPhase::ManualSearch,
-        "Confirmation" => ImportPhase::Confirmation,
-        _ => ImportPhase::FolderSelection,
+    // Parse step from registry
+    let step = match registry.get_string("step").as_str() {
+        "SelectSource" => WizardStep::SelectSource,
+        "Identify" => WizardStep::Identify,
+        "Confirm" => WizardStep::Confirm,
+        _ => WizardStep::SelectSource,
+    };
+
+    // Parse select source mode
+    let select_source_mode = match registry.get_string("select_mode").as_str() {
+        "FolderSelection" => SelectSourceMode::FolderSelection,
+        "ReleaseSelection" => SelectSourceMode::ReleaseSelection,
+        _ => SelectSourceMode::FolderSelection,
+    };
+
+    // Parse identify mode
+    let identify_mode = match registry.get_string("identify_mode").as_str() {
+        "Detecting" => IdentifyMode::Detecting,
+        "ExactLookup" => IdentifyMode::ExactLookup,
+        "ManualSearch" => IdentifyMode::ManualSearch,
+        _ => IdentifyMode::Detecting,
     };
 
     let is_dragging = registry.get_bool("dragging");
-    let is_detecting_metadata = registry.get_bool("detecting");
     let is_loading_exact_matches = registry.get_bool("loading");
     let is_retrying_discid_lookup = registry.get_bool("retrying");
     let is_searching = registry.get_bool("searching");
@@ -258,7 +296,9 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
             registry,
             max_width: "4xl",
             FolderImportView {
-                phase,
+                step,
+                select_source_mode,
+                identify_mode,
                 folder_path: folder_path.clone(),
                 folder_files: folder_files.clone(),
                 image_data: vec![
@@ -278,7 +318,6 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                 selected_release_indices: selected_release_indices(),
                 on_release_selection_change: move |indices| selected_release_indices.set(indices),
                 on_releases_import: |_| {},
-                is_detecting_metadata,
                 on_skip_detection: |_| {},
                 is_loading_exact_matches,
                 exact_match_candidates: exact_match_candidates.clone(),
@@ -336,7 +375,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                 on_edit: |_| {},
                 on_confirm: |_| {},
                 on_configure_storage: |_| {},
-                on_clear: move |_| registry_for_clear.set_string("phase", "FolderSelection".to_string()),
+                on_clear: move |_| registry_for_clear.set_string("step", "SelectSource".to_string()),
                 import_error,
                 duplicate_album_id: None,
                 on_view_duplicate: |_| {},

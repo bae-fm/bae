@@ -5,19 +5,42 @@ use crate::ui::components::import::ImportSource;
 use crate::ui::components::import::SearchSource as BaeSearchSource;
 use crate::ui::import_context::{detection, ImportContext, ImportPhase, SearchTab as BaeSearchTab};
 use bae_ui::components::import::FolderImportView;
-use bae_ui::display_types::{DetectedRelease, SearchSource, SearchTab};
+use bae_ui::display_types::{
+    DetectedRelease, IdentifyMode, SearchSource, SearchTab, SelectSourceMode, WizardStep,
+};
 use dioxus::prelude::*;
 use std::rc::Rc;
 use tracing::{info, warn};
 
-fn to_display_phase(phase: &ImportPhase) -> bae_ui::display_types::ImportPhase {
+/// Convert internal ImportPhase to display WizardStep
+fn to_wizard_step(phase: &ImportPhase) -> WizardStep {
     match phase {
-        ImportPhase::FolderSelection => bae_ui::display_types::ImportPhase::FolderSelection,
-        ImportPhase::ReleaseSelection => bae_ui::display_types::ImportPhase::ReleaseSelection,
-        ImportPhase::MetadataDetection => bae_ui::display_types::ImportPhase::MetadataDetection,
-        ImportPhase::ExactLookup => bae_ui::display_types::ImportPhase::ExactLookup,
-        ImportPhase::ManualSearch => bae_ui::display_types::ImportPhase::ManualSearch,
-        ImportPhase::Confirmation => bae_ui::display_types::ImportPhase::Confirmation,
+        ImportPhase::FolderSelection | ImportPhase::ReleaseSelection => WizardStep::SelectSource,
+        ImportPhase::MetadataDetection | ImportPhase::ExactLookup | ImportPhase::ManualSearch => {
+            WizardStep::Identify
+        }
+        ImportPhase::Confirmation => WizardStep::Confirm,
+    }
+}
+
+/// Convert internal ImportPhase to SelectSourceMode (only valid when step is SelectSource)
+fn to_select_source_mode(phase: &ImportPhase) -> SelectSourceMode {
+    match phase {
+        ImportPhase::ReleaseSelection => SelectSourceMode::ReleaseSelection,
+        _ => SelectSourceMode::FolderSelection,
+    }
+}
+
+/// Convert internal ImportPhase to IdentifyMode (only valid when step is Identify)
+fn to_identify_mode(phase: &ImportPhase, is_detecting: bool) -> IdentifyMode {
+    if is_detecting || *phase == ImportPhase::MetadataDetection {
+        IdentifyMode::Detecting
+    } else {
+        match phase {
+            ImportPhase::ExactLookup => IdentifyMode::ExactLookup,
+            ImportPhase::ManualSearch => IdentifyMode::ManualSearch,
+            _ => IdentifyMode::Detecting,
+        }
     }
 }
 
@@ -72,6 +95,13 @@ pub fn FolderImport() -> Element {
     let match_candidates = import_context.manual_match_candidates();
     let error_message = import_context.error_message();
     let has_searched = import_context.has_searched();
+
+    // Convert phase to new wizard model
+    let phase = import_phase.read();
+    let step = to_wizard_step(&phase);
+    let select_source_mode = to_select_source_mode(&phase);
+    let identify_mode = to_identify_mode(&phase, *is_detecting.read());
+    drop(phase);
 
     // folder_files is already CategorizedFileInfo (display type)
     let display_folder_files = folder_files.read().clone();
@@ -376,7 +406,9 @@ pub fn FolderImport() -> Element {
 
     rsx! {
         FolderImportView {
-            phase: to_display_phase(&import_phase.read()),
+            step,
+            select_source_mode,
+            identify_mode,
             folder_path: folder_path.read().clone(),
             folder_files: display_folder_files,
             image_data,
@@ -387,7 +419,6 @@ pub fn FolderImport() -> Element {
             selected_release_indices: selected_release_indices.read().clone(),
             on_release_selection_change,
             on_releases_import,
-            is_detecting_metadata: *is_detecting.read(),
             on_skip_detection: |_| {},
             is_loading_exact_matches: *is_looking_up.read(),
             exact_match_candidates: display_exact_candidates,
