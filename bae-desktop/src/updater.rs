@@ -82,6 +82,11 @@ unsafe fn register_delegate_class() {
             UPDATE_READY.store(true, std::sync::atomic::Ordering::SeqCst);
         }
 
+        // Called when Sparkle starts checking for updates
+        extern "C" fn updater_will_check_for_update(_this: &Object, _cmd: Sel, _updater: id) {
+            info!("Starting automatic update check...");
+        }
+
         // Called when update check didn't find an update
         extern "C" fn updater_did_not_find_update(_this: &Object, _cmd: Sel, _updater: id) {
             info!("No update available");
@@ -114,6 +119,10 @@ unsafe fn register_delegate_class() {
             UPDATE_READY.store(false, std::sync::atomic::Ordering::SeqCst);
         }
 
+        decl.add_method(
+            sel!(updaterWillCheckForUpdate:),
+            updater_will_check_for_update as extern "C" fn(&Object, Sel, id),
+        );
         decl.add_method(
             sel!(updater:willDownloadUpdate:withRequest:),
             updater_will_download_update as extern "C" fn(&Object, Sel, id, id, id),
@@ -223,7 +232,14 @@ pub fn start() {
             // Store in static so it persists
             UPDATER_CONTROLLER.store(controller as usize, std::sync::atomic::Ordering::SeqCst);
 
-            info!("Sparkle updater initialized - automatic update checks enabled");
+            // Get the updater and trigger an immediate background check
+            let updater: *mut Object = msg_send![controller, updater];
+            if !updater.is_null() {
+                let _: () = msg_send![updater, checkForUpdatesInBackground];
+                info!("Sparkle updater initialized - triggered background update check");
+            } else {
+                info!("Sparkle updater initialized - automatic update checks enabled");
+            }
         }
     }
 
