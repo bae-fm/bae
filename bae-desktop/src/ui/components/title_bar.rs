@@ -5,12 +5,11 @@
 
 use crate::ui::components::imports_button::ImportsButton;
 use crate::ui::components::imports_dropdown::ImportsDropdown;
-use crate::ui::components::update_indicator::UpdateIndicator;
 use crate::ui::components::use_library_search;
 use crate::ui::use_library_manager;
 use crate::ui::{image_url, Route};
 use bae_core::db::{DbAlbum, DbArtist};
-use bae_ui::{NavItem, SearchResult, TitleBarView};
+use bae_ui::{NavItem, SearchResult, TitleBarView, UpdateState};
 #[cfg(target_os = "macos")]
 use cocoa::appkit::NSApplication;
 #[cfg(target_os = "macos")]
@@ -88,7 +87,7 @@ pub fn TitleBar() -> Element {
         }
     });
 
-    // Build nav items
+    // Build nav items (Settings is now a button on the right)
     let nav_items = vec![
         NavItem {
             id: "library".to_string(),
@@ -100,12 +99,20 @@ pub fn TitleBar() -> Element {
             label: "Import".to_string(),
             is_active: matches!(current_route, Route::ImportWorkflowManager {}),
         },
-        NavItem {
-            id: "settings".to_string(),
-            label: "Settings".to_string(),
-            is_active: matches!(current_route, Route::Settings {}),
-        },
     ];
+
+    // Get update state from updater
+    #[cfg(target_os = "macos")]
+    let update_state = {
+        use crate::updater;
+        match updater::update_state() {
+            updater::UpdateState::Idle => UpdateState::Idle,
+            updater::UpdateState::Downloading => UpdateState::Downloading,
+            updater::UpdateState::Ready => UpdateState::Ready,
+        }
+    };
+    #[cfg(not(target_os = "macos"))]
+    let update_state = UpdateState::Idle;
 
     // Convert filtered albums to search results
     let search_results: Vec<SearchResult> = filtered_albums()
@@ -166,7 +173,6 @@ pub fn TitleBar() -> Element {
                 let route = match id.as_str() {
                     "library" => Route::Library {},
                     "import" => Route::ImportWorkflowManager {},
-                    "settings" => Route::Settings {},
                     _ => return,
                 };
                 navigator().push(route);
@@ -190,12 +196,20 @@ pub fn TitleBar() -> Element {
                     show_results.set(true);
                 }
             },
+            on_settings_click: move |_| {
+                navigator().push(Route::Settings {});
+            },
+            update_state,
+            on_update_click: Some(
+                EventHandler::new(move |_| {
+                    #[cfg(target_os = "macos")] crate::updater::check_for_updates();
+                }),
+            ),
             on_bar_mousedown,
             on_bar_double_click,
             imports_indicator: rsx! {
                 ImportsButton { is_open: imports_dropdown_open }
                 ImportsDropdown { is_open: imports_dropdown_open }
-                UpdateIndicator {}
             },
             left_padding,
         }

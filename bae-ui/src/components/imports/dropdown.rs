@@ -129,7 +129,8 @@ fn ImportItemView(
 
             div { class: "flex items-start gap-3",
                 // Cover art
-                div { class: "flex-shrink-0 w-10 h-10 bg-gray-700 rounded overflow-hidden relative",
+                div {
+                    class: "flex-shrink-0 w-10 h-10 bg-gray-700 rounded overflow-hidden relative",
                     if let Some(ref url) = import.cover_url {
                         img {
                             src: "{url}",

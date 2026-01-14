@@ -1,7 +1,7 @@
 //! TitleBarView mock component
 
 use super::framework::{ControlRegistryBuilder, MockPage, MockPanel, Preset};
-use bae_ui::{NavItem, SearchResult, TitleBarView};
+use bae_ui::{NavItem, SearchResult, TitleBarView, UpdateState};
 use dioxus::prelude::*;
 
 #[component]
@@ -11,11 +11,7 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
             "active_nav",
             "Active Nav",
             "library",
-            vec![
-                ("library", "Library"),
-                ("import", "Import"),
-                ("settings", "Settings"),
-            ],
+            vec![("library", "Library"), ("import", "Import")],
         )
         .inline()
         .enum_control(
@@ -45,7 +41,7 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
     registry.use_url_sync_title_bar();
 
     let active_nav = registry.get_string("active_nav");
-    let update_state = registry.get_string("update_state");
+    let update_state_str = registry.get_string("update_state");
     let show_search_results = registry.get_bool("show_search_results");
     let search_results_count = registry.get_int("search_results_count") as usize;
 
@@ -60,11 +56,6 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
             label: "Import".to_string(),
             is_active: active_nav == "import",
         },
-        NavItem {
-            id: "settings".to_string(),
-            label: "Settings".to_string(),
-            is_active: active_nav == "settings",
-        },
     ];
 
     let search_results: Vec<SearchResult> = if show_search_results {
@@ -76,14 +67,10 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
         vec![]
     };
 
-    let update_indicator = match update_state.as_str() {
-        "ready" => rsx! {
-            UpdateIndicatorReady {}
-        },
-        "downloading" => rsx! {
-            UpdateIndicatorDownloading {}
-        },
-        _ => rsx! {},
+    let update_state = match update_state_str.as_str() {
+        "downloading" => UpdateState::Downloading,
+        "ready" => UpdateState::Ready,
+        _ => UpdateState::Idle,
     };
 
     rsx! {
@@ -101,59 +88,12 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
                 show_search_results,
                 on_search_dismiss: |_| {},
                 on_search_focus: |_| {},
-                imports_indicator: rsx! {
-                    {update_indicator}
-                },
+                on_settings_click: |_| {},
+                update_state,
+                on_update_click: Some(EventHandler::new(|_| {})),
                 left_padding: 16,
                 relative: true,
             }
-        }
-    }
-}
-
-/// Mock update indicator - ready state (matches desktop implementation)
-#[component]
-fn UpdateIndicatorReady() -> Element {
-    rsx! {
-        button {
-            class: "flex items-center gap-1.5 px-2 py-1 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/30 rounded transition-colors",
-            title: "Update ready - click to restart",
-            span { class: "relative flex h-2 w-2",
-                span { class: "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" }
-                span { class: "relative inline-flex rounded-full h-2 w-2 bg-emerald-500" }
-            }
-            "Update"
-        }
-    }
-}
-
-/// Mock update indicator - downloading state
-#[component]
-fn UpdateIndicatorDownloading() -> Element {
-    rsx! {
-        div {
-            class: "flex items-center gap-1.5 px-2 py-1 text-xs text-gray-400",
-            title: "Downloading update...",
-            svg {
-                class: "animate-spin h-3 w-3",
-                xmlns: "http://www.w3.org/2000/svg",
-                fill: "none",
-                view_box: "0 0 24 24",
-                circle {
-                    class: "opacity-25",
-                    cx: "12",
-                    cy: "12",
-                    r: "10",
-                    stroke: "currentColor",
-                    stroke_width: "4",
-                }
-                path {
-                    class: "opacity-75",
-                    fill: "currentColor",
-                    d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z",
-                }
-            }
-            "Updating..."
         }
     }
 }

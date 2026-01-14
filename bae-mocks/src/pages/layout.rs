@@ -137,7 +137,7 @@ pub fn DemoLayout() -> Element {
         }
     };
 
-    // Build nav items
+    // Build nav items (Settings is now a button on the right)
     let nav_items = vec![
         NavItem {
             id: "library".to_string(),
@@ -148,11 +148,6 @@ pub fn DemoLayout() -> Element {
             id: "import".to_string(),
             label: "Import".to_string(),
             is_active: matches!(current_route, Route::Import {}),
-        },
-        NavItem {
-            id: "settings".to_string(),
-            label: "Settings".to_string(),
-            is_active: matches!(current_route, Route::Settings {}),
         },
     ];
 
@@ -188,7 +183,6 @@ pub fn DemoLayout() -> Element {
                         let _ = match id.as_str() {
                             "library" => navigator().push(Route::Library {}),
                             "import" => navigator().push(Route::Import {}),
-                            "settings" => navigator().push(Route::Settings {}),
                             _ => None,
                         };
                     },
@@ -209,6 +203,9 @@ pub fn DemoLayout() -> Element {
                         if !search_query().is_empty() {
                             show_search_results.set(true);
                         }
+                    },
+                    on_settings_click: move |_| {
+                        navigator().push(Route::Settings {});
                     },
                     imports_indicator: rsx! {
                         ImportsButtonView {

@@ -147,13 +147,19 @@ pub fn CdImportView(props: CdImportViewProps) -> Element {
                             path: props.cd_path.clone(),
                             on_clear: props.on_clear,
                             on_reveal: |_| {},
-                            CdTocDisplayView { toc: props.toc_info.clone(), is_reading: props.is_loading_exact_matches }
-                        }
+                            CdTocDisplayView {
 
+                    // Show loading state while detecting
+
+
+                                toc: props.toc_info.clone(),
+
+
+                                is_reading: props.is_loading_exact_matches,
+                            }
+                        }
                         match props.identify_mode {
-                            IdentifyMode::Detecting => rsx! {
-                                // Show loading state while detecting
-                            },
+                            IdentifyMode::Detecting => rsx! {},
                             IdentifyMode::ExactLookup => rsx! {
                                 ExactLookupView {
                                     is_loading: props.is_loading_exact_matches,
@@ -214,7 +220,6 @@ pub fn CdImportView(props: CdImportViewProps) -> Element {
                             on_reveal: |_| {},
                             CdTocDisplayView { toc: props.toc_info.clone(), is_reading: false }
                         }
-
                         if let Some(ref candidate) = props.confirmed_candidate {
                             ConfirmationView {
                                 candidate: candidate.clone(),
@@ -234,7 +239,6 @@ pub fn CdImportView(props: CdImportViewProps) -> Element {
                                 on_configure_storage: props.on_configure_storage,
                             }
                         }
-
                         ImportErrorDisplayView {
                             error_message: props.import_error.clone(),
                             duplicate_album_id: props.duplicate_album_id.clone(),

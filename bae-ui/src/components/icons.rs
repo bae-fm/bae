@@ -36,8 +36,20 @@ pub fn PauseIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Element {
             stroke_width: "2",
             stroke_linecap: "round",
             stroke_linejoin: "round",
-            rect { x: "14", y: "3", width: "5", height: "18", rx: "1" }
-            rect { x: "5", y: "3", width: "5", height: "18", rx: "1" }
+            rect {
+                x: "14",
+                y: "3",
+                width: "5",
+                height: "18",
+                rx: "1",
+            }
+            rect {
+                x: "5",
+                y: "3",
+                width: "5",
+                height: "18",
+                rx: "1",
+            }
         }
     }
 }
@@ -420,7 +432,14 @@ pub fn LockIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Element {
             stroke_width: "2",
             stroke_linecap: "round",
             stroke_linejoin: "round",
-            rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
+            rect {
+                x: "3",
+                y: "11",
+                width: "18",
+                height: "11",
+                rx: "2",
+                ry: "2",
+            }
             path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
         }
     }
@@ -440,7 +459,12 @@ pub fn KeyIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Element {
             stroke_linecap: "round",
             stroke_linejoin: "round",
             path { d: "M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" }
-            circle { cx: "16.5", cy: "7.5", r: ".5", fill: "currentColor" }
+            circle {
+                cx: "16.5",
+                cy: "7.5",
+                r: ".5",
+                fill: "currentColor",
+            }
         }
     }
 }
@@ -563,7 +587,13 @@ pub fn RowsIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Element {
             stroke_width: "2",
             stroke_linecap: "round",
             stroke_linejoin: "round",
-            rect { x: "3", y: "3", width: "18", height: "18", rx: "2" }
+            rect {
+                x: "3",
+                y: "3",
+                width: "18",
+                height: "18",
+                rx: "2",
+            }
             path { d: "M21 9H3" }
             path { d: "M21 15H3" }
         }
@@ -603,7 +633,14 @@ pub fn ImageIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Element {
             stroke_width: "2",
             stroke_linecap: "round",
             stroke_linejoin: "round",
-            rect { x: "3", y: "3", width: "18", height: "18", rx: "2", ry: "2" }
+            rect {
+                x: "3",
+                y: "3",
+                width: "18",
+                height: "18",
+                rx: "2",
+                ry: "2",
+            }
             circle { cx: "9", cy: "9", r: "2" }
             path { d: "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" }
         }
@@ -623,7 +660,13 @@ pub fn MonitorIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Element
             stroke_width: "2",
             stroke_linecap: "round",
             stroke_linejoin: "round",
-            rect { x: "2", y: "3", width: "20", height: "14", rx: "2" }
+            rect {
+                x: "2",
+                y: "3",
+                width: "20",
+                height: "14",
+                rx: "2",
+            }
             path { d: "M8 21h8" }
             path { d: "M12 17v4" }
         }
@@ -646,6 +689,25 @@ pub fn LayersIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Element 
             path { d: "M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z" }
             path { d: "m22 12.5-8.58 3.91a2 2 0 0 1-1.66 0L2 12.5" }
             path { d: "m22 17.5-8.58 3.91a2 2 0 0 1-1.66 0L2 17.5" }
+        }
+    }
+}
+
+/// Settings gear icon
+#[component]
+pub fn SettingsIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Element {
+    rsx! {
+        svg {
+            class: "{class}",
+            xmlns: "http://www.w3.org/2000/svg",
+            view_box: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            stroke_width: "2",
+            stroke_linecap: "round",
+            stroke_linejoin: "round",
+            path { d: "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" }
+            circle { cx: "12", cy: "12", r: "3" }
         }
     }
 }

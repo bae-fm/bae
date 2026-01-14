@@ -32,7 +32,7 @@ pub use icons::{
     ChevronRightIcon, DiscIcon, DownloadIcon, EllipsisIcon, ExternalLinkIcon, FileIcon,
     FileTextIcon, FolderIcon, ImageIcon, InfoIcon, KeyIcon, LayersIcon, LoaderIcon, LockIcon,
     MenuIcon, MonitorIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, RefreshIcon, RowsIcon,
-    SkipBackIcon, SkipForwardIcon, StarIcon, TrashIcon, UploadIcon, XIcon,
+    SettingsIcon, SkipBackIcon, SkipForwardIcon, StarIcon, TrashIcon, UploadIcon, XIcon,
 };
 pub use import::{
     CdDriveStatus, CdSelectorView, ConfirmationView, DetectingMetadataView, DiscIdLookupErrorView,
@@ -51,6 +51,6 @@ pub use settings::{
     EncryptionSectionView, SettingsTab, SettingsView, StorageLocation, StorageProfile,
     StorageProfileEditorView, StorageProfilesSectionView, SubsonicSectionView,
 };
-pub use title_bar::{NavItem, SearchResult, TitleBarView};
+pub use title_bar::{NavItem, SearchResult, TitleBarView, UpdateState};
 pub use utils::{format_duration, format_file_size};
 pub use virtual_grid::{RenderFn, ScrollTarget, VirtualGrid, VirtualGridConfig};

@@ -2,7 +2,7 @@
 //!
 //! Pure, props-based component for the app title bar with navigation and search.
 
-use crate::components::icons::ImageIcon;
+use crate::components::icons::{ImageIcon, SettingsIcon};
 use dioxus::prelude::*;
 
 /// Navigation item for title bar
@@ -22,6 +22,15 @@ pub struct SearchResult {
     pub cover_url: Option<String>,
 }
 
+/// Update state for the settings button
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+pub enum UpdateState {
+    #[default]
+    Idle,
+    Downloading,
+    Ready,
+}
+
 /// Title bar view (pure, props-based)
 /// Renders the visual structure with callbacks for all interactions.
 #[component]
@@ -37,6 +46,10 @@ pub fn TitleBarView(
     show_search_results: bool,
     on_search_dismiss: EventHandler<()>,
     on_search_focus: EventHandler<()>,
+    // Settings
+    on_settings_click: EventHandler<()>,
+    #[props(default)] update_state: UpdateState,
+    #[props(default)] on_update_click: Option<EventHandler<()>>,
     // Platform hooks (no-ops on web)
     #[props(default)] on_bar_mousedown: Option<EventHandler<()>>,
     #[props(default)] on_bar_double_click: Option<EventHandler<()>>,
@@ -47,100 +60,119 @@ pub fn TitleBarView(
     // Use relative positioning instead of fixed (for mocks)
     #[props(default = false)] relative: bool,
 ) -> Element {
-    let (position_class, overlay_class, popover_class) = if relative {
+    let mut show_update_menu = use_signal(|| false);
+
+    let (position_class, overlay_class, search_popover_class, update_popover_class) = if relative {
         (
             "relative",
             "absolute inset-0 z-[1500]",
-            "absolute top-full right-2 w-64 z-[2000]",
+            "absolute top-full left-1/2 -translate-x-1/2 w-64 z-[2000]",
+            "absolute top-full right-0 w-48 z-[2000]",
         )
     } else {
         (
             "fixed top-0 left-0 right-0",
             "fixed inset-0 z-[1500]",
-            "fixed top-10 right-2 w-64 z-[2000]",
+            "fixed top-10 left-1/2 -translate-x-1/2 w-64 z-[2000]",
+            "fixed top-10 right-2 w-48 z-[2000]",
         )
     };
 
+    let show_overlay = show_search_results || show_update_menu();
+
     rsx! {
-        div {
-            class: if relative { "relative" } else { "" },
-            // Click-outside overlay to dismiss search
-            if show_search_results {
+        div { class: if relative { "relative" } else { "" },
+            // Click-outside overlay to dismiss dropdowns
+            if show_overlay {
                 div {
                     class: "{overlay_class}",
-                    onclick: move |_| on_search_dismiss.call(()),
+                    onclick: move |_| {
+                        on_search_dismiss.call(());
+                        show_update_menu.set(false);
+                    },
                 }
             }
 
             // Title bar
             div {
                 id: "title-bar",
-                class: "{position_class} h-10 bg-[#1e222d] flex items-center pr-2 cursor-default z-[1000] border-b border-[#2d3138]",
+                class: "{position_class} h-10 bg-[#1e222d] flex items-center justify-between px-2 cursor-default z-[1000] border-b border-[#2d3138]",
                 style: "padding-left: {left_padding}px;",
-            onmousedown: move |_| {
-                if let Some(handler) = &on_bar_mousedown {
-                    handler.call(());
-                }
-            },
-            ondoubleclick: move |_| {
-                if let Some(handler) = &on_bar_double_click {
-                    handler.call(());
-                }
-            },
+                onmousedown: move |_| {
+                    if let Some(handler) = &on_bar_mousedown {
+                        handler.call(());
+                    }
+                },
+                ondoubleclick: move |_| {
+                    if let Some(handler) = &on_bar_double_click {
+                        handler.call(());
+                    }
+                },
 
-            // Navigation buttons
-            div {
-                class: "flex gap-2 flex-none items-center",
-                style: "-webkit-app-region: no-drag;",
-                for item in nav_items.iter() {
-                    NavButtonView {
-                        key: "{item.id}",
-                        label: item.label.clone(),
-                        is_active: item.is_active,
-                        on_click: {
-                            let id = item.id.clone();
-                            move |_| on_nav_click.call(id.clone())
-                        },
+                // Left section: Navigation + imports indicator
+                div {
+                    class: "flex gap-2 flex-none items-center",
+                    style: "-webkit-app-region: no-drag;",
+                    for item in nav_items.iter() {
+                        NavButtonView {
+                            key: "{item.id}",
+                            label: item.label.clone(),
+                            is_active: item.is_active,
+                            on_click: {
+                                let id = item.id.clone();
+                                move |_| on_nav_click.call(id.clone())
+                            },
+                        }
+                    }
+
+                    // Imports indicator
+                    if let Some(indicator) = imports_indicator {
+                        div { class: "relative ml-2", {indicator} }
                     }
                 }
-            }
 
-            // Optional imports indicator
-            if let Some(indicator) = imports_indicator {
+                // Center section: Search (absolutely positioned for true centering)
                 div {
-                    class: "relative ml-4",
+                    class: "absolute left-1/2 -translate-x-1/2",
                     style: "-webkit-app-region: no-drag;",
-                    {indicator}
+                    div { class: "relative w-64", id: "search-container",
+                        input {
+                            r#type: "text",
+                            placeholder: "Search...",
+                            autocomplete: "off",
+                            class: "w-full h-7 px-3 bg-[#2d3138] border border-[#3d4148] rounded text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500",
+                            value: "{search_value}",
+                            oninput: move |evt| on_search_change.call(evt.value()),
+                            onfocus: move |_| on_search_focus.call(()),
+                            onkeydown: move |evt| {
+                                if evt.key() == Key::Escape {
+                                    on_search_dismiss.call(());
+                                }
+                            },
+                        }
+                    }
                 }
-            }
 
-            // Search
-            div {
-                class: "flex-1 flex justify-end items-center relative",
-                style: "-webkit-app-region: no-drag;",
-                div { class: "relative w-64", id: "search-container",
-                    input {
-                        r#type: "text",
-                        placeholder: "Search...",
-                        autocomplete: "off",
-                        class: "w-full h-7 px-3 bg-[#2d3138] border border-[#3d4148] rounded text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500",
-                        value: "{search_value}",
-                        oninput: move |evt| on_search_change.call(evt.value()),
-                        onfocus: move |_| on_search_focus.call(()),
-                        onkeydown: move |evt| {
-                            if evt.key() == Key::Escape {
-                                on_search_dismiss.call(());
+                // Right section: Settings button
+                div { class: "flex-none", style: "-webkit-app-region: no-drag;",
+                    SettingsButton {
+                        update_state,
+                        on_settings_click: move |_| on_settings_click.call(()),
+                        on_update_click: move |_| {
+                            if let Some(handler) = &on_update_click {
+                                handler.call(());
                             }
                         },
+                        show_menu: show_update_menu(),
+                        on_toggle_menu: move |_| show_update_menu.toggle(),
                     }
                 }
             }
-        }
 
-            // Search results popover
+            // Search results popover (centered)
             if show_search_results && !search_results.is_empty() {
                 div {
-                    class: "{popover_class}",
+                    class: "{search_popover_class}",
                     id: "search-popover",
                     onclick: move |evt| evt.stop_propagation(),
                     div { class: "mt-2 bg-[#2d3138] border border-[#3d4148] rounded-lg shadow-lg max-h-96 overflow-y-auto",
@@ -152,6 +184,115 @@ pub fn TitleBarView(
                             }
                         }
                     }
+                }
+            }
+
+            // Update menu popover (right aligned)
+            if show_update_menu() && update_state != UpdateState::Idle {
+                div {
+                    class: "{update_popover_class}",
+                    id: "update-popover",
+                    onclick: move |evt| evt.stop_propagation(),
+                    div { class: "mt-2 bg-[#2d3138] border border-[#3d4148] rounded-lg shadow-lg overflow-hidden",
+                        match update_state {
+                            UpdateState::Downloading => rsx! {
+                                div { class: "px-3 py-2 text-xs text-gray-400", "Downloading update..." }
+                            },
+                            UpdateState::Ready => rsx! {
+                                button {
+                                    class: "w-full px-3 py-2 text-xs text-left text-white hover:bg-[#3d4148] transition-colors",
+                                    onclick: move |_| {
+                                        show_update_menu.set(false);
+                                        if let Some(handler) = &on_update_click {
+                                            handler.call(());
+                                        }
+                                    },
+                                    "Restart to update"
+                                }
+                            },
+                            UpdateState::Idle => rsx! {},
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Settings button with optional update badge
+#[component]
+fn SettingsButton(
+    update_state: UpdateState,
+    on_settings_click: EventHandler<()>,
+    on_update_click: EventHandler<()>,
+    show_menu: bool,
+    on_toggle_menu: EventHandler<()>,
+) -> Element {
+    let has_update = update_state != UpdateState::Idle;
+
+    rsx! {
+        div {
+            class: "relative flex items-center",
+            onmousedown: move |evt| evt.stop_propagation(),
+
+            if has_update {
+                // Split button: settings + update indicator
+                div { class: "flex items-center rounded overflow-hidden",
+                    // Settings button
+                    button {
+                        class: "p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors",
+                        title: "Settings",
+                        onclick: move |_| on_settings_click.call(()),
+                        SettingsIcon { class: "w-4 h-4" }
+                    }
+                    // Divider
+                    div { class: "w-px h-4 bg-gray-600" }
+                    // Update indicator button
+                    button {
+                        class: "p-1.5 hover:bg-gray-700 transition-colors flex items-center gap-1",
+                        title: if update_state == UpdateState::Ready { "Update ready" } else { "Downloading update" },
+                        onclick: move |_| on_toggle_menu.call(()),
+                        match update_state {
+                            UpdateState::Downloading => rsx! {
+                                // Spinning indicator
+                                svg {
+                                    class: "animate-spin h-3 w-3 text-gray-400",
+                                    xmlns: "http://www.w3.org/2000/svg",
+                                    fill: "none",
+                                    view_box: "0 0 24 24",
+                                    circle {
+                                        class: "opacity-25",
+                                        cx: "12",
+                                        cy: "12",
+                                        r: "10",
+                                        stroke: "currentColor",
+                                        stroke_width: "4",
+                                    }
+                                    path {
+                                        class: "opacity-75",
+                                        fill: "currentColor",
+                                        d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z",
+                                    }
+                                }
+                            },
+                            UpdateState::Ready => rsx! {
+                                // Pulsing green dot
+                                span { class: "relative flex h-2 w-2",
+                                    span { class: "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" }
+                                    span { class: "relative inline-flex rounded-full h-2 w-2 bg-emerald-500" }
+                                }
+                            },
+                            UpdateState::Idle => rsx! {},
+                        }
+                    }
+                }
+            } else {
+                // Simple settings button
+                button {
+                    class: "p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors",
+                    title: "Settings",
+                    onclick: move |_| on_settings_click.call(()),
+                    SettingsIcon { class: "w-4 h-4" }
                 }
             }
         }

@@ -158,19 +158,24 @@ pub fn TorrentImportView(props: TorrentImportViewProps) -> Element {
                             on_clear: props.on_clear,
                             on_reveal: |_| {},
 
+                    // Show loading state while detecting
+
+
+
+
+
                             TorrentTrackerDisplayView { trackers: props.tracker_statuses.clone() }
+
+
 
                             if let Some(ref info) = props.torrent_info {
                                 TorrentInfoDisplayView { info: info.clone() }
                             }
-
                             TorrentFilesDisplayView { files: props.torrent_files.clone() }
                         }
-
                         match props.identify_mode {
-                            IdentifyMode::Detecting => rsx! {
-                                // Show loading state while detecting
-                            },
+
+                            IdentifyMode::Detecting => rsx! {},
                             IdentifyMode::ExactLookup => rsx! {
                                 ExactLookupView {
                                     is_loading: props.is_loading_exact_matches,
@@ -234,16 +239,12 @@ pub fn TorrentImportView(props: TorrentImportViewProps) -> Element {
                             path: props.torrent_path.clone(),
                             on_clear: props.on_clear,
                             on_reveal: |_| {},
-
                             TorrentTrackerDisplayView { trackers: props.tracker_statuses.clone() }
-
                             if let Some(ref info) = props.torrent_info {
                                 TorrentInfoDisplayView { info: info.clone() }
                             }
-
                             TorrentFilesDisplayView { files: props.torrent_files.clone() }
                         }
-
                         if let Some(ref candidate) = props.confirmed_candidate {
                             ConfirmationView {
                                 candidate: candidate.clone(),
@@ -263,7 +264,6 @@ pub fn TorrentImportView(props: TorrentImportViewProps) -> Element {
                                 on_configure_storage: props.on_configure_storage,
                             }
                         }
-
                         ImportErrorDisplayView {
                             error_message: props.import_error.clone(),
                             duplicate_album_id: props.duplicate_album_id.clone(),

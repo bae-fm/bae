@@ -479,22 +479,34 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
                 {
                     use wasm_bindgen::JsCast;
                     if let Some(element) = data.downcast::<web_sys::Element>() {
-                        let resize_callback: Closure<dyn FnMut(js_sys::Array)> =
-                            Closure::wrap(Box::new(move |entries: js_sys::Array| {
-                                if let Some(entry) = entries.get(0).dyn_ref::<web_sys::ResizeObserverEntry>() {
+
+                        // Store cleanup handle instead of forgetting
+
+                        // Initial measurement
+
+                        let resize_callback: Closure<dyn FnMut(js_sys::Array)> = Closure::wrap(
+                            Box::new(move |entries: js_sys::Array| {
+                                if let Some(entry) = entries
+                                    .get(0)
+                                    .dyn_ref::<web_sys::ResizeObserverEntry>()
+                                {
                                     let size_list = entry.content_box_size();
-                                    if let Some(size) = size_list.get(0).dyn_ref::<web_sys::ResizeObserverSize>() {
+                                    if let Some(size) = size_list
+                                        .get(0)
+                                        .dyn_ref::<web_sys::ResizeObserverSize>()
+                                    {
                                         let w = size.inline_size();
                                         if (container_width() - w).abs() > 1.0 {
                                             container_width.set(w);
                                         }
                                     }
                                 }
-                            }) as Box<dyn FnMut(js_sys::Array)>);
-
-                        if let Ok(observer) = web_sys::ResizeObserver::new(resize_callback.as_ref().unchecked_ref()) {
+                            }) as Box<dyn FnMut(js_sys::Array)>,
+                        );
+                        if let Ok(observer) = web_sys::ResizeObserver::new(
+                            resize_callback.as_ref().unchecked_ref(),
+                        ) {
                             observer.observe(element);
-                            // Store cleanup handle instead of forgetting
                             *resize_observer_handle.borrow_mut() = Some(ResizeObserverCleanup {
                                 observer,
                                 _callback: resize_callback,
@@ -502,8 +514,6 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
                         }
                     }
                 }
-
-                // Initial measurement
                 spawn(async move {
                     if let Ok(rect) = data.get_client_rect().await {
                         if scroll_target_for_mount == ScrollTarget::Window {
@@ -517,7 +527,6 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
                             }
                             #[cfg(not(target_arch = "wasm32"))]
                             element_offset_top.set(rect.origin.y);
-
                             container_width.set(rect.width());
                         } else {
                             container_width.set(rect.width());
@@ -538,7 +547,7 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
                 key: "grid-content",
                 class: "virtual-grid-content min-h-0",
                 style: "{grid_style}",
-                for (i, (idx, item)) in visible_items.into_iter().enumerate() {
+                for (i , (idx , item)) in visible_items.into_iter().enumerate() {
                     {
                         let item_key = (key_fn.0)(&item);
                         if i == 0 {
@@ -555,7 +564,8 @@ pub fn VirtualGrid<T: Clone + PartialEq + 'static>(
                                             if let Ok(rect) = evt.get_client_rect().await {
                                                 let h = rect.height();
                                                 // Only update if significantly different to avoid loops
-                                                if measured_item_height().is_none_or(|current| (current - h).abs() > 1.0) {
+                                                if measured_item_height().is_none_or(|current| (current - h).abs() > 1.0)
+                                                {
                                                     measured_item_height.set(Some(h));
                                                 }
                                             }
