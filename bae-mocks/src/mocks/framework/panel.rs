@@ -199,10 +199,17 @@ fn ControlsRow(registry: ControlRegistry) -> Element {
     use super::registry::ControlValue;
 
     // Separate controls by type, filtering by visibility
+    // Non-inline enum controls get their own button group rows
     let enum_controls: Vec<_> = registry
         .controls
         .iter()
-        .filter(|c| c.enum_options.is_some() && c.is_visible(&registry))
+        .filter(|c| c.enum_options.is_some() && !c.inline && c.is_visible(&registry))
+        .collect();
+    // Inline enum controls render as dropdowns in the flags row
+    let inline_enum_controls: Vec<_> = registry
+        .controls
+        .iter()
+        .filter(|c| c.enum_options.is_some() && c.inline && c.is_visible(&registry))
         .collect();
     let int_controls: Vec<_> = registry
         .controls
@@ -272,9 +279,19 @@ fn ControlsRow(registry: ControlRegistry) -> Element {
             }
         }
 
-        // Bool controls
-        if !bool_controls.is_empty() {
+        // Bool controls + inline enum dropdowns
+        if !bool_controls.is_empty() || !inline_enum_controls.is_empty() {
             div { class: "flex flex-wrap gap-4 text-sm mb-3",
+                // Inline enum dropdowns first
+                for control in inline_enum_controls {
+                    InlineEnumDropdown {
+                        registry: registry.clone(),
+                        control_key: control.key,
+                        label: control.label,
+                        options: control.enum_options.clone().unwrap_or_default(),
+                    }
+                }
+                // Then bool checkboxes
                 for control in bool_controls {
                     BoolCheckbox {
                         registry: registry.clone(),
@@ -420,6 +437,30 @@ fn BoolCheckbox(
             onchange: move |checked| registry.set_bool(control_key, checked),
             label,
             tooltip: doc,
+        }
+    }
+}
+
+/// Inline enum dropdown - renders in the same row as bool controls
+#[component]
+fn InlineEnumDropdown(
+    registry: ControlRegistry,
+    control_key: &'static str,
+    label: &'static str,
+    options: Vec<(&'static str, &'static str)>,
+) -> Element {
+    let current = registry.get_string(control_key);
+
+    rsx! {
+        label { class: "flex items-center gap-2 text-gray-400",
+            "{label}:"
+            Dropdown {
+                value: current.clone(),
+                onchange: move |value: String| registry.set_string(control_key, value),
+                for (value , display) in &options {
+                    option { value: *value, selected: current == *value, "{display}" }
+                }
+            }
         }
     }
 }

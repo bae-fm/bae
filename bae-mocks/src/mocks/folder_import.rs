@@ -79,6 +79,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
             "TrackFiles",
             vec![("TrackFiles", "Track Files"), ("CueFlac", "CUE/FLAC")],
         )
+        .inline()
         .int_control("track_count", "Track Count", 5, 1, Some(20))
         .int_control("image_count", "Image Count", 2, 0, Some(10))
         .int_control("doc_count", "Doc Count", 1, 0, Some(5))

@@ -26,6 +26,8 @@ pub struct ControlDef {
     /// Conditions that must all be true for this control to be visible.
     /// Each tuple is (control_key, required_value) - the referenced control must have that value.
     pub visible_when: Vec<(&'static str, &'static str)>,
+    /// If true, enum controls render as dropdowns inline with bool controls
+    pub inline: bool,
 }
 
 impl ControlDef {
@@ -71,6 +73,7 @@ impl ControlRegistryBuilder {
             enum_options: None,
             int_range: None,
             visible_when: Vec::new(),
+            inline: false,
         });
         self
     }
@@ -91,6 +94,7 @@ impl ControlRegistryBuilder {
             enum_options: Some(options),
             int_range: None,
             visible_when: Vec::new(),
+            inline: false,
         });
         self
     }
@@ -112,6 +116,7 @@ impl ControlRegistryBuilder {
             enum_options: None,
             int_range: Some((min, max)),
             visible_when: Vec::new(),
+            inline: false,
         });
         self
     }
@@ -126,7 +131,16 @@ impl ControlRegistryBuilder {
             enum_options: None,
             int_range: None,
             visible_when: Vec::new(),
+            inline: false,
         });
+        self
+    }
+
+    /// Mark the last control as inline (enum controls render as dropdowns with bool controls)
+    pub fn inline(mut self) -> Self {
+        if let Some(last) = self.controls.last_mut() {
+            last.inline = true;
+        }
         self
     }
 
