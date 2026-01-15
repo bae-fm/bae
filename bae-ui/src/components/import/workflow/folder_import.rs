@@ -92,6 +92,8 @@ pub struct IdentifyStepProps {
     pub text_file_contents: std::collections::HashMap<String, String>,
     /// Callback to clear/change folder
     pub on_clear: EventHandler<()>,
+    /// Callback to reveal folder in file browser
+    pub on_reveal: EventHandler<()>,
     // Detecting mode
     /// Callback to skip detection
     pub on_skip_detection: EventHandler<()>,
@@ -161,7 +163,7 @@ pub fn IdentifyStep(props: IdentifyStepProps) -> Element {
                 title: "Selected Folder".to_string(),
                 path: props.folder_path.clone(),
                 on_clear: props.on_clear,
-                on_reveal: |_| {},
+                on_reveal: props.on_reveal,
                 if !props.folder_files.is_empty() {
                     div { class: "mt-4",
                         SmartFileDisplayView {
@@ -254,6 +256,8 @@ pub struct ConfirmStepProps {
     pub text_file_contents: std::collections::HashMap<String, String>,
     /// Callback to clear/change folder
     pub on_clear: EventHandler<()>,
+    /// Callback to reveal folder in file browser
+    pub on_reveal: EventHandler<()>,
     // Confirmation
     /// The confirmed match candidate
     pub confirmed_candidate: MatchCandidate,
@@ -302,7 +306,7 @@ pub fn ConfirmStep(props: ConfirmStepProps) -> Element {
                 title: "Selected Folder".to_string(),
                 path: props.folder_path.clone(),
                 on_clear: props.on_clear,
-                on_reveal: |_| {},
+                on_reveal: props.on_reveal,
                 if !props.folder_files.is_empty() {
                     div { class: "mt-4",
                         SmartFileDisplayView {
@@ -389,6 +393,8 @@ pub struct FolderImportViewProps {
     pub text_file_contents: std::collections::HashMap<String, String>,
     /// Callback to clear folder
     pub on_clear: EventHandler<()>,
+    /// Callback to reveal folder in file browser
+    pub on_reveal: EventHandler<()>,
     /// Callback to skip detection
     pub on_skip_detection: EventHandler<()>,
     /// True while loading exact matches
@@ -532,6 +538,7 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
                         image_data: props.image_data.clone(),
                         text_file_contents: props.text_file_contents.clone(),
                         on_clear: props.on_clear,
+                        on_reveal: props.on_reveal,
                         on_skip_detection: props.on_skip_detection,
                         is_loading_exact_matches: props.is_loading_exact_matches,
                         exact_match_candidates: props.exact_match_candidates.clone(),
@@ -574,6 +581,7 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
                             image_data: props.image_data.clone(),
                             text_file_contents: props.text_file_contents.clone(),
                             on_clear: props.on_clear,
+                            on_reveal: props.on_reveal,
                             confirmed_candidate: candidate.clone(),
                             selected_cover: props.selected_cover.clone(),
                             display_cover_url: props.display_cover_url.clone(),

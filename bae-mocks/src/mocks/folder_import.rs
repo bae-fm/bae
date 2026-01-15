@@ -495,6 +495,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                 on_confirm: |_| {},
                 on_configure_storage: |_| {},
                 on_clear: move |_| registry_for_clear.set_string("step", "SelectSource".to_string()),
+                on_reveal: |_| {},
                 import_error,
                 duplicate_album_id: None,
                 on_view_duplicate: |_| {},

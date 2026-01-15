@@ -172,6 +172,26 @@ pub fn FolderImport() -> Element {
         }
     };
 
+    let on_reveal = {
+        move |_| {
+            let path = folder_path.read().clone();
+            if !path.is_empty() {
+                #[cfg(target_os = "macos")]
+                {
+                    let _ = std::process::Command::new("open").arg(&path).spawn();
+                }
+                #[cfg(target_os = "linux")]
+                {
+                    let _ = std::process::Command::new("xdg-open").arg(&path).spawn();
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = std::process::Command::new("explorer").arg(&path).spawn();
+                }
+            }
+        }
+    };
+
     let on_exact_match_select = {
         let import_context = import_context.clone();
         move |index: usize| {
@@ -505,6 +525,7 @@ pub fn FolderImport() -> Element {
             on_confirm,
             on_configure_storage: |_| {},
             on_clear,
+            on_reveal,
             import_error: import_error_message.read().clone(),
             duplicate_album_id: duplicate_album_id.read().clone(),
             on_view_duplicate: |_| {},
