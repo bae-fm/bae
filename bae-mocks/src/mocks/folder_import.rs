@@ -197,9 +197,9 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
     };
     let image_count = match registry.get_string("image_count").as_str() {
         "S" => 1,
-        "M" => 3,
-        "L" => 6,
-        _ => 3,
+        "M" => 5,
+        "L" => 15,
+        _ => 5,
     };
     let doc_count = match registry.get_string("doc_count").as_str() {
         "S" => 0,
@@ -270,6 +270,9 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         "booklet-04.jpg",
         "obi.jpg",
         "matrix.jpg",
+        "spine.jpg",
+        "tray.jpg",
+        "sticker.jpg",
     ];
     let artwork: Vec<FileInfo> = (0..image_count)
         .map(|i| FileInfo {
