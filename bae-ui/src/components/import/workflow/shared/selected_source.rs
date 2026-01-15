@@ -37,6 +37,7 @@ pub fn SelectedSourceView(
                 }
                 button {
                     class: "p-1 text-gray-400 hover:text-gray-200 flex-shrink-0 rounded hover:bg-gray-700/50 transition-colors",
+                    title: "Clear selection",
                     onclick: move |_| on_clear.call(()),
                     XIcon { class: "w-4 h-4" }
                 }
