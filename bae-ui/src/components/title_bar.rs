@@ -283,9 +283,9 @@ fn SettingsButton(
 #[component]
 fn NavButton(is_active: bool, on_click: EventHandler<()>, children: Element) -> Element {
     let class = if is_active {
-        "text-white text-[12px] cursor-pointer px-2 py-1 rounded bg-gray-700 transition-colors"
+        "text-white text-[12px] cursor-pointer px-2 py-1.5 rounded bg-gray-700 transition-colors"
     } else {
-        "text-gray-400 text-[12px] cursor-pointer px-2 py-1 rounded hover:bg-gray-700 hover:text-white transition-colors"
+        "text-gray-400 text-[12px] cursor-pointer px-2 py-1.5 rounded hover:bg-gray-700 hover:text-white transition-colors"
     };
 
     rsx! {
