@@ -115,14 +115,14 @@ pub fn TitleBarView(
                     class: "flex gap-2 flex-none items-center",
                     style: "-webkit-app-region: no-drag;",
                     for item in nav_items.iter() {
-                        NavButtonView {
+                        NavButton {
                             key: "{item.id}",
-                            label: item.label.clone(),
                             is_active: item.is_active,
                             on_click: {
                                 let id = item.id.clone();
                                 move |_| on_nav_click.call(id.clone())
                             },
+                            "{item.label}"
                         }
                     }
 
@@ -160,12 +160,6 @@ pub fn TitleBarView(
                         is_active: settings_active,
                         update_state,
                         on_settings_click: move |_| on_settings_click.call(()),
-                        on_update_click: move |_| {
-                            if let Some(handler) = &on_update_click {
-                                handler.call(());
-                            }
-                        },
-                        show_menu: show_update_menu(),
                         on_toggle_menu: move |_| show_update_menu.toggle(),
                     }
                 }
@@ -221,33 +215,24 @@ pub fn TitleBarView(
     }
 }
 
-/// Settings button with optional update badge
+/// Settings button with optional update indicator
 #[component]
 fn SettingsButton(
     is_active: bool,
     update_state: UpdateState,
     on_settings_click: EventHandler<()>,
-    on_update_click: EventHandler<()>,
-    show_menu: bool,
     on_toggle_menu: EventHandler<()>,
 ) -> Element {
     let has_update = update_state != UpdateState::Idle;
-    let button_class = if is_active {
-        "p-1.5 text-white bg-gray-700 rounded transition-colors"
-    } else {
-        "p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
-    };
 
     rsx! {
         div {
-            class: "flex items-center gap-2",
-            onmousedown: move |evt| evt.stop_propagation(),
+            class: "flex items-center gap-1",
 
-            // Settings button (always the same)
-            button {
-                class: "{button_class}",
-                title: "Settings",
-                onclick: move |_| on_settings_click.call(()),
+            // Settings button using shared NavButton
+            NavButton {
+                is_active,
+                on_click: move |_| on_settings_click.call(()),
                 SettingsIcon { class: "w-4 h-4" }
             }
 
@@ -257,6 +242,7 @@ fn SettingsButton(
                     class: "p-1 hover:bg-gray-700 rounded transition-colors flex items-center",
                     title: if update_state == UpdateState::Ready { "Update ready - click to install" } else { "Downloading update..." },
                     onclick: move |_| on_toggle_menu.call(()),
+                    onmousedown: move |evt| evt.stop_propagation(),
                     match update_state {
                         UpdateState::Downloading => rsx! {
                             svg {
@@ -293,20 +279,20 @@ fn SettingsButton(
     }
 }
 
-/// Navigation button in the title bar
+/// Navigation button with generic children
 #[component]
-fn NavButtonView(label: String, is_active: bool, on_click: EventHandler<()>) -> Element {
+fn NavButton(is_active: bool, on_click: EventHandler<()>, children: Element) -> Element {
     let class = if is_active {
-        "text-white no-underline text-[12px] cursor-pointer px-2 py-1 rounded bg-gray-700"
+        "text-white text-[12px] cursor-pointer px-2 py-1 rounded bg-gray-700 transition-colors"
     } else {
-        "text-gray-400 no-underline text-[12px] cursor-pointer px-2 py-1 rounded hover:bg-gray-800 hover:text-white transition-colors"
+        "text-gray-400 text-[12px] cursor-pointer px-2 py-1 rounded hover:bg-gray-700 hover:text-white transition-colors"
     };
 
     rsx! {
         span {
             class: "inline-block",
             onmousedown: move |evt| evt.stop_propagation(),
-            button { class: "{class}", onclick: move |_| on_click.call(()), "{label}" }
+            button { class: "{class}", onclick: move |_| on_click.call(()), {children} }
         }
     }
 }
