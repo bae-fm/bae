@@ -84,23 +84,26 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         .enum_control(
             "track_count",
             "Tracks",
-            "M",
-            vec![("S", "S"), ("M", "M"), ("L", "L")],
+            "8",
+            vec![("3", "3"), ("8", "8"), ("15", "15")],
         )
+        .inline()
         .hidden_when("step", "SelectSource")
         .enum_control(
             "image_count",
             "Images",
-            "M",
-            vec![("S", "S"), ("M", "M"), ("L", "L")],
+            "5",
+            vec![("1", "1"), ("5", "5"), ("13", "13")],
         )
+        .inline()
         .hidden_when("step", "SelectSource")
         .enum_control(
             "doc_count",
             "Docs",
-            "M",
-            vec![("S", "S"), ("M", "M"), ("L", "L")],
+            "2",
+            vec![("0", "0"), ("2", "2"), ("4", "4")],
         )
+        .inline()
         .hidden_when("step", "SelectSource")
         .with_presets(vec![
             Preset::new("Select Folder"),
@@ -189,24 +192,9 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
 
     // File content controls
     let audio_type = registry.get_string("audio_type");
-    let track_count = match registry.get_string("track_count").as_str() {
-        "S" => 3,
-        "M" => 8,
-        "L" => 15,
-        _ => 8,
-    };
-    let image_count = match registry.get_string("image_count").as_str() {
-        "S" => 1,
-        "M" => 5,
-        "L" => 15,
-        _ => 5,
-    };
-    let doc_count = match registry.get_string("doc_count").as_str() {
-        "S" => 0,
-        "M" => 2,
-        "L" => 4,
-        _ => 2,
-    };
+    let track_count = registry.get_string("track_count").parse().unwrap_or(8);
+    let image_count = registry.get_string("image_count").parse().unwrap_or(5);
+    let doc_count = registry.get_string("doc_count").parse().unwrap_or(2);
 
     // Mock data
     let folder_path = "/Users/demo/Music/The Midnight Signal - Neon Frequencies (2023)".to_string();
