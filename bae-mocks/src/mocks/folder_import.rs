@@ -81,11 +81,26 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         )
         .inline()
         .hidden_when("step", "SelectSource")
-        .int_control("track_count", "Track Count", 5, 1, Some(20))
+        .enum_control(
+            "track_count",
+            "Tracks",
+            "M",
+            vec![("S", "S"), ("M", "M"), ("L", "L")],
+        )
         .hidden_when("step", "SelectSource")
-        .int_control("image_count", "Image Count", 2, 0, Some(10))
+        .enum_control(
+            "image_count",
+            "Images",
+            "M",
+            vec![("S", "S"), ("M", "M"), ("L", "L")],
+        )
         .hidden_when("step", "SelectSource")
-        .int_control("doc_count", "Doc Count", 1, 0, Some(5))
+        .enum_control(
+            "doc_count",
+            "Docs",
+            "M",
+            vec![("S", "S"), ("M", "M"), ("L", "L")],
+        )
         .hidden_when("step", "SelectSource")
         .with_presets(vec![
             Preset::new("Select Folder"),
@@ -174,9 +189,24 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
 
     // File content controls
     let audio_type = registry.get_string("audio_type");
-    let track_count = registry.get_int("track_count") as usize;
-    let image_count = registry.get_int("image_count") as usize;
-    let doc_count = registry.get_int("doc_count") as usize;
+    let track_count = match registry.get_string("track_count").as_str() {
+        "S" => 3,
+        "M" => 8,
+        "L" => 15,
+        _ => 8,
+    };
+    let image_count = match registry.get_string("image_count").as_str() {
+        "S" => 1,
+        "M" => 3,
+        "L" => 6,
+        _ => 3,
+    };
+    let doc_count = match registry.get_string("doc_count").as_str() {
+        "S" => 0,
+        "M" => 2,
+        "L" => 4,
+        _ => 2,
+    };
 
     // Mock data
     let folder_path = "/Users/demo/Music/The Midnight Signal - Neon Frequencies (2023)".to_string();
