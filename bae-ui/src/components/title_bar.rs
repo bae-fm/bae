@@ -97,7 +97,7 @@ pub fn TitleBarView(
             // Title bar
             div {
                 id: "title-bar",
-                class: "{position_class} h-10 bg-[#1e222d] flex items-center justify-between px-2 cursor-default z-[1000] border-b border-[#2d3138]",
+                class: "{position_class} h-10 bg-surface-raised flex items-center justify-between px-2 cursor-default z-[1000] border-b border-border-subtle",
                 style: "padding-left: {left_padding}px;",
                 onmousedown: move |_| {
                     if let Some(handler) = &on_bar_mousedown {
@@ -143,7 +143,7 @@ pub fn TitleBarView(
                             r#type: "text",
                             placeholder: "Search...",
                             autocomplete: "off",
-                            class: "w-full h-7 px-2 bg-[#2a2e38] border border-[#33373f] rounded text-white text-xs placeholder-gray-400 focus:outline-none focus:border-gray-500",
+                            class: "w-full h-7 px-2 bg-surface-input border border-border-default rounded text-white text-xs placeholder-gray-400 focus:outline-none focus:border-border-strong",
                             value: "{search_value}",
                             oninput: move |evt| on_search_change.call(evt.value()),
                             onfocus: move |_| on_search_focus.call(()),
@@ -171,7 +171,7 @@ pub fn TitleBarView(
                     class: "{search_popover_class}",
                     id: "search-popover",
                     onclick: move |evt| evt.stop_propagation(),
-                    div { class: "mt-2 bg-[#2d3138] border border-[#3d4148] rounded-lg shadow-lg max-h-96 overflow-y-auto",
+                    div { class: "mt-2 bg-surface-overlay border border-border-strong rounded-lg shadow-lg max-h-96 overflow-y-auto",
                         for result in search_results.iter() {
                             SearchResultItem {
                                 key: "{result.id}",
@@ -189,14 +189,14 @@ pub fn TitleBarView(
                     class: "{update_popover_class}",
                     id: "update-popover",
                     onclick: move |evt| evt.stop_propagation(),
-                    div { class: "mt-2 bg-[#2d3138] border border-[#3d4148] rounded-lg shadow-lg overflow-hidden",
+                    div { class: "mt-2 bg-surface-overlay border border-border-strong rounded-lg shadow-lg overflow-hidden",
                         match update_state {
                             UpdateState::Downloading => rsx! {
                                 div { class: "px-3 py-2 text-xs text-gray-400", "Downloading update..." }
                             },
                             UpdateState::Ready => rsx! {
                                 button {
-                                    class: "w-full px-3 py-2 text-xs text-left text-white hover:bg-[#3d4148] transition-colors",
+                                    class: "w-full px-3 py-2 text-xs text-left text-white hover:bg-hover transition-colors",
                                     onclick: move |_| {
                                         show_update_menu.set(false);
                                         if let Some(handler) = &on_update_click {
@@ -304,7 +304,7 @@ fn SearchResultItem(result: SearchResult, on_click: EventHandler<String>) -> Ele
 
     rsx! {
         div {
-            class: "flex items-center gap-3 px-3 py-2 hover:bg-[#3d4148] border-b border-[#3d4148] last:border-b-0 cursor-pointer",
+            class: "flex items-center gap-3 px-3 py-2 hover:bg-hover border-b border-border-strong last:border-b-0 cursor-pointer",
             onclick: {
                 let id = id.clone();
                 move |evt| {

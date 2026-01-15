@@ -22,8 +22,8 @@ Thumbs.db
 node_modules/
 
 # Generated CSS (copied/built at build time)
-bae-mocks/assets/main.css
-bae-mocks/assets/tailwind.css
+bae-desktop/assets/*.css
+bae-mocks/assets/*.css
 
 # Website build artifacts
 website/dist/

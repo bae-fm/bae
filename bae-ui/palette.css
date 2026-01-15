@@ -1,0 +1,24 @@
+/* bae color palette */
+@theme {
+  /* Surface colors (backgrounds, from darkest to lightest) */
+  --color-surface-base: #0f1116;
+  --color-surface-raised: #1e222d;
+  --color-surface-input: #2a2e38;
+  --color-surface-overlay: #2d3138;
+
+  /* Border colors (from subtle to prominent) */
+  --color-border-subtle: #2d3138;
+  --color-border-default: #33373f;
+  --color-border-strong: #3d4148;
+
+  /* Interactive states */
+  --color-hover: #3d4148;
+
+  /* Accent */
+  --color-accent: #3b82f6;
+  --color-accent-muted: #6d85c6;
+  --color-accent-soft: #91a4d2;
+
+  /* Progress bar track */
+  --color-track: #374151;
+}

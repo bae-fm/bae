@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../bae-ui/palette.css";
 
 @source "./src/**/*.rs";
 @source "../bae-ui/src/**/*.rs";
