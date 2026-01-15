@@ -199,6 +199,7 @@ pub fn TitleBar() -> Element {
             on_settings_click: move |_| {
                 navigator().push(Route::Settings {});
             },
+            settings_active: matches!(current_route, Route::Settings {}),
             update_state,
             on_update_click: Some(
                 EventHandler::new(move |_| {

@@ -152,8 +152,9 @@ pub fn CdImportView(props: CdImportViewProps) -> Element {
                     // Show loading state while detecting
 
 
-                                toc: props.toc_info.clone(),
 
+
+                                toc: props.toc_info.clone(),
 
                                 is_reading: props.is_loading_exact_matches,
                             }

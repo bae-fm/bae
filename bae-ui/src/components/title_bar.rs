@@ -48,6 +48,7 @@ pub fn TitleBarView(
     on_search_focus: EventHandler<()>,
     // Settings
     on_settings_click: EventHandler<()>,
+    #[props(default)] settings_active: bool,
     #[props(default)] update_state: UpdateState,
     #[props(default)] on_update_click: Option<EventHandler<()>>,
     // Platform hooks (no-ops on web)
@@ -156,6 +157,7 @@ pub fn TitleBarView(
                 // Right section: Settings button
                 div { class: "flex-none", style: "-webkit-app-region: no-drag;",
                     SettingsButton {
+                        is_active: settings_active,
                         update_state,
                         on_settings_click: move |_| on_settings_click.call(()),
                         on_update_click: move |_| {
@@ -222,6 +224,7 @@ pub fn TitleBarView(
 /// Settings button with optional update badge
 #[component]
 fn SettingsButton(
+    is_active: bool,
     update_state: UpdateState,
     on_settings_click: EventHandler<()>,
     on_update_click: EventHandler<()>,
@@ -229,6 +232,11 @@ fn SettingsButton(
     on_toggle_menu: EventHandler<()>,
 ) -> Element {
     let has_update = update_state != UpdateState::Idle;
+    let icon_class = if is_active {
+        "text-white"
+    } else {
+        "text-gray-400 hover:text-white"
+    };
 
     rsx! {
         div {
@@ -240,7 +248,7 @@ fn SettingsButton(
                 div { class: "flex items-center rounded overflow-hidden",
                     // Settings button
                     button {
-                        class: "p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors",
+                        class: "p-1.5 {icon_class} hover:bg-gray-700 transition-colors",
                         title: "Settings",
                         onclick: move |_| on_settings_click.call(()),
                         SettingsIcon { class: "w-4 h-4" }
@@ -289,7 +297,7 @@ fn SettingsButton(
             } else {
                 // Simple settings button
                 button {
-                    class: "p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors",
+                    class: "p-1.5 {icon_class} hover:bg-gray-700 rounded transition-colors",
                     title: "Settings",
                     onclick: move |_| on_settings_click.call(()),
                     SettingsIcon { class: "w-4 h-4" }

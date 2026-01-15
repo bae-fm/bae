@@ -207,6 +207,7 @@ pub fn DemoLayout() -> Element {
                     on_settings_click: move |_| {
                         navigator().push(Route::Settings {});
                     },
+                    settings_active: matches!(current_route, Route::Settings {}),
                     imports_indicator: rsx! {
                         ImportsButtonView {
                             imports: mock_imports.clone(),

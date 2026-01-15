@@ -11,7 +11,12 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
             "active_nav",
             "Active Nav",
             "library",
-            vec![("library", "Library"), ("import", "Import")],
+            vec![
+                ("library", "Library"),
+                ("import", "Import"),
+                ("settings", "Settings"),
+                ("none", "None"),
+            ],
         )
         .inline()
         .enum_control(
@@ -58,6 +63,8 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
         },
     ];
 
+    let settings_active = active_nav == "settings";
+
     let search_results: Vec<SearchResult> = if show_search_results {
         mock_search_results()
             .into_iter()
@@ -89,6 +96,7 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
                 on_search_dismiss: |_| {},
                 on_search_focus: |_| {},
                 on_settings_click: |_| {},
+                settings_active,
                 update_state,
                 on_update_click: Some(EventHandler::new(|_| {})),
                 left_padding: 16,

@@ -164,10 +164,8 @@ pub fn TorrentImportView(props: TorrentImportViewProps) -> Element {
 
 
 
+
                             TorrentTrackerDisplayView { trackers: props.tracker_statuses.clone() }
-
-
-
                             if let Some(ref info) = props.torrent_info {
                                 TorrentInfoDisplayView { info: info.clone() }
                             }
@@ -192,6 +190,8 @@ pub fn TorrentImportView(props: TorrentImportViewProps) -> Element {
                                         on_retry: props.on_retry_discid_lookup,
                                     }
                                 }
+
+
 
                                 if props.show_metadata_detection_prompt {
                                     MetadataDetectionPromptView { on_detect: props.on_detect_metadata }
