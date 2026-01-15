@@ -232,10 +232,10 @@ fn SettingsButton(
     on_toggle_menu: EventHandler<()>,
 ) -> Element {
     let has_update = update_state != UpdateState::Idle;
-    let icon_class = if is_active {
-        "text-white"
+    let button_class = if is_active {
+        "p-1.5 text-white bg-gray-700 rounded transition-colors"
     } else {
-        "text-gray-400 hover:text-white"
+        "p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
     };
 
     rsx! {
@@ -245,10 +245,10 @@ fn SettingsButton(
 
             if has_update {
                 // Split button: settings + update indicator
-                div { class: "flex items-center rounded overflow-hidden",
+                div { class: "flex items-center",
                     // Settings button
                     button {
-                        class: "p-1.5 {icon_class} hover:bg-gray-700 transition-colors",
+                        class: "{button_class}",
                         title: "Settings",
                         onclick: move |_| on_settings_click.call(()),
                         SettingsIcon { class: "w-4 h-4" }
@@ -297,7 +297,7 @@ fn SettingsButton(
             } else {
                 // Simple settings button
                 button {
-                    class: "p-1.5 {icon_class} hover:bg-gray-700 rounded transition-colors",
+                    class: "{button_class}",
                     title: "Settings",
                     onclick: move |_| on_settings_click.call(()),
                     SettingsIcon { class: "w-4 h-4" }
