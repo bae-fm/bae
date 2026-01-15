@@ -5,15 +5,48 @@ use crate::components::icons::{DiscIcon, FileIcon, FileTextIcon, RowsIcon};
 use crate::display_types::{AudioContentInfo, CategorizedFileInfo, CueFlacPairInfo, FileInfo};
 use dioxus::prelude::*;
 
-fn format_file_size(bytes: u64) -> String {
-    if bytes < 1024 {
-        format!("{} B", bytes)
-    } else if bytes < 1024 * 1024 {
-        format!("{:.1} KB", bytes as f64 / 1024.0)
-    } else if bytes < 1024 * 1024 * 1024 {
-        format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+/// Base file tile container - captures common layout (aspect-square, rounded, padding, etc.)
+#[component]
+fn FileTile(
+    /// Background class (e.g., "bg-gray-800/50")
+    bg: &'static str,
+    /// Border class (e.g., "border-blue-500/30")
+    border: &'static str,
+    /// Click handler - if present, renders as button with hover states
+    #[props(default)]
+    on_click: Option<EventHandler<()>>,
+    children: Element,
+) -> Element {
+    let base = "aspect-square border rounded flex flex-col items-center justify-center p-1.5";
+
+    if let Some(handler) = on_click {
+        rsx! {
+            button {
+                class: "{base} {bg} {border} hover:bg-gray-800/70 transition-colors cursor-pointer",
+                onclick: move |_| handler.call(()),
+                {children}
+            }
+        }
     } else {
-        format!("{:.1} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+        rsx! {
+            div { class: "{base} {bg} {border}", {children} }
+        }
+    }
+}
+
+/// Audio tile content (icon + track count + format label)
+#[component]
+fn AudioTileContent(
+    track_count: usize,
+    format: &'static str,
+    /// Text color class (e.g., "text-blue-300")
+    text_color: &'static str,
+    children: Element,
+) -> Element {
+    rsx! {
+        {children}
+        span { class: "text-xs font-semibold text-center leading-tight {text_color}", {format!("{} tracks", track_count)} }
+        span { class: "text-[10px] text-gray-400 text-center leading-tight", "{format}" }
     }
 }
 
@@ -131,12 +164,15 @@ fn AudioTileView(audio: AudioContentInfo, on_cue_click: EventHandler<(String, St
         }
         AudioContentInfo::TrackFiles(tracks) if !tracks.is_empty() => {
             rsx! {
-                div { class: "aspect-square bg-gray-800/50 border border-blue-500/30 rounded flex flex-col items-center justify-center p-1.5",
-                    RowsIcon { class: "w-5 h-5 text-blue-400 mb-0.5" }
-                    span { class: "text-xs font-semibold text-blue-300 text-center leading-tight",
-                        {format!("{} tracks", tracks.len())}
+                FileTile {
+                    bg: "bg-gray-800/50",
+                    border: "border-blue-500/30",
+                    AudioTileContent {
+                        track_count: tracks.len(),
+                        format: "FLAC",
+                        text_color: "text-blue-300",
+                        RowsIcon { class: "w-5 h-5 text-blue-400 mb-0.5" }
                     }
-                    span { class: "text-xs text-gray-400 text-center leading-tight", "FLAC" }
                 }
             }
         }
@@ -151,17 +187,19 @@ fn CueFlacTileView(pair: CueFlacPairInfo, on_click: EventHandler<(String, String
     let track_count = pair.track_count;
 
     rsx! {
-        button {
-            class: "aspect-square bg-gray-800/50 border border-purple-500/30 rounded flex flex-col items-center justify-center p-1.5 hover:bg-gray-800/70 hover:border-purple-500/50 transition-colors cursor-pointer",
-            onclick: {
+        FileTile {
+            bg: "bg-gray-800/50",
+            border: "border-purple-500/30",
+            on_click: {
                 let name = cue_name.clone();
                 move |_| on_click.call((name.clone(), name.clone()))
             },
-            DiscIcon { class: "w-5 h-5 text-purple-400 mb-0.5" }
-            span { class: "text-xs font-semibold text-purple-300 text-center leading-tight",
-                {format!("{} tracks", track_count)}
+            AudioTileContent {
+                track_count,
+                format: "CUE/FLAC",
+                text_color: "text-purple-300",
+                DiscIcon { class: "w-5 h-5 text-purple-400 mb-0.5" }
             }
-            span { class: "text-xs text-gray-400 text-center leading-tight", "CUE/FLAC" }
         }
     }
 }
@@ -194,21 +232,18 @@ fn GalleryThumbnailView(
 #[component]
 fn DocumentTileView(file: FileInfo, on_click: EventHandler<(String, String)>) -> Element {
     let filename = file.name.clone();
-    let file_size = file.size;
 
     rsx! {
-        button {
-            class: "aspect-square bg-gray-800 border border-gray-700 rounded flex flex-col items-center justify-center p-1.5 hover:bg-gray-750 hover:border-gray-600 transition-colors cursor-pointer",
-            onclick: {
+        FileTile {
+            bg: "bg-gray-800",
+            border: "border-gray-700",
+            on_click: {
                 let name = filename.clone();
                 move |_| on_click.call((name.clone(), name.clone()))
             },
             FileTextIcon { class: "w-5 h-5 text-gray-400 mb-0.5" }
             span { class: "text-xs text-white font-medium text-center truncate w-full leading-tight",
                 {file.name.clone()}
-            }
-            span { class: "text-xs text-gray-400 text-center leading-tight",
-                {format_file_size(file_size)}
             }
         }
     }
@@ -218,13 +253,12 @@ fn DocumentTileView(file: FileInfo, on_click: EventHandler<(String, String)>) ->
 #[component]
 fn OtherFileTileView(file: FileInfo) -> Element {
     rsx! {
-        div { class: "aspect-square bg-gray-800/50 border border-gray-700 rounded flex flex-col items-center justify-center p-1.5",
+        FileTile {
+            bg: "bg-gray-800/50",
+            border: "border-gray-700",
             FileIcon { class: "w-5 h-5 text-gray-500 mb-0.5" }
             span { class: "text-xs text-gray-400 text-center truncate w-full leading-tight",
                 {file.name.clone()}
-            }
-            span { class: "text-xs text-gray-500 text-center leading-tight",
-                {format_file_size(file.size)}
             }
         }
     }

@@ -92,14 +92,22 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         .enum_control(
             "image_count",
             "Images",
-            "5",
-            vec![("1", "1"), ("5", "5"), ("13", "13")],
+            "3",
+            vec![("0", "0"), ("3", "3"), ("12", "12")],
         )
         .inline()
         .hidden_when("step", "SelectSource")
         .enum_control(
             "doc_count",
             "Docs",
+            "2",
+            vec![("0", "0"), ("2", "2"), ("4", "4")],
+        )
+        .inline()
+        .hidden_when("step", "SelectSource")
+        .enum_control(
+            "other_count",
+            "Other",
             "2",
             vec![("0", "0"), ("2", "2"), ("4", "4")],
         )
@@ -193,8 +201,9 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
     // File content controls
     let audio_type = registry.get_string("audio_type");
     let track_count = registry.get_string("track_count").parse().unwrap_or(8);
-    let image_count = registry.get_string("image_count").parse().unwrap_or(5);
+    let image_count = registry.get_string("image_count").parse().unwrap_or(3);
     let doc_count = registry.get_string("doc_count").parse().unwrap_or(2);
+    let other_count = registry.get_string("other_count").parse().unwrap_or(2);
 
     // Mock data
     let folder_path = "/Users/demo/Music/The Midnight Signal - Neon Frequencies (2023)".to_string();
@@ -286,11 +295,21 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         })
         .collect();
 
+    // Generate other files
+    let other_names = [".DS_Store", "Thumbs.db", "desktop.ini", "playlist.m3u"];
+    let other: Vec<FileInfo> = (0..other_count)
+        .map(|i| FileInfo {
+            name: other_names.get(i).unwrap_or(&"file.dat").to_string(),
+            size: 1_000 + (i as u64 * 500),
+            format: "".to_string(),
+        })
+        .collect();
+
     let folder_files = CategorizedFileInfo {
         audio,
         artwork,
         documents,
-        other: vec![],
+        other,
     };
 
     let detected_releases = vec![
