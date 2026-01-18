@@ -1,7 +1,7 @@
 //! Local storage helpers
 
-pub fn get_storage() -> Option<web_sys::Storage> {
-    web_sys::window().and_then(|w| w.local_storage().ok().flatten())
+pub fn get_storage() -> Option<web_sys_x::Storage> {
+    web_sys_x::window().and_then(|w| w.local_storage().ok().flatten())
 }
 
 pub fn get_string(key: &str) -> Option<String> {

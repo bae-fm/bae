@@ -12,7 +12,7 @@ path = "src/main.rs"
 [dependencies]
 bae-core = { path = "../bae-core" }
 bae-ui = { path = "../bae-ui" }
-dioxus = { version = "0.7.2", features = ["router", "desktop"] }
+dioxus = { workspace = true, features = ["router", "desktop"] }
 rfd = "0.17"
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1.41"

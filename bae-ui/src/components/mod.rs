@@ -14,7 +14,6 @@ pub mod playback;
 pub mod settings;
 pub mod title_bar;
 pub mod utils;
-pub mod virtual_grid;
 
 pub use album_card::AlbumCard;
 pub use album_detail::release_tabs_section::ReleaseTorrentInfo;
@@ -25,6 +24,9 @@ pub use album_detail::{
 };
 pub use app_layout::AppLayoutView;
 pub use dialog::GlobalDialogView;
+pub use dioxus_virtual_scroll::{
+    GridLayout, KeyFn, RenderFn, ScrollTarget, VirtualGrid, VirtualGridConfig,
+};
 pub use error_toast::ErrorToast;
 pub use helpers::{BackButton, ErrorDisplay, LoadingSpinner, PageContainer};
 pub use icons::{
@@ -53,4 +55,3 @@ pub use settings::{
 };
 pub use title_bar::{NavItem, SearchResult, TitleBarView, UpdateState};
 pub use utils::{format_duration, format_file_size};
-pub use virtual_grid::{RenderFn, ScrollTarget, VirtualGrid, VirtualGridConfig};
