@@ -8,6 +8,8 @@ use cocoa::base::{id, nil, selector, NO, YES};
 #[cfg(target_os = "macos")]
 use cocoa::foundation::{NSAutoreleasePool, NSString};
 #[cfg(target_os = "macos")]
+use dispatch::Queue;
+#[cfg(target_os = "macos")]
 use objc::declare::ClassDecl;
 #[cfg(target_os = "macos")]
 use objc::runtime::{Class, Object, Sel};
@@ -125,12 +127,13 @@ unsafe fn get_menu_delegate() -> id {
 }
 
 /// Set up the application menu with custom items including "Check for Updates..."
+/// Dispatches to main thread since Cocoa UI operations require it.
 #[cfg(target_os = "macos")]
 pub fn setup_app_menu() {
-    unsafe {
+    Queue::main().exec_async(|| unsafe {
         let app = NSApplication::sharedApplication(nil);
         setup_app_menu_inner(app);
-    }
+    });
 }
 
 #[cfg(target_os = "macos")]
@@ -215,8 +218,16 @@ unsafe fn setup_app_menu_inner(app: id) {
 }
 /// Configure the window with transparent titlebar and native traffic lights.
 /// This must be called after the window is created.
+/// Dispatches to main thread since Cocoa UI operations require it.
 #[cfg(target_os = "macos")]
 pub fn setup_transparent_titlebar() {
+    Queue::main().exec_async(|| {
+        setup_transparent_titlebar_inner();
+    });
+}
+
+#[cfg(target_os = "macos")]
+fn setup_transparent_titlebar_inner() {
     unsafe {
         let app = NSApplication::sharedApplication(nil);
         let windows: id = msg_send![app, windows];
@@ -228,12 +239,15 @@ pub fn setup_transparent_titlebar() {
         }
 
         let window: id = msg_send![windows, objectAtIndex: 0usize];
+
         window.setTitlebarAppearsTransparent_(YES);
         window.setTitleVisibility_(NSWindowTitleVisibility::NSWindowTitleHidden);
+
         let current_style_mask: NSWindowStyleMask = window.styleMask();
         let new_style_mask =
             current_style_mask | NSWindowStyleMask::NSFullSizeContentViewWindowMask;
         window.setStyleMask_(new_style_mask);
+
         let toolbar: id = msg_send![class!(NSToolbar), alloc];
         let toolbar: id = msg_send![
             toolbar, initWithIdentifier : NSString::alloc(nil).init_str("MainToolbar")

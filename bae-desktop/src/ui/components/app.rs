@@ -4,11 +4,10 @@ use super::library_search_context::LibrarySearchContextProvider;
 use super::playback_hooks::PlaybackStateProvider;
 use super::queue_sidebar::QueueSidebarState;
 use crate::ui::import_context::ImportContextProvider;
-#[cfg(target_os = "macos")]
-use crate::ui::window_activation::{setup_app_menu, setup_transparent_titlebar};
 use crate::ui::{Route, FAVICON, MAIN_CSS, TAILWIND_CSS};
 use dioxus::prelude::*;
 use tracing::debug;
+
 #[component]
 pub fn App() -> Element {
     debug!("Rendering app component");
@@ -16,11 +15,6 @@ pub fn App() -> Element {
         is_open: Signal::new(false),
     });
     use_context_provider(DialogContext::new);
-    #[cfg(target_os = "macos")]
-    use_effect(move || {
-        setup_transparent_titlebar();
-        setup_app_menu();
-    });
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }

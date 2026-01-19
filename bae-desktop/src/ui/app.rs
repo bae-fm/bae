@@ -186,7 +186,12 @@ fn make_window() -> WindowBuilder {
 
 pub fn launch_app(context: AppContext) {
     #[cfg(target_os = "macos")]
-    setup_macos_window_activation();
+    {
+        use crate::ui::window_activation::{setup_app_menu, setup_transparent_titlebar};
+        setup_macos_window_activation();
+        setup_transparent_titlebar();
+        setup_app_menu();
+    }
     LaunchBuilder::desktop()
         .with_cfg(make_config(&context))
         .with_context_provider(move || Box::new(context.clone()))
