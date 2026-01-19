@@ -140,8 +140,8 @@ jobs:
         # Run CPU usage test in release mode for accurate measurements
         cargo test -p bae-core --release --target x86_64-pc-windows-gnu --features bae-core/test-utils --test test_playback_cpu --verbose
 
-  e2e:
-    name: E2E Tests
+  screenshots:
+    name: Build Screenshots
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -161,16 +161,15 @@ jobs:
     - name: Install Playwright browsers
       run: cd bae-mocks/e2e && npx playwright install --with-deps chromium
 
-    - name: Run Playwright tests
+    - name: Build screenshots
       run: cd bae-mocks/e2e && npx playwright test
 
-    - name: Upload test results
-      if: failure()
+    - name: Upload screenshots
       uses: actions/upload-artifact@v4
       with:
-        name: playwright-report
-        path: bae-mocks/e2e/test-results/
-        retention-days: 7
+        name: screenshots
+        path: website/public/screenshots/
+        retention-days: 30
 
   security:
     name: Security Audit
