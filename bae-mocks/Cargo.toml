@@ -5,10 +5,10 @@ edition = "2021"
 
 [dependencies]
 bae-ui = { path = "../bae-ui" }
-dioxus = { workspace = true, features = ["router", "web"] }
+dioxus = { workspace = true, features = ["router", "web", "asset", "document", "launch"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-web-sys-x = { workspace = true, features = ["Window", "Storage"] }
+web-sys-x = { workspace = true, features = ["Window", "Storage", "Location"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }

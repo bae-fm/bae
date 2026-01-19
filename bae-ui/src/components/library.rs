@@ -30,7 +30,7 @@ pub fn LibraryView(
     on_play_album: EventHandler<String>,
     on_add_album_to_queue: EventHandler<String>,
     // Empty state action (e.g., navigate to import)
-    #[props(default)] on_empty_action: Option<EventHandler<()>>,
+    on_empty_action: EventHandler<()>,
 ) -> Element {
     rsx! {
         PageContainer {
@@ -51,12 +51,10 @@ pub fn LibraryView(
                         "No albums in your library yet"
                     }
                     p { class: "text-gray-500 mb-4", "Import your first album to get started!" }
-                    if let Some(handler) = on_empty_action {
-                        button {
-                            class: "inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded",
-                            onclick: move |_| handler.call(()),
-                            "Import Album"
-                        }
+                    button {
+                        class: "inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded",
+                        onclick: move |_| on_empty_action.call(()),
+                        "Import Album"
                     }
                 }
             } else {

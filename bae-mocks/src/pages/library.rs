@@ -21,6 +21,7 @@ pub fn Library() -> Element {
             },
             on_play_album: |_| {},
             on_add_album_to_queue: |_| {},
+            on_empty_action: |_| {},
         }
     }
 }

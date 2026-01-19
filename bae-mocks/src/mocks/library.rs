@@ -62,7 +62,7 @@ pub fn LibraryMock(initial_state: Option<String>) -> Element {
                 on_album_click: |_| {},
                 on_play_album: |_| {},
                 on_add_album_to_queue: |_| {},
-                on_empty_action: Some(EventHandler::new(|_| {})),
+                on_empty_action: |_| {},
             }
         }
     }
