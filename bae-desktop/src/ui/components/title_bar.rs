@@ -102,7 +102,10 @@ pub fn TitleBar() -> Element {
     ];
 
     // Poll update state reactively (updater uses atomics updated by Sparkle callbacks)
+    #[cfg(target_os = "macos")]
     let mut update_state_signal = use_signal(|| UpdateState::Idle);
+    #[cfg(not(target_os = "macos"))]
+    let update_state_signal = use_signal(|| UpdateState::Idle);
 
     #[cfg(target_os = "macos")]
     use_future(move || async move {
