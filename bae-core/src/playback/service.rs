@@ -38,6 +38,15 @@ use std::collections::VecDeque;
 use std::sync::{mpsc, Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
 use tracing::{error, info, trace};
+/// Repeat mode for playback
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RepeatMode {
+    #[default]
+    None,
+    Track,
+    Album,
+}
+
 /// Playback commands sent to the service
 #[derive(Debug, Clone)]
 pub enum PlaybackCommand {
@@ -62,6 +71,7 @@ pub enum PlaybackCommand {
     },
     ClearQueue,
     GetQueue,
+    SetRepeatMode(RepeatMode),
 }
 /// Current playback state
 #[derive(Debug, Clone)]
@@ -151,6 +161,9 @@ impl PlaybackHandle {
     }
     pub fn get_queue(&self) {
         let _ = self.command_tx.send(PlaybackCommand::GetQueue);
+    }
+    pub fn set_repeat_mode(&self, mode: RepeatMode) {
+        let _ = self.command_tx.send(PlaybackCommand::SetRepeatMode(mode));
     }
 }
 
@@ -369,6 +382,7 @@ pub struct PlaybackService {
     next_prepared: Option<PreparedTrack>,
     /// Preloaded next track streaming source (decoder already started)
     next_streaming_source: Option<Arc<Mutex<StreamingPcmSource>>>,
+    repeat_mode: RepeatMode,
 }
 
 impl PlaybackService {
@@ -566,6 +580,7 @@ impl PlaybackService {
                     current_streaming_source: None,
                     next_prepared: None,
                     next_streaming_source: None,
+                    repeat_mode: RepeatMode::None,
                 };
                 service.run().await;
             });
@@ -699,6 +714,20 @@ impl PlaybackService {
                         "AutoAdvance command received (natural transition), queue length: {}",
                         self.queue.len()
                     );
+                    if self.repeat_mode == RepeatMode::Track {
+                        if let Some(current_track_id) =
+                            self.current_track_id().map(|s| s.to_string())
+                        {
+                            info!("Repeat mode: track, replaying {}", current_track_id);
+
+                            self.clear_next_track_state();
+                            self.play_track(&current_track_id, true, false).await;
+                        } else {
+                            info!("Repeat mode: track, but no current track");
+                        }
+                        continue;
+                    }
+
                     if let Some(preloaded_track_id) = self.next_track_id().map(|s| s.to_string()) {
                         if self.next_streaming_source.is_some() {
                             info!("Using preloaded track: {}", preloaded_track_id);
@@ -728,6 +757,20 @@ impl PlaybackService {
                             self.previous_track_id = Some(id.to_string());
                         }
                         self.play_track(&next_track, true, false).await; // start playing
+                    } else if self.repeat_mode == RepeatMode::Album {
+                        if let Some((first_track, rest)) =
+                            self.rebuild_queue_for_repeat_album().await
+                        {
+                            info!("Repeat mode: album, restarting from {}", first_track);
+                            self.queue = rest;
+                            self.emit_queue_update();
+
+                            self.play_track(&first_track, true, false).await;
+                        } else {
+                            info!("Repeat mode: album, but no album tracks found");
+                            self.emit_queue_update();
+                            self.stop().await;
+                        }
                     } else {
                         info!("No next track available, stopping");
                         self.emit_queue_update();
@@ -848,6 +891,14 @@ impl PlaybackService {
                 }
                 PlaybackCommand::GetQueue => {
                     self.emit_queue_update();
+                }
+                PlaybackCommand::SetRepeatMode(mode) => {
+                    if self.repeat_mode != mode {
+                        self.repeat_mode = mode;
+                        let _ = self
+                            .progress_tx
+                            .send(PlaybackProgress::RepeatModeChanged { mode });
+                    }
                 }
             }
         }
@@ -1415,6 +1466,46 @@ impl PlaybackService {
         let _ = self
             .progress_tx
             .send(PlaybackProgress::QueueUpdated { tracks: track_ids });
+    }
+
+    async fn rebuild_queue_for_repeat_album(&mut self) -> Option<(String, VecDeque<String>)> {
+        let current_release_id = self
+            .current_prepared
+            .as_ref()
+            .map(|p| p.track.release_id.clone())?;
+        let mut tracks = self
+            .library_manager
+            .get_tracks(&current_release_id)
+            .await
+            .ok()?;
+        if tracks.is_empty() {
+            return None;
+        }
+
+        tracks.sort_by(|a, b| {
+            let disc_cmp = match (a.disc_number, b.disc_number) {
+                (Some(a_disc), Some(b_disc)) => a_disc.cmp(&b_disc),
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => std::cmp::Ordering::Equal,
+            };
+            if disc_cmp == std::cmp::Ordering::Equal {
+                match (a.track_number, b.track_number) {
+                    (Some(a_num), Some(b_num)) => a_num.cmp(&b_num),
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => std::cmp::Ordering::Equal,
+                }
+            } else {
+                disc_cmp
+            }
+        });
+
+        let mut iter = tracks.into_iter();
+        let first_track = iter.next()?.id;
+        let rest = iter.map(|track| track.id).collect();
+        self.previous_track_id = None;
+        Some((first_track, rest))
     }
 }
 

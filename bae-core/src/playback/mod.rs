@@ -11,7 +11,7 @@ pub mod track_loader;
 pub use error::PlaybackError;
 pub use pcm_source::PcmSource;
 pub use progress::PlaybackProgress;
-pub use service::{PlaybackHandle, PlaybackService, PlaybackState};
+pub use service::{PlaybackHandle, PlaybackService, PlaybackState, RepeatMode};
 pub use sparse_buffer::SharedSparseBuffer;
 pub use streaming_source::{create_streaming_pair, StreamingPcmSink, StreamingPcmSource};
 

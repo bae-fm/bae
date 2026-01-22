@@ -1,6 +1,7 @@
+use bae_core::playback::RepeatMode;
 use cocoa::appkit::{
-    NSApplication, NSApplicationActivationPolicy, NSMenu, NSMenuItem, NSWindow, NSWindowStyleMask,
-    NSWindowTitleVisibility,
+    NSApplication, NSApplicationActivationPolicy, NSEventModifierFlags, NSMenu, NSMenuItem,
+    NSWindow, NSWindowStyleMask, NSWindowTitleVisibility,
 };
 use cocoa::base::{id, nil, selector, NO, YES};
 use cocoa::foundation::{NSAutoreleasePool, NSString};
@@ -13,6 +14,8 @@ use tracing::info;
 static MENU_HANDLER_CLASS_REGISTERED: std::sync::Once = std::sync::Once::new();
 static MENU_DELEGATE_CLASS_REGISTERED: std::sync::Once = std::sync::Once::new();
 static UPDATE_MENU_ITEM: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+static REPEAT_MENU_ITEM: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+static REPEAT_MODE: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
 
 pub fn setup_macos_window_activation() {
     unsafe {
@@ -28,7 +31,9 @@ pub fn setup_macos_window_activation() {
 /// Register a custom Objective-C class to handle menu actions
 unsafe fn register_menu_handler_class() {
     MENU_HANDLER_CLASS_REGISTERED.call_once(|| {
-        use crate::ui::shortcuts::{request_nav, NavAction, NavTarget};
+        use crate::ui::shortcuts::{
+            request_nav, request_playback_action, NavAction, NavTarget, PlaybackAction,
+        };
 
         let superclass = Class::get("NSObject").unwrap();
         let mut decl = ClassDecl::new("BaeMenuHandler", superclass).unwrap();
@@ -53,6 +58,38 @@ unsafe fn register_menu_handler_class() {
             request_nav(NavAction::GoTo(NavTarget::Import));
         }
 
+        extern "C" fn toggle_repeat_mode(_this: &Object, _cmd: Sel, _sender: id) {
+            let current = REPEAT_MODE.load(std::sync::atomic::Ordering::SeqCst);
+            let next = match current {
+                0 => RepeatMode::Track,
+                1 => RepeatMode::Album,
+                _ => RepeatMode::None,
+            };
+            let next_value = match next {
+                RepeatMode::None => 0,
+                RepeatMode::Track => 1,
+                RepeatMode::Album => 2,
+            };
+            REPEAT_MODE.store(next_value, std::sync::atomic::Ordering::SeqCst);
+            unsafe {
+                update_repeat_menu_state_inner();
+            }
+
+            request_playback_action(PlaybackAction::SetRepeatMode(next));
+        }
+
+        extern "C" fn toggle_play_pause(_this: &Object, _cmd: Sel, _sender: id) {
+            request_playback_action(PlaybackAction::TogglePlayPause);
+        }
+
+        extern "C" fn next_track(_this: &Object, _cmd: Sel, _sender: id) {
+            request_playback_action(PlaybackAction::Next);
+        }
+
+        extern "C" fn previous_track(_this: &Object, _cmd: Sel, _sender: id) {
+            request_playback_action(PlaybackAction::Previous);
+        }
+
         decl.add_method(
             sel!(checkForUpdates:),
             check_for_updates as extern "C" fn(&Object, Sel, id),
@@ -69,6 +106,22 @@ unsafe fn register_menu_handler_class() {
         decl.add_method(
             sel!(goImport:),
             go_import as extern "C" fn(&Object, Sel, id),
+        );
+        decl.add_method(
+            sel!(toggleRepeatMode:),
+            toggle_repeat_mode as extern "C" fn(&Object, Sel, id),
+        );
+        decl.add_method(
+            sel!(togglePlayPause:),
+            toggle_play_pause as extern "C" fn(&Object, Sel, id),
+        );
+        decl.add_method(
+            sel!(nextTrack:),
+            next_track as extern "C" fn(&Object, Sel, id),
+        );
+        decl.add_method(
+            sel!(previousTrack:),
+            previous_track as extern "C" fn(&Object, Sel, id),
         );
 
         decl.register();
@@ -117,6 +170,8 @@ unsafe fn register_menu_delegate_class() {
                     let _: () = msg_send![item_ptr, setTitle: title];
                     let _: () = msg_send![item_ptr, setEnabled: enabled];
                 }
+
+                update_repeat_menu_state_inner();
             }
         }
 
@@ -149,6 +204,19 @@ pub fn setup_app_menu() {
     Queue::main().exec_async(|| unsafe {
         let app = NSApplication::sharedApplication(nil);
         setup_app_menu_inner(app);
+    });
+}
+
+pub fn set_playback_repeat_mode(mode: RepeatMode) {
+    let value = match mode {
+        RepeatMode::None => 0,
+        RepeatMode::Track => 1,
+        RepeatMode::Album => 2,
+    };
+    REPEAT_MODE.store(value, std::sync::atomic::Ordering::SeqCst);
+
+    Queue::main().exec_async(|| unsafe {
+        update_repeat_menu_state_inner();
     });
 }
 
@@ -238,9 +306,14 @@ unsafe fn setup_app_menu_inner(app: id) {
 
     let menu_handler = get_menu_handler();
 
+    let command_only = NSEventModifierFlags::NSCommandKeyMask;
+    let command_shift =
+        NSEventModifierFlags::NSCommandKeyMask | NSEventModifierFlags::NSShiftKeyMask;
+    let no_modifiers = NSEventModifierFlags::empty();
+
     // Back
     let back_title = NSString::alloc(nil).init_str("Back");
-    let back_key = NSString::alloc(nil).init_str("[");
+    let back_key = NSString::alloc(nil).init_str("\u{F702}");
     let back_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
         back_title,
         selector("goBack:"),
@@ -248,11 +321,12 @@ unsafe fn setup_app_menu_inner(app: id) {
     );
     back_item.autorelease();
     let _: () = msg_send![back_item, setTarget: menu_handler];
+    let _: () = msg_send![back_item, setKeyEquivalentModifierMask: command_only];
     go_menu.addItem_(back_item);
 
     // Forward
     let forward_title = NSString::alloc(nil).init_str("Forward");
-    let forward_key = NSString::alloc(nil).init_str("]");
+    let forward_key = NSString::alloc(nil).init_str("\u{F703}");
     let forward_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
         forward_title,
         selector("goForward:"),
@@ -260,6 +334,7 @@ unsafe fn setup_app_menu_inner(app: id) {
     );
     forward_item.autorelease();
     let _: () = msg_send![forward_item, setTarget: menu_handler];
+    let _: () = msg_send![forward_item, setKeyEquivalentModifierMask: command_only];
     go_menu.addItem_(forward_item);
 
     let go_separator = NSMenuItem::separatorItem(nil);
@@ -288,6 +363,77 @@ unsafe fn setup_app_menu_inner(app: id) {
     import_item.autorelease();
     let _: () = msg_send![import_item, setTarget: menu_handler];
     go_menu.addItem_(import_item);
+
+    // Playback menu
+    let playback_menu = NSMenu::new(nil);
+    playback_menu.autorelease();
+    let playback_menu_title = NSString::alloc(nil).init_str("Playback");
+    let _: () = msg_send![playback_menu, setTitle: playback_menu_title];
+
+    let menu_handler = get_menu_handler();
+
+    // Play/Pause
+    let play_pause_title = NSString::alloc(nil).init_str("Play/Pause");
+    let play_pause_key = NSString::alloc(nil).init_str(" ");
+    let play_pause_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
+        play_pause_title,
+        selector("togglePlayPause:"),
+        play_pause_key,
+    );
+    play_pause_item.autorelease();
+    let _: () = msg_send![play_pause_item, setTarget: menu_handler];
+    let _: () = msg_send![play_pause_item, setKeyEquivalentModifierMask: no_modifiers];
+    playback_menu.addItem_(play_pause_item);
+
+    // Next
+    let next_title = NSString::alloc(nil).init_str("Next");
+    let next_key = NSString::alloc(nil).init_str("n");
+    let next_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
+        next_title,
+        selector("nextTrack:"),
+        next_key,
+    );
+    next_item.autorelease();
+    let _: () = msg_send![next_item, setTarget: menu_handler];
+    let _: () = msg_send![next_item, setKeyEquivalentModifierMask: command_shift];
+    playback_menu.addItem_(next_item);
+
+    // Previous
+    let previous_title = NSString::alloc(nil).init_str("Previous");
+    let previous_key = NSString::alloc(nil).init_str("b");
+    let previous_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
+        previous_title,
+        selector("previousTrack:"),
+        previous_key,
+    );
+    previous_item.autorelease();
+    let _: () = msg_send![previous_item, setTarget: menu_handler];
+    let _: () = msg_send![previous_item, setKeyEquivalentModifierMask: command_shift];
+    playback_menu.addItem_(previous_item);
+
+    let playback_separator = NSMenuItem::separatorItem(nil);
+    playback_menu.addItem_(playback_separator);
+
+    // Repeat mode (cycles on click)
+    let repeat_title = NSString::alloc(nil).init_str("Repeat: Off");
+    let repeat_key = NSString::alloc(nil).init_str("r");
+    let repeat_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
+        repeat_title,
+        selector("toggleRepeatMode:"),
+        repeat_key,
+    );
+    repeat_item.autorelease();
+    let _: () = msg_send![repeat_item, setTarget: menu_handler];
+    let _: () = msg_send![repeat_item, setKeyEquivalentModifierMask: command_shift];
+    playback_menu.addItem_(repeat_item);
+    REPEAT_MENU_ITEM.store(repeat_item as usize, std::sync::atomic::Ordering::SeqCst);
+
+    update_repeat_menu_state_inner();
+
+    let playback_menu_item = NSMenuItem::new(nil);
+    playback_menu_item.autorelease();
+    playback_menu_item.setSubmenu_(playback_menu);
+    main_menu.addItem_(playback_menu_item);
 
     let go_menu_item = NSMenuItem::new(nil);
     go_menu_item.autorelease();
@@ -343,4 +489,20 @@ fn setup_transparent_titlebar_inner() {
 
         info!("macOS transparent titlebar configured");
     }
+}
+
+unsafe fn update_repeat_menu_state_inner() {
+    let mode_value = REPEAT_MODE.load(std::sync::atomic::Ordering::SeqCst);
+    let repeat_ptr = REPEAT_MENU_ITEM.load(std::sync::atomic::Ordering::SeqCst) as *mut Object;
+    if repeat_ptr.is_null() {
+        return;
+    }
+
+    let title = match mode_value {
+        1 => "Repeat: Song",
+        2 => "Repeat: Album",
+        _ => "Repeat: Off",
+    };
+    let title = NSString::alloc(nil).init_str(title);
+    let _: () = msg_send![repeat_ptr, setTitle: title];
 }

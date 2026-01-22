@@ -27,7 +27,7 @@ use bae_ui::display_types::{QueueItem, TrackImportState};
 use bae_ui::stores::{
     ActiveImport, ActiveImportsUiStateStoreExt, AlbumDetailStateStoreExt, AppState,
     AppStateStoreExt, ConfigStateStoreExt, ImportOperationStatus, LibraryStateStoreExt,
-    PlaybackStatus, PlaybackUiStateStoreExt, PrepareStep, StorageProfilesStateStoreExt,
+    PlaybackStatus, PlaybackUiStateStoreExt, PrepareStep, RepeatMode, StorageProfilesStateStoreExt,
     UiStateStoreExt,
 };
 use bae_ui::StorageProfile;
@@ -91,6 +91,7 @@ impl AppService {
     /// Start all event subscriptions. Call this once after creating AppService.
     pub fn start_subscriptions(&self) {
         self.subscribe_playback_events();
+        self.subscribe_playback_menu_actions();
         self.subscribe_import_progress();
         self.subscribe_library_events();
         self.subscribe_folder_scan_events();
@@ -298,7 +299,44 @@ impl AppService {
                         }
                         state.playback().queue_items().set(queue_items);
                     }
+                    PlaybackProgress::RepeatModeChanged { mode } => {
+                        let ui_mode = match mode {
+                            bae_core::playback::RepeatMode::None => RepeatMode::None,
+                            bae_core::playback::RepeatMode::Track => RepeatMode::Track,
+                            bae_core::playback::RepeatMode::Album => RepeatMode::Album,
+                        };
+                        state.playback().repeat_mode().set(ui_mode);
+
+                        crate::ui::window_activation::set_playback_repeat_mode(mode);
+                    }
                     _ => {}
+                }
+            }
+        });
+    }
+
+    /// Subscribe to playback menu actions (macOS native menu)
+    fn subscribe_playback_menu_actions(&self) {
+        let state = self.state;
+        let playback_handle = self.playback_handle.clone();
+
+        spawn(async move {
+            let mut rx = crate::ui::shortcuts::subscribe_playback_actions();
+            while let Ok(action) = rx.recv().await {
+                match action {
+                    crate::ui::shortcuts::PlaybackAction::SetRepeatMode(mode) => {
+                        playback_handle.set_repeat_mode(mode);
+                    }
+                    crate::ui::shortcuts::PlaybackAction::TogglePlayPause => {
+                        let status = *state.playback().status().read();
+                        match status {
+                            PlaybackStatus::Playing => playback_handle.pause(),
+                            PlaybackStatus::Paused => playback_handle.resume(),
+                            PlaybackStatus::Stopped | PlaybackStatus::Loading => {}
+                        }
+                    }
+                    crate::ui::shortcuts::PlaybackAction::Next => playback_handle.next(),
+                    crate::ui::shortcuts::PlaybackAction::Previous => playback_handle.previous(),
                 }
             }
         });

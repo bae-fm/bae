@@ -146,8 +146,9 @@ fn main() {
     };
     let _keep_alive = media_controls;
 
-    // Initialize navigation channel for menu shortcuts (must be before menu setup)
+    // Initialize navigation + playback channels for menu shortcuts (must be before menu setup)
     ui::shortcuts::init_nav_channel();
+    ui::shortcuts::init_playback_channel();
 
     let ui_context = AppContext {
         library_manager: library_manager.clone(),

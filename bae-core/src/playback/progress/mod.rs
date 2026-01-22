@@ -1,5 +1,5 @@
 pub mod handle;
-use crate::playback::service::PlaybackState;
+use crate::playback::service::{PlaybackState, RepeatMode};
 pub use handle::PlaybackProgressHandle;
 use std::time::Duration;
 /// Progress updates during playback
@@ -35,6 +35,10 @@ pub enum PlaybackProgress {
     /// Queue was updated - contains current queue state
     QueueUpdated {
         tracks: Vec<String>,
+    },
+    /// Repeat mode changed
+    RepeatModeChanged {
+        mode: RepeatMode,
     },
     /// Playback error occurred (e.g. storage offline)
     PlaybackError {

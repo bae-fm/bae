@@ -4,6 +4,7 @@
 //! Also provides a mechanism for native menus to request navigation.
 
 use crate::ui::Route;
+use bae_core::playback::RepeatMode;
 use dioxus::prelude::*;
 use std::sync::OnceLock;
 use tokio::sync::broadcast;
@@ -33,6 +34,7 @@ impl NavTarget {
 }
 
 static NAV_SENDER: OnceLock<broadcast::Sender<NavAction>> = OnceLock::new();
+static PLAYBACK_SENDER: OnceLock<broadcast::Sender<PlaybackAction>> = OnceLock::new();
 
 /// Initialize the navigation channel. Call once at startup.
 pub fn init_nav_channel() {
@@ -40,11 +42,27 @@ pub fn init_nav_channel() {
     NAV_SENDER.set(tx).expect("nav channel already initialized");
 }
 
+/// Initialize the playback action channel. Call once at startup.
+pub fn init_playback_channel() {
+    let (tx, _rx) = broadcast::channel(16);
+    PLAYBACK_SENDER
+        .set(tx)
+        .expect("playback channel already initialized");
+}
+
 /// Subscribe to navigation actions. Can be called multiple times (survives remounts).
 pub fn subscribe_nav() -> broadcast::Receiver<NavAction> {
     NAV_SENDER
         .get()
         .expect("nav channel not initialized")
+        .subscribe()
+}
+
+/// Subscribe to playback actions.
+pub fn subscribe_playback_actions() -> broadcast::Receiver<PlaybackAction> {
+    PLAYBACK_SENDER
+        .get()
+        .expect("playback channel not initialized")
         .subscribe()
 }
 
@@ -57,6 +75,26 @@ pub fn request_nav(action: NavAction) {
             let _ = tx.send(action);
         }
     });
+}
+
+/// Request a playback action (called from native menu handlers).
+/// On macOS, dispatches to main thread via GCD.
+#[cfg(target_os = "macos")]
+pub fn request_playback_action(action: PlaybackAction) {
+    dispatch::Queue::main().exec_async(move || {
+        if let Some(tx) = PLAYBACK_SENDER.get() {
+            let _ = tx.send(action);
+        }
+    });
+}
+
+/// Playback actions that can be triggered by native menus.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlaybackAction {
+    SetRepeatMode(RepeatMode),
+    TogglePlayPause,
+    Next,
+    Previous,
 }
 
 /// Check if the platform modifier key is pressed (Cmd on macOS, Ctrl elsewhere).

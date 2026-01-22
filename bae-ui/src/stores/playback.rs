@@ -13,6 +13,15 @@ pub enum PlaybackStatus {
     Paused,
 }
 
+/// Repeat mode for playback
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum RepeatMode {
+    #[default]
+    None,
+    Track,
+    Album,
+}
+
 /// UI state for playback
 #[derive(Clone, Debug, Default, PartialEq, Store)]
 pub struct PlaybackUiState {
@@ -40,4 +49,6 @@ pub struct PlaybackUiState {
     pub cover_url: Option<String>,
     /// Transient playback error message
     pub playback_error: Option<String>,
+    /// Repeat mode
+    pub repeat_mode: RepeatMode,
 }
