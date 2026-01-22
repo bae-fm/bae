@@ -307,6 +307,7 @@ impl AppService {
                         };
                         state.playback().repeat_mode().set(ui_mode);
 
+                        #[cfg(target_os = "macos")]
                         crate::ui::window_activation::set_playback_repeat_mode(mode);
                     }
                     _ => {}
