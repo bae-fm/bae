@@ -84,17 +84,25 @@ pub fn ResizablePanel(
     /// Panel contents
     children: Element,
 ) -> Element {
-    // Load initial size from localStorage, falling back to default
-    let initial_size = use_hook(|| {
-        web_sys_x::window()
+    let mut size = use_signal(|| default_size);
+    let mut loaded_from_storage = use_signal(|| false);
+
+    // Load initial size from localStorage after mount (can't do this in use_hook
+    // because the wry-bindgen JS bridge may not be ready during component init)
+    use_effect(move || {
+        if loaded_from_storage() {
+            return;
+        }
+        loaded_from_storage.set(true);
+
+        if let Some(stored_size) = web_sys_x::window()
             .and_then(|w| w.local_storage().ok().flatten())
             .and_then(|s| s.get_item(storage_key).ok().flatten())
             .and_then(|v| v.parse::<f64>().ok())
-            .map(|v| v.clamp(min_size, max_size))
-            .unwrap_or(default_size)
+        {
+            size.set(stored_size.clamp(min_size, max_size));
+        }
     });
-
-    let mut size = use_signal(|| initial_size);
     let mut is_resizing = use_signal(|| false);
     let mut drag_listeners: Signal<Option<DragListeners>> = use_signal(|| None);
     let is_horizontal = direction == ResizeDirection::Horizontal;
