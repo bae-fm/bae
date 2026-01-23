@@ -5,6 +5,11 @@
 //! - Focus trap
 //! - Escape key to close
 //! - `::backdrop` styling
+//!
+//! Note: Unlike popover's `ontoggle`, dialog's `oncancel` only fires from user actions
+//! (Escape key), not from programmatic `close()` calls, so we don't need the same
+//! complexity as Dropdown. However, `showModal()` throws if already open, so we check
+//! the `open` attribute for idempotency.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -49,15 +54,22 @@ pub fn Modal(
             return;
         };
 
+        // Check current state for idempotency (effect may run multiple times)
+        let is_dialog_open = element.has_attribute("open");
+
         if is_open {
-            // Call showModal()
+            if is_dialog_open {
+                return;
+            }
             if let Ok(show_modal) = js_sys_x::Reflect::get(&element, &"showModal".into()) {
                 if let Some(func) = show_modal.dyn_ref::<js_sys_x::Function>() {
                     let _ = func.call0(&element);
                 }
             }
         } else {
-            // Call close()
+            if !is_dialog_open {
+                return;
+            }
             if let Ok(close) = js_sys_x::Reflect::get(&element, &"close".into()) {
                 if let Some(func) = close.dyn_ref::<js_sys_x::Function>() {
                     let _ = func.call0(&element);

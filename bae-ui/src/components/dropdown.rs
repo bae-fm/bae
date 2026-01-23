@@ -7,6 +7,14 @@
 //! Uses floating-ui for:
 //! - Anchor positioning relative to trigger element
 //! - Viewport collision handling (flip, shift)
+//!
+//! ## Complexity note
+//!
+//! The `programmatic_toggle` flag and `:popover-open` checks exist because Dioxus's
+//! `ontoggle` event wrapper doesn't expose the native `oldState`/`newState` properties.
+//! Without these, we can't distinguish browser-initiated light dismiss from our own
+//! `showPopover()`/`hidePopover()` calls. The effect may also run multiple times per
+//! render cycle, requiring idempotency checks.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
