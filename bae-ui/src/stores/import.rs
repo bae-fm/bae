@@ -434,8 +434,6 @@ impl ConfirmingState {
 /// Global import workflow state (not per-candidate)
 #[derive(Clone, Debug, Default, PartialEq, Store)]
 pub struct ImportState {
-    /// Root folder path that was scanned
-    pub folder_path: String,
     /// List of all detected candidates from the scan
     pub detected_candidates: Vec<DetectedCandidate>,
     /// Key of the currently selected candidate (release path)
@@ -469,7 +467,6 @@ pub struct ImportState {
 impl ImportState {
     /// Reset the import state to initial values
     pub fn reset(&mut self) {
-        self.folder_path = String::new();
         self.detected_candidates = Vec::new();
         self.current_candidate_key = None;
         self.candidate_states.clear();
