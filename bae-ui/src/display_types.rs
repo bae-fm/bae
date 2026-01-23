@@ -234,14 +234,6 @@ pub struct FileInfo {
     pub display_url: String,
 }
 
-/// Artwork file info with display URL
-#[derive(Clone, Debug, PartialEq, Store)]
-pub struct ArtworkFile {
-    pub name: String,
-    /// URL to display the artwork (resolved by caller)
-    pub display_url: String,
-}
-
 /// A CUE/FLAC pair for UI display
 #[derive(Clone, Debug, PartialEq, Store)]
 pub struct CueFlacPairInfo {

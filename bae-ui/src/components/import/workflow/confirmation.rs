@@ -2,7 +2,7 @@
 
 use crate::components::icons::ImageIcon;
 use crate::display_types::{
-    ArtworkFile, MatchCandidate, MatchSourceType, SelectedCover, StorageProfileInfo,
+    FileInfo, MatchCandidate, MatchSourceType, SelectedCover, StorageProfileInfo,
 };
 use dioxus::prelude::*;
 
@@ -16,7 +16,7 @@ pub fn ConfirmationView(
     /// URL to display for the cover (resolved from selected_cover)
     display_cover_url: Option<String>,
     /// Artwork files available in the folder (with resolved display URLs)
-    artwork_files: Vec<ArtworkFile>,
+    artwork_files: Vec<FileInfo>,
     /// Remote cover URL from the match candidate
     remote_cover_url: Option<String>,
     /// Available storage profiles

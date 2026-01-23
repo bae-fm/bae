@@ -2,7 +2,7 @@
 
 use super::framework::{ControlRegistryBuilder, MockPage, MockPanel, Preset};
 use bae_ui::{
-    ArtworkFile, AudioContentInfo, CategorizedFileInfo, CueFlacPairInfo, DetectedCandidate,
+    AudioContentInfo, CategorizedFileInfo, CueFlacPairInfo, DetectedCandidate,
     DetectedCandidateStatus, FileInfo, FolderImportView, FolderMetadata, IdentifyMode,
     ImportSource, ImportStep, ImportView, MatchCandidate, MatchSourceType, SearchSource, SearchTab,
     SelectedCover, StorageProfileInfo,
@@ -402,12 +402,15 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         "/covers/newspaper-weather_tomorrows-forecast.png",
         "/covers/parking-structure_level-4.png",
     ];
-    let artwork_files: Vec<ArtworkFile> = folder_files
+    let artwork_files: Vec<FileInfo> = folder_files
         .artwork
         .iter()
         .enumerate()
-        .map(|(i, file)| ArtworkFile {
+        .map(|(i, file)| FileInfo {
             name: file.name.clone(),
+            path: file.path.clone(),
+            size: file.size,
+            format: file.format.clone(),
             display_url: cover_urls
                 .get(i % cover_urls.len())
                 .unwrap_or(&cover_urls[0])

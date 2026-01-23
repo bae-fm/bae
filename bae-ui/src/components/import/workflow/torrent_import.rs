@@ -15,7 +15,7 @@ use super::{
     TorrentInfoDisplayView, TorrentTrackerDisplayView, TrackerStatus,
 };
 use crate::display_types::{
-    ArtworkFile, FolderMetadata, IdentifyMode, ImportStep, MatchCandidate, SearchSource, SearchTab,
+    FileInfo, FolderMetadata, IdentifyMode, ImportStep, MatchCandidate, SearchSource, SearchTab,
     SelectedCover, StorageProfileInfo, TorrentFileInfo, TorrentInfo,
 };
 use crate::{TorrentInputMode, TorrentInputView};
@@ -101,7 +101,7 @@ pub struct TorrentImportViewProps {
     #[props(default)]
     pub display_cover_url: Option<String>,
     #[props(default)]
-    pub artwork_files: Vec<ArtworkFile>,
+    pub artwork_files: Vec<FileInfo>,
     #[props(default)]
     pub storage_profiles: Vec<StorageProfileInfo>,
     #[props(default)]

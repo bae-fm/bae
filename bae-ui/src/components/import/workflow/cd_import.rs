@@ -14,8 +14,8 @@ use super::{
     ImportErrorDisplayView, ManualSearchPanelView, MultipleMatchesView, SelectedSourceView,
 };
 use crate::display_types::{
-    ArtworkFile, CdDriveInfo, FolderMetadata, IdentifyMode, ImportStep, MatchCandidate,
-    SearchSource, SearchTab, SelectedCover, StorageProfileInfo,
+    CdDriveInfo, FileInfo, FolderMetadata, IdentifyMode, ImportStep, MatchCandidate, SearchSource,
+    SearchTab, SelectedCover, StorageProfileInfo,
 };
 use dioxus::prelude::*;
 
@@ -95,7 +95,7 @@ pub struct CdImportViewProps {
     #[props(default)]
     pub display_cover_url: Option<String>,
     #[props(default)]
-    pub artwork_files: Vec<ArtworkFile>,
+    pub artwork_files: Vec<FileInfo>,
     #[props(default)]
     pub storage_profiles: Vec<StorageProfileInfo>,
     #[props(default)]

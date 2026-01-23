@@ -20,7 +20,7 @@ use super::{
 use crate::components::icons::{FolderIcon, LoaderIcon};
 use crate::components::{ResizablePanel, ResizeDirection};
 use crate::display_types::{
-    ArtworkFile, CategorizedFileInfo, DetectedCandidate, FolderMetadata, IdentifyMode, ImportStep,
+    CategorizedFileInfo, DetectedCandidate, FileInfo, FolderMetadata, IdentifyMode, ImportStep,
     MatchCandidate, SearchSource, SearchTab, SelectedCover, StorageProfileInfo,
 };
 use dioxus::prelude::*;
@@ -190,7 +190,7 @@ pub struct ConfirmStepProps {
     /// URL to display the selected cover
     pub display_cover_url: Option<String>,
     /// Artwork files with resolved display URLs
-    pub artwork_files: Vec<ArtworkFile>,
+    pub artwork_files: Vec<FileInfo>,
     /// Available storage profiles
     pub storage_profiles: Vec<StorageProfileInfo>,
     /// Currently selected storage profile ID
@@ -385,7 +385,7 @@ pub struct FolderImportViewProps {
     pub display_cover_url: Option<String>,
     /// Artwork files
     #[props(default)]
-    pub artwork_files: Vec<ArtworkFile>,
+    pub artwork_files: Vec<FileInfo>,
     /// Storage profiles
     #[props(default)]
     pub storage_profiles: Vec<StorageProfileInfo>,
