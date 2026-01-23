@@ -2,9 +2,7 @@
 //!
 //! Wraps the shared AppLayoutView with desktop-specific components.
 
-use super::dialog::GlobalDialog;
 use super::now_playing_bar::NowPlayingBar;
-use super::overlay_renderer::OverlayRenderer;
 use super::queue_sidebar::QueueSidebar;
 use super::TitleBar;
 use crate::ui::shortcuts::{handle_shortcut, subscribe_nav, NavAction};
@@ -54,10 +52,6 @@ pub fn Navbar() -> Element {
                 },
                 queue_sidebar: rsx! {
                     QueueSidebar {}
-                },
-                extra: rsx! {
-                    GlobalDialog {}
-                    OverlayRenderer {}
                 },
                 Outlet::<Route> {}
             }

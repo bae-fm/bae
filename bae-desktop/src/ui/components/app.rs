@@ -1,4 +1,3 @@
-use super::dialog_context::DialogContext;
 use crate::ui::app_context::AppServices;
 use crate::ui::app_service::AppService;
 use crate::ui::{Route, FAVICON, MAIN_CSS, TAILWIND_CSS};
@@ -20,9 +19,6 @@ pub fn App() -> Element {
 
     // Provide AppService as context for all components
     use_context_provider(|| app_service.clone());
-
-    // Dialog context for modals
-    use_context_provider(DialogContext::new);
 
     rsx! {
         document::Link { rel: "icon", href: FAVICON }

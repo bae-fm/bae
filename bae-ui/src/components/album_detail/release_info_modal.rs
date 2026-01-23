@@ -2,6 +2,7 @@
 
 use crate::components::icons::XIcon;
 use crate::components::utils::format_file_size;
+use crate::components::Modal;
 use crate::display_types::{File, Image, Release};
 use dioxus::prelude::*;
 
@@ -15,6 +16,7 @@ enum Tab {
 /// Modal component with tabs for release details and files (props-based)
 #[component]
 pub fn ReleaseInfoModal(
+    is_open: ReadSignal<bool>,
     release: Release,
     on_close: EventHandler<()>,
     // Files and images can be loaded externally or passed as props
@@ -29,12 +31,8 @@ pub fn ReleaseInfoModal(
     let current_tab = *active_tab.read();
 
     rsx! {
-        div {
-            class: "fixed inset-0 bg-black/50 flex items-center justify-center z-50",
-            onclick: move |_| on_close.call(()),
-            div {
-                class: "bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col",
-                onclick: move |e| e.stop_propagation(),
+        Modal { is_open, on_close: move |_| on_close.call(()),
+            div { class: "bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col",
                 div { class: "border-b border-gray-700",
                     div { class: "flex items-center justify-between px-6 pt-6 pb-4",
                         h2 { class: "text-xl font-bold text-white", "Release Info" }
@@ -137,7 +135,6 @@ fn DetailsTab(release: Release) -> Element {
                             href: "https://musicbrainz.org/release/{mb_id}",
                             target: "_blank",
                             class: "flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors",
-                            span { "🔗" }
                             span { "View on MusicBrainz" }
                         }
                     }
@@ -146,7 +143,6 @@ fn DetailsTab(release: Release) -> Element {
                             href: "https://www.discogs.com/release/{discogs_id}",
                             target: "_blank",
                             class: "flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors",
-                            span { "🔗" }
                             span { "View on Discogs" }
                         }
                     }
@@ -197,7 +193,7 @@ fn GalleryTab(images: Vec<Image>, is_loading: bool, error: Option<String>) -> El
                     div { class: "relative group",
                         div { class: if image.is_cover { "aspect-square bg-gray-700 rounded-lg overflow-hidden ring-2 ring-blue-500" } else { "aspect-square bg-gray-700 rounded-lg overflow-hidden" },
                             div { class: "w-full h-full flex items-center justify-center text-gray-500",
-                                "🖼️"
+                                "Image"
                             }
                         }
                         div { class: "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2",

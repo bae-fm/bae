@@ -3,7 +3,9 @@
 //! Pure, props-based component for the app title bar with navigation and search.
 
 use crate::components::icons::{ImageIcon, SettingsIcon};
+use crate::components::{Dropdown, Placement};
 use dioxus::prelude::*;
+use web_sys_x::js_sys;
 
 /// Navigation item for title bar
 #[derive(Clone, PartialEq)]
@@ -62,24 +64,24 @@ pub fn TitleBarView(
     #[props(default = false)] relative: bool,
 ) -> Element {
     let mut show_update_menu = use_signal(|| false);
+    let is_update_menu_open: ReadSignal<bool> = show_update_menu.into();
+    let update_button_id = use_hook(|| format!("update-button-{}", js_sys::Math::random() as u64));
 
-    let (position_class, overlay_class, search_popover_class, update_popover_class) = if relative {
+    let (position_class, overlay_class, search_popover_class) = if relative {
         (
             "relative",
             "absolute inset-0 z-[1500]",
             "absolute top-full right-12 w-64 z-[2000]",
-            "absolute top-full right-0 w-48 z-[2000]",
         )
     } else {
         (
             "fixed top-0 left-0 right-0",
             "fixed inset-0 z-[1500]",
             "fixed top-10 right-12 w-64 z-[2000]",
-            "fixed top-10 right-2 w-48 z-[2000]",
         )
     };
 
-    let show_overlay = show_search_results || show_update_menu();
+    let show_overlay = show_search_results;
 
     rsx! {
         div { class: if relative { "relative" } else { "" },
@@ -89,7 +91,6 @@ pub fn TitleBarView(
                     class: "{overlay_class}",
                     onclick: move |_| {
                         on_search_dismiss.call(());
-                        show_update_menu.set(false);
                     },
                 }
             }
@@ -159,8 +160,12 @@ pub fn TitleBarView(
                     SettingsButton {
                         is_active: settings_active,
                         update_state,
+                        update_button_id: update_button_id.clone(),
+                        is_update_menu_open,
                         on_settings_click: move |_| on_settings_click.call(()),
                         on_toggle_menu: move |_| show_update_menu.toggle(),
+                        on_close_menu: move |_| show_update_menu.set(false),
+                        on_update_click,
                     }
                 }
             }
@@ -182,35 +187,6 @@ pub fn TitleBarView(
                     }
                 }
             }
-
-            // Update menu popover (right aligned)
-            if show_update_menu() && update_state != UpdateState::Idle {
-                div {
-                    class: "{update_popover_class}",
-                    id: "update-popover",
-                    onclick: move |evt| evt.stop_propagation(),
-                    div { class: "mt-2 bg-surface-overlay border border-border-strong rounded-lg shadow-lg overflow-hidden",
-                        match update_state {
-                            UpdateState::Downloading => rsx! {
-                                div { class: "px-3 py-2 text-xs text-gray-400", "Downloading update..." }
-                            },
-                            UpdateState::Ready => rsx! {
-                                button {
-                                    class: "w-full px-3 py-2 text-xs text-left text-white hover:bg-hover transition-colors",
-                                    onclick: move |_| {
-                                        show_update_menu.set(false);
-                                        if let Some(handler) = &on_update_click {
-                                            handler.call(());
-                                        }
-                                    },
-                                    "Restart to update"
-                                }
-                            },
-                            UpdateState::Idle => rsx! {},
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -220,8 +196,12 @@ pub fn TitleBarView(
 fn SettingsButton(
     is_active: bool,
     update_state: UpdateState,
+    update_button_id: String,
+    is_update_menu_open: ReadSignal<bool>,
     on_settings_click: EventHandler<()>,
     on_toggle_menu: EventHandler<()>,
+    on_close_menu: EventHandler<()>,
+    #[props(default)] on_update_click: Option<EventHandler<()>>,
 ) -> Element {
     let has_update = update_state != UpdateState::Idle;
 
@@ -236,6 +216,7 @@ fn SettingsButton(
             // Update indicator (separate, next to settings)
             if has_update {
                 button {
+                    id: "{update_button_id}",
                     class: "p-1 hover:bg-gray-700 rounded transition-colors flex items-center",
                     title: if update_state == UpdateState::Ready { "Update ready - click to install" } else { "Downloading update..." },
                     onclick: move |_| on_toggle_menu.call(()),
@@ -266,6 +247,33 @@ fn SettingsButton(
                             span { class: "relative flex h-2.5 w-2.5",
                                 span { class: "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" }
                                 span { class: "relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" }
+                            }
+                        },
+                        UpdateState::Idle => rsx! {},
+                    }
+                }
+
+                // Update menu dropdown
+                Dropdown {
+                    anchor_id: update_button_id.clone(),
+                    is_open: is_update_menu_open,
+                    on_close: on_close_menu,
+                    placement: Placement::BottomEnd,
+                    class: "bg-surface-overlay border border-border-strong rounded-lg shadow-lg overflow-hidden w-48",
+                    match update_state {
+                        UpdateState::Downloading => rsx! {
+                            div { class: "px-3 py-2 text-xs text-gray-400", "Downloading update..." }
+                        },
+                        UpdateState::Ready => rsx! {
+                            button {
+                                class: "w-full px-3 py-2 text-xs text-left text-white hover:bg-hover transition-colors",
+                                onclick: move |_| {
+                                    on_close_menu.call(());
+                                    if let Some(handler) = &on_update_click {
+                                        handler.call(());
+                                    }
+                                },
+                                "Restart to update"
                             }
                         },
                         UpdateState::Idle => rsx! {},

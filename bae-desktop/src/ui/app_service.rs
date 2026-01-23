@@ -28,7 +28,6 @@ use bae_ui::stores::{
     ActiveImport, ActiveImportsUiStateStoreExt, AlbumDetailStateStoreExt, AppState,
     AppStateStoreExt, ConfigStateStoreExt, ImportOperationStatus, LibraryStateStoreExt,
     PlaybackStatus, PlaybackUiStateStoreExt, PrepareStep, RepeatMode, StorageProfilesStateStoreExt,
-    UiStateStoreExt,
 };
 use bae_ui::StorageProfile;
 use dioxus::prelude::*;
@@ -504,17 +503,6 @@ impl AppService {
 
         spawn(async move {
             load_album_detail(&state, &library_manager, &album_id, release_id.as_deref()).await;
-        });
-    }
-
-    // =========================================================================
-    // Overlay Methods
-    // =========================================================================
-
-    /// Pop a specific overlay by ID
-    pub fn pop_overlay_by_id(&self, id: &str) {
-        self.state.ui().overlays().with_mut(|overlays| {
-            overlays.retain(|o| o.id != id);
         });
     }
 

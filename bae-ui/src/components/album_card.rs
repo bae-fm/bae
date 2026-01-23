@@ -1,8 +1,10 @@
 //! Album card component - pure view with callbacks
 
 use crate::components::icons::{EllipsisIcon, ImageIcon, PlayIcon, PlusIcon};
+use crate::components::{Dropdown, Placement};
 use crate::display_types::{Album, Artist};
 use dioxus::prelude::*;
+use web_sys_x::js_sys;
 
 /// Individual album card component
 ///
@@ -24,6 +26,8 @@ pub fn AlbumCard(
     let cover_url = album.cover_url.clone();
 
     let mut show_dropdown = use_signal(|| false);
+    let is_open: ReadSignal<bool> = show_dropdown.into();
+    let anchor_id = use_hook(|| format!("album-card-{}", js_sys::Math::random() as u64));
 
     let artist_name = if artists.is_empty() {
         "Unknown Artist".to_string()
@@ -65,22 +69,13 @@ pub fn AlbumCard(
                 // Hover overlay with dropdown trigger
                 div { class: "absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-start justify-end p-2",
                     button {
+                        id: "{anchor_id}",
                         class: "opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 hover:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center text-white",
                         onclick: move |evt| {
                             evt.stop_propagation();
                             show_dropdown.set(!show_dropdown());
                         },
                         EllipsisIcon { class: "w-5 h-5" }
-                    }
-                }
-
-                // Dropdown menu
-                if show_dropdown() {
-                    AlbumCardDropdown {
-                        album_id: album_id.clone(),
-                        on_play,
-                        on_add_to_queue,
-                        on_close: move |_| show_dropdown.set(false),
                     }
                 }
             }
@@ -99,44 +94,40 @@ pub fn AlbumCard(
                     p { class: "text-gray-500 text-xs mt-1", "{year}" }
                 }
             }
-        }
-    }
-}
 
-#[component]
-fn AlbumCardDropdown(
-    album_id: String,
-    on_play: EventHandler<String>,
-    on_add_to_queue: EventHandler<String>,
-    on_close: EventHandler<()>,
-) -> Element {
-    rsx! {
-        div { class: "absolute top-10 right-2 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-20 min-w-[140px] overflow-hidden",
-            button {
-                class: "w-full px-4 py-2 text-left text-white hover:bg-gray-700 transition-colors flex items-center gap-2",
-                onclick: {
-                    let album_id = album_id.clone();
-                    move |evt| {
-                        evt.stop_propagation();
-                        on_play.call(album_id.clone());
-                        on_close.call(());
-                    }
-                },
-                PlayIcon { class: "w-4 h-4" }
-                span { "Play" }
-            }
-            button {
-                class: "w-full px-4 py-2 text-left text-white hover:bg-gray-700 transition-colors flex items-center gap-2",
-                onclick: {
-                    let album_id = album_id.clone();
-                    move |evt| {
-                        evt.stop_propagation();
-                        on_add_to_queue.call(album_id.clone());
-                        on_close.call(());
-                    }
-                },
-                PlusIcon { class: "w-4 h-4" }
-                span { "Add to Queue" }
+            // Dropdown menu
+            Dropdown {
+                anchor_id: anchor_id.clone(),
+                is_open,
+                on_close: move |_| show_dropdown.set(false),
+                placement: Placement::BottomEnd,
+                class: "bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[140px] overflow-hidden",
+                button {
+                    class: "w-full px-4 py-2 text-left text-white hover:bg-gray-700 transition-colors flex items-center gap-2",
+                    onclick: {
+                        let album_id = album_id.clone();
+                        move |evt| {
+                            evt.stop_propagation();
+                            show_dropdown.set(false);
+                            on_play.call(album_id.clone());
+                        }
+                    },
+                    PlayIcon { class: "w-4 h-4" }
+                    span { "Play" }
+                }
+                button {
+                    class: "w-full px-4 py-2 text-left text-white hover:bg-gray-700 transition-colors flex items-center gap-2",
+                    onclick: {
+                        let album_id = album_id.clone();
+                        move |evt| {
+                            evt.stop_propagation();
+                            show_dropdown.set(false);
+                            on_add_to_queue.call(album_id.clone());
+                        }
+                    },
+                    PlusIcon { class: "w-4 h-4" }
+                    span { "Add to Queue" }
+                }
             }
         }
     }

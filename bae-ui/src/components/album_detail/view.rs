@@ -390,10 +390,6 @@ fn DeleteAlbumDialogWrapper(
     on_delete_album: EventHandler<String>,
     on_album_deleted: EventHandler<()>,
 ) -> Element {
-    if !show() {
-        return rsx! {};
-    }
-
     // Use lenses
     let album_id = state
         .album()
@@ -403,8 +399,12 @@ fn DeleteAlbumDialogWrapper(
         .unwrap_or_default();
     let release_count = state.releases().read().len();
 
+    // Create read signal from show
+    let is_open: ReadSignal<bool> = show.into();
+
     rsx! {
         DeleteAlbumDialog {
+            is_open,
             album_id: album_id.clone(),
             release_count,
             is_deleting,
@@ -426,21 +426,19 @@ fn DeleteReleaseDialogWrapper(
     on_delete_release: EventHandler<String>,
     on_album_deleted: EventHandler<()>,
 ) -> Element {
-    let Some(release_id_to_delete) = show() else {
-        return rsx! {};
-    };
+    // Derive is_open from Option<String>
+    let is_open_memo = use_memo(move || show().is_some());
+    let is_open: ReadSignal<bool> = is_open_memo.into();
+
+    let release_id_to_delete = show().unwrap_or_default();
 
     // Use lens
     let releases = state.releases().read().clone();
-
-    if !releases.iter().any(|r| r.id == release_id_to_delete) {
-        return rsx! {};
-    }
-
     let is_last = releases.len() == 1;
 
     rsx! {
         DeleteReleaseDialog {
+            is_open,
             release_id: release_id_to_delete.clone(),
             is_last_release: is_last,
             is_deleting,
@@ -467,11 +465,8 @@ fn ReleaseInfoModalWrapper(
     modal_files_error: Option<String>,
     modal_images_error: Option<String>,
 ) -> Element {
-    let Some(release_id) = show() else {
-        return rsx! {};
-    };
-
-    // Use lens
+    // Get release if available
+    let release_id = show().unwrap_or_default();
     let release = state
         .releases()
         .read()
@@ -479,12 +474,18 @@ fn ReleaseInfoModalWrapper(
         .find(|r| r.id == release_id)
         .cloned();
 
+    // Only render modal if we have a release
     let Some(release) = release else {
         return rsx! {};
     };
 
+    // Derive is_open - always true when we have a release since show().is_some()
+    let is_open_memo = use_memo(move || show().is_some());
+    let is_open: ReadSignal<bool> = is_open_memo.into();
+
     rsx! {
         ReleaseInfoModal {
+            is_open,
             release,
             on_close: move |_| show.set(None),
             files: modal_files,

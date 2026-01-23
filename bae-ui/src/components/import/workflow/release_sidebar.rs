@@ -1,9 +1,11 @@
 //! Candidate sidebar view component for import
 
 use crate::components::icons::{CheckIcon, EllipsisIcon, FolderIcon, LoaderIcon, PlusIcon, XIcon};
+use crate::components::{Dropdown, Placement};
 use crate::display_types::DetectedCandidateStatus;
 use crate::stores::import::{ImportState, ImportStateStoreExt};
 use dioxus::prelude::*;
+use web_sys_x::js_sys;
 
 pub const MIN_SIDEBAR_WIDTH: f64 = 350.0;
 pub const MAX_SIDEBAR_WIDTH: f64 = 500.0;
@@ -33,6 +35,8 @@ pub fn ReleaseSidebarView(
     drop(st);
 
     let mut show_menu = use_signal(|| false);
+    let is_open: ReadSignal<bool> = show_menu.into();
+    let anchor_id = use_hook(|| format!("release-sidebar-menu-{}", js_sys::Math::random() as u64));
 
     rsx! {
         // Floating panel container with padding
@@ -65,6 +69,7 @@ pub fn ReleaseSidebarView(
                             }
                         } else {
                             button {
+                                id: "{anchor_id}",
                                 class: "p-1.5 text-gray-400 hover:text-white transition-colors rounded-md hover:bg-white/5",
                                 onclick: move |evt| {
                                     evt.stop_propagation();
@@ -75,36 +80,44 @@ pub fn ReleaseSidebarView(
                             }
                         }
                     }
+                }
 
-                    if !candidates.is_empty() && show_menu() {
-                        div { class: "absolute right-2 top-9 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-20 min-w-[120px] overflow-hidden",
-                            button {
-                                class: "w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors",
-                                onclick: move |evt| {
-                                    evt.stop_propagation();
-                                    show_menu.set(false);
-                                    on_add_folder.call(());
-                                },
-                                span { "Add" }
-                            }
-                            button {
-                                class: "w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors",
-                                onclick: move |evt| {
-                                    evt.stop_propagation();
-                                    show_menu.set(false);
-                                    if let Some(window) = web_sys_x::window() {
-                                        if window.confirm_with_message("Clear all folders?").unwrap_or(false) {
-                                            on_clear_all.call(());
-                                        }
+                // Dropdown menu for candidates list
+                if !candidates.is_empty() {
+                    Dropdown {
+                        anchor_id: anchor_id.clone(),
+                        is_open,
+                        on_close: move |_| show_menu.set(false),
+                        placement: Placement::BottomEnd,
+                        class: "bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[120px] overflow-hidden",
+                        button {
+                            class: "w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors",
+                            onclick: move |evt| {
+                                evt.stop_propagation();
+                                show_menu.set(false);
+                                on_add_folder.call(());
+                            },
+                            span { "Add" }
+                        }
+                        button {
+                            class: "w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors",
+                            onclick: move |evt| {
+                                evt.stop_propagation();
+                                show_menu.set(false);
+                                if let Some(window) = web_sys_x::window() {
+                                    if window.confirm_with_message("Clear all folders?").unwrap_or(false) {
+                                        on_clear_all.call(());
                                     }
-                                },
-                                span { "Clear" }
-                            }
+                                }
+                            },
+                            span { "Clear" }
                         }
                     }
                 }
+
                 // Divider
                 div { class: "mx-1.5 mb-1.5 border-b border-white/10" }
+
                 // Folder list
                 div { class: "flex-1 overflow-y-auto p-1.5 pt-0 space-y-0.5 min-w-0",
                     for (index , candidate) in candidates.iter().enumerate() {

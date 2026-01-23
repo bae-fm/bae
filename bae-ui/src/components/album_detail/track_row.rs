@@ -5,8 +5,10 @@
 
 use crate::components::icons::{EllipsisIcon, PauseIcon, PlayIcon};
 use crate::components::utils::format_duration;
+use crate::components::{Dropdown, Placement};
 use crate::display_types::{Artist, TrackImportState};
 use dioxus::prelude::*;
+use web_sys_x::js_sys;
 
 /// Individual track row component - reads from its track store for granular reactivity
 #[component]
@@ -170,50 +172,55 @@ fn TrackMenu(
     on_add_to_queue: EventHandler<String>,
 ) -> Element {
     let mut show_menu = use_signal(|| false);
+    let is_open: ReadSignal<bool> = show_menu.into();
+    let anchor_id = use_hook(|| format!("track-menu-{}", js_sys::Math::random() as u64));
 
     rsx! {
-        div { class: "relative",
+        button {
+            id: "{anchor_id}",
+            class: "px-2 py-1 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity",
+            onclick: move |_| show_menu.set(!show_menu()),
+            EllipsisIcon { class: "w-4 h-4" }
+        }
+
+        Dropdown {
+            anchor_id: anchor_id.clone(),
+            is_open,
+            on_close: move |_| show_menu.set(false),
+            placement: Placement::BottomEnd,
+            class: "bg-gray-800 border border-gray-700 rounded shadow-lg min-w-32",
             button {
-                class: "px-2 py-1 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity",
-                onclick: move |_| show_menu.set(!show_menu()),
-                EllipsisIcon { class: "w-4 h-4" }
+                class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
+                onclick: {
+                    let track_id = track_id.clone();
+                    move |_| {
+                        show_menu.set(false);
+                        on_export.call(track_id.clone());
+                    }
+                },
+                "Export File"
             }
-            if show_menu() {
-                div { class: "absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded shadow-lg z-10 min-w-32",
-                    button {
-                        class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
-                        onclick: {
-                            let track_id = track_id.clone();
-                            move |_| {
-                                show_menu.set(false);
-                                on_export.call(track_id.clone());
-                            }
-                        },
-                        "Export File"
+            button {
+                class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
+                onclick: {
+                    let track_id = track_id.clone();
+                    move |_| {
+                        show_menu.set(false);
+                        on_add_next.call(track_id.clone());
                     }
-                    button {
-                        class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
-                        onclick: {
-                            let track_id = track_id.clone();
-                            move |_| {
-                                show_menu.set(false);
-                                on_add_next.call(track_id.clone());
-                            }
-                        },
-                        "Play Next"
+                },
+                "Play Next"
+            }
+            button {
+                class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
+                onclick: {
+                    let track_id = track_id.clone();
+                    move |_| {
+                        show_menu.set(false);
+                        on_add_to_queue.call(track_id.clone());
                     }
-                    button {
-                        class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
-                        onclick: {
-                            let track_id = track_id.clone();
-                            move |_| {
-                                show_menu.set(false);
-                                on_add_to_queue.call(track_id.clone());
-                            }
-                        },
-                        "Add to Queue"
-                    }
-                }
+                },
+                "Add to Queue"
             }
         }
     }

@@ -4,7 +4,6 @@
 //! These replace the methods from ImportContext.
 
 use crate::ui::app_service::AppService;
-use crate::ui::components::dialog_context::DialogContext;
 use crate::ui::Route;
 use bae_core::discogs::client::DiscogsSearchParams;
 use bae_core::discogs::{DiscogsClient, DiscogsRelease};
@@ -920,44 +919,13 @@ pub async fn consume_scan_events(app: AppService, mut rx: broadcast::Receiver<Sc
 // ============================================================================
 
 /// Check if there is unclean state for the current import source
-fn has_unclean_state(app: &AppService) -> bool {
+pub fn has_unclean_state(app: &AppService) -> bool {
     let import_store = app.state.import();
     let state = import_store.read();
     match state.selected_import_source {
         ImportSource::Folder => !state.detected_candidates.is_empty(),
         ImportSource::Torrent => false, // TODO: implement torrent state check
         ImportSource::Cd => state.current_candidate_key.is_some(),
-    }
-}
-
-/// Try to switch import source, showing dialog if there's unclean state
-pub fn try_switch_import_source(app: &AppService, dialog: &DialogContext, source: ImportSource) {
-    let import_store = app.state.import();
-    let current_source = import_store.read().selected_import_source;
-    if current_source == source {
-        return;
-    }
-
-    if has_unclean_state(app) {
-        let app_clone = app.clone();
-        dialog.show_with_callback(
-            "Watch out!".to_string(),
-            "You have unsaved work. Navigating away will discard your current progress."
-                .to_string(),
-            "Switch Tab".to_string(),
-            "Cancel".to_string(),
-            move || {
-                let mut import_store = app_clone.state.import();
-                let mut state = import_store.write();
-                state.selected_import_source = source;
-                state.reset();
-            },
-        );
-    } else {
-        let mut import_store = app.state.import();
-        let mut state = import_store.write();
-        state.selected_import_source = source;
-        state.reset();
     }
 }
 

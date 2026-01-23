@@ -1,13 +1,10 @@
 // Desktop-only modules
 pub mod imports_button;
 pub mod imports_dropdown;
-pub mod overlay_renderer;
 pub mod title_bar;
 
 pub mod album_detail;
 pub mod app;
-pub mod dialog;
-pub mod dialog_context;
 pub mod import;
 pub mod library;
 pub mod navbar;

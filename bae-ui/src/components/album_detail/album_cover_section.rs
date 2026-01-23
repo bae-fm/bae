@@ -1,8 +1,10 @@
 //! Album cover section with action menu
 
 use super::album_art::AlbumArt;
+use crate::components::{Dropdown, Placement};
 use crate::display_types::Album;
 use dioxus::prelude::*;
+use web_sys_x::js_sys;
 
 /// Album cover section with action menu
 /// All callbacks are required - pass noops if actions are not needed.
@@ -20,7 +22,9 @@ pub fn AlbumCoverSection(
     on_view_release_info: EventHandler<String>,
 ) -> Element {
     let mut show_dropdown = use_signal(|| false);
+    let is_open: ReadSignal<bool> = show_dropdown.into();
     let mut hover_cover = use_signal(|| false);
+    let anchor_id = use_hook(|| format!("album-cover-{}", js_sys::Math::random() as u64));
 
     rsx! {
         div {
@@ -33,10 +37,12 @@ pub fn AlbumCoverSection(
                 import_progress,
                 is_ephemeral: false,
             }
+
             // Show dropdown button on hover
             if hover_cover() || show_dropdown() {
                 div { class: "absolute top-2 right-2 z-10",
                     button {
+                        id: "{anchor_id}",
                         class: "w-8 h-8 bg-gray-800/40 hover:bg-gray-800/60 text-white rounded-lg flex items-center justify-center transition-colors",
                         disabled: import_progress.is_some() || is_deleting,
                         class: if import_progress.is_some() || is_deleting { "opacity-50 cursor-not-allowed" } else { "" },
@@ -52,65 +58,65 @@ pub fn AlbumCoverSection(
                             div { class: "w-1 h-1 bg-white rounded-full" }
                         }
                     }
-                    if show_dropdown() {
-                        div { class: "absolute top-full right-0 mt-2 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-20 border border-gray-600 min-w-[160px]",
-                            // Release Info - only for single release
-                            if has_single_release {
-                                if let Some(ref release_id) = first_release_id {
-                                    button {
-                                        class: "w-full px-4 py-3 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2",
-                                        disabled: is_deleting || is_exporting,
-                                        onclick: {
-                                            let release_id = release_id.clone();
-                                            move |evt| {
-                                                evt.stop_propagation();
-                                                show_dropdown.set(false);
-                                                on_view_release_info.call(release_id.clone());
-                                            }
-                                        },
-                                        "Release Info"
-                                    }
-                                    button {
-                                        class: "w-full px-4 py-3 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2",
-                                        disabled: is_deleting || is_exporting,
-                                        onclick: {
-                                            let release_id = release_id.clone();
-                                            move |evt| {
-                                                evt.stop_propagation();
-                                                show_dropdown.set(false);
-                                                on_export.call(release_id.clone());
-                                            }
-                                        },
-                                        if is_exporting {
-                                            "Exporting..."
-                                        } else {
-                                            "Export"
-                                        }
-                                    }
+                }
+            }
+
+            // Dropdown menu
+            Dropdown {
+                anchor_id: anchor_id.clone(),
+                is_open,
+                on_close: move |_| show_dropdown.set(false),
+                placement: Placement::BottomEnd,
+                class: "bg-gray-700 rounded-lg shadow-lg overflow-hidden border border-gray-600 min-w-[160px]",
+
+                // Release Info - only for single release
+                if has_single_release {
+                    if let Some(ref release_id) = first_release_id {
+                        button {
+                            class: "w-full px-4 py-3 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2",
+                            disabled: is_deleting || is_exporting,
+                            onclick: {
+                                let release_id = release_id.clone();
+                                move |evt| {
+                                    evt.stop_propagation();
+                                    show_dropdown.set(false);
+                                    on_view_release_info.call(release_id.clone());
                                 }
-                            }
-                            button {
-                                class: "w-full px-4 py-3 text-left text-red-400 hover:bg-gray-600 transition-colors flex items-center gap-2",
-                                disabled: is_deleting,
-                                onclick: {
-                                    let album_id = album.id.clone();
-                                    move |evt| {
-                                        evt.stop_propagation();
-                                        show_dropdown.set(false);
-                                        on_delete_album.call(album_id.clone());
-                                    }
-                                },
-                                "Delete Album"
+                            },
+                            "Release Info"
+                        }
+                        button {
+                            class: "w-full px-4 py-3 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2",
+                            disabled: is_deleting || is_exporting,
+                            onclick: {
+                                let release_id = release_id.clone();
+                                move |evt| {
+                                    evt.stop_propagation();
+                                    show_dropdown.set(false);
+                                    on_export.call(release_id.clone());
+                                }
+                            },
+                            if is_exporting {
+                                "Exporting..."
+                            } else {
+                                "Export"
                             }
                         }
                     }
                 }
-            }
-        }
-        if show_dropdown() {
-            div {
-                class: "fixed inset-0 z-[5]",
-                onclick: move |_| show_dropdown.set(false),
+                button {
+                    class: "w-full px-4 py-3 text-left text-red-400 hover:bg-gray-600 transition-colors flex items-center gap-2",
+                    disabled: is_deleting,
+                    onclick: {
+                        let album_id = album.id.clone();
+                        move |evt| {
+                            evt.stop_propagation();
+                            show_dropdown.set(false);
+                            on_delete_album.call(album_id.clone());
+                        }
+                    },
+                    "Delete Album"
+                }
             }
         }
     }

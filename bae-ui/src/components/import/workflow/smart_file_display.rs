@@ -115,11 +115,21 @@ pub fn SmartFileDisplayView(
         }
 
         // Text file modal
-        if let Some(filename) = selected_text_file {
-            TextFileModalView {
-                filename: filename.clone(),
-                content: text_file_content.unwrap_or_else(|| "File not available".to_string()),
-                on_close: move |_| on_text_file_close.call(()),
+        {
+            let selected_text_file_for_memo = selected_text_file.clone();
+            let is_open_memo = use_memo(move || selected_text_file_for_memo.is_some());
+            let is_open: ReadSignal<bool> = is_open_memo.into();
+            let filename = selected_text_file.clone().unwrap_or_default();
+            let content = text_file_content
+                .clone()
+                .unwrap_or_else(|| "File not available".to_string());
+            rsx! {
+                TextFileModalView {
+                    is_open,
+                    filename,
+                    content,
+                    on_close: move |_| on_text_file_close.call(()),
+                }
             }
         }
 

@@ -3,13 +3,14 @@
 pub mod album_card;
 pub mod album_detail;
 pub mod app_layout;
-pub mod dialog;
+pub mod dropdown;
 pub mod error_toast;
 pub mod helpers;
 pub mod icons;
 pub mod import;
 pub mod imports;
 pub mod library;
+pub mod modal;
 pub mod playback;
 pub mod resizable_panel;
 pub mod settings;
@@ -24,12 +25,12 @@ pub use album_detail::{
     TrackRow,
 };
 pub use app_layout::AppLayoutView;
-pub use dialog::GlobalDialogView;
 pub use dioxus_virtual_scroll::{
     GridLayout, KeyFn, RenderFn, ScrollTarget, VirtualGrid, VirtualGridConfig,
 };
+pub use dropdown::{Dropdown, Placement};
 pub use error_toast::ErrorToast;
-pub use helpers::{BackButton, ErrorDisplay, LoadingSpinner, PageContainer};
+pub use helpers::{BackButton, ConfirmDialogView, ErrorDisplay, LoadingSpinner, PageContainer};
 pub use icons::{
     AlertTriangleIcon, ArrowLeftIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon,
     ChevronRightIcon, DiscIcon, DownloadIcon, EllipsisIcon, ExternalLinkIcon, FileIcon,
@@ -48,6 +49,7 @@ pub use import::{
 };
 pub use imports::{ImportsButtonView, ImportsDropdownView};
 pub use library::LibraryView;
+pub use modal::Modal;
 pub use playback::{NowPlayingBarView, QueueSidebarState, QueueSidebarView};
 pub use resizable_panel::{GrabBar, ResizablePanel, ResizeDirection};
 pub use settings::{

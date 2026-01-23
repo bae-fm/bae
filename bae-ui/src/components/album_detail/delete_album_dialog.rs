@@ -1,9 +1,11 @@
 //! Delete album confirmation dialog
 
+use crate::components::Modal;
 use dioxus::prelude::*;
 
 #[component]
 pub fn DeleteAlbumDialog(
+    is_open: ReadSignal<bool>,
     album_id: String,
     release_count: usize,
     is_deleting: Signal<bool>,
@@ -11,23 +13,21 @@ pub fn DeleteAlbumDialog(
     on_cancel: EventHandler<()>,
 ) -> Element {
     rsx! {
-        div {
-            class: "fixed inset-0 bg-black/50 flex items-center justify-center z-50",
-            onclick: move |_| {
+        Modal {
+            is_open,
+            on_close: move |_| {
                 if !is_deleting() {
                     on_cancel.call(());
                 }
             },
-            div {
-                class: "bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4",
-                onclick: move |evt| evt.stop_propagation(),
+            div { class: "bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4",
                 h2 { class: "text-xl font-bold text-white mb-4", "Delete Album?" }
                 p { class: "text-gray-300 mb-4",
                     "Are you sure you want to delete this album? This will delete all tracks and associated data."
                 }
                 if release_count > 1 {
                     p { class: "text-red-400 font-semibold mb-4",
-                        "⚠️ This album has {release_count} releases. All of them will be permanently deleted."
+                        "This album has {release_count} releases. All of them will be permanently deleted."
                     }
                 }
                 div { class: "flex gap-3 justify-end",
