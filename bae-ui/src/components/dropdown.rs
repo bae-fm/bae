@@ -67,7 +67,22 @@ pub fn Dropdown(
             return;
         };
 
+        // Check current popover state to avoid redundant toggles (effect may run multiple times)
+        let is_popover_open = js_sys_x::Reflect::get(&floating, &"matches".into())
+            .ok()
+            .and_then(|f| {
+                f.dyn_ref::<js_sys_x::Function>()
+                    .map(|f| f.call1(&floating, &":popover-open".into()))
+            })
+            .and_then(|r| r.ok())
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
         if is_open_val {
+            if is_popover_open {
+                return;
+            }
+
             // Reset position to invisible first (prevents flash at old position)
             let _ = floating.set_attribute(
                 "style",
@@ -106,6 +121,10 @@ pub fn Dropdown(
                 });
             }
         } else {
+            if !is_popover_open {
+                return;
+            }
+
             // Mark as programmatic so ontoggle knows to ignore
             programmatic_toggle.set(true);
 
