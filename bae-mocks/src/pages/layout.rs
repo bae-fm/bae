@@ -94,6 +94,7 @@ pub fn DemoLayout() -> Element {
     let current_route = use_route::<Route>();
     let mut search_query = use_signal(String::new);
     let mut show_search_results = use_signal(|| false);
+    let show_search_results_read: ReadSignal<bool> = show_search_results.into();
     let mut imports_open = use_signal(|| false);
     let mock_imports = mock_active_imports();
 
@@ -204,7 +205,7 @@ pub fn DemoLayout() -> Element {
                         search_query.set(String::new());
                         navigator().push(Route::AlbumDetail { album_id });
                     },
-                    show_search_results: show_search_results(),
+                    show_search_results: show_search_results_read,
                     on_search_dismiss: move |_| show_search_results.set(false),
                     on_search_focus: move |_| {
                         if !search_query().is_empty() {

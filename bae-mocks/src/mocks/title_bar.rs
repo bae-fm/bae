@@ -47,8 +47,9 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
 
     let active_nav = registry.get_string("active_nav");
     let update_state_str = registry.get_string("update_state");
-    let show_search_results = registry.get_bool("show_search_results");
+    let show_search_results_bool = registry.get_bool("show_search_results");
     let search_results_count = registry.get_int("search_results_count") as usize;
+    let show_search_results: ReadSignal<bool> = use_memo(move || show_search_results_bool).into();
 
     let nav_items = vec![
         NavItem {
@@ -65,7 +66,7 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
 
     let settings_active = active_nav == "settings";
 
-    let search_results: Vec<SearchResult> = if show_search_results {
+    let search_results: Vec<SearchResult> = if show_search_results_bool {
         mock_search_results()
             .into_iter()
             .take(search_results_count)
@@ -88,7 +89,7 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
             TitleBarView {
                 nav_items,
                 on_nav_click: |_| {},
-                search_value: if show_search_results { "glass".to_string() } else { String::new() },
+                search_value: if show_search_results_bool { "glass".to_string() } else { String::new() },
                 on_search_change: |_| {},
                 search_results,
                 on_search_result_click: |_| {},

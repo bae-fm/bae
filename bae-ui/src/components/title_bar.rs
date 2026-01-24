@@ -8,8 +8,8 @@ use crate::components::icons::{ImageIcon, SettingsIcon};
 use crate::components::{Dropdown, Placement};
 use dioxus::prelude::*;
 
-/// Counter for generating unique update button IDs
-static UPDATE_BUTTON_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+/// Counter for generating unique button IDs
+static BUTTON_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// Navigation item for title bar
 #[derive(Clone, PartialEq)]
@@ -49,7 +49,7 @@ pub fn TitleBarView(
     on_search_change: EventHandler<String>,
     search_results: Vec<SearchResult>,
     on_search_result_click: EventHandler<String>,
-    show_search_results: bool,
+    show_search_results: ReadSignal<bool>,
     on_search_dismiss: EventHandler<()>,
     on_search_focus: EventHandler<()>,
     // Settings
@@ -68,20 +68,16 @@ pub fn TitleBarView(
     let mut show_update_menu = use_signal(|| false);
     let is_update_menu_open: ReadSignal<bool> = show_update_menu.into();
     let update_button_id = use_hook(|| {
-        let id = UPDATE_BUTTON_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let id = BUTTON_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
         format!("update-button-{}", id)
+    });
+    let search_input_id = use_hook(|| {
+        let id = BUTTON_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
+        format!("search-input-{}", id)
     });
 
     rsx! {
         div { class: "relative",
-            // Click-outside overlay to dismiss search results
-            if show_search_results {
-                div {
-                    class: "absolute inset-0 z-[1500]",
-                    onclick: move |_| on_search_dismiss.call(()),
-                }
-            }
-
             // Title bar
             div {
                 id: "title-bar",
@@ -125,9 +121,10 @@ pub fn TitleBarView(
                     class: "flex-none flex items-center gap-2",
                     style: "-webkit-app-region: no-drag;",
 
-                    // Search input
-                    div { class: "relative w-40", id: "search-container",
+                    // Search input with dropdown
+                    div { class: "relative w-40",
                         input {
+                            id: "{search_input_id}",
                             r#type: "text",
                             placeholder: "Search...",
                             autocomplete: "off",
@@ -141,6 +138,24 @@ pub fn TitleBarView(
                                 }
                             },
                         }
+
+                        // Search results dropdown
+                        if !search_results.is_empty() {
+                            Dropdown {
+                                anchor_id: search_input_id.clone(),
+                                is_open: show_search_results,
+                                on_close: on_search_dismiss,
+                                placement: Placement::Bottom,
+                                class: "bg-surface-overlay border border-border-strong rounded-lg shadow-lg w-64 max-h-96 overflow-y-auto",
+                                for result in search_results.iter() {
+                                    SearchResultItem {
+                                        key: "{result.id}",
+                                        result: result.clone(),
+                                        on_click: on_search_result_click,
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // Settings button
@@ -153,24 +168,6 @@ pub fn TitleBarView(
                         on_toggle_menu: move |_| show_update_menu.toggle(),
                         on_close_menu: move |_| show_update_menu.set(false),
                         on_update_click,
-                    }
-                }
-            }
-
-            // Search results popover
-            if show_search_results && !search_results.is_empty() {
-                div {
-                    class: "absolute top-full right-12 w-64 z-[2000]",
-                    id: "search-popover",
-                    onclick: move |evt| evt.stop_propagation(),
-                    div { class: "mt-2 bg-surface-overlay border border-border-strong rounded-lg shadow-lg max-h-96 overflow-y-auto",
-                        for result in search_results.iter() {
-                            SearchResultItem {
-                                key: "{result.id}",
-                                result: result.clone(),
-                                on_click: on_search_result_click,
-                            }
-                        }
                     }
                 }
             }

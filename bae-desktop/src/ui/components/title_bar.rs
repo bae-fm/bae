@@ -37,6 +37,7 @@ pub fn TitleBar() -> Element {
     let search_store = app.state.ui().search();
     let mut search_query_store = search_store.query();
     let mut show_results = use_signal(|| false);
+    let show_results_read: ReadSignal<bool> = show_results.into();
     let mut filtered_albums = use_signal(Vec::<Album>::new);
     let imports_dropdown_open = use_signal(|| false);
 
@@ -186,7 +187,7 @@ pub fn TitleBar() -> Element {
                         release_id: String::new(),
                     });
             },
-            show_search_results: show_results(),
+            show_search_results: show_results_read,
             on_search_dismiss: move |_| show_results.set(false),
             on_search_focus: move |_| {
                 if !search_query_store.read().is_empty() {
