@@ -131,3 +131,37 @@ pub fn handle_shortcut(evt: &KeyboardEvent) -> Option<NavAction> {
         _ => None,
     }
 }
+
+fn execute_nav_action(action: NavAction) {
+    match action {
+        NavAction::Back => navigator().go_back(),
+        NavAction::Forward => navigator().go_forward(),
+        NavAction::GoTo(target) => {
+            let _ = navigator().push(target.to_route());
+        }
+    }
+}
+
+#[component]
+pub fn ShortcutsHandler(children: Element) -> Element {
+    // Listen for menu-triggered navigation (subscribes fresh on each mount)
+    use_hook(|| {
+        let mut rx = subscribe_nav();
+        spawn(async move {
+            while let Ok(action) = rx.recv().await {
+                execute_nav_action(action);
+            }
+        });
+    });
+
+    let onkeydown = move |evt| {
+        if let Some(action) = handle_shortcut(&evt) {
+            evt.prevent_default();
+            execute_nav_action(action);
+        }
+    };
+
+    rsx! {
+        div { class: "contents", onkeydown, {children} }
+    }
+}
