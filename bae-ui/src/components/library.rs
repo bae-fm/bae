@@ -5,7 +5,7 @@
 //! Only subscribes to specific fields needed for routing decisions.
 
 use crate::components::album_card::AlbumCard;
-use crate::components::helpers::{ErrorDisplay, LoadingSpinner, PageContainer};
+use crate::components::helpers::{ErrorDisplay, LoadingSpinner};
 use crate::components::icons::ImageIcon;
 use crate::display_types::{Album, Artist};
 use crate::stores::library::{LibraryState, LibraryStateStoreExt};
@@ -41,38 +41,45 @@ pub fn LibraryView(
     let albums = state.albums().read().clone();
     let artists_by_album = state.artists_by_album().read().clone();
 
+    let mut scroll_target: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
+
     rsx! {
-        PageContainer {
-            h1 { class: "text-3xl font-bold text-white mb-6", "Music Library" }
-            if loading {
-                LoadingSpinner { message: "Loading your music library...".to_string() }
-            } else if let Some(err) = error {
-                ErrorDisplay { message: err }
-                p { class: "text-sm mt-2 text-gray-400",
-                    "Make sure you've imported some albums first!"
-                }
-            } else if albums.is_empty() {
-                div { class: "text-center py-12",
-                    div { class: "text-gray-400 mb-4",
-                        ImageIcon { class: "w-16 h-16 mx-auto" }
+        div {
+            class: "flex-grow overflow-y-auto overscroll-none flex flex-col py-10",
+            onmounted: move |evt| scroll_target.set(Some(evt.data())),
+            div { class: "container mx-auto flex flex-col",
+                h1 { class: "text-3xl font-bold text-white mb-6", "Music Library" }
+                if loading {
+                    LoadingSpinner { message: "Loading your music library...".to_string() }
+                } else if let Some(err) = error {
+                    ErrorDisplay { message: err }
+                    p { class: "text-sm mt-2 text-gray-400",
+                        "Make sure you've imported some albums first!"
                     }
-                    h2 { class: "text-2xl font-bold text-gray-300 mb-2",
-                        "No albums in your library yet"
+                } else if albums.is_empty() {
+                    div { class: "text-center py-12",
+                        div { class: "text-gray-400 mb-4",
+                            ImageIcon { class: "w-16 h-16 mx-auto" }
+                        }
+                        h2 { class: "text-2xl font-bold text-gray-300 mb-2",
+                            "No albums in your library yet"
+                        }
+                        p { class: "text-gray-500 mb-4", "Import your first album to get started!" }
+                        button {
+                            class: "inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded",
+                            onclick: move |_| on_empty_action.call(()),
+                            "Import Album"
+                        }
                     }
-                    p { class: "text-gray-500 mb-4", "Import your first album to get started!" }
-                    button {
-                        class: "inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded",
-                        onclick: move |_| on_empty_action.call(()),
-                        "Import Album"
+                } else {
+                    AlbumGrid {
+                        albums,
+                        artists_by_album,
+                        on_album_click,
+                        on_play_album,
+                        on_add_album_to_queue,
+                        scroll_target: ScrollTarget::Element(scroll_target.into()),
                     }
-                }
-            } else {
-                AlbumGrid {
-                    albums,
-                    artists_by_album,
-                    on_album_click,
-                    on_play_album,
-                    on_add_album_to_queue,
                 }
             }
         }
@@ -87,6 +94,7 @@ fn AlbumGrid(
     on_album_click: EventHandler<String>,
     on_play_album: EventHandler<String>,
     on_add_album_to_queue: EventHandler<String>,
+    scroll_target: ScrollTarget,
 ) -> Element {
     // Prepare items by joining albums with their artists
     let items: Vec<AlbumGridItem> = albums
@@ -127,7 +135,7 @@ fn AlbumGrid(
             config,
             render_item,
             key_fn,
-            scroll_target: ScrollTarget::Window,
+            scroll_target,
         }
     }
 }
