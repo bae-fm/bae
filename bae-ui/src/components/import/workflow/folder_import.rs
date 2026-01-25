@@ -18,8 +18,8 @@
 //! actually render values.
 
 use super::{
-    ConfirmationView, DiscIdLookupErrorView, ImportErrorDisplayView, ManualSearchPanelView,
-    MultipleExactMatchesView, SmartFileDisplayView,
+    ConfirmationView, DiscIdLookupErrorView, DiscIdPill, ImportErrorDisplayView,
+    ManualSearchPanelView, MultipleExactMatchesView, SmartFileDisplayView,
 };
 use crate::components::icons::LoaderIcon;
 use crate::components::StorageProfile;
@@ -460,12 +460,7 @@ fn DiscIdLookupProgressView(disc_id: String, on_skip: EventHandler<()>) -> Eleme
                 p { class: "text-sm text-gray-400 flex items-center justify-center gap-2",
                     LoaderIcon { class: "w-5 h-5 animate-spin" }
                     "Searching automatically "
-                    a {
-                        href: "https://musicbrainz.org/cdtoc/{disc_id}",
-                        target: "_blank",
-                        class: "font-mono text-xs bg-gray-700 px-2 py-0.5 rounded-full text-blue-400 hover:text-blue-300 transition-colors",
-                        "{disc_id}"
-                    }
+                    DiscIdPill { disc_id }
                 }
                 Button {
                     variant: ButtonVariant::Outline,
