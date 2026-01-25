@@ -459,7 +459,7 @@ fn DiscIdLookupProgressView(disc_id: String, on_skip: EventHandler<()>) -> Eleme
             div { class: "text-center space-y-4",
                 p { class: "text-sm text-gray-400 flex items-center justify-center gap-2",
                     LoaderIcon { class: "w-5 h-5 animate-spin" }
-                    "Searching automatically "
+                    "Looking up Disc ID "
                     DiscIdPill { disc_id }
                 }
                 Button {
