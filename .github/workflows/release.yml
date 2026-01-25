@@ -95,7 +95,8 @@ jobs:
       working-directory: ./bae-desktop
       run: |
         export PATH="$HOME/.cargo/bin:$PATH"
-        dx bundle --release
+        # Only build .app bundle, skip DMG (we create our own signed DMG later)
+        dx bundle --release --package-types macos
 
     - name: Rename app bundle to lowercase
       run: mv target/dx/bae/bundle/macos/bundle/macos/Bae.app target/dx/bae/bundle/macos/bundle/macos/bae.app
