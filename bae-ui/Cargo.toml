@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-dioxus = { workspace = true, default-features = false, features = ["signals", "html", "macro", "hooks"] }
+dioxus = { workspace = true, features = ["signals", "html", "macro", "hooks"] }
 dioxus-virtual-scroll = { path = "../dioxus-virtual-scroll" }
 # These -x crates work on both wasm AND native (via PR #5194)
 web-sys-x = { workspace = true, features = ["Element", "HtmlElement", "DomRect", "Window", "Document", "ScrollToOptions", "ScrollBehavior", "AddEventListenerOptions", "Storage", "HtmlScriptElement", "HtmlHeadElement"] }

@@ -77,98 +77,96 @@ pub fn TitleBarView(
     });
 
     rsx! {
-        div { class: "relative",
-            // Title bar
+        // Title bar
+        div {
+            id: "title-bar",
+            class: "shrink-0 h-10 bg-surface-raised flex items-center justify-between px-2 cursor-default border-b border-border-subtle",
+            style: "padding-left: {left_padding}px;",
+            onmousedown: move |_| {
+                if let Some(handler) = &on_bar_mousedown {
+                    handler.call(());
+                }
+            },
+            ondoubleclick: move |_| {
+                if let Some(handler) = &on_bar_double_click {
+                    handler.call(());
+                }
+            },
+
+            // Left section: Navigation + imports indicator
             div {
-                id: "title-bar",
-                class: "relative h-10 bg-surface-raised flex items-center justify-between px-2 cursor-default z-[1000] border-b border-border-subtle",
-                style: "padding-left: {left_padding}px;",
-                onmousedown: move |_| {
-                    if let Some(handler) = &on_bar_mousedown {
-                        handler.call(());
-                    }
-                },
-                ondoubleclick: move |_| {
-                    if let Some(handler) = &on_bar_double_click {
-                        handler.call(());
-                    }
-                },
-
-                // Left section: Navigation + imports indicator
-                div {
-                    class: "flex gap-2 flex-none items-center",
-                    style: "-webkit-app-region: no-drag;",
-                    for item in nav_items.iter() {
-                        NavButton {
-                            key: "{item.id}",
-                            is_active: item.is_active,
-                            on_click: {
-                                let id = item.id.clone();
-                                move |_| on_nav_click.call(id.clone())
-                            },
-                            "{item.label}"
-                        }
-                    }
-
-                    // Imports indicator
-                    if let Some(indicator) = imports_indicator {
-                        div { class: "relative ml-2", {indicator} }
+                class: "flex gap-2 flex-none items-center",
+                style: "-webkit-app-region: no-drag;",
+                for item in nav_items.iter() {
+                    NavButton {
+                        key: "{item.id}",
+                        is_active: item.is_active,
+                        on_click: {
+                            let id = item.id.clone();
+                            move |_| on_nav_click.call(id.clone())
+                        },
+                        "{item.label}"
                     }
                 }
 
-                // Right section: Search + Settings
-                div {
-                    class: "flex-none flex items-center gap-2",
-                    style: "-webkit-app-region: no-drag;",
+                // Imports indicator
+                if let Some(indicator) = imports_indicator {
+                    div { class: "relative ml-2", {indicator} }
+                }
+            }
 
-                    // Search input with dropdown
-                    div { class: "relative w-40",
-                        input {
-                            id: "{search_input_id}",
-                            r#type: "text",
-                            placeholder: "Search...",
-                            autocomplete: "off",
-                            class: "w-full h-7 px-2 bg-surface-input border border-border-default rounded text-white text-xs placeholder-gray-400 focus:outline-none focus:border-border-strong",
-                            value: "{search_value}",
-                            oninput: move |evt| on_search_change.call(evt.value()),
-                            onfocus: move |_| on_search_focus.call(()),
-                            onkeydown: move |evt| {
-                                if evt.key() == Key::Escape {
-                                    on_search_dismiss.call(());
-                                }
-                            },
-                        }
+            // Right section: Search + Settings
+            div {
+                class: "flex-none flex items-center gap-2",
+                style: "-webkit-app-region: no-drag;",
 
-                        // Search results dropdown
-                        if !search_results.is_empty() {
-                            Dropdown {
-                                anchor_id: search_input_id.clone(),
-                                is_open: show_search_results,
-                                on_close: on_search_dismiss,
-                                placement: Placement::Bottom,
-                                class: "bg-surface-overlay border border-border-strong rounded-lg shadow-lg w-64 max-h-96 overflow-y-auto",
-                                for result in search_results.iter() {
-                                    SearchResultItem {
-                                        key: "{result.id}",
-                                        result: result.clone(),
-                                        on_click: on_search_result_click,
-                                    }
+                // Search input with dropdown
+                div { class: "relative w-40",
+                    input {
+                        id: "{search_input_id}",
+                        r#type: "text",
+                        placeholder: "Search...",
+                        autocomplete: "off",
+                        class: "w-full h-7 px-2 bg-surface-input border border-border-default rounded text-white text-xs placeholder-gray-400 focus:outline-none focus:border-border-strong",
+                        value: "{search_value}",
+                        oninput: move |evt| on_search_change.call(evt.value()),
+                        onfocus: move |_| on_search_focus.call(()),
+                        onkeydown: move |evt| {
+                            if evt.key() == Key::Escape {
+                                on_search_dismiss.call(());
+                            }
+                        },
+                    }
+
+                    // Search results dropdown
+                    if !search_results.is_empty() {
+                        Dropdown {
+                            anchor_id: search_input_id.clone(),
+                            is_open: show_search_results,
+                            on_close: on_search_dismiss,
+                            placement: Placement::Bottom,
+                            class: "bg-surface-overlay border border-border-strong rounded-lg shadow-lg w-64 max-h-96 overflow-y-auto",
+                            for result in search_results.iter() {
+                                SearchResultItem {
+                                    key: "{result.id}",
+                                    result: result.clone(),
+                                    on_click: on_search_result_click,
                                 }
                             }
                         }
                     }
+                }
 
-                    // Settings button
-                    SettingsButton {
-                        is_active: settings_active,
-                        update_state,
-                        update_button_id: update_button_id.clone(),
-                        is_update_menu_open,
-                        on_settings_click: move |_| on_settings_click.call(()),
-                        on_toggle_menu: move |_| show_update_menu.toggle(),
-                        on_close_menu: move |_| show_update_menu.set(false),
-                        on_update_click,
-                    }
+                // Settings button
+                SettingsButton {
+                    is_active: settings_active,
+                    update_state,
+                    update_button_id: update_button_id.clone(),
+                    is_update_menu_open,
+                    on_settings_click: move |_| on_settings_click.call(()),
+                    on_toggle_menu: move |_| show_update_menu.toggle(),
+                    on_close_menu: move |_| show_update_menu.set(false),
+                    on_update_click,
                 }
             }
         }

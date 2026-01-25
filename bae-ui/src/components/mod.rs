@@ -30,7 +30,7 @@ pub use dioxus_virtual_scroll::{
 };
 pub use dropdown::{Dropdown, Placement};
 pub use error_toast::ErrorToast;
-pub use helpers::{BackButton, ConfirmDialogView, ErrorDisplay, LoadingSpinner, PageContainer};
+pub use helpers::{BackButton, ConfirmDialogView, ErrorDisplay, LoadingSpinner};
 pub use icons::{
     AlertTriangleIcon, ArrowLeftIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon,
     ChevronRightIcon, DiscIcon, DownloadIcon, EllipsisIcon, ExternalLinkIcon, FileIcon,

@@ -25,7 +25,7 @@ pub fn NowPlayingBarView(
     #[props(default)] on_dismiss_error: Option<EventHandler<()>>,
 ) -> Element {
     rsx! {
-        div { class: "fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-4 border-t border-gray-700",
+        div { class: "right-0 bg-gray-800 text-white p-4 border-t border-gray-700",
             div { class: "flex items-center gap-4",
                 PlaybackControlsSection {
                     state,

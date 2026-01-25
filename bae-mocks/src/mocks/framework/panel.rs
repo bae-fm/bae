@@ -98,9 +98,9 @@ pub fn MockPanel(
     let header_mb = if collapsed() { "" } else { "mb-3" };
 
     rsx! {
-        div { class: "min-h-screen flex flex-col bg-surface-base text-white",
+        div { class: "h-screen flex flex-col bg-surface-base text-white",
             // Controls panel
-            div { class: "sticky top-0 z-50 bg-gray-800 border-b border-gray-700 p-4 flex-shrink-0",
+            div { class: "bg-gray-800 border-b border-gray-700 p-4 flex-shrink-0",
                 div { class: "{max_w_class} mx-auto",
                     // Header row with breadcrumb, presets, and viewport
                     div { class: "flex items-center {header_mb}",
@@ -135,11 +135,7 @@ pub fn MockPanel(
                     }
                 }
             }
-
-            // Content area
-            div { class: "w-full {max_w_class} mx-auto flex-1 flex flex-col",
-                MockViewport { width: viewport_width(), {children} }
-            }
+            MockViewport { width: viewport_width(), {children} }
         }
     }
 }

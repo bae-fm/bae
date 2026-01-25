@@ -233,36 +233,32 @@ pub fn AlbumDetail(album_id: ReadSignal<String>, release_id: ReadSignal<String>)
     let has_album = state.album().read().is_some();
 
     rsx! {
-        PageContainer {
-            BackButton {}
-            if loading {
-                AlbumDetailLoading {}
-            } else if let Some(err) = error {
-                AlbumDetailError { message: err }
-            } else if has_album {
-                AlbumDetailView {
-                    state,
-                    tracks,
-                    playback: playback_display(),
-                    on_release_select,
-                    on_album_deleted,
-                    on_export_release,
-                    on_delete_album,
-                    on_delete_release,
-                    on_track_play,
-                    on_track_pause,
-                    on_track_resume,
-                    on_track_add_next,
-                    on_track_add_to_queue,
-                    on_track_export,
-                    on_play_album,
-                    on_add_album_to_queue,
-                }
-            } else {
-                AlbumDetailLoading {}
+        BackButton {}
+        if loading {
+            AlbumDetailLoading {}
+        } else if let Some(err) = error {
+            AlbumDetailError { message: err }
+        } else if has_album {
+            AlbumDetailView {
+                state,
+                tracks,
+                playback: playback_display(),
+                on_release_select,
+                on_album_deleted,
+                on_export_release,
+                on_delete_album,
+                on_delete_release,
+                on_track_play,
+                on_track_pause,
+                on_track_resume,
+                on_track_add_next,
+                on_track_add_to_queue,
+                on_track_export,
+                on_play_album,
+                on_add_album_to_queue,
             }
+        } else {
+            AlbumDetailLoading {}
         }
     }
 }
-
-pub use bae_ui::PageContainer;

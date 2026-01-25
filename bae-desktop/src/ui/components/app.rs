@@ -26,13 +26,6 @@ pub fn App() -> Element {
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
         document::Script { src: FLOATING_UI_CORE }
         document::Script { src: FLOATING_UI_DOM }
-        MainContent { Router::<Route> {} }
-    }
-}
-
-#[component]
-fn MainContent(children: Element) -> Element {
-    rsx! {
-        div { class: "h-screen overflow-y-auto flex", {children} }
+        Router::<Route> {}
     }
 }

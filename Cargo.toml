@@ -4,7 +4,7 @@ resolver = "2"
 
 [workspace.dependencies]
 # PR branch with web_sys_x support for desktop
-dioxus = { git = "https://github.com/ealmloff/dioxus", branch = "wasm-bindgen", default-features = false }
+dioxus = { git = "https://github.com/ealmloff/dioxus", branch = "wasm-bindgen" }
 # These -x crates work on both wasm AND native (via IPC to webview)
 web-sys-x = { version = "0.3.83-alpha.1", default-features = false }
 wasm-bindgen-x = "0.2.106-alpha.1"

@@ -3,7 +3,7 @@
 use crate::demo_data;
 use crate::Route;
 use bae_ui::stores::{AlbumDetailState, AlbumDetailStateStoreExt};
-use bae_ui::{AlbumDetailView, BackButton, ErrorDisplay, PageContainer, PlaybackDisplay};
+use bae_ui::{AlbumDetailView, BackButton, ErrorDisplay, PlaybackDisplay};
 use dioxus::prelude::*;
 
 #[component]
@@ -45,35 +45,33 @@ pub fn AlbumDetail(album_id: String) -> Element {
     let tracks = state.tracks();
 
     rsx! {
-        PageContainer {
-            BackButton {
-                on_click: move |_| {
-                    navigator().push(Route::Library {});
-                },
-            }
+        BackButton {
+            on_click: move |_| {
+                navigator().push(Route::Library {});
+            },
+        }
 
-            if has_album {
-                AlbumDetailView {
-                    state,
-                    tracks,
-                    playback: PlaybackDisplay::Stopped,
-                    on_release_select: |_release_id: String| {},
-                    on_album_deleted: |_| {},
-                    on_export_release: |_| {},
-                    on_delete_album: |_| {},
-                    on_delete_release: |_| {},
-                    on_track_play: |_| {},
-                    on_track_pause: |_| {},
-                    on_track_resume: |_| {},
-                    on_track_add_next: |_| {},
-                    on_track_add_to_queue: |_| {},
-                    on_track_export: |_| {},
-                    on_play_album: |_| {},
-                    on_add_album_to_queue: |_| {},
-                }
-            } else {
-                ErrorDisplay { message: "Album not found in demo data".to_string() }
+        if has_album {
+            AlbumDetailView {
+                state,
+                tracks,
+                playback: PlaybackDisplay::Stopped,
+                on_release_select: |_release_id: String| {},
+                on_album_deleted: |_| {},
+                on_export_release: |_| {},
+                on_delete_album: |_| {},
+                on_delete_release: |_| {},
+                on_track_play: |_| {},
+                on_track_pause: |_| {},
+                on_track_resume: |_| {},
+                on_track_add_next: |_| {},
+                on_track_add_to_queue: |_| {},
+                on_track_export: |_| {},
+                on_play_album: |_| {},
+                on_add_album_to_queue: |_| {},
             }
+        } else {
+            ErrorDisplay { message: "Album not found in demo data".to_string() }
         }
     }
 }

@@ -28,9 +28,9 @@ pub const DEFAULT_BREAKPOINTS: &[Breakpoint] = &[
 pub fn MockViewport(width: u32, children: Element) -> Element {
     // When width is 0 (Full), use w-full to expand; otherwise use fixed width
     let class = if width > 0 {
-        "bg-surface-base rounded-lg overflow-hidden flex-1 flex flex-col".to_string()
+        "bg-surface-base rounded-lg overflow-hidden"
     } else {
-        "bg-surface-base rounded-lg overflow-hidden flex-1 flex flex-col w-full".to_string()
+        "bg-surface-base rounded-lg overflow-hidden w-full"
     };
     let style = if width > 0 {
         format!("width: {}px; margin: 0 auto;", width)
