@@ -111,8 +111,10 @@ pub fn AlbumDetailMock(initial_state: Option<String>) -> Element {
         .map(|t| (t.disc_number, t.id.clone()))
         .collect();
 
-    // Create state store for lens support
-    let state = use_store(move || AlbumDetailState {
+    // Create store once, then update when registry values change
+    let mut state = use_store(AlbumDetailState::default);
+
+    state.set(AlbumDetailState {
         album: Some(album),
         artists,
         tracks,

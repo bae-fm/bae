@@ -50,7 +50,10 @@ pub fn LibraryMock(initial_state: Option<String>) -> Element {
         None
     };
 
-    let state = use_store(move || LibraryState {
+    // Create store once, then update when registry values change
+    let mut state = use_store(LibraryState::default);
+
+    state.set(LibraryState {
         albums,
         artists_by_album,
         loading,

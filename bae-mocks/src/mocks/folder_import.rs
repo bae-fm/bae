@@ -524,7 +524,12 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         candidate_states.insert(folder_path.clone(), candidate_state);
     }
 
-    let import_state = use_store(|| ImportState {
+    // Create store once, then update it when computed values change
+    let mut import_state = use_store(ImportState::default);
+
+    // Update store whenever registry-derived values change
+    // (reading registry values in component body creates subscriptions, so this runs on each re-render)
+    import_state.set(ImportState {
         detected_candidates: detected_candidates.clone(),
         current_candidate_key: current_key,
         candidate_states,
