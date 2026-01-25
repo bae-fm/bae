@@ -12,6 +12,7 @@ pub mod import;
 pub mod imports;
 pub mod library;
 pub mod modal;
+pub mod pill;
 pub mod playback;
 pub mod resizable_panel;
 pub mod settings;
@@ -52,6 +53,7 @@ pub use import::{
 pub use imports::{ImportsButtonView, ImportsDropdownView};
 pub use library::LibraryView;
 pub use modal::Modal;
+pub use pill::{Pill, PillVariant};
 pub use playback::{NowPlayingBarView, QueueSidebarState, QueueSidebarView};
 pub use resizable_panel::{GrabBar, PanelPosition, ResizablePanel, ResizeDirection};
 pub use settings::{

@@ -40,7 +40,7 @@ pub use release_sidebar::{
     ReleaseSidebarView, DEFAULT_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH,
 };
 pub use search_source_selector::SearchSourceSelectorView;
-pub use shared::{DiscIdLookupErrorView, ImportErrorDisplayView, SelectedSourceView};
+pub use shared::{DiscIdLookupErrorView, DiscIdPill, ImportErrorDisplayView, SelectedSourceView};
 pub use smart_file_display::SmartFileDisplayView;
 pub use text_file_modal::TextFileModalView;
 pub use torrent_display::{
