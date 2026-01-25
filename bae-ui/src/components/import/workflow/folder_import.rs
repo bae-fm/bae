@@ -178,7 +178,7 @@ fn MainContent(
                                 "Select folder"
                             }
                             p { class: "text-sm text-gray-400",
-                                "We'll scan the folder for possible releases to import"
+                                "We'll scan this folder for releases to import"
                             }
                         }
                     }

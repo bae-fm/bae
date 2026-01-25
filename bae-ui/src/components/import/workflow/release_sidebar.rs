@@ -48,7 +48,7 @@ pub fn ReleaseSidebarView(
                         {
                             let count = candidates.len();
                             if count == 0 {
-                                "No folders".to_string()
+                                "".to_string()
                             } else if count == 1 {
                                 "1 possible release".to_string()
                             } else {
