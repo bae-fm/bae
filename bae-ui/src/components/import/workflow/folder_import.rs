@@ -162,10 +162,10 @@ fn EmptyView(is_scanning: bool, on_folder_select: EventHandler<()>) -> Element {
                         size: ButtonSize::Medium,
                         onclick: move |_| on_folder_select.call(()),
                         FolderIcon { class: "w-4 h-4" }
-                        "Select folder"
+                        "Scan folder"
                     }
                     p { class: "text-sm text-gray-400",
-                        "We'll scan this folder for releases to import"
+                        "We'll search this folder for releases to import"
                     }
                 }
             }

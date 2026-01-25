@@ -64,7 +64,7 @@ pub fn ReleaseSidebarView(
                             button {
                                 class: "p-1.5 text-gray-400 hover:text-white transition-colors rounded-md hover:bg-white/5",
                                 onclick: move |_| on_add_folder.call(()),
-                                title: "Add folder",
+                                title: "Scan folder",
                                 PlusIcon { class: "w-4 h-4" }
                             }
                         } else {
