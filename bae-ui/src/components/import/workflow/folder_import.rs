@@ -88,50 +88,91 @@ pub struct FolderImportViewProps {
 pub fn FolderImportView(props: FolderImportViewProps) -> Element {
     let state = props.state;
 
+    // Use lenses for routing decisions
+    let is_empty = !state.detected_candidates().read().is_empty();
+    let is_scanning = *state.is_scanning_candidates().read();
+    // get_import_step() is a computed value, so we read just for that
+    let step = state.read().get_import_step();
+
     rsx! {
-        MainContent {
-            state,
-            storage_profiles: props.storage_profiles,
-            selected_text_file: props.selected_text_file.clone(),
-            text_file_content: props.text_file_content.clone(),
-            on_folder_select_click: props.on_folder_select_click,
-            on_text_file_select: props.on_text_file_select,
-            on_text_file_close: props.on_text_file_close,
-            on_skip_detection: props.on_skip_detection,
-            on_exact_match_select: props.on_exact_match_select,
-            on_search_source_change: props.on_search_source_change,
-            on_search_tab_change: props.on_search_tab_change,
-            on_artist_change: props.on_artist_change,
-            on_album_change: props.on_album_change,
-            on_year_change: props.on_year_change,
-            on_label_change: props.on_label_change,
-            on_catalog_number_change: props.on_catalog_number_change,
-            on_barcode_change: props.on_barcode_change,
-            on_manual_match_select: props.on_manual_match_select,
-            on_search: props.on_search,
-            on_manual_confirm: props.on_manual_confirm,
-            on_retry_discid_lookup: props.on_retry_discid_lookup,
-            on_select_remote_cover: props.on_select_remote_cover,
-            on_select_local_cover: props.on_select_local_cover,
-            on_storage_profile_change: props.on_storage_profile_change,
-            on_edit: props.on_edit,
-            on_confirm: props.on_confirm,
-            on_configure_storage: props.on_configure_storage,
-            on_view_duplicate: props.on_view_duplicate,
+        div { class: "flex-1 flex flex-col min-w-0",
+            if !is_empty {
+                EmptyView {
+                    is_scanning,
+                    on_folder_select: props.on_folder_select_click,
+                }
+            } else {
+                WorkflowContent {
+                    state,
+                    step,
+                    storage_profiles: props.storage_profiles,
+                    on_skip_detection: props.on_skip_detection,
+                    on_exact_match_select: props.on_exact_match_select,
+                    on_search_source_change: props.on_search_source_change,
+                    on_search_tab_change: props.on_search_tab_change,
+                    on_artist_change: props.on_artist_change,
+                    on_album_change: props.on_album_change,
+                    on_year_change: props.on_year_change,
+                    on_label_change: props.on_label_change,
+                    on_catalog_number_change: props.on_catalog_number_change,
+                    on_barcode_change: props.on_barcode_change,
+                    on_manual_match_select: props.on_manual_match_select,
+                    on_search: props.on_search,
+                    on_manual_confirm: props.on_manual_confirm,
+                    on_retry_discid_lookup: props.on_retry_discid_lookup,
+                    on_select_remote_cover: props.on_select_remote_cover,
+                    on_select_local_cover: props.on_select_local_cover,
+                    on_storage_profile_change: props.on_storage_profile_change,
+                    on_edit: props.on_edit,
+                    on_confirm: props.on_confirm,
+                    on_configure_storage: props.on_configure_storage,
+                    on_view_duplicate: props.on_view_duplicate,
+                }
+                FilesDock {
+                    state,
+                    selected_text_file: props.selected_text_file.clone(),
+                    text_file_content: props.text_file_content.clone(),
+                    on_text_file_select: props.on_text_file_select,
+                    on_text_file_close: props.on_text_file_close,
+                }
+            }
         }
     }
 }
 
-/// Main content area - reads state to determine what to show
+// ============================================================================
+// Empty State
+// ============================================================================
+
+/// Empty state shown when no candidates are detected yet
 #[component]
-fn MainContent(
+fn EmptyView(is_scanning: bool, on_folder_select: EventHandler<()>) -> Element {
+    rsx! {
+        div { class: "flex-1 flex items-center justify-center px-6 py-4",
+            div { class: "w-full max-w-3xl text-center space-y-3",
+                if is_scanning {
+                    LoaderIcon { class: "w-5 h-5 text-gray-400 animate-spin mx-auto" }
+                    p { class: "text-sm text-gray-400", "Scanning folder for releases..." }
+                } else {
+                    Button { onclick: move |_| on_folder_select.call(()),
+                        FolderIcon { class: "w-4 h-4" }
+                        "Select folder"
+                    }
+                    p { class: "text-sm text-gray-400",
+                        "We'll scan this folder for releases to import"
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Main workflow content area with step routing
+#[component]
+fn WorkflowContent(
     state: ReadStore<ImportState>,
+    step: ImportStep,
     storage_profiles: ReadSignal<Vec<StorageProfile>>,
-    selected_text_file: Option<String>,
-    text_file_content: Option<String>,
-    on_folder_select_click: EventHandler<()>,
-    on_text_file_select: EventHandler<String>,
-    on_text_file_close: EventHandler<()>,
     on_skip_detection: EventHandler<()>,
     on_exact_match_select: EventHandler<usize>,
     on_search_source_change: EventHandler<SearchSource>,
@@ -154,83 +195,41 @@ fn MainContent(
     on_configure_storage: EventHandler<()>,
     on_view_duplicate: EventHandler<String>,
 ) -> Element {
-    // Use lenses for routing decisions
-    let has_candidates = !state.detected_candidates().read().is_empty();
-    let is_scanning = *state.is_scanning_candidates().read();
-    // get_import_step() is a computed value, so we read just for that
-    let step = state.read().get_import_step();
-
     rsx! {
-        div { class: "flex-1 flex flex-col min-w-0",
-            if !has_candidates {
-                if is_scanning {
-                    div { class: "flex-1 flex items-center justify-center px-6 py-4",
-                        div { class: "w-full max-w-3xl text-center space-y-3",
-                            LoaderIcon { class: "w-5 h-5 text-gray-400 animate-spin mx-auto" }
-                            p { class: "text-sm text-gray-400", "Scanning folder for releases..." }
-                        }
+        div { class: "flex-1 flex justify-center items-center",
+            match step {
+                ImportStep::Identify => rsx! {
+                    IdentifyStep {
+                        state,
+                        on_skip_detection,
+                        on_exact_match_select,
+                        on_search_source_change,
+                        on_search_tab_change,
+                        on_artist_change,
+                        on_album_change,
+                        on_year_change,
+                        on_label_change,
+                        on_catalog_number_change,
+                        on_barcode_change,
+                        on_manual_match_select,
+                        on_search,
+                        on_manual_confirm,
+                        on_retry_discid_lookup,
                     }
-                } else {
-                    div { class: "flex-1 flex items-center justify-center px-6 py-4",
-                        div { class: "w-full max-w-3xl text-center space-y-4",
-                            Button { onclick: move |_| on_folder_select_click.call(()),
-                                FolderIcon { class: "w-4 h-4" }
-                                "Select folder"
-                            }
-                            p { class: "text-sm text-gray-400",
-                                "We'll scan this folder for releases to import"
-                            }
-                        }
+                },
+                ImportStep::Confirm => rsx! {
+                    ConfirmStep {
+                        state,
+                        storage_profiles,
+                        on_select_remote_cover,
+                        on_select_local_cover,
+                        on_storage_profile_change,
+                        on_edit,
+                        on_confirm,
+                        on_configure_storage,
+                        on_view_duplicate,
                     }
-                }
-            } else {
-                // Workflow content
-                div { class: "flex-1 overflow-y-auto px-6 py-4",
-                    div { class: "mx-auto w-full max-w-5xl",
-                        match step {
-                            ImportStep::Identify => rsx! {
-                                IdentifyStep {
-                                    state,
-                                    on_skip_detection,
-                                    on_exact_match_select,
-                                    on_search_source_change,
-                                    on_search_tab_change,
-                                    on_artist_change,
-                                    on_album_change,
-                                    on_year_change,
-                                    on_label_change,
-                                    on_catalog_number_change,
-                                    on_barcode_change,
-                                    on_manual_match_select,
-                                    on_search,
-                                    on_manual_confirm,
-                                    on_retry_discid_lookup,
-                                }
-                            },
-                            ImportStep::Confirm => rsx! {
-                                ConfirmStep {
-                                    state,
-                                    storage_profiles,
-                                    on_select_remote_cover,
-                                    on_select_local_cover,
-                                    on_storage_profile_change,
-                                    on_edit,
-                                    on_confirm,
-                                    on_configure_storage,
-                                    on_view_duplicate,
-                                }
-                            },
-                        }
-                    }
-                }
-                // Files dock
-                FilesDock {
-                    state,
-                    selected_text_file,
-                    text_file_content,
-                    on_text_file_select,
-                    on_text_file_close,
-                }
+                },
             }
         }
     }
