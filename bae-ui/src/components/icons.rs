@@ -171,7 +171,10 @@ pub fn ChevronDownIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Ele
 
 /// Chevron right icon (collapsed indicator)
 #[component]
-pub fn ChevronRightIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Element {
+pub fn ChevronRightIcon(
+    #[props(default = "w-4 h-4")] class: &'static str,
+    #[props(default = "2")] stroke_width: &'static str,
+) -> Element {
     rsx! {
         svg {
             class: "{class}",
@@ -179,7 +182,7 @@ pub fn ChevronRightIcon(#[props(default = "w-4 h-4")] class: &'static str) -> El
             view_box: "0 0 24 24",
             fill: "none",
             stroke: "currentColor",
-            stroke_width: "2",
+            stroke_width: "{stroke_width}",
             stroke_linecap: "round",
             stroke_linejoin: "round",
             path { d: "m9 18 6-6-6-6" }
@@ -189,7 +192,10 @@ pub fn ChevronRightIcon(#[props(default = "w-4 h-4")] class: &'static str) -> El
 
 /// Chevron left icon (back navigation)
 #[component]
-pub fn ChevronLeftIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Element {
+pub fn ChevronLeftIcon(
+    #[props(default = "w-4 h-4")] class: &'static str,
+    #[props(default = "2")] stroke_width: &'static str,
+) -> Element {
     rsx! {
         svg {
             class: "{class}",
@@ -197,7 +203,7 @@ pub fn ChevronLeftIcon(#[props(default = "w-4 h-4")] class: &'static str) -> Ele
             view_box: "0 0 24 24",
             fill: "none",
             stroke: "currentColor",
-            stroke_width: "2",
+            stroke_width: "{stroke_width}",
             stroke_linecap: "round",
             stroke_linejoin: "round",
             path { d: "m15 18-6-6 6-6" }

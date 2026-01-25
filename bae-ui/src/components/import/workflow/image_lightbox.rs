@@ -1,6 +1,7 @@
 //! Image lightbox view component
 
-use crate::components::icons::XIcon;
+use crate::components::icons::{ChevronLeftIcon, ChevronRightIcon, XIcon};
+use crate::components::Modal;
 use crate::display_types::FileInfo;
 use dioxus::prelude::*;
 
@@ -16,13 +17,14 @@ pub fn ImageLightboxView(
     /// Called when navigating to a different image
     on_navigate: EventHandler<usize>,
 ) -> Element {
+    // Component is only rendered when open, so is_open is always true
+    let is_open = use_memo(|| true);
+
     let total = images.len();
 
     if total == 0 {
         return rsx! {
-            div {
-                class: "fixed inset-0 bg-black/90 flex items-center justify-center z-50",
-                onclick: move |_| on_close.call(()),
+            Modal { is_open, on_close,
                 div { class: "text-white", "No images available" }
             }
         };
@@ -35,62 +37,73 @@ pub fn ImageLightboxView(
     let can_prev = clamped_index > 0;
     let can_next = clamped_index < total - 1;
 
+    // Keyboard navigation handler
+    let on_keydown = move |evt: KeyboardEvent| match evt.key() {
+        Key::ArrowLeft if can_prev => on_navigate.call(clamped_index - 1),
+        Key::ArrowRight if can_next => on_navigate.call(clamped_index + 1),
+        _ => {}
+    };
+
     rsx! {
-        div {
-            class: "fixed inset-0 bg-black/90 flex items-center justify-center z-50",
-            onclick: move |_| on_close.call(()),
+        Modal { is_open, on_close,
+            div { tabindex: 0, autofocus: true, onkeydown: on_keydown,
 
-            // Close button
-            button {
-                class: "absolute top-4 right-4 text-gray-400 hover:text-white transition-colors",
-                onclick: move |e| {
-                    e.stop_propagation();
-                    on_close.call(());
-                },
-                XIcon { class: "w-6 h-6" }
-            }
-
-            // Image counter
-            if total > 1 {
-                div { class: "absolute top-4 left-4 text-gray-400 text-sm",
-                    {format!("{} / {}", clamped_index + 1, total)}
-                }
-            }
-
-            // Previous button
-            if can_prev {
+                // Close button - fixed to viewport
                 button {
-                    class: "absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-gray-800/60 hover:bg-gray-700/80 text-white rounded-full flex items-center justify-center transition-colors",
+                    class: "fixed top-4 right-4 text-gray-400 hover:text-white transition-colors z-10",
                     onclick: move |e| {
                         e.stop_propagation();
-                        on_navigate.call(clamped_index - 1);
+                        on_close.call(());
                     },
-                    "‹"
+                    XIcon { class: "w-6 h-6" }
                 }
-            }
 
-            // Next button
-            if can_next {
-                button {
-                    class: "absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-gray-800/60 hover:bg-gray-700/80 text-white rounded-full flex items-center justify-center transition-colors",
-                    onclick: move |e| {
-                        e.stop_propagation();
-                        on_navigate.call(clamped_index + 1);
-                    },
-                    "›"
+                // Image counter - fixed to viewport
+                if total > 1 {
+                    div { class: "fixed top-4 left-4 text-gray-400 text-sm z-10",
+                        {format!("{} / {}", clamped_index + 1, total)}
+                    }
                 }
-            }
 
-            // Image and filename
-            div {
-                class: "flex flex-col items-center max-w-[90vw] max-h-[90vh]",
-                onclick: move |e| e.stop_propagation(),
-                img {
-                    src: "{url}",
-                    alt: "{filename}",
-                    class: "max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl",
+                // Previous button - fixed to viewport
+                if can_prev {
+                    button {
+                        class: "fixed left-4 top-1/2 -translate-y-1/2 w-14 h-14 bg-gray-800/60 hover:bg-gray-700/80 rounded-full flex items-center justify-center transition-colors z-10",
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            on_navigate.call(clamped_index - 1);
+                        },
+                        ChevronLeftIcon {
+                            class: "w-8 h-8 text-gray-300 -translate-x-0.5",
+                            stroke_width: "1.5",
+                        }
+                    }
                 }
-                div { class: "mt-4 text-gray-300 text-sm", {filename.clone()} }
+
+                // Next button - fixed to viewport
+                if can_next {
+                    button {
+                        class: "fixed right-4 top-1/2 -translate-y-1/2 w-14 h-14 bg-gray-800/60 hover:bg-gray-700/80 rounded-full flex items-center justify-center transition-colors z-10",
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            on_navigate.call(clamped_index + 1);
+                        },
+                        ChevronRightIcon {
+                            class: "w-8 h-8 text-gray-300 translate-x-0.5",
+                            stroke_width: "1.5",
+                        }
+                    }
+                }
+
+                // Image and filename - centered by Modal
+                div { class: "flex flex-col items-center",
+                    img {
+                        src: "{url}",
+                        alt: "{filename}",
+                        class: "max-w-[90vw] max-h-[80vh] object-contain rounded-lg shadow-2xl",
+                    }
+                    div { class: "mt-4 text-gray-300 text-sm", {filename.clone()} }
+                }
             }
         }
     }

@@ -81,12 +81,11 @@ pub fn Modal(
     let dialog_class = class.unwrap_or_default();
 
     // For backdrop click: clicking the dialog element itself (not children) closes it.
-    // We achieve this by having the dialog fill the screen and clicking on its padding area.
-    // The inner content wrapper stops propagation so clicks inside don't close.
+    // The dialog fills the screen and centers content; clicking outside content closes.
     rsx! {
         dialog {
             id: "{dialog_id_for_rsx}",
-            class: "p-0 bg-transparent backdrop:bg-black/50 {dialog_class}",
+            class: "p-0 bg-transparent backdrop:bg-black/80 w-screen h-screen flex items-center justify-center {dialog_class}",
             // Escape key fires 'cancel' event
             oncancel: move |evt| {
                 evt.prevent_default();

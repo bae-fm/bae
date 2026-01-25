@@ -13,6 +13,16 @@ use bae_ui::{
 use dioxus::prelude::*;
 use std::collections::HashMap;
 
+/// Available cover images for mock artwork
+const MOCK_COVERS: &[&str] = &[
+    "/covers/the-midnight-signal_neon-frequencies.png",
+    "/covers/glass-harbor_pacific-standard.png",
+    "/covers/glass-harbor_landlocked.png",
+    "/covers/velvet-mathematics_set-theory.png",
+    "/covers/velvet-mathematics_proof-by-induction.png",
+    "/covers/apartment-garden_grow-light.png",
+];
+
 /// Helper to create mock FileInfo with a path derived from name
 fn mock_file(name: &str, size: u64, format: &str) -> FileInfo {
     FileInfo {
@@ -21,6 +31,17 @@ fn mock_file(name: &str, size: u64, format: &str) -> FileInfo {
         size,
         format: format.to_string(),
         display_url: String::new(),
+    }
+}
+
+/// Helper to create mock artwork FileInfo with a display URL
+fn mock_artwork(name: &str, size: u64, format: &str, cover_index: usize) -> FileInfo {
+    FileInfo {
+        name: name.to_string(),
+        path: format!("/mock/{}", name),
+        size,
+        format: format.to_string(),
+        display_url: MOCK_COVERS[cover_index % MOCK_COVERS.len()].to_string(),
     }
 }
 
@@ -191,9 +212,9 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     mock_file("08 - Transmission End.flac", 35_200_000, "FLAC"),
                 ]),
                 artwork: vec![
-                    mock_file("cover.jpg", 2_500_000, "JPEG"),
-                    mock_file("back.jpg", 2_100_000, "JPEG"),
-                    mock_file("cd.jpg", 1_800_000, "JPEG"),
+                    mock_artwork("cover.jpg", 2_500_000, "JPEG", 0),
+                    mock_artwork("back.jpg", 2_100_000, "JPEG", 1),
+                    mock_artwork("cd.jpg", 1_800_000, "JPEG", 2),
                 ],
                 documents: vec![
                     mock_file("rip.log", 4_500, "LOG"),
@@ -217,7 +238,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     10,
                     380_000_000,
                 )]),
-                artwork: vec![mock_file("folder.jpg", 850_000, "JPEG")],
+                artwork: vec![mock_artwork("folder.jpg", 850_000, "JPEG", 1)],
                 documents: vec![],
                 other: vec![],
             },
@@ -239,14 +260,14 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     mock_file("05-velvet_mathematics-qed.flac", 31_600_000, "FLAC"),
                 ]),
                 artwork: vec![
-                    mock_file("cover.jpg", 3_200_000, "JPEG"),
-                    mock_file("back.jpg", 2_800_000, "JPEG"),
-                    mock_file("booklet-01.png", 4_500_000, "PNG"),
-                    mock_file("booklet-02.png", 4_200_000, "PNG"),
-                    mock_file("booklet-03.png", 4_100_000, "PNG"),
-                    mock_file("booklet-04.png", 3_900_000, "PNG"),
-                    mock_file("cd.jpg", 1_900_000, "JPEG"),
-                    mock_file("matrix.jpg", 1_200_000, "JPEG"),
+                    mock_artwork("cover.jpg", 3_200_000, "JPEG", 3),
+                    mock_artwork("back.jpg", 2_800_000, "JPEG", 4),
+                    mock_artwork("booklet-01.png", 4_500_000, "PNG", 0),
+                    mock_artwork("booklet-02.png", 4_200_000, "PNG", 1),
+                    mock_artwork("booklet-03.png", 4_100_000, "PNG", 2),
+                    mock_artwork("booklet-04.png", 3_900_000, "PNG", 3),
+                    mock_artwork("cd.jpg", 1_900_000, "JPEG", 4),
+                    mock_artwork("matrix.jpg", 1_200_000, "JPEG", 5),
                 ],
                 documents: vec![
                     mock_file("Velvet_Mathematics-Proof_by_Induction-2021-FLAC.nfo", 8_500, "NFO"),
@@ -269,7 +290,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     mock_file("03 Root System.flac", 29_100_000, "FLAC"),
                     mock_file("04 Bloom.flac", 28_500_000, "FLAC"),
                 ]),
-                artwork: vec![mock_file("AlbumArt.jpg", 450_000, "JPEG")],
+                artwork: vec![mock_artwork("AlbumArt.jpg", 450_000, "JPEG", 5)],
                 documents: vec![],
                 other: vec![
                     mock_file("desktop.ini", 282, ""),
@@ -293,11 +314,11 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     mock_file("B2 - Gravity Well.flac", 88_000_000, "FLAC"),
                 ]),
                 artwork: vec![
-                    mock_file("front.png", 15_000_000, "PNG"),
-                    mock_file("back.png", 14_200_000, "PNG"),
-                    mock_file("label-a.png", 8_500_000, "PNG"),
-                    mock_file("label-b.png", 8_300_000, "PNG"),
-                    mock_file("inner-sleeve.png", 12_000_000, "PNG"),
+                    mock_artwork("front.png", 15_000_000, "PNG", 0),
+                    mock_artwork("back.png", 14_200_000, "PNG", 1),
+                    mock_artwork("label-a.png", 8_500_000, "PNG", 2),
+                    mock_artwork("label-b.png", 8_300_000, "PNG", 3),
+                    mock_artwork("inner-sleeve.png", 12_000_000, "PNG", 4),
                 ],
                 documents: vec![
                     mock_file("ripping-notes.txt", 2_800, "TXT"),
