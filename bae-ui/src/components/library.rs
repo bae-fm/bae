@@ -54,7 +54,7 @@ pub fn LibraryView(
                 } else if let Some(err) = error {
                     ErrorDisplay { message: err }
                     p { class: "text-sm mt-2 text-gray-400",
-                        "Make sure you've imported some albums first!"
+                        "An error occurred while loading your music library."
                     }
                 } else if albums.is_empty() {
                     div { class: "text-center py-12",
