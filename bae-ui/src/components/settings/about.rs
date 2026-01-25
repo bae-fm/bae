@@ -1,5 +1,6 @@
 //! About section view
 
+use crate::components::Button;
 use dioxus::prelude::*;
 
 /// About section view
@@ -29,11 +30,7 @@ pub fn AboutSectionView(
                     }
                 }
                 div { class: "mt-4 pt-4 border-t border-gray-700",
-                    button {
-                        class: "px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors",
-                        onclick: move |_| on_check_updates.call(()),
-                        "Check for Updates"
-                    }
+                    Button { onclick: move |_| on_check_updates.call(()), "Check for Updates" }
                 }
             }
 

@@ -2,6 +2,7 @@
 
 use super::file_list::FileListView;
 use crate::components::icons::{ChevronDownIcon, ChevronRightIcon};
+use crate::components::{Button, ButtonVariant};
 use crate::display_types::{FileInfo, TorrentFileInfo, TorrentInfo};
 use dioxus::prelude::*;
 
@@ -66,8 +67,12 @@ pub fn TorrentTrackerDisplayView(trackers: Vec<TrackerStatus>) -> Element {
 
     rsx! {
         div { class: "mb-4",
-            button {
-                class: "w-full flex items-center justify-between p-3 bg-gray-800 rounded border border-gray-700 hover:bg-gray-700 transition-colors",
+            Button {
+                variant: ButtonVariant::Ghost,
+                class: Some(
+                    "w-full justify-between p-3 bg-gray-800 border border-gray-700 hover:bg-gray-700"
+                        .to_string(),
+                ),
                 onclick: move |_| expanded.toggle(),
                 div { class: "flex items-center gap-3",
                     span { class: "text-gray-400",
@@ -180,8 +185,12 @@ pub fn TorrentInfoDisplayView(info: TorrentInfo) -> Element {
 
     rsx! {
         div { class: "mt-4",
-            button {
-                class: "w-full flex items-center justify-between text-left p-3 bg-gray-800 rounded border border-gray-700 hover:bg-gray-700 transition-colors",
+            Button {
+                variant: ButtonVariant::Ghost,
+                class: Some(
+                    "w-full justify-between p-3 bg-gray-800 border border-gray-700 hover:bg-gray-700"
+                        .to_string(),
+                ),
                 onclick: move |_| expanded.toggle(),
                 h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide",
                     "Details"
@@ -307,8 +316,12 @@ pub fn TorrentFilesDisplayView(files: Vec<TorrentFileInfo>) -> Element {
 
     rsx! {
         div { class: "mt-4",
-            button {
-                class: "w-full flex items-center justify-between text-left p-3 bg-gray-800 rounded border border-gray-700 hover:bg-gray-700 transition-colors",
+            Button {
+                variant: ButtonVariant::Ghost,
+                class: Some(
+                    "w-full justify-between p-3 bg-gray-800 border border-gray-700 hover:bg-gray-700"
+                        .to_string(),
+                ),
                 onclick: move |_| expanded.toggle(),
                 h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide",
                     "Files"
@@ -342,11 +355,7 @@ pub fn MetadataDetectionPromptView(on_detect: EventHandler<()>) -> Element {
                         "CUE/log files found in torrent. Download and detect metadata automatically?"
                     }
                 }
-                button {
-                    class: "px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors",
-                    onclick: move |_| on_detect.call(()),
-                    "Detect from CUE/log files"
-                }
+                Button { onclick: move |_| on_detect.call(()), "Detect from CUE/log files" }
             }
         }
     }

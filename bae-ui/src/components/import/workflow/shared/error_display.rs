@@ -1,6 +1,7 @@
 //! Error display views for import workflow
 
 use crate::components::icons::AlertTriangleIcon;
+use crate::components::{Button, ButtonSize, ButtonVariant};
 use dioxus::prelude::*;
 
 /// Display DiscID lookup error with retry button
@@ -21,9 +22,10 @@ pub fn DiscIdLookupErrorView(
                 div { class: "flex-1",
                     p { class: "text-sm text-amber-200", "{error}" }
                     div { class: "mt-3 flex gap-2",
-                        button {
-                            class: "px-3 py-1.5 text-sm font-medium rounded-md bg-amber-600 hover:bg-amber-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                        Button {
+                            size: ButtonSize::Small,
                             disabled: is_retrying,
+                            loading: is_retrying,
                             onclick: move |_| on_retry.call(()),
                             if is_retrying {
                                 "Retrying..."
@@ -54,8 +56,9 @@ pub fn ImportErrorDisplayView(
             p { class: "text-sm text-red-700 select-text break-words font-mono", "Error: {error}" }
             if let Some(ref dup_id) = duplicate_album_id {
                 div { class: "mt-2",
-                    button {
-                        class: "text-sm text-blue-600 hover:underline",
+                    Button {
+                        variant: ButtonVariant::Ghost,
+                        size: ButtonSize::Small,
                         onclick: {
                             let dup_id = dup_id.clone();
                             move |_| on_view_duplicate.call(dup_id.clone())

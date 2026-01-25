@@ -5,7 +5,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::components::icons::{ImageIcon, SettingsIcon};
-use crate::components::{Dropdown, Placement};
+use crate::components::{ChromelessButton, Dropdown, Placement};
 use dioxus::prelude::*;
 
 /// Counter for generating unique button IDs
@@ -197,12 +197,27 @@ fn SettingsButton(
 
             // Update indicator (separate, next to settings)
             if has_update {
-                button {
-                    id: "{update_button_id}",
-                    class: "p-1 hover:bg-gray-700 rounded transition-colors flex items-center",
-                    title: if update_state == UpdateState::Ready { "Update ready - click to install" } else { "Downloading update..." },
+                ChromelessButton {
+                    id: Some(update_button_id.clone()),
+                    class: Some(
+                        "p-1 hover:bg-gray-700 rounded transition-colors flex items-center".to_string(),
+                    ),
+                    title: Some(
+                        if update_state == UpdateState::Ready {
+                            "Update ready - click to install".to_string()
+                        } else {
+                            "Downloading update...".to_string()
+                        },
+                    ),
+                    aria_label: Some(
+                        if update_state == UpdateState::Ready {
+                            "Update ready - click to install".to_string()
+                        } else {
+                            "Downloading update...".to_string()
+                        },
+                    ),
+                    onmousedown: Some(EventHandler::new(move |evt: MouseEvent| evt.stop_propagation())),
                     onclick: move |_| on_toggle_menu.call(()),
-                    onmousedown: move |evt| evt.stop_propagation(),
                     match update_state {
                         UpdateState::Downloading => rsx! {
                             svg {
@@ -247,8 +262,11 @@ fn SettingsButton(
                             div { class: "px-3 py-2 text-xs text-gray-400", "Downloading update..." }
                         },
                         UpdateState::Ready => rsx! {
-                            button {
-                                class: "w-full px-3 py-2 text-xs text-left text-white hover:bg-hover transition-colors",
+                            ChromelessButton {
+                                class: Some(
+                                    "w-full px-3 py-2 text-xs text-left text-white hover:bg-hover transition-colors"
+                                        .to_string(),
+                                ),
                                 onclick: move |_| {
                                     on_close_menu.call(());
                                     if let Some(handler) = &on_update_click {
@@ -279,7 +297,11 @@ fn NavButton(is_active: bool, on_click: EventHandler<()>, children: Element) -> 
         span {
             class: "inline-block",
             onmousedown: move |evt| evt.stop_propagation(),
-            button { class: "{class}", onclick: move |_| on_click.call(()), {children} }
+            ChromelessButton {
+                class: Some(class.to_string()),
+                onclick: move |_| on_click.call(()),
+                {children}
+            }
         }
     }
 }

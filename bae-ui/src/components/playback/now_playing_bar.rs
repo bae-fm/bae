@@ -6,6 +6,7 @@
 
 use crate::components::error_toast::ErrorToast;
 use crate::components::icons::{MenuIcon, PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon};
+use crate::components::{Button, ButtonVariant, ChromelessButton};
 use crate::stores::playback::{PlaybackStatus, PlaybackUiState, PlaybackUiStateStoreExt};
 use dioxus::prelude::*;
 
@@ -41,8 +42,8 @@ pub fn NowPlayingBarView(
 
                 PositionSection { state, on_seek }
 
-                button {
-                    class: "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600",
+                Button {
+                    variant: ButtonVariant::Secondary,
                     onclick: move |_| on_toggle_queue.call(()),
                     MenuIcon { class: "w-5 h-5" }
                 }
@@ -74,50 +75,72 @@ fn PlaybackControlsSection(
 
     rsx! {
         div { class: "flex items-center gap-2",
-            button {
-                class: if is_loading { "px-3 py-2 bg-gray-700 rounded opacity-50" } else { "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600" },
+            ChromelessButton {
+                class: Some(
+                    if is_loading {
+                        "px-3 py-2 bg-gray-700 rounded opacity-50".to_string()
+                    } else {
+                        "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600".to_string()
+                    },
+                ),
                 disabled: is_loading,
+                aria_label: Some("Previous track".to_string()),
                 onclick: move |_| on_previous.call(()),
                 SkipBackIcon { class: "w-5 h-5" }
             }
             if is_playing {
                 if show_spinner {
-                    button {
-                        class: "{main_btn_base} bg-blue-600 opacity-50",
+                    ChromelessButton {
+                        class: Some(format!("{main_btn_base} bg-blue-600 opacity-50")),
                         disabled: true,
+                        aria_label: Some("Loading".to_string()),
+                        onclick: move |_| {},
                         div { class: "animate-spin rounded-full h-4 w-4 border-b-2 border-white" }
                     }
                 } else {
-                    button {
-                        class: "{main_btn_base} bg-blue-600 hover:bg-blue-500",
+                    ChromelessButton {
+                        class: Some(format!("{main_btn_base} bg-blue-600 hover:bg-blue-500")),
+                        aria_label: Some("Pause".to_string()),
                         onclick: move |_| on_pause.call(()),
                         PauseIcon { class: "w-5 h-5" }
                     }
                 }
             } else {
                 if is_stopped {
-                    button {
-                        class: "{main_btn_base} bg-gray-700 opacity-50",
+                    ChromelessButton {
+                        class: Some(format!("{main_btn_base} bg-gray-700 opacity-50")),
                         disabled: true,
+                        aria_label: Some("Play".to_string()),
+                        onclick: move |_| {},
                         PlayIcon { class: "w-5 h-5" }
                     }
                 } else if show_spinner {
-                    button {
-                        class: "{main_btn_base} bg-green-600 opacity-50",
+                    ChromelessButton {
+                        class: Some(format!("{main_btn_base} bg-green-600 opacity-50")),
                         disabled: true,
+                        aria_label: Some("Loading".to_string()),
+                        onclick: move |_| {},
                         div { class: "animate-spin rounded-full h-4 w-4 border-b-2 border-white" }
                     }
                 } else {
-                    button {
-                        class: "{main_btn_base} bg-green-600 hover:bg-green-500",
+                    ChromelessButton {
+                        class: Some(format!("{main_btn_base} bg-green-600 hover:bg-green-500")),
+                        aria_label: Some("Resume".to_string()),
                         onclick: move |_| on_resume.call(()),
                         PlayIcon { class: "w-5 h-5" }
                     }
                 }
             }
-            button {
-                class: if is_loading { "px-3 py-2 bg-gray-700 rounded opacity-50" } else { "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600" },
+            ChromelessButton {
+                class: Some(
+                    if is_loading {
+                        "px-3 py-2 bg-gray-700 rounded opacity-50".to_string()
+                    } else {
+                        "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600".to_string()
+                    },
+                ),
                 disabled: is_loading,
+                aria_label: Some("Next track".to_string()),
                 onclick: move |_| on_next.call(()),
                 SkipForwardIcon { class: "w-5 h-5" }
             }

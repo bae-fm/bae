@@ -1,5 +1,6 @@
 //! API keys section view
 
+use crate::components::{Button, ButtonSize, ButtonVariant};
 use dioxus::prelude::*;
 
 /// API keys section view
@@ -35,8 +36,9 @@ pub fn ApiKeysSectionView(
                             }
                         }
                         if !is_editing {
-                            button {
-                                class: "px-3 py-1.5 text-sm bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
+                            Button {
+                                variant: ButtonVariant::Secondary,
+                                size: ButtonSize::Small,
                                 onclick: move |_| on_edit_start.call(()),
                                 "Edit"
                             }
@@ -65,9 +67,9 @@ pub fn ApiKeysSectionView(
                             }
 
                             div { class: "flex gap-3",
-                                button {
-                                    class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                                Button {
                                     disabled: !has_changes || is_saving,
+                                    loading: is_saving,
                                     onclick: move |_| on_save.call(()),
                                     if is_saving {
                                         "Saving..."
@@ -75,8 +77,8 @@ pub fn ApiKeysSectionView(
                                         "Save"
                                     }
                                 }
-                                button {
-                                    class: "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
+                                Button {
+                                    variant: ButtonVariant::Secondary,
                                     onclick: move |_| on_cancel.call(()),
                                     "Cancel"
                                 }

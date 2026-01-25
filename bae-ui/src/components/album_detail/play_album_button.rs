@@ -1,7 +1,7 @@
 //! Play album button component
 
 use crate::components::icons::{ChevronDownIcon, PlayIcon, PlusIcon};
-use crate::components::{Dropdown, Placement};
+use crate::components::{Button, ButtonVariant, Dropdown, Placement};
 use dioxus::prelude::*;
 
 /// Play album button with dropdown for "add to queue"
@@ -36,10 +36,10 @@ pub fn PlayAlbumButton(
     rsx! {
         div { class: "relative mt-6",
             div { class: "flex rounded-lg overflow-hidden",
-                button {
-                    class: "flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors flex items-center justify-center gap-2",
+                Button {
+                    variant: ButtonVariant::Primary,
                     disabled: is_disabled,
-                    class: if is_disabled { "opacity-50 cursor-not-allowed" } else { "" },
+                    class: Some("flex-1 rounded-r-none".to_string()),
                     onclick: {
                         let track_ids = track_ids.clone();
                         move |_| on_play_album.call(track_ids.clone())
@@ -50,12 +50,12 @@ pub fn PlayAlbumButton(
                     "{button_text}"
                 }
                 div { class: "border-l border-blue-500",
-                    button {
-                        id: "{anchor_id}",
-                        class: "px-3 py-3 bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center justify-center",
+                    Button {
+                        id: Some(anchor_id.clone()),
+                        variant: ButtonVariant::Primary,
                         disabled: is_disabled,
-                        class: if is_disabled { "opacity-50 cursor-not-allowed" } else { "" },
-                        onclick: move |evt| {
+                        class: Some("rounded-l-none px-3".to_string()),
+                        onclick: move |evt: MouseEvent| {
                             evt.stop_propagation();
                             if !is_disabled {
                                 show_play_menu.set(!show_play_menu());
@@ -73,12 +73,13 @@ pub fn PlayAlbumButton(
                 on_close: move |_| show_play_menu.set(false),
                 placement: Placement::BottomEnd,
                 class: "bg-gray-700 rounded-lg shadow-lg overflow-hidden border border-gray-600 min-w-[200px]",
-                button {
-                    class: "w-full px-4 py-3 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2",
+                Button {
+                    variant: ButtonVariant::Ghost,
                     disabled: is_disabled,
+                    class: Some("w-full justify-start rounded-none".to_string()),
                     onclick: {
                         let track_ids = track_ids.clone();
-                        move |evt| {
+                        move |evt: MouseEvent| {
                             evt.stop_propagation();
                             show_play_menu.set(false);
                             on_add_to_queue.call(track_ids.clone());

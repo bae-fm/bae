@@ -1,5 +1,6 @@
 //! Candidate selector view component
 
+use crate::components::{Button, ButtonSize, ButtonVariant};
 use crate::display_types::DetectedCandidate;
 use dioxus::prelude::*;
 
@@ -31,16 +32,18 @@ pub fn ReleaseSelectorView(
                     {format!("{} of {} selected", selected_count, total_count)}
                 }
                 div { class: "flex gap-2",
-                    button {
-                        class: "px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors",
+                    Button {
+                        variant: ButtonVariant::Secondary,
+                        size: ButtonSize::Small,
                         onclick: {
                             let all_indices: Vec<usize> = (0..total_count).collect();
                             move |_| on_selection_change.call(all_indices.clone())
                         },
                         "Select All"
                     }
-                    button {
-                        class: "px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors",
+                    Button {
+                        variant: ButtonVariant::Secondary,
+                        size: ButtonSize::Small,
                         onclick: move |_| on_selection_change.call(Vec::new()),
                         "Deselect All"
                     }
@@ -93,8 +96,7 @@ pub fn ReleaseSelectorView(
 
             // Import button
             div { class: "flex justify-center pt-4",
-                button {
-                    class: if selected_indices.is_empty() { "px-6 py-3 bg-gray-700 text-gray-500 rounded-lg cursor-not-allowed" } else { "px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors" },
+                Button {
                     disabled: selected_indices.is_empty(),
                     onclick: {
                         let indices = selected_indices.clone();

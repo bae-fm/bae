@@ -1,5 +1,6 @@
 //! Settings view - tabbed layout shell
 
+use crate::components::{Button, ButtonVariant};
 use dioxus::prelude::*;
 
 /// Available settings tabs
@@ -56,15 +57,9 @@ pub fn SettingsView(
                     ul { class: "space-y-1",
                         for tab in SettingsTab::all() {
                             li {
-                                button {
-                                    class: {
-                                        let base = "w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors";
-                                        if active_tab == *tab {
-                                            format!("{} bg-indigo-600 text-white", base)
-                                        } else {
-                                            format!("{} text-gray-300 hover:bg-gray-700 hover:text-white", base)
-                                        }
-                                    },
+                                Button {
+                                    variant: if active_tab == *tab { ButtonVariant::Primary } else { ButtonVariant::Ghost },
+                                    class: Some("w-full justify-start".to_string()),
                                     onclick: {
                                         let tab = *tab;
                                         move |_| on_tab_change.call(tab)

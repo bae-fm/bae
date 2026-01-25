@@ -1,6 +1,7 @@
 //! CD selector view component
 
 use crate::components::icons::DiscIcon;
+use crate::components::{Button, ButtonVariant};
 use dioxus::prelude::*;
 
 /// CD drive status
@@ -53,11 +54,7 @@ pub fn CdSelectorView(
                                     p { class: "text-sm text-gray-400", "Insert an audio CD to begin" }
                                 }
                             }
-                            button {
-                                class: "px-4 py-2 bg-gray-600 text-gray-300 rounded-lg",
-                                disabled: true,
-                                "Rip CD"
-                            }
+                            Button { variant: ButtonVariant::Secondary, disabled: true, onclick: |_| {}, "Rip CD" }
                         }
                     },
                     CdDriveStatus::Reading => rsx! {
@@ -81,11 +78,7 @@ pub fn CdSelectorView(
                                     p { class: "text-sm text-gray-400", "{track_count} tracks · DiscID: {disc_id}" }
                                 }
                             }
-                            button {
-                                class: "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors",
-                                onclick: move |_| on_rip_click.call(()),
-                                "Rip CD"
-                            }
+                            Button { onclick: move |_| on_rip_click.call(()), "Rip CD" }
                         }
                     },
                     CdDriveStatus::Ripping { progress } => rsx! {

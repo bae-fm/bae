@@ -3,6 +3,7 @@
 pub mod album_card;
 pub mod album_detail;
 pub mod app_layout;
+pub mod button;
 pub mod dropdown;
 pub mod error_toast;
 pub mod helpers;
@@ -25,6 +26,7 @@ pub use album_detail::{
     TrackRow,
 };
 pub use app_layout::AppLayoutView;
+pub use button::{Button, ButtonSize, ButtonVariant, ChromelessButton};
 pub use dioxus_virtual_scroll::{
     GridLayout, KeyFn, RenderFn, ScrollTarget, VirtualGrid, VirtualGridConfig,
 };
@@ -40,12 +42,12 @@ pub use icons::{
 };
 pub use import::{
     CdDriveStatus, CdSelectorView, ConfirmationView, DetectingMetadataView, DiscIdLookupErrorView,
-    FileListView, FolderImportView, FolderImportViewProps, FolderSelectorView,
-    ImportErrorDisplayView, ImportSource, ImportSourceSelectorView, ImportView,
-    ManualSearchPanelView, MatchItemView, MatchListView, MetadataDetectionPromptView,
-    MultipleMatchesView, ReleaseSelectorView, ReleaseSidebarView, SearchSourceSelectorView,
-    SelectedSourceView, TorrentFilesDisplayView, TorrentInfoDisplayView, TorrentInputMode,
-    TorrentInputView, TorrentTrackerDisplayView, TrackerConnectionStatus, TrackerStatus,
+    FileListView, FolderImportView, FolderImportViewProps, ImportErrorDisplayView, ImportSource,
+    ImportSourceSelectorView, ImportView, ManualSearchPanelView, MatchItemView, MatchListView,
+    MetadataDetectionPromptView, MultipleMatchesView, ReleaseSelectorView, ReleaseSidebarView,
+    SearchSourceSelectorView, SelectedSourceView, TorrentFilesDisplayView, TorrentInfoDisplayView,
+    TorrentInputMode, TorrentInputView, TorrentTrackerDisplayView, TrackerConnectionStatus,
+    TrackerStatus,
 };
 pub use imports::{ImportsButtonView, ImportsDropdownView};
 pub use library::LibraryView;

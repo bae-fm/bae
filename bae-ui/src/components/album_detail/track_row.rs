@@ -5,7 +5,7 @@
 
 use crate::components::icons::{EllipsisIcon, PauseIcon, PlayIcon};
 use crate::components::utils::format_duration;
-use crate::components::{Dropdown, Placement};
+use crate::components::{ChromelessButton, Dropdown, Placement};
 use crate::display_types::{Artist, TrackImportState};
 use dioxus::prelude::*;
 
@@ -76,20 +76,32 @@ pub fn TrackRow(
                             div { class: "animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400" }
                         }
                     } else if is_playing {
-                        button {
-                            class: "w-6 h-6 rounded-full border border-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10",
+                        ChromelessButton {
+                            class: Some(
+                                "w-6 h-6 rounded-full border border-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                    .to_string(),
+                            ),
+                            aria_label: Some("Pause".to_string()),
                             onclick: move |_| on_pause.call(()),
                             PauseIcon { class: "w-3 h-3" }
                         }
                     } else if is_paused {
-                        button {
-                            class: "w-6 h-6 rounded-full border border-blue-400 flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 transition-colors",
+                        ChromelessButton {
+                            class: Some(
+                                "w-6 h-6 rounded-full border border-blue-400 flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 transition-colors"
+                                    .to_string(),
+                            ),
+                            aria_label: Some("Resume".to_string()),
                             onclick: move |_| on_resume.call(()),
                             PlayIcon { class: "w-3 h-3" }
                         }
                     } else {
-                        button {
-                            class: "w-6 h-6 rounded-full border border-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10",
+                        ChromelessButton {
+                            class: Some(
+                                "w-6 h-6 rounded-full border border-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                    .to_string(),
+                            ),
+                            aria_label: Some("Play".to_string()),
                             onclick: {
                                 let track_id = track_id_for_play.clone();
                                 move |_| on_play.call(track_id.clone())
@@ -176,9 +188,13 @@ fn TrackMenu(
     let anchor_id = format!("track-menu-{}", track_id);
 
     rsx! {
-        button {
-            id: "{anchor_id}",
-            class: "px-2 py-1 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity",
+        ChromelessButton {
+            id: Some(anchor_id.clone()),
+            class: Some(
+                "px-2 py-1 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    .to_string(),
+            ),
+            aria_label: Some("Track menu".to_string()),
             onclick: move |_| show_menu.set(!show_menu()),
             EllipsisIcon { class: "w-4 h-4" }
         }
@@ -189,8 +205,10 @@ fn TrackMenu(
             on_close: move |_| show_menu.set(false),
             placement: Placement::BottomEnd,
             class: "bg-gray-800 border border-gray-700 rounded shadow-lg min-w-32",
-            button {
-                class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
+            ChromelessButton {
+                class: Some(
+                    "w-full text-left px-3 py-2 text-sm hover:bg-gray-700 rounded-none".to_string(),
+                ),
                 onclick: {
                     let track_id = track_id.clone();
                     move |_| {
@@ -200,8 +218,10 @@ fn TrackMenu(
                 },
                 "Export File"
             }
-            button {
-                class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
+            ChromelessButton {
+                class: Some(
+                    "w-full text-left px-3 py-2 text-sm hover:bg-gray-700 rounded-none".to_string(),
+                ),
                 onclick: {
                     let track_id = track_id.clone();
                     move |_| {
@@ -211,8 +231,10 @@ fn TrackMenu(
                 },
                 "Play Next"
             }
-            button {
-                class: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700",
+            ChromelessButton {
+                class: Some(
+                    "w-full text-left px-3 py-2 text-sm hover:bg-gray-700 rounded-none".to_string(),
+                ),
                 onclick: {
                     let track_id = track_id.clone();
                     move |_| {

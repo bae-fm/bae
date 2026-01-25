@@ -1,5 +1,6 @@
 //! BitTorrent section view
 
+use crate::components::{Button, ButtonSize, ButtonVariant};
 use dioxus::prelude::*;
 
 /// BitTorrent settings display data
@@ -54,8 +55,9 @@ pub fn BitTorrentSectionView(
                 div { class: "flex items-center justify-between mb-4",
                     h3 { class: "text-lg font-medium text-white", "Listening Port" }
                     if editing_section.as_deref() != Some("port") {
-                        button {
-                            class: "px-3 py-1.5 text-sm bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
+                        Button {
+                            variant: ButtonVariant::Secondary,
+                            size: ButtonSize::Small,
                             onclick: move |_| on_edit_section.call("port".to_string()),
                             "Edit"
                         }
@@ -128,8 +130,9 @@ pub fn BitTorrentSectionView(
                 div { class: "flex items-center justify-between mb-4",
                     h3 { class: "text-lg font-medium text-white", "Connection Limits" }
                     if editing_section.as_deref() != Some("limits") {
-                        button {
-                            class: "px-3 py-1.5 text-sm bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
+                        Button {
+                            variant: ButtonVariant::Secondary,
+                            size: ButtonSize::Small,
                             onclick: move |_| on_edit_section.call("limits".to_string()),
                             "Edit"
                         }
@@ -198,8 +201,9 @@ pub fn BitTorrentSectionView(
                 div { class: "flex items-center justify-between mb-4",
                     h3 { class: "text-lg font-medium text-white", "Network Interface" }
                     if editing_section.as_deref() != Some("interface") {
-                        button {
-                            class: "px-3 py-1.5 text-sm bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
+                        Button {
+                            variant: ButtonVariant::Secondary,
+                            size: ButtonSize::Small,
                             onclick: move |_| on_edit_section.call("interface".to_string()),
                             "Edit"
                         }
@@ -267,6 +271,8 @@ fn SectionSaveButtons(
     on_save: EventHandler<()>,
     on_cancel: EventHandler<()>,
 ) -> Element {
+    use crate::components::{Button, ButtonVariant};
+
     rsx! {
         div { class: "pt-4 space-y-3",
             if let Some(error) = save_error {
@@ -276,9 +282,10 @@ fn SectionSaveButtons(
             }
 
             div { class: "flex gap-3",
-                button {
-                    class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                Button {
+                    variant: ButtonVariant::Primary,
                     disabled: !has_changes || is_saving,
+                    loading: is_saving,
                     onclick: move |_| on_save.call(()),
                     if is_saving {
                         "Saving..."
@@ -286,8 +293,8 @@ fn SectionSaveButtons(
                         "Save"
                     }
                 }
-                button {
-                    class: "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
+                Button {
+                    variant: ButtonVariant::Secondary,
                     onclick: move |_| on_cancel.call(()),
                     "Cancel"
                 }

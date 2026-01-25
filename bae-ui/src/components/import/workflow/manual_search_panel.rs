@@ -2,6 +2,7 @@
 
 use super::match_list::MatchListView;
 use super::search_source_selector::SearchSourceSelectorView;
+use crate::components::{Button, ButtonSize, ButtonVariant};
 use crate::display_types::{MatchCandidate, SearchSource, SearchTab};
 use crate::stores::import::ImportState;
 use dioxus::prelude::*;
@@ -95,39 +96,21 @@ pub fn ManualSearchPanelView(
 
             // Tab bar
             div { class: "flex gap-1",
-                button {
-                    class: format!(
-                        "px-3 py-1.5 text-sm rounded-lg transition-all duration-150 {}",
-                        if tab == SearchTab::General {
-                            "bg-surface-raised text-white"
-                        } else {
-                            "text-gray-300 hover:text-white hover:bg-surface-raised/50"
-                        },
-                    ),
+                Button {
+                    variant: if tab == SearchTab::General { ButtonVariant::Primary } else { ButtonVariant::Ghost },
+                    size: ButtonSize::Small,
                     onclick: move |_| on_tab_change.call(SearchTab::General),
                     "General"
                 }
-                button {
-                    class: format!(
-                        "px-3 py-1.5 text-sm rounded-lg transition-all duration-150 {}",
-                        if tab == SearchTab::CatalogNumber {
-                            "bg-surface-raised text-white"
-                        } else {
-                            "text-gray-300 hover:text-white hover:bg-surface-raised/50"
-                        },
-                    ),
+                Button {
+                    variant: if tab == SearchTab::CatalogNumber { ButtonVariant::Primary } else { ButtonVariant::Ghost },
+                    size: ButtonSize::Small,
                     onclick: move |_| on_tab_change.call(SearchTab::CatalogNumber),
                     "Catalog #"
                 }
-                button {
-                    class: format!(
-                        "px-3 py-1.5 text-sm rounded-lg transition-all duration-150 {}",
-                        if tab == SearchTab::Barcode {
-                            "bg-surface-raised text-white"
-                        } else {
-                            "text-gray-300 hover:text-white hover:bg-surface-raised/50"
-                        },
-                    ),
+                Button {
+                    variant: if tab == SearchTab::Barcode { ButtonVariant::Primary } else { ButtonVariant::Ghost },
+                    size: ButtonSize::Small,
                     onclick: move |_| on_tab_change.call(SearchTab::Barcode),
                     "Barcode"
                 }
@@ -187,9 +170,11 @@ pub fn ManualSearchPanelView(
                             }
                         }
                         div { class: "flex justify-end pt-1",
-                            button {
-                                class: "px-4 py-1.5 bg-surface-raised text-sm text-white rounded-lg hover:bg-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150",
+                            Button {
+                                variant: ButtonVariant::Primary,
+                                size: ButtonSize::Small,
                                 disabled: searching,
+                                loading: searching,
                                 onclick: move |_| on_search.call(()),
                                 if searching {
                                     "Searching..."
@@ -210,9 +195,11 @@ pub fn ManualSearchPanelView(
                                     oninput: move |e| on_catalog_number_change.call(e.value()),
                                 }
                             }
-                            button {
-                                class: "px-4 py-1.5 bg-surface-raised text-sm text-white rounded-lg hover:bg-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150",
+                            Button {
+                                variant: ButtonVariant::Primary,
+                                size: ButtonSize::Small,
                                 disabled: searching,
+                                loading: searching,
                                 onclick: move |_| on_search.call(()),
                                 if searching {
                                     "Searching..."
@@ -233,9 +220,11 @@ pub fn ManualSearchPanelView(
                                     oninput: move |e| on_barcode_change.call(e.value()),
                                 }
                             }
-                            button {
-                                class: "px-4 py-1.5 bg-surface-raised text-sm text-white rounded-lg hover:bg-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150",
+                            Button {
+                                variant: ButtonVariant::Primary,
+                                size: ButtonSize::Small,
                                 disabled: searching,
+                                loading: searching,
                                 onclick: move |_| on_search.call(()),
                                 if searching {
                                     "Searching..."
@@ -274,8 +263,10 @@ pub fn ManualSearchPanelView(
 
                     if selected.is_some() {
                         div { class: "flex justify-end",
-                            button {
-                                class: "px-4 py-1.5 bg-green-500/25 text-sm text-green-300 rounded-lg hover:bg-green-500/35 transition-all duration-150",
+                            Button {
+                                variant: ButtonVariant::Primary,
+                                size: ButtonSize::Small,
+                                class: Some("bg-green-500/25 text-green-300 hover:bg-green-500/35".to_string()),
                                 onclick: move |_| {
                                     if let Some(index) = selected {
                                         if let Some(candidate) = candidates.get(index) {

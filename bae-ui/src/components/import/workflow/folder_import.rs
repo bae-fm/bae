@@ -23,7 +23,7 @@ use super::{
 };
 use crate::components::icons::{FolderIcon, LoaderIcon};
 use crate::components::StorageProfile;
-use crate::components::{ResizablePanel, ResizeDirection};
+use crate::components::{Button, ResizablePanel, ResizeDirection};
 use crate::display_types::{IdentifyMode, ImportStep, MatchCandidate, SearchSource, SearchTab};
 use crate::stores::import::{CandidateState, ConfirmPhase, ImportState, ImportStateStoreExt};
 use dioxus::prelude::*;
@@ -173,11 +173,9 @@ fn MainContent(
                 } else {
                     div { class: "flex-1 flex items-center justify-center px-6 py-4",
                         div { class: "w-full max-w-3xl text-center space-y-4",
-                            button {
-                                class: "px-4 py-2 text-sm font-medium text-gray-200 bg-white/5 hover:bg-white/10 rounded-md transition-colors inline-flex items-center gap-2",
-                                onclick: move |_| on_folder_select_click.call(()),
+                            Button { onclick: move |_| on_folder_select_click.call(()),
                                 FolderIcon { class: "w-4 h-4" }
-                                "Select a folder"
+                                "Select folder"
                             }
                             p { class: "text-sm text-gray-400",
                                 "We'll scan the folder for possible releases to import"

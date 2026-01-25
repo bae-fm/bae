@@ -1,6 +1,7 @@
 //! Torrent input view component
 
 use crate::components::icons::UploadIcon;
+use crate::components::{Button, ButtonVariant};
 use dioxus::prelude::*;
 
 /// Torrent input mode
@@ -38,13 +39,13 @@ pub fn TorrentInputView(
         div { class: "space-y-4",
             // Mode tabs
             div { class: "flex space-x-4 mb-4",
-                button {
-                    class: if input_mode == TorrentInputMode::File { "px-4 py-2 bg-blue-600 text-white rounded-lg" } else { "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600" },
+                Button {
+                    variant: if input_mode == TorrentInputMode::File { ButtonVariant::Primary } else { ButtonVariant::Secondary },
                     onclick: move |_| on_mode_change.call(TorrentInputMode::File),
                     "File"
                 }
-                button {
-                    class: if input_mode == TorrentInputMode::Magnet { "px-4 py-2 bg-blue-600 text-white rounded-lg" } else { "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600" },
+                Button {
+                    variant: if input_mode == TorrentInputMode::Magnet { ButtonVariant::Primary } else { ButtonVariant::Secondary },
                     onclick: move |_| on_mode_change.call(TorrentInputMode::Magnet),
                     "Magnet Link"
                 }
@@ -61,11 +62,7 @@ pub fn TorrentInputView(
                                 h3 { class: "text-lg font-semibold text-gray-200", "Select a torrent file" }
                                 p { class: "text-sm text-gray-400", "Drop a .torrent file here or click to browse" }
                             }
-                            button {
-                                class: "px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium",
-                                onclick: move |_| on_select_click.call(()),
-                                "Select Torrent"
-                            }
+                            Button { onclick: move |_| on_select_click.call(()), "Select Torrent" }
                         }
                     }
                 },
@@ -81,8 +78,7 @@ pub fn TorrentInputView(
                                 oninput: move |e| magnet_input.set(e.value()),
                             }
                         }
-                        button {
-                            class: "px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed",
+                        Button {
                             disabled: magnet_input.read().is_empty(),
                             onclick: move |_| {
                                 let value = magnet_input.read().clone();

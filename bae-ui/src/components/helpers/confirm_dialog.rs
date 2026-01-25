@@ -1,6 +1,6 @@
 //! Confirm dialog view component
 
-use crate::components::Modal;
+use crate::components::{Button, ButtonVariant, Modal};
 use dioxus::prelude::*;
 
 /// A generic confirmation dialog view
@@ -15,10 +15,10 @@ pub fn ConfirmDialogView(
     on_confirm: EventHandler<()>,
     on_cancel: EventHandler<()>,
 ) -> Element {
-    let confirm_class = if is_destructive {
-        "px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+    let confirm_variant = if is_destructive {
+        ButtonVariant::Danger
     } else {
-        "px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+        ButtonVariant::Primary
     };
 
     rsx! {
@@ -27,13 +27,13 @@ pub fn ConfirmDialogView(
                 h2 { class: "text-xl font-bold text-white mb-4", "{title}" }
                 p { class: "text-gray-300 mb-6", "{message}" }
                 div { class: "flex gap-3 justify-end",
-                    button {
-                        class: "px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg",
+                    Button {
+                        variant: ButtonVariant::Secondary,
                         onclick: move |_| on_cancel.call(()),
                         "{cancel_label}"
                     }
-                    button {
-                        class: "{confirm_class}",
+                    Button {
+                        variant: confirm_variant,
                         onclick: move |_| on_confirm.call(()),
                         "{confirm_label}"
                     }

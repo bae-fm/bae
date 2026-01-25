@@ -1,6 +1,6 @@
 //! Release tabs section for multi-release albums
 
-use crate::components::{Dropdown, Placement};
+use crate::components::{Button, ButtonSize, ButtonVariant, Dropdown, Placement};
 use crate::display_types::Release;
 use dioxus::prelude::*;
 
@@ -111,8 +111,18 @@ fn ReleaseTab(
 
     rsx! {
         div { class: "flex items-center gap-2 relative",
-            button {
-                class: if is_selected { "px-4 py-2 text-sm font-medium text-blue-400 border-b-2 border-blue-400 whitespace-nowrap" } else { "px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-300 border-b-2 border-transparent whitespace-nowrap" },
+            Button {
+                variant: ButtonVariant::Ghost,
+                size: ButtonSize::Small,
+                class: Some(
+                    if is_selected {
+                        "text-blue-400 border-b-2 border-blue-400 whitespace-nowrap rounded-none"
+                            .to_string()
+                    } else {
+                        "text-gray-400 hover:text-gray-300 border-b-2 border-transparent whitespace-nowrap rounded-none"
+                            .to_string()
+                    },
+                ),
                 onclick: move |_| on_release_select.call(()),
                 {
                     if let Some(ref name) = release.release_name {
@@ -124,13 +134,15 @@ fn ReleaseTab(
                     }
                 }
             }
-            button {
-                id: "{anchor_id}",
-                class: "px-2 py-1 text-sm text-gray-400 hover:text-gray-300 hover:bg-gray-700 rounded",
+            Button {
+                id: Some(anchor_id.clone()),
+                variant: ButtonVariant::Ghost,
+                size: ButtonSize::Small,
                 disabled: is_deleting(),
+                class: Some("px-2".to_string()),
                 onclick: {
                     let release_id = release_id.clone();
-                    move |evt| {
+                    move |evt: MouseEvent| {
                         evt.stop_propagation();
                         if !is_deleting() {
                             let current = show_release_dropdown();
@@ -152,10 +164,11 @@ fn ReleaseTab(
                 placement: Placement::BottomEnd,
                 class: "bg-gray-700 rounded-lg shadow-lg overflow-hidden border border-gray-600 min-w-[160px]",
 
-                button {
-                    class: "w-full px-4 py-2 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm",
+                Button {
+                    variant: ButtonVariant::Ghost,
                     disabled: is_deleting() || is_exporting(),
-                    onclick: move |evt| {
+                    class: Some("w-full justify-start rounded-none".to_string()),
+                    onclick: move |evt: MouseEvent| {
                         evt.stop_propagation();
                         if !is_deleting() && !is_exporting() {
                             show_release_dropdown.set(None);
@@ -167,12 +180,13 @@ fn ReleaseTab(
                 if torrent.has_torrent {
                     if torrent.is_seeding {
                         if let Some(ref handler) = on_stop_seeding {
-                            button {
-                                class: "w-full px-4 py-2 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm",
+                            Button {
+                                variant: ButtonVariant::Ghost,
                                 disabled: is_deleting() || is_exporting(),
+                                class: Some("w-full justify-start rounded-none".to_string()),
                                 onclick: {
                                     let handler = *handler;
-                                    move |evt| {
+                                    move |evt: MouseEvent| {
                                         evt.stop_propagation();
                                         if !is_deleting() && !is_exporting() {
                                             show_release_dropdown.set(None);
@@ -185,12 +199,13 @@ fn ReleaseTab(
                         }
                     } else {
                         if let Some(ref handler) = on_start_seeding {
-                            button {
-                                class: "w-full px-4 py-2 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm",
+                            Button {
+                                variant: ButtonVariant::Ghost,
                                 disabled: is_deleting() || is_exporting(),
+                                class: Some("w-full justify-start rounded-none".to_string()),
                                 onclick: {
                                     let handler = *handler;
-                                    move |evt| {
+                                    move |evt: MouseEvent| {
                                         evt.stop_propagation();
                                         if !is_deleting() && !is_exporting() {
                                             show_release_dropdown.set(None);
@@ -203,10 +218,12 @@ fn ReleaseTab(
                         }
                     }
                 }
-                button {
-                    class: "w-full px-4 py-2 text-left text-white hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm",
+                Button {
+                    variant: ButtonVariant::Ghost,
                     disabled: is_deleting() || is_exporting(),
-                    onclick: move |evt| {
+                    loading: is_exporting(),
+                    class: Some("w-full justify-start rounded-none".to_string()),
+                    onclick: move |evt: MouseEvent| {
                         evt.stop_propagation();
                         if !is_deleting() && !is_exporting() {
                             show_release_dropdown.set(None);
@@ -219,10 +236,11 @@ fn ReleaseTab(
                         "Export"
                     }
                 }
-                button {
-                    class: "w-full px-4 py-2 text-left text-red-400 hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm",
+                Button {
+                    variant: ButtonVariant::Danger,
                     disabled: is_deleting() || is_exporting(),
-                    onclick: move |evt| {
+                    class: Some("w-full justify-start rounded-none".to_string()),
+                    onclick: move |evt: MouseEvent| {
                         evt.stop_propagation();
                         if !is_deleting() && !is_exporting() {
                             show_release_dropdown.set(None);

@@ -459,4 +459,26 @@ impl ControlRegistry {
             });
         });
     }
+
+    /// Create a URL sync effect for Button mock
+    pub fn use_url_sync_button(&self) {
+        let registry = self.clone();
+        let mut is_mounted = use_signal(|| false);
+
+        use_effect(move || {
+            // Read all values to subscribe to changes
+            for signal in registry.values.values() {
+                let _ = signal.read();
+            }
+
+            if !*is_mounted.peek() {
+                is_mounted.set(true);
+                return;
+            }
+
+            navigator().replace(Route::MockButton {
+                state: registry.build_state(),
+            });
+        });
+    }
 }

@@ -1,6 +1,6 @@
 //! Delete release confirmation dialog
 
-use crate::components::Modal;
+use crate::components::{Button, ButtonVariant, Modal};
 use dioxus::prelude::*;
 
 #[component]
@@ -31,8 +31,8 @@ pub fn DeleteReleaseDialog(
                     }
                 }
                 div { class: "flex gap-3 justify-end",
-                    button {
-                        class: "px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg",
+                    Button {
+                        variant: ButtonVariant::Secondary,
                         disabled: is_deleting(),
                         onclick: move |_| {
                             if !is_deleting() {
@@ -41,9 +41,10 @@ pub fn DeleteReleaseDialog(
                         },
                         "Cancel"
                     }
-                    button {
-                        class: "px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg",
+                    Button {
+                        variant: ButtonVariant::Danger,
                         disabled: is_deleting(),
+                        loading: is_deleting(),
                         onclick: {
                             let release_id = release_id.clone();
                             move |_| {

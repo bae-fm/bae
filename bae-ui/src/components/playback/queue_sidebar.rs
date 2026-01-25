@@ -6,6 +6,7 @@
 
 use crate::components::icons::{ImageIcon, MenuIcon, XIcon};
 use crate::components::utils::format_duration;
+use crate::components::{Button, ButtonSize, ButtonVariant, ChromelessButton};
 use crate::display_types::QueueItem;
 use crate::stores::playback::{PlaybackUiState, PlaybackUiStateStoreExt};
 use crate::stores::ui::{SidebarState, SidebarStateStoreExt};
@@ -47,13 +48,14 @@ pub fn QueueSidebarView(
 
             // Footer with controls
             div { class: "flex items-center justify-between p-4 border-t border-gray-700",
-                button {
-                    class: "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600 text-sm",
+                Button {
+                    variant: ButtonVariant::Secondary,
+                    size: ButtonSize::Small,
                     onclick: move |_| on_clear.call(()),
                     "Clear"
                 }
-                button {
-                    class: "px-3 py-2 bg-gray-700 rounded hover:bg-gray-600",
+                Button {
+                    variant: ButtonVariant::Secondary,
                     onclick: move |_| on_close.call(()),
                     MenuIcon { class: "w-5 h-5" }
                 }
@@ -156,8 +158,16 @@ fn QueueItemView(
             // Track info
             div { class: "flex-1 min-w-0",
                 div { class: "flex items-center gap-2",
-                    button {
-                        class: if is_current { "font-medium text-blue-300 hover:text-blue-200 text-left truncate flex-1" } else { "font-medium text-white hover:text-blue-300 text-left truncate flex-1" },
+                    ChromelessButton {
+                        class: Some(
+                            if is_current {
+                                "font-medium text-blue-300 hover:text-blue-200 text-left truncate flex-1"
+                                    .to_string()
+                            } else {
+                                "font-medium text-white hover:text-blue-300 text-left truncate flex-1"
+                                    .to_string()
+                            },
+                        ),
                         onclick: {
                             let track_id = item.track.id.clone();
                             move |_| on_click.call(track_id.clone())
@@ -176,8 +186,12 @@ fn QueueItemView(
             }
             // Remove button (only for non-current tracks)
             if !is_current {
-                button {
-                    class: "px-2 py-1 text-gray-400 hover:text-red-400 rounded opacity-0 group-hover:opacity-100 transition-opacity",
+                ChromelessButton {
+                    class: Some(
+                        "px-2 py-1 text-gray-400 hover:text-red-400 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                            .to_string(),
+                    ),
+                    aria_label: Some("Remove from queue".to_string()),
                     onclick: move |_| on_remove.call(index),
                     XIcon { class: "w-4 h-4" }
                 }

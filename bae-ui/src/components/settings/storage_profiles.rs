@@ -4,6 +4,7 @@
 //! Accepts `ReadSignal` props and reads at leaf level for granular reactivity.
 
 use crate::components::icons::{CheckIcon, PencilIcon, PlusIcon, TrashIcon};
+use crate::components::{Button, ButtonSize, ButtonVariant, ChromelessButton};
 use dioxus::prelude::*;
 
 /// Storage location type
@@ -64,9 +65,7 @@ pub fn StorageProfilesSectionView(
             div { class: "flex items-center justify-between mb-6",
                 h2 { class: "text-xl font-semibold text-white", "Storage Profiles" }
                 if !is_creating && editing_profile.is_none() {
-                    button {
-                        class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors flex items-center gap-2",
-                        onclick: move |_| on_create.call(()),
+                    Button { onclick: move |_| on_create.call(()),
                         PlusIcon { class: "w-5 h-5" }
                         "New Profile"
                     }
@@ -159,9 +158,13 @@ fn ProfileCard(
                 }
                 div { class: "flex items-center gap-2",
                     if !profile.is_default {
-                        button {
-                            class: "p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors",
-                            title: "Set as default",
+                        ChromelessButton {
+                            class: Some(
+                                "p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                                    .to_string(),
+                            ),
+                            title: Some("Set as default".to_string()),
+                            aria_label: Some("Set as default".to_string()),
                             onclick: {
                                 let pid = profile_id_for_default.clone();
                                 move |_| on_set_default.call(pid.clone())
@@ -169,18 +172,26 @@ fn ProfileCard(
                             CheckIcon { class: "w-5 h-5" }
                         }
                     }
-                    button {
-                        class: "p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors",
-                        title: "Edit",
+                    ChromelessButton {
+                        class: Some(
+                            "p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                                .to_string(),
+                        ),
+                        title: Some("Edit".to_string()),
+                        aria_label: Some("Edit".to_string()),
                         onclick: {
                             let p = profile_for_edit.clone();
                             move |_| on_edit.call(p.clone())
                         },
                         PencilIcon { class: "w-5 h-5" }
                     }
-                    button {
-                        class: "p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-lg transition-colors",
-                        title: "Delete",
+                    ChromelessButton {
+                        class: Some(
+                            "p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-lg transition-colors"
+                                .to_string(),
+                        ),
+                        title: Some("Delete".to_string()),
+                        aria_label: Some("Delete".to_string()),
                         onclick: move |_| show_delete_confirm.set(true),
                         TrashIcon { class: "w-5 h-5" }
                     }
@@ -193,8 +204,9 @@ fn ProfileCard(
                         "Are you sure you want to delete this profile?"
                     }
                     div { class: "flex gap-2",
-                        button {
-                            class: "px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-500 transition-colors text-sm",
+                        Button {
+                            variant: ButtonVariant::Danger,
+                            size: ButtonSize::Small,
                             onclick: {
                                 let pid = profile_id_for_delete.clone();
                                 move |_| {
@@ -204,8 +216,9 @@ fn ProfileCard(
                             },
                             "Delete"
                         }
-                        button {
-                            class: "px-3 py-1.5 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors text-sm",
+                        Button {
+                            variant: ButtonVariant::Secondary,
+                            size: ButtonSize::Small,
                             onclick: move |_| show_delete_confirm.set(false),
                             "Cancel"
                         }
@@ -467,9 +480,10 @@ pub fn StorageProfileEditorView(
 
                     div { class: "flex items-center justify-between",
                         span { class: "text-sm font-medium text-gray-400", "Credentials" }
-                        button {
-                            r#type: "button",
-                            class: "text-sm text-indigo-400 hover:text-indigo-300",
+                        Button {
+                            variant: ButtonVariant::Ghost,
+                            size: ButtonSize::Small,
+                            class: Some("text-sm text-indigo-400 hover:text-indigo-300".to_string()),
                             onclick: move |_| show_secrets.toggle(),
                             if *show_secrets.read() {
                                 "Hide"
@@ -542,13 +556,9 @@ pub fn StorageProfileEditorView(
                 }
 
                 div { class: "flex gap-3 pt-2",
-                    button {
-                        class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors",
-                        onclick: handle_save,
-                        "Save"
-                    }
-                    button {
-                        class: "px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors",
+                    Button { onclick: handle_save, "Save" }
+                    Button {
+                        variant: ButtonVariant::Secondary,
                         onclick: move |_| on_cancel.call(()),
                         "Cancel"
                     }

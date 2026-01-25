@@ -1,7 +1,7 @@
 //! Text file modal view component
 
 use crate::components::icons::XIcon;
-use crate::components::Modal;
+use crate::components::{ChromelessButton, Modal};
 use dioxus::prelude::*;
 
 /// Modal for viewing text file contents (CUE files, logs, etc.)
@@ -23,8 +23,9 @@ pub fn TextFileModalView(
                 // Header
                 div { class: "flex items-center justify-between p-4 border-b border-gray-700",
                     h3 { class: "text-lg font-semibold text-white", {filename} }
-                    button {
-                        class: "text-gray-400 hover:text-white transition-colors",
+                    ChromelessButton {
+                        class: Some("text-gray-400 hover:text-white transition-colors".to_string()),
+                        aria_label: Some("Close".to_string()),
                         onclick: move |_| on_close.call(()),
                         XIcon { class: "w-5 h-5" }
                     }

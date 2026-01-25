@@ -1,8 +1,7 @@
 //! Import page
 
 use bae_ui::{
-    CdDriveStatus, CdSelectorView, FolderSelectorView, ImportSource, ImportView, TorrentInputMode,
-    TorrentInputView,
+    CdDriveStatus, CdSelectorView, ImportSource, ImportView, TorrentInputMode, TorrentInputView,
 };
 use dioxus::prelude::*;
 
@@ -38,8 +37,11 @@ pub fn Import() -> Element {
 
 #[component]
 pub fn FolderImportDemo() -> Element {
+    // Real folder import is mocked via FolderImportMock
     rsx! {
-        FolderSelectorView { on_select_click: |_| {} }
+        div { class: "flex-1 flex items-center justify-center text-gray-400",
+            "Select a folder to import (see FolderImportMock for full workflow)"
+        }
     }
 }
 

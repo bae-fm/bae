@@ -1,7 +1,7 @@
 //! Confirmation view component
 
 use crate::components::icons::ImageIcon;
-use crate::components::StorageProfile;
+use crate::components::{Button, ButtonVariant, ChromelessButton, StorageProfile};
 use crate::display_types::{FileInfo, MatchCandidate, MatchSourceType, SelectedCover};
 use dioxus::prelude::*;
 
@@ -128,8 +128,17 @@ pub fn ConfirmationView(
                                 );
                                 let url_for_click = url.clone();
                                 rsx! {
-                                    button {
-                                        class: if is_selected { "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden" } else { "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden" },
+                                    ChromelessButton {
+                                        class: Some(
+                                            if is_selected {
+                                                "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden"
+                                                    .to_string()
+                                            } else {
+                                                "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden"
+                                                    .to_string()
+                                            },
+                                        ),
+                                        aria_label: Some("Select remote cover art".to_string()),
                                         onclick: move |_| on_select_remote_cover.call(url_for_click.clone()),
                                         img {
                                             src: "{url}",
@@ -158,9 +167,18 @@ pub fn ConfirmationView(
                                 let img_url = img.display_url.clone();
                                 let name_for_click = img.name.clone();
                                 rsx! {
-                                    button {
+                                    ChromelessButton {
                                         key: "{img_url}",
-                                        class: if is_selected { "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden" } else { "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden" },
+                                        class: Some(
+                                            if is_selected {
+                                                "relative w-16 h-16 rounded border-2 border-green-500 overflow-hidden"
+                                                    .to_string()
+                                            } else {
+                                                "relative w-16 h-16 rounded border-2 border-gray-600 hover:border-gray-500 overflow-hidden"
+                                                    .to_string()
+                                            },
+                                        ),
+                                        aria_label: Some(format!("Select cover art: {}", img.name)),
                                         onclick: move |_| on_select_local_cover.call(name_for_click.clone()),
                                         img {
                                             src: "{img_url}",
@@ -212,8 +230,10 @@ pub fn ConfirmationView(
                         }
                     }
                 }
-                button {
-                    class: "text-xs text-indigo-400 hover:text-indigo-300 transition-colors",
+                Button {
+                    variant: ButtonVariant::Ghost,
+                    size: crate::components::ButtonSize::Small,
+                    class: Some("text-xs text-indigo-400 hover:text-indigo-300".to_string()),
                     onclick: move |_| on_configure_storage.call(()),
                     "Configure"
                 }
@@ -226,15 +246,15 @@ pub fn ConfirmationView(
                         span { class: "text-sm text-gray-400", "{step}" }
                     }
                 }
-                button {
-                    class: "px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors border border-gray-600",
+                Button {
+                    variant: ButtonVariant::Secondary,
                     disabled: is_importing,
                     onclick: move |_| on_edit.call(()),
                     "Edit"
                 }
-                button {
-                    class: if is_importing { "px-6 py-2 bg-green-600 text-white rounded-lg transition-colors opacity-75 cursor-not-allowed flex items-center gap-2" } else { "px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2" },
+                Button {
                     disabled: is_importing,
+                    loading: is_importing,
                     onclick: move |_| on_confirm.call(()),
                     if is_importing {
                         div { class: "animate-spin rounded-full h-4 w-4 border-b-2 border-white" }

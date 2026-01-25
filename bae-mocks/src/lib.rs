@@ -11,8 +11,8 @@ pub mod ui;
 
 use dioxus::prelude::*;
 use pages::{
-    AlbumDetail, DemoLayout, Import, Library, MockAlbumDetail, MockDropdownTest, MockFolderImport,
-    MockIndex, MockLibrary, MockTitleBar, Settings,
+    AlbumDetail, DemoLayout, Import, Library, MockAlbumDetail, MockButton, MockDropdownTest,
+    MockFolderImport, MockIndex, MockLibrary, MockTitleBar, Settings,
 };
 
 pub const FAVICON: Asset = asset!("/assets/favicon.ico");
@@ -39,6 +39,8 @@ pub enum Route {
     Settings {},
     #[end_layout]
     // Mock pages with controls
+    #[route("/button?:state")]
+    MockButton { state: Option<String> },
     #[route("/folder-import?:state")]
     MockFolderImport { state: Option<String> },
     #[route("/album-detail?:state")]

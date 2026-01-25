@@ -1,5 +1,6 @@
 //! Import source selector view
 
+use crate::components::{Button, ButtonSize, ButtonVariant};
 use dioxus::prelude::*;
 
 /// Import source type
@@ -40,8 +41,10 @@ pub fn ImportSourceSelectorView(
     rsx! {
         div { class: "flex items-center gap-2 rounded-lg bg-gray-800/40 p-1",
             for source in ImportSource::all() {
-                button {
-                    class: if selected_source == *source { "px-3 py-1 text-xs font-medium rounded-md bg-gray-700 text-gray-100" } else { "px-3 py-1 text-xs font-medium rounded-md text-gray-400 hover:text-gray-200" },
+                Button {
+                    variant: if selected_source == *source { ButtonVariant::Secondary } else { ButtonVariant::Ghost },
+                    size: ButtonSize::Small,
+                    class: Some("text-xs".to_string()),
                     onclick: {
                         let source = *source;
                         move |_| on_source_select.call(source)
@@ -50,16 +53,22 @@ pub fn ImportSourceSelectorView(
                 }
             }
             if !cfg!(feature = "torrent") {
-                button {
-                    class: "px-3 py-1 text-xs font-medium rounded-md text-gray-600 cursor-not-allowed",
+                Button {
+                    variant: ButtonVariant::Ghost,
+                    size: ButtonSize::Small,
                     disabled: true,
+                    class: Some("text-xs text-gray-600 cursor-not-allowed".to_string()),
+                    onclick: move |_| {},
                     "Torrent"
                 }
             }
             if !cfg!(feature = "cd-rip") {
-                button {
-                    class: "px-3 py-1 text-xs font-medium rounded-md text-gray-600 cursor-not-allowed",
+                Button {
+                    variant: ButtonVariant::Ghost,
+                    size: ButtonSize::Small,
                     disabled: true,
+                    class: Some("text-xs text-gray-600 cursor-not-allowed".to_string()),
+                    onclick: move |_| {},
                     "CD"
                 }
             }

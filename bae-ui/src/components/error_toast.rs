@@ -1,6 +1,7 @@
 //! Generic error toast notification
 
 use crate::components::icons::XIcon;
+use crate::components::ChromelessButton;
 use dioxus::prelude::*;
 
 /// A dismissible error toast notification
@@ -22,8 +23,9 @@ pub fn ErrorToast(
                     }
                     span { class: if title.is_some() { "text-sm text-red-100" } else { "" }, "{message}" }
                 }
-                button {
-                    class: "text-white hover:text-gray-200",
+                ChromelessButton {
+                    class: Some("text-white hover:text-gray-200".to_string()),
+                    aria_label: Some("Dismiss".to_string()),
                     onclick: move |_| on_dismiss.call(()),
                     XIcon { class: "w-4 h-4" }
                 }

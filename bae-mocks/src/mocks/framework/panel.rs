@@ -16,6 +16,7 @@ const VIEWPORT_KEY: &str = "mock_panel_viewport";
 /// All available mock pages - add new mocks here
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MockPage {
+    Button,
     Library,
     AlbumDetail,
     FolderImport,
@@ -25,6 +26,7 @@ pub enum MockPage {
 impl MockPage {
     /// All variants - update when adding new mocks
     pub const ALL: &[MockPage] = &[
+        MockPage::Button,
         MockPage::Library,
         MockPage::AlbumDetail,
         MockPage::FolderImport,
@@ -34,6 +36,7 @@ impl MockPage {
     /// Display name shown in UI
     pub fn label(self) -> &'static str {
         match self {
+            MockPage::Button => "Button",
             MockPage::Library => "LibraryView",
             MockPage::AlbumDetail => "AlbumDetailView",
             MockPage::FolderImport => "FolderImportView",
@@ -44,6 +47,7 @@ impl MockPage {
     /// URL key for serialization
     pub fn key(self) -> &'static str {
         match self {
+            MockPage::Button => "button",
             MockPage::Library => "library",
             MockPage::AlbumDetail => "album-detail",
             MockPage::FolderImport => "folder-import",
@@ -54,6 +58,7 @@ impl MockPage {
     /// Description shown in mock index
     pub fn description(self) -> &'static str {
         match self {
+            MockPage::Button => "Button component with variants, sizes, and states",
             MockPage::Library => "Album grid with loading/error/empty states",
             MockPage::AlbumDetail => "Album detail page with tracks and controls",
             MockPage::FolderImport => "Folder import workflow with all phases",
@@ -64,6 +69,7 @@ impl MockPage {
     /// Convert to Route
     pub fn to_route(self, state: Option<String>) -> Route {
         match self {
+            MockPage::Button => Route::MockButton { state },
             MockPage::Library => Route::MockLibrary { state },
             MockPage::AlbumDetail => Route::MockAlbumDetail { state },
             MockPage::FolderImport => Route::MockFolderImport { state },
