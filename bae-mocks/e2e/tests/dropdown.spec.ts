@@ -1,11 +1,28 @@
 import { test, expect, Page } from '@playwright/test';
 
+// Wait for all images in the viewport to finish loading
+async function waitForImages(page: Page, selector: string, timeout = 15000): Promise<void> {
+  await page.waitForFunction(
+    (sel) => {
+      const images = document.querySelectorAll(`${sel} img`);
+      if (images.length === 0) return true;
+      return Array.from(images).every((img) => {
+        const imgEl = img as HTMLImageElement;
+        return imgEl.complete && imgEl.naturalHeight > 0;
+      });
+    },
+    selector,
+    { timeout }
+  );
+}
+
 test.describe('Dropdown Component', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/dropdown-test');
     // Wait for the grid to render (longer timeout for CI WASM builds)
     await page.waitForSelector('[data-testid="album-card"]', { timeout: 30000 });
-    await page.waitForTimeout(500);
+    // Wait for album cover images to load
+    await waitForImages(page, '[data-testid="album-card"]');
   });
 
   test('FloatingUIDOM is available', async ({ page }) => {
