@@ -1,5 +1,8 @@
 import { test, expect, Page } from '@playwright/test';
 
+// Skip in CI - these are development/debugging tests, not screenshot generation
+test.skip(() => !!process.env.CI, 'Dropdown tests only run locally');
+
 test.describe('Dropdown Component', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/dropdown-test');
