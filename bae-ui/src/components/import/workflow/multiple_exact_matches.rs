@@ -8,7 +8,7 @@ use dioxus::prelude::*;
 ///
 /// Accepts `ReadStore<ImportState>` - reads at leaf level for granular reactivity.
 #[component]
-pub fn MultipleMatchesView(
+pub fn MultipleExactMatchesView(
     state: ReadStore<ImportState>,
     on_select: EventHandler<usize>,
 ) -> Element {

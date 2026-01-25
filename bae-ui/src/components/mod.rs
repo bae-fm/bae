@@ -41,10 +41,10 @@ pub use icons::{
     SettingsIcon, SkipBackIcon, SkipForwardIcon, StarIcon, TrashIcon, UploadIcon, XIcon,
 };
 pub use import::{
-    CdDriveStatus, CdSelectorView, ConfirmationView, DetectingMetadataView, DiscIdLookupErrorView,
-    FileListView, FolderImportView, FolderImportViewProps, ImportErrorDisplayView, ImportSource,
+    CdDriveStatus, CdSelectorView, ConfirmationView, DiscIdLookupErrorView, FileListView,
+    FolderImportView, FolderImportViewProps, ImportErrorDisplayView, ImportSource,
     ImportSourceSelectorView, ImportView, ManualSearchPanelView, MatchItemView, MatchListView,
-    MetadataDetectionPromptView, MultipleMatchesView, ReleaseSelectorView, ReleaseSidebarView,
+    MetadataDetectionPromptView, MultipleExactMatchesView, ReleaseSelectorView, ReleaseSidebarView,
     SearchSourceSelectorView, SelectedSourceView, TorrentFilesDisplayView, TorrentInfoDisplayView,
     TorrentInputMode, TorrentInputView, TorrentTrackerDisplayView, TrackerConnectionStatus,
     TrackerStatus,

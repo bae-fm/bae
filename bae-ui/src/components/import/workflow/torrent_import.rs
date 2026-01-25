@@ -14,8 +14,8 @@
 
 use super::{
     ConfirmationView, DiscIdLookupErrorView, ImportErrorDisplayView, ManualSearchPanelView,
-    MetadataDetectionPromptView, MultipleMatchesView, SelectedSourceView, TorrentFilesDisplayView,
-    TorrentInfoDisplayView, TorrentTrackerDisplayView, TrackerStatus,
+    MetadataDetectionPromptView, MultipleExactMatchesView, SelectedSourceView,
+    TorrentFilesDisplayView, TorrentInfoDisplayView, TorrentTrackerDisplayView, TrackerStatus,
 };
 use crate::components::StorageProfile;
 use crate::display_types::{
@@ -206,7 +206,7 @@ fn TorrentIdentifyContent(
             match identify_mode {
                 IdentifyMode::Created | IdentifyMode::DiscIdLookup => rsx! {},
                 IdentifyMode::MultipleExactMatches => rsx! {
-                    MultipleMatchesView { state, on_select: on_exact_match_select }
+                    MultipleExactMatchesView { state, on_select: on_exact_match_select }
                 },
                 IdentifyMode::ManualSearch => rsx! {
                     if discid_lookup_error.is_some() {

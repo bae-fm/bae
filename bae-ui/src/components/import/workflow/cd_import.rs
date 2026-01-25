@@ -14,7 +14,7 @@
 
 use super::{
     CdRipperView, CdTocDisplayView, ConfirmationView, DiscIdLookupErrorView,
-    ImportErrorDisplayView, ManualSearchPanelView, MultipleMatchesView, SelectedSourceView,
+    ImportErrorDisplayView, ManualSearchPanelView, MultipleExactMatchesView, SelectedSourceView,
 };
 use crate::components::StorageProfile;
 use crate::display_types::{
@@ -180,7 +180,7 @@ fn CdIdentifyContent(
             match identify_mode {
                 IdentifyMode::Created | IdentifyMode::DiscIdLookup => rsx! {},
                 IdentifyMode::MultipleExactMatches => rsx! {
-                    MultipleMatchesView { state, on_select: on_exact_match_select }
+                    MultipleExactMatchesView { state, on_select: on_exact_match_select }
                 },
                 IdentifyMode::ManualSearch => rsx! {
                     if discid_lookup_error.is_some() {
