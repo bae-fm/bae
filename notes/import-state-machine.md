@@ -85,7 +85,7 @@ enum ConfirmPhase {
 
 The state machine reuses `bae-ui` enum types (`IdentifyMode`, `SearchTab`, `SearchSource`) as discriminants. No separate domain types.
 
-Note: State variants like `DiscIdLookup(String)` and `MultipleExactMatches(String)` carry their associated data explicitly. See "Explicit Data Flow" in `reactive-state-architecture.md` for the general principle.
+Note: State variants like `DiscIdLookup(String)` and `MultipleExactMatches(String)` carry their associated data explicitly. See [Explicit Data Flow](reactive-state-architecture.md#explicit-data-flow) for the general principle.
 
 ## Behavior Rules
 

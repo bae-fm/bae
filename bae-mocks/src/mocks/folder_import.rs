@@ -573,6 +573,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     on_text_file_close: |_| {},
                     on_skip_detection: |_| {},
                     on_exact_match_select: move |idx| selected_match_index.set(Some(idx)),
+                    on_confirm_exact_match: |_| {},
                     on_search_source_change: move |src| search_source.set(src),
                     on_search_tab_change: move |tab| search_tab.set(tab),
                     on_artist_change: move |v| search_artist.set(v),

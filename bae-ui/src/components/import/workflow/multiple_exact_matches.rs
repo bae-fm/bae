@@ -2,6 +2,7 @@
 
 use super::match_list::MatchListView;
 use super::DiscIdPill;
+use crate::components::{Button, ButtonSize, ButtonVariant};
 use crate::display_types::IdentifyMode;
 use crate::stores::import::ImportState;
 use dioxus::prelude::*;
@@ -13,6 +14,7 @@ use dioxus::prelude::*;
 pub fn MultipleExactMatchesView(
     state: ReadStore<ImportState>,
     on_select: EventHandler<usize>,
+    on_confirm: EventHandler<()>,
 ) -> Element {
     // Read state at leaf - these are computed values
     let st = state.read();
@@ -30,7 +32,7 @@ pub fn MultipleExactMatchesView(
     }
 
     rsx! {
-        div { class: "p-4",
+        div { class: "p-4 max-w-xl",
             // Header
             p { class: "text-white mb-1", "Multiple Disc ID matches" }
 
@@ -46,6 +48,18 @@ pub fn MultipleExactMatchesView(
                 candidates,
                 selected_index,
                 on_select: move |index| on_select.call(index),
+            }
+
+            // Continue button - only shown when something is selected
+            if selected_index.is_some() {
+                div { class: "flex justify-end mt-4",
+                    Button {
+                        variant: ButtonVariant::Primary,
+                        size: ButtonSize::Medium,
+                        onclick: move |_| on_confirm.call(()),
+                        "Continue"
+                    }
+                }
             }
         }
     }

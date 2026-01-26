@@ -152,6 +152,16 @@ pub fn TorrentImport() -> Element {
         }
     };
 
+    let on_confirm_exact_match = {
+        let app = app.clone();
+        move |_| {
+            app.state
+                .import()
+                .write()
+                .dispatch(CandidateEvent::ConfirmExactMatch);
+        }
+    };
+
     // Manual search handler
     let perform_search = {
         let app = app.clone();
@@ -508,6 +518,7 @@ pub fn TorrentImport() -> Element {
             storage_profiles,
             // Callbacks
             on_exact_match_select,
+            on_confirm_exact_match,
             on_search_source_change,
             on_search_tab_change,
             on_artist_change,

@@ -14,7 +14,13 @@ pub fn MatchItemView(
     let border_class = if is_selected {
         "border-blue-500 bg-blue-900/30"
     } else {
-        "border-gray-700"
+        "border-gray-700 hover:border-gray-600"
+    };
+
+    let radio_border = if is_selected {
+        "border-blue-500"
+    } else {
+        "border-gray-500"
     };
 
     let (format_text, country_text, label_text, catalog_text) = match candidate.source_type {
@@ -39,6 +45,13 @@ pub fn MatchItemView(
             onclick: move |_| on_select.call(()),
 
             div { class: "flex items-center gap-3",
+                // Radio indicator
+                div { class: "w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center {radio_border}",
+                    if is_selected {
+                        div { class: "w-2 h-2 rounded-full bg-blue-500" }
+                    }
+                }
+
                 // Cover art
                 div { class: "w-10 h-10 flex-shrink-0 bg-gray-700 rounded overflow-hidden",
                     if let Some(ref cover_url) = candidate.cover_url {

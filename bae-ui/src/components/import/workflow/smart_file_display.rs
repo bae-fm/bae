@@ -51,9 +51,22 @@ fn AudioTileContent(
     }
 }
 
-/// Smart file display view - shows release materials as a compact grid of tiles
+/// Section header for file groups
+#[component]
+fn FileSection(label: &'static str, children: Element) -> Element {
+    rsx! {
+        div { class: "space-y-2",
+            div { class: "text-[11px] font-medium text-gray-500 uppercase tracking-wide",
+                "{label}"
+            }
+            {children}
+        }
+    }
+}
+
+/// Smart file display view - shows release materials grouped by type
 ///
-/// Displays audio, artwork, documents, and other files uniformly.
+/// Displays audio, artwork, documents, and other files with section headers.
 /// Handles its own modal state for viewing text files and images.
 #[component]
 pub fn SmartFileDisplayView(
@@ -76,41 +89,73 @@ pub fn SmartFileDisplayView(
         };
     }
 
+    // Tile grid layout with larger gap
+    let tile_layout = "flex flex-wrap gap-2 content-start";
+
+    // Check which sections have content
+    let has_audio = !matches!(&files.audio, AudioContentInfo::TrackFiles(t) if t.is_empty());
+    let has_artwork = !files.artwork.is_empty();
+    let has_documents = !files.documents.is_empty();
+    let has_other = !files.other.is_empty();
+
     rsx! {
-        // Wrapping grid of fixed-size square tiles
-        div { class: "flex flex-wrap gap-1.5 content-start",
-            // Audio content tile
-            AudioTileView {
-                audio: files.audio.clone(),
-                on_cue_click: move |(name, _path): (String, String)| on_text_file_select.call(name),
-            }
-
-            // Artwork tiles
-            for (idx , file) in files.artwork.iter().enumerate() {
-                GalleryThumbnailView {
-                    key: "{file.path}",
-                    filename: file.name.clone(),
-                    url: file.display_url.clone(),
-                    index: idx,
-                    on_click: {
-                        let mut viewing_image_index = viewing_image_index;
-                        move |idx| viewing_image_index.set(Some(idx))
-                    },
+        div { class: "space-y-5",
+            // Audio section
+            if has_audio {
+                FileSection { label: "Audio",
+                    div { class: "{tile_layout}",
+                        AudioTileView {
+                            audio: files.audio.clone(),
+                            on_cue_click: move |(name, _path): (String, String)| on_text_file_select.call(name),
+                        }
+                    }
                 }
             }
 
-            // Document tiles
-            for doc in files.documents.iter() {
-                DocumentTileView {
-                    key: "{doc.path}",
-                    file: doc.clone(),
-                    on_click: move |(name, _path): (String, String)| on_text_file_select.call(name),
+            // Artwork section - covers, scans, booklets
+            if has_artwork {
+                FileSection { label: "Artwork",
+                    div { class: "{tile_layout}",
+                        for (idx , file) in files.artwork.iter().enumerate() {
+                            GalleryThumbnailView {
+                                key: "{file.path}",
+                                filename: file.name.clone(),
+                                url: file.display_url.clone(),
+                                index: idx,
+                                on_click: {
+                                    let mut viewing_image_index = viewing_image_index;
+                                    move |idx| viewing_image_index.set(Some(idx))
+                                },
+                            }
+                        }
+                    }
                 }
             }
 
-            // Other files as simple tiles
-            for file in files.other.iter() {
-                OtherFileTileView { key: "{file.path}", file: file.clone() }
+            // Documents section - logs, nfo, txt
+            if has_documents {
+                FileSection { label: "Documents",
+                    div { class: "{tile_layout}",
+                        for doc in files.documents.iter() {
+                            DocumentTileView {
+                                key: "{doc.path}",
+                                file: doc.clone(),
+                                on_click: move |(name, _path): (String, String)| on_text_file_select.call(name),
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Other files
+            if has_other {
+                FileSection { label: "Other",
+                    div { class: "{tile_layout}",
+                        for file in files.other.iter() {
+                            OtherFileTileView { key: "{file.path}", file: file.clone() }
+                        }
+                    }
+                }
             }
         }
 

@@ -6,11 +6,12 @@
 //! User picks a folder (full-width folder selector).
 //!
 //! ## Working State (after folder selected)
-//! Two-pane layout:
+//! Three-column layout with context header:
 //! - Left sidebar: List of detected releases with status
-//! - Right main area:
-//!   - Top: Identify/Confirm workflow for selected release
-//!   - Bottom (fixed): SmartFileDisplay showing folder contents
+//! - Detail area (right of sidebar):
+//!   - Header: Shows selected folder name and current step (Identifying/Confirming)
+//!   - Files column (narrow): SmartFileDisplay showing folder contents
+//!   - Workflow area (main): Identify/Confirm workflow for selected release
 //!
 //! ## Reactive State Pattern
 //! Pass `ReadStore<ImportState>` down through the tree. Use lenses to read
@@ -21,11 +22,9 @@ use super::{
     ConfirmationView, DiscIdPill, ImportErrorDisplayView, ManualSearchPanelView,
     MultipleExactMatchesView, SmartFileDisplayView,
 };
-use crate::components::icons::{CloudOffIcon, LoaderIcon};
+use crate::components::icons::{CloudOffIcon, FolderIcon, LoaderIcon};
 use crate::components::StorageProfile;
-use crate::components::{
-    Button, ButtonSize, ButtonVariant, PanelPosition, ResizablePanel, ResizeDirection,
-};
+use crate::components::{Button, ButtonSize, ButtonVariant};
 use crate::display_types::{IdentifyMode, ImportStep, MatchCandidate, SearchSource, SearchTab};
 use crate::stores::import::{CandidateState, ConfirmPhase, ImportState, ImportStateStoreExt};
 use dioxus::prelude::*;
@@ -61,6 +60,7 @@ pub struct FolderImportViewProps {
     pub on_text_file_close: EventHandler<()>,
     pub on_skip_detection: EventHandler<()>,
     pub on_exact_match_select: EventHandler<usize>,
+    pub on_confirm_exact_match: EventHandler<()>,
     pub on_search_source_change: EventHandler<SearchSource>,
     pub on_search_tab_change: EventHandler<SearchTab>,
     pub on_artist_change: EventHandler<String>,
@@ -97,46 +97,62 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
     let step = state.read().get_import_step();
 
     rsx! {
-        // `relative` is used to position the FilesDock absolutely at the bottom of the page
-        div { class: "relative flex-1 flex flex-col",
-            if !is_empty {
+        if !is_empty {
+            // Empty state - centered
+            div { class: "flex-1 flex flex-col",
                 EmptyView {
                     is_scanning,
                     on_folder_select: props.on_folder_select_click,
                 }
-            } else {
-                WorkflowContent {
-                    state,
-                    step,
-                    storage_profiles: props.storage_profiles,
-                    on_skip_detection: props.on_skip_detection,
-                    on_exact_match_select: props.on_exact_match_select,
-                    on_search_source_change: props.on_search_source_change,
-                    on_search_tab_change: props.on_search_tab_change,
-                    on_artist_change: props.on_artist_change,
-                    on_album_change: props.on_album_change,
-                    on_year_change: props.on_year_change,
-                    on_label_change: props.on_label_change,
-                    on_catalog_number_change: props.on_catalog_number_change,
-                    on_barcode_change: props.on_barcode_change,
-                    on_manual_match_select: props.on_manual_match_select,
-                    on_search: props.on_search,
-                    on_manual_confirm: props.on_manual_confirm,
-                    on_retry_discid_lookup: props.on_retry_discid_lookup,
-                    on_select_remote_cover: props.on_select_remote_cover,
-                    on_select_local_cover: props.on_select_local_cover,
-                    on_storage_profile_change: props.on_storage_profile_change,
-                    on_edit: props.on_edit,
-                    on_confirm: props.on_confirm,
-                    on_configure_storage: props.on_configure_storage,
-                    on_view_duplicate: props.on_view_duplicate,
-                }
-                FilesDock {
-                    state,
-                    selected_text_file: props.selected_text_file.clone(),
-                    text_file_content: props.text_file_content.clone(),
-                    on_text_file_select: props.on_text_file_select,
-                    on_text_file_close: props.on_text_file_close,
+            }
+        } else {
+            // Detail pane: unified area for selected folder
+            // Uses subtle background and rounded corners to visually group Files + Workflow as one unit
+            div { class: "flex-1 flex flex-col min-h-0 m-2 ml-0 bg-gray-900/40 rounded-xl overflow-hidden",
+                // Context header showing folder name and step
+                DetailHeader { state, step }
+
+                // Content: Files | Workflow
+                div { class: "flex-1 flex flex-row min-h-0",
+                    // Left: Files column (narrow, scrollable)
+                    FilesColumn {
+                        state,
+                        selected_text_file: props.selected_text_file.clone(),
+                        text_file_content: props.text_file_content.clone(),
+                        on_text_file_select: props.on_text_file_select,
+                        on_text_file_close: props.on_text_file_close,
+                    }
+
+                    // Right: Workflow (main, fills remaining space)
+                    div { class: "flex-1 min-h-0 flex flex-col overflow-auto",
+                        WorkflowContent {
+                            state,
+                            step,
+                            storage_profiles: props.storage_profiles,
+                            on_skip_detection: props.on_skip_detection,
+                            on_exact_match_select: props.on_exact_match_select,
+                            on_confirm_exact_match: props.on_confirm_exact_match,
+                            on_search_source_change: props.on_search_source_change,
+                            on_search_tab_change: props.on_search_tab_change,
+                            on_artist_change: props.on_artist_change,
+                            on_album_change: props.on_album_change,
+                            on_year_change: props.on_year_change,
+                            on_label_change: props.on_label_change,
+                            on_catalog_number_change: props.on_catalog_number_change,
+                            on_barcode_change: props.on_barcode_change,
+                            on_manual_match_select: props.on_manual_match_select,
+                            on_search: props.on_search,
+                            on_manual_confirm: props.on_manual_confirm,
+                            on_retry_discid_lookup: props.on_retry_discid_lookup,
+                            on_select_remote_cover: props.on_select_remote_cover,
+                            on_select_local_cover: props.on_select_local_cover,
+                            on_storage_profile_change: props.on_storage_profile_change,
+                            on_edit: props.on_edit,
+                            on_confirm: props.on_confirm,
+                            on_configure_storage: props.on_configure_storage,
+                            on_view_duplicate: props.on_view_duplicate,
+                        }
+                    }
                 }
             }
         }
@@ -178,6 +194,7 @@ fn WorkflowContent(
     storage_profiles: ReadSignal<Vec<StorageProfile>>,
     on_skip_detection: EventHandler<()>,
     on_exact_match_select: EventHandler<usize>,
+    on_confirm_exact_match: EventHandler<()>,
     on_search_source_change: EventHandler<SearchSource>,
     on_search_tab_change: EventHandler<SearchTab>,
     on_artist_change: EventHandler<String>,
@@ -205,6 +222,7 @@ fn WorkflowContent(
                     state,
                     on_skip_detection,
                     on_exact_match_select,
+                    on_confirm_exact_match,
                     on_search_source_change,
                     on_search_tab_change,
                     on_artist_change,
@@ -246,6 +264,7 @@ fn IdentifyStep(
     state: ReadStore<ImportState>,
     on_skip_detection: EventHandler<()>,
     on_exact_match_select: EventHandler<usize>,
+    on_confirm_exact_match: EventHandler<()>,
     on_search_source_change: EventHandler<SearchSource>,
     on_search_tab_change: EventHandler<SearchTab>,
     on_artist_change: EventHandler<String>,
@@ -274,7 +293,11 @@ fn IdentifyStep(
                 }
             },
             IdentifyMode::MultipleExactMatches(_) => rsx! {
-                MultipleExactMatchesView { state, on_select: on_exact_match_select }
+                MultipleExactMatchesView {
+                    state,
+                    on_select: on_exact_match_select,
+                    on_confirm: on_confirm_exact_match,
+                }
             },
             IdentifyMode::ManualSearch => rsx! {
                 ManualSearchPanelView {
@@ -376,12 +399,47 @@ fn ConfirmStep(
 }
 
 // ============================================================================
-// Files Dock
+// Detail Header
 // ============================================================================
 
-/// Resizable bottom dock showing files
+/// Header showing the selected folder name and current step
 #[component]
-fn FilesDock(
+fn DetailHeader(state: ReadStore<ImportState>, step: ImportStep) -> Element {
+    let folder_name = state.read().get_current_candidate_name();
+
+    let step_label = match step {
+        ImportStep::Identify => "Identifying",
+        ImportStep::Confirm => "Confirming",
+    };
+
+    let Some(name) = folder_name else {
+        return rsx! {};
+    };
+
+    rsx! {
+        div { class: "flex-shrink-0 px-5 py-4 border-b border-gray-700/50 bg-gray-800/30",
+            div { class: "flex items-center gap-2.5",
+                // Folder icon
+                FolderIcon { class: "w-4 h-4 flex-shrink-0 text-gray-400" }
+
+                // Folder name (primary)
+                span { class: "text-sm font-medium text-gray-200 truncate", "{name}" }
+
+                // Step indicator
+                span { class: "text-xs text-gray-500", "•" }
+                span { class: "text-xs text-gray-400", "{step_label}" }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Files Column
+// ============================================================================
+
+/// Vertical files column showing folder contents
+#[component]
+fn FilesColumn(
     state: ReadStore<ImportState>,
     selected_text_file: Option<String>,
     text_file_content: Option<String>,
@@ -396,40 +454,13 @@ fn FilesDock(
         .unwrap_or_default();
 
     rsx! {
-        ResizablePanel {
-            storage_key: "import-files-dock-height",
-            min_size: 156.0,
-            max_size: 250.0,
-            default_size: 156.0,
-            grabber_span_ratio: 0.95,
-            direction: ResizeDirection::Vertical,
-            position: PanelPosition::Absolute,
-            class: "bottom-0 left-0 right-0",
-            DockCard { title: "Files", class: "w-fit max-w-3xl",
-                SmartFileDisplayView {
-                    files,
-                    selected_text_file,
-                    text_file_content,
-                    on_text_file_select,
-                    on_text_file_close,
-                }
-            }
-        }
-    }
-}
-
-/// Centered card container with title header
-#[component]
-fn DockCard(
-    title: &'static str,
-    #[props(default = "")] class: &'static str,
-    children: Element,
-) -> Element {
-    rsx! {
-        div { class: "p-3 flex justify-center h-full",
-            div { class: "h-full bg-surface-raised rounded-2xl shadow-lg shadow-black/10 px-4 py-3 overflow-y-auto {class}",
-                div { class: "text-xs font-medium text-gray-300 mb-2", "{title}" }
-                {children}
+        div { class: "w-64 flex-shrink-0 border-r border-gray-700/50 overflow-y-auto p-4",
+            SmartFileDisplayView {
+                files,
+                selected_text_file,
+                text_file_content,
+                on_text_file_select,
+                on_text_file_close,
             }
         }
     }

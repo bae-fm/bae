@@ -110,8 +110,10 @@ pub enum ConfirmPhase {
 #[derive(Clone, Debug)]
 pub enum CandidateEvent {
     // --- Identify step events ---
-    /// User selects a match from the auto/exact match list
+    /// User selects a match from the auto/exact match list (just updates selection, doesn't confirm)
     SelectExactMatch(usize),
+    /// User confirms the selected exact match and transitions to Confirming
+    ConfirmExactMatch,
     /// User switches from MultipleExactMatches to ManualSearch
     SwitchToManualSearch,
     /// User switches from ManualSearch back to MultipleExactMatches (carries the disc_id)
@@ -232,26 +234,36 @@ impl IdentifyingState {
     fn on_event(self, event: CandidateEvent) -> CandidateState {
         match event {
             CandidateEvent::SelectExactMatch(idx) => {
-                if let Some(candidate) = self.auto_matches.get(idx).cloned() {
-                    // Extract disc_id from current mode if applicable
-                    let source_disc_id = match &self.mode {
-                        IdentifyMode::MultipleExactMatches(id) => Some(id.clone()),
-                        _ => None,
-                    };
-                    CandidateState::Confirming(Box::new(ConfirmingState {
-                        files: self.files,
-                        metadata: self.metadata,
-                        confirmed_candidate: candidate,
-                        selected_cover: None,
-                        selected_profile_id: None,
-                        phase: ConfirmPhase::Ready,
-                        auto_matches: self.auto_matches,
-                        search_state: self.search_state,
-                        source_disc_id,
-                    }))
-                } else {
-                    CandidateState::Identifying(self)
+                // Just update selection, don't transition
+                let mut state = self;
+                if idx < state.auto_matches.len() {
+                    state.selected_match_index = Some(idx);
                 }
+                CandidateState::Identifying(state)
+            }
+            CandidateEvent::ConfirmExactMatch => {
+                // Confirm the selected match and transition to Confirming
+                if let Some(idx) = self.selected_match_index {
+                    if let Some(candidate) = self.auto_matches.get(idx).cloned() {
+                        // Extract disc_id from current mode if applicable
+                        let source_disc_id = match &self.mode {
+                            IdentifyMode::MultipleExactMatches(id) => Some(id.clone()),
+                            _ => None,
+                        };
+                        return CandidateState::Confirming(Box::new(ConfirmingState {
+                            files: self.files,
+                            metadata: self.metadata,
+                            confirmed_candidate: candidate,
+                            selected_cover: None,
+                            selected_profile_id: None,
+                            phase: ConfirmPhase::Ready,
+                            auto_matches: self.auto_matches,
+                            search_state: self.search_state,
+                            source_disc_id,
+                        }));
+                    }
+                }
+                CandidateState::Identifying(self)
             }
             CandidateEvent::SwitchToManualSearch => {
                 let mut state = self;
@@ -446,6 +458,7 @@ impl ConfirmingState {
                 CandidateState::Confirming(Box::new(state))
             }
             CandidateEvent::SelectExactMatch(_)
+            | CandidateEvent::ConfirmExactMatch
             | CandidateEvent::SwitchToManualSearch
             | CandidateEvent::SwitchToMultipleExactMatches(_)
             | CandidateEvent::StartDiscIdLookup(_)
@@ -753,6 +766,16 @@ impl ImportState {
         self.current_candidate_key
             .as_ref()
             .and_then(|key| self.detected_candidates.iter().position(|c| &c.path == key))
+    }
+
+    /// Get the display name of the currently selected candidate
+    pub fn get_current_candidate_name(&self) -> Option<String> {
+        self.current_candidate_key.as_ref().and_then(|key| {
+            self.detected_candidates
+                .iter()
+                .find(|c| &c.path == key)
+                .map(|c| c.name.clone())
+        })
     }
 
     /// Remove a detected release by index

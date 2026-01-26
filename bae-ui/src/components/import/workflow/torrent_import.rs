@@ -55,6 +55,7 @@ pub struct TorrentImportViewProps {
 
     // === Callbacks ===
     pub on_exact_match_select: EventHandler<usize>,
+    pub on_confirm_exact_match: EventHandler<()>,
     pub on_search_source_change: EventHandler<SearchSource>,
     pub on_search_tab_change: EventHandler<SearchTab>,
     pub on_artist_change: EventHandler<String>,
@@ -112,6 +113,7 @@ pub fn TorrentImportView(props: TorrentImportViewProps) -> Element {
                             torrent_files: props.torrent_files.clone(),
                             on_clear: props.on_clear,
                             on_exact_match_select: props.on_exact_match_select,
+                            on_confirm_exact_match: props.on_confirm_exact_match,
                             on_search_source_change: props.on_search_source_change,
                             on_search_tab_change: props.on_search_tab_change,
                             on_artist_change: props.on_artist_change,
@@ -161,6 +163,7 @@ fn TorrentIdentifyContent(
     torrent_files: Vec<TorrentFileInfo>,
     on_clear: EventHandler<()>,
     on_exact_match_select: EventHandler<usize>,
+    on_confirm_exact_match: EventHandler<()>,
     on_search_source_change: EventHandler<SearchSource>,
     on_search_tab_change: EventHandler<SearchTab>,
     on_artist_change: EventHandler<String>,
@@ -206,7 +209,11 @@ fn TorrentIdentifyContent(
             match identify_mode {
                 IdentifyMode::Created | IdentifyMode::DiscIdLookup(_) => rsx! {},
                 IdentifyMode::MultipleExactMatches(_) => rsx! {
-                    MultipleExactMatchesView { state, on_select: on_exact_match_select }
+                    MultipleExactMatchesView {
+                        state,
+                        on_select: on_exact_match_select,
+                        on_confirm: on_confirm_exact_match,
+                    }
                 },
                 IdentifyMode::ManualSearch => rsx! {
                     if discid_lookup_error.is_some() {
