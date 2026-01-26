@@ -431,7 +431,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
         None
     };
     let discid_lookup_error = if show_discid_lookup_error {
-        Some("Disc ID lookup failed: Network error".to_string())
+        Some("Network error: Could not connect to MusicBrainz".to_string())
     } else {
         None
     };

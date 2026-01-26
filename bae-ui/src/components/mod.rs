@@ -36,10 +36,10 @@ pub use error_toast::ErrorToast;
 pub use helpers::{BackButton, ConfirmDialogView, ErrorDisplay, LoadingSpinner};
 pub use icons::{
     AlertTriangleIcon, ArrowLeftIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon,
-    ChevronRightIcon, DiscIcon, DownloadIcon, EllipsisIcon, ExternalLinkIcon, FileIcon,
-    FileTextIcon, FolderIcon, ImageIcon, InfoIcon, KeyIcon, LayersIcon, LoaderIcon, LockIcon,
-    MenuIcon, MonitorIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, RefreshIcon, RowsIcon,
-    SettingsIcon, SkipBackIcon, SkipForwardIcon, StarIcon, TrashIcon, UploadIcon, XIcon,
+    ChevronRightIcon, CloudOffIcon, DiscIcon, DownloadIcon, EllipsisIcon, ExternalLinkIcon,
+    FileIcon, FileTextIcon, FolderIcon, ImageIcon, InfoIcon, KeyIcon, LayersIcon, LoaderIcon,
+    LockIcon, MenuIcon, MonitorIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, RefreshIcon,
+    RowsIcon, SettingsIcon, SkipBackIcon, SkipForwardIcon, StarIcon, TrashIcon, UploadIcon, XIcon,
 };
 pub use import::{
     CdDriveStatus, CdSelectorView, ConfirmationView, DiscIdLookupErrorView, FileListView,

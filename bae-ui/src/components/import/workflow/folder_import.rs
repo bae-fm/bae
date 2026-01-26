@@ -18,10 +18,10 @@
 //! actually render values.
 
 use super::{
-    ConfirmationView, DiscIdLookupErrorView, DiscIdPill, ImportErrorDisplayView,
-    ManualSearchPanelView, MultipleExactMatchesView, SmartFileDisplayView,
+    ConfirmationView, DiscIdPill, ImportErrorDisplayView, ManualSearchPanelView,
+    MultipleExactMatchesView, SmartFileDisplayView,
 };
-use crate::components::icons::LoaderIcon;
+use crate::components::icons::{CloudOffIcon, LoaderIcon};
 use crate::components::StorageProfile;
 use crate::components::{
     Button, ButtonSize, ButtonVariant, PanelPosition, ResizablePanel, ResizeDirection,
@@ -266,13 +266,17 @@ fn IdentifyStep(
         match mode {
             IdentifyMode::Created => rsx! {},
             IdentifyMode::DiscIdLookup(disc_id) => rsx! {
-                DiscIdLookupProgressView { disc_id, on_skip: on_skip_detection }
+                DiscIdLookupProgressView {
+                    state,
+                    disc_id,
+                    on_skip: on_skip_detection,
+                    on_retry: on_retry_discid_lookup,
+                }
             },
             IdentifyMode::MultipleExactMatches => rsx! {
                 MultipleExactMatchesView { state, on_select: on_exact_match_select }
             },
             IdentifyMode::ManualSearch => rsx! {
-                DiscIdErrorBanner { state, on_retry: on_retry_discid_lookup }
                 ManualSearchPanelView {
                     state,
                     on_search_source_change,
@@ -289,22 +293,6 @@ fn IdentifyStep(
                 }
             },
         }
-    }
-}
-
-/// DiscID error banner - uses lenses where possible
-#[component]
-fn DiscIdErrorBanner(state: ReadStore<ImportState>, on_retry: EventHandler<()>) -> Element {
-    // get_discid_lookup_error() is computed, need full read for that
-    let error = state.read().get_discid_lookup_error();
-    let is_retrying = *state.is_looking_up().read();
-
-    if error.is_some() {
-        rsx! {
-            DiscIdLookupErrorView { error_message: error, is_retrying, on_retry }
-        }
-    } else {
-        rsx! {}
     }
 }
 
@@ -451,22 +439,63 @@ fn DockCard(
 // DiscID Lookup Progress
 // ============================================================================
 
-/// Shown while looking up the release via MusicBrainz disc ID
+/// Shown while looking up the release via MusicBrainz disc ID.
+/// Also displays error state if the lookup fails.
 #[component]
-fn DiscIdLookupProgressView(disc_id: String, on_skip: EventHandler<()>) -> Element {
+fn DiscIdLookupProgressView(
+    state: ReadStore<ImportState>,
+    disc_id: String,
+    on_skip: EventHandler<()>,
+    on_retry: EventHandler<()>,
+) -> Element {
+    let error = state.read().get_discid_lookup_error();
+    let is_retrying = *state.is_looking_up().read();
+
     rsx! {
         div { class: "flex-1 flex justify-center items-center",
-            div { class: "text-center space-y-4",
-                p { class: "text-sm text-gray-400 flex items-center justify-center gap-2",
-                    LoaderIcon { class: "w-5 h-5 animate-spin" }
-                    "Looking up Disc ID "
-                    DiscIdPill { disc_id }
-                }
-                Button {
-                    variant: ButtonVariant::Outline,
-                    size: ButtonSize::Small,
-                    onclick: move |_| on_skip.call(()),
-                    "Skip and search manually"
+            div { class: "text-center space-y-2 max-w-md",
+                if error.is_none() {
+                    // Loading state
+                    p { class: "text-sm text-gray-300 flex items-center justify-center gap-2",
+                        LoaderIcon { class: "w-5 h-5 animate-spin" }
+                        "Checking MusicBrainz..."
+                    }
+                    p { class: "text-xs text-gray-500 flex items-center justify-center gap-2 pt-1",
+                        "Disc ID:"
+                        DiscIdPill { disc_id: disc_id.clone() }
+                    }
+                } else if error.is_some() {
+                    // Error state - mirrors loading state structure
+                    p { class: "text-sm text-gray-300 flex items-center justify-center gap-2",
+                        CloudOffIcon { class: "w-5 h-5 text-gray-400" }
+                        "MusicBrainz unavailable"
+                    }
+                    p { class: "text-xs text-gray-500 flex items-center justify-center gap-2 pt-1",
+                        "Disc ID:"
+                        DiscIdPill { disc_id: disc_id.clone() }
+                    }
+
+                    // Actions
+                    div { class: "flex justify-center gap-2 pt-3",
+                        Button {
+                            variant: ButtonVariant::Outline,
+                            size: ButtonSize::Small,
+                            onclick: move |_| on_skip.call(()),
+                            "Search manually"
+                        }
+                        Button {
+                            variant: ButtonVariant::Primary,
+                            size: ButtonSize::Small,
+                            disabled: is_retrying,
+                            loading: is_retrying,
+                            onclick: move |_| on_retry.call(()),
+                            if is_retrying {
+                                "Retrying..."
+                            } else {
+                                "Retry"
+                            }
+                        }
+                    }
                 }
             }
         }
