@@ -39,8 +39,10 @@ pub struct IdentifyingState {
     pub selected_match_index: Option<usize>,
     /// Manual search state (persisted even when in MultipleExactMatches)
     pub search_state: ManualSearchState,
-    /// Error from DiscID lookup (shown as banner, user can retry or search manually)
+    /// Error from DiscID lookup (network/server error - retryable)
     pub discid_lookup_error: Option<String>,
+    /// Disc ID that was searched but found no results (informational, not retryable)
+    pub disc_id_not_found: Option<String>,
 }
 
 /// State for manual search within Identify step
@@ -263,11 +265,27 @@ impl IdentifyingState {
             }
             CandidateEvent::DiscIdLookupComplete { matches, error } => {
                 let mut state = self;
+
+                // Extract disc ID from current mode (before we potentially change it)
+                let disc_id = match &state.mode {
+                    IdentifyMode::DiscIdLookup(id) => Some(id.clone()),
+                    _ => None,
+                };
+
                 state.auto_matches = matches.clone();
-                state.discid_lookup_error = error;
-                state.mode = if matches.is_empty() {
-                    IdentifyMode::ManualSearch
+
+                // Handle error vs no results vs found matches
+                if let Some(err) = error {
+                    // Network/server error - stay in DiscIdLookup mode so user can retry
+                    state.discid_lookup_error = Some(err);
+                    state.disc_id_not_found = None;
+                } else if matches.is_empty() {
+                    // Lookup succeeded but no releases found - go to manual search
+                    state.discid_lookup_error = None;
+                    state.disc_id_not_found = disc_id;
+                    state.mode = IdentifyMode::ManualSearch;
                 } else if matches.len() == 1 {
+                    // Single match - auto-confirm
                     return CandidateState::Confirming(Box::new(ConfirmingState {
                         files: state.files,
                         metadata: state.metadata,
@@ -279,8 +297,12 @@ impl IdentifyingState {
                         search_state: state.search_state,
                     }));
                 } else {
-                    IdentifyMode::MultipleExactMatches
+                    // Multiple matches - let user choose
+                    state.discid_lookup_error = None;
+                    state.disc_id_not_found = None;
+                    state.mode = IdentifyMode::MultipleExactMatches;
                 };
+
                 CandidateState::Identifying(state)
             }
             CandidateEvent::UpdateSearchField { field, value } => {
@@ -374,6 +396,7 @@ impl ConfirmingState {
                     selected_match_index: None,
                     search_state: self.search_state,
                     discid_lookup_error: None,
+                    disc_id_not_found: None,
                 })
             }
             CandidateEvent::SelectCover(cover) => {
@@ -535,6 +558,7 @@ impl ImportState {
             selected_match_index: None,
             search_state: ManualSearchState::default(),
             discid_lookup_error: None,
+            disc_id_not_found: None,
         });
         self.candidate_states.insert(key.to_string(), initial_state);
         self.loading_candidates.remove(key);
@@ -619,6 +643,14 @@ impl ImportState {
     pub fn get_discid_lookup_error(&self) -> Option<String> {
         self.current_candidate_state().and_then(|s| match s {
             CandidateState::Identifying(is) => is.discid_lookup_error.clone(),
+            _ => None,
+        })
+    }
+
+    /// Get disc ID that was searched but found no results
+    pub fn get_disc_id_not_found(&self) -> Option<String> {
+        self.current_candidate_state().and_then(|s| match s {
+            CandidateState::Identifying(is) => is.disc_id_not_found.clone(),
             _ => None,
         })
     }
