@@ -43,6 +43,8 @@ pub struct IdentifyingState {
     pub discid_lookup_error: Option<String>,
     /// Disc ID that was searched but found no results (informational, not retryable)
     pub disc_id_not_found: Option<String>,
+    /// Source disc ID for auto_matches (preserved when switching to ManualSearch)
+    pub source_disc_id: Option<String>,
 }
 
 /// State for manual search within Identify step
@@ -321,9 +323,10 @@ impl IdentifyingState {
                     // Multiple matches - let user choose
                     state.discid_lookup_error = None;
                     state.disc_id_not_found = None;
-                    if let Some(id) = disc_id {
+                    if let Some(id) = disc_id.clone() {
                         state.mode = IdentifyMode::MultipleExactMatches(id);
                     }
+                    state.source_disc_id = disc_id;
                 };
 
                 CandidateState::Identifying(state)
@@ -420,6 +423,7 @@ impl ConfirmingState {
                     search_state: self.search_state,
                     discid_lookup_error: None,
                     disc_id_not_found: None,
+                    source_disc_id: self.source_disc_id,
                 })
             }
             CandidateEvent::SelectCover(cover) => {
@@ -583,6 +587,7 @@ impl ImportState {
             search_state: ManualSearchState::default(),
             discid_lookup_error: None,
             disc_id_not_found: None,
+            source_disc_id: None,
         });
         self.candidate_states.insert(key.to_string(), initial_state);
         self.loading_candidates.remove(key);
@@ -653,6 +658,14 @@ impl ImportState {
                 CandidateState::Confirming(cs) => cs.auto_matches.clone(),
             })
             .unwrap_or_default()
+    }
+
+    /// Get source disc ID from current candidate state
+    pub fn get_source_disc_id(&self) -> Option<String> {
+        self.current_candidate_state().and_then(|s| match s {
+            CandidateState::Identifying(is) => is.source_disc_id.clone(),
+            CandidateState::Confirming(cs) => cs.source_disc_id.clone(),
+        })
     }
 
     /// Get confirmed candidate from current candidate state

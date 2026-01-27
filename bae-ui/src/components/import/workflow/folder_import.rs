@@ -19,12 +19,13 @@
 //! actually render values.
 
 use super::{
-    ConfirmationView, DiscIdPill, ImportErrorDisplayView, ManualSearchPanelView,
-    MultipleExactMatchesView, SmartFileDisplayView,
+    ConfirmationView, DiscIdPill, ImportErrorDisplayView, LoadingIndicator,
+    ManualSearchPanelView, MultipleExactMatchesView, SmartFileDisplayView,
 };
 use crate::components::icons::{CloudOffIcon, FolderIcon, LoaderIcon};
 use crate::components::StorageProfile;
 use crate::components::{Button, ButtonSize, ButtonVariant};
+use crate::components::{PanelPosition, ResizablePanel, ResizeDirection};
 use crate::display_types::{IdentifyMode, ImportStep, MatchCandidate, SearchSource, SearchTab};
 use crate::stores::import::{CandidateState, ConfirmPhase, ImportState, ImportStateStoreExt};
 use dioxus::prelude::*;
@@ -61,12 +62,12 @@ pub struct FolderImportViewProps {
     pub on_skip_detection: EventHandler<()>,
     pub on_exact_match_select: EventHandler<usize>,
     pub on_confirm_exact_match: EventHandler<()>,
+    pub on_switch_to_manual_search: EventHandler<()>,
+    pub on_switch_to_exact_matches: EventHandler<String>,
     pub on_search_source_change: EventHandler<SearchSource>,
     pub on_search_tab_change: EventHandler<SearchTab>,
     pub on_artist_change: EventHandler<String>,
     pub on_album_change: EventHandler<String>,
-    pub on_year_change: EventHandler<String>,
-    pub on_label_change: EventHandler<String>,
     pub on_catalog_number_change: EventHandler<String>,
     pub on_barcode_change: EventHandler<String>,
     pub on_manual_match_select: EventHandler<usize>,
@@ -132,12 +133,12 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
                             on_skip_detection: props.on_skip_detection,
                             on_exact_match_select: props.on_exact_match_select,
                             on_confirm_exact_match: props.on_confirm_exact_match,
+                            on_switch_to_manual_search: props.on_switch_to_manual_search,
+                            on_switch_to_exact_matches: props.on_switch_to_exact_matches,
                             on_search_source_change: props.on_search_source_change,
                             on_search_tab_change: props.on_search_tab_change,
                             on_artist_change: props.on_artist_change,
                             on_album_change: props.on_album_change,
-                            on_year_change: props.on_year_change,
-                            on_label_change: props.on_label_change,
                             on_catalog_number_change: props.on_catalog_number_change,
                             on_barcode_change: props.on_barcode_change,
                             on_manual_match_select: props.on_manual_match_select,
@@ -195,12 +196,12 @@ fn WorkflowContent(
     on_skip_detection: EventHandler<()>,
     on_exact_match_select: EventHandler<usize>,
     on_confirm_exact_match: EventHandler<()>,
+    on_switch_to_manual_search: EventHandler<()>,
+    on_switch_to_exact_matches: EventHandler<String>,
     on_search_source_change: EventHandler<SearchSource>,
     on_search_tab_change: EventHandler<SearchTab>,
     on_artist_change: EventHandler<String>,
     on_album_change: EventHandler<String>,
-    on_year_change: EventHandler<String>,
-    on_label_change: EventHandler<String>,
     on_catalog_number_change: EventHandler<String>,
     on_barcode_change: EventHandler<String>,
     on_manual_match_select: EventHandler<usize>,
@@ -223,12 +224,12 @@ fn WorkflowContent(
                     on_skip_detection,
                     on_exact_match_select,
                     on_confirm_exact_match,
+                    on_switch_to_manual_search,
+                    on_switch_to_exact_matches,
                     on_search_source_change,
                     on_search_tab_change,
                     on_artist_change,
                     on_album_change,
-                    on_year_change,
-                    on_label_change,
                     on_catalog_number_change,
                     on_barcode_change,
                     on_manual_match_select,
@@ -265,12 +266,12 @@ fn IdentifyStep(
     on_skip_detection: EventHandler<()>,
     on_exact_match_select: EventHandler<usize>,
     on_confirm_exact_match: EventHandler<()>,
+    on_switch_to_manual_search: EventHandler<()>,
+    on_switch_to_exact_matches: EventHandler<String>,
     on_search_source_change: EventHandler<SearchSource>,
     on_search_tab_change: EventHandler<SearchTab>,
     on_artist_change: EventHandler<String>,
     on_album_change: EventHandler<String>,
-    on_year_change: EventHandler<String>,
-    on_label_change: EventHandler<String>,
     on_catalog_number_change: EventHandler<String>,
     on_barcode_change: EventHandler<String>,
     on_manual_match_select: EventHandler<usize>,
@@ -297,6 +298,7 @@ fn IdentifyStep(
                     state,
                     on_select: on_exact_match_select,
                     on_confirm: on_confirm_exact_match,
+                    on_switch_to_manual_search,
                 }
             },
             IdentifyMode::ManualSearch => rsx! {
@@ -306,13 +308,12 @@ fn IdentifyStep(
                     on_tab_change: on_search_tab_change,
                     on_artist_change,
                     on_album_change,
-                    on_year_change,
-                    on_label_change,
                     on_catalog_number_change,
                     on_barcode_change,
                     on_match_select: on_manual_match_select,
                     on_search,
                     on_confirm: on_manual_confirm,
+                    on_switch_to_exact_matches,
                 }
             },
         }
@@ -453,14 +454,33 @@ fn FilesColumn(
         .map(|s| s.files().clone())
         .unwrap_or_default();
 
+    // Snap to image grid widths when images present
+    // thumbnail=72px, gap=8px, padding=32px → width(N) = 80N + 24
+    let has_images = !files.artwork.is_empty();
+    let snap_points = if has_images {
+        Some(vec![184.0, 264.0, 344.0]) // 2, 3, 4 columns
+    } else {
+        None
+    };
+
     rsx! {
-        div { class: "w-64 flex-shrink-0 border-r border-gray-700/50 overflow-y-auto p-4",
-            SmartFileDisplayView {
-                files,
-                selected_text_file,
-                text_file_content,
-                on_text_file_select,
-                on_text_file_close,
+        ResizablePanel {
+            storage_key: "import-files-width",
+            min_size: 184.0,
+            max_size: 344.0,
+            default_size: 264.0,
+            grabber_span_ratio: 0.8,
+            direction: ResizeDirection::Horizontal,
+            position: PanelPosition::Relative,
+            snap_points,
+            div { class: "h-full border-r border-gray-700/50 overflow-y-auto p-4",
+                SmartFileDisplayView {
+                    files,
+                    selected_text_file,
+                    text_file_content,
+                    on_text_file_select,
+                    on_text_file_close,
+                }
             }
         }
     }
@@ -487,10 +507,7 @@ fn DiscIdLookupProgressView(
             div { class: "text-center space-y-2 max-w-md",
                 if error.is_none() {
                     // Loading state
-                    p { class: "text-sm text-gray-300 flex items-center justify-center gap-2",
-                        LoaderIcon { class: "w-5 h-5 animate-spin" }
-                        "Checking MusicBrainz..."
-                    }
+                    LoadingIndicator { message: "Checking MusicBrainz...".to_string() }
                     p { class: "text-xs text-gray-500 flex items-center justify-center gap-2 pt-1",
                         "Disc ID:"
                         DiscIdPill { disc_id: disc_id.clone() }

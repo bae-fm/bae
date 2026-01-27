@@ -161,6 +161,26 @@ pub fn FolderImport() -> Element {
         }
     };
 
+    let on_switch_to_manual_search = {
+        let app = app.clone();
+        move |_| {
+            app.state
+                .import()
+                .write()
+                .dispatch(CandidateEvent::SwitchToManualSearch);
+        }
+    };
+
+    let on_switch_to_exact_matches = {
+        let app = app.clone();
+        move |disc_id: String| {
+            app.state
+                .import()
+                .write()
+                .dispatch(CandidateEvent::SwitchToMultipleExactMatches(disc_id));
+        }
+    };
+
     // Manual search handler
     let perform_search = {
         let app = app.clone();
@@ -443,32 +463,6 @@ pub fn FolderImport() -> Element {
         }
     };
 
-    let on_year_change = {
-        let app = app.clone();
-        move |value: String| {
-            app.state
-                .import()
-                .write()
-                .dispatch(CandidateEvent::UpdateSearchField {
-                    field: bae_ui::stores::import::SearchField::Year,
-                    value,
-                });
-        }
-    };
-
-    let on_label_change = {
-        let app = app.clone();
-        move |value: String| {
-            app.state
-                .import()
-                .write()
-                .dispatch(CandidateEvent::UpdateSearchField {
-                    field: bae_ui::stores::import::SearchField::Label,
-                    value,
-                });
-        }
-    };
-
     let on_catalog_number_change = {
         let app = app.clone();
         move |value: String| {
@@ -524,12 +518,12 @@ pub fn FolderImport() -> Element {
             on_skip_detection: |_| {},
             on_exact_match_select,
             on_confirm_exact_match,
+            on_switch_to_manual_search,
+            on_switch_to_exact_matches,
             on_search_source_change,
             on_search_tab_change,
             on_artist_change,
             on_album_change,
-            on_year_change,
-            on_label_change,
             on_catalog_number_change,
             on_barcode_change,
             on_manual_match_select,

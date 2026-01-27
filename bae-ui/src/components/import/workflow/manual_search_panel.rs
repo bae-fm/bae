@@ -2,8 +2,8 @@
 
 use super::match_list::MatchListView;
 use super::search_source_selector::SearchSourceSelectorView;
-use super::DiscIdPill;
-use crate::components::{Button, ButtonSize, ButtonVariant, Pill, PillVariant};
+use super::{DiscIdPill, LoadingIndicator};
+use crate::components::{Button, ButtonSize, ButtonVariant};
 use crate::display_types::{MatchCandidate, SearchSource, SearchTab};
 use crate::stores::import::ImportState;
 use dioxus::prelude::*;
@@ -18,19 +18,19 @@ pub fn ManualSearchPanelView(
     on_tab_change: EventHandler<SearchTab>,
     on_artist_change: EventHandler<String>,
     on_album_change: EventHandler<String>,
-    on_year_change: EventHandler<String>,
-    on_label_change: EventHandler<String>,
     on_catalog_number_change: EventHandler<String>,
     on_barcode_change: EventHandler<String>,
     on_match_select: EventHandler<usize>,
     on_search: EventHandler<()>,
     on_confirm: EventHandler<MatchCandidate>,
+    on_switch_to_exact_matches: EventHandler<String>,
 ) -> Element {
     // Read state at this leaf component
     let st = state.read();
     let search_state = st.get_search_state();
-    let metadata = st.get_metadata();
     let disc_id_not_found = st.get_disc_id_not_found();
+    let exact_matches = st.get_exact_match_candidates();
+    let source_disc_id = st.get_source_disc_id();
 
     let source = search_state
         .as_ref()
@@ -48,14 +48,6 @@ pub fn ManualSearchPanelView(
         .as_ref()
         .map(|s| s.search_album.clone())
         .unwrap_or_default();
-    let year = search_state
-        .as_ref()
-        .map(|s| s.search_year.clone())
-        .unwrap_or_default();
-    let label = search_state
-        .as_ref()
-        .map(|s| s.search_label.clone())
-        .unwrap_or_default();
     let catalog = search_state
         .as_ref()
         .map(|s| s.search_catalog_number.clone())
@@ -63,10 +55,6 @@ pub fn ManualSearchPanelView(
     let barcode = search_state
         .as_ref()
         .map(|s| s.search_barcode.clone())
-        .unwrap_or_default();
-    let tokens = metadata
-        .as_ref()
-        .map(|m| m.folder_tokens.clone())
         .unwrap_or_default();
     let searching = search_state
         .as_ref()
@@ -86,7 +74,7 @@ pub fn ManualSearchPanelView(
     drop(st);
 
     rsx! {
-        div { class: "space-y-4",
+        div { class: "p-5 space-y-4",
             // Info banner if disc ID lookup found no results
             if let Some(disc_id) = disc_id_not_found {
                 div { class: "bg-blue-500/15 rounded-lg p-3 flex items-center gap-2",
@@ -97,43 +85,50 @@ pub fn ManualSearchPanelView(
                 }
             }
 
-            // Header with search source selector
-            div { class: "flex justify-between items-center",
-                h3 { class: "text-sm font-medium text-gray-200", "Search for Release" }
+            // Link back to exact matches if they exist
+            if !exact_matches.is_empty() {
+                if let Some(disc_id) = source_disc_id.clone() {
+                    div { class: "flex items-center gap-2",
+                        p { class: "text-sm text-gray-400 flex items-center gap-2",
+                            "{exact_matches.len()} exact matches for"
+                            DiscIdPill { disc_id: disc_id.clone() }
+                        }
+                        Button {
+                            variant: ButtonVariant::Ghost,
+                            size: ButtonSize::Small,
+                            onclick: move |_| on_switch_to_exact_matches.call(disc_id.clone()),
+                            "View"
+                        }
+                    }
+                }
+            }
+
+            // Header row: tabs + source selector
+            div { class: "flex items-center justify-between gap-4",
+                div { class: "flex gap-1",
+                    Button {
+                        variant: if tab == SearchTab::General { ButtonVariant::Primary } else { ButtonVariant::Ghost },
+                        size: ButtonSize::Small,
+                        onclick: move |_| on_tab_change.call(SearchTab::General),
+                        "Title"
+                    }
+                    Button {
+                        variant: if tab == SearchTab::CatalogNumber { ButtonVariant::Primary } else { ButtonVariant::Ghost },
+                        size: ButtonSize::Small,
+                        onclick: move |_| on_tab_change.call(SearchTab::CatalogNumber),
+                        "Catalog #"
+                    }
+                    Button {
+                        variant: if tab == SearchTab::Barcode { ButtonVariant::Primary } else { ButtonVariant::Ghost },
+                        size: ButtonSize::Small,
+                        onclick: move |_| on_tab_change.call(SearchTab::Barcode),
+                        "Barcode"
+                    }
+                }
+
                 SearchSourceSelectorView {
                     selected_source: source,
                     on_select: on_search_source_change,
-                }
-            }
-
-            // Tab bar
-            div { class: "flex gap-1",
-                Button {
-                    variant: if tab == SearchTab::General { ButtonVariant::Primary } else { ButtonVariant::Ghost },
-                    size: ButtonSize::Small,
-                    onclick: move |_| on_tab_change.call(SearchTab::General),
-                    "General"
-                }
-                Button {
-                    variant: if tab == SearchTab::CatalogNumber { ButtonVariant::Primary } else { ButtonVariant::Ghost },
-                    size: ButtonSize::Small,
-                    onclick: move |_| on_tab_change.call(SearchTab::CatalogNumber),
-                    "Catalog #"
-                }
-                Button {
-                    variant: if tab == SearchTab::Barcode { ButtonVariant::Primary } else { ButtonVariant::Ghost },
-                    size: ButtonSize::Small,
-                    onclick: move |_| on_tab_change.call(SearchTab::Barcode),
-                    "Barcode"
-                }
-            }
-
-            // Search token pills (suggestions)
-            if !tokens.is_empty() {
-                div { class: "flex flex-wrap gap-1.5",
-                    for token in tokens.iter() {
-                        Pill { variant: PillVariant::Muted, "{token}" }
-                    }
                 }
             }
 
@@ -141,9 +136,9 @@ pub fn ManualSearchPanelView(
             div { class: "space-y-3",
                 match tab {
                     SearchTab::General => rsx! {
-                        div { class: "grid grid-cols-2 gap-3",
-                            div {
-                                label { class: "block text-xs text-gray-300 mb-1.5", "Artist" }
+                        div { class: "flex gap-3",
+                            div { class: "flex-1",
+                                label { class: "block text-xs text-gray-400 mb-1.5", "Artist" }
                                 input {
                                     r#type: "text",
                                     class: "w-full px-3 py-2 bg-surface-input rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-white placeholder-gray-500",
@@ -151,8 +146,8 @@ pub fn ManualSearchPanelView(
                                     oninput: move |e| on_artist_change.call(e.value()),
                                 }
                             }
-                            div {
-                                label { class: "block text-xs text-gray-300 mb-1.5", "Album" }
+                            div { class: "flex-1",
+                                label { class: "block text-xs text-gray-400 mb-1.5", "Album" }
                                 input {
                                     r#type: "text",
                                     class: "w-full px-3 py-2 bg-surface-input rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-white placeholder-gray-500",
@@ -160,86 +155,74 @@ pub fn ManualSearchPanelView(
                                     oninput: move |e| on_album_change.call(e.value()),
                                 }
                             }
-                            div {
-                                label { class: "block text-xs text-gray-300 mb-1.5", "Year" }
-                                input {
-                                    r#type: "text",
-                                    class: "w-full px-3 py-2 bg-surface-input rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-white placeholder-gray-500",
-                                    value: "{year}",
-                                    oninput: move |e| on_year_change.call(e.value()),
-                                }
-                            }
-                            div {
-                                label { class: "block text-xs text-gray-300 mb-1.5", "Label" }
-                                input {
-                                    r#type: "text",
-                                    class: "w-full px-3 py-2 bg-surface-input rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-white placeholder-gray-500",
-                                    value: "{label}",
-                                    oninput: move |e| on_label_change.call(e.value()),
-                                }
-                            }
-                        }
-                        div { class: "flex justify-end pt-1",
-                            Button {
-                                variant: ButtonVariant::Primary,
-                                size: ButtonSize::Small,
-                                disabled: searching,
-                                loading: searching,
-                                onclick: move |_| on_search.call(()),
-                                if searching {
-                                    "Searching..."
-                                } else {
-                                    "Search"
+                            div { class: "flex items-end",
+                                Button {
+                                    variant: ButtonVariant::Primary,
+                                    size: ButtonSize::Medium,
+                                    disabled: searching,
+                                    loading: searching,
+                                    onclick: move |_| on_search.call(()),
+                                    if searching {
+                                        "Searching..."
+                                    } else {
+                                        "Search"
+                                    }
                                 }
                             }
                         }
                     },
                     SearchTab::CatalogNumber => rsx! {
-                        div { class: "flex gap-2",
+                        div { class: "flex gap-3",
                             div { class: "flex-1",
+                                label { class: "block text-xs text-gray-400 mb-1.5", "Catalog Number" }
                                 input {
                                     r#type: "text",
                                     class: "w-full px-3 py-2 bg-surface-input rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-white placeholder-gray-500",
-                                    placeholder: "Enter catalog number...",
+                                    placeholder: "e.g. WPCR-80001",
                                     value: "{catalog}",
                                     oninput: move |e| on_catalog_number_change.call(e.value()),
                                 }
                             }
-                            Button {
-                                variant: ButtonVariant::Primary,
-                                size: ButtonSize::Small,
-                                disabled: searching,
-                                loading: searching,
-                                onclick: move |_| on_search.call(()),
-                                if searching {
-                                    "Searching..."
-                                } else {
-                                    "Search"
+                            div { class: "flex items-end",
+                                Button {
+                                    variant: ButtonVariant::Primary,
+                                    size: ButtonSize::Medium,
+                                    disabled: searching,
+                                    loading: searching,
+                                    onclick: move |_| on_search.call(()),
+                                    if searching {
+                                        "Searching..."
+                                    } else {
+                                        "Search"
+                                    }
                                 }
                             }
                         }
                     },
                     SearchTab::Barcode => rsx! {
-                        div { class: "flex gap-2",
+                        div { class: "flex gap-3",
                             div { class: "flex-1",
+                                label { class: "block text-xs text-gray-400 mb-1.5", "Barcode" }
                                 input {
                                     r#type: "text",
                                     class: "w-full px-3 py-2 bg-surface-input rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-white placeholder-gray-500",
-                                    placeholder: "Enter barcode...",
+                                    placeholder: "e.g. 4943674251780",
                                     value: "{barcode}",
                                     oninput: move |e| on_barcode_change.call(e.value()),
                                 }
                             }
-                            Button {
-                                variant: ButtonVariant::Primary,
-                                size: ButtonSize::Small,
-                                disabled: searching,
-                                loading: searching,
-                                onclick: move |_| on_search.call(()),
-                                if searching {
-                                    "Searching..."
-                                } else {
-                                    "Search"
+                            div { class: "flex items-end",
+                                Button {
+                                    variant: ButtonVariant::Primary,
+                                    size: ButtonSize::Medium,
+                                    disabled: searching,
+                                    loading: searching,
+                                    onclick: move |_| on_search.call(()),
+                                    if searching {
+                                        "Searching..."
+                                    } else {
+                                        "Search"
+                                    }
                                 }
                             }
                         }
@@ -256,8 +239,8 @@ pub fn ManualSearchPanelView(
 
             // Results
             if searching {
-                div { class: "text-center py-8",
-                    p { class: "text-gray-400", "Searching..." }
+                div { class: "flex justify-center py-8",
+                    LoadingIndicator { message: format!("Searching {}...", source.display_name()) }
                 }
             } else if candidates.is_empty() && searched {
                 div { class: "text-center py-8",

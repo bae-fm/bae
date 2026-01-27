@@ -52,13 +52,9 @@ pub fn ConfirmationView(
     };
 
     rsx! {
-        div { class: "bg-gray-800 rounded-lg shadow p-6",
-            h3 { class: "text-sm font-semibold text-gray-300 uppercase tracking-wide mb-4",
-                "Selected Release"
-            }
-
+        div { class: "p-5 space-y-5",
             // Release info card
-            div { class: "bg-gray-900 rounded-lg p-5 mb-4 border border-gray-700",
+            div { class: "bg-gray-800/50 rounded-lg p-5 border border-gray-700/50",
                 div { class: "flex gap-6",
                     // Cover art
                     if let Some(ref url) = display_cover_url {
@@ -116,8 +112,10 @@ pub fn ConfirmationView(
 
             // Cover art selection
             if !artwork_files.is_empty() || remote_cover_url.is_some() {
-                div { class: "mb-4",
-                    h4 { class: "text-sm font-medium text-gray-400 mb-2", "Cover Art" }
+                div {
+                    h4 { class: "text-xs font-medium text-gray-400 uppercase tracking-wide mb-2",
+                        "Cover Art"
+                    }
                     div { class: "flex flex-wrap gap-2",
                         // Remote cover option
                         if let Some(ref url) = remote_cover_url {
@@ -202,7 +200,7 @@ pub fn ConfirmationView(
             }
 
             // Storage profile selection
-            div { class: "mb-4 flex items-center gap-3",
+            div { class: "flex items-center gap-3",
                 label { class: "text-sm text-gray-400", "Storage:" }
                 select {
                     class: "bg-gray-700 text-white rounded px-3 py-1.5 text-sm border border-gray-600 focus:border-blue-500 focus:outline-none",

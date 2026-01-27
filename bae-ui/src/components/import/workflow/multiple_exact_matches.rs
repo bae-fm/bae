@@ -15,6 +15,7 @@ pub fn MultipleExactMatchesView(
     state: ReadStore<ImportState>,
     on_select: EventHandler<usize>,
     on_confirm: EventHandler<()>,
+    on_switch_to_manual_search: EventHandler<()>,
 ) -> Element {
     // Read state at leaf - these are computed values
     let st = state.read();
@@ -32,14 +33,11 @@ pub fn MultipleExactMatchesView(
     }
 
     rsx! {
-        div { class: "p-4 max-w-xl",
-            // Header
-            p { class: "text-white mb-1", "Multiple Disc ID matches" }
-
-            // Disc ID pill on its own line
+        div { class: "p-5 space-y-4",
+            // Disc ID context
             if let Some(id) = disc_id {
-                p { class: "text-sm text-gray-400 mb-4",
-                    "Disc ID: "
+                p { class: "text-sm text-gray-400 flex items-center gap-2",
+                    "Multiple exact matches for"
                     DiscIdPill { disc_id: id }
                 }
             }
@@ -50,9 +48,16 @@ pub fn MultipleExactMatchesView(
                 on_select: move |index| on_select.call(index),
             }
 
-            // Continue button - only shown when something is selected
-            if selected_index.is_some() {
-                div { class: "flex justify-end mt-4",
+            // Actions
+            div { class: "flex justify-between items-center",
+                Button {
+                    variant: ButtonVariant::Ghost,
+                    size: ButtonSize::Small,
+                    onclick: move |_| on_switch_to_manual_search.call(()),
+                    "Search manually"
+                }
+
+                if selected_index.is_some() {
                     Button {
                         variant: ButtonVariant::Primary,
                         size: ButtonSize::Medium,

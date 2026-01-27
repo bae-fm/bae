@@ -146,8 +146,8 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
     let mut search_tab = use_signal(|| SearchTab::General);
     let mut search_artist = use_signal(|| "The Midnight Signal".to_string());
     let mut search_album = use_signal(|| "Neon Frequencies".to_string());
-    let mut search_year = use_signal(String::new);
-    let mut search_label = use_signal(String::new);
+    let search_year = use_signal(String::new);
+    let search_label = use_signal(String::new);
     let mut search_catalog_number = use_signal(String::new);
     let mut search_barcode = use_signal(String::new);
     let mut selected_cover = use_signal(|| None::<SelectedCover>);
@@ -212,7 +212,6 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     mock_file("rip.log", 4_500, "LOG"),
                     mock_file("info.txt", 1_200, "TXT"),
                 ],
-                other: vec![mock_file(".DS_Store", 6_148, "")],
             },
         ),
         // Folder 2: CUE/FLAC pair, minimal extras
@@ -232,7 +231,6 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                 )]),
                 artwork: vec![mock_artwork("folder.jpg", 850_000, "JPEG", 1)],
                 documents: vec![],
-                other: vec![],
             },
         ),
         // Folder 3: Track files, lots of scans, torrent style
@@ -265,7 +263,6 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     mock_file("Velvet_Mathematics-Proof_by_Induction-2021-FLAC.nfo", 8_500, "NFO"),
                     mock_file("Velvet_Mathematics-Proof_by_Induction-2021-FLAC.m3u", 450, "M3U"),
                 ],
-                other: vec![],
             },
         ),
         // Folder 4: Simple rip, no docs, junk files
@@ -284,10 +281,6 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                 ]),
                 artwork: vec![mock_artwork("AlbumArt.jpg", 450_000, "JPEG", 5)],
                 documents: vec![],
-                other: vec![
-                    mock_file("desktop.ini", 282, ""),
-                    mock_file("Thumbs.db", 12_288, ""),
-                ],
             },
         ),
         // Folder 5: Vinyl rip with extensive documentation
@@ -317,7 +310,6 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     mock_file("vinyl-condition.txt", 1_500, "TXT"),
                     mock_file("dr-analysis.txt", 3_200, "TXT"),
                 ],
-                other: vec![],
             },
         ),
     ];
@@ -475,6 +467,11 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
             } else {
                 None
             },
+            source_disc_id: if exact_match_candidates.is_empty() {
+                None
+            } else {
+                Some(mock_disc_id.clone())
+            },
         }),
         bae_ui::ImportStep::Confirm => {
             let phase = match confirm_phase_str.as_str() {
@@ -574,12 +571,12 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     on_skip_detection: |_| {},
                     on_exact_match_select: move |idx| selected_match_index.set(Some(idx)),
                     on_confirm_exact_match: |_| {},
+                    on_switch_to_manual_search: |_| {},
+                    on_switch_to_exact_matches: |_| {},
                     on_search_source_change: move |src| search_source.set(src),
                     on_search_tab_change: move |tab| search_tab.set(tab),
                     on_artist_change: move |v| search_artist.set(v),
                     on_album_change: move |v| search_album.set(v),
-                    on_year_change: move |v| search_year.set(v),
-                    on_label_change: move |v| search_label.set(v),
                     on_catalog_number_change: move |v| search_catalog_number.set(v),
                     on_barcode_change: move |v| search_barcode.set(v),
                     on_manual_match_select: move |idx| selected_match_index.set(Some(idx)),

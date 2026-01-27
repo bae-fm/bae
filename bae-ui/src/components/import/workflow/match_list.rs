@@ -20,16 +20,13 @@ pub fn MatchListView(
     }
 
     rsx! {
-        div {
-            h3 { class: "text-sm font-medium text-gray-400 mb-3", "Select the correct release:" }
-            div { class: "space-y-2",
-                for (index , candidate) in candidates.iter().enumerate() {
-                    MatchItemView {
-                        key: "{index}",
-                        candidate: candidate.clone(),
-                        is_selected: selected_index == Some(index),
-                        on_select: move |_| on_select.call(index),
-                    }
+        div { class: "space-y-2",
+            for (index , candidate) in candidates.iter().enumerate() {
+                MatchItemView {
+                    key: "{index}",
+                    candidate: candidate.clone(),
+                    is_selected: selected_index == Some(index),
+                    on_select: move |_| on_select.call(index),
                 }
             }
         }
