@@ -73,10 +73,10 @@ pub fn AlbumDetailView(
             class: "flex-grow min-h-0 overflow-y-auto",
             "data-testid": "album-detail",
 
-            // Content wrapper with flex layout
-            div { class: "flex gap-8 p-6",
-                // Left column - album info, cover, metadata, play button (sticky)
-                div { class: "flex-shrink-0 w-[360px] self-start sticky top-6",
+            // Content wrapper with flex layout and width containment
+            div { class: "container mx-auto flex flex-col lg:flex-row gap-8 p-6",
+                // Left column - album info, cover, metadata, play button (sticky on desktop)
+                div { class: "w-full lg:flex-shrink-0 lg:w-[360px] lg:self-start lg:sticky lg:top-6",
                     AlbumInfoSection {
                         state,
                         is_deleting,

@@ -14,7 +14,7 @@ pub fn BackButton(
     on_click: EventHandler<()>,
 ) -> Element {
     rsx! {
-        div { class: "mb-6",
+        div { class: "pt-4 mb-6 px-6",
             Button {
                 variant: ButtonVariant::Ghost,
                 size: ButtonSize::Medium,

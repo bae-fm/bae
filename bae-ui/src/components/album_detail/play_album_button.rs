@@ -1,7 +1,7 @@
 //! Play album button component
 
 use crate::components::icons::{ChevronDownIcon, PlayIcon, PlusIcon};
-use crate::components::{Button, ButtonSize, ButtonVariant, Dropdown, Placement};
+use crate::components::{Button, ButtonSize, ButtonVariant, ChromelessButton, Dropdown, Placement};
 use dioxus::prelude::*;
 
 /// Play album button with dropdown for "add to queue"
@@ -50,21 +50,19 @@ pub fn PlayAlbumButton(
                     }
                     "{button_text}"
                 }
-                div { class: "border-l border-blue-500",
-                    Button {
-                        id: Some(anchor_id.clone()),
-                        variant: ButtonVariant::Primary,
-                        size: ButtonSize::Medium,
-                        disabled: is_disabled,
-                        class: Some("rounded-l-none px-3".to_string()),
-                        onclick: move |evt: MouseEvent| {
-                            evt.stop_propagation();
-                            if !is_disabled {
-                                show_play_menu.set(!show_play_menu());
-                            }
-                        },
-                        ChevronDownIcon { class: "w-4 h-4" }
-                    }
+                Button {
+                    id: Some(anchor_id.clone()),
+                    variant: ButtonVariant::Primary,
+                    size: ButtonSize::Medium,
+                    disabled: is_disabled,
+                    class: Some("rounded-l-none px-3".to_string()),
+                    onclick: move |evt: MouseEvent| {
+                        evt.stop_propagation();
+                        if !is_disabled {
+                            show_play_menu.set(!show_play_menu());
+                        }
+                    },
+                    ChevronDownIcon { class: "w-4 h-4" }
                 }
             }
 
@@ -74,12 +72,12 @@ pub fn PlayAlbumButton(
                 is_open,
                 on_close: move |_| show_play_menu.set(false),
                 placement: Placement::BottomEnd,
-                class: "bg-gray-700 rounded-lg shadow-lg overflow-hidden border border-gray-600 min-w-[200px]",
-                Button {
-                    variant: ButtonVariant::Ghost,
-                    size: ButtonSize::Medium,
-                    disabled: is_disabled,
-                    class: Some("w-full justify-start rounded-none".to_string()),
+                class: "bg-gray-800 border border-gray-700 rounded shadow-lg min-w-[200px]",
+                ChromelessButton {
+                    class: Some(
+                        "w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 flex items-center gap-2"
+                            .to_string(),
+                    ),
                     onclick: {
                         let track_ids = track_ids.clone();
                         move |evt: MouseEvent| {

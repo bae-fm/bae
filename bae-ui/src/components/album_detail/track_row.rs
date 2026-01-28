@@ -68,106 +68,104 @@ pub fn TrackRow(
 
     rsx! {
         div { class: "{row_class}",
-            div { class: "relative flex items-center w-full",
-                // Play/pause button area
-                if is_available {
-                    if show_spinner {
-                        div { class: "w-6 flex items-center justify-center",
-                            div { class: "animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400" }
-                        }
-                    } else if is_playing {
-                        ChromelessButton {
-                            class: Some(
-                                "w-6 h-6 rounded-full border border-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
-                                    .to_string(),
-                            ),
-                            aria_label: Some("Pause".to_string()),
-                            onclick: move |_| on_pause.call(()),
-                            PauseIcon { class: "w-3 h-3" }
-                        }
-                    } else if is_paused {
-                        ChromelessButton {
-                            class: Some(
-                                "w-6 h-6 rounded-full border border-blue-400 flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 transition-colors"
-                                    .to_string(),
-                            ),
-                            aria_label: Some("Resume".to_string()),
-                            onclick: move |_| on_resume.call(()),
-                            PlayIcon { class: "w-3 h-3" }
-                        }
-                    } else {
-                        ChromelessButton {
-                            class: Some(
-                                "w-6 h-6 rounded-full border border-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
-                                    .to_string(),
-                            ),
-                            aria_label: Some("Play".to_string()),
-                            onclick: {
-                                let track_id = track_id_for_play.clone();
-                                move |_| on_play.call(track_id.clone())
-                            },
-                            PlayIcon { class: "w-3 h-3" }
-                        }
+            // Play/pause button area
+            if is_available {
+                if show_spinner {
+                    div { class: "w-6 flex items-center justify-center",
+                        div { class: "animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400" }
+                    }
+                } else if is_playing {
+                    ChromelessButton {
+                        class: Some(
+                            "w-6 h-6 rounded-full border border-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                .to_string(),
+                        ),
+                        aria_label: Some("Pause".to_string()),
+                        onclick: move |_| on_pause.call(()),
+                        PauseIcon { class: "w-3 h-3" }
+                    }
+                } else if is_paused {
+                    ChromelessButton {
+                        class: Some(
+                            "w-6 h-6 rounded-full border border-blue-400 flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 transition-colors"
+                                .to_string(),
+                        ),
+                        aria_label: Some("Resume".to_string()),
+                        onclick: move |_| on_resume.call(()),
+                        PlayIcon { class: "w-3 h-3" }
                     }
                 } else {
-                    div { class: "w-6" }
-                }
-
-                // Track number
-                div {
-                    class: "w-12 text-right text-sm font-mono",
-                    class: if is_importing { "text-gray-600" } else { "text-gray-400" },
-                    if let Some(track_num) = track.track_number {
-                        "{track_num}."
-                    } else {
-                        "—"
+                    ChromelessButton {
+                        class: Some(
+                            "w-6 h-6 rounded-full border border-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                .to_string(),
+                        ),
+                        aria_label: Some("Play".to_string()),
+                        onclick: {
+                            let track_id = track_id_for_play.clone();
+                            move |_| on_play.call(track_id.clone())
+                        },
+                        PlayIcon { class: "w-3 h-3" }
                     }
                 }
+            } else {
+                div { class: "w-6" }
+            }
 
-                // Track title and artists
-                div { class: "flex-1 ml-4",
-                    h3 {
-                        class: "font-medium transition-colors",
-                        class: if is_importing { "text-gray-500" } else if is_active { "text-blue-300" } else { "text-white group-hover:text-blue-300" },
-                        "{track.title}"
-                    }
-                    if is_compilation && !artists.is_empty() {
-                        p {
-                            class: "text-sm",
-                            class: if is_importing { "text-gray-600" } else { "text-gray-400" },
-                            {
-                                if artists.len() == 1 {
-                                    artists[0].name.clone()
-                                } else {
-                                    artists.iter().map(|a| a.name.as_str()).collect::<Vec<_>>().join(", ")
-                                }
+            // Track number
+            div {
+                class: "w-12 text-right text-sm font-mono",
+                class: if is_importing { "text-gray-600" } else { "text-gray-400" },
+                if let Some(track_num) = track.track_number {
+                    "{track_num}."
+                } else {
+                    "—"
+                }
+            }
+
+            // Track title and artists
+            div { class: "flex-1 ml-4",
+                h3 {
+                    class: "font-medium transition-colors",
+                    class: if is_importing { "text-gray-500" } else if is_active { "text-blue-300" } else { "text-white group-hover:text-blue-300" },
+                    "{track.title}"
+                }
+                if is_compilation && !artists.is_empty() {
+                    p {
+                        class: "text-sm",
+                        class: if is_importing { "text-gray-600" } else { "text-gray-400" },
+                        {
+                            if artists.len() == 1 {
+                                artists[0].name.clone()
+                            } else {
+                                artists.iter().map(|a| a.name.as_str()).collect::<Vec<_>>().join(", ")
                             }
                         }
                     }
                 }
+            }
 
-                // Duration / Import progress
-                div {
-                    class: "text-sm font-mono",
-                    class: if is_importing { "text-gray-600" } else { "text-gray-400" },
-                    if let Some(pct) = import_progress {
-                        // Show import progress percentage
-                        "{pct}%"
-                    } else if let Some(duration_ms) = track.duration_ms {
-                        {format_duration(duration_ms)}
-                    } else {
-                        "—:—"
-                    }
+            // Duration / Import progress
+            div {
+                class: "text-sm font-mono",
+                class: if is_importing { "text-gray-600" } else { "text-gray-400" },
+                if let Some(pct) = import_progress {
+                    // Show import progress percentage
+                    "{pct}%"
+                } else if let Some(duration_ms) = track.duration_ms {
+                    {format_duration(duration_ms)}
+                } else {
+                    "—:—"
                 }
+            }
 
-                // Context menu
-                if is_available {
-                    TrackMenu {
-                        track_id: track_id_for_menu,
-                        on_export,
-                        on_add_next,
-                        on_add_to_queue,
-                    }
+            // Context menu
+            if is_available {
+                TrackMenu {
+                    track_id: track_id_for_menu,
+                    on_export,
+                    on_add_next,
+                    on_add_to_queue,
                 }
             }
         }
