@@ -107,22 +107,20 @@ test.describe('Dropdown Component', () => {
     const togglePos = await getTogglePosition(page, 'album-1');
     
     await toggle.click();
-    await page.waitForTimeout(300);
-    
-    const dropdownPos = await getDropdownPosition(page);
-    expect(dropdownPos).not.toBeNull();
-    
-    // Dropdown should be within 100px of the toggle (accounting for offset and placement)
+
+    const dropdownPos = await waitForDropdownVisible(page);
+
+    // Dropdown should be within 200px of the toggle (accounting for offset and placement)
     const distance = Math.sqrt(
-      Math.pow(dropdownPos!.x - togglePos.x, 2) + 
-      Math.pow(dropdownPos!.y - togglePos.y, 2)
+      Math.pow(dropdownPos.x - togglePos.x, 2) +
+      Math.pow(dropdownPos.y - togglePos.y, 2)
     );
-    
-    console.log(`Toggle at (${togglePos.x}, ${togglePos.y}), Dropdown at (${dropdownPos!.x}, ${dropdownPos!.y}), Distance: ${distance}`);
-    
+
+    console.log(`Toggle at (${togglePos.x}, ${togglePos.y}), Dropdown at (${dropdownPos.x}, ${dropdownPos.y}), Distance: ${distance}`);
+
     expect(distance, 'Dropdown should be near the toggle').toBeLessThan(200);
-    expect(dropdownPos!.x, 'Dropdown X should not be at 0').toBeGreaterThan(10);
-    expect(dropdownPos!.y, 'Dropdown Y should not be at 0').toBeGreaterThan(10);
+    expect(dropdownPos.x, 'Dropdown X should not be at 0').toBeGreaterThan(10);
+    expect(dropdownPos.y, 'Dropdown Y should not be at 0').toBeGreaterThan(10);
   });
 
   test('clicking outside closes the dropdown (light dismiss)', async ({ page }) => {
