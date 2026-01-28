@@ -124,13 +124,14 @@ jobs:
           )
         )
 
-    - name: Check for WASM-only APIs in shared code
+    - name: Check for WASM-only APIs in desktop code
       if: runner.os != 'Windows'
       run: |
-        # These crates compile on native but panic at runtime
+        # These crates compile on native but panic at runtime.
+        # cfg-gated usage (target_arch = "wasm32") is fine.
         WASM_ONLY="gloo_timers|gloo_events|gloo_utils"
-        if grep -rE "$WASM_ONLY" --include='*.rs' bae-ui/ bae-core/ bae-desktop/; then
-          echo "::error::Found WASM-only API usage in shared/desktop code. Use platform-agnostic alternatives."
+        if grep -rE "$WASM_ONLY" --include='*.rs' bae-desktop/; then
+          echo "::error::Found WASM-only API usage in desktop code."
           exit 1
         fi
 

@@ -3,11 +3,14 @@
 use crate::mocks::framework::{MockPage, MockSection};
 use crate::mocks::{
     AlbumDetailMock, ButtonMock, FolderImportMock, LibraryMock, PillMock, TextInputMock,
-    TitleBarMock,
+    TitleBarMock, TooltipMock,
 };
 use crate::ui::LinkCard;
 use crate::Route;
-use bae_ui::{Button, ButtonSize, ButtonVariant, Pill, PillVariant, TextInput, TextInputSize};
+use bae_ui::floating_ui::Placement;
+use bae_ui::{
+    Button, ButtonSize, ButtonVariant, Pill, PillVariant, TextInput, TextInputSize, Tooltip,
+};
 use dioxus::prelude::*;
 
 #[component]
@@ -82,6 +85,28 @@ pub fn MockIndex() -> Element {
                             on_input: |_| {},
                             size: TextInputSize::Small,
                             placeholder: "Placeholder...",
+                        }
+                    }
+                }
+
+                // Tooltip specimens
+                SpecimenCard { title: "Tooltip", to: Route::MockTooltip { state: None },
+                    div { class: "flex flex-wrap gap-2",
+                        Tooltip {
+                            text: "Top tooltip",
+                            placement: Placement::Top,
+                            nowrap: true,
+                            button { class: "px-2 py-1 bg-gray-700 text-xs text-white rounded",
+                                "Top"
+                            }
+                        }
+                        Tooltip {
+                            text: "Bottom tooltip",
+                            placement: Placement::Bottom,
+                            nowrap: true,
+                            button { class: "px-2 py-1 bg-gray-700 text-xs text-white rounded",
+                                "Bottom"
+                            }
                         }
                     }
                 }
@@ -177,6 +202,17 @@ pub fn MockPill(state: Option<String>) -> Element {
 pub fn MockTextInput(state: Option<String>) -> Element {
     rsx! {
         TextInputMock { initial_state: state }
+    }
+}
+
+// ============================================================================
+// Tooltip page wrapper
+// ============================================================================
+
+#[component]
+pub fn MockTooltip(state: Option<String>) -> Element {
+    rsx! {
+        TooltipMock { initial_state: state }
     }
 }
 

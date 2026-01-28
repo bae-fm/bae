@@ -804,6 +804,7 @@ version = "0.1.0"
 dependencies = [
  "dioxus",
  "dioxus-virtual-scroll",
+ "gloo-timers",
  "js-sys-x",
  "serde",
  "serde_json",

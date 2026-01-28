@@ -8,6 +8,7 @@ mod library;
 mod pill;
 mod text_input;
 mod title_bar;
+mod tooltip;
 pub mod url_state;
 
 pub use album_detail::AlbumDetailMock;
@@ -17,3 +18,4 @@ pub use library::LibraryMock;
 pub use pill::PillMock;
 pub use text_input::TextInputMock;
 pub use title_bar::TitleBarMock;
+pub use tooltip::TooltipMock;

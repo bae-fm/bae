@@ -97,7 +97,7 @@ pub fn Tooltip(
                     task.cancel();
                 }
                 let task = spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_millis(TOOLTIP_DELAY_MS)).await;
+                    sleep_ms(TOOLTIP_DELAY_MS).await;
                     is_visible.set(true);
                 });
                 hover_task.set(Some(task));
@@ -123,4 +123,14 @@ pub fn Tooltip(
             }
         }
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn sleep_ms(ms: u64) {
+    gloo_timers::future::TimeoutFuture::new(ms as u32).await;
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+async fn sleep_ms(ms: u64) {
+    tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
 }

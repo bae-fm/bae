@@ -36,6 +36,7 @@ pub enum MockPage {
     Button,
     Pill,
     TextInput,
+    Tooltip,
     // Components
     Library,
     AlbumDetail,
@@ -50,6 +51,7 @@ impl MockPage {
         MockPage::Button,
         MockPage::Pill,
         MockPage::TextInput,
+        MockPage::Tooltip,
         // Components
         MockPage::Library,
         MockPage::AlbumDetail,
@@ -60,7 +62,9 @@ impl MockPage {
     /// Section this mock belongs to
     pub fn section(self) -> MockSection {
         match self {
-            MockPage::Button | MockPage::Pill | MockPage::TextInput => MockSection::DesignSystem,
+            MockPage::Button | MockPage::Pill | MockPage::TextInput | MockPage::Tooltip => {
+                MockSection::DesignSystem
+            }
             _ => MockSection::Components,
         }
     }
@@ -71,6 +75,7 @@ impl MockPage {
             MockPage::Button => "Button",
             MockPage::Pill => "Pill",
             MockPage::TextInput => "TextInput",
+            MockPage::Tooltip => "Tooltip",
             MockPage::Library => "LibraryView",
             MockPage::AlbumDetail => "AlbumDetailView",
             MockPage::FolderImport => "FolderImportView",
@@ -84,6 +89,7 @@ impl MockPage {
             MockPage::Button => "button",
             MockPage::Pill => "pill",
             MockPage::TextInput => "text-input",
+            MockPage::Tooltip => "tooltip",
             MockPage::Library => "library",
             MockPage::AlbumDetail => "album-detail",
             MockPage::FolderImport => "folder-import",
@@ -97,6 +103,7 @@ impl MockPage {
             MockPage::Button => "Button component with variants, sizes, and states",
             MockPage::Pill => "Pill component for tokens, tags, and inline labels",
             MockPage::TextInput => "Text input component with sizes and states",
+            MockPage::Tooltip => "Hover tooltip with placement and wrapping options",
             MockPage::Library => "Album grid with loading/error/empty states",
             MockPage::AlbumDetail => "Album detail page with tracks and controls",
             MockPage::FolderImport => "Folder import workflow with all phases",
@@ -110,6 +117,7 @@ impl MockPage {
             MockPage::Button => Route::MockButton { state },
             MockPage::Pill => Route::MockPill { state },
             MockPage::TextInput => Route::MockTextInput { state },
+            MockPage::Tooltip => Route::MockTooltip { state },
             MockPage::Library => Route::MockLibrary { state },
             MockPage::AlbumDetail => Route::MockAlbumDetail { state },
             MockPage::FolderImport => Route::MockFolderImport { state },
