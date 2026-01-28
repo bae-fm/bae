@@ -34,6 +34,9 @@ pub fn ImportView(
     let has_candidates = !state.read().detected_candidates.is_empty();
     let show_sidebar = has_candidates || is_scanning;
 
+    // Only show source selector if multiple sources are available
+    let show_source_selector = ImportSource::all().len() > 1;
+
     if show_sidebar {
         rsx! {
             div { class: "flex flex-grow min-h-0",
@@ -50,7 +53,9 @@ pub fn ImportView(
                         // Header with title and source selector
                         div { class: "pt-6 px-5 pb-4 flex items-center gap-4",
                             h1 { class: "text-2xl font-bold text-white", "Import" }
-                            ImportSourceSelectorView { selected_source, on_source_select }
+                            if show_source_selector {
+                                ImportSourceSelectorView { selected_source, on_source_select }
+                            }
                         }
                         // Sidebar content
                         div { class: "flex-1 min-h-0",
@@ -75,7 +80,9 @@ pub fn ImportView(
                 // Header with title and source selector
                 div { class: "pt-6 px-5 pb-4 flex items-center gap-4",
                     h1 { class: "text-2xl font-bold text-white", "Import" }
-                    ImportSourceSelectorView { selected_source, on_source_select }
+                    if show_source_selector {
+                        ImportSourceSelectorView { selected_source, on_source_select }
+                    }
                 }
                 // Main content - full width
                 div { class: "flex-1 min-h-0 flex flex-col", {children} }
