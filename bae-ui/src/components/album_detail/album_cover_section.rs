@@ -67,7 +67,7 @@ pub fn AlbumCoverSection(
                 is_open,
                 on_close: move |_| show_dropdown.set(false),
                 placement: Placement::BottomEnd,
-                class: "bg-gray-700 rounded-lg shadow-lg overflow-hidden border border-gray-600 min-w-[160px]",
+                class: "bg-gray-700 rounded-lg shadow-lg overflow-clip border border-gray-600 min-w-[160px]",
 
                 // Release Info - only for single release
                 if has_single_release {

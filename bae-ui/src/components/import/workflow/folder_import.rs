@@ -110,7 +110,7 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
         } else {
             // Detail pane: unified area for selected folder
             // Uses subtle background and rounded corners to visually group Files + Workflow as one unit
-            div { class: "flex-1 flex flex-col min-h-0 m-2 ml-0 bg-gray-900/40 rounded-xl overflow-hidden",
+            div { class: "flex-1 flex flex-col min-h-0 m-2 ml-0 bg-gray-900/40 rounded-xl overflow-clip",
                 // Context header showing folder name and step
                 DetailHeader { state }
 

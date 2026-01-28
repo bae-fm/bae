@@ -41,7 +41,7 @@ pub fn AlbumCard(
             .join(", ")
     };
 
-    // Note: overflow-clip (not overflow-hidden) to clip rounded corners without blocking scroll propagation
+    // Note: use overflow-clip (not overflow-hidden) to clip rounded corners without blocking scroll propagation
     let card_class = "bg-gray-800 rounded-lg overflow-clip shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer group relative";
 
     rsx! {
@@ -105,7 +105,7 @@ pub fn AlbumCard(
                 is_open,
                 on_close: move |_| show_dropdown.set(false),
                 placement: Placement::BottomEnd,
-                class: "bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[140px] overflow-hidden",
+                class: "bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[140px] overflow-clip",
                 button {
                     class: "w-full px-4 py-2 text-left text-white hover:bg-gray-700 transition-colors flex items-center gap-2",
                     onclick: {

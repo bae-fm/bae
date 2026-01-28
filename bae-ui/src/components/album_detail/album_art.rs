@@ -13,9 +13,9 @@ pub fn AlbumArt(
     #[props(default = false)] is_ephemeral: bool,
 ) -> Element {
     let container_class = if is_ephemeral {
-        "aspect-square bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden relative animate-pulse-glow"
+        "aspect-square bg-gray-700 rounded-lg flex items-center justify-center overflow-clip relative animate-pulse-glow"
     } else {
-        "aspect-square bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden relative"
+        "aspect-square bg-gray-700 rounded-lg flex items-center justify-center overflow-clip relative"
     };
 
     rsx! {

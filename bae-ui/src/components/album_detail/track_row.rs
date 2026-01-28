@@ -51,12 +51,12 @@ pub fn TrackRow(
 
     let row_class = if is_available {
         if is_active {
-            "relative flex items-center py-3 px-4 rounded-lg group overflow-clip bg-blue-500/10 hover:bg-blue-500/15 transition-colors"
+            "relative flex items-center py-2 px-4 rounded-lg group overflow-clip bg-blue-500/10 hover:bg-blue-500/15 transition-colors cursor-pointer"
         } else {
-            "relative flex items-center py-3 px-4 rounded-lg group overflow-clip hover:bg-gray-700 transition-colors"
+            "relative flex items-center py-2 px-4 rounded-lg group overflow-clip hover:bg-gray-700 transition-colors cursor-pointer"
         }
     } else {
-        "relative flex items-center py-3 px-4 rounded-lg group overflow-clip"
+        "relative flex items-center py-2 px-4 rounded-lg group overflow-clip"
     };
 
     // For styling: unavailable tracks look like "importing"
@@ -115,7 +115,7 @@ pub fn TrackRow(
             // Track number
             div {
                 class: "w-12 text-right text-sm font-mono",
-                class: if is_importing { "text-gray-600" } else { "text-gray-400" },
+                class: if is_importing { "text-gray-600" } else { "text-gray-500" },
                 if let Some(track_num) = track.track_number {
                     "{track_num}."
                 } else {
@@ -124,7 +124,7 @@ pub fn TrackRow(
             }
 
             // Track title and artists
-            div { class: "flex-1 ml-4",
+            div { class: "flex-1 min-w-0 ml-4 mr-4",
                 h3 {
                     class: "font-medium transition-colors",
                     class: if is_importing { "text-gray-500" } else if is_active { "text-blue-300" } else { "text-white group-hover:text-blue-300" },

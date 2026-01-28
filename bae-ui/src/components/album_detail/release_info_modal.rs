@@ -191,7 +191,7 @@ fn GalleryTab(images: Vec<Image>, is_loading: bool, error: Option<String>) -> El
             div { class: "grid grid-cols-2 sm:grid-cols-3 gap-4",
                 for image in images.iter() {
                     div { class: "relative group",
-                        div { class: if image.is_cover { "aspect-square bg-gray-700 rounded-lg overflow-hidden ring-2 ring-blue-500" } else { "aspect-square bg-gray-700 rounded-lg overflow-hidden" },
+                        div { class: if image.is_cover { "aspect-square bg-gray-700 rounded-lg overflow-clip ring-2 ring-blue-500" } else { "aspect-square bg-gray-700 rounded-lg overflow-clip" },
                             div { class: "w-full h-full flex items-center justify-center text-gray-500",
                                 "Image"
                             }

@@ -135,6 +135,10 @@ jobs:
           exit 1
         fi
 
+    - name: Check for overflow-hidden in UI components
+      if: runner.os != 'Windows'
+      run: scripts/check-overflow-hidden.sh
+
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
       run: |

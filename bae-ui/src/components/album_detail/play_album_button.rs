@@ -35,7 +35,7 @@ pub fn PlayAlbumButton(
 
     rsx! {
         div { class: "relative mt-6",
-            div { class: "flex rounded-lg overflow-hidden",
+            div { class: "flex rounded-lg overflow-clip",
                 Button {
                     variant: ButtonVariant::Primary,
                     size: ButtonSize::Medium,

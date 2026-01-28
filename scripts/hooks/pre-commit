@@ -60,6 +60,14 @@ git --no-pager diff --name-only | while read -r file; do
     fi
 done
 
+# Ban overflow-hidden (blocks trackpad scroll propagation, use overflow-clip instead)
+if ! scripts/check-overflow-hidden.sh; then
+    echo ""
+    echo "❌ Found overflow-hidden in bae-ui components"
+    echo "Use overflow-clip instead - overflow-hidden creates a scroll container that blocks trackpad scroll."
+    exit 1
+fi
+
 # bae-core checks
 if has_changes_in "bae-core"; then
     cd bae-core

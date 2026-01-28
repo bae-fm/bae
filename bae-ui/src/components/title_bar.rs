@@ -256,7 +256,7 @@ fn SettingsButton(
                     is_open: is_update_menu_open,
                     on_close: on_close_menu,
                     placement: Placement::BottomEnd,
-                    class: "bg-surface-overlay border border-border-strong rounded-lg shadow-lg overflow-hidden w-48",
+                    class: "bg-surface-overlay border border-border-strong rounded-lg shadow-lg overflow-clip w-48",
                     match update_state {
                         UpdateState::Downloading => rsx! {
                             div { class: "px-3 py-2 text-xs text-gray-400", "Downloading update..." }

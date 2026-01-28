@@ -225,7 +225,7 @@ pub fn ResizablePanel(
     rsx! {
         div {
             class: format!(
-                "{} flex flex-shrink-0 overflow-hidden {} {} {}",
+                "{} flex flex-shrink-0 overflow-clip {} {} {}",
                 position.as_class(),
                 if is_horizontal { "self-stretch" } else { "self-stretch flex-col" },
                 if is_resizing() { "select-none" } else { "" },
@@ -249,7 +249,7 @@ pub fn ResizablePanel(
             }
 
             // Content area
-            div { class: "flex-1 min-w-0 min-h-0 overflow-hidden", {children} }
+            div { class: "flex-1 min-w-0 min-h-0 overflow-clip", {children} }
 
             // For horizontal resize, grab bar overlays right edge
             if is_horizontal {

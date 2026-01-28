@@ -30,7 +30,7 @@ pub fn ImportsDropdownView(
         }
 
         // Dropdown panel
-        div { class: "absolute top-full right-0 mt-2 w-96 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-[1700] overflow-hidden",
+        div { class: "absolute top-full right-0 mt-2 w-96 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-[1700] overflow-clip",
 
             // Header
             div { class: "px-4 py-3 bg-gray-800/50 border-b border-gray-700 flex items-center justify-between",
@@ -130,7 +130,7 @@ fn ImportItemView(
             div { class: "flex items-start gap-3",
                 // Cover art
                 div {
-                    class: "flex-shrink-0 w-10 h-10 bg-gray-700 rounded overflow-hidden relative",
+                    class: "flex-shrink-0 w-10 h-10 bg-gray-700 rounded overflow-clip relative",
                     if let Some(ref url) = import.cover_url {
                         img {
                             src: "{url}",
@@ -187,7 +187,7 @@ fn ImportItemView(
 
                     // Progress bar
                     if is_importing && progress_percent > 0 {
-                        div { class: "mt-2 h-1.5 bg-gray-700 rounded-full overflow-hidden",
+                        div { class: "mt-2 h-1.5 bg-gray-700 rounded-full overflow-clip",
                             div {
                                 class: "h-full bg-gradient-to-r from-indigo-500 to-indigo-400 transition-all duration-300 ease-out",
                                 style: "width: {progress_percent}%",

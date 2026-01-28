@@ -41,7 +41,7 @@ pub fn ReleaseSidebarView(
     rsx! {
         // Panel container - padding comes from parent ImportView
         div { class: "flex-1 px-2 pb-2 min-w-0 h-full",
-            div { class: "flex flex-col h-full min-w-0 bg-surface-raised rounded-xl shadow-lg shadow-black/10 overflow-hidden",
+            div { class: "flex flex-col h-full min-w-0 bg-surface-raised rounded-xl shadow-lg shadow-black/10 overflow-clip",
                 // Header
                 div { class: "relative px-3 py-2.5 flex items-center justify-between",
                     span { class: "text-xs font-medium text-gray-300",
@@ -89,7 +89,7 @@ pub fn ReleaseSidebarView(
                         is_open,
                         on_close: move |_| show_menu.set(false),
                         placement: Placement::BottomEnd,
-                        class: "bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[120px] overflow-hidden",
+                        class: "bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[120px] overflow-clip",
                         button {
                             class: "w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors",
                             onclick: move |evt| {

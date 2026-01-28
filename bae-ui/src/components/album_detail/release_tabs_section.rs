@@ -110,7 +110,7 @@ fn ReleaseTab(
     let is_open: ReadSignal<bool> = is_open_memo.into();
 
     rsx! {
-        div { class: "flex items-center gap-2 relative",
+        div { class: "group/tab flex items-center gap-2 relative",
             Button {
                 variant: ButtonVariant::Ghost,
                 size: ButtonSize::Small,
@@ -139,7 +139,7 @@ fn ReleaseTab(
                 variant: ButtonVariant::Ghost,
                 size: ButtonSize::Small,
                 disabled: is_deleting(),
-                class: Some("px-2".to_string()),
+                class: Some("px-2 opacity-0 group-hover/tab:opacity-100 transition-opacity".to_string()),
                 onclick: {
                     let release_id = release_id.clone();
                     move |evt: MouseEvent| {
@@ -162,7 +162,7 @@ fn ReleaseTab(
                 is_open,
                 on_close: move |_| show_release_dropdown.set(None),
                 placement: Placement::BottomEnd,
-                class: "bg-gray-700 rounded-lg shadow-lg overflow-hidden border border-gray-600 min-w-[160px]",
+                class: "bg-gray-700 rounded-lg shadow-lg overflow-clip border border-gray-600 min-w-[160px]",
 
                 Button {
                     variant: ButtonVariant::Ghost,

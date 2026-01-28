@@ -25,9 +25,11 @@ pub fn AlbumMetadata(
     rsx! {
         div {
             h1 { class: "text-2xl font-bold text-white mb-2", "{album.title}" }
-            p { class: "text-lg text-gray-300 mb-2", "{artist_name}" }
-            if let Some(year) = album.year {
-                p { class: "text-gray-400 text-sm", "{year}" }
+            p { class: "text-lg text-gray-300 mb-2",
+                "{artist_name}"
+                if let Some(year) = album.year {
+                    " · {year}"
+                }
             }
         }
     }

@@ -109,8 +109,6 @@ pub fn AlbumDetailView(
                         on_stop_seeding,
                     }
 
-                    h2 { class: "text-xl font-bold text-white mb-4", "Tracklist" }
-
                     TrackListSection {
                         state,
                         tracks,
