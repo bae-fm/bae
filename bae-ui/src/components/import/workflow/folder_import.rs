@@ -126,7 +126,7 @@ pub fn FolderImportView(props: FolderImportViewProps) -> Element {
                     }
 
                     // Right: Workflow (main, fills remaining space)
-                    div { class: "flex-1 min-h-0 flex flex-col overflow-auto",
+                    div { class: "flex-1 min-h-0 flex flex-col bg-gray-800/30",
                         WorkflowContent {
                             state,
                             step,
@@ -220,41 +220,43 @@ fn WorkflowContent(
     on_view_duplicate: EventHandler<String>,
 ) -> Element {
     rsx! {
-        match step {
-            ImportStep::Identify => rsx! {
-                IdentifyStep {
-                    state,
-                    on_skip_detection,
-                    on_exact_match_select,
-                    on_confirm_exact_match,
-                    on_switch_to_manual_search,
-                    on_switch_to_exact_matches,
-                    on_search_source_change,
-                    on_search_tab_change,
-                    on_artist_change,
-                    on_album_change,
-                    on_catalog_number_change,
-                    on_barcode_change,
-                    on_manual_match_select,
-                    on_search,
-                    on_cancel_search,
-                    on_manual_confirm,
-                    on_retry_discid_lookup,
-                }
-            },
-            ImportStep::Confirm => rsx! {
-                ConfirmStep {
-                    state,
-                    storage_profiles,
-                    on_select_remote_cover,
-                    on_select_local_cover,
-                    on_storage_profile_change,
-                    on_edit,
-                    on_confirm,
-                    on_configure_storage,
-                    on_view_duplicate,
-                }
-            },
+        div { class: "flex-1 min-h-0 overflow-auto bg-gray-900/40 rounded-tl-xl",
+            match step {
+                ImportStep::Identify => rsx! {
+                    IdentifyStep {
+                        state,
+                        on_skip_detection,
+                        on_exact_match_select,
+                        on_confirm_exact_match,
+                        on_switch_to_manual_search,
+                        on_switch_to_exact_matches,
+                        on_search_source_change,
+                        on_search_tab_change,
+                        on_artist_change,
+                        on_album_change,
+                        on_catalog_number_change,
+                        on_barcode_change,
+                        on_manual_match_select,
+                        on_search,
+                        on_cancel_search,
+                        on_manual_confirm,
+                        on_retry_discid_lookup,
+                    }
+                },
+                ImportStep::Confirm => rsx! {
+                    ConfirmStep {
+                        state,
+                        storage_profiles,
+                        on_select_remote_cover,
+                        on_select_local_cover,
+                        on_storage_profile_change,
+                        on_edit,
+                        on_confirm,
+                        on_configure_storage,
+                        on_view_duplicate,
+                    }
+                },
+            }
         }
     }
 }
