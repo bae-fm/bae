@@ -484,6 +484,22 @@ fn ReleaseInfoModalWrapper(
         return rsx! {};
     };
 
+    // Get track stats
+    let track_count = *state.track_count().read();
+    let total_duration_ms: Option<i64> = {
+        let sum: i64 = state
+            .tracks()
+            .read()
+            .iter()
+            .filter_map(|t| t.duration_ms)
+            .sum();
+        if sum > 0 {
+            Some(sum)
+        } else {
+            None
+        }
+    };
+
     // Derive is_open - always true when we have a release since show().is_some()
     let is_open_memo = use_memo(move || show().is_some());
     let is_open: ReadSignal<bool> = is_open_memo.into();
@@ -500,6 +516,8 @@ fn ReleaseInfoModalWrapper(
             files_error: modal_files_error,
             images_error: modal_images_error,
             initial_tab,
+            track_count,
+            total_duration_ms,
         }
     }
 }

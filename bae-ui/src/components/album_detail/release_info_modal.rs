@@ -1,7 +1,7 @@
 //! Release info modal with tabs for details, files, and gallery
 
 use crate::components::icons::XIcon;
-use crate::components::utils::format_file_size;
+use crate::components::utils::{format_duration, format_file_size};
 use crate::components::Modal;
 use crate::display_types::{File, Image, Release};
 use dioxus::prelude::*;
@@ -27,6 +27,8 @@ pub fn ReleaseInfoModal(
     #[props(default)] files_error: Option<String>,
     #[props(default)] images_error: Option<String>,
     #[props(default = Tab::Details)] initial_tab: Tab,
+    #[props(default)] track_count: usize,
+    #[props(default)] total_duration_ms: Option<i64>,
 ) -> Element {
     let mut active_tab = use_signal(|| initial_tab);
 
@@ -72,7 +74,7 @@ pub fn ReleaseInfoModal(
                 div { class: "p-6 overflow-y-auto flex-1",
                     match current_tab {
                         Tab::Details => rsx! {
-                            DetailsTab { release: release.clone() }
+                            DetailsTab { release: release.clone(), track_count, total_duration_ms }
                         },
                         Tab::Files => rsx! {
                             FilesTab {
@@ -96,7 +98,7 @@ pub fn ReleaseInfoModal(
 }
 
 #[component]
-fn DetailsTab(release: Release) -> Element {
+fn DetailsTab(release: Release, track_count: usize, total_duration_ms: Option<i64>) -> Element {
     rsx! {
         div { class: "space-y-4",
             if release.year.is_some() || release.format.is_some() {
@@ -109,6 +111,27 @@ fn DetailsTab(release: Release) -> Element {
                     }
                     if let Some(ref format) = release.format {
                         span { class: "text-gray-300", "{format}" }
+                    }
+                }
+            }
+            // Track count and duration
+            if track_count > 0 || total_duration_ms.is_some() {
+                div { class: "text-gray-300",
+                    if track_count > 0 {
+                        span {
+                            "{track_count} "
+                            if track_count == 1 {
+                                "track"
+                            } else {
+                                "tracks"
+                            }
+                        }
+                    }
+                    if track_count > 0 && total_duration_ms.is_some() {
+                        span { " · " }
+                    }
+                    if let Some(duration) = total_duration_ms {
+                        span { {format_duration(duration)} }
                     }
                 }
             }
