@@ -114,14 +114,28 @@ pub fn Tooltip(
 
         // Tooltip portal (rendered at body level via fixed positioning)
         if is_visible() {
-            div {
+            span {
                 id: "{tooltip_id}",
-                class: if nowrap { "z-50 px-3 py-2 text-sm text-gray-200 bg-gray-800 rounded-lg shadow-lg border border-gray-700 whitespace-nowrap" } else { "z-50 px-3 py-2 text-sm text-gray-200 bg-gray-800 rounded-lg shadow-lg border border-gray-700 max-w-xs" },
                 style: "position: fixed; top: -9999px; left: -9999px;",
-                role: "tooltip",
-                "{text}"
+                TooltipBubble { text, nowrap }
             }
         }
+    }
+}
+
+fn tooltip_bubble_class(nowrap: bool) -> &'static str {
+    if nowrap {
+        "z-50 px-3 py-2 text-sm text-gray-200 bg-gray-800 rounded-lg shadow-lg border border-gray-700 whitespace-nowrap"
+    } else {
+        "z-50 px-3 py-2 text-sm text-gray-200 bg-gray-800 rounded-lg shadow-lg border border-gray-700 max-w-xs"
+    }
+}
+
+/// Static tooltip bubble for use in previews/specimens where hover behavior isn't needed.
+#[component]
+pub fn TooltipBubble(text: String, nowrap: bool) -> Element {
+    rsx! {
+        div { class: tooltip_bubble_class(nowrap), role: "tooltip", "{text}" }
     }
 }
 

@@ -7,9 +7,8 @@ use crate::mocks::{
 };
 use crate::ui::LinkCard;
 use crate::Route;
-use bae_ui::floating_ui::Placement;
 use bae_ui::{
-    Button, ButtonSize, ButtonVariant, Pill, PillVariant, TextInput, TextInputSize, Tooltip,
+    Button, ButtonSize, ButtonVariant, Pill, PillVariant, TextInput, TextInputSize, TooltipBubble,
 };
 use dioxus::prelude::*;
 
@@ -89,24 +88,13 @@ pub fn MockIndex() -> Element {
                     }
                 }
 
-                // Tooltip specimens
+                // Tooltip specimens (static previews since pointer-events are disabled)
                 SpecimenCard { title: "Tooltip", to: Route::MockTooltip { state: None },
-                    div { class: "flex flex-wrap gap-2",
-                        Tooltip {
-                            text: "Top tooltip",
-                            placement: Placement::Top,
-                            nowrap: true,
-                            button { class: "px-2 py-1 bg-gray-700 text-xs text-white rounded",
-                                "Top"
-                            }
-                        }
-                        Tooltip {
-                            text: "Bottom tooltip",
-                            placement: Placement::Bottom,
-                            nowrap: true,
-                            button { class: "px-2 py-1 bg-gray-700 text-xs text-white rounded",
-                                "Bottom"
-                            }
+                    div { class: "flex flex-col items-start gap-2",
+                        TooltipBubble { text: "Save changes", nowrap: true }
+                        TooltipBubble {
+                            text: "Based on CD layout. Calculated using rip logs or CUE/FLAC files.",
+                            nowrap: false,
                         }
                     }
                 }
