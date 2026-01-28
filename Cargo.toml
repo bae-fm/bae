@@ -10,7 +10,5 @@ web-sys-x = { version = "0.3.83-alpha.1", default-features = false }
 wasm-bindgen-x = "0.2.106-alpha.1"
 js-sys-x = "0.3.83-alpha.1"
 wasm-bindgen-futures-x = "0.4.56-alpha.1"
-# Timers
-gloo-timers = { version = "0.3", features = ["futures"] }
 # Logging
 tracing = "0.1.41"

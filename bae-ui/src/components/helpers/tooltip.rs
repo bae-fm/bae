@@ -97,7 +97,7 @@ pub fn Tooltip(
                     task.cancel();
                 }
                 let task = spawn(async move {
-                    gloo_timers::future::TimeoutFuture::new(TOOLTIP_DELAY_MS as u32).await;
+                    tokio::time::sleep(std::time::Duration::from_millis(TOOLTIP_DELAY_MS)).await;
                     is_visible.set(true);
                 });
                 hover_task.set(Some(task));

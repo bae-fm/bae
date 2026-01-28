@@ -124,6 +124,16 @@ jobs:
           )
         )
 
+    - name: Check for WASM-only APIs in shared code
+      if: runner.os != 'Windows'
+      run: |
+        # These crates compile on native but panic at runtime
+        WASM_ONLY="gloo_timers|gloo_events|gloo_utils"
+        if grep -rE "$WASM_ONLY" --include='*.rs' bae-ui/ bae-core/ bae-desktop/; then
+          echo "::error::Found WASM-only API usage in shared/desktop code. Use platform-agnostic alternatives."
+          exit 1
+        fi
+
     - name: Run tests (Linux/macOS)
       if: runner.os != 'Windows'
       run: |
