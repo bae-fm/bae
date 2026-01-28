@@ -322,51 +322,53 @@ fn TrackListSection(
     let mut current_disc: Option<i32> = None;
 
     rsx! {
-        div { class: "space-y-2",
-            // Zip disc_info with track stores for per-track reactivity
-            for ((disc_number , track_id) , track_store) in disc_info.into_iter().zip(tracks.iter()) {
-                {
-                    // Check if we need a disc header
-                    let show_disc_header = has_multiple_discs && disc_number != current_disc;
-                    if show_disc_header {
-                        current_disc = disc_number;
-                    }
-                    let disc_label = disc_number
-                        .map(|d| format!("Disc {}", d))
-                        .unwrap_or_else(|| "Disc 1".to_string());
+        div { class: "bg-surface-raised/50 rounded-lg p-3 border border-border-subtle",
+            div { class: "space-y-1",
+                // Zip disc_info with track stores for per-track reactivity
+                for ((disc_number , track_id) , track_store) in disc_info.into_iter().zip(tracks.iter()) {
+                    {
+                        // Check if we need a disc header
+                        let show_disc_header = has_multiple_discs && disc_number != current_disc;
+                        if show_disc_header {
+                            current_disc = disc_number;
+                        }
+                        let disc_label = disc_number
+                            .map(|d| format!("Disc {}", d))
+                            .unwrap_or_else(|| "Disc 1".to_string());
 
-                    // Playback state for this track
-                    let is_this_track = current_track_id.as_ref() == Some(&track_id);
-                    let is_playing = is_this_track
+                        // Playback state for this track
+                        let is_this_track = current_track_id.as_ref() == Some(&track_id);
+                        let is_playing = is_this_track
 
-                        // Wrapper div with key for VDOM diffing
-                        && matches!(playback, PlaybackDisplay::Playing { .. });
-                    let is_paused = is_this_track
-                        && matches!(playback, PlaybackDisplay::Paused { .. });
-                    let is_loading = is_this_track
-                        && matches!(playback, PlaybackDisplay::Loading { .. });
-                    rsx! {
-                        div { key: "track-{track_id}",
-                            if show_disc_header {
-                                h3 { class: "text-sm font-semibold text-gray-400 uppercase tracking-wide pt-4 pb-2 first:pt-0",
-                                    "{disc_label}"
+                            // Wrapper div with key for VDOM diffing
+                            && matches!(playback, PlaybackDisplay::Playing { .. });
+                        let is_paused = is_this_track
+                            && matches!(playback, PlaybackDisplay::Paused { .. });
+                        let is_loading = is_this_track
+                            && matches!(playback, PlaybackDisplay::Loading { .. });
+                        rsx! {
+                            div { key: "track-{track_id}",
+                                if show_disc_header {
+                                    h3 { class: "text-sm font-semibold text-gray-400 uppercase tracking-wide pt-4 pb-2 first:pt-0",
+                                        "{disc_label}"
+                                    }
                                 }
-                            }
-                            TrackRow {
-                                track: track_store,
-                                artists: artists.clone(),
-                                release_id: release_id.clone(),
-                                is_compilation,
-                                is_playing,
-                                is_paused,
-                                is_loading,
-                                show_spinner: is_loading,
-                                on_play: on_track_play,
-                                on_pause: on_track_pause,
-                                on_resume: on_track_resume,
-                                on_add_next: on_track_add_next,
-                                on_add_to_queue: on_track_add_to_queue,
-                                on_export: on_track_export,
+                                TrackRow {
+                                    track: track_store,
+                                    artists: artists.clone(),
+                                    release_id: release_id.clone(),
+                                    is_compilation,
+                                    is_playing,
+                                    is_paused,
+                                    is_loading,
+                                    show_spinner: is_loading,
+                                    on_play: on_track_play,
+                                    on_pause: on_track_pause,
+                                    on_resume: on_track_resume,
+                                    on_add_next: on_track_add_next,
+                                    on_add_to_queue: on_track_add_to_queue,
+                                    on_export: on_track_export,
+                                }
                             }
                         }
                     }

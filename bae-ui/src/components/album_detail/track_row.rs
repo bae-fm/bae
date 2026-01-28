@@ -51,9 +51,9 @@ pub fn TrackRow(
 
     let row_class = if is_available {
         if is_active {
-            "relative flex items-center py-2 px-4 rounded-lg group overflow-clip bg-blue-500/10 hover:bg-blue-500/15 transition-colors cursor-pointer"
+            "relative flex items-center py-2 px-4 rounded-lg group overflow-clip bg-accent/10 hover:bg-accent/15 transition-colors cursor-pointer"
         } else {
-            "relative flex items-center py-2 px-4 rounded-lg group overflow-clip hover:bg-gray-700 transition-colors cursor-pointer"
+            "relative flex items-center py-2 px-4 rounded-lg group overflow-clip hover:bg-hover transition-colors cursor-pointer"
         }
     } else {
         "relative flex items-center py-2 px-4 rounded-lg group overflow-clip"
@@ -124,10 +124,10 @@ pub fn TrackRow(
             }
 
             // Track title and artists
-            div { class: "flex-1 min-w-0 ml-4 mr-4",
+            div { class: "flex-1 min-w-0 max-w-md ml-4",
                 h3 {
-                    class: "font-medium transition-colors",
-                    class: if is_importing { "text-gray-500" } else if is_active { "text-blue-300" } else { "text-white group-hover:text-blue-300" },
+                    class: "font-medium transition-colors truncate",
+                    class: if is_importing { "text-gray-500" } else if is_active { "text-accent-soft" } else { "text-white group-hover:text-accent-soft" },
                     "{track.title}"
                 }
                 if is_compilation && !artists.is_empty() {
@@ -147,7 +147,7 @@ pub fn TrackRow(
 
             // Duration / Import progress
             div {
-                class: "text-sm font-mono",
+                class: "text-sm font-mono ml-4",
                 class: if is_importing { "text-gray-600" } else { "text-gray-400" },
                 if let Some(pct) = import_progress {
                     // Show import progress percentage
@@ -185,13 +185,17 @@ fn TrackMenu(
     // Use track_id for anchor to ensure uniqueness even if component is recycled
     let anchor_id = format!("track-menu-{}", track_id);
 
+    let menu_is_open = is_open();
+    let menu_button_class = if menu_is_open {
+        "px-2 py-1 rounded-md text-gray-400 hover:text-white hover:bg-hover transition-all"
+    } else {
+        "px-2 py-1 rounded-md text-gray-400 hover:text-white hover:bg-hover opacity-0 group-hover:opacity-100 transition-all"
+    };
+
     rsx! {
         ChromelessButton {
             id: Some(anchor_id.clone()),
-            class: Some(
-                "px-2 py-1 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                    .to_string(),
-            ),
+            class: Some(menu_button_class.to_string()),
             aria_label: Some("Track menu".to_string()),
             onclick: move |_| show_menu.set(!show_menu()),
             EllipsisIcon { class: "w-4 h-4" }
@@ -202,10 +206,11 @@ fn TrackMenu(
             is_open,
             on_close: move |_| show_menu.set(false),
             placement: Placement::BottomEnd,
-            class: "bg-gray-800 border border-gray-700 rounded shadow-lg min-w-32",
+            class: "bg-surface-overlay border border-border-subtle rounded-lg shadow-lg p-1 min-w-32",
             ChromelessButton {
                 class: Some(
-                    "w-full text-left px-3 py-2 text-sm hover:bg-gray-700 rounded-none".to_string(),
+                    "w-full text-left px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-hover rounded-md transition-colors"
+                        .to_string(),
                 ),
                 onclick: {
                     let track_id = track_id.clone();
@@ -218,7 +223,8 @@ fn TrackMenu(
             }
             ChromelessButton {
                 class: Some(
-                    "w-full text-left px-3 py-2 text-sm hover:bg-gray-700 rounded-none".to_string(),
+                    "w-full text-left px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-hover rounded-md transition-colors"
+                        .to_string(),
                 ),
                 onclick: {
                     let track_id = track_id.clone();
@@ -231,7 +237,8 @@ fn TrackMenu(
             }
             ChromelessButton {
                 class: Some(
-                    "w-full text-left px-3 py-2 text-sm hover:bg-gray-700 rounded-none".to_string(),
+                    "w-full text-left px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-hover rounded-md transition-colors"
+                        .to_string(),
                 ),
                 onclick: {
                     let track_id = track_id.clone();

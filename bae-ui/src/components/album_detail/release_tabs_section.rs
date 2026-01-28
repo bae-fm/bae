@@ -1,6 +1,6 @@
 //! Release tabs section for multi-release albums
 
-use crate::components::{Button, ButtonSize, ButtonVariant, Dropdown, Placement};
+use crate::components::{ChromelessButton, Dropdown, Placement};
 use crate::display_types::Release;
 use dioxus::prelude::*;
 
@@ -32,8 +32,8 @@ pub fn ReleaseTabsSection(
     let show_release_dropdown = use_signal(|| None::<String>);
 
     rsx! {
-        div { class: "mb-6 border-b border-gray-700",
-            div { class: "flex gap-2 overflow-x-auto",
+        div { class: "mb-4",
+            div { class: "flex gap-1 overflow-x-auto",
                 for release in releases.iter() {
                     {
                         let is_selected = selected_release_id.as_ref() == Some(&release.id);
@@ -108,21 +108,26 @@ fn ReleaseTab(
         move || show_release_dropdown().as_ref() == Some(&release_id)
     });
     let is_open: ReadSignal<bool> = is_open_memo.into();
+    let menu_is_open = is_open();
+
+    // Tab button styling - pill style
+    let tab_class = if is_selected {
+        "px-3 py-1.5 text-sm rounded-lg bg-surface-raised text-white whitespace-nowrap transition-colors"
+    } else {
+        "px-3 py-1.5 text-sm rounded-lg text-gray-400 hover:text-white hover:bg-hover whitespace-nowrap transition-colors"
+    };
+
+    // Three-dot menu visibility: show on hover OR when menu is open
+    let menu_button_class = if menu_is_open {
+        "px-2 py-1.5 text-sm rounded-lg text-gray-400 hover:text-white hover:bg-hover transition-all"
+    } else {
+        "px-2 py-1.5 text-sm rounded-lg text-gray-400 hover:text-white hover:bg-hover opacity-0 group-hover/tab:opacity-100 transition-all"
+    };
 
     rsx! {
-        div { class: "group/tab flex items-center gap-2 relative",
-            Button {
-                variant: ButtonVariant::Ghost,
-                size: ButtonSize::Small,
-                class: Some(
-                    if is_selected {
-                        "text-blue-400 border-b-2 border-blue-400 whitespace-nowrap rounded-none"
-                            .to_string()
-                    } else {
-                        "text-gray-400 hover:text-gray-300 border-b-2 border-transparent whitespace-nowrap rounded-none"
-                            .to_string()
-                    },
-                ),
+        div { class: "group/tab flex items-center gap-0.5 relative",
+            ChromelessButton {
+                class: Some(tab_class.to_string()),
                 onclick: move |_| on_release_select.call(()),
                 {
                     if let Some(ref name) = release.release_name {
@@ -134,12 +139,10 @@ fn ReleaseTab(
                     }
                 }
             }
-            Button {
+            ChromelessButton {
                 id: Some(anchor_id.clone()),
-                variant: ButtonVariant::Ghost,
-                size: ButtonSize::Small,
                 disabled: is_deleting(),
-                class: Some("px-2 opacity-0 group-hover/tab:opacity-100 transition-opacity".to_string()),
+                class: Some(menu_button_class.to_string()),
                 onclick: {
                     let release_id = release_id.clone();
                     move |evt: MouseEvent| {
@@ -162,38 +165,26 @@ fn ReleaseTab(
                 is_open,
                 on_close: move |_| show_release_dropdown.set(None),
                 placement: Placement::BottomEnd,
-                class: "bg-gray-700 rounded-lg shadow-lg overflow-clip border border-gray-600 min-w-[160px]",
+                class: "bg-surface-overlay rounded-lg shadow-lg border border-border-subtle p-1 min-w-[160px]",
 
-                Button {
-                    variant: ButtonVariant::Ghost,
-                    size: ButtonSize::Medium,
+                MenuItem {
                     disabled: is_deleting() || is_exporting(),
-                    class: Some("w-full justify-start rounded-none".to_string()),
-                    onclick: move |evt: MouseEvent| {
-                        evt.stop_propagation();
-                        if !is_deleting() && !is_exporting() {
-                            show_release_dropdown.set(None);
-                            on_view_files.call(());
-                        }
+                    onclick: move |_| {
+                        show_release_dropdown.set(None);
+                        on_view_files.call(());
                     },
                     "Release Info"
                 }
                 if torrent.has_torrent {
                     if torrent.is_seeding {
                         if let Some(ref handler) = on_stop_seeding {
-                            Button {
-                                variant: ButtonVariant::Ghost,
-                                size: ButtonSize::Medium,
+                            MenuItem {
                                 disabled: is_deleting() || is_exporting(),
-                                class: Some("w-full justify-start rounded-none".to_string()),
                                 onclick: {
                                     let handler = *handler;
-                                    move |evt: MouseEvent| {
-                                        evt.stop_propagation();
-                                        if !is_deleting() && !is_exporting() {
-                                            show_release_dropdown.set(None);
-                                            handler.call(());
-                                        }
+                                    move |_| {
+                                        show_release_dropdown.set(None);
+                                        handler.call(());
                                     }
                                 },
                                 "Stop Seeding"
@@ -201,19 +192,13 @@ fn ReleaseTab(
                         }
                     } else {
                         if let Some(ref handler) = on_start_seeding {
-                            Button {
-                                variant: ButtonVariant::Ghost,
-                                size: ButtonSize::Medium,
+                            MenuItem {
                                 disabled: is_deleting() || is_exporting(),
-                                class: Some("w-full justify-start rounded-none".to_string()),
                                 onclick: {
                                     let handler = *handler;
-                                    move |evt: MouseEvent| {
-                                        evt.stop_propagation();
-                                        if !is_deleting() && !is_exporting() {
-                                            show_release_dropdown.set(None);
-                                            handler.call(());
-                                        }
+                                    move |_| {
+                                        show_release_dropdown.set(None);
+                                        handler.call(());
                                     }
                                 },
                                 "Start Seeding"
@@ -221,18 +206,11 @@ fn ReleaseTab(
                         }
                     }
                 }
-                Button {
-                    variant: ButtonVariant::Ghost,
-                    size: ButtonSize::Medium,
+                MenuItem {
                     disabled: is_deleting() || is_exporting(),
-                    loading: is_exporting(),
-                    class: Some("w-full justify-start rounded-none".to_string()),
-                    onclick: move |evt: MouseEvent| {
-                        evt.stop_propagation();
-                        if !is_deleting() && !is_exporting() {
-                            show_release_dropdown.set(None);
-                            on_export.call(());
-                        }
+                    onclick: move |_| {
+                        show_release_dropdown.set(None);
+                        on_export.call(());
                     },
                     if is_exporting() {
                         "Exporting..."
@@ -240,21 +218,51 @@ fn ReleaseTab(
                         "Export"
                     }
                 }
-                Button {
-                    variant: ButtonVariant::Danger,
-                    size: ButtonSize::Medium,
+                MenuItem {
                     disabled: is_deleting() || is_exporting(),
-                    class: Some("w-full justify-start rounded-none".to_string()),
-                    onclick: move |evt: MouseEvent| {
-                        evt.stop_propagation();
-                        if !is_deleting() && !is_exporting() {
-                            show_release_dropdown.set(None);
-                            on_delete.call(());
-                        }
+                    danger: true,
+                    onclick: move |_| {
+                        show_release_dropdown.set(None);
+                        on_delete.call(());
                     },
                     "Delete Release"
                 }
             }
+        }
+    }
+}
+
+/// Menu item component for dropdown menus
+#[component]
+fn MenuItem(
+    #[props(default)] disabled: bool,
+    #[props(default)] danger: bool,
+    onclick: EventHandler<MouseEvent>,
+    children: Element,
+) -> Element {
+    let base = "w-full text-left px-3 py-2 text-sm rounded-md transition-colors";
+    let variant = if danger {
+        "text-red-400 hover:bg-red-500/10"
+    } else {
+        "text-gray-300 hover:bg-hover hover:text-white"
+    };
+    let disabled_class = if disabled {
+        "opacity-50 cursor-not-allowed"
+    } else {
+        ""
+    };
+
+    rsx! {
+        ChromelessButton {
+            disabled,
+            class: Some(format!("{base} {variant} {disabled_class}")),
+            onclick: move |e: MouseEvent| {
+                e.stop_propagation();
+                if !disabled {
+                    onclick.call(e);
+                }
+            },
+            {children}
         }
     }
 }
