@@ -13,7 +13,7 @@ runs:
     - name: Install macOS dependencies
       shell: bash
       run: |
-        brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost openssl@3 switchaudio-osx
+        brew install ffmpeg libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost openssl@3 switchaudio-osx
 
     - name: Download bae-ffmpeg
       shell: bash
