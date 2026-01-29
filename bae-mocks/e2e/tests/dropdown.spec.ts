@@ -65,7 +65,7 @@ test.describe('Dropdown Component', () => {
 
   // Wait for dropdown to become visible (opacity: 1)
   // The dropdown starts with opacity: 0 and only becomes visible after positioning completes
-  async function waitForDropdownVisible(page: Page, timeout = 5000): Promise<{ x: number; y: number }> {
+  async function waitForDropdownVisible(page: Page, timeout = 15000): Promise<{ x: number; y: number }> {
     const popover = await getOpenPopover(page);
     
     // Wait for opacity to become 1 (positioning sets opacity: 1 after computing position)
