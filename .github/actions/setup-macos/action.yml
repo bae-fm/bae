@@ -5,7 +5,7 @@ inputs:
   ffmpeg-version:
     description: 'bae-ffmpeg release tag'
     required: false
-    default: 'v8.0.1-bae1'
+    default: 'v8.0.1-bae2'
 
 runs:
   using: 'composite'
@@ -13,8 +13,7 @@ runs:
     - name: Install macOS dependencies
       shell: bash
       run: |
-        # ffmpeg CLI is needed for generating test fixtures (bae-ffmpeg only provides libraries)
-        brew install ffmpeg libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost openssl@3 switchaudio-osx
+        brew install libdiscid libcdio libsodium pkg-config libtorrent-rasterbar boost openssl@3 switchaudio-osx
 
     - name: Download bae-ffmpeg
       shell: bash
@@ -29,6 +28,7 @@ runs:
         echo "LIBRARY_PATH=$FFMPEG_DIR/lib" >> $GITHUB_ENV
         echo "DYLD_LIBRARY_PATH=$FFMPEG_DIR/lib" >> $GITHUB_ENV
         echo "BINDGEN_EXTRA_CLANG_ARGS=-I$FFMPEG_DIR/include" >> $GITHUB_ENV
+        echo "$FFMPEG_DIR/bin" >> $GITHUB_PATH
 
     - name: Setup virtual audio device
       shell: bash
