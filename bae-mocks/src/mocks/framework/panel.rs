@@ -34,6 +34,7 @@ impl MockSection {
 pub enum MockPage {
     // Design System
     Button,
+    Menu,
     Pill,
     TextInput,
     Tooltip,
@@ -49,6 +50,7 @@ impl MockPage {
     pub const ALL: &[MockPage] = &[
         // Design System
         MockPage::Button,
+        MockPage::Menu,
         MockPage::Pill,
         MockPage::TextInput,
         MockPage::Tooltip,
@@ -62,9 +64,11 @@ impl MockPage {
     /// Section this mock belongs to
     pub fn section(self) -> MockSection {
         match self {
-            MockPage::Button | MockPage::Pill | MockPage::TextInput | MockPage::Tooltip => {
-                MockSection::DesignSystem
-            }
+            MockPage::Button
+            | MockPage::Menu
+            | MockPage::Pill
+            | MockPage::TextInput
+            | MockPage::Tooltip => MockSection::DesignSystem,
             _ => MockSection::Components,
         }
     }
@@ -73,6 +77,7 @@ impl MockPage {
     pub fn label(self) -> &'static str {
         match self {
             MockPage::Button => "Button",
+            MockPage::Menu => "Menu",
             MockPage::Pill => "Pill",
             MockPage::TextInput => "TextInput",
             MockPage::Tooltip => "Tooltip",
@@ -87,6 +92,7 @@ impl MockPage {
     pub fn key(self) -> &'static str {
         match self {
             MockPage::Button => "button",
+            MockPage::Menu => "menu",
             MockPage::Pill => "pill",
             MockPage::TextInput => "text-input",
             MockPage::Tooltip => "tooltip",
@@ -101,6 +107,7 @@ impl MockPage {
     pub fn description(self) -> &'static str {
         match self {
             MockPage::Button => "Button component with variants, sizes, and states",
+            MockPage::Menu => "Dropdown menu with items, dividers, and danger states",
             MockPage::Pill => "Pill component for tokens, tags, and inline labels",
             MockPage::TextInput => "Text input component with sizes and states",
             MockPage::Tooltip => "Hover tooltip with placement and wrapping options",
@@ -115,6 +122,7 @@ impl MockPage {
     pub fn to_route(self, state: Option<String>) -> Route {
         match self {
             MockPage::Button => Route::MockButton { state },
+            MockPage::Menu => Route::MockMenu { state },
             MockPage::Pill => Route::MockPill { state },
             MockPage::TextInput => Route::MockTextInput { state },
             MockPage::Tooltip => Route::MockTooltip { state },

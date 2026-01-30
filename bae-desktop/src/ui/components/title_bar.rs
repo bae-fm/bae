@@ -11,7 +11,7 @@ use bae_ui::display_types::Album;
 use bae_ui::stores::{
     AppStateStoreExt, LibraryStateStoreExt, SearchStateStoreExt, UiStateStoreExt,
 };
-use bae_ui::{NavItem, SearchResult, TitleBarView, UpdateState};
+use bae_ui::{NavItem, SearchResult, TitleBarView};
 #[cfg(target_os = "macos")]
 use cocoa::appkit::NSApplication;
 #[cfg(target_os = "macos")]
@@ -90,28 +90,6 @@ pub fn TitleBar() -> Element {
             is_active: matches!(current_route, Route::ImportWorkflowManager {}),
         },
     ];
-
-    // Poll update state reactively (updater uses atomics updated by Sparkle callbacks)
-    #[cfg(target_os = "macos")]
-    let mut update_state_signal = use_signal(|| UpdateState::Idle);
-    #[cfg(not(target_os = "macos"))]
-    let update_state_signal = use_signal(|| UpdateState::Idle);
-
-    #[cfg(target_os = "macos")]
-    use_future(move || async move {
-        use crate::updater;
-        loop {
-            let state = match updater::update_state() {
-                updater::UpdateState::Idle => UpdateState::Idle,
-                updater::UpdateState::Downloading => UpdateState::Downloading,
-                updater::UpdateState::Ready => UpdateState::Ready,
-            };
-            update_state_signal.set(state);
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        }
-    });
-
-    let update_state = update_state_signal();
 
     // Convert filtered albums to search results
     let search_results: Vec<SearchResult> = {
@@ -198,12 +176,6 @@ pub fn TitleBar() -> Element {
                 navigator().push(Route::Settings {});
             },
             settings_active: matches!(current_route, Route::Settings {}),
-            update_state,
-            on_update_click: Some(
-                EventHandler::new(move |_| {
-                    #[cfg(target_os = "macos")] crate::updater::check_for_updates();
-                }),
-            ),
             on_bar_mousedown,
             on_bar_double_click,
             imports_indicator: rsx! {

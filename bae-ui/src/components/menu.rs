@@ -42,7 +42,7 @@ pub fn MenuDropdown(
             is_open,
             on_close,
             placement,
-            class: "bg-surface-overlay rounded-lg shadow-lg border border-border-subtle p-1 min-w-40",
+            class: "bg-gray-900 rounded-lg shadow-xl border border-white/5 p-1 min-w-[120px]",
             {children}
         }
     }
@@ -65,11 +65,11 @@ pub fn MenuItem(
     children: Element,
 ) -> Element {
     let base =
-        "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center gap-2";
+        "w-full text-left px-2.5 py-1.5 text-xs rounded transition-colors flex items-center gap-2";
     let variant = if danger {
         "text-red-400 hover:bg-red-500/10"
     } else {
-        "text-gray-300 hover:bg-hover hover:text-white"
+        "text-gray-200 hover:bg-gray-700 hover:text-white"
     };
     let disabled_class = if disabled {
         "opacity-50 cursor-not-allowed"

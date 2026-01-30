@@ -67,5 +67,5 @@ pub use settings::{
     StorageProfileEditorView, StorageProfilesSectionView, SubsonicSectionView,
 };
 pub use text_input::{TextInput, TextInputSize};
-pub use title_bar::{NavItem, SearchResult, TitleBarView, UpdateState};
+pub use title_bar::{NavItem, SearchResult, TitleBarView};
 pub use utils::{format_duration, format_file_size};

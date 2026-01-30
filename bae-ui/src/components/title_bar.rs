@@ -8,7 +8,7 @@ use crate::components::icons::{ImageIcon, SettingsIcon};
 use crate::components::{ChromelessButton, Dropdown, Placement};
 use dioxus::prelude::*;
 
-/// Counter for generating unique button IDs
+/// Counter for generating unique element IDs
 static BUTTON_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// Navigation item for title bar
@@ -26,15 +26,6 @@ pub struct SearchResult {
     pub title: String,
     pub subtitle: String,
     pub cover_url: Option<String>,
-}
-
-/// Update state for the settings button
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
-pub enum UpdateState {
-    #[default]
-    Idle,
-    Downloading,
-    Ready,
 }
 
 /// Title bar view (pure, props-based)
@@ -55,8 +46,6 @@ pub fn TitleBarView(
     // Settings
     on_settings_click: EventHandler<()>,
     #[props(default)] settings_active: bool,
-    #[props(default)] update_state: UpdateState,
-    #[props(default)] on_update_click: Option<EventHandler<()>>,
     // Platform hooks (no-ops on web)
     #[props(default)] on_bar_mousedown: Option<EventHandler<()>>,
     #[props(default)] on_bar_double_click: Option<EventHandler<()>>,
@@ -65,12 +54,6 @@ pub fn TitleBarView(
     // Left padding for traffic lights on macOS
     #[props(default = 80)] left_padding: u32,
 ) -> Element {
-    let mut show_update_menu = use_signal(|| false);
-    let is_update_menu_open: ReadSignal<bool> = show_update_menu.into();
-    let update_button_id = use_hook(|| {
-        let id = BUTTON_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
-        format!("update-button-{}", id)
-    });
     let search_input_id = use_hook(|| {
         let id = BUTTON_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
         format!("search-input-{}", id)
@@ -158,126 +141,10 @@ pub fn TitleBarView(
                 }
 
                 // Settings button
-                SettingsButton {
+                NavButton {
                     is_active: settings_active,
-                    update_state,
-                    update_button_id: update_button_id.clone(),
-                    is_update_menu_open,
-                    on_settings_click: move |_| on_settings_click.call(()),
-                    on_toggle_menu: move |_| show_update_menu.toggle(),
-                    on_close_menu: move |_| show_update_menu.set(false),
-                    on_update_click,
-                }
-            }
-        }
-    }
-}
-
-/// Settings button with optional update indicator
-#[component]
-fn SettingsButton(
-    is_active: bool,
-    update_state: UpdateState,
-    update_button_id: String,
-    is_update_menu_open: ReadSignal<bool>,
-    on_settings_click: EventHandler<()>,
-    on_toggle_menu: EventHandler<()>,
-    on_close_menu: EventHandler<()>,
-    #[props(default)] on_update_click: Option<EventHandler<()>>,
-) -> Element {
-    let has_update = update_state != UpdateState::Idle;
-
-    rsx! {
-        div { class: "flex items-center gap-1",
-
-            // Settings button using shared NavButton
-            NavButton { is_active, on_click: move |_| on_settings_click.call(()),
-                SettingsIcon { class: "w-4 h-4" }
-            }
-
-            // Update indicator (separate, next to settings)
-            if has_update {
-                ChromelessButton {
-                    id: Some(update_button_id.clone()),
-                    class: Some(
-                        "p-1 hover:bg-gray-700 rounded transition-colors flex items-center".to_string(),
-                    ),
-                    title: Some(
-                        if update_state == UpdateState::Ready {
-                            "Update ready - click to install".to_string()
-                        } else {
-                            "Downloading update...".to_string()
-                        },
-                    ),
-                    aria_label: Some(
-                        if update_state == UpdateState::Ready {
-                            "Update ready - click to install".to_string()
-                        } else {
-                            "Downloading update...".to_string()
-                        },
-                    ),
-                    onmousedown: Some(EventHandler::new(move |evt: MouseEvent| evt.stop_propagation())),
-                    onclick: move |_| on_toggle_menu.call(()),
-                    match update_state {
-                        UpdateState::Downloading => rsx! {
-                            svg {
-                                class: "animate-spin h-3.5 w-3.5 text-gray-400",
-                                xmlns: "http://www.w3.org/2000/svg",
-                                fill: "none",
-                                view_box: "0 0 24 24",
-                                circle {
-                                    class: "opacity-25",
-                                    cx: "12",
-                                    cy: "12",
-                                    r: "10",
-                                    stroke: "currentColor",
-                                    stroke_width: "4",
-                                }
-                                path {
-                                    class: "opacity-75",
-                                    fill: "currentColor",
-                                    d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z",
-                                }
-                            }
-                        },
-                        UpdateState::Ready => rsx! {
-                            span { class: "relative flex h-2.5 w-2.5",
-                                span { class: "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" }
-                                span { class: "relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" }
-                            }
-                        },
-                        UpdateState::Idle => rsx! {},
-                    }
-                }
-
-                // Update menu dropdown
-                Dropdown {
-                    anchor_id: update_button_id.clone(),
-                    is_open: is_update_menu_open,
-                    on_close: on_close_menu,
-                    placement: Placement::BottomEnd,
-                    class: "bg-surface-overlay border border-border-strong rounded-lg shadow-lg overflow-clip w-48",
-                    match update_state {
-                        UpdateState::Downloading => rsx! {
-                            div { class: "px-3 py-2 text-xs text-gray-400", "Downloading update..." }
-                        },
-                        UpdateState::Ready => rsx! {
-                            ChromelessButton {
-                                class: Some(
-                                    "w-full px-3 py-2 text-xs text-left text-white hover:bg-hover transition-colors"
-                                        .to_string(),
-                                ),
-                                onclick: move |_| {
-                                    on_close_menu.call(());
-                                    if let Some(handler) = &on_update_click {
-                                        handler.call(());
-                                    }
-                                },
-                                "Restart to update"
-                            }
-                        },
-                        UpdateState::Idle => rsx! {},
-                    }
+                    on_click: move |_| on_settings_click.call(()),
+                    SettingsIcon { class: "w-4 h-4" }
                 }
             }
         }

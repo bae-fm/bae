@@ -2,13 +2,14 @@
 
 use crate::mocks::framework::{MockPage, MockSection};
 use crate::mocks::{
-    AlbumDetailMock, ButtonMock, FolderImportMock, LibraryMock, PillMock, TextInputMock,
+    AlbumDetailMock, ButtonMock, FolderImportMock, LibraryMock, MenuMock, PillMock, TextInputMock,
     TitleBarMock, TooltipMock,
 };
 use crate::ui::LinkCard;
 use crate::Route;
 use bae_ui::{
-    Button, ButtonSize, ButtonVariant, Pill, PillVariant, TextInput, TextInputSize, TooltipBubble,
+    Button, ButtonSize, ButtonVariant, MenuItem, Pill, PillVariant, TextInput, TextInputSize,
+    TooltipBubble,
 };
 use dioxus::prelude::*;
 
@@ -55,6 +56,14 @@ pub fn MockIndex() -> Element {
                             onclick: |_| {},
                             "Outline"
                         }
+                    }
+                }
+
+                // Menu specimens
+                SpecimenCard { title: "Menu", to: Route::MockMenu { state: None },
+                    div { class: "flex flex-col gap-0.5 bg-gray-900 rounded-lg border border-white/5 p-1 w-[120px]",
+                        MenuItem { onclick: |_| {}, "Add" }
+                        MenuItem { onclick: |_| {}, "Clear" }
                     }
                 }
 
@@ -168,6 +177,17 @@ pub fn MockAlbumDetail(state: Option<String>) -> Element {
 pub fn MockLibrary(state: Option<String>) -> Element {
     rsx! {
         LibraryMock { initial_state: state }
+    }
+}
+
+// ============================================================================
+// Menu page wrapper
+// ============================================================================
+
+#[component]
+pub fn MockMenu(state: Option<String>) -> Element {
+    rsx! {
+        MenuMock { initial_state: state }
     }
 }
 

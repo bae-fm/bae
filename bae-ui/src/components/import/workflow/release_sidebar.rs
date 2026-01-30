@@ -4,7 +4,7 @@ use crate::components::helpers::ConfirmDialogView;
 use crate::components::icons::{
     CheckIcon, EllipsisIcon, FolderIcon, LoaderIcon, PlusIcon, TrashIcon, XIcon,
 };
-use crate::components::{Dropdown, Placement};
+use crate::components::{MenuDropdown, MenuItem};
 use crate::display_types::DetectedCandidateStatus;
 use crate::stores::import::{ImportState, ImportStateStoreExt};
 use dioxus::prelude::*;
@@ -91,26 +91,20 @@ pub fn ReleaseSidebarView(
 
                 // Dropdown menu for candidates list
                 if !candidates.is_empty() {
-                    Dropdown {
+                    MenuDropdown {
                         anchor_id: anchor_id.to_string(),
                         is_open,
                         on_close: move |_| show_menu.set(false),
-                        placement: Placement::BottomEnd,
-                        class: "bg-gray-900 border border-white/5 rounded-lg shadow-xl min-w-[120px] p-1 overflow-clip",
-                        button {
-                            class: "w-full px-2.5 py-1.5 text-left text-sm text-gray-200 hover:bg-gray-700 hover:text-white rounded transition-colors flex items-center gap-2",
-                            onclick: move |evt| {
-                                evt.stop_propagation();
+                        MenuItem {
+                            onclick: move |_| {
                                 show_menu.set(false);
                                 on_add_folder.call(());
                             },
                             FolderIcon { class: "w-3.5 h-3.5 text-gray-400" }
                             span { "Add" }
                         }
-                        button {
-                            class: "w-full px-2.5 py-1.5 text-left text-sm text-gray-200 hover:bg-gray-700 hover:text-white rounded transition-colors flex items-center gap-2",
-                            onclick: move |evt| {
-                                evt.stop_propagation();
+                        MenuItem {
+                            onclick: move |_| {
                                 show_menu.set(false);
                                 show_clear_confirm.set(true);
                             },
@@ -133,7 +127,7 @@ pub fn ReleaseSidebarView(
                                 div {
                                     key: "{index}",
                                     class: format!(
-                                        "group relative w-full flex items-center gap-2.5 pl-3 pr-2.5 py-2 rounded-lg transition-all duration-150 min-w-0 cursor-pointer {}",
+                                        "group relative w-full flex items-center gap-2.5 pl-3 pr-3 py-2 rounded-lg transition-all duration-150 min-w-0 cursor-pointer {}",
                                         if is_selected {
                                             "bg-hover text-white"
                                         } else {

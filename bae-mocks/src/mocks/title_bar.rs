@@ -1,7 +1,7 @@
 //! TitleBarView mock component
 
 use super::framework::{ControlRegistryBuilder, MockPage, MockPanel, Preset};
-use bae_ui::{NavItem, SearchResult, TitleBarView, UpdateState};
+use bae_ui::{NavItem, SearchResult, TitleBarView};
 use dioxus::prelude::*;
 
 #[component]
@@ -19,24 +19,11 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
             ],
         )
         .inline()
-        .enum_control(
-            "update_state",
-            "Update State",
-            "idle",
-            vec![
-                ("idle", "Idle"),
-                ("downloading", "Downloading"),
-                ("ready", "Ready"),
-            ],
-        )
-        .inline()
         .bool_control("show_search_results", "Show Search Results", false)
         .int_control("search_results_count", "Search Results", 3, 0, Some(10))
         .visible_when("show_search_results", "true")
         .with_presets(vec![
             Preset::new("Default"),
-            Preset::new("Update Ready").set_string("update_state", "ready"),
-            Preset::new("Downloading").set_string("update_state", "downloading"),
             Preset::new("With Search")
                 .set_bool("show_search_results", true)
                 .set_int("search_results_count", 5),
@@ -46,7 +33,6 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
     registry.use_url_sync_title_bar();
 
     let active_nav = registry.get_string("active_nav");
-    let update_state_str = registry.get_string("update_state");
     let show_search_results_bool = registry.get_bool("show_search_results");
     let search_results_count = registry.get_int("search_results_count") as usize;
     let show_search_results: ReadSignal<bool> = use_memo(move || show_search_results_bool).into();
@@ -75,12 +61,6 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
         vec![]
     };
 
-    let update_state = match update_state_str.as_str() {
-        "downloading" => UpdateState::Downloading,
-        "ready" => UpdateState::Ready,
-        _ => UpdateState::Idle,
-    };
-
     rsx! {
         MockPanel {
             current_mock: MockPage::TitleBar,
@@ -98,8 +78,6 @@ pub fn TitleBarMock(initial_state: Option<String>) -> Element {
                 on_search_focus: |_| {},
                 on_settings_click: |_| {},
                 settings_active,
-                update_state,
-                on_update_click: Some(EventHandler::new(|_| {})),
                 left_padding: 16,
             }
         }
