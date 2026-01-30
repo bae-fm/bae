@@ -57,6 +57,7 @@ pub struct ComputePositionResult {
 pub struct ComputePositionOptions {
     pub placement: Placement,
     pub offset: Option<f64>,
+    pub cross_axis_offset: Option<f64>,
     pub flip: bool,
     pub shift: bool,
 }
@@ -75,10 +76,26 @@ pub async fn compute_position(
     // Build middleware array
     let middleware = js_sys_x::Array::new();
 
-    if let Some(offset_val) = options.offset {
+    if options.offset.is_some() || options.cross_axis_offset.is_some() {
         let offset_fn = js_sys_x::Reflect::get(&floating_ui, &"offset".into())?;
         if let Some(func) = offset_fn.dyn_ref::<js_sys_x::Function>() {
-            let offset_middleware = func.call1(&JsValue::NULL, &JsValue::from_f64(offset_val))?;
+            let arg = if options.cross_axis_offset.is_some() {
+                let obj = js_sys_x::Object::new();
+                js_sys_x::Reflect::set(
+                    &obj,
+                    &"mainAxis".into(),
+                    &JsValue::from_f64(options.offset.unwrap_or(0.0)),
+                )?;
+                js_sys_x::Reflect::set(
+                    &obj,
+                    &"crossAxis".into(),
+                    &JsValue::from_f64(options.cross_axis_offset.unwrap_or(0.0)),
+                )?;
+                obj.into()
+            } else {
+                JsValue::from_f64(options.offset.unwrap_or(0.0))
+            };
+            let offset_middleware = func.call1(&JsValue::NULL, &arg)?;
             middleware.push(&offset_middleware);
         }
     }

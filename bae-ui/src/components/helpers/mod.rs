@@ -10,4 +10,4 @@ pub use back_button::BackButton;
 pub use confirm_dialog::ConfirmDialogView;
 pub use error_display::ErrorDisplay;
 pub use loading_spinner::LoadingSpinner;
-pub use tooltip::{Tooltip, TooltipBubble};
+pub use tooltip::{use_tooltip_handle, Tooltip, TooltipBubble, TooltipHandle, TooltipPopover};

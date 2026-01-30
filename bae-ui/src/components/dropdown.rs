@@ -112,6 +112,7 @@ pub fn Dropdown(
                 let options = ComputePositionOptions {
                     placement,
                     offset: Some(offset),
+                    cross_axis_offset: None,
                     flip: true,
                     shift: true,
                 };

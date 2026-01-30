@@ -1,11 +1,12 @@
 //! Candidate sidebar view component for import
 
-use crate::components::helpers::ConfirmDialogView;
+use crate::components::helpers::{use_tooltip_handle, ConfirmDialogView, TooltipPopover};
 use crate::components::icons::{
     CheckIcon, EllipsisIcon, FolderIcon, LoaderIcon, PlusIcon, TrashIcon, XIcon,
 };
 use crate::components::{MenuDropdown, MenuItem};
 use crate::display_types::DetectedCandidateStatus;
+use crate::floating_ui::Placement;
 use crate::stores::import::{ImportState, ImportStateStoreExt};
 use dioxus::prelude::*;
 
@@ -118,67 +119,25 @@ pub fn ReleaseSidebarView(
                 div { class: "mx-1.5 mb-1.5 border-b border-white/10" }
 
                 // Folder list
-                div { class: "flex-1 overflow-y-auto p-1.5 pt-0 space-y-0.5 min-w-0",
+                div { class: "flex-1 flex flex-col overflow-y-auto p-1.5 pt-0 space-y-0.5 min-w-0",
                     for (index , candidate) in candidates.iter().enumerate() {
-                        {
-                            let is_selected = selected_index == Some(index);
-                            let status = candidate.status;
-                            rsx! {
-                                div {
-                                    key: "{index}",
-                                    class: format!(
-                                        "group relative w-full flex items-center gap-2.5 pl-3 pr-3 py-2 rounded-lg transition-all duration-150 min-w-0 cursor-pointer {}",
-                                        if is_selected {
-                                            "bg-hover text-white"
-                                        } else {
-                                            "text-gray-200 hover:bg-surface-overlay hover:text-white"
-                                        },
-                                    ),
-                                    onclick: move |_| on_select.call(index),
-                                    // Status icon: folder (pending), spinner (importing), check (imported)
-                                    {
-                                        let path = candidate.path.clone();
-                                        match status {
-                                            DetectedCandidateStatus::Pending => rsx! {
-                                                button {
-                                                    class: "flex-shrink-0 text-gray-400 hover:text-white transition-colors",
-                                                    title: "{path}",
-                                                    onclick: move |e: MouseEvent| {
-                                                        e.stop_propagation();
-                                                        on_open_folder.call(path.clone());
-                                                    },
-                                                    FolderIcon { class: "w-4 h-4" }
-                                                }
-                                            },
-                                            DetectedCandidateStatus::Importing => rsx! {
-                                                LoaderIcon { class: "w-4 h-4 flex-shrink-0 text-blue-400 animate-spin" }
-                                            },
-                                            DetectedCandidateStatus::Imported => rsx! {
-                                                CheckIcon { class: "w-4 h-4 flex-shrink-0 text-green-500" }
-                                            },
-                                        }
-                                    }
-                                    div { class: "flex-1 text-xs truncate min-w-0", {candidate.name.clone()} }
-                                    // Only show remove button for pending candidates
-                                    if status == DetectedCandidateStatus::Pending {
-                                        button {
-                                            class: "absolute right-1 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-white rounded transition-opacity bg-surface-raised",
-                                            title: "Remove",
-                                            onclick: move |e: MouseEvent| {
-                                                e.stop_propagation();
-                                                on_remove.call(index);
-                                            },
-                                            XIcon { class: "w-3.5 h-3.5" }
-                                        }
-                                    }
-                                }
-                            }
+                        CandidateRow {
+                            key: "{index}",
+                            index,
+                            name: candidate.name.clone(),
+                            path: candidate.path.clone(),
+                            status: candidate.status,
+                            is_selected: selected_index == Some(index),
+                            on_select,
+                            on_open_folder,
+                            on_remove,
                         }
                     }
                 }
             }
         }
 
+        // Confirm dialog rendered outside the panel so it's not clipped
         ConfirmDialogView {
             is_open: is_clear_confirm_open,
             title: "Clear all folders?".to_string(),
@@ -193,6 +152,81 @@ pub fn ReleaseSidebarView(
             on_cancel: move |_| {
                 show_clear_confirm.set(false);
             },
+        }
+    }
+}
+
+/// Single candidate row with tooltip anchored to the row, triggered by the folder icon.
+#[component]
+fn CandidateRow(
+    index: usize,
+    name: String,
+    path: String,
+    status: DetectedCandidateStatus,
+    is_selected: bool,
+    on_select: EventHandler<usize>,
+    on_open_folder: EventHandler<String>,
+    on_remove: EventHandler<usize>,
+) -> Element {
+    let tip = use_tooltip_handle();
+
+    rsx! {
+        div {
+            onmounted: tip.onmounted(),
+            class: format!(
+                "group w-full flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-lg transition-all duration-150 min-w-0 cursor-pointer {}",
+                if is_selected {
+                    "bg-hover text-white"
+                } else {
+                    "text-gray-200 hover:bg-surface-overlay hover:text-white"
+                },
+            ),
+            onclick: move |_| on_select.call(index),
+
+            match status {
+                DetectedCandidateStatus::Pending => {
+                    let open_path = path.clone();
+                    rsx! {
+                        button {
+                            class: "flex-shrink-0 text-gray-400 hover:text-white transition-colors",
+                            onmouseenter: move |_| tip.show(),
+                            onmouseleave: move |_| tip.hide(),
+                            onclick: move |e: MouseEvent| {
+                                e.stop_propagation();
+                                on_open_folder.call(open_path.clone());
+                            },
+                            FolderIcon { class: "w-4 h-4" }
+                        }
+                    }
+                }
+                DetectedCandidateStatus::Importing => rsx! {
+                    LoaderIcon { class: "w-4 h-4 flex-shrink-0 text-blue-400 animate-spin" }
+                },
+                DetectedCandidateStatus::Imported => rsx! {
+                    CheckIcon { class: "w-4 h-4 flex-shrink-0 text-green-500" }
+                },
+            }
+
+            div { class: "flex-1 text-xs truncate min-w-0", {name} }
+
+            if status == DetectedCandidateStatus::Pending {
+                button {
+                    class: "flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-white rounded transition-opacity",
+                    title: "Remove",
+                    onclick: move |e: MouseEvent| {
+                        e.stop_propagation();
+                        on_remove.call(index);
+                    },
+                    XIcon { class: "w-3.5 h-3.5" }
+                }
+            }
+        }
+
+        TooltipPopover {
+            handle: tip,
+            text: path,
+            placement: Placement::TopStart,
+            nowrap: true,
         }
     }
 }
