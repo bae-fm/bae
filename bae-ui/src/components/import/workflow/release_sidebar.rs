@@ -1,12 +1,13 @@
 //! Candidate sidebar view component for import
 
-use crate::components::helpers::{use_tooltip_handle, ConfirmDialogView, TooltipPopover};
+use crate::components::helpers::{ConfirmDialogView, Tooltip, TOOLTIP_PADDING_X};
 use crate::components::icons::{
     CheckIcon, EllipsisIcon, FolderIcon, LoaderIcon, PlusIcon, TrashIcon, XIcon,
 };
 use crate::components::{MenuDropdown, MenuItem};
 use crate::display_types::DetectedCandidateStatus;
 use crate::floating_ui::Placement;
+use crate::platform;
 use crate::stores::import::{ImportState, ImportStateStoreExt};
 use dioxus::prelude::*;
 
@@ -156,7 +157,7 @@ pub fn ReleaseSidebarView(
     }
 }
 
-/// Single candidate row with tooltip anchored to the row, triggered by the folder icon.
+/// Single candidate row with tooltip on the folder icon.
 #[component]
 fn CandidateRow(
     index: usize,
@@ -168,11 +169,8 @@ fn CandidateRow(
     on_open_folder: EventHandler<String>,
     on_remove: EventHandler<usize>,
 ) -> Element {
-    let tip = use_tooltip_handle();
-
     rsx! {
         div {
-            onmounted: tip.onmounted(),
             class: format!(
                 "group w-full flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-lg transition-all duration-150 min-w-0 cursor-pointer {}",
                 if is_selected {
@@ -187,15 +185,19 @@ fn CandidateRow(
                 DetectedCandidateStatus::Pending => {
                     let open_path = path.clone();
                     rsx! {
-                        button {
-                            class: "flex-shrink-0 text-gray-400 hover:text-white transition-colors",
-                            onmouseenter: move |_| tip.show(),
-                            onmouseleave: move |_| tip.hide(),
-                            onclick: move |e: MouseEvent| {
-                                e.stop_propagation();
-                                on_open_folder.call(open_path.clone());
-                            },
-                            FolderIcon { class: "w-4 h-4" }
+                        Tooltip {
+                            text: platform::reveal_in_file_manager().to_string(),
+                            placement: Placement::TopStart,
+                            nowrap: true,
+                            cross_axis_offset: -TOOLTIP_PADDING_X,
+                            button {
+                                class: "flex-shrink-0 text-gray-400 hover:text-white transition-colors",
+                                onclick: move |e: MouseEvent| {
+                                    e.stop_propagation();
+                                    on_open_folder.call(open_path.clone());
+                                },
+                                FolderIcon { class: "w-4 h-4" }
+                            }
                         }
                     }
                 }
@@ -220,13 +222,6 @@ fn CandidateRow(
                     XIcon { class: "w-3.5 h-3.5" }
                 }
             }
-        }
-
-        TooltipPopover {
-            handle: tip,
-            text: path,
-            placement: Placement::TopStart,
-            nowrap: true,
         }
     }
 }

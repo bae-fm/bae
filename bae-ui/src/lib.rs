@@ -6,6 +6,7 @@
 pub mod components;
 pub mod display_types;
 pub mod floating_ui;
+pub mod platform;
 pub mod stores;
 pub mod wasm_utils;
 

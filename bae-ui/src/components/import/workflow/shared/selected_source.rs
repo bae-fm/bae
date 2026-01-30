@@ -29,7 +29,7 @@ pub fn SelectedSourceView(
                     // Folder icon - clickable to reveal in Finder
                     button {
                         class: "text-gray-400 hover:text-gray-200 flex-shrink-0 transition-colors",
-                        title: "Reveal in Finder",
+                        title: crate::platform::reveal_in_file_manager(),
                         onclick: move |_| on_reveal.call(()),
                         FolderIcon { class: "w-4 h-4" }
                     }

@@ -20,6 +20,10 @@ use crate::floating_ui::{self, ComputePositionOptions, Placement};
 /// Delay before showing tooltip (in milliseconds)
 const TOOLTIP_DELAY_MS: u64 = 700;
 
+/// Horizontal padding of the tooltip bubble in pixels (Tailwind `px-2.5` = 10px).
+/// Exposed so callers can use it for cross-axis offset alignment.
+pub const TOOLTIP_PADDING_X: i32 = 10;
+
 /// Handle for controlling tooltip visibility and anchor positioning.
 ///
 /// Created by `use_tooltip_handle()`. Wire `onmounted()` onto the anchor element,
