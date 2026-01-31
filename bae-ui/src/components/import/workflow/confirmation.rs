@@ -241,7 +241,6 @@ pub fn ConfirmationView(
                         // Managed artwork thumbnails (local files from .bae/)
         
 
-                                        // Local artwork section
                                         for img in managed_artwork.iter() {
                                             {
                                                 let img_name = img.name.clone();
