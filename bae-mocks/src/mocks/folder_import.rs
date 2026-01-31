@@ -212,6 +212,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     mock_file("rip.log", 4_500, "LOG"),
                     mock_file("info.txt", 1_200, "TXT"),
                 ],
+                ..Default::default()
             },
         ),
         // Folder 2: CUE/FLAC pair, minimal extras
@@ -231,6 +232,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                 )]),
                 artwork: vec![mock_artwork("folder.jpg", 850_000, "JPEG", 1)],
                 documents: vec![],
+                ..Default::default()
             },
         ),
         // Folder 3: Track files, lots of scans, torrent style
@@ -263,6 +265,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     mock_file("Velvet_Mathematics-Proof_by_Induction-2021-FLAC.nfo", 8_500, "NFO"),
                     mock_file("Velvet_Mathematics-Proof_by_Induction-2021-FLAC.m3u", 450, "M3U"),
                 ],
+                ..Default::default()
             },
         ),
         // Folder 4: Simple rip, no docs, junk files
@@ -281,6 +284,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                 ]),
                 artwork: vec![mock_artwork("AlbumArt.jpg", 450_000, "JPEG", 5)],
                 documents: vec![],
+                ..Default::default()
             },
         ),
         // Folder 5: Vinyl rip with extensive documentation
@@ -310,6 +314,7 @@ pub fn FolderImportMock(initial_state: Option<String>) -> Element {
                     mock_file("vinyl-condition.txt", 1_500, "TXT"),
                     mock_file("dr-analysis.txt", 3_200, "TXT"),
                 ],
+                ..Default::default()
             },
         ),
     ];

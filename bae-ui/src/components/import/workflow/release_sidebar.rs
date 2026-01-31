@@ -127,7 +127,7 @@ pub fn ReleaseSidebarView(
                             index,
                             name: candidate.name.clone(),
                             path: candidate.path.clone(),
-                            status: candidate.status,
+                            status: candidate.status.clone(),
                             is_selected: selected_index == Some(index),
                             on_select,
                             on_open_folder,
@@ -157,6 +157,33 @@ pub fn ReleaseSidebarView(
     }
 }
 
+/// Format the incomplete reason message for display.
+fn incomplete_message(
+    bad_audio_count: usize,
+    total_audio_count: usize,
+    bad_image_count: usize,
+) -> String {
+    match (bad_audio_count > 0, bad_image_count > 0) {
+        (true, true) => format!(
+            "{} of {} tracks incomplete, {} corrupt image{}",
+            bad_audio_count,
+            total_audio_count,
+            bad_image_count,
+            if bad_image_count == 1 { "" } else { "s" },
+        ),
+        (true, false) => format!(
+            "{} of {} tracks incomplete",
+            bad_audio_count, total_audio_count,
+        ),
+        (false, true) => format!(
+            "{} corrupt image{}",
+            bad_image_count,
+            if bad_image_count == 1 { "" } else { "s" },
+        ),
+        (false, false) => String::new(),
+    }
+}
+
 /// Single candidate row with tooltip on the folder icon.
 #[component]
 fn CandidateRow(
@@ -169,19 +196,31 @@ fn CandidateRow(
     on_open_folder: EventHandler<String>,
     on_remove: EventHandler<usize>,
 ) -> Element {
+    let is_incomplete = matches!(status, DetectedCandidateStatus::Incomplete { .. });
+    let is_removable = matches!(
+        status,
+        DetectedCandidateStatus::Pending | DetectedCandidateStatus::Incomplete { .. }
+    );
+
     rsx! {
         div {
             class: format!(
-                "group w-full flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-lg transition-all duration-150 min-w-0 cursor-pointer {}",
-                if is_selected {
-                    "bg-hover text-white"
+                "group w-full flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-lg transition-all duration-150 min-w-0 {}",
+                if is_incomplete {
+                    "text-gray-500 cursor-default"
+                } else if is_selected {
+                    "bg-hover text-white cursor-pointer"
                 } else {
-                    "text-gray-200 hover:bg-surface-overlay hover:text-white"
+                    "text-gray-200 hover:bg-surface-overlay hover:text-white cursor-pointer"
                 },
             ),
-            onclick: move |_| on_select.call(index),
+            onclick: move |_| {
+                if !is_incomplete {
+                    on_select.call(index);
+                }
+            },
 
-            match status {
+            match &status {
                 DetectedCandidateStatus::Pending => {
                     let open_path = path.clone();
                     rsx! {
@@ -207,11 +246,28 @@ fn CandidateRow(
                 DetectedCandidateStatus::Imported => rsx! {
                     CheckIcon { class: "w-4 h-4 flex-shrink-0 text-green-500" }
                 },
+                DetectedCandidateStatus::Incomplete { .. } => rsx! {
+                    FolderIcon { class: "w-4 h-4 flex-shrink-0 text-gray-600" }
+                },
             }
 
-            div { class: "flex-1 text-xs truncate min-w-0", {name} }
+            div { class: "flex-1 min-w-0",
+                div { class: format!("text-xs truncate {}", if is_incomplete { "text-gray-500" } else { "" }),
+                    {name}
+                }
+                if let DetectedCandidateStatus::Incomplete {
+                    bad_audio_count,
+                    total_audio_count,
+                    bad_image_count,
+                } = &status
+                {
+                    div { class: "text-[10px] text-gray-600 truncate",
+                        {incomplete_message(*bad_audio_count, *total_audio_count, *bad_image_count)}
+                    }
+                }
+            }
 
-            if status == DetectedCandidateStatus::Pending {
+            if is_removable {
                 button {
                     class: "flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-white rounded transition-opacity",
                     title: "Remove",

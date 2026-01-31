@@ -1,6 +1,7 @@
 pub mod cover_art;
 mod discogs_matcher;
 mod discogs_parser;
+mod file_validation;
 mod folder_metadata_detector;
 pub mod folder_scanner;
 mod handle;

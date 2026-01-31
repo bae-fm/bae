@@ -764,6 +764,21 @@ impl ImportState {
                     .candidate_states
                     .get(&c.path)
                     .map(|s| {
+                        let files = s.files();
+
+                        // Check for incomplete/corrupt files first
+                        if files.bad_audio_count > 0 || files.bad_image_count > 0 {
+                            let good_audio_count = match &files.audio {
+                                crate::display_types::AudioContentInfo::CueFlacPairs(p) => p.len(),
+                                crate::display_types::AudioContentInfo::TrackFiles(t) => t.len(),
+                            };
+                            return crate::display_types::DetectedCandidateStatus::Incomplete {
+                                bad_audio_count: files.bad_audio_count,
+                                total_audio_count: good_audio_count + files.bad_audio_count,
+                                bad_image_count: files.bad_image_count,
+                            };
+                        }
+
                         if s.is_imported() {
                             crate::display_types::DetectedCandidateStatus::Imported
                         } else if s.is_importing() {

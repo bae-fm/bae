@@ -4,6 +4,7 @@
 //! 1. Single release (flat) - audio files in root, optional artwork subfolders
 //! 2. Single release (multi-disc) - disc subfolders with audio, optional artwork
 //! 3. Collections - recursive tree where leaves are single releases
+use super::file_validation;
 use crate::cue_flac::CueFlacProcessor;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -54,6 +55,13 @@ pub struct CategorizedFiles {
     pub artwork: Vec<ScannedFile>,
     /// Document files (.log, .txt, .nfo) - CUE files in pairs are NOT included here
     pub documents: Vec<ScannedFile>,
+    /// Number of audio files that are corrupt or incomplete (0-byte, bad headers,
+    /// or truncated). Not included in `audio` — counted here so the UI can
+    /// explain why a release is incomplete.
+    pub bad_audio_count: usize,
+    /// Number of image files that are corrupt (0-byte or bad magic bytes).
+    /// Not included in `artwork`. Any bad file — audio or image — blocks import.
+    pub bad_image_count: usize,
 }
 /// A detected candidate (leaf directory) in a collection.
 /// Called "candidate" because it hasn't been identified yet.
@@ -101,13 +109,17 @@ fn is_noise_file(path: &Path) -> bool {
         .map(|name| name == ".DS_Store" || name == "Thumbs.db" || name == "desktop.ini")
         .unwrap_or(false)
 }
-/// Check if a directory contains audio files directly (ignores 0-byte files)
+/// Check if a directory contains audio files directly (by extension).
+///
+/// This is used for tree-structure detection (leaf vs collection), not for
+/// validation. Even a directory with only corrupt FLAC files should be detected
+/// as a candidate — the incompleteness is reported at the candidate level.
+/// Only skips 0-byte files since those are empty placeholders.
 fn has_audio_files(dir: &Path) -> Result<bool, String> {
     let entries = fs::read_dir(dir).map_err(|e| format!("Failed to read dir {:?}: {}", dir, e))?;
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_file() && is_audio_file(&path) {
-            // Skip 0-byte files (incomplete downloads)
             if let Ok(metadata) = entry.metadata() {
                 if metadata.len() > 0 {
                     return Ok(true);
@@ -295,6 +307,8 @@ pub fn collect_release_files(release_root: &Path) -> Result<CategorizedFiles, St
     let mut all_cue: Vec<ScannedFile> = Vec::new();
     let mut artwork: Vec<ScannedFile> = Vec::new();
     let mut documents: Vec<ScannedFile> = Vec::new();
+    let mut bad_audio_count: usize = 0;
+    let mut bad_image_count: usize = 0;
     collect_files_into_vectors(
         release_root,
         release_root,
@@ -302,6 +316,8 @@ pub fn collect_release_files(release_root: &Path) -> Result<CategorizedFiles, St
         &mut all_cue,
         &mut artwork,
         &mut documents,
+        &mut bad_audio_count,
+        &mut bad_image_count,
     )?;
     let audio_paths: Vec<PathBuf> = all_audio.iter().map(|f| f.path.clone()).collect();
     let cue_paths: Vec<PathBuf> = all_cue.iter().map(|f| f.path.clone()).collect();
@@ -362,6 +378,8 @@ pub fn collect_release_files(release_root: &Path) -> Result<CategorizedFiles, St
         audio,
         artwork,
         documents,
+        bad_audio_count,
+        bad_image_count,
     })
 }
 /// Recursively collect files into separate vectors by type
@@ -372,6 +390,8 @@ fn collect_files_into_vectors(
     cue: &mut Vec<ScannedFile>,
     artwork: &mut Vec<ScannedFile>,
     documents: &mut Vec<ScannedFile>,
+    bad_audio_count: &mut usize,
+    bad_image_count: &mut usize,
 ) -> Result<(), String> {
     let entries = fs::read_dir(current_dir)
         .map_err(|e| format!("Failed to read dir {:?}: {}", current_dir, e))?;
@@ -397,8 +417,15 @@ fn collect_files_into_vectors(
                 .map_err(|e| format!("Failed to read metadata for {:?}: {}", path, e))?
                 .len();
 
-            // Skip 0-byte audio files (incomplete downloads from torrent clients)
-            if is_audio_file(&path) && size == 0 {
+            if is_audio_file(&path) {
+                if size == 0 || !file_validation::is_valid_flac(&path).unwrap_or(false) {
+                    *bad_audio_count += 1;
+                    continue;
+                }
+            } else if is_image_file(&path)
+                && (size == 0 || !file_validation::is_valid_image(&path).unwrap_or(false))
+            {
+                *bad_image_count += 1;
                 continue;
             }
 
@@ -423,7 +450,16 @@ fn collect_files_into_vectors(
             }
             // Other file types are ignored
         } else if path.is_dir() {
-            collect_files_into_vectors(&path, release_root, audio, cue, artwork, documents)?;
+            collect_files_into_vectors(
+                &path,
+                release_root,
+                audio,
+                cue,
+                artwork,
+                documents,
+                bad_audio_count,
+                bad_image_count,
+            )?;
         }
     }
     Ok(())
@@ -431,6 +467,19 @@ fn collect_files_into_vectors(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Minimal valid FLAC header (42 bytes) with total_samples=0 (unknown length).
+    /// This passes is_valid_flac without needing a realistic file size.
+    fn fake_flac() -> Vec<u8> {
+        let mut buf = vec![
+            b'f', b'L', b'a', b'C', // magic
+            0x00, 0x00, 0x00, 34, // STREAMINFO block: type=0, length=34
+        ];
+        // STREAMINFO: 34 bytes, all zeros → sample_rate=0 so size check is skipped
+        buf.extend_from_slice(&[0u8; 34]);
+        buf
+    }
+
     #[test]
     fn test_is_audio_file() {
         assert!(is_audio_file(Path::new("track.flac")));
@@ -452,8 +501,8 @@ mod tests {
         let root = temp_dir.path();
 
         // Create visible files
-        std::fs::write(root.join("track.flac"), b"fake flac").unwrap();
-        std::fs::write(root.join("cover.jpg"), b"cover image").unwrap();
+        std::fs::write(root.join("track.flac"), fake_flac()).unwrap();
+        std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
         // Create hidden file that should be ignored
         std::fs::write(root.join(".DS_Store"), b"mac junk").unwrap();
@@ -539,13 +588,13 @@ FILE "{flac_filename}" WAVE
             let flac_name = format!("{}.flac", file_base);
             let cue_name = format!("{}.cue", file_base);
 
-            std::fs::write(album_dir.join(&flac_name), b"fake flac data").unwrap();
+            std::fs::write(album_dir.join(&flac_name), fake_flac()).unwrap();
             std::fs::write(
                 album_dir.join(&cue_name),
                 make_cue_content(&flac_name, file_base),
             )
             .unwrap();
-            std::fs::write(album_dir.join("cover.jpg"), b"fake image").unwrap();
+            std::fs::write(album_dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
         }
 
         let mut candidates = Vec::new();
@@ -606,7 +655,7 @@ FILE "{flac_filename}" WAVE
             let flac_name = format!("{}.flac", file_base);
             let cue_name = format!("{}.cue", file_base);
 
-            std::fs::write(disc_dir.join(&flac_name), b"fake flac data").unwrap();
+            std::fs::write(disc_dir.join(&flac_name), fake_flac()).unwrap();
             std::fs::write(
                 disc_dir.join(&cue_name),
                 make_cue_content(&flac_name, file_base),
@@ -649,7 +698,7 @@ FILE "{flac_filename}" WAVE
         for folder_name in folder_names {
             let disc_dir = root.join(folder_name);
             std::fs::create_dir(&disc_dir).unwrap();
-            std::fs::write(disc_dir.join("track.flac"), b"fake flac").unwrap();
+            std::fs::write(disc_dir.join("track.flac"), fake_flac()).unwrap();
         }
 
         let mut candidates = Vec::new();
@@ -673,7 +722,7 @@ FILE "{flac_filename}" WAVE
         for folder_name in folder_names {
             let album_dir = root.join(folder_name);
             std::fs::create_dir(&album_dir).unwrap();
-            std::fs::write(album_dir.join("track.flac"), b"fake flac").unwrap();
+            std::fs::write(album_dir.join("track.flac"), fake_flac()).unwrap();
         }
 
         let mut candidates = Vec::new();
@@ -750,7 +799,7 @@ FILE "album.ape" WAVE
 "#;
         std::fs::write(root.join("album.cue"), cue_content).unwrap();
         std::fs::write(root.join("album.ape"), b"fake ape data").unwrap();
-        std::fs::write(root.join("cover.jpg"), b"fake image").unwrap();
+        std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
         let mut candidates = Vec::new();
         scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
@@ -780,8 +829,12 @@ FILE "album.ape" WAVE
         let root = temp_dir.path().join("Just Images");
         std::fs::create_dir(&root).unwrap();
 
-        std::fs::write(root.join("cover.jpg"), b"fake image").unwrap();
-        std::fs::write(root.join("back.png"), b"fake image").unwrap();
+        std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+        std::fs::write(
+            root.join("back.png"),
+            [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
+        )
+        .unwrap();
 
         let mut candidates = Vec::new();
         scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
@@ -828,7 +881,7 @@ FILE "album.ape" WAVE
         for vol_name in &volumes {
             let vol_dir = root.join(vol_name);
             std::fs::create_dir(&vol_dir).unwrap();
-            std::fs::write(vol_dir.join("track.flac"), b"fake flac").unwrap();
+            std::fs::write(vol_dir.join("track.flac"), fake_flac()).unwrap();
         }
 
         let mut candidates = Vec::new();
@@ -852,7 +905,7 @@ FILE "album.ape" WAVE
         // Create 0-byte FLAC files (incomplete download placeholders)
         std::fs::write(root.join("01 - Track One.flac"), b"").unwrap();
         std::fs::write(root.join("02 - Track Two.flac"), b"").unwrap();
-        std::fs::write(root.join("cover.jpg"), b"fake image").unwrap();
+        std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
         let mut candidates = Vec::new();
         scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
@@ -866,13 +919,12 @@ FILE "album.ape" WAVE
 
     #[test]
     fn test_mix_of_real_and_zero_byte_files() {
-        // If some files are real and some are 0-byte, only count the real ones
+        // One valid FLAC file, two 0-byte placeholders
         let temp_dir = tempfile::tempdir().unwrap();
         let root = temp_dir.path().join("Partial Download");
         std::fs::create_dir(&root).unwrap();
 
-        // One real file, two 0-byte placeholders
-        std::fs::write(root.join("01 - Track One.flac"), b"real audio data").unwrap();
+        std::fs::write(root.join("01 - Track One.flac"), fake_flac()).unwrap();
         std::fs::write(root.join("02 - Track Two.flac"), b"").unwrap();
         std::fs::write(root.join("03 - Track Three.flac"), b"").unwrap();
 
@@ -882,14 +934,51 @@ FILE "album.ape" WAVE
         assert_eq!(
             candidates.len(),
             1,
-            "Should detect folder with at least one real file"
+            "Should detect folder with at least one valid file"
         );
 
-        // Check that only the real file is counted
         let audio_count = match &candidates[0].files.audio {
             AudioContent::TrackFiles(tracks) => tracks.len(),
             AudioContent::CueFlacPairs(pairs) => pairs.len(),
         };
-        assert_eq!(audio_count, 1, "Should only count the non-zero-byte file");
+        assert_eq!(audio_count, 1, "Should only count the valid FLAC file");
+
+        assert_eq!(
+            candidates[0].files.bad_audio_count, 2,
+            "Should count 2 bad audio files (0-byte)"
+        );
+    }
+
+    #[test]
+    fn test_corrupt_image_counted_as_bad() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path().join("Bad Images");
+        std::fs::create_dir(&root).unwrap();
+
+        // Valid audio so the folder is detected
+        std::fs::write(root.join("track.flac"), fake_flac()).unwrap();
+
+        // Valid JPEG magic
+        std::fs::write(root.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
+
+        // Corrupt JPEG (wrong magic)
+        std::fs::write(root.join("back.jpg"), b"not a jpeg").unwrap();
+
+        // 0-byte image
+        std::fs::write(root.join("inlay.png"), b"").unwrap();
+
+        let mut candidates = Vec::new();
+        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(
+            candidates[0].files.artwork.len(),
+            1,
+            "Only valid image kept"
+        );
+        assert_eq!(
+            candidates[0].files.bad_image_count, 2,
+            "Two bad images: corrupt + 0-byte"
+        );
     }
 }

@@ -277,6 +277,10 @@ pub struct CategorizedFileInfo {
     pub artwork: Vec<FileInfo>,
     /// Document files (.log, .txt, .nfo) - CUE files in pairs are NOT here
     pub documents: Vec<FileInfo>,
+    /// Number of corrupt/incomplete audio files (not included in `audio`)
+    pub bad_audio_count: usize,
+    /// Number of corrupt image files (not included in `artwork`)
+    pub bad_image_count: usize,
 }
 
 impl CategorizedFileInfo {
@@ -327,7 +331,7 @@ pub enum SelectedCover {
 }
 
 /// Status of a detected candidate during import
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum DetectedCandidateStatus {
     #[default]
     Pending,
@@ -335,6 +339,16 @@ pub enum DetectedCandidateStatus {
     Importing,
     /// Import completed successfully
     Imported,
+    /// Incomplete or corrupt download — some files are unusable (0-byte,
+    /// corrupt headers, or truncated). Cannot be imported.
+    Incomplete {
+        /// Number of bad audio files
+        bad_audio_count: usize,
+        /// Total audio file count (good + bad)
+        total_audio_count: usize,
+        /// Number of bad image files
+        bad_image_count: usize,
+    },
 }
 
 /// Detected candidate (album folder) for import.

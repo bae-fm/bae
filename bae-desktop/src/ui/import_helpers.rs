@@ -1013,5 +1013,7 @@ pub fn categorized_files_from_scanned(
         audio,
         artwork,
         documents,
+        bad_audio_count: files.bad_audio_count,
+        bad_image_count: files.bad_image_count,
     }
 }
