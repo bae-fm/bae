@@ -260,6 +260,17 @@ unsafe fn setup_app_menu_inner(app: id) {
     let separator1 = NSMenuItem::separatorItem(nil);
     app_menu.addItem_(separator1);
 
+    // Hide bae
+    let hide_title = NSString::alloc(nil).init_str("Hide bae");
+    let hide_key = NSString::alloc(nil).init_str("h");
+    let hide_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
+        hide_title,
+        selector("hide:"),
+        hide_key,
+    );
+    hide_item.autorelease();
+    app_menu.addItem_(hide_item);
+
     let close_title = NSString::alloc(nil).init_str("Close Window");
     let close_key = NSString::alloc(nil).init_str("w");
     let close_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
