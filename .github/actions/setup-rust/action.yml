@@ -1,5 +1,5 @@
 name: 'Setup Rust Build Environment'
-description: 'Install Rust toolchain and common tools. Build caching is handled by sccache (configured in .cargo/config.toml + CI workflow).'
+description: 'Install Rust toolchain, sccache, and common tools'
 
 inputs:
   install-dioxus:
@@ -20,13 +20,12 @@ runs:
       shell: bash
       run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
+    - name: Setup sccache
+      uses: mozilla-actions/sccache-action@v0.0.9
+
     - name: Install cargo-binstall
       shell: bash
       run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-
-    - name: Install sccache
-      shell: bash
-      run: cargo binstall sccache --no-confirm --locked
 
     - name: Install Dioxus CLI
       if: inputs.install-dioxus == 'true'
