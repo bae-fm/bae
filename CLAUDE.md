@@ -88,6 +88,16 @@ Add blank lines before/after log statements when surrounded by substantial code.
   - Track list/multiple files: `RowsIcon`
   - Single disc/CUE+FLAC: `DiscIcon`
 
+## Worktree / Fresh Checkout Setup
+
+The Rust build scripts in `bae-desktop` and `bae-mocks` shell out to `node_modules/.bin/tailwindcss` to generate CSS. The generated CSS files are gitignored, and `node_modules/` doesn't carry over to worktrees. The build will panic if tailwind isn't installed.
+
+After creating a worktree or fresh clone, run:
+```sh
+(cd bae-desktop && npm install)
+(cd bae-mocks && npm install)
+```
+
 ## Dependencies
 
 When adding a new dependency (crate, npm package), always look up the latest version first.
