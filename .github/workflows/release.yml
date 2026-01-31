@@ -78,6 +78,9 @@ jobs:
       with:
         install-dioxus: 'true'
 
+    - name: Setup sccache
+      uses: mozilla-actions/sccache-action@v0.0.9
+
     - name: Setup Node.js environment
       uses: ./.github/actions/setup-node
       with:
