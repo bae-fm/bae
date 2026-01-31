@@ -4,7 +4,7 @@ use super::registry::ControlRegistry;
 use super::viewport::{MockViewport, DEFAULT_BREAKPOINTS};
 use crate::storage;
 use crate::ui::{
-    Checkbox, Chevron, ChevronDirection, Dropdown, DropdownStyle, IconButton, ToggleButton,
+    Checkbox, Chevron, ChevronDirection, IconButton, Select, SelectOption, ToggleButton,
 };
 use crate::Route;
 use bae_ui::{LayersIcon, MonitorIcon};
@@ -208,16 +208,15 @@ fn MockDropdown(current_mock: MockPage) -> Element {
     let nav = use_navigator();
 
     rsx! {
-        Dropdown {
+        Select {
             value: current_mock.key().to_string(),
-            style: DropdownStyle::Transparent,
             onchange: move |value: String| {
                 if let Some(page) = MockPage::from_key(&value) {
                     nav.push(page.to_route(None));
                 }
             },
             for page in MockPage::ALL {
-                option { value: page.key(), selected: *page == current_mock, "{page.label()}" }
+                SelectOption { value: page.key(), label: page.label() }
             }
         }
     }
@@ -237,7 +236,7 @@ fn PresetDropdown(registry: ControlRegistry) -> Element {
     rsx! {
         label { class: "flex items-center gap-1.5 text-gray-400 text-sm",
             LayersIcon { class: "w-3.5 h-3.5" }
-            Dropdown {
+            Select {
                 value: active_preset.to_string(),
                 onchange: {
                     let registry = registry.clone();
@@ -248,14 +247,10 @@ fn PresetDropdown(registry: ControlRegistry) -> Element {
                     }
                 },
                 for preset in &registry.presets {
-                    option {
-                        value: preset.name,
-                        selected: preset.name == active_preset,
-                        "{preset.name}"
-                    }
+                    SelectOption { value: preset.name, label: preset.name }
                 }
                 if active_preset == "Custom" {
-                    option { value: "Custom", selected: true, disabled: true, "Custom" }
+                    SelectOption { value: "Custom", label: "Custom" }
                 }
             }
         }
@@ -391,7 +386,7 @@ fn ViewportDropdown(mut viewport_width: Signal<u32>) -> Element {
     rsx! {
         label { class: "flex items-center gap-1.5 text-gray-400 text-sm",
             MonitorIcon { class: "w-3.5 h-3.5" }
-            Dropdown {
+            Select {
                 value: current.to_string(),
                 onchange: move |value: String| {
                     if let Ok(w) = value.parse::<u32>() {
@@ -400,14 +395,9 @@ fn ViewportDropdown(mut viewport_width: Signal<u32>) -> Element {
                     }
                 },
                 for bp in DEFAULT_BREAKPOINTS {
-                    option {
+                    SelectOption {
                         value: bp.width.to_string(),
-                        selected: current == bp.width,
-                        if bp.width > 0 {
-                            "{bp.name} ({bp.width}px)"
-                        } else {
-                            "{bp.name}"
-                        }
+                        label: if bp.width > 0 { format!("{} ({}px)", bp.name, bp.width) } else { bp.name.to_string() },
                     }
                 }
             }
@@ -526,11 +516,11 @@ fn InlineEnumDropdown(
     rsx! {
         label { class: "flex items-center gap-2 text-gray-400",
             "{label}:"
-            Dropdown {
-                value: current.clone(),
+            Select {
+                value: current,
                 onchange: move |value: String| registry.set_string(control_key, value),
                 for (value , display) in &options {
-                    option { value: *value, selected: current == *value, "{display}" }
+                    SelectOption { value: *value, label: *display }
                 }
             }
         }

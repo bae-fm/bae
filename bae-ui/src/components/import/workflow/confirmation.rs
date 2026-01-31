@@ -2,7 +2,8 @@
 
 use crate::components::icons::ImageIcon;
 use crate::components::{
-    Button, ButtonSize, ButtonVariant, ChromelessButton, Modal, StorageProfile,
+    Button, ButtonSize, ButtonVariant, ChromelessButton, Modal, Select, SelectOption,
+    StorageProfile,
 };
 use crate::display_types::{FileInfo, MatchCandidate, MatchSourceType, SelectedCover};
 use dioxus::prelude::*;
@@ -138,29 +139,25 @@ pub fn ConfirmationView(
             // Storage profile selection + Import button
             div { class: "flex items-center gap-3 px-5",
                 label { class: "text-sm text-gray-400 ml-auto", "Storage:" }
-                select {
-                    class: "bg-gray-700/50 text-white rounded px-3 py-1.5 text-sm border border-gray-600/50 focus:border-blue-500 focus:outline-none",
+                Select {
+                    value: selected_profile_id.clone().unwrap_or_else(|| "__none__".to_string()),
                     disabled: is_importing,
-                    onchange: move |evt: Event<FormData>| {
-                        let value = evt.value();
-                        if value == "__none__" {
+                    onchange: move |val: String| {
+                        if val == "__none__" {
                             on_storage_profile_change.call(None);
-                        } else if !value.is_empty() {
-                            on_storage_profile_change.call(Some(value));
+                        } else {
+                            on_storage_profile_change.call(Some(val));
                         }
                     },
-                    option {
-                        key: "__none__",
+                    SelectOption {
                         value: "__none__",
-                        selected: selected_profile_id.is_none(),
-                        "No Storage (files stay in place)"
+                        label: "No Storage (files stay in place)",
                     }
                     for profile in storage_profiles.read().iter() {
-                        option {
+                        SelectOption {
                             key: "{profile.id}",
                             value: "{profile.id}",
-                            selected: selected_profile_id.as_ref() == Some(&profile.id),
-                            "{profile.name}"
+                            label: profile.name.clone(),
                         }
                     }
                 }

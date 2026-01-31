@@ -16,6 +16,7 @@ pub mod modal;
 pub mod pill;
 pub mod playback;
 pub mod resizable_panel;
+pub mod select;
 pub mod settings;
 pub mod text_input;
 pub mod title_bar;
@@ -61,6 +62,7 @@ pub use modal::Modal;
 pub use pill::{Pill, PillVariant};
 pub use playback::{NowPlayingBarView, QueueSidebarState, QueueSidebarView};
 pub use resizable_panel::{GrabBar, PanelPosition, ResizablePanel, ResizeDirection};
+pub use select::{Select, SelectOption};
 pub use settings::{
     AboutSectionView, ApiKeysSectionView, BitTorrentSectionView, BitTorrentSettings,
     EncryptionSectionView, SettingsTab, SettingsView, StorageLocation, StorageProfile,
