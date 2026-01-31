@@ -98,6 +98,17 @@ jobs:
         # Only build .app bundle, skip DMG (we create our own signed DMG later)
         dx bundle --release --package-types macos
 
+    - name: Archive dSYM bundle
+      run: |
+        DSYM_PATH=$(find target/release -name "*.dSYM" -type d | head -1)
+        if [[ -n "$DSYM_PATH" ]]; then
+          zip -r target/bae.dSYM.zip "$DSYM_PATH"
+          echo "DSYM_ARCHIVE=target/bae.dSYM.zip" >> $GITHUB_ENV
+          echo "Found dSYM at $DSYM_PATH"
+        else
+          echo "::warning::No dSYM bundle found"
+        fi
+
     - name: Rename app bundle to lowercase
       run: mv target/dx/bae/bundle/macos/bundle/macos/Bae.app target/dx/bae/bundle/macos/bundle/macos/bae.app
 
@@ -258,6 +269,14 @@ jobs:
         path: target/bae.dmg
         retention-days: 30
 
+    - name: Upload dSYM
+      if: env.DSYM_ARCHIVE != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: bae-dSYM
+        path: ${{ env.DSYM_ARCHIVE }}
+        retention-days: 90
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
@@ -265,6 +284,7 @@ jobs:
         files: |
           target/bae.dmg
           target/appcast.xml
+          target/bae.dSYM.zip
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

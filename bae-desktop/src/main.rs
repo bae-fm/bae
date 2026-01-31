@@ -8,6 +8,7 @@ use bae_core::{network, torrent};
 use tracing::warn;
 use tracing::{error, info};
 
+mod crash_report;
 mod media_controls;
 mod ui;
 mod updater;
@@ -81,8 +82,10 @@ fn configure_logging() {
 }
 
 fn main() {
+    crash_report::install_panic_hook();
     let config = config::Config::load();
     configure_logging();
+    crash_report::check_for_crash_report();
 
     // Initialize FFmpeg for audio processing
     audio_codec::init();

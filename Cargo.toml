@@ -17,3 +17,5 @@ tracing = "0.1.41"
 lto = true
 codegen-units = 1
 strip = true
+split-debuginfo = "packed"
+debug = "line-tables-only"
