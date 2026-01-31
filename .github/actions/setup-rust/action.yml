@@ -1,5 +1,5 @@
 name: 'Setup Rust Build Environment'
-description: 'Install Rust toolchain, configure caching, and install common tools'
+description: 'Install Rust toolchain and common tools. Build caching is handled by sccache (configured in .cargo/config.toml + CI workflow).'
 
 inputs:
   install-dioxus:
@@ -15,12 +15,6 @@ runs:
       run: |
         rustup show
         rustup target add wasm32-unknown-unknown
-
-    - name: Cache Rust dependencies
-      uses: Swatinem/rust-cache@v2
-      with:
-        shared-key: rust-${{ runner.arch }}
-        cache-directories: ~/.cargo/bin
 
     - name: Add cargo bin to PATH
       shell: bash
