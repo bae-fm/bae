@@ -354,6 +354,10 @@ fn ConfirmStep(
         .current_candidate_state()
         .map(|s| s.files().artwork.clone())
         .unwrap_or_default();
+    let managed_artwork = st
+        .current_candidate_state()
+        .map(|s| s.files().managed_artwork.clone())
+        .unwrap_or_default();
     let selected_profile_id = st.get_storage_profile_id();
 
     let (is_importing, preparing_step_text, import_error) = st
@@ -385,6 +389,7 @@ fn ConfirmStep(
                 selected_cover,
                 display_cover_url,
                 artwork_files,
+                managed_artwork,
                 remote_cover_url: candidate.cover_url.clone(),
                 storage_profiles,
                 selected_profile_id,

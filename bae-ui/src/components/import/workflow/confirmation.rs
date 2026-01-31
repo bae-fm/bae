@@ -19,6 +19,8 @@ pub fn ConfirmationView(
     display_cover_url: Option<String>,
     /// Artwork files available in the folder (with resolved display URLs)
     artwork_files: Vec<FileInfo>,
+    /// Managed artwork files from .bae/ (downloaded covers)
+    managed_artwork: Vec<FileInfo>,
     /// Remote cover URL from the match candidate
     remote_cover_url: Option<String>,
     /// Available storage profiles
@@ -57,7 +59,8 @@ pub fn ConfirmationView(
         MatchSourceType::Discogs => (None, None, None),
     };
 
-    let has_cover_options = !artwork_files.is_empty() || remote_cover_url.is_some();
+    let has_cover_options =
+        !artwork_files.is_empty() || !managed_artwork.is_empty() || remote_cover_url.is_some();
 
     rsx! {
         div { class: "p-5 space-y-5",
@@ -194,82 +197,108 @@ pub fn ConfirmationView(
             on_close: move |_| show_cover_modal.set(false),
             div { class: "bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4",
                 h2 { class: "text-lg font-semibold text-white mb-4", "Select Cover Art" }
-                div { class: "flex flex-wrap gap-3",
-                    // Remote cover option
-                    if let Some(ref url) = remote_cover_url {
-                        {
-                            let is_selected = matches!(
-                                selected_cover.as_ref(),
-                                Some(SelectedCover::Remote { .. })
-                            );
-                            let url_for_click = url.clone();
-                            rsx! {
-                                ChromelessButton {
-                                    class: Some(
-                                        if is_selected {
-                                            "relative w-20 h-20 rounded-lg ring-2 ring-green-500 overflow-clip"
-                                                .to_string()
-                                        } else {
-                                            "relative w-20 h-20 rounded-lg ring-1 ring-gray-600 hover:ring-gray-500 overflow-clip"
-                                                .to_string()
-                                        },
-                                    ),
-                                    aria_label: Some("Select remote cover art".to_string()),
-                                    onclick: move |_| {
-                                        on_select_remote_cover.call(url_for_click.clone());
-                                        show_cover_modal.set(false);
-                                    },
-                                    img {
-                                        src: "{url}",
-                                        alt: "Remote cover",
-                                        class: "w-full h-full object-cover",
+
+                {
+                    let has_online = remote_cover_url.is_some() || !managed_artwork.is_empty();
+                    let has_local = !artwork_files.is_empty();
+                    let source_label = match candidate.source_type {
+                        MatchSourceType::MusicBrainz => "MusicBrainz",
+                        MatchSourceType::Discogs => "Discogs",
+                    };
+
+                    rsx! {
+                        div { class: "space-y-4",
+                            // Online section (remote + managed artwork)
+                            if has_online {
+                                div {
+                                    if has_local {
+                                        p { class: "text-xs text-gray-400 mb-2", "{source_label}" }
                                     }
-                                    if is_selected {
-                                        div { class: "absolute top-0.5 right-0.5 bg-green-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center",
-                                            "✓"
+                                    div { class: "flex flex-wrap gap-3",
+                                        // Remote cover thumbnail
+                                        if let Some(ref url) = remote_cover_url {
+                                            {
+                                                let is_selected = matches!(
+                                                    selected_cover.as_ref(),
+                                                    Some(SelectedCover::Remote { .. })
+                                                );
+                                                let url_for_click = url.clone();
+                                                rsx! {
+                                                    CoverThumbnail {
+                                                        url: url.clone(),
+                                                        alt: "Remote cover".to_string(),
+                                                        aria_label: "Select remote cover art".to_string(),
+                                                        is_selected,
+                                                        on_click: move |_| {
+                                                            on_select_remote_cover.call(url_for_click.clone());
+                                                            show_cover_modal.set(false);
+                                                        },
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                        // Managed artwork thumbnails (local files from .bae/)
+        
+
+                                        // Local artwork section
+                                        for img in managed_artwork.iter() {
+                                            {
+                                                let img_name = img.name.clone();
+                                                let is_selected = matches!(
+                                                    selected_cover.as_ref(),
+                                                    Some(SelectedCover::Local { filename })
+                                                    if filename == &img_name
+                                                );
+                                                let name_for_click = img.name.clone();
+                                                rsx! {
+                                                    CoverThumbnail {
+                                                        key: "{img.display_url}",
+                                                        url: img.display_url.clone(),
+                                                        alt: img.name.clone(),
+                                                        aria_label: format!("Select cover art: {}", img.name),
+                                                        is_selected,
+                                                        on_click: move |_| {
+                                                            on_select_local_cover.call(name_for_click.clone());
+                                                            show_cover_modal.set(false);
+                                                        },
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                    }
-
-                    // Local artwork options
-                    for img in artwork_files.iter() {
-                        {
-                            let img_name = img.name.clone();
-                            let is_selected = matches!(
-                                selected_cover.as_ref(),
-                                Some(SelectedCover::Local { filename })
-                                if filename == &img_name
-                            );
-                            let img_url = img.display_url.clone();
-                            let name_for_click = img.name.clone();
-                            rsx! {
-                                ChromelessButton {
-                                    key: "{img_url}",
-                                    class: Some(
-                                        if is_selected {
-                                            "relative w-20 h-20 rounded-lg ring-2 ring-green-500 overflow-clip"
-                                                .to_string()
-                                        } else {
-                                            "relative w-20 h-20 rounded-lg ring-1 ring-gray-600 hover:ring-gray-500 overflow-clip"
-                                                .to_string()
-                                        },
-                                    ),
-                                    aria_label: Some(format!("Select cover art: {}", img.name)),
-                                    onclick: move |_| {
-                                        on_select_local_cover.call(name_for_click.clone());
-                                        show_cover_modal.set(false);
-                                    },
-                                    img {
-                                        src: "{img_url}",
-                                        alt: "{img.name}",
-                                        class: "w-full h-full object-cover",
+        
+                            if has_local {
+                                div {
+                                    if has_online {
+                                        p { class: "text-xs text-gray-400 mb-2", "From release" }
                                     }
-                                    if is_selected {
-                                        div { class: "absolute top-0.5 right-0.5 bg-green-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center",
-                                            "✓"
+                                    div { class: "flex flex-wrap gap-3",
+                                        for img in artwork_files.iter() {
+                                            {
+                                                let img_name = img.name.clone();
+                                                let is_selected = matches!(
+                                                    selected_cover.as_ref(),
+                                                    Some(SelectedCover::Local { filename })
+                                                    if filename == &img_name
+                                                );
+                                                let name_for_click = img.name.clone();
+                                                rsx! {
+                                                    CoverThumbnail {
+                                                        key: "{img.display_url}",
+                                                        url: img.display_url.clone(),
+                                                        alt: img.name.clone(),
+                                                        aria_label: format!("Select cover art: {}", img.name),
+                                                        is_selected,
+                                                        on_click: move |_| {
+                                                            on_select_local_cover.call(name_for_click.clone());
+                                                            show_cover_modal.set(false);
+                                                        },
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -277,8 +306,45 @@ pub fn ConfirmationView(
                         }
                     }
                 }
+
                 p { class: "text-xs text-gray-500 mt-3",
                     "Click an image to set it as the album cover"
+                }
+            }
+        }
+    }
+}
+
+/// Reusable cover art thumbnail button
+#[component]
+fn CoverThumbnail(
+    url: String,
+    alt: String,
+    aria_label: String,
+    is_selected: bool,
+    on_click: EventHandler<()>,
+) -> Element {
+    rsx! {
+        ChromelessButton {
+            class: Some(
+                if is_selected {
+                    "relative w-20 h-20 rounded-lg ring-2 ring-green-500 overflow-clip"
+                        .to_string()
+                } else {
+                    "relative w-20 h-20 rounded-lg ring-1 ring-gray-600 hover:ring-gray-500 overflow-clip"
+                        .to_string()
+                },
+            ),
+            aria_label: Some(aria_label),
+            onclick: move |_| on_click.call(()),
+            img {
+                src: "{url}",
+                alt: "{alt}",
+                class: "w-full h-full object-cover",
+            }
+            if is_selected {
+                div { class: "absolute top-0.5 right-0.5 bg-green-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center",
+                    "✓"
                 }
             }
         }

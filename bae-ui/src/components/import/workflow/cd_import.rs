@@ -292,6 +292,7 @@ fn CdConfirmContent(
                 selected_cover,
                 display_cover_url,
                 artwork_files,
+                managed_artwork: vec![],
                 remote_cover_url: candidate.cover_url.clone(),
                 storage_profiles,
                 selected_profile_id,

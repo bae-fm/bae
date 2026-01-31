@@ -277,6 +277,9 @@ pub struct CategorizedFileInfo {
     pub artwork: Vec<FileInfo>,
     /// Document files (.log, .txt, .nfo) - CUE files in pairs are NOT here
     pub documents: Vec<FileInfo>,
+    /// Artwork managed by bae (downloaded from MusicBrainz/Discogs, stored in `.bae/`).
+    /// Not counted in `total_count()` — these are not release files.
+    pub managed_artwork: Vec<FileInfo>,
     /// Number of corrupt/incomplete audio files (not included in `audio`)
     pub bad_audio_count: usize,
     /// Number of corrupt image files (not included in `artwork`)
