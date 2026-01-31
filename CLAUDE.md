@@ -96,6 +96,7 @@ The Rust build scripts in `bae-desktop` and `bae-mocks` shell out to `node_modul
 
 After creating a worktree or fresh clone, run:
 ```sh
+git submodule update --init
 (cd bae-desktop && npm install)
 (cd bae-mocks && npm install)
 ```
