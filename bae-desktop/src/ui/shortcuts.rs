@@ -103,30 +103,38 @@ pub enum PlaybackAction {
     Previous,
 }
 
-/// Check if the platform modifier key is pressed (Ctrl on Windows/Linux).
-/// On macOS, shortcuts are handled by the native menu instead.
-#[cfg(not(target_os = "macos"))]
+/// Check if the platform modifier key is pressed (Cmd on macOS, Ctrl elsewhere).
 fn has_platform_modifier(evt: &KeyboardEvent) -> bool {
     let mods = evt.modifiers();
-    mods.ctrl() && !mods.meta() && !mods.alt() && !mods.shift()
+    #[cfg(target_os = "macos")]
+    {
+        mods.meta() && !mods.ctrl() && !mods.alt() && !mods.shift()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        mods.ctrl() && !mods.meta() && !mods.alt() && !mods.shift()
+    }
 }
 
 /// Try to handle a keyboard event as an app shortcut.
 /// Returns `Some(NavAction)` if the event matches a shortcut, `None` otherwise.
-/// On macOS, these shortcuts are handled by the native menu instead.
-#[cfg(not(target_os = "macos"))]
 pub fn handle_shortcut(evt: &KeyboardEvent) -> Option<NavAction> {
     if !has_platform_modifier(evt) {
         return None;
     }
 
+    // On macOS, Cmd+1/2 and Cmd+[/] are handled by the native menu
+    // and won't reach the webview. Only non-menu shortcuts need to go here.
+    #[cfg(not(target_os = "macos"))]
     match evt.key() {
-        Key::Character(c) if c == "1" => Some(NavAction::GoTo(NavTarget::Library)),
-        Key::Character(c) if c == "2" => Some(NavAction::GoTo(NavTarget::Import)),
-        Key::Character(c) if c == "[" => Some(NavAction::Back),
-        Key::Character(c) if c == "]" => Some(NavAction::Forward),
-        _ => None,
+        Key::Character(c) if c == "1" => return Some(NavAction::GoTo(NavTarget::Library)),
+        Key::Character(c) if c == "2" => return Some(NavAction::GoTo(NavTarget::Import)),
+        Key::Character(c) if c == "[" => return Some(NavAction::Back),
+        Key::Character(c) if c == "]" => return Some(NavAction::Forward),
+        _ => {}
     }
+
+    None
 }
 
 fn execute_nav_action(action: NavAction) {
@@ -151,9 +159,6 @@ pub fn ShortcutsHandler(children: Element) -> Element {
         });
     });
 
-    // On macOS, keyboard shortcuts are handled by the native menu.
-    // On other platforms, handle them via the Dioxus keydown event.
-    #[cfg(not(target_os = "macos"))]
     let onkeydown = move |evt: KeyboardEvent| {
         if let Some(action) = handle_shortcut(&evt) {
             evt.prevent_default();
@@ -161,13 +166,7 @@ pub fn ShortcutsHandler(children: Element) -> Element {
         }
     };
 
-    #[cfg(not(target_os = "macos"))]
-    return rsx! {
-        div { class: "contents", onkeydown, {children} }
-    };
-
-    #[cfg(target_os = "macos")]
     rsx! {
-        div { class: "contents", {children} }
+        div { class: "contents", onkeydown, {children} }
     }
 }
