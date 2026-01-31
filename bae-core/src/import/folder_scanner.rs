@@ -398,11 +398,12 @@ fn collect_files_into_vectors(
     for entry in entries.flatten() {
         let path = entry.path();
 
-        // Skip hidden files and directories (e.g. .bae, .DS_Store)
+        // Skip hidden files and directories (e.g. .DS_Store), but allow .bae/
+        // which stores bae-managed files like downloaded cover art
         if path
             .file_name()
             .and_then(|n| n.to_str())
-            .map(|n| n.starts_with('.'))
+            .map(|n| n.starts_with('.') && n != ".bae")
             .unwrap_or(false)
         {
             continue;
@@ -496,7 +497,7 @@ mod tests {
     }
 
     #[test]
-    fn test_collect_release_files_skips_hidden() {
+    fn test_collect_release_files_skips_hidden_but_allows_bae() {
         let temp_dir = tempfile::tempdir().unwrap();
         let root = temp_dir.path();
 
@@ -507,11 +508,17 @@ mod tests {
         // Create hidden file that should be ignored
         std::fs::write(root.join(".DS_Store"), b"mac junk").unwrap();
 
-        // Create .bae hidden directory with files that should be ignored
+        // Create .bae directory with cover art (should be included)
         let bae_dir = root.join(".bae");
         std::fs::create_dir(&bae_dir).unwrap();
+        std::fs::write(bae_dir.join("cover-mb.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+        // Non-image files in .bae/ are ignored (unrecognized extension)
         std::fs::write(bae_dir.join("cache.db"), b"cache data").unwrap();
-        std::fs::write(bae_dir.join("cover.jpg"), b"cached image").unwrap();
+
+        // Create another hidden directory that should be ignored
+        let other_hidden = root.join(".hidden");
+        std::fs::create_dir(&other_hidden).unwrap();
+        std::fs::write(other_hidden.join("secret.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
         let files = collect_release_files(root).unwrap();
 
@@ -524,15 +531,25 @@ mod tests {
         };
         assert_eq!(audio_paths, vec!["track.flac"]);
 
-        // Check artwork
-        let artwork_paths: Vec<_> = files
+        // Check artwork - should include both root cover.jpg and .bae/cover-mb.jpg
+        let mut artwork_paths: Vec<_> = files
             .artwork
             .iter()
             .map(|f| f.relative_path.as_str())
             .collect();
-        assert_eq!(artwork_paths, vec!["cover.jpg"]);
+        artwork_paths.sort();
+        assert_eq!(artwork_paths, vec![".bae/cover-mb.jpg", "cover.jpg"]);
 
-        // Check nothing from hidden dirs/files leaked through
+        // .hidden/secret.jpg should NOT be included
+        assert!(
+            !files
+                .artwork
+                .iter()
+                .any(|f| f.relative_path.contains(".hidden")),
+            ".hidden directory should be skipped"
+        );
+
+        // Non-image files from .bae/ should not appear in documents
         assert!(files.documents.is_empty());
     }
 
@@ -915,6 +932,40 @@ FILE "album.ape" WAVE
             0,
             "Folder with only 0-byte FLAC files should not be detected"
         );
+    }
+
+    #[test]
+    fn test_real_discography_scan() {
+        let root = PathBuf::from("/Users/dima/Downloads/A Tribe Called Quest - Discography [FLAC]");
+        if !root.exists() {
+            eprintln!("Skipping test: real discography folder not found");
+            return;
+        }
+
+        let mut candidates = Vec::new();
+        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+
+        eprintln!("\n=== Found {} candidates ===\n", candidates.len());
+        for (i, c) in candidates.iter().enumerate() {
+            let audio_desc = match &c.files.audio {
+                AudioContent::CueFlacPairs(pairs) => {
+                    let total_tracks: usize = pairs.iter().map(|p| p.track_count).sum();
+                    format!("{} CUE/FLAC pair(s), {} tracks", pairs.len(), total_tracks)
+                }
+                AudioContent::TrackFiles(tracks) => format!("{} track files", tracks.len()),
+            };
+            let artwork_count = c.files.artwork.len();
+            let doc_count = c.files.documents.len();
+            eprintln!(
+                "  [{}] {}\n      path: {}\n      audio: {}\n      artwork: {}, documents: {}\n",
+                i + 1,
+                c.name,
+                c.path.display(),
+                audio_desc,
+                artwork_count,
+                doc_count,
+            );
+        }
     }
 
     #[test]
