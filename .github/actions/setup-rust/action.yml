@@ -24,6 +24,10 @@ runs:
       shell: bash
       run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
+    - name: Install sccache
+      shell: bash
+      run: cargo binstall sccache --no-confirm --locked
+
     - name: Install Dioxus CLI
       if: inputs.install-dioxus == 'true'
       shell: bash
