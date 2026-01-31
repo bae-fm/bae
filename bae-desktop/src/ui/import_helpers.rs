@@ -1009,10 +1009,18 @@ pub fn categorized_files_from_scanned(
     let mut documents: Vec<FileInfo> = files.documents.iter().map(scanned_to_file_info).collect();
     documents.sort_by(|a, b| a.name.cmp(&b.name));
 
+    let mut managed_artwork: Vec<FileInfo> = files
+        .managed_artwork
+        .iter()
+        .map(scanned_to_file_info)
+        .collect();
+    managed_artwork.sort_by(|a, b| a.name.cmp(&b.name));
+
     CategorizedFileInfo {
         audio,
         artwork,
         documents,
+        managed_artwork,
         bad_audio_count: files.bad_audio_count,
         bad_image_count: files.bad_image_count,
     }

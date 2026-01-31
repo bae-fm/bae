@@ -55,6 +55,8 @@ pub struct CategorizedFiles {
     pub artwork: Vec<ScannedFile>,
     /// Document files (.log, .txt, .nfo) - CUE files in pairs are NOT included here
     pub documents: Vec<ScannedFile>,
+    /// Artwork managed by bae (downloaded from MusicBrainz/Discogs, stored in `.bae/`)
+    pub managed_artwork: Vec<ScannedFile>,
     /// Number of audio files that are corrupt or incomplete (0-byte, bad headers,
     /// or truncated). Not included in `audio` — counted here so the UI can
     /// explain why a release is incomplete.
@@ -307,6 +309,7 @@ pub fn collect_release_files(release_root: &Path) -> Result<CategorizedFiles, St
     let mut all_cue: Vec<ScannedFile> = Vec::new();
     let mut artwork: Vec<ScannedFile> = Vec::new();
     let mut documents: Vec<ScannedFile> = Vec::new();
+    let mut managed_artwork: Vec<ScannedFile> = Vec::new();
     let mut bad_audio_count: usize = 0;
     let mut bad_image_count: usize = 0;
     collect_files_into_vectors(
@@ -316,6 +319,7 @@ pub fn collect_release_files(release_root: &Path) -> Result<CategorizedFiles, St
         &mut all_cue,
         &mut artwork,
         &mut documents,
+        &mut managed_artwork,
         &mut bad_audio_count,
         &mut bad_image_count,
     )?;
@@ -374,14 +378,27 @@ pub fn collect_release_files(release_root: &Path) -> Result<CategorizedFiles, St
     };
     artwork.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
     documents.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
+    managed_artwork.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
     Ok(CategorizedFiles {
         audio,
         artwork,
         documents,
+        managed_artwork,
         bad_audio_count,
         bad_image_count,
     })
 }
+/// Check if `current_dir` is inside the `.bae/` managed directory
+fn is_inside_bae_dir(current_dir: &Path, release_root: &Path) -> bool {
+    current_dir
+        .strip_prefix(release_root)
+        .ok()
+        .and_then(|rel| rel.components().next())
+        .and_then(|c| c.as_os_str().to_str())
+        .map(|name| name == ".bae")
+        .unwrap_or(false)
+}
+
 /// Recursively collect files into separate vectors by type
 fn collect_files_into_vectors(
     current_dir: &Path,
@@ -390,28 +407,68 @@ fn collect_files_into_vectors(
     cue: &mut Vec<ScannedFile>,
     artwork: &mut Vec<ScannedFile>,
     documents: &mut Vec<ScannedFile>,
+    managed_artwork: &mut Vec<ScannedFile>,
     bad_audio_count: &mut usize,
     bad_image_count: &mut usize,
 ) -> Result<(), String> {
+    let in_bae = is_inside_bae_dir(current_dir, release_root);
+
     let entries = fs::read_dir(current_dir)
         .map_err(|e| format!("Failed to read dir {:?}: {}", current_dir, e))?;
     for entry in entries.flatten() {
         let path = entry.path();
 
-        // Skip hidden files and directories (e.g. .bae, .DS_Store)
-        if path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .map(|n| n.starts_with('.'))
-            .unwrap_or(false)
-        {
-            continue;
+        // Skip hidden files and directories, but allow .bae/
+        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            if name.starts_with('.') {
+                if path.is_dir() && name == ".bae" && !in_bae {
+                    // Allow .bae/ at release root level — recurse into it
+                    collect_files_into_vectors(
+                        &path,
+                        release_root,
+                        audio,
+                        cue,
+                        artwork,
+                        documents,
+                        managed_artwork,
+                        bad_audio_count,
+                        bad_image_count,
+                    )?;
+                }
+                continue;
+            }
         }
 
         if path.is_file() {
             if is_noise_file(&path) {
                 continue;
             }
+
+            // Inside .bae/: only collect valid image files as managed_artwork
+            if in_bae {
+                if is_image_file(&path) {
+                    let size = entry
+                        .metadata()
+                        .map_err(|e| format!("Failed to read metadata for {:?}: {}", path, e))?
+                        .len();
+
+                    if size > 0 && file_validation::is_valid_image(&path).unwrap_or(false) {
+                        let relative_path = path
+                            .strip_prefix(release_root)
+                            .map_err(|e| format!("Failed to strip prefix: {}", e))?
+                            .to_string_lossy()
+                            .to_string();
+                        managed_artwork.push(ScannedFile {
+                            path: path.clone(),
+                            relative_path,
+                            size,
+                        });
+                    }
+                }
+                // Skip all non-image files in .bae/
+                continue;
+            }
+
             let size = entry
                 .metadata()
                 .map_err(|e| format!("Failed to read metadata for {:?}: {}", path, e))?
@@ -457,6 +514,7 @@ fn collect_files_into_vectors(
                 cue,
                 artwork,
                 documents,
+                managed_artwork,
                 bad_audio_count,
                 bad_image_count,
             )?;
@@ -496,7 +554,7 @@ mod tests {
     }
 
     #[test]
-    fn test_collect_release_files_skips_hidden() {
+    fn test_collect_release_files_skips_hidden_but_allows_bae() {
         let temp_dir = tempfile::tempdir().unwrap();
         let root = temp_dir.path();
 
@@ -507,11 +565,11 @@ mod tests {
         // Create hidden file that should be ignored
         std::fs::write(root.join(".DS_Store"), b"mac junk").unwrap();
 
-        // Create .bae hidden directory with files that should be ignored
+        // Create .bae directory with managed artwork and other files
         let bae_dir = root.join(".bae");
         std::fs::create_dir(&bae_dir).unwrap();
         std::fs::write(bae_dir.join("cache.db"), b"cache data").unwrap();
-        std::fs::write(bae_dir.join("cover.jpg"), b"cached image").unwrap();
+        std::fs::write(bae_dir.join("cover-mb.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
         let files = collect_release_files(root).unwrap();
 
@@ -524,7 +582,7 @@ mod tests {
         };
         assert_eq!(audio_paths, vec!["track.flac"]);
 
-        // Check artwork
+        // Check regular artwork does NOT include .bae/ files
         let artwork_paths: Vec<_> = files
             .artwork
             .iter()
@@ -532,7 +590,15 @@ mod tests {
             .collect();
         assert_eq!(artwork_paths, vec!["cover.jpg"]);
 
-        // Check nothing from hidden dirs/files leaked through
+        // Check .bae/ images land in managed_artwork
+        let managed_paths: Vec<_> = files
+            .managed_artwork
+            .iter()
+            .map(|f| f.relative_path.as_str())
+            .collect();
+        assert_eq!(managed_paths, vec![".bae/cover-mb.jpg"]);
+
+        // Non-image files in .bae/ are skipped
         assert!(files.documents.is_empty());
     }
 
