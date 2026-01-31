@@ -324,7 +324,7 @@ unsafe fn setup_app_menu_inner(app: id) {
 
     // Back
     let back_title = NSString::alloc(nil).init_str("Back");
-    let back_key = NSString::alloc(nil).init_str("\u{F702}");
+    let back_key = NSString::alloc(nil).init_str("[");
     let back_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
         back_title,
         selector("goBack:"),
@@ -332,12 +332,11 @@ unsafe fn setup_app_menu_inner(app: id) {
     );
     back_item.autorelease();
     let _: () = msg_send![back_item, setTarget: menu_handler];
-    let _: () = msg_send![back_item, setKeyEquivalentModifierMask: command_only];
     go_menu.addItem_(back_item);
 
     // Forward
     let forward_title = NSString::alloc(nil).init_str("Forward");
-    let forward_key = NSString::alloc(nil).init_str("\u{F703}");
+    let forward_key = NSString::alloc(nil).init_str("]");
     let forward_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
         forward_title,
         selector("goForward:"),
@@ -345,7 +344,6 @@ unsafe fn setup_app_menu_inner(app: id) {
     );
     forward_item.autorelease();
     let _: () = msg_send![forward_item, setTarget: menu_handler];
-    let _: () = msg_send![forward_item, setKeyEquivalentModifierMask: command_only];
     go_menu.addItem_(forward_item);
 
     let go_separator = NSMenuItem::separatorItem(nil);
@@ -398,7 +396,7 @@ unsafe fn setup_app_menu_inner(app: id) {
 
     // Next
     let next_title = NSString::alloc(nil).init_str("Next");
-    let next_key = NSString::alloc(nil).init_str("n");
+    let next_key = NSString::alloc(nil).init_str("\u{F703}");
     let next_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
         next_title,
         selector("nextTrack:"),
@@ -406,12 +404,12 @@ unsafe fn setup_app_menu_inner(app: id) {
     );
     next_item.autorelease();
     let _: () = msg_send![next_item, setTarget: menu_handler];
-    let _: () = msg_send![next_item, setKeyEquivalentModifierMask: command_shift];
+    let _: () = msg_send![next_item, setKeyEquivalentModifierMask: command_only];
     playback_menu.addItem_(next_item);
 
     // Previous
     let previous_title = NSString::alloc(nil).init_str("Previous");
-    let previous_key = NSString::alloc(nil).init_str("b");
+    let previous_key = NSString::alloc(nil).init_str("\u{F702}");
     let previous_item = NSMenuItem::alloc(nil).initWithTitle_action_keyEquivalent_(
         previous_title,
         selector("previousTrack:"),
@@ -419,7 +417,7 @@ unsafe fn setup_app_menu_inner(app: id) {
     );
     previous_item.autorelease();
     let _: () = msg_send![previous_item, setTarget: menu_handler];
-    let _: () = msg_send![previous_item, setKeyEquivalentModifierMask: command_shift];
+    let _: () = msg_send![previous_item, setKeyEquivalentModifierMask: command_only];
     playback_menu.addItem_(previous_item);
 
     let playback_separator = NSMenuItem::separatorItem(nil);
