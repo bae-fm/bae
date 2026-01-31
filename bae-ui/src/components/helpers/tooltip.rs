@@ -12,7 +12,7 @@
 use std::rc::Rc;
 
 use dioxus::prelude::*;
-use dioxus_core::Task;
+use dioxus_core::{Runtime, RuntimeGuard, Task};
 use wasm_bindgen_x::JsCast;
 
 use crate::floating_ui::{self, ComputePositionOptions, Placement};
@@ -103,7 +103,12 @@ pub fn use_tooltip_handle() -> TooltipHandle {
             return;
         };
 
+        // Capture the Dioxus runtime so we can restore it inside the blur callback,
+        // which runs from wasm-bindgen outside the Dioxus runtime.
+        let runtime = Runtime::current();
+
         let cb = wasm_bindgen_x::closure::Closure::wrap(Box::new(move || {
+            let _guard = RuntimeGuard::new(runtime.clone());
             if let Some(task) = hover_task.take() {
                 task.cancel();
             }
