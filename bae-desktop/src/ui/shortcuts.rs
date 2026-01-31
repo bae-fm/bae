@@ -123,13 +123,18 @@ pub fn handle_shortcut(evt: &KeyboardEvent) -> Option<NavAction> {
         return None;
     }
 
+    // On macOS, Cmd+1/2 and Cmd+[/] are handled by the native menu
+    // and won't reach the webview. Only non-menu shortcuts need to go here.
+    #[cfg(not(target_os = "macos"))]
     match evt.key() {
-        Key::Character(c) if c == "1" => Some(NavAction::GoTo(NavTarget::Library)),
-        Key::Character(c) if c == "2" => Some(NavAction::GoTo(NavTarget::Import)),
-        Key::Character(c) if c == "[" => Some(NavAction::Back),
-        Key::Character(c) if c == "]" => Some(NavAction::Forward),
-        _ => None,
+        Key::Character(c) if c == "1" => return Some(NavAction::GoTo(NavTarget::Library)),
+        Key::Character(c) if c == "2" => return Some(NavAction::GoTo(NavTarget::Import)),
+        Key::Character(c) if c == "[" => return Some(NavAction::Back),
+        Key::Character(c) if c == "]" => return Some(NavAction::Forward),
+        _ => {}
     }
+
+    None
 }
 
 fn execute_nav_action(action: NavAction) {
@@ -154,7 +159,7 @@ pub fn ShortcutsHandler(children: Element) -> Element {
         });
     });
 
-    let onkeydown = move |evt| {
+    let onkeydown = move |evt: KeyboardEvent| {
         if let Some(action) = handle_shortcut(&evt) {
             evt.prevent_default();
             execute_nav_action(action);
