@@ -94,8 +94,11 @@ Add blank lines before/after log statements when surrounded by substantial code.
 
 The Rust build scripts in `bae-desktop` and `bae-mocks` shell out to `node_modules/.bin/tailwindcss` to generate CSS. The generated CSS files are gitignored, and `node_modules/` doesn't carry over to worktrees. The build will panic if tailwind isn't installed.
 
+Before creating a worktree, fetch latest main: `git fetch origin main`.
+
 After creating a worktree or fresh clone, run:
 ```sh
+git submodule update --init
 (cd bae-desktop && npm install)
 (cd bae-mocks && npm install)
 ```
