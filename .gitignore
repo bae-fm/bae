@@ -3,7 +3,7 @@
 
 # Rust local installation
 .rustup/
-.cargo/
+.cargo/*
 # But keep config.toml for project-specific build configuration
 !.cargo/config.toml
 

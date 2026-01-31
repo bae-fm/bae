@@ -1,0 +1,12 @@
+[build]
+rustc-wrapper = "sccache"
+
+[env]
+# macOS Homebrew paths for native dependencies (libcdio, ffmpeg, etc.)
+# On Apple Silicon Macs, Homebrew installs to /opt/homebrew.
+# On Intel Macs, it installs to /usr/local.
+# force = false means these won't override if already set in the environment.
+PKG_CONFIG_PATH = { value = "/opt/homebrew/lib/pkgconfig:/usr/local/lib/pkgconfig", force = false }
+LIBRARY_PATH = { value = "/opt/homebrew/lib:/usr/local/lib", force = false }
+# For bindgen/clang to find headers
+BINDGEN_EXTRA_CLANG_ARGS = { value = "-I/opt/homebrew/include -I/usr/local/include", force = false }
