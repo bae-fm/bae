@@ -237,10 +237,6 @@ pub fn ConfirmationView(
                                                 }
                                             }
                                         }
-
-                        // Managed artwork thumbnails (local files from .bae/)
-        
-
                                         for img in managed_artwork.iter() {
                                             {
                                                 let img_name = img.name.clone();
@@ -268,7 +264,6 @@ pub fn ConfirmationView(
                                     }
                                 }
                             }
-        
                             if has_local {
                                 div {
                                     if has_online {
