@@ -14,6 +14,8 @@ This is "bae" - always stylized in lowercase. Never "Bae" or "BAE" in user-visib
 
 **Only fix issues you introduce** - Don't fix pre-existing linter errors, warnings, or test failures unrelated to current work.
 
+**All work happens in worktrees** - Never work directly in the main checkout. For any new task, create a worktree: `git worktree add .worktrees/<branch-name> -b <branch-name>`, cd into it, and do all work there. The main checkout stays on `main`. Remember to run `npm install` in the worktree (see Worktree setup section below).
+
 ## Git Conventions
 
 - Always use `git --no-pager` (before the command, e.g., `git --no-pager diff`)

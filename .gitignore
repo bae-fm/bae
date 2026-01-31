@@ -1,3 +1,6 @@
+# Worktrees
+.worktrees/
+
 # Rust local installation
 .rustup/
 .cargo/
