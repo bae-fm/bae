@@ -100,7 +100,9 @@ jobs:
 
     - name: Archive dSYM bundle
       run: |
-        DSYM_PATH=$(find target/release -name "*.dSYM" -type d | head -1)
+        # dx bundle compiles with --target and a custom profile, so dSYM lands
+        # in target/<triple>/desktop-release/ rather than target/release/
+        DSYM_PATH=$(find target -name "bae.dSYM" -not -path "*/deps/*" -not -path "*/build/*" \( -type d -o -type l \) | head -1)
         if [[ -n "$DSYM_PATH" ]]; then
           zip -r target/bae.dSYM.zip "$DSYM_PATH"
           echo "DSYM_ARCHIVE=target/bae.dSYM.zip" >> $GITHUB_ENV
