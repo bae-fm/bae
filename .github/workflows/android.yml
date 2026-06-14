@@ -80,6 +80,12 @@ jobs:
       # the Kotlin bindings, and stages the .so files into the app's jniLibs.
       run: ./bae-bridge/build-android.sh
 
+    - name: Run app unit tests
+      # Robolectric/JVM tests (no device) over the app's playback and reducer
+      # logic — including the audio-focus resume policy. Needs the generated
+      # bindings from the cross-compile step above to compile the test sources.
+      run: cd bae-android && ./gradlew testDebugUnitTest --no-daemon
+
     - name: Assemble debug APK
       # Compiles the Kotlin app against the generated bindings and staged .so's,
       # catching binding drift on top of the Rust cross-compile.
