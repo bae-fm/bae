@@ -4,6 +4,17 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Release builds (CI) inject these; local dev builds fall back to dev markers.
+// versionName is the app's own `0.N` release line, versionCode the monotonic
+// store build number. BAE_GIT_COMMIT / BAE_COVEN_REV stamp the exact bae and
+// coven (sync library) commits the binary carries, for crash triage and
+// sync-compat debugging.
+val baeVersionName = System.getenv("BAE_VERSION") ?: "0.0-dev"
+val baeVersionCode = (System.getenv("BAE_VERSION_CODE") ?: "1").toInt()
+val baeGitCommit = System.getenv("BAE_GIT_COMMIT") ?: "dev"
+val baeCovenRev = System.getenv("BAE_COVEN_REV") ?: "dev"
+val releaseKeystore = System.getenv("ANDROID_KEYSTORE_FILE")
+
 android {
     namespace = "fm.bae.app"
     compileSdk = 35
@@ -12,8 +23,11 @@ android {
         applicationId = "fm.bae.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = baeVersionCode
+        versionName = baeVersionName
+
+        buildConfigField("String", "BAE_GIT_COMMIT", "\"$baeGitCommit\"")
+        buildConfigField("String", "BAE_COVEN_REV", "\"$baeCovenRev\"")
 
         // OAuth redirect scheme for the system-browser callback, read from the
         // gitignored oauth-creds.json (the scheme of the first provider's
@@ -41,9 +55,26 @@ android {
         }
     }
 
+    signingConfigs {
+        // Only wire the release signing config when CI supplies the keystore;
+        // local `assembleRelease` then produces an unsigned APK rather than
+        // failing, and debug installs are unaffected.
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (releaseKeystore != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -58,6 +89,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {

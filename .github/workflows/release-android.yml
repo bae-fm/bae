@@ -1,0 +1,170 @@
+name: Release Android
+
+# Builds a signed release APK with an independent 0.N version line (android-v*
+# tags) and a monotonic versionCode (the run number). Mirrors android.yml's
+# cross-compile setup (NDK toolchain + host ffmpeg for uniffi-bindgen) and adds
+# release signing + GitHub release publishing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, e.g. 0.2 (blank = auto-increment from android-v* tags)'
+        required: false
+        default: ''
+
+concurrency:
+  group: release-android
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # Keep in sync with android.yml and build-android.sh / build-ffmpeg-android.sh.
+  NDK_VERSION: 29.0.14206865
+
+jobs:
+  calculate-version:
+    name: Calculate Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.calc.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Determine version
+      id: calc
+      run: |
+        # Explicit input wins; otherwise auto-increment the last component of the
+        # latest android-v* tag (independent of macos-v*). First release → 0.1.
+        if [[ -n "${{ inputs.version }}" ]]; then
+          VERSION="${{ inputs.version }}"
+        else
+          LATEST=$(git tag -l "android-v*" | sed 's/^android-v//' | sort -V | tail -1)
+          if [[ -z "$LATEST" ]]; then
+            VERSION="0.1"
+          else
+            VERSION="${LATEST%.*}.$(( ${LATEST##*.} + 1 ))"
+          fi
+        fi
+
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "::notice::Android release version $VERSION (build ${{ github.run_number }})"
+
+  release:
+    name: Build and Release Android
+    runs-on: macos-26
+    needs: calculate-version
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup macOS environment
+      # Host ffmpeg for the uniffi-bindgen host build.
+      uses: ./.github/actions/setup-macos
+
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
+    - name: Setup JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    - name: Install pinned Android NDK + SDK platform
+      run: |
+        SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+        yes | "$SDKMANAGER" --licenses >/dev/null
+        "$SDKMANAGER" "ndk;${NDK_VERSION}" "platforms;android-35" "build-tools;35.0.0"
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+    - name: Cache cross-built Android FFmpeg
+      id: ffmpeg-cache
+      uses: actions/cache@v4
+      with:
+        path: third_party/ffmpeg-android
+        key: ffmpeg-android-${{ env.NDK_VERSION }}-${{ hashFiles('scripts/build-ffmpeg-android.sh') }}
+
+    - name: Build Android FFmpeg (on cache miss)
+      if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+      run: ./scripts/build-ffmpeg-android.sh
+
+    - name: Set build version + stamps
+      run: |
+        VERSION="${{ needs.calculate-version.outputs.version }}"
+        {
+          echo "BAE_VERSION=$VERSION"
+          echo "BAE_VERSION_CODE=${{ github.run_number }}"
+          echo "BAE_GIT_COMMIT=$(git rev-parse --short HEAD)"
+          echo "BAE_COVEN_REV=$(scripts/coven-rev.sh)"
+        } >> "$GITHUB_ENV"
+
+    - name: Cross-compile bae-bridge for Android (release)
+      # Reads BAE_VERSION from the env above into bae-core's build.rs.
+      run: ./bae-bridge/build-android.sh --release
+
+    - name: Decode signing keystore
+      env:
+        ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      run: |
+        echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/bae-release.jks"
+        echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/bae-release.jks" >> "$GITHUB_ENV"
+
+    - name: Assemble signed release APK
+      working-directory: bae-android
+      env:
+        ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      run: ./gradlew assembleRelease --no-daemon
+
+    - name: Locate and verify signed APK
+      run: |
+        # app-release.apk is the signed output; app-release-unsigned.apk means the
+        # signing config did not apply, so target the signed name explicitly and
+        # confirm the signature rather than shipping an uninstallable APK.
+        APK="bae-android/app/build/outputs/apk/release/app-release.apk"
+        if [[ ! -f "$APK" ]]; then
+          echo "no signed release APK at $APK — signing config did not apply" >&2
+          ls -la bae-android/app/build/outputs/apk/release || true
+          exit 1
+        fi
+        APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+        "$APKSIGNER" verify --verbose "$APK"
+        cp "$APK" "bae-android.apk"
+        echo "Verified signed APK: $APK"
+
+    - name: Create git tag
+      run: |
+        VERSION="${{ needs.calculate-version.outputs.version }}"
+        if ! git rev-parse "android-v$VERSION" >/dev/null 2>&1; then
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "android-v$VERSION"
+          git push origin "android-v$VERSION"
+        fi
+
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: bae-android-release
+        path: bae-android.apk
+        retention-days: 30
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: android-v${{ needs.calculate-version.outputs.version }}
+        # Never claim "latest": macOS Sparkle reads releases/latest/download/appcast.xml.
+        make_latest: false
+        files: bae-android.apk
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

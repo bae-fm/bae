@@ -52,7 +52,7 @@ jobs:
       run: |
         VERSION="${{ steps.parse.outputs.version }}"
         mkdir -p /tmp/dsym
-        if gh release download "v${VERSION}" -R "${{ github.repository }}" -p 'bae.dSYM.zip' -D /tmp/dsym 2>/dev/null; then
+        if gh release download "macos-v${VERSION}" -R "${{ github.repository }}" -p 'bae.dSYM.zip' -D /tmp/dsym 2>/dev/null; then
           echo "found=true" >> "$GITHUB_OUTPUT"
         else
           echo "found=false" >> "$GITHUB_OUTPUT"
@@ -66,7 +66,7 @@ jobs:
         VERSION="${{ steps.parse.outputs.version }}"
         gh issue comment "${{ github.event.issue.number }}" \
           -R "${{ github.repository }}" \
-          --body "Could not symbolicate — no dSYM found for release v${VERSION}."
+          --body "Could not symbolicate — no dSYM found for release macos-v${VERSION}."
 
     - name: Symbolicate and comment
       if: steps.parse.outputs.parsed == 'true' && steps.dsym.outputs.found == 'true'
@@ -110,7 +110,7 @@ jobs:
         cat > /tmp/comment.md <<EOF
         ## Symbolicated backtrace
 
-        Using the dSYM from v${VERSION} and the ASLR slide (\`${SLIDE}\`):
+        Using the dSYM from macos-v${VERSION} and the ASLR slide (\`${SLIDE}\`):
 
         \`\`\`
         atos -o bae.dSYM -s ${SLIDE} ${ADDRS}

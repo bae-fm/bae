@@ -7,6 +7,10 @@ on:
         description: 'Commit SHA to release (leave blank for HEAD)'
         required: false
         default: ''
+      version:
+        description: 'Version, e.g. 0.2 (blank = auto-increment from macos-v* tags)'
+        required: false
+        default: ''
 
 concurrency:
   group: release-macos
@@ -28,26 +32,24 @@ jobs:
         fetch-depth: 0
         ref: ${{ inputs.commit || github.sha }}
 
-    - name: Calculate next version from tags and date
+    - name: Determine version
       id: calc
       run: |
-        YEAR=$(date +%Y)
-        MONTH=$(date +%-m)
-
-        # Get latest tag for this year.month
-        LATEST=$(git tag -l "v${YEAR}.${MONTH}.*" | sort -V | tail -1)
-
-        if [[ -z "$LATEST" ]]; then
-          # First release this month
-          VERSION="${YEAR}.${MONTH}.0"
+        # Explicit input wins; otherwise auto-increment the last component of the
+        # latest macos-v* tag (independent of android-v*). First release → 0.1.
+        if [[ -n "${{ inputs.version }}" ]]; then
+          VERSION="${{ inputs.version }}"
         else
-          # Increment patch from latest tag
-          PATCH=$(echo "$LATEST" | sed "s/v${YEAR}\.${MONTH}\.\([0-9]*\)/\1/")
-          VERSION="${YEAR}.${MONTH}.$((PATCH + 1))"
+          LATEST=$(git tag -l "macos-v*" | sed 's/^macos-v//' | sort -V | tail -1)
+          if [[ -z "$LATEST" ]]; then
+            VERSION="0.1"
+          else
+            VERSION="${LATEST%.*}.$(( ${LATEST##*.} + 1 ))"
+          fi
         fi
 
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "::notice::Next version will be $VERSION"
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "::notice::macOS release version $VERSION (build ${{ github.run_number }})"
 
   ci:
     name: CI
@@ -83,6 +85,8 @@ jobs:
         echo "BAE_VERSION=$VERSION" >> $GITHUB_ENV
         sed -i '' "s/MARKETING_VERSION: .*/MARKETING_VERSION: \"$VERSION\"/" bae-macos/bae/project.yml
         MACOS_MIN=$(grep 'macOS:' bae-macos/bae/project.yml | head -1 | sed 's/.*"\(.*\)"/\1/')
+        # Empty here would stamp an empty sparkle:minimumSystemVersion into the appcast.
+        if [[ -z "$MACOS_MIN" ]]; then echo "could not read macOS deployment target from project.yml" >&2; exit 1; fi
         echo "MACOS_MIN=$MACOS_MIN" >> $GITHUB_ENV
         echo "Building version $VERSION (macOS $MACOS_MIN+)"
 
@@ -97,10 +101,15 @@ jobs:
 
     - name: Set version in Info.plist
       run: |
+        # CFBundleShortVersionString is the user-facing 0.N; CFBundleVersion is the
+        # monotonic build number Sparkle and the App Store use to order builds.
         SHORT_SHA=$(git rev-parse --short HEAD)
+        COVEN_REV=$(scripts/coven-rev.sh)
+        BUILD_NUMBER="${{ github.run_number }}"
         /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $BAE_VERSION" bae-macos/bae/bae/Info.plist
-        /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BAE_VERSION" bae-macos/bae/bae/Info.plist
+        /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" bae-macos/bae/bae/Info.plist
         /usr/libexec/PlistBuddy -c "Add :BAEGitCommit string $SHORT_SHA" bae-macos/bae/bae/Info.plist
+        /usr/libexec/PlistBuddy -c "Add :BAECovenRev string $COVEN_REV" bae-macos/bae/bae/Info.plist
 
     - name: Build app
       run: |
@@ -148,6 +157,11 @@ jobs:
 
         # Sign Sparkle.framework nested components
         SPARKLE_PATH="$APP_PATH/Contents/Frameworks/Sparkle.framework"
+        # Shipping without it means a broken updater; fail rather than silently skip.
+        if [[ ! -d "$SPARKLE_PATH" ]]; then
+          echo "Sparkle.framework not found in app bundle — auto-update would be broken" >&2
+          exit 1
+        fi
         if [[ -d "$SPARKLE_PATH" ]]; then
           for xpc in "$SPARKLE_PATH/Versions/B/XPCServices"/*.xpc; do
             if [[ -d "$xpc" ]]; then
@@ -228,6 +242,8 @@ jobs:
 
         # Sign the DMG and capture only the signature (-p flag)
         SIGNATURE=$(echo "$SPARKLE_PRIVATE_KEY" | /tmp/sparkle/bin/sign_update "$DMG_PATH" -f - -p)
+        # Empty would publish an unsigned appcast entry that every client rejects.
+        if [[ -z "$SIGNATURE" ]]; then echo "Sparkle sign_update produced no signature" >&2; exit 1; fi
         echo "SPARKLE_SIGNATURE=$SIGNATURE" >> $GITHUB_ENV
 
         # Get file size for appcast
@@ -237,7 +253,8 @@ jobs:
     - name: Generate appcast.xml
       run: |
         VERSION="${{ needs.calculate-version.outputs.version }}"
-        DMG_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/bae-macos.dmg"
+        BUILD_NUMBER="${{ github.run_number }}"
+        DMG_URL="https://github.com/${{ github.repository }}/releases/download/macos-v${VERSION}/bae-macos.dmg"
 
         cat > target/appcast.xml << EOF
         <?xml version="1.0" encoding="utf-8"?>
@@ -250,7 +267,7 @@ jobs:
             <item>
               <title>Version ${VERSION}</title>
               <pubDate>$(date -R)</pubDate>
-              <sparkle:version>${VERSION}</sparkle:version>
+              <sparkle:version>${BUILD_NUMBER}</sparkle:version>
               <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
               <sparkle:minimumSystemVersion>${MACOS_MIN}</sparkle:minimumSystemVersion>
               <enclosure
@@ -267,12 +284,11 @@ jobs:
     - name: Create git tag
       run: |
         VERSION="${{ needs.calculate-version.outputs.version }}"
-        # Only create tag if it doesn't already exist (desktop release may have created it)
-        if ! git rev-parse "v$VERSION" >/dev/null 2>&1; then
+        if ! git rev-parse "macos-v$VERSION" >/dev/null 2>&1; then
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
+          git tag "macos-v$VERSION"
+          git push origin "macos-v$VERSION"
         fi
 
     - name: Upload signed DMG
@@ -285,10 +301,22 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v${{ needs.calculate-version.outputs.version }}
+        tag_name: macos-v${{ needs.calculate-version.outputs.version }}
+        # macOS releases stay GitHub's "latest" so Sparkle's
+        # releases/latest/download/appcast.xml always resolves to a macOS appcast;
+        # android releases set make_latest:false so they can't take the feed.
+        make_latest: true
         files: |
           target/bae-macos.dmg
           target/appcast.xml
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Verify Sparkle feed asset is reachable
+      run: |
+        # The appcast enclosure URL must resolve, or every client's update check fails.
+        VERSION="${{ needs.calculate-version.outputs.version }}"
+        URL="https://github.com/${{ github.repository }}/releases/download/macos-v${VERSION}/bae-macos.dmg"
+        curl -fsIL --retry 5 --retry-delay 3 "$URL" -o /dev/null
+        echo "DMG reachable: $URL"
