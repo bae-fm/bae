@@ -113,9 +113,16 @@ class PlaybackServiceTest {
 }
 
 internal class FakeAppHandle(private val imagePaths: Map<String, String>) : AppHandle(NoHandle) {
-    override fun pause() {}
+    var pauseCount = 0
+    var resumeCount = 0
 
-    override fun resume() {}
+    override fun pause() {
+        pauseCount++
+    }
+
+    override fun resume() {
+        resumeCount++
+    }
 
     override fun savePlaybackState() {}
 

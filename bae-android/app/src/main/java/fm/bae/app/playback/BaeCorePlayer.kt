@@ -319,18 +319,19 @@ class BaeCorePlayer(
                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                     .build(),
             )
-            .setOnAudioFocusChangeListener { focusChange ->
-                when (focusChange) {
-                    AudioManager.AUDIOFOCUS_LOSS,
-                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK,
-                    -> appHandle.pause()
-                    AudioManager.AUDIOFOCUS_GAIN -> appHandle.resume()
-                }
-            }
+            .setOnAudioFocusChangeListener(::onAudioFocusChange)
             .build()
 
     private var hasFocus: Boolean = false
+
+    /**
+     * Whether a transient focus loss paused *active* playback, so the matching
+     * [AudioManager.AUDIOFOCUS_GAIN] should resume it. Left false when the loss
+     * lands on an already-paused stream (e.g. dictation grabbing focus over a
+     * track the user paused), so regaining focus never resumes a stream the user
+     * stopped. Cleared on an explicit user pause.
+     */
+    private var resumeOnFocusGain: Boolean = false
 
     private val becomingNoisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context?, intent: Intent?) {
@@ -627,7 +628,14 @@ class BaeCorePlayer(
     // ── Transport commands (forward to core; no local state change) ──────────
 
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
-        if (playWhenReady) appHandle.resume() else appHandle.pause()
+        if (playWhenReady) {
+            appHandle.resume()
+        } else {
+            // An explicit user pause must survive a later focus regain (e.g. a
+            // dictation session ending), so disarm any transient-loss resume.
+            resumeOnFocusGain = false
+            appHandle.pause()
+        }
         return Futures.immediateVoidFuture()
     }
 
@@ -737,6 +745,35 @@ class BaeCorePlayer(
     }
 
     // ── Audio focus ──────────────────────────────────────────────────────
+
+    /**
+     * React to a system audio-focus change. Any loss pauses playback. A
+     * *transient* loss (dictation, a navigation prompt, a notification chime)
+     * arms [resumeOnFocusGain] only when it interrupted active playback, so the
+     * matching [AudioManager.AUDIOFOCUS_GAIN] resumes a stream the loss itself
+     * paused — but not one the user had already paused, which would otherwise
+     * restart music the moment the interrupting app released focus. A permanent
+     * loss never auto-resumes.
+     */
+    internal fun onAudioFocusChange(focusChange: Int) {
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                resumeOnFocusGain = false
+                appHandle.pause()
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK,
+            -> {
+                resumeOnFocusGain = _isPlaying.value
+                appHandle.pause()
+            }
+            AudioManager.AUDIOFOCUS_GAIN ->
+                if (resumeOnFocusGain) {
+                    resumeOnFocusGain = false
+                    appHandle.resume()
+                }
+        }
+    }
 
     private fun requestFocus() {
         if (hasFocus) return
