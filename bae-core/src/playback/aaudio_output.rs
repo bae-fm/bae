@@ -47,9 +47,8 @@ impl AAudioOutput {
 }
 
 /// Build and start an AAudio output stream for the given format, logging the
-/// rate and channel count AAudio actually granted (which can differ from the
-/// request). Called on the writer thread at startup and again to recover from a
-/// disconnect/route change.
+/// rate and channel count the stream actually opened with. Called on the writer
+/// thread at startup and again to recover from a disconnect/route change.
 ///
 /// Uses the default performance mode, not `LowLatency`: a music player wants the
 /// normal mixer path, which honors the requested sample rate and resamples to the
@@ -68,25 +67,11 @@ fn open_output_stream(sample_rate: u32, channels: u32) -> Result<NdkAudioStream,
         .open_stream()?;
     stream.request_start()?;
 
-    let granted_rate = stream.sample_rate() as u32;
-    let granted_channels = stream.channel_count() as u32;
-    if granted_rate != sample_rate || granted_channels != channels {
-        warn!(
-            requested_rate = sample_rate,
-            requested_channels = channels,
-            granted_rate,
-            granted_channels,
-            "AAudio granted a different format than requested; the sink feeds the \
-             requested format, so playback will be wrong until it resamples to the \
-             granted format"
-        );
-    } else {
-        info!(
-            sample_rate = granted_rate,
-            channels = granted_channels,
-            "AAudio output stream opened"
-        );
-    }
+    info!(
+        sample_rate = stream.sample_rate() as u32,
+        channels = stream.channel_count() as u32,
+        "AAudio output stream opened"
+    );
     Ok(stream)
 }
 
