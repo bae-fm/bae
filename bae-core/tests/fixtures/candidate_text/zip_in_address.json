@@ -1,0 +1,44 @@
+{
+  "name": "ZIP-in-address \u2014 catalog false-positive from mailing address",
+  "notes": "Booklet's legal text block contains `City, ZZ 12345.` which matches the `<letters> <digits>` catalog regex. The ZIP-filter must reject it, while leaving a real catalog (if present) untouched.",
+  "sources": {
+    "path_components": [
+      "Artist Epsilon",
+      "Album Title E"
+    ],
+    "folder_brackets": [],
+    "filenames_generic": [],
+    "cue_fields": [],
+    "text_files": [],
+    "artwork": [
+      {
+        "path": "/Cover.jpg",
+        "lines": [
+          "Artist Epsilon",
+          "Album Title E",
+          "LABL-98765"
+        ]
+      },
+      {
+        "path": "/Booklet.jpg",
+        "lines": [
+          "Artist Epsilon",
+          "P.O. Box 456, Other City, ZZ 12345.",
+          "\u00a9 2022 Label Name"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "catalogs_contains": [
+      "LABL-98765"
+    ],
+    "catalogs_not_contains": [
+      "ZZ 12345"
+    ],
+    "free_text_contains": [
+      "Artist Epsilon",
+      "Album Title E"
+    ]
+  }
+}

@@ -1,0 +1,150 @@
+[package]
+name = "bae-core"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+build = "build.rs"
+
+[lib]
+name = "bae_core"
+path = "src/lib.rs"
+
+[dependencies]
+coven = { git = "https://github.com/bae-fm/coven", rev = "3fb9364c3b1fe8eef61101a9ee938f48d85909ca" }
+reqwest = { workspace = true, features = ["form", "json", "query", "rustls"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+tokio = { version = "1.0", features = ["full"] }
+thiserror = "1.0"
+keyring-core = "0.7"
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+sha1 = "0.10"
+sha2 = "0.10"
+base64 = "0.22"
+hex = "0.4"
+aws-config = { version = "1.8", default-features = false, features = ["credentials-process", "rt-tokio", "sso"] }
+aws-sdk-s3 = { version = "1.122", default-features = false, features = ["rt-tokio", "sigv4a"] }
+aws-credential-types = "1.2"
+aws-smithy-http-client = { version = "1.1", default-features = false, features = ["default-client", "rustls-ring"] }
+async-trait = "0.1"
+dirs = "5.0"
+axum = "0.7"
+nom = "7.1"
+natord = "1.0"
+regex = "1.11"
+strsim = "0.11"
+unicode-normalization = "0.1"
+libc = "0.2"
+crc32fast = "1.4"
+if-addrs = "0.14"
+chardetng = "0.1"
+encoding_rs = "0.8"
+rtrb = "0.3.2"
+futures = "0.3.31"
+tokio-util = { version = "0.7", features = ["io", "rt"] }
+rand = "0.9"
+lru = "0.17"
+tracing = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
+apple-native-keyring-store = { version = "0.2", features = ["protected"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+android-native-keyring-store = "0.5"
+# AAudio output sink for the in-core decode path (src/playback/aaudio_output.rs).
+ndk = { version = "0.9", features = ["audio"] }
+
+# Windows Credential Manager store for keyring-core (encryption key, Discogs
+# token). 0.5.x targets keyring-core ^0.7 to match
+# the rest of the workspace. Without this, `init_keyring` registers no default
+# store on Windows and every credential read fails.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-native-keyring-store = "0.5.1"
+
+# Pure-Rust audio tag reader, no native deps, so it builds for mobile too.
+# Used by the desktop import pipeline; available on mobile for the same reason
+# (no native toolchain required).
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+lofty = "0.23"
+
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))'.dependencies]
+rayon = "1.10"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+dotenvy = "0.15"
+discid = "0.5"
+lofty = "0.23"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+
+# cpal drives the audio sink on desktop and iOS (its CoreAudio/AudioUnit backend
+# covers both). Android uses AAudio (the `ndk` dep above) instead, so cpal is off
+# there.
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "ios"))'.dependencies]
+cpal = "0.15"
+
+# FFmpeg decode/encode powers in-process audio playback. On desktop it is the
+# whole decode engine; on Android and iOS it is the in-core decode path (Android
+# additionally has an offload fast-path that skips it for hardware-supported
+# codecs). Linked for the cross targets via ffmpeg-sys-next's FFMPEG_DIR path —
+# see scripts/build-ffmpeg-{android,ios}.sh and the FFMPEG_DIR/BINDGEN_EXTRA_CLANG_ARGS
+# exports in bae-bridge/build-{android,ios}.sh.
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "android", target_os = "ios"))'.dependencies]
+ffmpeg-next = { version = "8.0", default-features = false, features = ["codec", "format", "software-resampling"] }
+ffmpeg-sys-next = { version = "8.0", default-features = false, features = ["avcodec", "avformat", "swresample"] }
+
+[dev-dependencies]
+tempfile = "3.8"
+tokio = { version = "1.0", features = ["test-util"] }
+serial_test = "3.4.0"
+# coven's deterministic clock/id fakes for bae's tests (off in production builds).
+coven = { git = "https://github.com/bae-fm/coven", rev = "3fb9364c3b1fe8eef61101a9ee938f48d85909ca", features = ["test-utils"] }
+
+[[test]]
+name = "test_playback_behavior"
+path = "tests/test_playback_behavior.rs"
+required-features = ["test-utils"]
+
+[[test]]
+name = "test_playback_cpu"
+path = "tests/test_playback_cpu.rs"
+required-features = ["test-utils"]
+
+[[test]]
+name = "test_transfer"
+path = "tests/test_transfer.rs"
+required-features = ["test-utils"]
+
+[[test]]
+name = "test_album_sort"
+path = "tests/test_album_sort.rs"
+required-features = ["test-utils"]
+
+[[test]]
+name = "test_s3_setup_validation"
+path = "tests/test_s3_setup_validation.rs"
+required-features = ["test-utils"]
+
+[[test]]
+name = "test_cue_ape"
+path = "tests/test_cue_ape.rs"
+required-features = ["test-utils"]
+
+[[test]]
+name = "alac_fixtures"
+path = "tests/alac_fixtures.rs"
+required-features = ["test-utils"]
+
+[features]
+default = []
+# Forwards coven's test-utils so bae-core's own integration tests get the
+# re-exported clock/id fakes (FixedClock, …).
+test-utils = ["coven/test-utils"]
+
+[lints.clippy]
+too_many_arguments = "allow"
+new_without_default = "allow"
+large_enum_variant = "allow"

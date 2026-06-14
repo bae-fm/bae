@@ -1,0 +1,88 @@
+{
+  "name": "heavy-booklet \u2014 liner notes dominate with credits and legal prose",
+  "notes": "Booklet-heavy release: 40+ OCR lines dominated by credits, legal copy, runtime markers, track listings. Real artist + album still appear on cover + back but get buried. Filter and ranking should surface them.",
+  "sources": {
+    "path_components": [
+      "Artist Beta",
+      "Album Title B"
+    ],
+    "folder_brackets": [
+      "LABL-12345"
+    ],
+    "filenames_generic": [],
+    "cue_fields": [],
+    "text_files": [],
+    "artwork": [
+      {
+        "path": "/Cover.jpg",
+        "lines": [
+          "Artist Beta",
+          "Album Title B",
+          "LABL-12345"
+        ]
+      },
+      {
+        "path": "/Back.jpg",
+        "lines": [
+          "Artist Beta",
+          "Album Title B",
+          "1. Track One (3:14)",
+          "2. Track Two (4:02)",
+          "3. Track Three (5:09)",
+          "4. Track Four (3:55)",
+          "5. Track Five (4:11)",
+          "Produced by Name One",
+          "Engineered by Name Two",
+          "Mastered by Name Three",
+          "Photography by Name Four",
+          "\u00a9 2020 Label Name. All rights reserved.",
+          "Published by Publisher Name",
+          "Distributed by Distributor Name",
+          "Compact Disc Digital Audio"
+        ]
+      },
+      {
+        "path": "/Booklet-01.jpg",
+        "lines": [
+          "Name One: vocals",
+          "Name Two: guitar",
+          "Name Three: bass",
+          "Name Four: drums",
+          "Name Five: keyboards",
+          "Recorded at Studio A",
+          "P.O. Box 123, City, ZZ 12345.",
+          "The album represents years of work by these musicians.",
+          "The liner notes continue for several pages beyond this brief introduction."
+        ]
+      },
+      {
+        "path": "/CD.jpg",
+        "lines": [
+          "Artist Beta",
+          "Album Title B"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "catalogs_contains": [
+      "LABL-12345"
+    ],
+    "catalogs_not_contains": [
+      "ZZ 12345"
+    ],
+    "free_text_contains": [
+      "Artist Beta",
+      "Album Title B"
+    ],
+    "free_text_not_contains": [
+      "1. Track One (3:14)",
+      "Produced by Name One",
+      "Engineered by Name Two",
+      "Name One: vocals",
+      "Compact Disc Digital Audio",
+      "P.O. Box 123, City, ZZ 12345.",
+      "The liner notes continue for several pages beyond this brief introduction."
+    ]
+  }
+}

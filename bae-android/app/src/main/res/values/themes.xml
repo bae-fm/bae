@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Bae" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#FCFCFF</item>
+        <item name="android:statusBarColor">#FCFCFF</item>
+        <item name="android:navigationBarColor">#FCFCFF</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

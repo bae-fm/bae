@@ -1,0 +1,49 @@
+[workspace]
+members = ["bae-bridge", "bae-core", "bae-windows-ffi"]
+resolver = "2"
+
+[workspace.dependencies]
+# HTTP
+reqwest = { version = "0.13", default-features = false }
+# Logging
+tracing = "0.1.41"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+split-debuginfo = "packed"
+debug = "line-tables-only"
+
+# Fork carrying two Swift template fixes we plan to upstream:
+# - `nonisolated(unsafe)` on callback `vtablePtr` for Swift 6 strict
+#   concurrency
+# - Swift `Task.cancel()` propagation through `withTaskCancellationHandler`
+#   into Rust drop
+# Branch is based on the v0.31.1 tag (not mozilla/main HEAD) so its
+# manifest version matches what bae's resolver picks. Drop these `[patch]`
+# entries once both upstream PRs land and a uniffi release ships with
+# them.
+#
+# On uniffi bump: regenerate bindings, then confirm
+# `bae-macos/bae/bae/bae_bridge.swift` still contains
+# `withTaskCancellationHandler` and `cancelFunc:`. If the upstream Swift
+# template changed shape, the bae-fm fork needs rebasing.
+[patch.crates-io]
+# discid + discid-sys assume libdiscid's C feature enum is unsigned, which holds
+# for clang but not MSVC (where C enums are signed `int`), so neither published
+# crate compiles for Windows. Vendored with the signedness casts
+# (third-party/discid{,-sys}); same versions, so they satisfy bae-core's `discid`
+# dependency. Drop once upstream ships an MSVC fix.
+discid = { path = "third-party/discid" }
+discid-sys = { path = "third-party/discid-sys" }
+uniffi = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
+uniffi_bindgen = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
+uniffi_core = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
+uniffi_internal_macros = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
+uniffi_macros = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
+
+uniffi_meta = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
+uniffi_pipeline = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
+uniffi_udl = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
+

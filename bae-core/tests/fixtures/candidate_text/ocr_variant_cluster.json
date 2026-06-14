@@ -1,0 +1,41 @@
+{
+  "name": "OCR variant cluster \u2014 same name appears clean + garbled",
+  "notes": "The album title appears once in proper form (cover) and twice as noisy OCR re-renderings (booklet + CD face). Jaro-Winkler clustering must group the three variants so the cluster score beats single-line noise. Representative selection should pick the clean form, not a garbled one.",
+  "sources": {
+    "path_components": [],
+    "folder_brackets": [],
+    "filenames_generic": [],
+    "cue_fields": [],
+    "text_files": [],
+    "artwork": [
+      {
+        "path": "/Cover.jpg",
+        "lines": [
+          "Artist Zeta",
+          "Album Title Zeta"
+        ]
+      },
+      {
+        "path": "/Booklet.jpg",
+        "lines": [
+          "Arist Zeta",
+          "Album Title Zeta"
+        ]
+      },
+      {
+        "path": "/CD.jpg",
+        "lines": [
+          "Artist Zet",
+          "Albm Title Zeta"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "catalogs": [],
+    "free_text_contains": [
+      "Artist Zeta",
+      "Album Title Zeta"
+    ]
+  }
+}

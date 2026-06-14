@@ -1,0 +1,49 @@
+---
+title: Data Sources
+description: External services bae uses for metadata and artwork
+---
+
+bae uses external services during import to fetch metadata and artwork. Here's what each service provides and how to set them up.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> is an open music encyclopedia and bae's primary metadata source. It provides:
+
+- Comprehensive track listings
+- Release group information
+- ISRC codes
+- CD TOC matching for accurate CD identification
+- Linked external URLs (including Discogs cross-references)
+
+### Authentication
+
+No API key needed. MusicBrainz is free and open.
+
+### Rate limits
+
+MusicBrainz enforces an average of 1 request per second per IP address. If you exceed this, MusicBrainz returns 503 errors and may temporarily block your IP. bae spaces requests automatically to stay within this limit.
+
+### Learn more
+
+See <a href="https://musicbrainz.org/doc/MusicBrainz_API" target="_blank">MusicBrainz API docs</a> and <a href="https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting" target="_blank">rate limiting details</a>.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> is a music database and marketplace. It's especially strong for:
+
+- Vinyl releases and pressings
+- Detailed credits (producer, engineer, etc.)
+- Catalog numbers and barcodes
+- Label information
+
+### Authentication
+
+Discogs requires a personal API token. You'll set this up during bae's initial configuration, and you need your own token.
+
+### Rate limits
+
+Discogs allows 60 authenticated requests per minute. bae handles this automatically.
+
+### Get started
+
+Get your token from <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a>. Paste it during setup and you're good to go.

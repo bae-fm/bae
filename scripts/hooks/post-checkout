@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# post-checkout: fires after `git checkout` and `git worktree add`.
+# On new-worktree creation, run per-worktree setup (CLAUDE.md symlink, then the
+# Rust bridge build + xcodegen + xcodebuild to prime the SPM cache for the
+# pre-commit hook). Skip on normal branch checkouts.
+
+set -euo pipefail
+
+prev_head="$1"
+flag="$3"
+null_sha="0000000000000000000000000000000000000000"
+
+# Only fire on initial worktree creation (prev_head == all zeros, branch checkout).
+if [ "$prev_head" != "$null_sha" ] || [ "$flag" != "1" ]; then
+    exit 0
+fi
+
+worktree_root="$(git rev-parse --show-toplevel)"
+cd "$worktree_root"
+
+# Match the pre-commit hook's build environment. A git hook runs without the
+# shell profile, so the homebrew native libs the bridge and app link against
+# (libdiscid) aren't on the linker path unless we add them. CARGO_TARGET_DIR
+# keeps the primed Rust artifacts where the pre-commit hook looks for them.
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target-macos}"
+if command -v brew &> /dev/null; then
+    BREW_PREFIX="$(brew --prefix)"
+    export LIBRARY_PATH="${BREW_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
+fi
+
+# Project CLAUDE.md (gitignored). Convention: agent-instructions repo
+# at ~/dev/agent-instructions/projects/bae.md.
+ln -sf "$HOME/dev/agent-instructions/projects/bae.md" CLAUDE.md
+
+# Build the Rust bridge before generating and building the Xcode project, in the
+# same order the pre-commit hook uses. build-macos.sh produces both
+# BaeBridgeFFI.xcframework and the generated Swift bindings, and both must exist
+# on disk before xcodegen/xcodebuild run: xcodebuild's framework-dependency check
+# fails when the xcframework is absent, and xcodegen globs the source tree, so it
+# drops bae_bridge.swift if the project is generated before the bindings land.
+./bae-bridge/build-macos.sh
+cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+(cd bae-macos/bae && xcodegen generate)
+# Match the pre-commit hook's xcodebuild flags (notably -derivedDataPath): if the
+# primed SPM packages land in a different DerivedData location, that hook's
+# xcodebuild can't find the Sparkle checkout and fails.
+(cd bae-macos/bae && xcodebuild -project bae.xcodeproj -scheme bae \
+    -configuration Debug CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+    -derivedDataPath .build/derivedData build)
+
+echo
+echo "Worktree ready: $worktree_root"

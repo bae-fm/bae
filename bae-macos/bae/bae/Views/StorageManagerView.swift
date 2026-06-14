@@ -1,0 +1,617 @@
+import AppKit
+import SwiftUI
+
+struct StorageManagerView: View {
+    @Environment(Library.self)
+    var library
+    @Environment(LibraryStore.self)
+    var libraryStore
+    @Environment(ReleaseEditor.self)
+    private var releaseEditor
+    @Environment(Sync.self)
+    private var sync
+    @Environment(Downloads.self)
+    private var downloads
+    // OutboxSection / DownloadsSection read their stores and services at the
+    // leaf; uiStore is read here to surface outbox action errors in this window
+    // (it's a separate scene from MainAppView, which owns the other error alert).
+    @Environment(UiStore.self)
+    private var uiStore
+
+    @State
+    private var filter: BridgeStorageFilter = .all
+    @State
+    private var sort = BridgeStorageSort(
+        field: .albumTitle,
+        direction: .ascending
+    )
+    @State
+    private var selection: Set<String> = []
+    @State
+    private var list: StorageList?
+    /// Runs row context-menu transitions; built lazily once the services are
+    /// available from the environment.
+    @State
+    private var runner: StorageActionRunner?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Picker("Filter", selection: $filter) {
+                Text("All").tag(BridgeStorageFilter.all)
+                Text("Unmanaged").tag(BridgeStorageFilter.unmanaged)
+                Text("Managed").tag(BridgeStorageFilter.managed)
+                Text("Uploading").tag(BridgeStorageFilter.uploading)
+            }
+            .pickerStyle(.segmented)
+            .padding()
+
+            if let list, let runner {
+                StorageTableView(
+                    list: list,
+                    filter: filter,
+                    selection: $selection,
+                    sort: $sort,
+                    libraryStore: libraryStore,
+                    library: library,
+                    runner: runner,
+                )
+
+                Divider()
+                StorageFooter(list: list, libraryStore: libraryStore)
+            }
+            else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+
+            DownloadsSection()
+            OutboxSection()
+        }
+        .frame(minWidth: 700, minHeight: 400)
+        .onAppear {
+            if runner == nil {
+                runner = StorageActionRunner(
+                    releaseEditor: releaseEditor,
+                    sync: sync,
+                    downloads: downloads,
+                    uiStore: uiStore,
+                )
+            }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { runner?.pendingManage != nil },
+                set: { if !$0 { runner?.cancelManage() } },
+            )
+        ) {
+            if let runner {
+                ManageConfirmSheet(
+                    onConfirm: { pin, deleteSource in
+                        runner.confirmManage(
+                            pin: pin,
+                            deleteSource: deleteSource
+                        )
+                    },
+                    onCancel: { runner.cancelManage() },
+                )
+                .frame(width: 420)
+            }
+        }
+        .alert(
+            "Error",
+            isPresented: Binding(
+                get: { uiStore.lastError != nil },
+                set: { if !$0 { uiStore.clearError() } },
+            )
+        ) {
+            Button("OK") { uiStore.clearError() }
+        } message: {
+            if let error = uiStore.lastError {
+                Text(error)
+            }
+        }
+        .task { rebuildList() }
+        .onChange(of: filter) { _, _ in
+            // Selection is scoped to the visible tab; switching tabs would
+            // otherwise carry releases from the old filter into the new tab's
+            // multi-select actions.
+            selection = []
+            rebuildList()
+        }
+        .onChange(of: sort) { _, _ in rebuildList() }
+        .onReceive(libraryStore.libraryShapeSubject) { _ in
+            // Storage rows are releases keyed by album. Every variant —
+            // album or release, added/updated/removed — could move the
+            // visible shape, so invalidate unconditionally.
+            list?.invalidate()
+        }
+    }
+
+    private func rebuildList() {
+        let newList = StorageList(
+            pageSource: StoragePageSource(
+                library: library,
+                sort: sort,
+                filter: filter,
+            ),
+            ingest: { [libraryStore] rows in
+                for row in rows {
+                    _ = libraryStore.internAlbumSummary(row.album)
+                    _ = libraryStore.internReleaseSummary(row.release)
+                }
+            },
+        )
+        Task {
+            await newList.loadInitial()
+            list = newList
+        }
+    }
+}
+
+// MARK: - Footer
+
+private struct StorageFooter: View {
+    let list: StorageList
+    let libraryStore: LibraryStore
+
+    /// Sum of sizes over rows whose ids are populated and whose release
+    /// is present in the store. Under-counts while pages are still
+    /// loading — this is a visible-data footer, not a correctness
+    /// contract. Pages fill in as the user scrolls.
+    private var loadedTotalSize: Int64 {
+        list.allLoadedIds.reduce(Int64(0)) { acc, id in
+            guard let release = libraryStore.releaseSummaries[id] else {
+                return acc
+            }
+            return acc + release.totalSize
+        }
+    }
+
+    var body: some View {
+        HStack {
+            Text("\(list.totalCount) releases")
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(
+                "Total: \(ByteCountFormatter.string(fromByteCount: loadedTotalSize, countStyle: .file))"
+            )
+            .foregroundStyle(.secondary)
+        }
+        .font(.callout)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Download (pin) queue
+
+/// Bottom-pane section showing the in-memory download (pin) queue: a header
+/// band with the summary, a pause/resume toggle, and a "Retry now" action, plus
+/// one row per release (title, file count, size, a Queued/Active-percent/Failed
+/// badge, and a cancel button). Hidden when the queue is idle. Reads
+/// `DownloadStore` at the leaf; the reducer is the sole writer, so actions don't
+/// optimistically mutate — the follow-up `downloadQueueChanged` event refreshes
+/// the section.
+private struct DownloadsSection: View {
+    @Environment(DownloadStore.self)
+    private var downloadStore
+    @Environment(Downloads.self)
+    private var downloads
+
+    var body: some View {
+        let snapshot = downloadStore.snapshot
+        if !snapshot.downloads.isEmpty {
+            Divider()
+            VStack(spacing: 0) {
+                header(snapshot)
+                Divider()
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(snapshot.downloads, id: \.releaseId) { op in
+                            DownloadRow(op: op) {
+                                downloads.cancelDownload(op.releaseId)
+                            }
+                            Divider()
+                        }
+                    }
+                }
+                .frame(maxHeight: 180)
+            }
+        }
+    }
+
+    private func header(_ snapshot: BridgeDownloadSnapshot) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.down.circle")
+                .foregroundStyle(.secondary)
+            Text("Downloads").font(.callout.weight(.medium))
+            if snapshot.paused {
+                Label("Paused", systemImage: "pause.circle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
+            else if !snapshot.summary.isEmpty {
+                Text(snapshot.summary)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(snapshot.paused ? "Resume" : "Pause") {
+                downloads.setDownloadsPaused(!snapshot.paused)
+            }
+            Button("Retry now") {
+                downloads.retryDownloads()
+            }
+            .disabled(snapshot.total.failed == 0)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+}
+
+/// One download-queue row: album title, file count, size, a state badge
+/// (Queued / Downloading at a percent / Failed with the reason in a tooltip),
+/// and a cancel button. Mirrors `OutboxUploadRow`'s layout.
+private struct DownloadRow: View {
+    let op: BridgeDownloadOp
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.down.circle")
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+
+            Text(op.title)
+                .lineLimit(1)
+
+            Text("\(op.fileCount) files · \(op.sizeLabel)")
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            stateBadge
+                .font(.caption)
+                .frame(width: 130, alignment: .leading)
+
+            Text(queuedRelativeLabel(op.createdAt))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 90, alignment: .trailing)
+
+            Button(action: onCancel) {
+                Image(systemName: "xmark.circle")
+            }
+            .buttonStyle(.plain)
+            .help("Cancel this download")
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 6)
+        // Always attached; nil/empty when there's no error, so the row's
+        // structure doesn't change as its state flips.
+        .help(op.error ?? "")
+    }
+
+    @ViewBuilder
+    private var stateBadge: some View {
+        switch op.state {
+        case .queued:
+            Label("Queued", systemImage: "clock")
+                .foregroundStyle(.secondary)
+        case .active:
+            Label(
+                "Downloading \(op.percent)%",
+                systemImage: "arrow.down.circle.fill"
+            )
+            .foregroundStyle(.orange)
+        case .failed:
+            Label("Failed", systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+        }
+    }
+}
+
+// MARK: - Outbox processing queue
+
+/// Bottom pane showing the cloud outbox processing queue: a master progress
+/// row, a summary band with a "Retry now" action, and per-item lists for
+/// uploads and deletes. Hidden when the queue is idle. The user can drag the
+/// top edge to resize the item list (persisted) and collapse the pane to just
+/// its header. Reads `OutboxStore` at the leaf; the reducer is the sole writer,
+/// so actions don't optimistically mutate — the follow-up `outboxChanged` event
+/// refreshes the panel.
+private struct OutboxSection: View {
+    @Environment(OutboxStore.self)
+    private var outboxStore
+    @Environment(Sync.self)
+    private var sync
+    @Environment(UiStore.self)
+    private var uiStore
+
+    /// Persisted item-list height and collapsed state, so the pane keeps its
+    /// size and visibility across sessions.
+    @AppStorage("storageQueuePaneHeight")
+    private var storedHeight: Double = 180
+    @AppStorage("storageQueuePaneCollapsed")
+    private var collapsed: Bool = false
+    /// Live drag delta while the resize handle is held; resets to 0 on release.
+    @GestureState
+    private var dragOffset: CGFloat = 0
+
+    /// Bounds for the resizable item list.
+    private let heightRange: ClosedRange<CGFloat> = 80...480
+
+    /// The item-list height with a drag `offset` applied, clamped to
+    /// `heightRange`. Dragging the handle up (negative translation) grows the
+    /// list; down shrinks it. Used for both the live height and the committed
+    /// height so the two can't drift.
+    private func paneHeight(applying offset: CGFloat) -> CGFloat {
+        let height = CGFloat(storedHeight) - offset
+        return min(max(height, heightRange.lowerBound), heightRange.upperBound)
+    }
+
+    var body: some View {
+        let snapshot = outboxStore.snapshot
+        if !snapshot.uploads.isEmpty || !snapshot.deletes.isEmpty {
+            Divider()
+            VStack(spacing: 0) {
+                if !collapsed {
+                    resizeHandle
+                }
+                header(snapshot)
+                if !collapsed {
+                    if snapshot.total.bytesTotal > 0 {
+                        OutboxMasterProgress(snapshot: snapshot)
+                    }
+                    Divider()
+                    itemList(snapshot)
+                        .frame(height: paneHeight(applying: dragOffset))
+                }
+            }
+        }
+    }
+
+    /// A thin strip the user drags to resize the queue. Shows the resize cursor
+    /// on hover; commits the new height on release.
+    private var resizeHandle: some View {
+        Color.clear
+            .frame(height: 6)
+            .overlay(Divider())
+            .contentShape(Rectangle())
+            .onHover { inside in
+                if inside {
+                    NSCursor.resizeUpDown.push()
+                }
+                else {
+                    NSCursor.pop()
+                }
+            }
+            .gesture(
+                DragGesture()
+                    .updating($dragOffset) { value, state, _ in
+                        state = value.translation.height
+                    }
+                    .onEnded { value in
+                        storedHeight = Double(
+                            paneHeight(applying: value.translation.height)
+                        )
+                    }
+            )
+    }
+
+    private func header(_ snapshot: BridgeOutboxSnapshot) -> some View {
+        HStack(spacing: 8) {
+            Button {
+                collapsed.toggle()
+            } label: {
+                Image(systemName: collapsed ? "chevron.right" : "chevron.down")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(
+                collapsed ? "Expand the sync queue" : "Collapse the sync queue"
+            )
+
+            Image(systemName: "arrow.up.arrow.down.circle")
+                .foregroundStyle(.secondary)
+            Text("Sync queue").font(.callout.weight(.medium))
+            if snapshot.paused {
+                Label("Paused", systemImage: "pause.circle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
+            else if !snapshot.summary.isEmpty {
+                Text(snapshot.summary)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(snapshot.paused ? "Resume" : "Pause") {
+                sync.setSyncPaused(!snapshot.paused)
+            }
+            Button("Retry now") {
+                do { try sync.retryOutbox() }
+                catch {
+                    uiStore.showError(
+                        "Failed to retry uploads: \(error.localizedDescription)"
+                    )
+                }
+            }
+            .disabled(snapshot.total.failed == 0)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+
+    private func itemList(_ snapshot: BridgeOutboxSnapshot) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(snapshot.uploads, id: \.id) { op in
+                    OutboxUploadRow(op: op) { cancel(op.id) }
+                    Divider()
+                }
+                ForEach(snapshot.deletes, id: \.id) { op in
+                    OutboxDeleteRow(op: op) { cancel(op.id) }
+                    Divider()
+                }
+            }
+        }
+    }
+
+    /// Remove a queued upload or delete, surfacing any failure.
+    private func cancel(_ id: Int64) {
+        do { try sync.cancelOutboxItem(id) }
+        catch {
+            uiStore.showError(
+                "Failed to cancel: \(error.localizedDescription)"
+            )
+        }
+    }
+}
+
+/// Master progress strip: filled progress bar + bytes done/total, throughput,
+/// and ETA. All three labels are pre-formatted by core.
+private struct OutboxMasterProgress: View {
+    let snapshot: BridgeOutboxSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ProgressView(value: snapshot.total.fraction)
+                .progressViewStyle(.linear)
+                // Dim the bar while paused so the visual matches the "Paused"
+                // chip in the band above — paused-but-mid-progress reads as
+                // active otherwise.
+                .opacity(snapshot.paused ? 0.4 : 1)
+            HStack(spacing: 8) {
+                Text(snapshot.bytesLabel)
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                if !snapshot.throughputLabel.isEmpty {
+                    Text("·").foregroundStyle(.tertiary)
+                    Text(snapshot.throughputLabel)
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                if !snapshot.etaLabel.isEmpty {
+                    Text("·").foregroundStyle(.tertiary)
+                    Text(snapshot.etaLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 4)
+    }
+}
+
+private struct OutboxUploadRow: View {
+    let op: BridgeUploadOp
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.up.circle")
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+
+            Text(op.title ?? op.cloudKey)
+                .lineLimit(1)
+
+            Text(op.sizeLabel)
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            stateBadge
+                .font(.caption)
+                .frame(width: 130, alignment: .leading)
+
+            Text(queuedRelativeLabel(op.createdAt))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 90, alignment: .trailing)
+
+            Button(action: onCancel) {
+                Image(systemName: "xmark.circle")
+            }
+            .buttonStyle(.plain)
+            .help("Remove from the sync queue")
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 6)
+        // Always attached; nil/empty when there's no error, so the row's
+        // structure doesn't change as its state flips.
+        .help(op.lastError ?? "")
+    }
+
+    @ViewBuilder
+    private var stateBadge: some View {
+        switch op.state {
+        case .queued:
+            Label("Queued", systemImage: "clock")
+                .foregroundStyle(.secondary)
+        case .active:
+            Label("Uploading", systemImage: "arrow.up.circle.fill")
+                .foregroundStyle(.orange)
+        case .failed:
+            Label(
+                "Retrying (\(op.attemptCount))",
+                systemImage: "exclamationmark.triangle.fill"
+            )
+            .foregroundStyle(.red)
+        }
+    }
+}
+
+private struct OutboxDeleteRow: View {
+    let op: BridgeDeleteOp
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "trash")
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+
+            Text(op.cloudKey)
+                .lineLimit(1)
+
+            Spacer()
+
+            Label("Pending delete", systemImage: "clock")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 130, alignment: .leading)
+
+            Text(queuedRelativeLabel(op.createdAt))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 90, alignment: .trailing)
+
+            Button(action: onCancel) {
+                Image(systemName: "xmark.circle")
+            }
+            .buttonStyle(.plain)
+            .help("Remove from the sync queue")
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 6)
+    }
+}
+
+/// Relative "queued" label (e.g. "2m ago") from an enqueue time in Unix epoch
+/// milliseconds.
+private func queuedRelativeLabel(_ epochMs: Int64) -> String {
+    let date = Date(timeIntervalSince1970: TimeInterval(epochMs) / 1000)
+    let formatter = RelativeDateTimeFormatter()
+    formatter.unitsStyle = .abbreviated
+    return formatter.localizedString(for: date, relativeTo: Date())
+}

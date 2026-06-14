@@ -1,0 +1,86 @@
+name: Android build
+
+# Cross-compiles bae-bridge for the Android NDK targets and assembles the debug
+# APK. The macOS test job only builds bae-bridge for the host, so a type that is
+# `#[cfg]`-gated away from `target_os = "android"` while a shared function calls
+# it unconditionally compiles on the host and breaks only here — exactly the gap
+# this job closes.
+#
+# Runs on macOS because build-android.sh / build-ffmpeg-android.sh resolve the
+# NDK toolchain at .../prebuilt/darwin-x86_64. The host-side deps (ffmpeg) come
+# from setup-macos because build-android.sh runs
+# `cargo run --bin uniffi-bindgen`, which builds bae-bridge → bae-core for the
+# host to read the cross-built .so's metadata.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    # Bottom-of-chain only, matching ci.yml: non-bottom chain PRs target their
+    # predecessor and get validated once the chain rebases onto main.
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # Pinned NDK: build-android.sh and build-ffmpeg-android.sh default to this exact
+  # version and honor ANDROID_NDK_HOME. Keep in sync with both scripts.
+  NDK_VERSION: 29.0.14206865
+
+jobs:
+  build:
+    name: Android
+    runs-on: macos-26
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup macOS environment
+      # Host ffmpeg for the uniffi-bindgen host build.
+      uses: ./.github/actions/setup-macos
+
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
+    - name: Setup JDK 17
+      # bae-android targets JavaVersion.VERSION_17 (app/build.gradle.kts).
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    - name: Install pinned Android NDK + SDK platform
+      run: |
+        SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+        yes | "$SDKMANAGER" --licenses >/dev/null
+        "$SDKMANAGER" "ndk;${NDK_VERSION}" "platforms;android-35"
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+    - name: Cache cross-built Android FFmpeg
+      id: ffmpeg-cache
+      uses: actions/cache@v4
+      with:
+        path: third_party/ffmpeg-android
+        # Keyed on the build script + NDK version: rebuild only when the recipe
+        # or the toolchain that produced the libs changes.
+        key: ffmpeg-android-${{ env.NDK_VERSION }}-${{ hashFiles('scripts/build-ffmpeg-android.sh') }}
+
+    - name: Build Android FFmpeg (on cache miss)
+      if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+      run: ./scripts/build-ffmpeg-android.sh
+
+    - name: Cross-compile bae-bridge for Android
+      # The actual gate: builds bae-bridge for aarch64 + x86_64 android, generates
+      # the Kotlin bindings, and stages the .so files into the app's jniLibs.
+      run: ./bae-bridge/build-android.sh
+
+    - name: Assemble debug APK
+      # Compiles the Kotlin app against the generated bindings and staged .so's,
+      # catching binding drift on top of the Rust cross-compile.
+      run: cd bae-android && ./gradlew assembleDebug --no-daemon

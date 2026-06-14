@@ -1,0 +1,107 @@
+import Foundation
+import Security
+import os.log
+
+private let logger = Logger.bae("KeychainService")
+
+/// Manages restore codes in iCloud Keychain for automatic cross-device library discovery.
+///
+/// Each library gets a separate keychain entry keyed by library ID. The
+/// `kSecAttrSynchronizable` flag syncs entries via iCloud Keychain to other
+/// Apple devices signed into the same Apple ID.
+enum KeychainService {
+    private static let service = "fm.bae.restore"
+
+    /// Save or update a restore code for the given library.
+    /// Silently does nothing if iCloud Keychain is unavailable.
+    static func saveRestoreCode(libraryId: String, code: String) {
+        guard let data = code.data(using: .utf8) else {
+            return
+        }
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: libraryId,
+            kSecAttrSynchronizable as String: kCFBooleanTrue!,
+        ]
+
+        // Try to update an existing entry first
+        let updateAttributes: [String: Any] = [
+            kSecValueData as String: data
+        ]
+        let updateStatus = SecItemUpdate(
+            query as CFDictionary,
+            updateAttributes as CFDictionary
+        )
+
+        if updateStatus == errSecItemNotFound {
+            // No existing entry -- add a new one
+            var addQuery = query
+            addQuery[kSecValueData as String] = data
+            addQuery[kSecAttrAccessible as String] =
+                kSecAttrAccessibleAfterFirstUnlock
+            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+
+            if addStatus != errSecSuccess {
+                logger.error(
+                    "KeychainService: failed to save restore code (add): \(addStatus)"
+                )
+            }
+        }
+        else if updateStatus != errSecSuccess {
+            logger.error(
+                "KeychainService: failed to save restore code (update): \(updateStatus)"
+            )
+        }
+    }
+
+    /// Fetch all restore codes stored by any device.
+    /// Returns an array of (libraryId, restoreCode) pairs.
+    static func fetchAllRestoreCodes() -> [(libraryId: String, code: String)] {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrSynchronizable as String: kCFBooleanTrue!,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+            kSecReturnAttributes as String: kCFBooleanTrue!,
+            kSecReturnData as String: kCFBooleanTrue!,
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        guard status == errSecSuccess,
+            let items = result as? [[String: Any]]
+        else {
+            return []
+        }
+
+        return items.compactMap { item in
+            guard let account = item[kSecAttrAccount as String] as? String,
+                let data = item[kSecValueData as String] as? Data,
+                let code = String(data: data, encoding: .utf8)
+            else {
+                return nil
+            }
+            return (libraryId: account, code: code)
+        }
+    }
+
+    /// Delete the restore code for a specific library.
+    static func deleteRestoreCode(libraryId: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: libraryId,
+            kSecAttrSynchronizable as String: kCFBooleanTrue!,
+        ]
+
+        let status = SecItemDelete(query as CFDictionary)
+        if status != errSecSuccess, status != errSecItemNotFound {
+            logger.error(
+                "KeychainService: failed to delete restore code: \(status)"
+            )
+        }
+    }
+}

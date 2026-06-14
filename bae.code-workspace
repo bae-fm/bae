@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../dioxus-virtual-scroll"
+		}
+	],
+	"settings": {
+		"rust-analyzer.cargo.features": [
+			"test-utils"
+		],
+		"rust-analyzer.check.command": "clippy",
+		"rust-analyzer.check.allTargets": false,
+		"rust-analyzer.check.extraArgs": []
+	}
+}

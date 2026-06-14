@@ -1,0 +1,229 @@
+/// Top-level UI event. One enum for everything — every distinct state is a
+/// top-level variant with fields inlined, no sub-enums.
+/// High-frequency events (PlaybackProgress, PreviewProgress) go to NSViews on
+/// the native side. Everything else goes to the @Observable store.
+#[derive(Debug, Clone)]
+pub enum UiBusEvent {
+    // ── Playback ───────────────────────────────────────────────────
+    PlaybackStopped,
+    /// Playback couldn't start or continue — e.g. a cloud-only track that isn't
+    /// downloaded yet, or an in-core decode failure. Carries a user-facing
+    /// message; the UI surfaces it and playback falls back to stopped.
+    PlaybackError {
+        message: String,
+    },
+    PlaybackLoading {
+        track_id: String,
+        /// The target track's display metadata, once core has resolved it.
+        /// `None` in the first loading event (before the DB lookup), `Some`
+        /// once the prepared track is in hand — letting the UI switch the
+        /// now-playing bar from the prior track to the target while audio is
+        /// still downloading.
+        track: Option<crate::playback::LoadingTrack>,
+    },
+    PlaybackPlaying {
+        track_id: String,
+        track_title: String,
+        artist_names: String,
+        artist_id: String,
+        album_id: String,
+        album_title: String,
+        cover_image_id: Option<String>,
+        duration_ms: u64,
+        duration_label: String,
+    },
+    PlaybackPaused {
+        track_id: String,
+        track_title: String,
+        artist_names: String,
+        artist_id: String,
+        album_id: String,
+        album_title: String,
+        cover_image_id: Option<String>,
+        duration_ms: u64,
+        duration_label: String,
+    },
+    /// Position update — goes to NSView. Carries both regular ticks from the
+    /// position listener and one-off updates emitted after a seek completes.
+    PlaybackProgress {
+        position_ms: u64,
+        /// User-facing track duration (pregap-adjusted), so the media-control
+        /// update reads it from the event instead of the now-playing slice.
+        duration_ms: u64,
+        progress: f64,
+        elapsed_label: String,
+        remaining_label: String,
+    },
+    VolumeChanged {
+        volume: f32,
+    },
+    MuteChanged {
+        is_muted: bool,
+    },
+    RepeatModeChanged {
+        mode: crate::playback::RepeatMode,
+    },
+    QueueUpdated {
+        items: Vec<crate::queue::QueueItem>,
+        has_next: bool,
+        has_previous: bool,
+    },
+    /// Tracks were just appended/inserted into the queue. Carries the count
+    /// for a transient "+N" UI indicator. Fires only on add operations
+    /// (AddToQueue, AddNext, AddReleaseToQueue, AddReleaseNext, InsertInQueue),
+    /// never on remove/reorder/clear. Suppressed when count is zero.
+    QueueItemsAdded {
+        count: u32,
+    },
+
+    // ── Preview ────────────────────────────────────────────────────
+    PreviewIdle,
+    PreviewPlaying {
+        path: String,
+        duration_ms: u64,
+        duration_label: String,
+    },
+    PreviewPaused {
+        path: String,
+        duration_ms: u64,
+        duration_label: String,
+    },
+    /// High-frequency tick — goes to NSView, not store.
+    PreviewProgress {
+        position_ms: u64,
+        progress: f64,
+        elapsed_label: String,
+    },
+
+    // ── Candidate-scoped (key inlined) ─────────────────────────────
+    /// Identify pipeline transitioned to a new state. One variant per state;
+    /// the reducer switches on `state` to update the store. Carries the
+    /// pre-shaped signals toolbar (interactive badge row) projected from the
+    /// same transition, written onto the candidate wholesale.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    CandidateIdentifyStateChanged {
+        key: String,
+        state: crate::identify::IdentifyState,
+        toolbar: Vec<crate::identify::ToolbarSignal>,
+    },
+    /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
+    /// classified text). Core emits this on extraction start, each source/OCR
+    /// completion, natural end, and cancellation. Reducer writes the whole
+    /// snapshot wholesale.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    CandidateSignalsUpdated {
+        key: String,
+        signals: crate::signals::Signals,
+    },
+    CandidateImportImporting {
+        key: String,
+        progress_percent: u32,
+        phase: Option<String>,
+        status_text: Option<String>,
+    },
+    CandidateImportComplete {
+        key: String,
+        /// The release the import created. Carried so the import UI can
+        /// invalidate this candidate when that release is deleted and join
+        /// the per-release upload queue while the cloud copy is pending.
+        release_id: String,
+        album_id: String,
+    },
+    CandidateImportError {
+        key: String,
+        message: String,
+    },
+
+    // ── Scan ───────────────────────────────────────────────────────
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    FolderCandidateAdded {
+        candidate: crate::import::FolderCandidate,
+    },
+    /// Core removed a candidate from the scan list.
+    ScanCandidateRemoved {
+        key: String,
+    },
+    FolderCandidatesCleared,
+    AllCandidatesCleared,
+    ScanFinished,
+
+    // ── Library ────────────────────────────────────────────────────
+    AlbumAdded {
+        album: crate::album_detail::AlbumDetail,
+    },
+    AlbumUpdated {
+        album: crate::album_detail::AlbumDetail,
+    },
+    AlbumRemoved {
+        album_id: String,
+        release_ids: Vec<String>,
+    },
+    ReleaseAdded {
+        album: crate::album_detail::AlbumSummary,
+        release: crate::album_detail::ReleaseDetail,
+    },
+    ReleaseUpdated {
+        album_id: String,
+        release: crate::album_detail::ReleaseDetail,
+    },
+    ReleaseRemoved {
+        album_id: String,
+        release_id: String,
+        album: Option<crate::album_detail::AlbumSummary>,
+    },
+    ConfigChanged {
+        config: crate::config::Config,
+        /// Whether the sync loop is running. Bundled here so every consumer
+        /// sees a consistent (config, sync_ready) pair without a second
+        /// subscription. The producer reads `LibraryManager::is_sync_ready`
+        /// at emit time.
+        sync_ready: bool,
+    },
+    /// Sync loop's current error state. `None` means sync is healthy (clears a
+    /// prior failure). `Some` carries the latest error message for the UI to
+    /// show a reconnect banner.
+    SyncError {
+        message: Option<String>,
+    },
+    /// Wall-clock time of the latest successful sync cycle, as Unix epoch
+    /// milliseconds. `None` until the first cycle completes; updated whenever
+    /// the timestamp changes.
+    SyncTimeChanged {
+        time: Option<i64>,
+    },
+    /// Whether the sync loop is currently mid-cycle. Drives the spinner the
+    /// sidebar overlays on the active library row from "Sync Now" through to
+    /// the cycle ending.
+    SyncingChanged {
+        syncing: bool,
+    },
+    /// The cloud outbox processing snapshot changed — the Storage Manager
+    /// re-renders its queue panel from this.
+    OutboxChanged {
+        snapshot: crate::library::OutboxSnapshot,
+    },
+    /// A pin/unpin/manage/unmanage transition advanced. `percent` is the
+    /// overall release progress; `label` is a ready-to-render line. The UI
+    /// shows a determinate bar on the release row until `ReleaseTransferEnded`.
+    ReleaseTransferProgress {
+        release_id: String,
+        percent: u8,
+        label: String,
+    },
+    /// A transition finished (success or failure) — the UI clears its transfer
+    /// indicator. Failure text still arrives via the thrown error.
+    ReleaseTransferEnded {
+        release_id: String,
+    },
+    /// The in-memory download (pin) queue changed — the Storage Manager
+    /// re-renders its Downloads pane from this.
+    DownloadQueueChanged {
+        snapshot: crate::library::DownloadSnapshot,
+    },
+
+    // ── Errors ─────────────────────────────────────────────────────
+    Error {
+        message: String,
+    },
+    ErrorCleared,
+}

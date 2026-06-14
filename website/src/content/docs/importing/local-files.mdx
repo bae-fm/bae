@@ -1,0 +1,51 @@
+---
+title: Importing
+description: Import music from local files
+---
+
+bae imports FLAC files from your computer. You select a folder, bae scans it for releases, you match each one to a MusicBrainz or Discogs entry, and the metadata is pulled in.
+
+## Getting started
+
+Click **Import** in the title bar, then select **Local Files** and pick a folder.
+
+bae scans the folder recursively, detects releases, and shows them as candidates. You work through each one: identify it, pick artwork, choose a storage option, and import.
+
+## Supported formats
+
+FLAC only -- both individual track files and CUE+FLAC disc images.
+
+| Layout | What it looks like |
+|--------|-------------------|
+| File per track | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE+FLAC | `album.cue` + `album.flac` (single file, split by cue sheet) |
+| Multi-disc CUE+FLAC | `CD1/disc1.cue` + `CD1/disc1.flac`, `CD2/...` |
+
+## Directory scanning
+
+A directory is treated as a single release if it contains audio files directly, or if its subdirectories look like disc folders (e.g. `CD1`, `CD2`, `Disc 1`, `Disc 2`, or plain numbers like `1`, `2`).
+
+Disc folder detection uses heuristics: subdirectory names must be short (15 characters or less) and either all numeric or share a common prefix of at least 2 characters. This distinguishes multi-disc releases from collections of separate albums with longer names.
+
+Directories that are not leaves are recursed into. Max depth is 10. Files are categorized as audio, artwork (JPG, PNG, WEBP, GIF, BMP), or documents (CUE, LOG, TXT, NFO, M3U). Hidden files, zero-byte files, and corrupt files (bad FLAC headers, truncated audio) are skipped.
+
+## Identify
+
+Each detected release needs to be matched to a MusicBrainz or Discogs entry so bae can pull in metadata.
+
+- **Automatically** -- compute and look up a <a href="https://musicbrainz.org/doc/Disc_ID" target="_blank">MusicBrainz disc ID</a>. Can be computed two ways:
+  - From a LOG file (EAC, XLD, etc.)
+  - From a CUE sheet + FLAC file
+- **Manually** -- search MusicBrainz and Discogs by:
+  - Artist and album name
+  - Catalog number
+  - Barcode
+
+When you select a result, bae checks that the track count matches your local files. Mismatches are flagged.
+
+## Confirm
+
+Once matched, you review the release details:
+
+- **Artwork** -- bae fetches cover art from MusicBrainz's Cover Art Archive and Discogs. Image files in the folder (cover.jpg, front.png, etc.) are available too. Artist images are fetched from Discogs.
+- **Storage** -- bae-managed (files are copied into bae storage, encrypted and uploaded if a cloud home is configured) or self-managed (bae indexes files in place without copying). Files are never modified. See [Storage Overview](/storage/overview) for details.

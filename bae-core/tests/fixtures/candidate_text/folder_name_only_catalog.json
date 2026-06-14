@@ -1,0 +1,34 @@
+{
+  "name": "folder-name-only catalog \u2014 artwork has no catalog, folder bracket does",
+  "notes": "The folder name carries the catalog number in brackets (`XX34b`), but the artwork OCR doesn't. Without the folder-bracket extractor, we'd miss it entirely. This exercises the route-to-catalog-bypass path.",
+  "sources": {
+    "path_components": [
+      "Artist Delta",
+      "Album Title D"
+    ],
+    "folder_brackets": [
+      "XX34b"
+    ],
+    "filenames_generic": [],
+    "cue_fields": [],
+    "text_files": [],
+    "artwork": [
+      {
+        "path": "/Cover.jpg",
+        "lines": [
+          "Artist Delta",
+          "Album Title D"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "catalogs": [
+      "XX34b"
+    ],
+    "free_text_contains": [
+      "Artist Delta",
+      "Album Title D"
+    ]
+  }
+}

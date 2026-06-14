@@ -1,0 +1,47 @@
+import Foundation
+
+struct SearchResults: Equatable {
+    let query: String
+    let albums: [AlbumSearchResult]
+    let tracks: [TrackSearchResult]
+
+    init(bridge: BridgeSearchResults, query: String) {
+        self.query = query
+        albums = bridge.albums.map(AlbumSearchResult.init(bridge:))
+        tracks = bridge.tracks.map(TrackSearchResult.init(bridge:))
+    }
+}
+
+struct AlbumSearchResult: Equatable, Identifiable {
+    let id: String
+    let title: String
+    let year: Int32?
+    let primaryReleaseId: String
+    let artistName: String
+
+    init(bridge: BridgeAlbumSearchResult) {
+        id = bridge.id
+        title = bridge.title
+        year = bridge.year
+        primaryReleaseId = bridge.primaryReleaseId
+        artistName = bridge.artistName
+    }
+}
+
+struct TrackSearchResult: Equatable, Identifiable {
+    let id: String
+    let title: String
+    let durationLabel: String
+    let albumId: String
+    let albumTitle: String
+    let artistName: String
+
+    init(bridge: BridgeTrackSearchResult) {
+        id = bridge.id
+        title = bridge.title
+        durationLabel = bridge.durationLabel
+        albumId = bridge.albumId
+        albumTitle = bridge.albumTitle
+        artistName = bridge.artistName
+    }
+}

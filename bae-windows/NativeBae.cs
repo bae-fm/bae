@@ -1,0 +1,777 @@
+using System.Runtime.InteropServices;
+using System.Text.Json;
+
+namespace Bae.Windows;
+
+/// <summary>
+/// P/Invoke surface over bae_windows_ffi.dll — the hand-written C ABI that the
+/// Rust crate bae-windows-ffi exposes over bae-core. The handle is opaque
+/// (<see cref="IntPtr"/>); strings the library returns are owned by Rust and must
+/// be released with <see cref="StringFree"/>.
+///
+/// Rust's <c>extern "C"</c> uses the cdecl calling convention, so every entry
+/// point is declared <see cref="CallingConvention.Cdecl"/>. The DLL is resolved
+/// by name from the application directory, so the CI build copies it next to the
+/// WinUI output.
+/// </summary>
+internal static class NativeBae
+{
+    private const string Dll = "bae_windows_ffi.dll";
+
+    /// <summary>One-time startup: register the OS credential store.</summary>
+    [DllImport(Dll, EntryPoint = "bae_startup", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void Startup();
+
+    [DllImport(Dll, EntryPoint = "bae_set_oauth_client_creds", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SetOauthClientCredsPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string credsJson);
+
+    /// <summary>
+    /// Register the OAuth client credentials JSON so coven can build authorization
+    /// URLs and refresh tokens. Call once at startup before any OAuth flow. Returns
+    /// null on success, else an error message.
+    /// </summary>
+    internal static string? SetOauthClientCreds(string credsJson) =>
+        ResultMessage(SetOauthClientCredsPtr(credsJson));
+
+    /// <summary>Discovered libraries as JSON, or null. Copies and frees.</summary>
+    [DllImport(Dll, EntryPoint = "bae_libraries", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr LibrariesPtr();
+
+    /// <summary>Create a library; returns its id string, or null. Copies and frees.</summary>
+    [DllImport(Dll, EntryPoint = "bae_create_library", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr CreateLibraryPtr();
+
+    /// <summary>The discovered libraries as a JSON string, or null.</summary>
+    internal static string? LibrariesJson() => CopyAndFree(LibrariesPtr());
+
+    /// <summary>Create a new library; returns its id, or null on error.</summary>
+    internal static string? CreateLibrary() => CopyAndFree(CreateLibraryPtr());
+
+    [DllImport(Dll, EntryPoint = "bae_decode_restore_code", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DecodeRestoreCodePtr([MarshalAs(UnmanagedType.LPUTF8Str)] string code);
+
+    [DllImport(Dll, EntryPoint = "bae_oauth_authorize", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr OAuthAuthorizePtr([MarshalAs(UnmanagedType.LPUTF8Str)] string provider);
+
+    [DllImport(Dll, EntryPoint = "bae_restore_from_code", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr RestoreFromCodePtr(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string code,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? oauthTokenJson);
+
+    /// <summary>
+    /// Run the desktop OAuth flow for a provider (google_drive / dropbox / onedrive)
+    /// and return a result JSON (<c>{token, error}</c>): <c>token</c> is the provider's
+    /// token JSON for <see cref="RestoreFromCode"/>, <c>error</c> the reason it failed.
+    /// The core opens the system browser and runs the 127.0.0.1 callback listener —
+    /// blocks until the user finishes, so call off the UI thread. Copies and frees.
+    /// </summary>
+    internal static string? OAuthAuthorize(string provider) => CopyAndFree(OAuthAuthorizePtr(provider));
+
+    /// <summary>Decode a restore code to its info JSON, or null if malformed.</summary>
+    internal static string? DecodeRestoreCode(string code) => CopyAndFree(DecodeRestoreCodePtr(code));
+
+    /// <summary>
+    /// Restore a library from a code; returns a result JSON (<c>{library_id,
+    /// error}</c>). For OAuth providers pass the token JSON from
+    /// <see cref="OAuthAuthorize"/>; for credential providers pass null. Blocks on a
+    /// cloud pull — call off the UI thread. Copies and frees.
+    /// </summary>
+    internal static string? RestoreFromCode(string code, string? oauthTokenJson) =>
+        CopyAndFree(RestoreFromCodePtr(code, oauthTokenJson));
+
+    [DllImport(Dll, EntryPoint = "bae_restore_from_cloud", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr RestoreFromCloudPtr(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string libraryId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string encryptionKeyHex,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? libraryName,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string sourceJson);
+
+    /// <summary>
+    /// Restore a library by entering its cloud location and credentials directly
+    /// (no restore code); returns a result JSON (<c>{library_id, error}</c>).
+    /// <paramref name="sourceJson"/> is a tagged source (<c>{"type":"s3",…}</c>);
+    /// an empty <paramref name="libraryName"/> generates one. Blocks on a cloud
+    /// pull — call off the UI thread. Copies and frees.
+    /// </summary>
+    internal static string? RestoreFromCloud(
+        string libraryId, string encryptionKeyHex, string? libraryName, string sourceJson) =>
+        CopyAndFree(RestoreFromCloudPtr(libraryId, encryptionKeyHex, libraryName, sourceJson));
+
+    /// <summary>
+    /// Initialize the app for <paramref name="libraryId"/>. Returns an opaque
+    /// handle, or <see cref="IntPtr.Zero"/> on failure (the Rust side logs the
+    /// error). Free the result with <see cref="HandleFree"/>.
+    /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_init", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr Init(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string libraryId,
+        uint positionUpdateIntervalMs);
+
+    /// <summary>Whether this library's encryption key is loaded. False means the
+    /// library is locked (key not on this device) and needs <see cref="UnlockLibrary"/>.</summary>
+    [DllImport(Dll, EntryPoint = "bae_has_encryption_key", CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static extern bool HasEncryptionKey(IntPtr handle);
+
+    [DllImport(Dll, EntryPoint = "bae_unlock_library", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr UnlockLibraryPtr(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string libraryId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string keyHex);
+
+    /// <summary>Store a library's hex key so it can be opened; null on success, else the error.</summary>
+    internal static string? UnlockLibrary(string libraryId, string keyHex) =>
+        ResultMessage(UnlockLibraryPtr(libraryId, keyHex));
+
+    [DllImport(Dll, EntryPoint = "bae_lock_active_library", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr LockActiveLibraryPtr(IntPtr handle);
+
+    /// <summary>Forget the active library's key (lock it); null on success, else the error.</summary>
+    internal static string? LockActiveLibrary(IntPtr handle) =>
+        ResultMessage(LockActiveLibraryPtr(handle));
+
+    [DllImport(Dll, EntryPoint = "bae_rename_library", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr RenameLibraryPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string libraryId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+
+    /// <summary>Rename a library (active or inactive); null on success, else the error.</summary>
+    internal static string? RenameLibrary(IntPtr handle, string libraryId, string name) =>
+        ResultMessage(RenameLibraryPtr(handle, libraryId, name));
+
+    [DllImport(Dll, EntryPoint = "bae_set_primary_release", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SetPrimaryReleasePtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string albumId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    /// <summary>Set an album's primary release; null on success, else the error.</summary>
+    internal static string? SetPrimaryRelease(IntPtr handle, string albumId, string releaseId) =>
+        ResultMessage(SetPrimaryReleasePtr(handle, albumId, releaseId));
+
+    [DllImport(Dll, EntryPoint = "bae_export_track", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ExportTrackPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string trackId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string outputPath,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string format);
+
+    /// <summary>Export one track to outputPath as "flac" or "mp3"; null on success, else the error.</summary>
+    internal static string? ExportTrack(IntPtr handle, string trackId, string outputPath, string format) =>
+        ResultMessage(ExportTrackPtr(handle, trackId, outputPath, format));
+
+    [DllImport(Dll, EntryPoint = "bae_get_release_images", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr GetReleaseImagesPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    /// <summary>
+    /// A release's local image files (cover-art candidates) as a JSON array of
+    /// <c>{id, original_filename}</c>, or null on error. Copies and frees.
+    /// </summary>
+    internal static string? GetReleaseImagesJson(IntPtr handle, string releaseId) =>
+        CopyAndFree(GetReleaseImagesPtr(handle, releaseId));
+
+    [DllImport(Dll, EntryPoint = "bae_fetch_remote_covers", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr FetchRemoteCoversPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    /// <summary>
+    /// Remote cover-art candidates for a release (MusicBrainz / Discogs) as a JSON
+    /// array of <c>{url, thumbnail_url, label, source}</c>, or null on error.
+    /// Performs network I/O — call off the UI thread. Copies and frees.
+    /// </summary>
+    internal static string? FetchRemoteCoversJson(IntPtr handle, string releaseId) =>
+        CopyAndFree(FetchRemoteCoversPtr(handle, releaseId));
+
+    [DllImport(Dll, EntryPoint = "bae_change_cover", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ChangeCoverPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string albumId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
+
+    /// <summary>
+    /// Change a release's cover art from a selection JSON (a release image file or
+    /// a remote URL); null on success, else the error. Performs network I/O for a
+    /// remote cover — call off the UI thread.
+    /// </summary>
+    internal static string? ChangeCover(IntPtr handle, string albumId, string releaseId, string selectionJson) =>
+        ResultMessage(ChangeCoverPtr(handle, albumId, releaseId, selectionJson));
+
+    /// <summary>
+    /// A page of albums (newest first) as a JSON array, or <see cref="IntPtr.Zero"/>
+    /// on error. The returned string is owned by Rust; prefer
+    /// <see cref="AlbumPageJson"/>, which copies and frees it.
+    /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_album_page", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr AlbumPage(
+        IntPtr handle,
+        ulong offset,
+        ulong limit,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string sortField,
+        [MarshalAs(UnmanagedType.I1)] bool ascending);
+
+    /// <summary>
+    /// A page of albums sorted by <paramref name="sortField"/> as a JSON string, or
+    /// null on error. Copies the string into managed memory and frees the native one.
+    /// </summary>
+    internal static string? AlbumPageJson(IntPtr handle, ulong offset, ulong limit, string sortField, bool ascending) =>
+        CopyAndFree(AlbumPage(handle, offset, limit, sortField, ascending));
+
+    /// <summary>
+    /// A release's gallery images as JSON, or <see cref="IntPtr.Zero"/> on error.
+    /// Prefer <see cref="GalleryJson"/>.
+    /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_gallery", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr GalleryPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    /// <summary>A release's gallery as a JSON string, or null. Copies and frees.</summary>
+    internal static string? GalleryJson(IntPtr handle, string releaseId) =>
+        CopyAndFree(GalleryPtr(handle, releaseId));
+
+    /// <summary>
+    /// Every release's storage summary as JSON, or <see cref="IntPtr.Zero"/> on
+    /// error. Prefer <see cref="StorageJson"/>.
+    /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_storage", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr StoragePtr(IntPtr handle);
+
+    /// <summary>
+    /// Every release's storage summary as a JSON string, or null on error. Copies
+    /// the string into managed memory and frees the native one.
+    /// </summary>
+    internal static string? StorageJson(IntPtr handle) => CopyAndFree(StoragePtr(handle));
+
+    [DllImport(Dll, EntryPoint = "bae_pin_release", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr PinReleasePtr(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    [DllImport(Dll, EntryPoint = "bae_unpin_release", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr UnpinReleasePtr(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    [DllImport(Dll, EntryPoint = "bae_manage_release", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ManageReleasePtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
+        [MarshalAs(UnmanagedType.I1)] bool pin,
+        [MarshalAs(UnmanagedType.I1)] bool deleteSource);
+
+    /// <summary>Pin a cloud-only release locally; null on success, else the error.</summary>
+    internal static string? PinRelease(IntPtr handle, string releaseId) =>
+        ResultMessage(PinReleasePtr(handle, releaseId));
+
+    /// <summary>Unpin a release (drop the local copy); null on success, else the error.</summary>
+    internal static string? UnpinRelease(IntPtr handle, string releaseId) =>
+        ResultMessage(UnpinReleasePtr(handle, releaseId));
+
+    /// <summary>Manage an unmanaged release; null on success, else the error.</summary>
+    internal static string? ManageRelease(IntPtr handle, string releaseId, bool pin, bool deleteSource) =>
+        ResultMessage(ManageReleasePtr(handle, releaseId, pin, deleteSource));
+
+    [DllImport(Dll, EntryPoint = "bae_unmanage_release", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr UnmanageReleasePtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string newPath);
+
+    /// <summary>Move a release's files out of the library; null on success, else the error.</summary>
+    internal static string? UnmanageRelease(IntPtr handle, string releaseId, string newPath) =>
+        ResultMessage(UnmanageReleasePtr(handle, releaseId, newPath));
+
+    [DllImport(Dll, EntryPoint = "bae_outbox_snapshot", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr OutboxSnapshotPtr(IntPtr handle);
+
+    /// <summary>The cloud outbox snapshot as a JSON string, or null on error.
+    /// Copies into managed memory and frees the native string.</summary>
+    internal static string? OutboxSnapshotJson(IntPtr handle) => CopyAndFree(OutboxSnapshotPtr(handle));
+
+    [DllImport(Dll, EntryPoint = "bae_retry_outbox", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr RetryOutboxPtr(IntPtr handle);
+
+    /// <summary>Retry the cloud outbox now; null on success, else the error.</summary>
+    internal static string? RetryOutbox(IntPtr handle) => ResultMessage(RetryOutboxPtr(handle));
+
+    /// <summary>Pause or resume the cloud sync pipeline (drains the outbox when resumed).</summary>
+    [DllImport(Dll, EntryPoint = "bae_set_sync_paused", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void SetSyncPaused(IntPtr handle, [MarshalAs(UnmanagedType.I1)] bool paused);
+
+    [DllImport(Dll, EntryPoint = "bae_cancel_outbox_item", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr CancelOutboxItemPtr(IntPtr handle, long id);
+
+    /// <summary>Cancel one queued outbox entry by id; null on success, else the error.</summary>
+    internal static string? CancelOutboxItem(IntPtr handle, long id) =>
+        ResultMessage(CancelOutboxItemPtr(handle, id));
+
+    /// <summary>
+    /// Album results for a query as JSON (same shape as a page), or
+    /// <see cref="IntPtr.Zero"/> on error. Prefer <see cref="SearchJson"/>.
+    /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_search", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr SearchPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string query);
+
+    /// <summary>
+    /// Album results for a query as a JSON string, or null on error. Copies the
+    /// string into managed memory and frees the native one.
+    /// </summary>
+    internal static string? SearchJson(IntPtr handle, string query) => CopyAndFree(SearchPtr(handle, query));
+
+    /// <summary>
+    /// Full detail for one album as JSON, or <see cref="IntPtr.Zero"/> on error /
+    /// not found. Prefer <see cref="AlbumDetailJson"/>, which copies and frees it.
+    /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_album_detail", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr AlbumDetailPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string albumId);
+
+    /// <summary>
+    /// One album's detail as a JSON string, or null on error / not found. Copies
+    /// the string into managed memory and frees the native one.
+    /// </summary>
+    internal static string? AlbumDetailJson(IntPtr handle, string albumId) =>
+        CopyAndFree(AlbumDetailPtr(handle, albumId));
+
+    /// <summary>Current settings as JSON, or null on error. Copies and frees.</summary>
+    [DllImport(Dll, EntryPoint = "bae_settings", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr SettingsPtr(IntPtr handle);
+
+    /// <summary>Current settings as a JSON string, or null on error.</summary>
+    internal static string? SettingsJson(IntPtr handle) => CopyAndFree(SettingsPtr(handle));
+
+    [DllImport(Dll, EntryPoint = "bae_save_discogs_token", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SaveDiscogsTokenPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string token);
+
+    [DllImport(Dll, EntryPoint = "bae_revalidate_discogs_token", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr RevalidateDiscogsTokenPtr(IntPtr handle);
+
+    [DllImport(Dll, EntryPoint = "bae_delete_discogs_token", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DeleteDiscogsTokenPtr(IntPtr handle);
+
+    /// <summary>
+    /// Validate the token against Discogs, then persist an accepted or unreachable
+    /// one. Returns the outcome — "valid" (validated and stored), "unvalidated"
+    /// (couldn't reach Discogs, stored anyway and re-validated later), or "rejected"
+    /// (Discogs rejected it, nothing stored) — or null on an internal error (logged
+    /// in the core). Validates over the network — call off the UI thread. On
+    /// "valid"/"unvalidated" a ConfigChanged event follows; "rejected" persists
+    /// nothing, so the caller surfaces it from this return value. Copies and frees.
+    /// </summary>
+    internal static string? SaveDiscogsToken(IntPtr handle, string token) =>
+        CopyAndFree(SaveDiscogsTokenPtr(handle, token));
+
+    /// <summary>
+    /// Re-validate a stored-but-unvalidated Discogs token against Discogs (e.g. one
+    /// saved while offline); no-op unless a key is stored with "unvalidated" status.
+    /// On a result the status changes, so a ConfigChanged event follows. Validates
+    /// over the network — call off the UI thread. Null on success, else the error.
+    /// </summary>
+    internal static string? RevalidateDiscogsToken(IntPtr handle) =>
+        ResultMessage(RevalidateDiscogsTokenPtr(handle));
+
+    /// <summary>Remove the Discogs token; null on success, else the error message.</summary>
+    internal static string? DeleteDiscogsToken(IntPtr handle) =>
+        ResultMessage(DeleteDiscogsTokenPtr(handle));
+
+    [DllImport(Dll, EntryPoint = "bae_disconnect_cloud", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DisconnectCloudPtr(IntPtr handle);
+
+    [DllImport(Dll, EntryPoint = "bae_save_sync_config", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SaveSyncConfigPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string bucket,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string region,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string endpoint,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string keyPrefix,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string accessKey,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string secretKey);
+
+    /// <summary>Connect sync to an S3 bucket; null on success, else the error.</summary>
+    internal static string? SaveSyncConfig(
+        IntPtr handle, string bucket, string region, string endpoint,
+        string keyPrefix, string accessKey, string secretKey) =>
+        ResultMessage(SaveSyncConfigPtr(handle, bucket, region, endpoint, keyPrefix, accessKey, secretKey));
+
+    [DllImport(Dll, EntryPoint = "bae_disconnect_warning", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DisconnectWarningPtr(IntPtr handle);
+
+    /// <summary>The data-loss warning before disconnecting sync, or null if none.</summary>
+    internal static string? DisconnectWarning(IntPtr handle) => CopyAndFree(DisconnectWarningPtr(handle));
+
+    [DllImport(Dll, EntryPoint = "bae_sign_in_cloud", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SignInCloudPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string provider);
+
+    /// <summary>
+    /// Sign in to an OAuth provider (google_drive / dropbox / onedrive); null on
+    /// success, else the error. Blocks on the browser flow — call off the UI thread.
+    /// </summary>
+    internal static string? SignInCloud(IntPtr handle, string provider) =>
+        ResultMessage(SignInCloudPtr(handle, provider));
+
+    /// <summary>Disconnect cloud sync; null on success, else the error message.</summary>
+    internal static string? DisconnectCloud(IntPtr handle) =>
+        ResultMessage(DisconnectCloudPtr(handle));
+
+    /// <summary>Trigger a sync pass now (no-op when not connected).</summary>
+    [DllImport(Dll, EntryPoint = "bae_trigger_sync", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void TriggerSync(IntPtr handle);
+
+    [DllImport(Dll, EntryPoint = "bae_generate_restore_code", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr GenerateRestoreCodePtr(IntPtr handle);
+
+    /// <summary>This library's restore code, or null on error. Copies and frees.</summary>
+    internal static string? GenerateRestoreCode(IntPtr handle) => CopyAndFree(GenerateRestoreCodePtr(handle));
+
+    [DllImport(Dll, EntryPoint = "bae_release_edit_seed", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ReleaseEditSeedPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    /// <summary>The metadata editor's raw form as JSON, or null. Copies and frees.</summary>
+    internal static string? ReleaseEditSeedJson(IntPtr handle, string releaseId) =>
+        CopyAndFree(ReleaseEditSeedPtr(handle, releaseId));
+
+    [DllImport(Dll, EntryPoint = "bae_reset_metadata_to_source", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ResetMetadataToSourcePtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    /// <summary>
+    /// The metadata editor's raw form re-seeded from the release's stored
+    /// metadata source (its original identity), as JSON, or null. Discards
+    /// in-progress edits without writing the DB. Copies and frees.
+    /// </summary>
+    internal static string? ResetMetadataToSourceJson(IntPtr handle, string releaseId) =>
+        CopyAndFree(ResetMetadataToSourcePtr(handle, releaseId));
+
+    [DllImport(Dll, EntryPoint = "bae_apply_release_edit", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ApplyReleaseEditPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string rawJson);
+
+    /// <summary>Apply an edited raw form; null on success, else the error message.</summary>
+    internal static string? ApplyReleaseEdit(IntPtr handle, string releaseId, string rawJson) =>
+        ResultMessage(ApplyReleaseEditPtr(handle, releaseId, rawJson));
+
+    [DllImport(Dll, EntryPoint = "bae_search_releases", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SearchReleasesPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string artist,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string album);
+
+    /// <summary>
+    /// Candidate releases matching artist + album from a metadata source as a
+    /// JSON string, or null on error. Blocks on a network request — call off the
+    /// UI thread. Copies and frees.
+    /// </summary>
+    internal static string? SearchReleasesJson(IntPtr handle, string source, string artist, string album) =>
+        CopyAndFree(SearchReleasesPtr(handle, source, artist, album));
+
+    [DllImport(Dll, EntryPoint = "bae_reidentify_release", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ReidentifyReleasePtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string chosenReleaseId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string source);
+
+    /// <summary>
+    /// Re-identify a release as the chosen candidate; null on success, else the
+    /// error message. May block — call off the UI thread.
+    /// </summary>
+    internal static string? ReidentifyRelease(IntPtr handle, string releaseId, string chosenReleaseId, string source) =>
+        ResultMessage(ReidentifyReleasePtr(handle, releaseId, chosenReleaseId, source));
+
+    [DllImport(Dll, EntryPoint = "bae_scan_folder", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ScanFolderPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string path,
+        [MarshalAs(UnmanagedType.I1)] bool clearFirst);
+
+    /// <summary>
+    /// Enqueue a folder scan; null on success, else the error message. Candidates
+    /// arrive asynchronously as CandidateAdded events. May block briefly — call
+    /// off the UI thread.
+    /// </summary>
+    internal static string? ScanFolder(IntPtr handle, string path, bool clearFirst) =>
+        ResultMessage(ScanFolderPtr(handle, path, clearFirst));
+
+    /// <summary>
+    /// Start auto-identifying a folder candidate. Fire-and-forget; progress and
+    /// results arrive as CandidateIdentifyState events keyed by candidateKey.
+    /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_auto_identify_folder", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void AutoIdentifyFolder(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string candidateKey,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string folderPath);
+
+    /// <summary>
+    /// Exclude a signal from a candidate's triangulation, or re-include an
+    /// already-excluded one. <paramref name="kind"/> is the badge's wire kind
+    /// ("disc_id" / "barcode" / "catalog"); <paramref name="value"/> is the
+    /// catalog number naming which catalog candidate to toggle (ignored for the
+    /// disc-ID / barcode singletons — pass "" there). Fire-and-forget: the
+    /// candidate re-derives and re-emits its CandidateIdentifyState event, which
+    /// refreshes the badges.
+    /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_toggle_signal_for_candidate", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void ToggleSignalForCandidate(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string candidateKey,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string kind,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
+
+    /// <summary>
+    /// Re-run a candidate's identification lookups, keeping the user's signal
+    /// exclusions. Fire-and-forget; progress and the re-derived outcome arrive as
+    /// CandidateIdentifyState events keyed by candidateKey.
+    /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_rerun_identify_for_candidate", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void RerunIdentifyForCandidate(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string candidateKey);
+
+    /// <summary>Preview-play an audio file by path (auditioning before import).</summary>
+    [DllImport(Dll, EntryPoint = "bae_preview_play", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void PreviewPlay(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string path);
+
+    /// <summary>Stop preview playback.</summary>
+    [DllImport(Dll, EntryPoint = "bae_preview_stop", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void PreviewStop(IntPtr handle);
+
+    /// <summary>Toggle preview play/pause.</summary>
+    [DllImport(Dll, EntryPoint = "bae_preview_toggle_pause", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void PreviewTogglePause(IntPtr handle);
+
+    [DllImport(Dll, EntryPoint = "bae_prefetch_candidate_edit", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr PrefetchCandidateEditPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string folderPath);
+
+    /// <summary>
+    /// The import confirmation seed as JSON (a <see cref="PrefetchedEdit"/>:
+    /// <c>{edit, remote_covers, local_artwork}</c>), or null on error. The
+    /// <c>edit</c> is the editor's raw form seeded from the chosen release;
+    /// <c>remote_covers</c> are the prefetched detail's cover-art options and
+    /// <c>local_artwork</c> the image files in <paramref name="folderPath"/> —
+    /// the cover choices for the import picker. Blocks on a network request —
+    /// call off the UI thread. Copies and frees.
+    /// </summary>
+    internal static string? PrefetchCandidateEditJson(IntPtr handle, string releaseId, string source, string folderPath) =>
+        CopyAndFree(PrefetchCandidateEditPtr(handle, releaseId, source, folderPath));
+
+    [DllImport(Dll, EntryPoint = "bae_check_release_in_library", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr CheckReleaseInLibraryPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string source);
+
+    /// <summary>
+    /// Whether the chosen candidate (<paramref name="releaseId"/> from
+    /// <paramref name="source"/>) is already in the library, as a JSON
+    /// <see cref="LibraryStatus"/> (<c>{release_in_library, album_id}</c>), or null
+    /// on error. The import confirmation shows a banner when
+    /// <c>release_in_library</c> is set, linking to <c>album_id</c>. Reads the
+    /// database — call off the UI thread. Copies and frees.
+    /// </summary>
+    internal static string? CheckReleaseInLibraryJson(IntPtr handle, string releaseId, string source) =>
+        CopyAndFree(CheckReleaseInLibraryPtr(handle, releaseId, source));
+
+    [DllImport(Dll, EntryPoint = "bae_import_candidate", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ImportCandidatePtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string candidateKey,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string folderPath,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string chosenReleaseId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string storageMode,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string userEditJson,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectedCoverJson);
+
+    /// <summary>
+    /// Import a candidate as the chosen identity; null on a successful enqueue,
+    /// else the error message. <paramref name="userEditJson"/> overlays the user's
+    /// confirmed metadata edits (a serialized ReleaseEdit) — pass an empty string
+    /// for no edit. <paramref name="selectedCoverJson"/> is the cover the user
+    /// picked (a serialized cover selection) — pass an empty string to use the
+    /// import's default cover. <paramref name="storageMode"/> is
+    /// <c>unmanaged</c>, <c>managed_pinned</c>, or <c>managed_unpinned</c>.
+    /// The import runs in the background (progress via CandidateImport* events).
+    /// May block briefly — call off the UI thread.
+    /// </summary>
+    internal static string? ImportCandidate(
+        IntPtr handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, string userEditJson, string selectedCoverJson) =>
+        ResultMessage(ImportCandidatePtr(handle, candidateKey, folderPath, chosenReleaseId, source, storageMode, userEditJson, selectedCoverJson));
+
+    /// <summary>
+    /// Copy a Rust-owned UTF-8 string into managed memory and free the native one,
+    /// or return null when the pointer is <see cref="IntPtr.Zero"/>.
+    /// </summary>
+    private static string? CopyAndFree(IntPtr ptr)
+    {
+        if (ptr == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        try
+        {
+            return Marshal.PtrToStringUTF8(ptr);
+        }
+        finally
+        {
+            StringFree(ptr);
+        }
+    }
+
+    /// Interpret a command result pointer: null = success, else an owned error
+    /// string this copies and frees.
+    private static string? ResultMessage(IntPtr ptr) => CopyAndFree(ptr);
+
+    /// <summary>
+    /// Callback invoked with each UI event's JSON. Fires on a background thread;
+    /// the app must marshal to its UI thread. Keep the delegate instance alive for
+    /// as long as the subscription lasts (it is passed to native code).
+    /// </summary>
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate void EventCallback(IntPtr json);
+
+    /// <summary>Subscribe to the core UI event bus.</summary>
+    [DllImport(Dll, EntryPoint = "bae_subscribe", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void Subscribe(IntPtr handle, EventCallback callback);
+
+    /// <summary>On-disk path for a library image id, or null if not cached.</summary>
+    [DllImport(Dll, EntryPoint = "bae_image_path", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr ImagePathPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string imageId);
+
+    /// <summary>On-disk path for a library image id, or null. Copies and frees.</summary>
+    internal static string? ImagePath(IntPtr handle, string imageId) =>
+        CopyAndFree(ImagePathPtr(handle, imageId));
+
+    /// <summary>Start playing a release (optionally shuffled). <paramref name="startTrackIndex"/>
+    /// is the track to start from; a negative value starts from the first track.</summary>
+    [DllImport(Dll, EntryPoint = "bae_play_release", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void PlayRelease(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
+        long startTrackIndex,
+        [MarshalAs(UnmanagedType.I1)] bool shuffle);
+
+    /// <summary>Toggle play/pause.</summary>
+    [DllImport(Dll, EntryPoint = "bae_play_pause", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void PlayPause(IntPtr handle);
+
+    /// <summary>Seek the current track to a 0..1 ratio of its duration.</summary>
+    [DllImport(Dll, EntryPoint = "bae_seek_by_ratio", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void SeekByRatio(IntPtr handle, double ratio);
+
+    /// <summary>Set output volume (0..1).</summary>
+    [DllImport(Dll, EntryPoint = "bae_set_volume", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void SetVolume(IntPtr handle, float volume);
+
+    /// <summary>Toggle mute.</summary>
+    [DllImport(Dll, EntryPoint = "bae_toggle_mute", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void ToggleMute(IntPtr handle);
+
+    /// <summary>Current output volume (0..1).</summary>
+    [DllImport(Dll, EntryPoint = "bae_get_volume", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern float GetVolume(IntPtr handle);
+
+    /// <summary>Cycle repeat mode (off → track → album).</summary>
+    [DllImport(Dll, EntryPoint = "bae_cycle_repeat_mode", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void CycleRepeatMode(IntPtr handle);
+
+    /// <summary>Skip to the next track.</summary>
+    [DllImport(Dll, EntryPoint = "bae_next", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void Next(IntPtr handle);
+
+    /// <summary>Skip to the previous track.</summary>
+    [DllImport(Dll, EntryPoint = "bae_previous", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void Previous(IntPtr handle);
+
+    /// <summary>Jump to the queue entry at <paramref name="index"/>.</summary>
+    [DllImport(Dll, EntryPoint = "bae_queue_skip_to", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void QueueSkipTo(IntPtr handle, uint index);
+
+    /// <summary>Remove the queue entry at <paramref name="index"/>.</summary>
+    [DllImport(Dll, EntryPoint = "bae_queue_remove", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void QueueRemove(IntPtr handle, uint index);
+
+    /// <summary>Move the queue entry from one index to another.</summary>
+    [DllImport(Dll, EntryPoint = "bae_queue_reorder", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void QueueReorder(IntPtr handle, uint from, uint to);
+
+    /// <summary>Clear the play queue.</summary>
+    [DllImport(Dll, EntryPoint = "bae_queue_clear", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void QueueClear(IntPtr handle);
+
+    /// <summary>Append a release's tracks to the queue.</summary>
+    [DllImport(Dll, EntryPoint = "bae_add_release_to_queue", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void AddReleaseToQueue(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    /// <summary>Queue a release's tracks to play next.</summary>
+    [DllImport(Dll, EntryPoint = "bae_add_release_next", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void AddReleaseNext(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    [DllImport(Dll, EntryPoint = "bae_add_to_queue", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr AddToQueuePtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string trackIdsJson);
+
+    /// <summary>Append specific tracks to the end of the queue. Returns an error message, or null on success.</summary>
+    internal static string? AddToQueue(IntPtr handle, IReadOnlyList<string> trackIds) =>
+        ResultMessage(AddToQueuePtr(handle, JsonSerializer.Serialize(trackIds)));
+
+    [DllImport(Dll, EntryPoint = "bae_add_next", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr AddNextPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string trackIdsJson);
+
+    /// <summary>Queue specific tracks to play next. Returns an error message, or null on success.</summary>
+    internal static string? AddNext(IntPtr handle, IReadOnlyList<string> trackIds) =>
+        ResultMessage(AddNextPtr(handle, JsonSerializer.Serialize(trackIds)));
+
+    [DllImport(Dll, EntryPoint = "bae_delete_release", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DeleteReleasePtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    /// <summary>Delete a release; null on success, else the error message.</summary>
+    internal static string? DeleteRelease(IntPtr handle, string releaseId) =>
+        ResultMessage(DeleteReleasePtr(handle, releaseId));
+
+    /// <summary>Persist playback state and stop playback before exit. Call before
+    /// <see cref="HandleFree"/>.</summary>
+    [DllImport(Dll, EntryPoint = "bae_shutdown", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void Shutdown(IntPtr handle);
+
+    /// <summary>
+    /// Release a handle created by <see cref="Init"/>.
+    /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_handle_free", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void HandleFree(IntPtr handle);
+
+    /// <summary>
+    /// Release a string returned by this library.
+    /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_string_free", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void StringFree(IntPtr ptr);
+}

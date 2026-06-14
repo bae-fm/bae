@@ -1,0 +1,55 @@
+name: Deploy Website
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      screenshots_artifact:
+        description: 'Name of artifact containing screenshots (optional)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download screenshots
+      if: inputs.screenshots_artifact != ''
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.screenshots_artifact }}
+        path: website/public/screenshots/
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: website/package-lock.json
+
+    - name: Install Node dependencies
+      working-directory: ./website
+      run: npm ci
+
+    - name: Build website
+      working-directory: ./website
+      run: npm run build
+
+    - name: Deploy to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        vercel-version: latest
+        working-directory: ./website
+        scope: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-args: '--prod'

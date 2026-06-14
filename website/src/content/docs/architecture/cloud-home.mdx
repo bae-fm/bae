@@ -1,0 +1,60 @@
+---
+title: Cloud Home
+description: The CloudHome trait and backend-agnostic cloud storage
+---
+
+The cloud home is a single remote storage location for a library -- one Google Drive folder, one S3 bucket, one Dropbox folder. It holds encrypted release files, metadata changesets, artwork, snapshots, and the membership chain. All trust lives in cryptography, not the storage backend. The cloud provider stores opaque blobs.
+
+## The CloudHome trait
+
+The `CloudHome` trait is the abstraction that makes bae backend-agnostic. Everything above the trait is universal. Everything below it adapts to the specific cloud provider.
+
+### What's universal (above the trait)
+
+- **Cloud home layout** -- `changes/`, `heads/`, `snapshot.db.enc`, `images/`, `storage/`, `membership/`, `keys/`. Same logical paths regardless of backend.
+- **Encryption** -- one symmetric key per library. Everything is encrypted before it leaves the device.
+- **Sync protocol** -- changesets, snapshots, conflict resolution via last-writer-wins. Same algorithm everywhere.
+- **Membership chain** -- append-only log with Ed25519 signatures, encryption key wrapped to each member's public key.
+
+### What varies (below the trait)
+
+- **Storage API** -- how files are actually read and written (S3 API vs Google Drive API vs local filesystem, etc.).
+- **Access management** -- how a new device gets storage access (folder access vs credential minting).
+- **Authentication** -- how a new device authenticates (your cloud account vs embedded credentials).
+- **Change notifications** -- consumer clouds support push notifications; S3 requires polling.
+
+### The trait interface
+
+```rust
+trait CloudHome {
+    // Storage -- same interface, different API underneath
+    fn write(path, data) -> Result;
+    fn read(path) -> Result<Bytes>;
+    fn read_range(path, start, end) -> Result<Bytes>;
+    fn list(prefix) -> Result<Vec<String>>;
+    fn delete(path) -> Result;
+    fn exists(path) -> Result<bool>;
+
+    // Access management -- varies by backend
+    fn grant_access(member_email_or_id) -> Result<JoinInfo>;
+    fn revoke_access(member_email_or_id) -> Result;
+}
+
+Callers (sync engine, image uploader, file storage) use this interface directly. They do not know or care which backend they are talking to.
+```
+
+## Access management
+
+How `grant_access` and `revoke_access` work depends on the backend. Consumer clouds (Google Drive, Dropbox, OneDrive) share the folder via the provider's API -- you sign into your account on the new device and the folder is already accessible. S3-compatible backends mint scoped IAM credentials for each device, embedded in the invite code.
+
+In both cases, the encryption key is delivered separately via the membership chain, wrapped to the new device's public key.
+
+## Implementations
+
+| Backend | Auth | Notes |
+|---|---|---|
+| S3 (aws-sdk-s3) | Access key + secret | Any S3-compatible service (AWS, B2, R2, Wasabi, MinIO) |
+| Google Drive | OAuth | bae creates a folder in the user's Drive |
+| Dropbox | OAuth | |
+| OneDrive | OAuth | |
+| iCloud Drive | Local filesystem | macOS only, uses the iCloud container, no sign-in needed |

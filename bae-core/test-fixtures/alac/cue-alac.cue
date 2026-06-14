@@ -1,0 +1,12 @@
+PERFORMER "Artist Name"
+TITLE "Album Title"
+FILE "cue-alac.m4a" WAVE
+  TRACK 01 AUDIO
+    TITLE "Track One"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track Two"
+    INDEX 01 00:03:00
+  TRACK 03 AUDIO
+    TITLE "Track Three"
+    INDEX 01 00:06:00

@@ -1,0 +1,126 @@
+name: Windows build
+
+# Builds the native Windows stack for x86_64-pc-windows-msvc: bae-core →
+# bae-windows-ffi (the C ABI cdylib, bae_windows_ffi.dll) → the WinUI 3 (C#) app
+# that P/Invokes it. (bae-bridge is also built to keep it Windows-clean, but the
+# Windows UI binds bae-core through the FFI, not the uniffi bridge.) The macOS
+# host can't cross-compile the native deps, so this is the verification loop.
+# The native deps are all prebuilt releases build.rs/CI fetch — no compiling
+# here: ffmpeg via bae-ffmpeg, libdiscid via MusicBrainz's prebuilt.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [windows-native]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      FFMPEG_VERSION: v8.0.1-bae8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust (pinned toolchain)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92.0"
+          targets: x86_64-pc-windows-msvc
+          components: clippy
+
+      - name: Install sccache + LLVM (libclang for ffmpeg-sys bindgen)
+        shell: pwsh
+        run: |
+          choco install -y sccache llvm
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Fetch libdiscid (MusicBrainz Windows binary)
+        shell: pwsh
+        run: |
+          # The `discid` crate (import disc-id matching) links discid.lib and has
+          # no bindgen/headers. libdiscid isn't in vcpkg, so use MusicBrainz's
+          # prebuilt x64 binary; the linker finds discid.lib via LIB, the DLL via
+          # PATH.
+          $url = "https://github.com/metabrainz/libdiscid/releases/download/v0.6.5/libdiscid-0.6.5-win.zip"
+          curl.exe -L $url -o libdiscid.zip
+          Expand-Archive -Path libdiscid.zip -DestinationPath "$PWD\libdiscid" -Force
+          $x64 = "$PWD\libdiscid\libdiscid-0.6.5-win\x64"
+          echo "LIB=$x64;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "$x64" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Fetch bae-ffmpeg (Windows x86_64)
+        shell: pwsh
+        run: |
+          $dist = "$PWD\bae-ffmpeg\dist"
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          $url = "https://github.com/bae-fm/bae-ffmpeg/releases/download/$env:FFMPEG_VERSION/ffmpeg-windows-x86_64.zip"
+          curl.exe -L $url -o ffmpeg.zip
+          Expand-Archive -Path ffmpeg.zip -DestinationPath $dist -Force
+          # The Windows build ships the .lib import libs in bin/ next to the DLLs,
+          # with no lib/ or pkgconfig/; ffmpeg-sys-next expects the libs under lib/.
+          New-Item -ItemType Directory -Force -Path "$dist\lib" | Out-Null
+          Copy-Item "$dist\bin\*.lib" "$dist\lib\" -Force
+          echo "FFMPEG_DIR=$dist" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          # Point bindgen (ffmpeg-sys) at the ffmpeg headers, overriding the macOS
+          # Homebrew include args .cargo/config.toml sets with force=false.
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I$dist\include" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "$dist\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Provision ffmpeg's mingw runtime deps (msys2)
+        shell: pwsh
+        run: |
+          # bae-ffmpeg's Windows DLLs are a mingw build and depend on the mingw
+          # runtime (libiconv/lame/zlib/winpthread) without bundling it.
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
+          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Build the Windows FFI cdylib
+        # The FFI binds bae-core directly (not bae-bridge), so only it + bae-core
+        # are built here. bae-bridge's Windows-cleanliness is guarded on main's CI,
+        # not on this fast-iteration branch.
+        run: cargo build -p bae-windows-ffi --target x86_64-pc-windows-msvc
+
+      - name: Confirm the FFI DLL was produced
+        shell: pwsh
+        run: |
+          $dll = "target\x86_64-pc-windows-msvc\debug\bae_windows_ffi.dll"
+          if (Test-Path $dll) { Write-Host "PASS: $dll ($((Get-Item $dll).Length) bytes)" }
+          else { Write-Host "FAIL: $dll not found"; exit 1 }
+
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build the WinUI app (C# → P/Invoke → FFI DLL)
+        # Unpackaged WinUI 3 (C#/.NET) app, x64, framework-dependent. Proves the
+        # native UI stack compiles and links against the FFI: C# (WinUI) → P/Invoke
+        # → bae_windows_ffi.dll → bae-core. Built with MSBuild, not `dotnet build`:
+        # the WinUI XAML markup compiler needs the full VS toolchain to resolve
+        # project-local x:DataType types (dotnet build drops the LocalAssembly
+        # parameter — WMC1509 — and fails type resolution). A non-zero exit fails.
+        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=x64
+
+      - name: Stage the FFI DLL next to the WinUI build output
+        shell: pwsh
+        run: |
+          # Place the Rust FFI DLL beside the app .exe so a future run could launch
+          # it — P/Invoke resolves bae_windows_ffi.dll from the application directory.
+          # Resolve the output directory from the built .exe rather than hardcoding
+          # the framework/RID path, so it stays correct if the layout shifts.
+          $dll = "target\x86_64-pc-windows-msvc\debug\bae_windows_ffi.dll"
+          $exe = Get-ChildItem "bae-windows\bin\x64\Debug" -Recurse -Filter "bae-windows.exe" |
+            Select-Object -First 1
+          if (-not $exe) { Write-Host "FAIL: bae-windows.exe not found under bae-windows\bin\x64\Debug"; exit 1 }
+          Copy-Item $dll $exe.DirectoryName -Force
+          Write-Host "PASS: copied bae_windows_ffi.dll to $($exe.DirectoryName)"
+
+      - name: Clippy (bae-core, bae-windows-ffi)
+        run: cargo clippy -p bae-core -p bae-windows-ffi --target x86_64-pc-windows-msvc

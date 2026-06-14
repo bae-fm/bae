@@ -1,0 +1,41 @@
+---
+title: Sync
+description: Sync your library across devices
+---
+
+bae syncs your library across multiple devices through your cloud home. Every edit, import, and deletion propagates automatically.
+
+## Setting up sync
+
+1. Go to **Settings > Sync**
+2. Sign in with a cloud provider (Google Drive, Dropbox, OneDrive), use iCloud Drive (macOS), or enter S3 credentials
+3. bae generates a device ID and starts syncing
+
+## How it works
+
+Changes are synced incrementally -- each edit produces a small changeset that is encrypted and pushed to the cloud home. Other devices pull and apply new changesets. bae syncs after every change and polls every 30 seconds to pick up changes from other devices. If the cloud home is unreachable, sync retries next cycle.
+
+New devices bootstrap from a periodic full snapshot, then apply only the changesets that came after it.
+
+## Conflict resolution
+
+When two devices edit the same data, bae resolves conflicts automatically using last-writer-wins. If two devices edit different fields of the same release, both changes survive. True conflicts (same field edited on both sides) are resolved by timestamp. Deletes win over concurrent edits.
+
+## What syncs
+
+- Metadata (albums, tracks, artists, labels)
+- Album art and artist images
+- Release files (if bae-managed)
+
+Device-specific settings (`config.yaml`) do not sync.
+
+## Modes
+
+Sync is not all-or-nothing:
+
+- **Local only** -- no cloud home, no sync. Everything stays on one device.
+- **Synced across your devices** -- changesets sync between your devices through the cloud home, each with its own device ID.
+
+## Encryption
+
+All data in the cloud home is encrypted before upload. The cloud provider never sees plaintext. See [Encryption](/architecture/encryption).

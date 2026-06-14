@@ -1,0 +1,30 @@
+{
+  "name": "single-image \u2014 cover only, minimal OCR",
+  "notes": "Typical single-cover JPEG rip with few OCR lines and no structural noise. The path component + filename provide the only real signal; OCR backs them up but offers nothing new.",
+  "sources": {
+    "path_components": [
+      "Artist Alpha",
+      "Album Title A"
+    ],
+    "folder_brackets": [],
+    "filenames_generic": [],
+    "cue_fields": [],
+    "text_files": [],
+    "artwork": [
+      {
+        "path": "/releases/Artist Alpha/Album Title A/Cover.jpg",
+        "lines": [
+          "Artist Alpha",
+          "Album Title A"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "catalogs": [],
+    "free_text_contains": [
+      "Artist Alpha",
+      "Album Title A"
+    ]
+  }
+}

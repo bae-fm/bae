@@ -1,0 +1,109 @@
+name: bae
+options:
+  bundleIdPrefix: fm.bae
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "26.0"
+settings:
+  base:
+    DEAD_CODE_STRIPPING: YES
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: "2.9.0"
+  swift-collections:
+    url: https://github.com/apple/swift-collections
+    from: "1.4.1"
+targets:
+  bae:
+    type: application
+    platform: macOS
+    sources:
+      - bae
+    info:
+      path: bae/Info.plist
+      properties:
+        CFBundleDisplayName: bae
+        SUFeedURL: https://github.com/bae-fm/bae/releases/latest/download/appcast.xml
+        SUPublicEDKey: cYiouOrDxmQrHspLwOf/XpQOQOMt3isdYDs6xEDBGs8=
+        SUEnableAutomaticChecks: true
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Folder
+            LSItemContentTypes:
+              - public.folder
+            LSHandlerRank: Alternate
+        CFBundleURLTypes:
+          - CFBundleURLName: fm.bae.url
+            CFBundleURLSchemes:
+              - bae
+    preBuildScripts:
+      - name: Build Rust Bridge
+        basedOnDependencyAnalysis: false
+        script: |
+          cd "$SRCROOT/../.."
+          MARKER="bae-macos/BaeBridgeFFI.xcframework/Info.plist"
+          BINDINGS="bae-macos/bae/bae/bae_bridge.swift"
+          NEEDS_BUILD=0
+          if [ ! -f "$MARKER" ]; then
+            NEEDS_BUILD=1
+          else
+            for src in bae-bridge/src/*.rs bae-core/src/**/*.rs; do
+              if [ "$src" -nt "$MARKER" ]; then
+                NEEDS_BUILD=1
+                break
+              fi
+            done
+          fi
+          if [ "$NEEDS_BUILD" -eq 1 ]; then
+            echo "Bridge sources changed, rebuilding..."
+            ./bae-bridge/build-macos.sh
+          fi
+          # Always ensure the patched bindings are in the macOS source tree.
+          # Without this, a fresh worktree (xcframework cached, bindings file
+          # absent) skips the copy and the build fails to find generated types.
+          if [ ! -f "$BINDINGS" ] || [ "bae-bridge/swift-bindings/bae_bridge.swift" -nt "$BINDINGS" ]; then
+            cp bae-bridge/swift-bindings/bae_bridge.swift "$BINDINGS"
+          fi
+    dependencies:
+      - framework: ../BaeBridgeFFI.xcframework
+        embed: false
+      - package: Sparkle
+      - package: swift-collections
+        product: OrderedCollections
+      - sdk: CoreAudio.framework
+      - sdk: AudioToolbox.framework
+      - sdk: MediaPlayer.framework
+      - sdk: SystemConfiguration.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fm.bae.desktop
+        DEVELOPMENT_TEAM: BTNNN8533W
+        CODE_SIGN_STYLE: Automatic
+        DEAD_CODE_STRIPPING: YES
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        PRODUCT_NAME: bae
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: 1
+        SWIFT_VERSION: "6.2"
+        CODE_SIGN_ENTITLEMENTS: bae/bae.entitlements
+        LIBRARY_SEARCH_PATHS:
+          - /opt/homebrew/lib
+          - /opt/homebrew/opt/ffmpeg/lib
+        OTHER_LDFLAGS:
+          - -lavcodec
+          - -lavformat
+          - -lavutil
+          - -lswresample
+          - -ldiscid
+          - -lc++
+  baeTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - baeTests
+    dependencies:
+      - target: bae
+    settings:
+      base:
+        SWIFT_VERSION: "6.2"
+        GENERATE_INFOPLIST_FILE: YES

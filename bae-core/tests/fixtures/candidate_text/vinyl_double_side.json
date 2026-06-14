@@ -1,0 +1,58 @@
+{
+  "name": "vinyl double-side \u2014 credit-heavy sides with OCR errors",
+  "notes": "Vinyl release with front-A-side and back-B-side OCR. Each side repeats the artist/album once and lists side-specific credits. Stop phrases like `Side A` / `Side B` appear as section headers.",
+  "sources": {
+    "path_components": [
+      "Artist Gamma",
+      "Album Title C"
+    ],
+    "folder_brackets": [],
+    "filenames_generic": [],
+    "cue_fields": [],
+    "text_files": [],
+    "artwork": [
+      {
+        "path": "/A-Side.jpg",
+        "lines": [
+          "Artist Gamma",
+          "Album Title C",
+          "Side A",
+          "1. Track A1 (4:20)",
+          "2. Track A2 (3:15)",
+          "Produced by Name One"
+        ]
+      },
+      {
+        "path": "/B-Side.jpg",
+        "lines": [
+          "Artist Gamma",
+          "Album Title C",
+          "Side B",
+          "1. Track B1 (5:42)",
+          "2. Track B2 (4:01)",
+          "Engineered by Name Two"
+        ]
+      },
+      {
+        "path": "/Inner.jpg",
+        "lines": [
+          "Artist Gamma",
+          "Album Title C"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "catalogs": [],
+    "free_text_contains": [
+      "Artist Gamma",
+      "Album Title C"
+    ],
+    "free_text_not_contains": [
+      "Side A",
+      "Side B",
+      "1. Track A1 (4:20)",
+      "Produced by Name One"
+    ]
+  }
+}

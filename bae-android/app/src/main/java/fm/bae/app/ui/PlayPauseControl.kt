@@ -1,0 +1,49 @@
+package fm.bae.app.ui
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+
+/**
+ * Play/pause toggle, replaced by a spinner while core is preparing or buffering
+ * the track (initial load, or a seek to a position not yet downloaded). Shared
+ * by the compact [NowPlayingBar] and the full-screen [ExpandedNowPlayingScreen],
+ * which differ only in icon/spinner size. The spinner sits in a 48dp box (the
+ * IconButton footprint) so swapping it in doesn't reflow the transport row.
+ */
+@Composable
+fun PlayPauseControl(
+    isPlaying: Boolean,
+    isLoading: Boolean,
+    iconSize: Dp,
+    spinnerSize: Dp,
+    spinnerStroke: Dp,
+    onToggle: () -> Unit,
+) {
+    if (isLoading) {
+        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(spinnerSize),
+                strokeWidth = spinnerStroke,
+            )
+        }
+    } else {
+        IconButton(onClick = onToggle) {
+            Icon(
+                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (isPlaying) "Pause" else "Play",
+                modifier = Modifier.size(iconSize),
+            )
+        }
+    }
+}

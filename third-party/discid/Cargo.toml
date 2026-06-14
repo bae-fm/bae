@@ -1,0 +1,29 @@
+# Vendored copy of discid 0.5.0, patched for the MSVC target (see src/lib.rs:
+# its Features bitflags assume libdiscid's C enum is unsigned, which holds for
+# clang but not MSVC). Wired in via [patch.crates-io] in the workspace root. The
+# only changes from upstream are the signedness casts; everything else is the
+# published 0.5.0 source. discid-sys resolves to the sibling vendored copy via
+# the same [patch] table.
+
+[package]
+edition = "2018"
+name = "discid"
+version = "0.5.0"
+authors = ["Philipp Wolfer <ph.wolfer@gmail.com>"]
+description = "Bindings for MusicBrainz libdiscid"
+keywords = [
+    "musicbrainz",
+    "discid",
+    "audio",
+    "bindings",
+    "ffi",
+]
+categories = ["api-bindings"]
+license = "LGPL-3.0-or-later"
+repository = "https://git.sr.ht/~phw/rust-discid"
+
+[dependencies.bitflags]
+version = "1.3"
+
+[dependencies.discid-sys]
+version = "0.5"

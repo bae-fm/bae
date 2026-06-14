@@ -1,0 +1,294 @@
+name: Release macOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Commit SHA to release (leave blank for HEAD)'
+        required: false
+        default: ''
+
+concurrency:
+  group: release-macos
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  calculate-version:
+    name: Calculate Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.calc.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        ref: ${{ inputs.commit || github.sha }}
+
+    - name: Calculate next version from tags and date
+      id: calc
+      run: |
+        YEAR=$(date +%Y)
+        MONTH=$(date +%-m)
+
+        # Get latest tag for this year.month
+        LATEST=$(git tag -l "v${YEAR}.${MONTH}.*" | sort -V | tail -1)
+
+        if [[ -z "$LATEST" ]]; then
+          # First release this month
+          VERSION="${YEAR}.${MONTH}.0"
+        else
+          # Increment patch from latest tag
+          PATCH=$(echo "$LATEST" | sed "s/v${YEAR}\.${MONTH}\.\([0-9]*\)/\1/")
+          VERSION="${YEAR}.${MONTH}.$((PATCH + 1))"
+        fi
+
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "::notice::Next version will be $VERSION"
+
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ inputs.commit || github.sha }}
+
+  release:
+    name: Build and Release macOS
+    runs-on: macos-26
+    needs: [calculate-version, ci]
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.commit || github.sha }}
+
+    - name: Setup macOS environment
+      uses: ./.github/actions/setup-macos
+
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
+    - name: Install xcodegen
+      run: brew install xcodegen
+
+    - name: Set release version
+      run: |
+        VERSION="${{ needs.calculate-version.outputs.version }}"
+        echo "BAE_VERSION=$VERSION" >> $GITHUB_ENV
+        sed -i '' "s/MARKETING_VERSION: .*/MARKETING_VERSION: \"$VERSION\"/" bae-macos/bae/project.yml
+        MACOS_MIN=$(grep 'macOS:' bae-macos/bae/project.yml | head -1 | sed 's/.*"\(.*\)"/\1/')
+        echo "MACOS_MIN=$MACOS_MIN" >> $GITHUB_ENV
+        echo "Building version $VERSION (macOS $MACOS_MIN+)"
+
+    - name: Build Rust bridge
+      run: |
+        ./bae-bridge/build-macos.sh --release
+        cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+
+    - name: Generate Xcode project
+      working-directory: ./bae-macos/bae
+      run: xcodegen
+
+    - name: Set version in Info.plist
+      run: |
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $BAE_VERSION" bae-macos/bae/bae/Info.plist
+        /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BAE_VERSION" bae-macos/bae/bae/Info.plist
+        /usr/libexec/PlistBuddy -c "Add :BAEGitCommit string $SHORT_SHA" bae-macos/bae/bae/Info.plist
+
+    - name: Build app
+      run: |
+        xcodebuild -project bae-macos/bae/bae.xcodeproj \
+          -scheme bae \
+          -configuration Release \
+          -derivedDataPath build \
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+          LIBRARY_SEARCH_PATHS="/opt/homebrew/lib /opt/bae-ffmpeg/lib ${FFMPEG_DIR}/lib" \
+          build
+        echo "APP_PATH=build/Build/Products/Release/bae.app" >> $GITHUB_ENV
+
+    - name: Bundle dylibs into app
+      run: ./bae-macos/scripts/bundle_dylibs.sh "$APP_PATH"
+
+    - name: Embed provisioning profile
+      env:
+        PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
+      run: |
+        echo "$PROVISIONING_PROFILE" | base64 --decode > "$APP_PATH/Contents/embedded.provisionprofile"
+
+    - name: Import Apple certificate
+      env:
+        APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      run: |
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+        KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+        security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+        echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
+        security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+        security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+    - name: Sign app bundle
+      env:
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+        echo "Using signing identity: $IDENTITY"
+
+        # Sign Sparkle.framework nested components
+        SPARKLE_PATH="$APP_PATH/Contents/Frameworks/Sparkle.framework"
+        if [[ -d "$SPARKLE_PATH" ]]; then
+          for xpc in "$SPARKLE_PATH/Versions/B/XPCServices"/*.xpc; do
+            if [[ -d "$xpc" ]]; then
+              echo "Signing $xpc"
+              codesign --force --sign "$IDENTITY" --options runtime "$xpc"
+            fi
+          done
+          [[ -f "$SPARKLE_PATH/Versions/B/Autoupdate" ]] && \
+            codesign --force --sign "$IDENTITY" --options runtime "$SPARKLE_PATH/Versions/B/Autoupdate"
+          [[ -d "$SPARKLE_PATH/Versions/B/Updater.app" ]] && \
+            codesign --force --sign "$IDENTITY" --options runtime "$SPARKLE_PATH/Versions/B/Updater.app"
+          codesign --force --sign "$IDENTITY" --options runtime "$SPARKLE_PATH"
+        fi
+
+        # Sign all dylibs
+        find "$APP_PATH/Contents/Frameworks" -name "*.dylib" -exec \
+          codesign --force --sign "$IDENTITY" --options runtime {} \;
+
+        # Expand $(AppIdentifierPrefix) in entitlements
+        ENTITLEMENTS=$(mktemp)
+        sed "s/\$(AppIdentifierPrefix)/${APPLE_TEAM_ID}./" bae-macos/bae/bae/bae.entitlements > "$ENTITLEMENTS"
+
+        # Sign main app
+        codesign --force --sign "$IDENTITY" --options runtime --entitlements "$ENTITLEMENTS" "$APP_PATH"
+        codesign --verify --verbose "$APP_PATH"
+
+    - name: Create signed DMG
+      env:
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        DMG_PATH="target/bae-macos.dmg"
+        IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+
+        mkdir -p target
+
+        # Create temporary directory for DMG contents
+        DMG_TEMP=$(mktemp -d)
+        trap "rm -rf $DMG_TEMP" EXIT
+
+        # Copy app bundle to temp directory
+        cp -R "$APP_PATH" "$DMG_TEMP/bae.app"
+
+        # Create Applications folder symlink
+        ln -s /Applications "$DMG_TEMP/Applications"
+
+        # Create DMG from temp directory
+        hdiutil create -volname "bae" -srcfolder "$DMG_TEMP" -ov -format UDZO "$DMG_PATH"
+        codesign --force --sign "$IDENTITY" "$DMG_PATH"
+
+    - name: Notarize DMG
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        DMG_PATH="target/bae-macos.dmg"
+
+        xcrun notarytool submit "$DMG_PATH" \
+          --apple-id "$APPLE_ID" \
+          --password "$APPLE_APP_PASSWORD" \
+          --team-id "$APPLE_TEAM_ID" \
+          --wait
+
+        xcrun stapler staple "$DMG_PATH"
+
+    - name: Download Sparkle for signing
+      run: |
+        SPARKLE_VERSION="2.9.0"
+        curl -L -o /tmp/sparkle.tar.xz "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+        mkdir -p /tmp/sparkle
+        tar -xf /tmp/sparkle.tar.xz -C /tmp/sparkle
+
+    - name: Sign DMG with Sparkle EdDSA key
+      env:
+        SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+      run: |
+        DMG_PATH="target/bae-macos.dmg"
+
+        # Sign the DMG and capture only the signature (-p flag)
+        SIGNATURE=$(echo "$SPARKLE_PRIVATE_KEY" | /tmp/sparkle/bin/sign_update "$DMG_PATH" -f - -p)
+        echo "SPARKLE_SIGNATURE=$SIGNATURE" >> $GITHUB_ENV
+
+        # Get file size for appcast
+        DMG_SIZE=$(stat -f%z "$DMG_PATH")
+        echo "DMG_SIZE=$DMG_SIZE" >> $GITHUB_ENV
+
+    - name: Generate appcast.xml
+      run: |
+        VERSION="${{ needs.calculate-version.outputs.version }}"
+        DMG_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/bae-macos.dmg"
+
+        cat > target/appcast.xml << EOF
+        <?xml version="1.0" encoding="utf-8"?>
+        <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+          <channel>
+            <title>bae Updates</title>
+            <link>https://github.com/${{ github.repository }}/releases</link>
+            <description>Most recent updates to bae</description>
+            <language>en</language>
+            <item>
+              <title>Version ${VERSION}</title>
+              <pubDate>$(date -R)</pubDate>
+              <sparkle:version>${VERSION}</sparkle:version>
+              <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+              <sparkle:minimumSystemVersion>${MACOS_MIN}</sparkle:minimumSystemVersion>
+              <enclosure
+                url="${DMG_URL}"
+                length="${DMG_SIZE}"
+                type="application/octet-stream"
+                sparkle:edSignature="${SPARKLE_SIGNATURE}"
+              />
+            </item>
+          </channel>
+        </rss>
+        EOF
+
+    - name: Create git tag
+      run: |
+        VERSION="${{ needs.calculate-version.outputs.version }}"
+        # Only create tag if it doesn't already exist (desktop release may have created it)
+        if ! git rev-parse "v$VERSION" >/dev/null 2>&1; then
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+        fi
+
+    - name: Upload signed DMG
+      uses: actions/upload-artifact@v4
+      with:
+        name: bae-macOS-native-signed
+        path: target/bae-macos.dmg
+        retention-days: 30
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ needs.calculate-version.outputs.version }}
+        files: |
+          target/bae-macos.dmg
+          target/appcast.xml
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,28 @@
+name: 'Setup Rust Build Environment'
+description: 'Install Rust toolchain, sccache, and common tools'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Rust (uses rust-toolchain.toml)
+      shell: bash
+      run: |
+        rustup show
+
+    - name: Add cargo bin to PATH
+      shell: bash
+      run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Setup sccache
+      uses: mozilla-actions/sccache-action@v0.0.9
+
+    - name: Enable sccache for Rust builds
+      shell: bash
+      run: |
+        echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+        echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+
+    - name: Install cargo-binstall
+      shell: bash
+      run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+

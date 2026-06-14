@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Unpackaged WinUI 3 (C#/.NET) desktop app, x64. Binds bae-core through the
+    hand-written C ABI in bae-windows-ffi (bae_windows_ffi.dll), the way macOS and
+    Android bind it through uniffi. This project is C#, not a cargo crate, so it is
+    deliberately outside the Rust workspace.
+
+    Unpackaged distribution: WindowsPackageType=None makes the Windows App SDK
+    bootstrapper auto-initializer run before the entry point, locating and loading
+    the framework-dependent Windows App Runtime. No MSIX, no package identity.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Bae.Windows</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- WinUI 3 in the Windows App SDK. -->
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- Unpackaged: no MSIX, runtime loaded by the bootstrapper auto-initializer. -->
+    <WindowsPackageType>None</WindowsPackageType>
+
+    <!--
+      x64 only. Platforms drives the MSBuild configuration; RuntimeIdentifiers uses
+      the portable RID form (win-x64, not win10-x64) required by .NET 8 to avoid
+      NETSDK1083 "version-specific runtime identifier" errors.
+    -->
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260508005" />
+  </ItemGroup>
+
+  <!--
+    OAuth client credentials, supplied per build and gitignored. Copied next to the
+    executable when present so OAuthCreds.Register() can load it; absent on CI, where
+    cloud sign-in stays unavailable.
+  -->
+  <ItemGroup Condition="Exists('oauth-creds.json')">
+    <None Include="oauth-creds.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

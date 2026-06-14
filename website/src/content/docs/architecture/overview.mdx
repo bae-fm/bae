@@ -1,0 +1,22 @@
+---
+title: Overview
+description: How bae is put together
+---
+
+bae is a music library manager that uses decentralized identity and end-to-end encryption over pluggable storage for serverless, multi-device sync.
+
+## Identity
+
+Each device has a locally generated keypair (Ed25519/X25519). Public keys are identities. There is no central identity server.
+
+## Encryption
+
+One symmetric key per library, shared across the library's devices. Everything in the cloud home is encrypted before it leaves the device. The storage provider sees opaque blobs. See [Encryption](/architecture/encryption).
+
+## Storage
+
+Pluggable. Any commercial cloud provider (Google Drive, Dropbox, OneDrive, iCloud Drive), any S3-compatible bucket (AWS, B2, R2, Wasabi, MinIO), or local-only with no cloud at all. A single `CloudHome` trait abstracts the differences. See [Cloud Home](/architecture/cloud-home).
+
+## Sync
+
+Devices sync through the cloud home via encrypted changesets. Each edit produces a compact binary diff; other devices pull and apply it. Conflicts are resolved automatically using last-writer-wins with hybrid logical clocks. A library syncs across multiple devices through a membership chain and signed changesets. See [Sync](/storage/sync).

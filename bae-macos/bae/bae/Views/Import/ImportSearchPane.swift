@@ -1,0 +1,1250 @@
+import AppKit
+import SwiftUI
+
+// MARK: - MetadataResultListView
+
+struct MetadataResultListView: View {
+    let results: [MetadataResult]
+    let isImporting: Bool
+    let libraryStatuses: [String: LibraryStatus]
+    /// Per-result provenance keyed by release id, for the signal badges.
+    /// Empty for manual-search results (no auto-identify signals).
+    var provenance: [String: ResultProvenance] = [:]
+    let onCommit: (MetadataResult, IdentityChoice) -> Void
+
+    var body: some View {
+        List(results, id: \.releaseId) { result in
+            ImportSearchResultRow(
+                result: result,
+                isImporting: isImporting,
+                libraryStatus: libraryStatuses[result.releaseId],
+                provenance: provenance[result.releaseId],
+                onCommit: { choice in onCommit(result, choice) },
+            )
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
+    }
+}
+
+// MARK: - ImportSearchFormView
+
+struct ImportSearchFormView: View {
+    @Binding
+    var activeTab: SearchTab
+    @Binding
+    var activeSource: MetadataSource
+    @Binding
+    var searchArtist: String
+    @Binding
+    var searchAlbum: String
+    @Binding
+    var searchCatalog: String
+    @Binding
+    var searchBarcode: String
+    let discogsEnabled: Bool
+    let signals: Signals?
+    let onSearch: () -> Void
+    let onOpenSettings: () -> Void
+
+    @State
+    private var showDiscogsKeyInfo: Bool = false
+    @State
+    private var discogsKeyHoverTask: DispatchWorkItem?
+
+    private var isSearchDisabled: Bool {
+        switch activeTab {
+        case .general:
+            searchArtist.isEmpty && searchAlbum.isEmpty
+        case .catalogNumber:
+            searchCatalog.isEmpty
+        case .barcode:
+            searchBarcode.isEmpty
+        }
+    }
+
+    /// Shared suggestion pool for Artist and Album. OCR often runs adjacent
+    /// lines of cover text together, so an artist name on the spine may just
+    /// as well match the Album field.
+    private var generalSuggestions: [String] {
+        signals?.text.freeText ?? []
+    }
+
+    private var catalogSuggestions: [String] {
+        signals?.text.catalogValues ?? []
+    }
+
+    /// True while core is still producing suggestions. Drives the small
+    /// spinner inside each autocomplete dropdown so users know the list is
+    /// still filling in — cheap visual signal that the pool is in motion.
+    private var isScanning: Bool {
+        signals?.text.isScanning ?? false
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                sourcePicker
+                Picker("", selection: $activeTab) {
+                    Text("General").tag(SearchTab.general)
+                    Text("Catalog #").tag(SearchTab.catalogNumber)
+                    Text("Barcode").tag(SearchTab.barcode)
+                }
+                .pickerStyle(.segmented)
+                .controlSize(.small)
+            }
+
+            switch activeTab {
+            case .general:
+                HStack {
+                    AutocompleteTextField(
+                        text: $searchArtist,
+                        placeholder: "Artist",
+                        suggestions: generalSuggestions,
+                        isLoading: isScanning,
+                        onSubmit: { onSearch() },
+                    )
+                    AutocompleteTextField(
+                        text: $searchAlbum,
+                        placeholder: "Album",
+                        suggestions: generalSuggestions,
+                        isLoading: isScanning,
+                        onSubmit: { onSearch() },
+                    )
+                    Button("Search") { onSearch() }
+                        .disabled(isSearchDisabled)
+                }
+            case .catalogNumber:
+                HStack {
+                    AutocompleteTextField(
+                        text: $searchCatalog,
+                        placeholder: "e.g. WPCR-80001",
+                        suggestions: catalogSuggestions,
+                        isLoading: isScanning,
+                        onSubmit: { onSearch() },
+                    )
+                    Button("Search") { onSearch() }
+                        .disabled(isSearchDisabled)
+                }
+            case .barcode:
+                HStack {
+                    TextField("e.g. 4943674251780", text: $searchBarcode)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Search") { onSearch() }
+                        .disabled(isSearchDisabled)
+                }
+                .onSubmit { onSearch() }
+            }
+        }
+        .padding()
+        .animation(nil, value: activeTab)
+    }
+
+    private var sourcePicker: some View {
+        SourceSegmentedControl(
+            selection: $activeSource,
+            discogsEnabled: discogsEnabled,
+            showDiscogsInfo: $showDiscogsKeyInfo,
+            hoverTask: $discogsKeyHoverTask,
+        )
+        .frame(width: 200)
+        .overlay(alignment: .bottomTrailing) {
+            Color.clear
+                .frame(width: 100, height: 1)
+                .popover(isPresented: $showDiscogsKeyInfo, arrowEdge: .bottom) {
+                    DiscogsKeyPopover(
+                        isPresented: $showDiscogsKeyInfo,
+                        hoverTask: $discogsKeyHoverTask,
+                        onOpenSettings: { onOpenSettings() },
+                    )
+                }
+                .allowsHitTesting(false)
+        }
+    }
+}
+
+// MARK: - ImportSearchPane
+
+struct ImportSearchPane: View {
+    /// Current identify-pipeline state from core.
+    let identifyState: IdentifyState
+    let showManualSearch: Bool
+    let error: String?
+    let searchResults: [MetadataResult]
+    let isSearching: Bool
+    let hasSearched: Bool
+    let isImporting: Bool
+    let libraryStatuses: [String: LibraryStatus]
+    @Binding
+    var activeTab: SearchTab
+    @Binding
+    var activeSource: MetadataSource
+    @Binding
+    var searchArtist: String
+    @Binding
+    var searchAlbum: String
+    @Binding
+    var searchCatalog: String
+    @Binding
+    var searchBarcode: String
+    let discogsEnabled: Bool
+    let signals: Signals?
+    /// The interactive signals toolbar — the pre-shaped badge list. Empty
+    /// until the first identify transition; the toolbar is hidden until then.
+    let signalsToolbar: SignalsToolbar
+    let onSearch: () -> Void
+    let onOpenSettings: () -> Void
+    let onSearchManually: () -> Void
+    let onViewMatches: () -> Void
+    /// Set when the candidate can seed from local files (folder imports always
+    /// can). `nil` suppresses the "Add as Unknown" link.
+    let onAddAsUnknown: (() -> Void)?
+    /// Toggle a signal in the toolbar — include / exclude it from
+    /// triangulation. Drops the signal from the in-memory combine step (no
+    /// re-fetch) and re-derives the state; the resulting event flows back
+    /// through the same channel. The conflict surface's per-signal "Ignore"
+    /// links route through here too.
+    let onToggleSignal: (ExcludedSignal) -> Void
+    /// Re-run the lookups from the toolbar's `Re-run` action.
+    let onRerun: () -> Void
+    let onCommit: (MetadataResult, IdentityChoice) -> Void
+
+    /// Auto-identified matches, library statuses, and per-row provenance,
+    /// extracted from the identify state.
+    private var autoIdentifyResult:
+        (
+            matches: [MetadataResult], statuses: [String: LibraryStatus],
+            provenance: [ResultProvenance]
+        )?
+    {
+        guard
+            case .found(let matches, let statuses, _, _, _, let provenance) =
+                identifyState
+        else {
+            return nil
+        }
+        return (matches, statuses, provenance)
+    }
+
+    /// Per-row provenance keyed by release id, for the auto-match badges.
+    private var autoMatchProvenance: [String: ResultProvenance] {
+        guard let result = autoIdentifyResult else {
+            return [:]
+        }
+        return Dictionary(
+            zip(result.matches.map(\.releaseId), result.provenance),
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
+
+    /// Whether the pipeline is mid-triangulation — drives the body's
+    /// "Identifying…" placeholder (the per-signal progress lives in the
+    /// toolbar's spinning badges now).
+    private var isTriangulating: Bool {
+        if case .triangulating = identifyState {
+            return true
+        }
+        return false
+    }
+
+    /// The signals toolbar, shown across every state once core has emitted a
+    /// transition. Hidden until then (empty badge list) and in idle.
+    @ViewBuilder
+    private var toolbar: some View {
+        if !signalsToolbar.signals.isEmpty {
+            SignalsToolbarView(
+                toolbar: signalsToolbar,
+                onToggle: onToggleSignal,
+                onRerun: onRerun,
+                onSearchManually: onSearchManually,
+                onAddAsUnknown: showManualSearch ? nil : onAddAsUnknown,
+            )
+        }
+    }
+
+    var body: some View {
+        // Conflict replaces the standard banner + results layout entirely:
+        // it stacks per-signal sections so the user can pick a row or
+        // toggle a signal. `showManualSearch` skips it — the user
+        // explicitly asked for the manual form. `notFoundAnywhere` keeps
+        // the flat banner for the truly-empty case.
+        if case .conflict(
+            let discidResults,
+            let discidLibraryStatuses,
+            let barcodeResults,
+            let barcodeLibraryStatuses,
+            let discidSourceLabel,
+            let matchedBarcode,
+            _
+        ) = identifyState, !showManualSearch {
+            conflictView(
+                discidResults: discidResults,
+                discidLibraryStatuses: discidLibraryStatuses,
+                barcodeResults: barcodeResults,
+                barcodeLibraryStatuses: barcodeLibraryStatuses,
+                discidSourceLabel: discidSourceLabel,
+                matchedBarcode: matchedBarcode,
+            )
+        }
+        else {
+            normalBody
+        }
+    }
+
+    @ViewBuilder
+    private var normalBody: some View {
+        let autoMatches = autoIdentifyResult?.matches ?? []
+        let hasAutoMatches = !autoMatches.isEmpty
+        let showingAutoMatches = hasAutoMatches && !showManualSearch
+
+        VStack(spacing: 0) {
+            toolbar
+
+            identifyBanner
+
+            if let error {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                    Text(error)
+                }
+                .font(.caption)
+                .foregroundStyle(.red)
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+            }
+
+            if showingAutoMatches {
+                MetadataResultListView(
+                    results: autoMatches,
+                    isImporting: isImporting,
+                    libraryStatuses: autoIdentifyResult?.statuses ?? [:],
+                    provenance: autoMatchProvenance,
+                    onCommit: onCommit,
+                )
+            }
+            else if isTriangulating, !showManualSearch {
+                // The toolbar's spinning badges carry the per-signal progress;
+                // the body just notes the pipeline is still working.
+                ContentUnavailableView(
+                    "Identifying\u{2026}",
+                    systemImage: "antenna.radiowaves.left.and.right",
+                    description: Text("Looking up the signals above."),
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            else {
+                ImportSearchFormView(
+                    activeTab: $activeTab,
+                    activeSource: $activeSource,
+                    searchArtist: $searchArtist,
+                    searchAlbum: $searchAlbum,
+                    searchCatalog: $searchCatalog,
+                    searchBarcode: $searchBarcode,
+                    discogsEnabled: discogsEnabled,
+                    signals: signals,
+                    onSearch: onSearch,
+                    onOpenSettings: onOpenSettings,
+                )
+                Divider()
+
+                if isSearching {
+                    ProgressView("Searching...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                else if !hasSearched {
+                    ContentUnavailableView(
+                        "No results",
+                        systemImage: "magnifyingglass",
+                        description: Text(
+                            "Search MusicBrainz or Discogs to find metadata"
+                        ),
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                else if searchResults.isEmpty {
+                    ContentUnavailableView(
+                        "No matches found",
+                        systemImage: "magnifyingglass",
+                        description: Text(
+                            "Try different search terms or another source"
+                        ),
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                else {
+                    MetadataResultListView(
+                        results: searchResults,
+                        isImporting: isImporting,
+                        libraryStatuses: libraryStatuses,
+                        onCommit: onCommit,
+                    )
+                }
+            }
+        }
+        .padding(.top, 6)
+    }
+
+    @ViewBuilder
+    private var identifyBanner: some View {
+        let autoMatches = autoIdentifyResult?.matches ?? []
+        let hasAutoMatches = !autoMatches.isEmpty
+        let showingAutoMatches = hasAutoMatches && !showManualSearch
+
+        // The toolbar above owns the global escapes (Search manually / Skip
+        // identifying / Re-run), so the banner carries only the status copy
+        // and banner-specific navigation (the source link, "View automatic
+        // matches"). Error has no toolbar, so it keeps its own escape.
+        switch identifyState {
+        case .triangulating:
+            // The toolbar's spinning badges and the body placeholder cover
+            // triangulation; the banner stays out of the way.
+            EmptyView()
+        case .found(let matches, _, _, let group, _, _):
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                foundBannerText(matchCount: matches.count, group: group)
+                    .font(.callout)
+                if let url = group.url {
+                    Button {
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Open release group on \(group.sourceLabel)")
+                }
+                discIdInfoIcon
+                Spacer()
+                if !showingAutoMatches {
+                    Button("View automatic matches (\(matches.count))") {
+                        onViewMatches()
+                    }
+                    .buttonStyle(.link)
+                    .font(.callout)
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
+            }
+        case .notFoundAnywhere:
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(.orange)
+                Text("No automatic matches found")
+                    .font(.callout)
+                discIdInfoIcon
+                Spacer()
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
+            }
+        case .manualOnly:
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass.circle.fill")
+                    .foregroundStyle(.secondary)
+                Text("No identifying signals yet — search manually")
+                    .font(.callout)
+                discIdInfoIcon
+                Spacer()
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
+            }
+        case .conflict:
+            // The full per-signal surface renders from `body` when not in
+            // manual-search mode. This banner is the manual-search-mode
+            // status line; the toolbar carries the escapes.
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.octagon.fill")
+                    .foregroundStyle(Theme.accent)
+                Text("Signals disagree on identity")
+                    .font(.callout)
+                discIdInfoIcon
+                Spacer()
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
+            }
+        case .idle:
+            EmptyView()
+        }
+    }
+
+    /// Conflict surface. Renders when both signals returned releases but
+    /// they don't agree on a single group (or the intersection was empty).
+    /// One section per signal that produced results, stacked vertically;
+    /// the user can pick a row directly or exclude a signal (via its section
+    /// "Ignore" link or the toolbar toggle) to re-derive without it.
+    @ViewBuilder
+    private func conflictView(
+        discidResults: [MetadataResult],
+        discidLibraryStatuses: [String: LibraryStatus],
+        barcodeResults: [MetadataResult],
+        barcodeLibraryStatuses: [String: LibraryStatus],
+        discidSourceLabel: String?,
+        matchedBarcode: String?,
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            toolbar
+
+            conflictBannerLarge
+
+            if let error {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                    Text(error)
+                }
+                .font(.caption)
+                .foregroundStyle(.red)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 6)
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    // `discidSourceLabel` is non-nil exactly when the
+                    // disc-id side has results (core sets them together),
+                    // so the combined guard never hides a populated section.
+                    if !discidResults.isEmpty, let discidSourceLabel {
+                        conflictSection(
+                            signal: .disc,
+                            title: "DiscID",
+                            subtitle: discidSectionSubtitle(
+                                count: discidResults.count,
+                                sourceLabel: discidSourceLabel
+                            ),
+                            results: discidResults,
+                            libraryStatuses: discidLibraryStatuses,
+                        )
+                    }
+                    if !barcodeResults.isEmpty {
+                        conflictSection(
+                            signal: .barcode,
+                            title: "Barcode",
+                            subtitle: barcodeSectionSubtitle(
+                                count: barcodeResults.count,
+                                matchedBarcode: matchedBarcode
+                            ),
+                            results: barcodeResults,
+                            libraryStatuses: barcodeLibraryStatuses,
+                        )
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 16)
+            }
+        }
+    }
+
+    /// "Signals disagree on identity" banner — warm-amber tint, two-line
+    /// copy that names the choice the user has to make. Replaces the
+    /// thin caption-style banner the conflict view used to lead with.
+    private var conflictBannerLarge: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "exclamationmark.octagon.fill")
+                .font(.callout)
+                .foregroundStyle(Theme.accent)
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Signals disagree on identity")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Text(
+                    "Pick the release you have, or dismiss the signal you trust less."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            discIdInfoIcon
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(Theme.accent.opacity(0.12))
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
+        }
+    }
+
+    /// One per-signal section in the conflict surface: uppercase tracked
+    /// title + subtitle on a divider line, an "Ignore" link aligned
+    /// right, and pressing-shaped rows below.
+    @ViewBuilder
+    private func conflictSection(
+        signal: ExcludedSignal,
+        title: String,
+        subtitle: AttributedString,
+        results: [MetadataResult],
+        libraryStatuses: [String: LibraryStatus],
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(title)
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .textCase(.uppercase)
+                    .tracking(1.4)
+                    .foregroundStyle(.secondary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Spacer()
+                Button(ignoreButtonLabel(signal: signal)) {
+                    onToggleSignal(signal)
+                }
+                .buttonStyle(.link)
+                .font(.caption)
+                .disabled(isImporting)
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
+            }
+            VStack(spacing: 0) {
+                ForEach(results, id: \.releaseId) { result in
+                    ImportSearchResultRow(
+                        result: result,
+                        kind: .pressing,
+                        isImporting: isImporting,
+                        libraryStatus: libraryStatuses[result.releaseId],
+                        onCommit: { choice in onCommit(result, choice) },
+                    )
+                    Rectangle().fill(.white.opacity(0.05)).frame(height: 1)
+                }
+            }
+        }
+    }
+
+    /// Disc-ID section subtitle. The source the disc-id lookup consulted
+    /// is supplied by core (`discidSourceLabel`) rather than hardcoded,
+    /// so the UI doesn't bake in which database disc-id uses.
+    private func discidSectionSubtitle(count: Int, sourceLabel: String)
+        -> AttributedString
+    {
+        let releaseWord = count == 1 ? "release" : "releases"
+        return AttributedString(
+            "matched \(count) \(releaseWord) on \(sourceLabel)"
+        )
+    }
+
+    /// Barcode section subtitle — surface the matched value (monospaced
+    /// inline) so the user can correlate against the artwork that
+    /// produced it. Falls back to a value-less label when the matched
+    /// barcode wasn't preserved.
+    private func barcodeSectionSubtitle(
+        count: Int,
+        matchedBarcode: String?
+    ) -> AttributedString {
+        let releaseWord = count == 1 ? "release" : "releases"
+        var subtitle = AttributedString("matched \(count) \(releaseWord)")
+        if let barcode = matchedBarcode, !barcode.isEmpty {
+            subtitle += AttributedString(" · ")
+            var mono = AttributedString(barcode)
+            mono.font = .system(.caption, design: .monospaced)
+            subtitle += mono
+        }
+        return subtitle
+    }
+
+    private func ignoreButtonLabel(signal: ExcludedSignal) -> String {
+        switch signal {
+        case .disc: "Ignore DiscID"
+        case .barcode: "Ignore Barcode"
+        case .catalog: "Ignore Catalog"
+        }
+    }
+
+    /// Banner copy for `Found`. A single match is just "matched one
+    /// release"; multiple matches all share a group by construction
+    /// (combine returns Found only when results agree on a group), so
+    /// the banner can call that out directly. The match count and
+    /// source name carry weight against the surrounding secondary text.
+    private func foundBannerText(matchCount: Int, group: GroupKey) -> Text {
+        let secondary = Color.secondary
+        switch matchCount {
+        case 1:
+            return Text("Automatically matched one release on ")
+                .foregroundStyle(secondary)
+                + Text(group.sourceLabel).fontWeight(.semibold)
+        default:
+            return Text("Matched ")
+                .foregroundStyle(secondary)
+                + Text("\(matchCount)").fontWeight(.semibold)
+                .monospacedDigit()
+                + Text(" pressings of one ")
+                .foregroundStyle(secondary)
+                + Text(group.sourceLabel).fontWeight(.semibold)
+                + Text(" release group")
+                .foregroundStyle(secondary)
+        }
+    }
+
+    private var discIdInfoIcon: some View {
+        InfoTip(
+            text: "Uses track layout to find perfect matches on MusicBrainz.",
+            learnMoreURL: URL(
+                string: "https://bae.fm/importing/local-files#identify"
+            ),
+            width: 260,
+        )
+    }
+}
+
+// MARK: - ImportSearchResultRow
+
+// MARK: - Source Segmented Control
+
+/// NSSegmentedControl wrapper that supports disabling individual segments.
+struct SourceSegmentedControl: NSViewRepresentable {
+    @Binding
+    var selection: MetadataSource
+    let discogsEnabled: Bool
+    @Binding
+    var showDiscogsInfo: Bool
+    @Binding
+    var hoverTask: DispatchWorkItem?
+
+    func makeNSView(context: Context) -> TrackingSegmentedControl {
+        let control = TrackingSegmentedControl(
+            labels: ["MusicBrainz", "Discogs"],
+            trackingMode: .selectOne,
+            target: context.coordinator,
+            action: #selector(Coordinator.segmentChanged(_:))
+        )
+        control.segmentStyle = .rounded
+        control.selectedSegment = selection == .musicBrainz ? 0 : 1
+        control.setEnabled(discogsEnabled, forSegment: 1)
+        control.setWidth(100, forSegment: 0)
+        control.setWidth(100, forSegment: 1)
+        control.coordinator = context.coordinator
+        return control
+    }
+
+    func updateNSView(_ control: TrackingSegmentedControl, context: Context) {
+        control.selectedSegment = selection == .musicBrainz ? 0 : 1
+        control.setEnabled(discogsEnabled, forSegment: 1)
+        context.coordinator.parent = self
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    class TrackingSegmentedControl: NSSegmentedControl {
+        weak var coordinator: Coordinator?
+
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            for area in trackingAreas {
+                removeTrackingArea(area)
+            }
+            addTrackingArea(
+                NSTrackingArea(
+                    rect: bounds,
+                    options: [
+                        .mouseEnteredAndExited, .mouseMoved, .activeInActiveApp,
+                    ],
+                    owner: self,
+                    userInfo: nil,
+                )
+            )
+        }
+
+        override func mouseEntered(with event: NSEvent) {
+            coordinator?.handleMouse(event, entered: true)
+        }
+
+        override func mouseMoved(with event: NSEvent) {
+            coordinator?.handleMouseMoved(event, in: self)
+        }
+
+        override func mouseExited(with event: NSEvent) {
+            coordinator?.handleMouse(event, entered: false)
+        }
+    }
+
+    @MainActor
+    class Coordinator: NSObject {
+        var parent: SourceSegmentedControl
+        private var isOverDiscogs = false
+
+        init(parent: SourceSegmentedControl) {
+            self.parent = parent
+        }
+
+        @objc
+        func segmentChanged(_ sender: NSSegmentedControl) {
+            parent.selection =
+                sender.selectedSegment == 0 ? .musicBrainz : .discogs
+        }
+
+        func handleMouse(_: NSEvent, entered: Bool) {
+            guard !parent.discogsEnabled else {
+                return
+            }
+            if !entered, isOverDiscogs {
+                isOverDiscogs = false
+                showPopoverDelayed(false)
+            }
+        }
+
+        func handleMouseMoved(_ event: NSEvent, in control: NSSegmentedControl)
+        {
+            guard !parent.discogsEnabled else {
+                return
+            }
+            let location = control.convert(event.locationInWindow, from: nil)
+            let midX = control.bounds.width / 2
+            let overDiscogs = location.x > midX
+
+            if overDiscogs, !isOverDiscogs {
+                isOverDiscogs = true
+                showPopoverDelayed(true)
+            }
+            else if !overDiscogs, isOverDiscogs {
+                isOverDiscogs = false
+                showPopoverDelayed(false)
+            }
+        }
+
+        private func showPopoverDelayed(_ show: Bool) {
+            parent.hoverTask?.cancel()
+            let task = DispatchWorkItem { [weak self] in
+                self?.parent.showDiscogsInfo = show
+            }
+            parent.hoverTask = task
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: task)
+        }
+    }
+}
+
+/// Popover content shown when hovering over a disabled Discogs segment.
+struct DiscogsKeyPopover: View {
+    @Binding
+    var isPresented: Bool
+    @Binding
+    var hoverTask: DispatchWorkItem?
+    let onOpenSettings: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(
+                "[Discogs](https://www.discogs.com) is a music database with detailed release info — labels, catalog numbers, pressing variants, and more."
+            )
+            .font(.callout)
+            Text(
+                "To search Discogs, [get your free API key](https://www.discogs.com/settings/developers) and add it in settings."
+            )
+            .font(.callout)
+            Button("Open Settings") {
+                isPresented = false
+                onOpenSettings()
+            }
+            .font(.callout)
+        }
+        .padding(10)
+        .frame(width: 280)
+        .onHover { hovering in
+            hoverTask?.cancel()
+            if !hovering {
+                let task = DispatchWorkItem { isPresented = false }
+                hoverTask = task
+                DispatchQueue.main.asyncAfter(
+                    deadline: .now() + 0.3,
+                    execute: task
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Main Pane - Exact Matches") {
+    let results: [MetadataResult] = [
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: "rel-123",
+            title: "Album Title",
+            artist: "Artist Name",
+            year: 1996,
+            format: "CD",
+            label: "Label Name",
+            catalogNumber: "6006-2",
+            country: "US",
+            coverUrl: nil,
+            sourceGroupId: nil,
+            releaseUrl: nil,
+        ),
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: "rel-456",
+            title: "Album Title",
+            artist: "Artist Name",
+            year: 1988,
+            format: "CD",
+            label: "Label Name",
+            catalogNumber: "1871-2",
+            country: "US",
+            coverUrl: nil,
+            sourceGroupId: nil,
+            releaseUrl: nil,
+        ),
+    ]
+    .map(MetadataResult.init(bridge:))
+    ImportSearchPane(
+        identifyState: .found(
+            matches: results,
+            libraryStatuses: [:],
+            trackCount: 0,
+            group: GroupKey(
+                bridge: BridgeGroupKey(
+                    source: .musicBrainz,
+                    sourceGroupId: "group-preview",
+                    sourceLabel: "MusicBrainz",
+                    groupUrl:
+                        "https://musicbrainz.org/release-group/group-preview",
+                ),
+            ),
+            source: .discid,
+            provenance: results.map { _ in
+                ResultProvenance(
+                    byDiscId: true,
+                    byBarcode: false,
+                    matchesCatalog: true
+                )
+            },
+        ),
+        showManualSearch: false,
+        error: nil,
+        searchResults: [],
+        isSearching: false,
+        hasSearched: false,
+        isImporting: false,
+        libraryStatuses: [:],
+        activeTab: .constant(.general),
+        activeSource: .constant(.musicBrainz),
+        searchArtist: .constant(""),
+        searchAlbum: .constant(""),
+        searchCatalog: .constant(""),
+        searchBarcode: .constant(""),
+        discogsEnabled: true,
+        signals: Signals(
+            text: .settled(
+                catalogs: ["WPCR-80001"],
+                freeText: [
+                    "Artist Name",
+                    "Album Title",
+                    "Label Records JP - WPCR-80001",
+                    "Recorded at Studio A",
+                    "Produced by Producer Name",
+                ]
+            )
+        ),
+        signalsToolbar: SignalsToolbar(signals: [
+            ToolbarSignal(
+                kind: .discId,
+                role: .identity,
+                value: "disc-hash",
+                origin: .discToc,
+                state: .found(count: 3),
+                excluded: false
+            ),
+            ToolbarSignal(
+                kind: .catalog,
+                role: .filter,
+                value: "WPCR-80001",
+                origin: .folderName,
+                state: .confirms(count: 1),
+                excluded: false
+            ),
+        ]),
+        onSearch: {},
+        onOpenSettings: {},
+        onSearchManually: {},
+        onViewMatches: {},
+        onAddAsUnknown: {},
+        onToggleSignal: { _ in },
+        onRerun: {},
+        onCommit: { _, _ in },
+    )
+    .frame(width: 700, height: 600)
+    .background(Theme.background)
+    .preferredColorScheme(.dark)
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+}
+
+#Preview("Main Pane - Manual Search") {
+    let results: [MetadataResult] = [
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: "rel-aaa",
+            title: "Album Title One",
+            artist: "Artist Name",
+            year: 1996,
+            format: "CD",
+            label: "Label Name",
+            catalogNumber: "6006-2",
+            country: "US",
+            coverUrl: nil,
+            sourceGroupId: nil,
+            releaseUrl: nil,
+        ),
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: "rel-bbb",
+            title: "Album Title One",
+            artist: "Artist Name",
+            year: 1996,
+            format: "CD",
+            label: "Another Label",
+            catalogNumber: "AL-1234",
+            country: "JP",
+            coverUrl: nil,
+            sourceGroupId: nil,
+            releaseUrl: nil,
+        ),
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: "rel-ccc",
+            title: "Album Title One (Remaster)",
+            artist: "Artist Name",
+            year: 2005,
+            format: "CD",
+            label: "Reissue Records",
+            catalogNumber: "RR-500",
+            country: "EU",
+            coverUrl: nil,
+            sourceGroupId: nil,
+            releaseUrl: nil,
+        ),
+    ]
+    .map(MetadataResult.init(bridge:))
+    ImportSearchPane(
+        identifyState: .found(
+            matches: results,
+            libraryStatuses: [:],
+            trackCount: 0,
+            group: GroupKey(
+                bridge: BridgeGroupKey(
+                    source: .musicBrainz,
+                    sourceGroupId: "group-preview",
+                    sourceLabel: "MusicBrainz",
+                    groupUrl:
+                        "https://musicbrainz.org/release-group/group-preview",
+                ),
+            ),
+            source: .discid,
+            provenance: results.map { _ in
+                ResultProvenance(
+                    byDiscId: true,
+                    byBarcode: false,
+                    matchesCatalog: false
+                )
+            },
+        ),
+        showManualSearch: true,
+        error: nil,
+        searchResults: results,
+        isSearching: false,
+        hasSearched: true,
+        isImporting: false,
+        libraryStatuses: [:],
+        activeTab: .constant(.general),
+        activeSource: .constant(.musicBrainz),
+        searchArtist: .constant("Artist Name"),
+        searchAlbum: .constant("Album Title One"),
+        searchCatalog: .constant(""),
+        searchBarcode: .constant(""),
+        discogsEnabled: true,
+        signals: Signals(
+            text: .settled(
+                catalogs: ["WPCR-80001"],
+                freeText: [
+                    "Artist Name",
+                    "Album Title One",
+                    "Label Records JP - WPCR-80001",
+                    "Second Pressing",
+                    "Manufactured in Japan",
+                ]
+            )
+        ),
+        signalsToolbar: SignalsToolbar(signals: [
+            ToolbarSignal(
+                kind: .discId,
+                role: .identity,
+                value: "disc-hash",
+                origin: .discToc,
+                state: .found(count: 2),
+                excluded: false
+            ),
+            ToolbarSignal(
+                kind: .catalog,
+                role: .filter,
+                value: "WPCR-80001",
+                origin: .folderName,
+                state: .confirms(count: 0),
+                excluded: false
+            ),
+        ]),
+        onSearch: {},
+        onOpenSettings: {},
+        onSearchManually: {},
+        onViewMatches: {},
+        onAddAsUnknown: {},
+        onToggleSignal: { _ in },
+        onRerun: {},
+        onCommit: { _, _ in },
+    )
+    .frame(width: 700, height: 600)
+    .background(Theme.background)
+    .preferredColorScheme(.dark)
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+}
+
+#Preview("Main Pane - Conflict") {
+    let discidResults: [MetadataResult] = [
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: "rel-disc-1",
+            title: "Album Title",
+            artist: "Artist Name",
+            year: 1996,
+            format: "CD",
+            label: "Label A",
+            catalogNumber: "AAA-001",
+            country: "US",
+            coverUrl: nil,
+            sourceGroupId: "group-disc",
+            releaseUrl: nil,
+        )
+    ]
+    .map(MetadataResult.init(bridge:))
+    let barcodeResults: [MetadataResult] = [
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: "rel-bar-1",
+            title: "Album Title",
+            artist: "Artist Name",
+            year: 2001,
+            format: "CD",
+            label: "Label B",
+            catalogNumber: "BBB-002",
+            country: "JP",
+            coverUrl: nil,
+            sourceGroupId: "group-bar",
+            releaseUrl: nil,
+        )
+    ]
+    .map(MetadataResult.init(bridge:))
+    ImportSearchPane(
+        identifyState: .conflict(
+            discidResults: discidResults,
+            discidLibraryStatuses: [:],
+            barcodeResults: barcodeResults,
+            barcodeLibraryStatuses: [:],
+            discidSourceLabel: "MusicBrainz",
+            matchedBarcode: "5051961234567",
+            trackCount: 11,
+        ),
+        showManualSearch: false,
+        error: nil,
+        searchResults: [],
+        isSearching: false,
+        hasSearched: false,
+        isImporting: false,
+        libraryStatuses: [:],
+        activeTab: .constant(.general),
+        activeSource: .constant(.musicBrainz),
+        searchArtist: .constant(""),
+        searchAlbum: .constant(""),
+        searchCatalog: .constant(""),
+        searchBarcode: .constant(""),
+        discogsEnabled: true,
+        signals: nil,
+        signalsToolbar: SignalsToolbar(signals: [
+            ToolbarSignal(
+                kind: .discId,
+                role: .identity,
+                value: "disc-hash",
+                origin: .discToc,
+                state: .found(count: 2),
+                excluded: false
+            ),
+            ToolbarSignal(
+                kind: .barcode,
+                role: .identity,
+                value: "5051961234567",
+                origin: .artwork,
+                state: .found(count: 3),
+                excluded: false
+            ),
+        ]),
+        onSearch: {},
+        onOpenSettings: {},
+        onSearchManually: {},
+        onViewMatches: {},
+        onAddAsUnknown: {},
+        onToggleSignal: { _ in },
+        onRerun: {},
+        onCommit: { _, _ in },
+    )
+    .environment(UiStore())
+    .environment(MediaPaths.stub)
+    .frame(width: 700, height: 600)
+    .background(Theme.background)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Source Picker - Discogs Disabled") {
+    SourcePickerPreview(hasKey: false)
+        .frame(width: 500, height: 100)
+        .preferredColorScheme(.dark)
+}
+
+private struct SourcePickerPreview: View {
+    let hasKey: Bool
+    @State
+    private var source: MetadataSource = .musicBrainz
+    @State
+    private var showPopover = false
+    @State
+    private var hoverTask: DispatchWorkItem?
+
+    var body: some View {
+        SourceSegmentedControl(
+            selection: $source,
+            discogsEnabled: hasKey,
+            showDiscogsInfo: $showPopover,
+            hoverTask: $hoverTask,
+        )
+        .frame(width: 200)
+        .overlay(alignment: .bottomTrailing) {
+            Color.clear
+                .frame(width: 100, height: 1)
+                .popover(isPresented: $showPopover, arrowEdge: .bottom) {
+                    DiscogsKeyPopover(
+                        isPresented: $showPopover,
+                        hoverTask: $hoverTask,
+                        onOpenSettings: {},
+                    )
+                }
+                .allowsHitTesting(false)
+        }
+        .padding()
+    }
+}

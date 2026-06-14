@@ -1,0 +1,74 @@
+name: bae
+options:
+  bundleIdPrefix: fm.bae
+  deploymentTarget:
+    # 17.0: the shared macOS data layer is built on the Observation framework
+    # (`@Observable`), which requires iOS 17. The bridge static libs are minos
+    # 16.0 (the FFmpeg link floor), which a 17.0 app target satisfies.
+    iOS: "17.0"
+  xcodeVersion: "26.0"
+targets:
+  bae:
+    type: application
+    platform: iOS
+    sources:
+      # iOS app sources (includes the gitignored bae_bridge.swift bindings,
+      # which build-ios.sh copies here — cloudkit-only, matching the iOS
+      # xcframework's exported symbols; the shared bae-bridge/swift-bindings/
+      # dir is scratch a macOS build regenerates with desktop methods).
+      - bae
+      # Shared data/service/domain layer compiled directly from the macOS app
+      # — one copy serves both platforms. Each is AppKit-free and references
+      # only bridge methods present on the iOS xcframework (or guards the
+      # desktop-only ones behind `#if !os(iOS)`).
+      - path: ../../bae-macos/bae/bae/Logger.swift
+      - path: ../../bae-macos/bae/bae/Theme.swift
+      - path: ../../bae-macos/bae/bae/BridgeSortField+CaseIterable.swift
+      - path: ../../bae-macos/bae/bae/Services/PlaybackStore.swift
+      - path: ../../bae-macos/bae/bae/Services/PlaybackPositionEvent.swift
+      - path: ../../bae-macos/bae/bae/Services/ConfigStore.swift
+      - path: ../../bae-macos/bae/bae/Services/LibraryStore.swift
+      - path: ../../bae-macos/bae/bae/Services/PaginatedList.swift
+      - path: ../../bae-macos/bae/bae/Services/Library.swift
+      - path: ../../bae-macos/bae/bae/Services/Playback.swift
+      - path: ../../bae-macos/bae/bae/Services/Queue.swift
+      - path: ../../bae-macos/bae/bae/Services/MediaPaths.swift
+      - path: ../../bae-macos/bae/bae/Services/Sync.swift
+      - path: ../../bae-macos/bae/bae/Services/CloudKitService.swift
+      - path: ../../bae-macos/bae/bae/Services/KeychainService.swift
+      - path: ../../bae-macos/bae/bae/Services/Store/Config.swift
+      - path: ../../bae-macos/bae/bae/Services/Store/AlbumSummary.swift
+      - path: ../../bae-macos/bae/bae/Services/Store/ReleaseSummary.swift
+      - path: ../../bae-macos/bae/bae/Services/Store/ReleaseDetail.swift
+      - path: ../../bae-macos/bae/bae/Services/Store/Track.swift
+      - path: ../../bae-macos/bae/bae/Services/Store/TrackGroup.swift
+      - path: ../../bae-macos/bae/bae/Services/Store/QueueItem.swift
+      - path: ../../bae-macos/bae/bae/Services/Store/RepeatMode.swift
+      - path: ../../bae-macos/bae/bae/Services/Store/SearchResults.swift
+      - path: ../../bae-macos/bae/bae/Views/UnlockView.swift
+      - path: ../../bae-macos/bae/bae/Views/PlayPauseControl.swift
+    dependencies:
+      - framework: ../BaeBridgeFFI-ios.xcframework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fm.bae.bae
+        PRODUCT_NAME: bae
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: 1
+        INFOPLIST_FILE: bae/Info.plist
+        SWIFT_VERSION: "6.2"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        CODE_SIGN_ENTITLEMENTS: bae/bae.entitlements
+        # No bundled app icon yet — drop xcodegen's default `AppIcon` lookup so
+        # the asset catalog compiles without one.
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        OTHER_LDFLAGS:
+          - -lz
+          - -liconv
+          - -lsqlite3
+          - -framework Security
+          - -framework SystemConfiguration
+          - -framework CoreAudio
+          - -framework AudioToolbox
+          - -framework AVFoundation
+          - -framework AVFAudio

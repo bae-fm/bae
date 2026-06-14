@@ -1,0 +1,145 @@
+{
+  "albums": [
+    {
+      "artist": "The Midnight Signal",
+      "title": "Neon Frequencies",
+      "year": 2023,
+      "genre": "Electronic",
+      "tracks": ["Broadcast", "Static Dreams", "Frequency Drift", "Night Transmission", "Signal Lost", "Airwave", "Carrier Wave", "Sign Off"]
+    },
+    {
+      "artist": "Glass Harbor",
+      "title": "Pacific Standard",
+      "year": 2019,
+      "genre": "Indie Rock",
+      "tracks": ["Coastal", "Tide Pool", "Harbor Lights", "Salt Air", "Driftwood", "Fog Horn", "Pier 17", "Last Ferry"]
+    },
+    {
+      "artist": "Velvet Mathematics",
+      "title": "Proof by Induction",
+      "year": 2021,
+      "genre": "Math Rock",
+      "tracks": ["Axiom", "Recursive", "Limit Theorem", "Derivative", "Integral", "Convergence", "QED"]
+    },
+    {
+      "artist": "The Borrowed Time",
+      "title": "Seconds",
+      "year": 2022,
+      "genre": "Post-Punk",
+      "tracks": ["Tick", "Borrowed", "Overdue", "Extension", "Final Notice", "Grace Period"]
+    },
+    {
+      "artist": "Apartment Garden",
+      "title": "Window Sill",
+      "year": 2020,
+      "genre": "Dream Pop",
+      "tracks": ["Basil", "Morning Light", "Terracotta", "Propagation", "Root Bound", "Water Day", "New Growth"]
+    },
+    {
+      "artist": "The Cold Equations",
+      "title": "Fuel Weight",
+      "year": 2018,
+      "genre": "Space Rock",
+      "tracks": ["Launch Window", "Trajectory", "Orbital Decay", "Reentry", "Terminal Velocity", "Escape", "Gravity Well"]
+    },
+    {
+      "artist": "Newspaper Weather",
+      "title": "Tomorrow's Forecast",
+      "year": 2023,
+      "genre": "Indie Folk",
+      "tracks": ["Partly Cloudy", "High Pressure", "Cold Front", "Scattered Showers", "Clearing Skies", "Weekend Outlook"]
+    },
+    {
+      "artist": "The Filing Cabinets",
+      "title": "Alphabetical",
+      "year": 2017,
+      "genre": "Post-Rock",
+      "tracks": ["A-D", "E-H", "I-L", "M-P", "Q-T", "U-Z", "Miscellaneous"]
+    },
+    {
+      "artist": "Parking Structure",
+      "title": "Level 4",
+      "year": 2021,
+      "genre": "Shoegaze",
+      "tracks": ["Entrance", "Spiral Up", "Compact Only", "Reserved", "Exit Ticket", "Night Rate"]
+    },
+    {
+      "artist": "The Last Payphone",
+      "title": "Dial Tone",
+      "year": 2019,
+      "genre": "Lo-Fi",
+      "tracks": ["Insert Coin", "Area Code", "Long Distance", "Collect Call", "Busy Signal", "Disconnected"]
+    },
+    {
+      "artist": "Velvet Mathematics",
+      "title": "Set Theory",
+      "year": 2019,
+      "genre": "Math Rock",
+      "tracks": ["Union", "Intersection", "Complement", "Subset", "Empty Set", "Cardinality"]
+    },
+    {
+      "artist": "The Borrowed Time",
+      "title": "Interest",
+      "year": 2020,
+      "genre": "Post-Punk",
+      "tracks": ["Principal", "Compound", "Balloon Payment", "Amortization", "Default", "Refinance"]
+    },
+    {
+      "artist": "Apartment Garden",
+      "title": "Grow Light",
+      "year": 2022,
+      "genre": "Dream Pop",
+      "tracks": ["Spectrum", "Photosynthesis", "Chlorophyll", "Dormancy", "Spring Bloom", "Perennial"]
+    },
+    {
+      "artist": "Glass Harbor",
+      "title": "Landlocked",
+      "year": 2022,
+      "genre": "Indie Rock",
+      "tracks": ["Dry Dock", "Anchor", "Barnacles", "Rust", "Restoration", "Launch Day", "Open Water"]
+    },
+    {
+      "artist": "The Checkout Lane",
+      "title": "Express",
+      "year": 2023,
+      "genre": "Punk",
+      "tracks": ["15 Items", "Price Check", "Coupon", "Self Scan", "Bagging Area", "Receipt"]
+    },
+    {
+      "artist": "Stairwell Echo",
+      "title": "Floors 1-12",
+      "year": 2018,
+      "genre": "Ambient",
+      "tracks": ["Lobby", "Ascent", "Landing", "Fire Door", "Roof Access"]
+    },
+    {
+      "artist": "The Waiting Room",
+      "title": "Your Number",
+      "year": 2021,
+      "genre": "Slowcore",
+      "tracks": ["Take a Ticket", "Now Serving", "Please Wait", "Next Window", "Closed"]
+    },
+    {
+      "artist": "Newspaper Weather",
+      "title": "Back Page",
+      "year": 2021,
+      "genre": "Indie Folk",
+      "tracks": ["Classifieds", "Obituaries", "Comics", "Crossword", "Horoscope", "Editorial"]
+    },
+    {
+      "artist": "The Cold Equations",
+      "title": "Mission Control",
+      "year": 2021,
+      "genre": "Space Rock",
+      "tracks": ["Countdown", "Ignition", "Max Q", "MECO", "Orbit Achieved", "Houston"]
+    },
+    {
+      "artist": "Copy Machine",
+      "title": "Collated",
+      "year": 2020,
+      "genre": "Industrial",
+      "tracks": ["Warm Up", "Paper Jam", "Toner Low", "Duplex", "Staple", "Output Tray"]
+    }
+  ]
+}
+
