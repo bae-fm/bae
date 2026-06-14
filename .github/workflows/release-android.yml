@@ -162,8 +162,6 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: android-v${{ needs.calculate-version.outputs.version }}
-        # Never claim "latest": macOS Sparkle reads releases/latest/download/appcast.xml.
-        make_latest: false
         files: bae-android.apk
         generate_release_notes: true
       env:

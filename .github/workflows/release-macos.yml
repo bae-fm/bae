@@ -302,21 +302,40 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: macos-v${{ needs.calculate-version.outputs.version }}
-        # macOS releases stay GitHub's "latest" so Sparkle's
-        # releases/latest/download/appcast.xml always resolves to a macOS appcast;
-        # android releases set make_latest:false so they can't take the feed.
-        make_latest: true
-        files: |
-          target/bae-macos.dmg
-          target/appcast.xml
+        files: target/bae-macos.dmg
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Verify Sparkle feed asset is reachable
+    - name: Publish appcast to the appcast branch
       run: |
-        # The appcast enclosure URL must resolve, or every client's update check fails.
+        # The Sparkle feed lives on a dedicated, orphan `appcast` branch — the app's
+        # SUFeedURL is the raw URL of this file. That decouples it from GitHub's
+        # "latest" release pointer, so releases of any other platform can never
+        # affect it; only this job writes it. The enclosure inside points at the
+        # macos-v* release DMG created above.
         VERSION="${{ needs.calculate-version.outputs.version }}"
-        URL="https://github.com/${{ github.repository }}/releases/download/macos-v${VERSION}/bae-macos.dmg"
-        curl -fsIL --retry 5 --retry-delay 3 "$URL" -o /dev/null
-        echo "DMG reachable: $URL"
+        BUILD_NUMBER="${{ github.run_number }}"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git fetch origin appcast
+        git worktree add "$RUNNER_TEMP/appcast-wt" FETCH_HEAD
+        cp target/appcast.xml "$RUNNER_TEMP/appcast-wt/appcast.xml"
+        git -C "$RUNNER_TEMP/appcast-wt" add appcast.xml
+        git -C "$RUNNER_TEMP/appcast-wt" commit -m "appcast: macos-v$VERSION (build $BUILD_NUMBER)"
+        git -C "$RUNNER_TEMP/appcast-wt" push origin HEAD:appcast
+
+    - name: Verify Sparkle feed resolves
+      run: |
+        # The DMG (a release asset) must resolve hard; the raw feed file is the
+        # source of truth once pushed — its CDN copy may lag a few minutes.
+        VERSION="${{ needs.calculate-version.outputs.version }}"
+        DMG="https://github.com/${{ github.repository }}/releases/download/macos-v${VERSION}/bae-macos.dmg"
+        curl -fsIL --retry 5 --retry-delay 3 "$DMG" -o /dev/null
+        echo "DMG reachable: $DMG"
+        FEED="https://raw.githubusercontent.com/${{ github.repository }}/appcast/appcast.xml"
+        if curl -fsSL --retry 8 --retry-delay 5 "$FEED" | grep -q "<sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>"; then
+          echo "feed live with $VERSION: $FEED"
+        else
+          echo "::warning::appcast pushed to branch but raw feed not yet showing $VERSION (CDN lag); it will catch up"
+        fi
