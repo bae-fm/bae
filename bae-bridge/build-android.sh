@@ -72,16 +72,19 @@ for ABI in "${ABIS[@]}"; do
     FFMPEG_DIR="$FFMPEG_PREFIX/$FA" RUSTC_WRAPPER="" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge
 done
 
-# Generate bindings from a built library, not a host build, so the Kotlin API
-# matches the .so exactly — mobile-only exports (e.g. setCaCertDir) are present
-# and target-gated desktop ones are absent. uniffi metadata is arch-independent,
-# so any selected target works; uniffi-bindgen reads it statically without
-# loading the object. (Mirrors build-ios.sh, which reads the iOS .a.)
+# Generate bindings from the built static lib, not a host build, so the Kotlin
+# API matches the target exactly — mobile-only exports (e.g. setCaCertDir) are
+# present and target-gated desktop ones are absent. Read the .a, not the cdylib
+# .so: the release profile strips the .so (strip = true), which removes the
+# uniffi metadata uniffi-bindgen needs, so the .so yields empty bindings in
+# release. The .a is never stripped. uniffi metadata is arch-independent, so any
+# selected target works; uniffi-bindgen reads it statically without loading the
+# object. (Mirrors build-ios.sh, which reads the iOS .a.)
 FIRST_TARGET=$(rust_target "${ABIS[0]}")
 echo "Generating Kotlin bindings..."
 mkdir -p bae-bridge/kotlin-bindings
 cargo run --bin uniffi-bindgen generate \
-    --library "$CARGO_TARGET_DIR/$FIRST_TARGET/$CARGO_PROFILE/libbae_bridge.so" \
+    --library "$CARGO_TARGET_DIR/$FIRST_TARGET/$CARGO_PROFILE/libbae_bridge.a" \
     --language kotlin \
     --out-dir bae-bridge/kotlin-bindings/ \
     --no-format
