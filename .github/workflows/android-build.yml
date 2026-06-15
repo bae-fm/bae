@@ -1,0 +1,158 @@
+name: Android build (reusable)
+
+# Shared Android build, called by android.yml (debug CI gate) and
+# release-android.yml (signed release). Cross-compiles bae-bridge for the NDK
+# targets, runs the app unit tests, and assembles the APK — debug or, with
+# profile=release, a signed APK uploaded as the `bae-android-release` artifact.
+#
+# Runs on macOS because build-android.sh / build-ffmpeg-android.sh resolve the
+# NDK toolchain at .../prebuilt/darwin-x86_64. The host ffmpeg from setup-macos
+# backs the `cargo run --bin uniffi-bindgen` host build, which builds
+# bae-bridge → bae-core for the host to read the cross-built .so's metadata.
+
+on:
+  workflow_call:
+    inputs:
+      profile:
+        description: 'debug or release. release passes --release to build-android.sh, assembles a signed APK, and uploads it.'
+        type: string
+        default: debug
+      version:
+        description: 'BAE_VERSION stamped into the build. Blank keeps build.gradle.kts / build.rs dev defaults.'
+        type: string
+        default: ''
+      version_code:
+        description: 'versionCode stamped into the build (monotonic run number for releases). Blank keeps the dev default.'
+        type: string
+        default: ''
+    secrets:
+      ANDROID_KEYSTORE_BASE64:
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
+      ANDROID_KEY_ALIAS:
+        required: false
+      ANDROID_KEY_PASSWORD:
+        required: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # Pinned NDK: build-android.sh and build-ffmpeg-android.sh default to this exact
+  # version and honor ANDROID_NDK_HOME. Keep in sync with both scripts.
+  NDK_VERSION: 29.0.14206865
+
+jobs:
+  build:
+    name: Android
+    runs-on: macos-26
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup macOS environment
+      # Host ffmpeg for the uniffi-bindgen host build.
+      uses: ./.github/actions/setup-macos
+
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
+    - name: Setup JDK 17
+      # bae-android targets JavaVersion.VERSION_17 (app/build.gradle.kts).
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    - name: Install pinned Android NDK + SDK platform
+      # build-tools provides apksigner, used to verify the signed release APK.
+      run: |
+        SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+        yes | "$SDKMANAGER" --licenses >/dev/null
+        "$SDKMANAGER" "ndk;${NDK_VERSION}" "platforms;android-35" "build-tools;35.0.0"
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+    - name: Cache cross-built Android FFmpeg
+      id: ffmpeg-cache
+      uses: actions/cache@v4
+      with:
+        path: third_party/ffmpeg-android
+        # Keyed on the build script + NDK version: rebuild only when the recipe
+        # or the toolchain that produced the libs changes.
+        key: ffmpeg-android-${{ env.NDK_VERSION }}-${{ hashFiles('scripts/build-ffmpeg-android.sh') }}
+
+    - name: Build Android FFmpeg (on cache miss)
+      if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+      run: ./scripts/build-ffmpeg-android.sh
+
+    - name: Set release version + stamps
+      # Release stamps an explicit version/code and the source commits into the
+      # build; debug leaves these unset so build.gradle.kts / build.rs use their
+      # dev defaults.
+      if: inputs.profile == 'release'
+      run: |
+        {
+          echo "BAE_VERSION=${{ inputs.version }}"
+          echo "BAE_VERSION_CODE=${{ inputs.version_code }}"
+          echo "BAE_GIT_COMMIT=$(git rev-parse --short HEAD)"
+          echo "BAE_COVEN_REV=$(scripts/coven-rev.sh)"
+        } >> "$GITHUB_ENV"
+
+    - name: Cross-compile bae-bridge for Android
+      # Builds bae-bridge for aarch64 + x86_64 android, generates the Kotlin
+      # bindings, and stages the .so files into the app's jniLibs.
+      run: ./bae-bridge/build-android.sh ${{ inputs.profile == 'release' && '--release' || '' }}
+
+    - name: Run app unit tests
+      # Robolectric/JVM tests (no device) over the app's playback and reducer
+      # logic — including the audio-focus resume policy. Needs the generated
+      # bindings from the cross-compile step above to compile the test sources.
+      run: cd bae-android && ./gradlew testDebugUnitTest --no-daemon
+
+    - name: Decode signing keystore
+      if: inputs.profile == 'release'
+      env:
+        ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      run: |
+        echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/bae-release.jks"
+        echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/bae-release.jks" >> "$GITHUB_ENV"
+
+    - name: Assemble debug APK
+      if: inputs.profile != 'release'
+      # Compiles the Kotlin app against the generated bindings and staged .so's,
+      # catching binding drift on top of the Rust cross-compile.
+      run: cd bae-android && ./gradlew assembleDebug --no-daemon
+
+    - name: Assemble signed release APK
+      if: inputs.profile == 'release'
+      working-directory: bae-android
+      env:
+        ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      run: ./gradlew assembleRelease --no-daemon
+
+    - name: Locate and verify signed APK
+      if: inputs.profile == 'release'
+      run: |
+        # app-release.apk is the signed output; app-release-unsigned.apk means the
+        # signing config did not apply, so target the signed name explicitly and
+        # confirm the signature rather than shipping an uninstallable APK.
+        APK="bae-android/app/build/outputs/apk/release/app-release.apk"
+        if [[ ! -f "$APK" ]]; then
+          echo "no signed release APK at $APK — signing config did not apply" >&2
+          ls -la bae-android/app/build/outputs/apk/release || true
+          exit 1
+        fi
+        APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+        "$APKSIGNER" verify --verbose "$APK"
+        cp "$APK" "bae-android.apk"
+        echo "Verified signed APK: $APK"
+
+    - name: Upload signed APK artifact
+      if: inputs.profile == 'release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: bae-android-release
+        path: bae-android.apk
+        retention-days: 30
