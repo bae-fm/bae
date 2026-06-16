@@ -1,30 +1,326 @@
-/* Custom theme for bae docs */
+/* bae docs theme - Direction D (Cozy x Studio)
+   Matches the marketing homepage: Bricolage display, Hanken body, JetBrains
+   Mono code, on a night-violet surface with violet/pink/mint accents.
+   Global palette and fonts go through Starlight's own custom properties;
+   raw selectors only appear where a variable cannot express the intent
+   (heading font face, pink inline code, table radius, soft sidebar wash,
+   gradient asides, TOC border). */
+
+/* Fonts. Loaded before the variable block so the families resolve. */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 :root {
-	--sl-color-accent-low: #1a1625;
-	--sl-color-accent: #8b5cf6;
-	--sl-color-accent-high: #c4b5fd;
-	--sl-color-white: #ffffff;
-	--sl-color-gray-1: #eceef2;
-	--sl-color-gray-2: #c0c2c7;
-	--sl-color-gray-3: #888b96;
-	--sl-color-gray-4: #545861;
-	--sl-color-gray-5: #353841;
-	--sl-color-gray-6: #24272f;
-	--sl-color-black: #17181c;
-	
-	--sl-font: 'Instrument Sans', system-ui, sans-serif;
+	/* Direction D tokens, reused below so the values live in one place. */
+	--bae-night: #100e1a;
+	--bae-night-2: #161327;
+	--bae-card: #1c1830;
+	--bae-card-2: #231d3a;
+	--bae-cream: #fdf5ef;
+	--bae-fg-dim: rgba(253, 245, 239, 0.66);
+	--bae-fg-faint: rgba(253, 245, 239, 0.42);
+	--bae-violet: #9b6cf6;
+	--bae-violet-wash: rgba(155, 108, 246, 0.16);
+	--bae-violet-edge: rgba(155, 108, 246, 0.45);
+	--bae-pink: #f7a8c4;
+	--bae-pink-deep: #ec6a99;
+	--bae-mint: #86e0c8;
+	--bae-line: rgba(253, 245, 239, 0.12);
+
+	--bae-font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+
+	/* Display faces. --sl-font drives body copy and every UI element; the
+	   heading face is applied with a raw rule further down. */
+	--sl-font: 'Hanken Grotesk', system-ui, sans-serif;
 	--sl-font-mono: 'JetBrains Mono', monospace;
+
+	/* Accent ramp: violet for links, active nav, focus rings.
+	   accent-high is the link/text-accent color in dark mode. */
+	--sl-color-accent-low: #2a1f47;
+	--sl-color-accent: var(--bae-violet);
+	--sl-color-accent-high: #c3a7fb;
+
+	/* Gray scale mapped onto the night-violet surfaces.
+	   1 = brightest text, 6 = darkest panel; black = page background.
+	   Starlight pulls the code-block and blockquote borders from gray-5 and
+	   the mobile-TOC / hairline shades from gray-6. */
+	--sl-color-white: var(--bae-cream);
+	--sl-color-gray-1: #f3e9e3;
+	--sl-color-gray-2: #c8c0c9;
+	--sl-color-gray-3: #948ea0;
+	--sl-color-gray-4: var(--bae-card-2);
+	--sl-color-gray-5: var(--bae-card);
+	--sl-color-gray-6: var(--bae-night-2);
+	--sl-color-black: var(--bae-night);
+
+	/* Surfaces and hairlines. Page on --night, the nav bar translucent so
+	   Starlight's backdrop blur reads as the frosted sticky bar, the sidebar
+	   on the page background (the mock's nav is transparent with a right
+	   hairline), inline code on --card, all hairlines on the cream 12% line. */
+	--sl-color-bg: var(--bae-night);
+	--sl-color-bg-nav: rgba(16, 14, 26, 0.82);
+	--sl-color-bg-sidebar: var(--bae-night);
+	--sl-color-bg-inline-code: var(--bae-card);
+	--sl-color-hairline: var(--bae-line);
+	--sl-color-hairline-light: var(--bae-line);
+	--sl-color-hairline-shade: var(--bae-line);
+
+	/* Secondary body text sits at the dim cream level. */
+	--sl-color-text: var(--bae-fg-dim);
+	/* Links, active TOC entries and other "accent text" are pure violet, the
+	   way the mock draws them, not the lighter accent-high tone. */
+	--sl-color-text-accent: var(--bae-violet);
 }
 
 :root[data-theme='light'] {
-	--sl-color-accent-low: #ede9fe;
-	--sl-color-accent: #7c3aed;
-	--sl-color-accent-high: #4c1d95;
+	/* Keep dark as the primary theme; these are sensible light overrides so
+	   the violet accent still reads against a pale background. In light mode
+	   Starlight maps text-accent to --sl-color-accent, not accent-high. */
+	--sl-color-accent-low: #ede7fd;
+	--sl-color-accent: #7c4ddb;
+	--sl-color-accent-high: #4a2a9c;
+	--sl-color-text-accent: var(--sl-color-accent);
 }
 
-/* Import fonts */
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* ---- Headings: Bricolage display face over the Hanken body ---- */
+/* Scoped to article content and the page title so the display face never
+   leaks onto UI chrome headings (the site title, sidebar groups, the TOC
+   "On this page" heading), which the mock keeps in Hanken or mono. */
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6):not(:where(.not-content *)),
+.content-panel h1 {
+	font-family: var(--bae-font-display);
+	font-weight: 700;
+}
 
+.sl-markdown-content h1:not(:where(.not-content *)),
+.content-panel h1 {
+	font-weight: 800;
+	letter-spacing: -0.025em;
+}
+
+.sl-markdown-content h2:not(:where(.not-content *)) {
+	letter-spacing: -0.015em;
+}
+
+/* ---- Top bar: sticky blurred chrome ---- */
+/* --sl-color-bg-nav is already translucent above; add the blur and the
+   bottom hairline to finish the frosted bar from the mock. */
+.header {
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border-bottom: 1px solid var(--bae-line);
+}
+
+/* ---- Left sidebar nav ---- */
+/* Group labels in mono, uppercase, faint. The label text is the .large span
+   inside each section summary's .group-label. */
+.sidebar-content .group-label .large {
+	font-family: var(--sl-font-mono);
+	font-size: var(--sl-text-xs);
+	text-transform: uppercase;
+	letter-spacing: 0.09em;
+	color: var(--bae-fg-faint);
+	font-weight: 500;
+}
+
+/* Nav links: rounded, dim cream by default, card hover. */
+.sidebar-content a {
+	border-radius: 10px;
+	color: var(--bae-fg-dim);
+	font-weight: 500;
+}
+.sidebar-content a:hover {
+	background-color: var(--bae-card);
+	color: var(--bae-cream);
+}
+
+/* Active nav item: soft violet wash with violet text, not the default
+   solid accent fill that Starlight applies. */
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover,
+.sidebar-content a[aria-current='page']:focus {
+	background-color: var(--bae-violet-wash);
+	color: var(--bae-violet);
+	font-weight: 600;
+}
+
+/* ---- Article body ---- */
+.sl-markdown-content {
+	font-family: var(--sl-font);
+}
+
+/* Lead paragraph emphasis stays cream. */
+.sl-markdown-content strong,
+.sl-markdown-content b {
+	color: var(--bae-cream);
+	font-weight: 600;
+}
+
+/* ---- Inline code: card surface, pink text, hairline, 6px radius ---- */
+.sl-markdown-content code:not(:where(.not-content *)) {
+	background-color: var(--bae-card);
+	border: 1px solid var(--bae-line);
+	border-radius: 6px;
+	color: var(--bae-pink);
+}
+/* Code inside a heading inherits the heading color, not pink. */
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) code {
+	color: inherit;
+}
+
+/* Code blocks sit on a darker surface than inline code. */
+.sl-markdown-content pre:not(:where(.not-content *)) {
+	background-color: var(--bae-night-2);
+	border: 1px solid var(--bae-line);
+	border-radius: 12px;
+}
+/* Reset code inside a block so it inherits the block surface, not the
+   pink inline treatment. */
+.sl-markdown-content pre code:not(:where(.not-content *)) {
+	color: inherit;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+}
+
+/* ---- Tables: separated borders, 16px outer radius, header on --card-2 ---- */
+/* Starlight renders the table as display:block with no outer frame; rebuild
+   the framed, rounded card from the mock. */
+.sl-markdown-content table:not(:where(.not-content *)) {
+	display: table;
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	border: 1px solid var(--bae-line);
+	border-radius: 16px;
+	overflow: hidden;
+	font-size: var(--sl-text-sm);
+}
+.sl-markdown-content :is(th, td):not(:where(.not-content *)) {
+	border-bottom: 1px solid var(--bae-line);
+	padding: 12px 16px;
+	vertical-align: baseline;
+}
+/* Undo Starlight's edge-flush padding so cells sit inside the rounded frame. */
+.sl-markdown-content :is(th:first-child, td:first-child):not(:where(.not-content *)) {
+	padding-inline-start: 16px;
+}
+.sl-markdown-content :is(th:last-child, td:last-child):not(:where(.not-content *)) {
+	padding-inline-end: 16px;
+}
+.sl-markdown-content thead th:not(:where(.not-content *)) {
+	background-color: var(--bae-card-2);
+	color: var(--bae-cream);
+	font-family: var(--bae-font-display);
+	font-weight: 700;
+	font-size: var(--sl-text-xs);
+}
+.sl-markdown-content tbody th:not(:where(.not-content *)) {
+	background-color: var(--bae-card);
+	color: var(--bae-cream);
+	font-weight: 600;
+}
+.sl-markdown-content tbody td:not(:where(.not-content *)) {
+	color: var(--bae-fg-dim);
+}
+/* Drop the bottom hairline on the last row so it meets the rounded corner. */
+.sl-markdown-content tbody tr:last-child :is(th, td):not(:where(.not-content *)) {
+	border-bottom: 0;
+}
+
+/* ---- Asides / callouts: gradient card, colored left border, 16px radius ---- */
+/* Starlight's default aside is a flat tinted block; restyle as the gradient
+   card from the mock. The left border and title color come from
+   --sl-color-asides-border / --sl-color-asides-text-accent, which each
+   variant sets below; background-color:transparent clears Starlight's flat
+   tint so only the gradient shows. */
+.sl-markdown-content .starlight-aside:not(:where(.not-content *)) {
+	background-image: linear-gradient(180deg, var(--bae-card), var(--bae-night-2));
+	border: 1px solid var(--bae-line);
+	border-inline-start: 3px solid var(--sl-color-asides-border);
+	border-radius: 16px;
+	padding: 18px 20px;
+	color: var(--bae-fg-dim);
+}
+.starlight-aside__content {
+	color: var(--bae-fg-dim);
+}
+.starlight-aside__content strong,
+.starlight-aside__content b {
+	color: var(--bae-cream);
+}
+
+/* Recolor the four aside variants onto the Direction D supporting hues. The
+   mock's callout is mint, so tip is mint; note keeps violet, caution and
+   danger take the warmer pinks. */
+.sl-markdown-content .starlight-aside--note {
+	--sl-color-asides-border: var(--bae-violet);
+	--sl-color-asides-text-accent: var(--bae-violet);
+	background-color: transparent;
+}
+.sl-markdown-content .starlight-aside--tip {
+	--sl-color-asides-border: var(--bae-mint);
+	--sl-color-asides-text-accent: var(--bae-mint);
+	background-color: transparent;
+}
+.sl-markdown-content .starlight-aside--caution {
+	--sl-color-asides-border: var(--bae-pink);
+	--sl-color-asides-text-accent: var(--bae-pink);
+	background-color: transparent;
+}
+.sl-markdown-content .starlight-aside--danger {
+	--sl-color-asides-border: var(--bae-pink-deep);
+	--sl-color-asides-text-accent: var(--bae-pink-deep);
+	background-color: transparent;
+}
+
+/* ---- Right "On this page" table of contents ---- */
+/* Heading reads as the mock's mono uppercase eyebrow. */
+starlight-toc nav h2 {
+	font-family: var(--sl-font-mono);
+	font-size: var(--sl-text-2xs);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	font-weight: 500;
+	color: var(--bae-fg-faint);
+}
+/* Inactive links sit on a faint hairline rail. starlight-toc is the desktop
+   wrapper, so the mobile dropdown TOC is left untouched. */
+starlight-toc nav a {
+	border-inline-start: 2px solid var(--bae-line);
+	color: var(--bae-fg-faint);
+}
+starlight-toc nav a:hover {
+	color: var(--bae-fg-dim);
+}
+/* Active TOC link: violet text with a violet left border. */
+starlight-toc nav a[aria-current='true'],
+starlight-toc nav a[aria-current='true']:hover {
+	color: var(--bae-violet);
+	border-inline-start-color: var(--bae-violet);
+}
+
+/* ---- Custom scrollbar thumb in --card-2 ---- */
+* {
+	scrollbar-color: var(--bae-card-2) transparent;
+}
+::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: var(--bae-card-2);
+	border-radius: 5px;
+	border: 2px solid var(--bae-night);
+}
+
+/* ---- Selection: pink wash, dark ink ---- */
+::selection {
+	background: var(--bae-pink);
+	color: #3a2230;
+}
 
 /* Disable sidebar section collapsing */
 .sidebar-content details > summary {
