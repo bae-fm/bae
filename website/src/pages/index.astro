@@ -164,6 +164,54 @@
   .endcta .ring img{width:118px;animation:bob 6s ease-in-out infinite;}
   .endcta h2{font-family:var(--disp);font-weight:800;font-size:clamp(36px,5.2vw,68px);letter-spacing:-.03em;line-height:1;margin:0 0 16px;}
   .endcta h2 .pink{color:var(--pink);} .endcta h2 .violet{color:var(--violet);}
+  /* end-CTA cycling final word ("home" / "everywhere") -- all scoped under .endcta */
+  /* No-JS fallback: static "home." keeps the sentence intact.
+     JS adds .cyc-on to the h2, which hides the fallback and shows the cycling unit. */
+  .endcta h2 .cyc{display:none;white-space:nowrap;}
+  .endcta h2.cyc-on .cyc{display:inline;}
+  .endcta h2.cyc-on .cyc-fallback{display:none;}
+
+  /* Animated word: inline-block clipped box whose width we tween so the period
+     (sibling .cyc-dot) keeps hugging it with no horizontal snap. */
+  .endcta h2 .cyc-word{
+    display:inline-block;vertical-align:baseline;
+    overflow:hidden;white-space:nowrap;
+    transition:width .52s cubic-bezier(.22,.7,.2,1);
+    will-change:width;
+  }
+  .endcta h2 .cyc-pink{color:var(--pink);}
+  .endcta h2 .cyc-violet{color:var(--violet);}
+  /* period folded into the cycling unit; cream so it reads as punctuation, not part of the word */
+  .endcta h2 .cyc-dot{color:var(--cream);}
+
+  /* per-letter slots (scramble / flip / shuffle) */
+  .endcta h2 .cyc-ch{display:inline-block;white-space:pre;}
+
+  /* typewriter caret -- present only during the type-ahead transition; inherits the word's colour */
+  .endcta h2 .cyc-caret{
+    display:inline-block;width:.06em;height:.82em;margin-left:.02em;
+    vertical-align:-.06em;background:currentColor;border-radius:1px;
+    animation:cycBlink 1s steps(1,end) infinite;
+  }
+  @keyframes cycBlink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+
+  /* cross-fade helper (also the reduced-motion path) */
+  .endcta h2 .cyc-word.cyc-fade{transition:width .52s cubic-bezier(.22,.7,.2,1),opacity .42s ease,filter .42s ease;}
+  .endcta h2 .cyc-word.cyc-out{opacity:0;filter:blur(6px);}
+
+  /* hidden sizer: inherits the h2 font to measure word widths off-layout */
+  .endcta h2 .cyc-sizer{
+    position:absolute;left:-9999px;top:0;visibility:hidden;
+    white-space:nowrap;pointer-events:none;
+  }
+
+  /* reduced motion: one calm cross-fade only -- no caret blink, no transforms,
+     no scramble/flip/shuffle; JS pins the pool to the cross-fade. */
+  @media (prefers-reduced-motion: reduce){
+    .endcta h2 .cyc-caret{display:none;animation:none;}
+    .endcta h2 .cyc-word{transition:width .6s ease,opacity .6s ease;will-change:auto;}
+    .endcta h2 .cyc-ch{transition:none!important;transform:none!important;}
+  }
   .endcta p{font-size:17px;color:var(--fg-dim);margin:0 0 30px;}
 
   footer{border-top:1px solid var(--line);padding:42px 0;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;}
@@ -336,7 +384,7 @@
 
 <section class="endcta" id="get"><div class="wrap">
   <div class="ring r"><img src="/sheep.png" alt="" /></div>
-  <h2 class="r d1">Bring your collection <span class="pink">home</span>.</h2>
+  <h2 class="r d1" aria-label="Bring your collection home">Bring your collection <span class="cyc" aria-hidden="true"><span class="cyc-word cyc-pink">home</span><span class="cyc-dot">.</span></span><span class="cyc-fallback">home.</span></h2>
   <p class="r d2">Free, open source, and in active development. Everything you add is yours from day one.</p>
   <div class="cta r d3" style="justify-content:center;">
     <a class="btn pink" href="https://github.com/bae-fm/bae/releases/download/macos-latest/bae-macos.dmg">Download for macOS</a>
@@ -374,6 +422,122 @@
     [].forEach.call(nl.querySelectorAll('a'),function(a){a.addEventListener('click',function(){setMenu(false);});});
     addEventListener('resize',function(){if(innerWidth>720)setMenu(false);});
   })();
+
+  /* end CTA: cycling final word ("home" / "everywhere") */
+    /* ---- end CTA: cycling final word ("home" <-> "everywhere") ---- */
+    (function(){
+      var h2 = document.querySelector('.endcta h2');
+      var cyc = h2 && h2.querySelector('.cyc');
+      var word = cyc && cyc.querySelector('.cyc-word');
+      var dot = cyc && cyc.querySelector('.cyc-dot');
+      if(!h2 || !cyc || !word || !dot) return;            // guard: do nothing if missing
+
+      var WORDS = [
+        {text:'home',       cls:'cyc-pink',   col:'var(--pink)'},
+        {text:'everywhere', cls:'cyc-violet', col:'var(--violet)'}
+      ];
+      var HOLD=2100, TYPE=58, SCRAM_TICK=40, SCRAM_FRAMES=9, FLIP=620, SETTLE=640, RM_HOLD=4200;
+      var GLYPHS='abcdefghijklmnopqrstuvwxyz';
+      var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+      h2.classList.add('cyc-on');                          // take over from the no-JS fallback
+
+      // measure both words with a hidden sizer in the h2 font; period stays folded in the unit
+      var sizer=document.createElement('span'); sizer.className='cyc-sizer'; sizer.setAttribute('aria-hidden','true'); h2.appendChild(sizer);
+      var widths={};
+      function measure(){ for(var i=0;i<WORDS.length;i++){ sizer.textContent=WORDS[i].text; widths[WORDS[i].text]=sizer.getBoundingClientRect().width; } }
+      measure();
+
+      var idx=0, last=-1, running=false;
+      var timers=[];                                       // every pending timer/interval lives here
+      function clearTimers(){ for(var i=0;i<timers.length;i++){ clearTimeout(timers[i]); clearInterval(timers[i]); } timers=[]; }
+      function later(fn,ms){ var t=setTimeout(fn,ms); timers.push(t); return t; }
+
+      function setWidth(text){ word.style.width=Math.ceil(widths[text])+'px'; }
+      function paintPlain(w){ word.className='cyc-word '+w.cls; word.style.color=''; word.textContent=w.text; }
+      // settle: clean static single-word state after every transition (and on resume)
+      function settle(w){ word.style.transition=''; word.style.transform=''; word.style.opacity=''; word.style.transformOrigin=''; paintPlain(w); setWidth(w.text); }
+      function splitInto(w){ word.className='cyc-word '+w.cls; word.style.color=''; word.textContent=''; var nodes=[]; for(var i=0;i<w.text.length;i++){ var s=document.createElement('span'); s.className='cyc-ch'; s.textContent=w.text[i]; word.appendChild(s); nodes.push(s); } return nodes; }
+      function rnd(){ return GLYPHS[(Math.random()*GLYPHS.length)|0]; }
+
+      settle(WORDS[idx]);                                  // markup ships "home"; lock it in
+
+      // ---- transition pool: each calls done() when finished ----
+      function tType(from,to,done){
+        word.className='cyc-word '+from.cls; word.style.color=from.col;
+        var caret=document.createElement('span'); caret.className='cyc-caret';
+        var buf=from.text;
+        function render(){ word.textContent=buf; word.appendChild(caret); }
+        render(); setWidth(to.text);                       // box already at target width: no jump as we type
+        function type(){ if(buf.length<to.text.length){ buf=to.text.slice(0,buf.length+1); render(); later(type,TYPE); } else { if(caret.parentNode)caret.parentNode.removeChild(caret); word.textContent=to.text; done(); } }
+        function back(){ if(buf.length>0){ buf=buf.slice(0,-1); render(); later(back,TYPE); } else { word.className='cyc-word '+to.cls; word.style.color=to.col; type(); } }
+        later(back,TYPE);
+      }
+      function tFade(from,to,done){
+        word.classList.add('cyc-fade'); word.classList.add('cyc-out');
+        later(function(){ paintPlain(to); word.classList.add('cyc-fade'); setWidth(to.text); word.classList.remove('cyc-out'); later(function(){ word.classList.remove('cyc-fade'); done(); },440); },300);
+      }
+      function tScramble(from,to,done){
+        var nodes=splitInto(to); setWidth(to.text);        // fixed box width = target word; period never jitters
+        var resolved=0, frame=0;
+        var iv=setInterval(function(){
+          frame++;
+          for(var i=0;i<nodes.length;i++){ nodes[i].textContent = i<resolved ? to.text[i] : rnd(); }
+          if(frame % SCRAM_FRAMES === 0 && resolved<nodes.length){ nodes[resolved].textContent=to.text[resolved]; resolved++; }
+          if(resolved>=nodes.length){ clearInterval(iv); word.textContent=to.text; word.className='cyc-word '+to.cls; done(); }
+        },SCRAM_TICK);
+        timers.push(iv);
+      }
+      function tFlip(from,to,done){
+        setWidth(to.text);                                 // width tweens once up front
+        word.className='cyc-word '+from.cls; word.style.color=from.col;
+        word.style.transformOrigin='center bottom';
+        word.style.transition='width .52s cubic-bezier(.22,.7,.2,1),transform '+(FLIP/2)+'ms ease-in,opacity '+(FLIP/2)+'ms ease-in';
+        word.style.transform='translateY(-.45em) rotateX(72deg)'; word.style.opacity='0';
+        later(function(){
+          paintPlain(to); word.style.color=to.col;
+          word.style.transition='none'; word.style.transform='translateY(.45em) rotateX(-72deg)'; word.style.opacity='0';
+          void word.offsetWidth;                           // force reflow so the entry runs
+          word.style.transition='transform '+(FLIP/2)+'ms ease-out,opacity '+(FLIP/2)+'ms ease-out';
+          word.style.transform='none'; word.style.opacity='1';
+          later(function(){ word.style.transition=''; word.style.transform=''; word.style.opacity=''; word.style.transformOrigin=''; word.style.color=''; done(); },FLIP/2);
+        },FLIP/2);
+      }
+      function tShuffle(from,to,done){
+        var nodes=splitInto(to); setWidth(to.text);
+        for(var i=0;i<nodes.length;i++){ var dx=((Math.random()*2-1)*8).toFixed(1), dy=((Math.random()*2-1)*14).toFixed(1); nodes[i].style.transition='none'; nodes[i].style.transform='translate('+dx+'px,'+dy+'px)'; nodes[i].style.opacity='0'; }
+        void word.offsetWidth;
+        nodes.forEach(function(n,i){ later(function(){ n.style.transition='transform '+SETTLE+'ms cubic-bezier(.18,1.3,.3,1),opacity .3s ease'; n.style.transform='none'; n.style.opacity='1'; }, 30*i); });
+        later(function(){ word.textContent=to.text; word.className='cyc-word '+to.cls; word.style.color=''; done(); }, SETTLE + 30*nodes.length);
+      }
+
+      var POOL=[tType,tFade,tScramble,tFlip,tShuffle];
+      function pick(){ var i; do{ i=(Math.random()*POOL.length)|0; }while(i===last && POOL.length>1); last=i; return POOL[i]; }
+
+      function step(){
+        if(!running) return;
+        clearTimers();                                     // never let two transitions overlap
+        var from=WORDS[idx]; idx=(idx+1)%WORDS.length; var to=WORDS[idx];
+        if(reduce){                                        // reduced motion: one calm cross-fade, nothing else
+          word.classList.add('cyc-fade'); word.classList.add('cyc-out');
+          later(function(){ paintPlain(to); word.classList.add('cyc-fade'); setWidth(to.text); word.classList.remove('cyc-out'); later(function(){ word.classList.remove('cyc-fade'); later(step,RM_HOLD); },440); },420);
+          return;
+        }
+        pick()(from,to,function(){ settle(to); later(step,HOLD); });
+      }
+
+      function start(){ if(running)return; running=true; later(step, reduce?RM_HOLD:HOLD); }
+      function stop(){ running=false; clearTimers(); }     // pause when tab hidden so timers don't pile up
+
+      document.addEventListener('visibilitychange',function(){
+        if(document.hidden){ stop(); }
+        else { clearTimers(); settle(WORDS[idx]); start(); } // resume: re-settle the current word, no partial frame left over
+      });
+      addEventListener('resize',function(){ measure(); if(running) setWidth(WORDS[idx].text); });
+      if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ measure(); setWidth(WORDS[idx].text); });
+
+      if(!document.hidden) start();
+    })();
 </script>
 </body>
 </html>
