@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- The libre (S3-only) build's entitlements. It keeps network access and
+         keychain access — the cloud keychain (synchronizable items sync via
+         iCloud Keychain) is the load-bearing usability feature and needs no
+         iCloud container — but drops the CloudKit/iCloud-container entitlements
+         the full build carries. Those require a paid developer account with the
+         iCloud capability and a container owned by that account, so a build from
+         source without it can't sign with them. build-macos.sh points
+         CODE_SIGN_ENTITLEMENTS here whenever it compiles the bridge without the
+         cloudkit feature. -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)fm.bae.desktop</string>
+    </array>
+</dict>
+</plist>

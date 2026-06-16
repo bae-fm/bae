@@ -41,6 +41,16 @@ case ",$BAE_BRIDGE_FEATURES," in
 esac
 SWIFT_CONDITIONS="$(echo "$SWIFT_CONDITIONS" | xargs)"
 
+# A build without cloudkit signs with the libre entitlements, which drop the
+# iCloud-container keys (a paid account with the iCloud capability is required to
+# sign them) but keep keychain access for the cloud keychain. The full build
+# leaves CODE_SIGN_ENTITLEMENTS at the default Signing.xcconfig sets.
+ENTITLEMENTS_OVERRIDE=""
+case ",$BAE_BRIDGE_FEATURES," in
+    *,cloudkit,*) ;;
+    *) ENTITLEMENTS_OVERRIDE="CODE_SIGN_ENTITLEMENTS = bae/bae-libre.entitlements" ;;
+esac
+
 # Use sccache if available
 if command -v sccache &> /dev/null; then
     export RUSTC_WRAPPER=sccache
@@ -60,6 +70,7 @@ echo "Writing Swift compilation conditions: ${SWIFT_CONDITIONS:-(none)}"
     echo "// Do not edit: it is overwritten on every bridge build and tracks the"
     echo "// cargo feature set the bridge was compiled with."
     echo "SWIFT_ACTIVE_COMPILATION_CONDITIONS = \$(inherited) $SWIFT_CONDITIONS"
+    [ -n "$ENTITLEMENTS_OVERRIDE" ] && echo "$ENTITLEMENTS_OVERRIDE"
 } > "$FEATURES_XCCONFIG"
 
 echo "Generating Swift bindings..."
