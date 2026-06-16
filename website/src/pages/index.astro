@@ -171,12 +171,18 @@
   footer a{font-size:14px;color:var(--fg-dim);font-weight:500;} footer a:hover{color:var(--pink);}
   footer .cp{font-family:var(--mono);font-size:11px;color:var(--fg-faint);}
 
-  @media(max-width:860px){.heroin{grid-template-columns:1fr;}.herosheep{order:-1;}.cards{grid-template-columns:1fr;}.enc{grid-template-columns:1fr;padding:32px;}}
+  @media(max-width:860px){.heroin{grid-template-columns:1fr;}.herosheep{order:-1;}.cards{grid-template-columns:1fr;}.enc{grid-template-columns:1fr;padding:32px;}header.hero{padding-bottom:24px;}.sec{padding:52px 0;}}
   @media(max-width:560px){
-    .trust{flex-direction:column;align-items:center;gap:18px;margin-top:40px;}
-    .trust .t{align-items:center;text-align:center;gap:3px;}
-    .trust .t b{font-size:25px;}
-    .trust .t span{font-size:14px;color:var(--fg-dim);}
+    .heroin{gap:42px;}
+    h1.jumbo{line-height:1.05;}
+    .tagpill{margin-bottom:32px;}
+    .dek{margin-top:32px;line-height:1.68;}
+    .cta{margin-top:46px;gap:15px;}
+    .cta .meta{flex-basis:100%;text-align:center;margin-top:2px;}
+    .trust{flex-direction:column;align-items:center;gap:22px;margin-top:48px;padding-top:34px;}
+    .trust .t{align-items:center;text-align:center;gap:4px;}
+    .trust .t b{font-size:29px;}
+    .trust .t span{font-size:15.5px;color:var(--fg-dim);}
   }
 </style>
 </head>
@@ -199,12 +205,12 @@
       <h1 class="jumbo r d1">Your music<br/><span class="pink">everywhere</span></h1>
       <p class="dek r d2">Every album you own, on your desktop and your phone. Listen everywhere, synced effortlessly. No server to keep running. <b style="white-space:nowrap;">Private, yours.</b></p>
       <div class="cta r d3">
-        <a class="btn pink" href="https://github.com/bae-fm/bae/releases/latest/download/bae-macos.dmg">Download for macOS</a>
+        <a class="btn pink" href="https://github.com/bae-fm/bae/releases/download/macos-latest/bae-macos.dmg">Download for macOS</a>
         <a class="btn" href="#features">Explore features</a>
         <span class="meta">macOS · iOS · Windows · Android</span>
       </div>
       <div class="trust r d3">
-        <div class="t"><b>Yours<span class="a">.</span></b><span>to keep, for good</span></div>
+        <div class="t"><b>Yours<span class="a">.</span></b><span>never locked in</span></div>
         <div class="t"><b>Everywhere<span class="a">.</span></b><span>always in sync</span></div>
         <div class="t"><b>Serverless<span class="a">.</span></b><span>no server to run</span></div>
       </div>
@@ -212,8 +218,8 @@
     <div class="herosheep r d2">
       <div class="sheepglow"></div>
       <img src="/sheep.png" alt="bae the sheep, wearing headphones" />
-      <div class="note one"><span class="dot" style="background:#32d74b"></span>Synced<span class="s">4 minutes ago</span></div>
-      <div class="note two">Neon Frequencies<span class="s">The Midnight Signal · 3:42</span></div>
+      <div class="note one"><span class="dot" style="background:#32d74b"></span>Synced<span class="s">across your devices</span></div>
+      <div class="note two">Your cloud<span class="s">no server, no account</span></div>
     </div>
   </div>
 </header>
@@ -331,7 +337,7 @@
   <h2 class="r d1">Bring your collection <span class="pink">home</span>.</h2>
   <p class="r d2">Free, open source, and in active development. Everything you add is yours from day one.</p>
   <div class="cta r d3" style="justify-content:center;">
-    <a class="btn pink" href="https://github.com/bae-fm/bae/releases/latest/download/bae-macos.dmg">Download for macOS</a>
+    <a class="btn pink" href="https://github.com/bae-fm/bae/releases/download/macos-latest/bae-macos.dmg">Download for macOS</a>
     <a class="btn" href="/architecture/overview">See how it works</a>
   </div>
 </div></section>
