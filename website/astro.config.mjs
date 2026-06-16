@@ -9,6 +9,7 @@ export default defineConfig({
 		starlight({
 			title: 'bae',
 			description: 'Music library manager with serverless, encrypted, multi-device sync',
+			favicon: '/app-icon.png',
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/bae-fm/bae' }
 			],
