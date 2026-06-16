@@ -86,15 +86,27 @@ final class Sync: Sendable, Observable {
 
     convenience init(handle: any AppHandleProtocol) {
         self.init(
-            signInCloudProvider: {
-                try await handle.signInCloudProvider(provider: $0)
+            // `signInCloudProvider` (OAuth) and `connectCloudkit` (iCloud) bind
+            // to bridge methods that exist only when their feature is compiled
+            // in. The UI that calls these is compiled out of libre builds, so
+            // there the closures are unreachable stubs.
+            signInCloudProvider: { provider in
+                #if BAE_OAUTH_PROVIDERS
+                    try await handle.signInCloudProvider(provider: provider)
+                #else
+                    throw StubError.notImplemented
+                #endif
             },
             disconnectCloudProvider: { try handle.disconnectCloudProvider() },
             connectCloudkit: {
-                // The driver is installed once at app startup; here we only
-                // pre-flight the iCloud account before persisting CloudKit.
-                try await CloudKitService.bae().checkAccountAvailable()
-                try await handle.useCloudkit()
+                #if BAE_CLOUDKIT
+                    // The driver is installed once at app startup; here we only
+                    // pre-flight the iCloud account before persisting CloudKit.
+                    try await CloudKitService.bae().checkAccountAvailable()
+                    try await handle.useCloudkit()
+                #else
+                    throw StubError.notImplemented
+                #endif
             },
             saveSyncConfig: { try await handle.saveSyncConfig(configData: $0) },
             generateRestoreCode: { try handle.generateRestoreCode() },

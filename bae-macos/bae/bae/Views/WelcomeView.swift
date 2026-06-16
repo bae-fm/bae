@@ -260,7 +260,9 @@ struct WelcomeView: View {
                                 ProgressView()
                                     .controlSize(.small)
                                 Button("Cancel") {
-                                    oauthCancel()
+                                    #if BAE_OAUTH_PROVIDERS
+                                        oauthCancel()
+                                    #endif
                                     isAuthorizing = false
                                 }
                                 .buttonStyle(.borderless)
@@ -276,9 +278,12 @@ struct WelcomeView: View {
                                     ) {
                                         restoreCodeInput = entry.code
                                         decodedRestore = .success(entry.info)
-                                        doOAuthAuthorize(
-                                            provider: entry.info.cloudProvider
-                                        )
+                                        #if BAE_OAUTH_PROVIDERS
+                                            doOAuthAuthorize(
+                                                provider: entry.info
+                                                    .cloudProvider
+                                            )
+                                        #endif
                                     }
                                     // Disabled (not just hidden) when it isn't
                                     // the active control, so it can't take Tab
@@ -417,9 +422,13 @@ struct WelcomeView: View {
                             value: info.cloudProviderLabel
                         )
                         LabeledContent("Library", value: info.libraryName)
-                        if info.needsOauth {
-                            restoreCodeOauthRow(provider: info.cloudProvider)
-                        }
+                        #if BAE_OAUTH_PROVIDERS
+                            if info.needsOauth {
+                                restoreCodeOauthRow(
+                                    provider: info.cloudProvider
+                                )
+                            }
+                        #endif
                     }
                     else if case .failure(let decodeError) = decodedRestore {
                         Text(decodeError.localizedDescription)
@@ -478,42 +487,47 @@ struct WelcomeView: View {
         .onDisappear { restoreTask?.cancel() }
     }
 
-    private func restoreCodeOauthRow(provider: BridgeCloudProvider) -> some View
-    {
-        HStack {
-            if oauthTokenJson != nil {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text("Connected")
-                    .foregroundStyle(.secondary)
-            }
-            else if isAuthorizing {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Authorizing...")
-                    .foregroundStyle(.secondary)
-                Button("Cancel") {
-                    isAuthorizing = false
+    #if BAE_OAUTH_PROVIDERS
+        private func restoreCodeOauthRow(
+            provider: BridgeCloudProvider
+        ) -> some View {
+            HStack {
+                if oauthTokenJson != nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Connected")
+                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.borderless)
-                .font(.callout)
-            }
-            else {
-                Button("Connect \(cloudProviderLabel(provider: provider))") {
-                    doOAuthAuthorize(provider: provider)
+                else if isAuthorizing {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Authorizing...")
+                        .foregroundStyle(.secondary)
+                    Button("Cancel") {
+                        isAuthorizing = false
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.callout)
+                }
+                else {
+                    Button("Connect \(cloudProviderLabel(provider: provider))")
+                    {
+                        doOAuthAuthorize(provider: provider)
+                    }
                 }
             }
         }
-    }
+    #endif
 
     @ViewBuilder
     private var manualRestoreFields: some View {
+        // The provider choices come from the compiled-in set, so a libre
+        // (S3-only) build offers just S3 and never references an OAuth/CloudKit
+        // bridge symbol that isn't there.
         Picker("Cloud provider", selection: $restoreProvider) {
-            Text("S3").tag(BridgeCloudProvider.s3)
-            Text("iCloud").tag(BridgeCloudProvider.cloudKit)
-            Text("Google Drive").tag(BridgeCloudProvider.googleDrive)
-            Text("Dropbox").tag(BridgeCloudProvider.dropbox)
-            Text("OneDrive").tag(BridgeCloudProvider.oneDrive)
+            ForEach(availableCloudProviders(), id: \.self) { provider in
+                Text(cloudProviderLabel(provider: provider)).tag(provider)
+            }
         }
         .onChange(of: restoreProvider) {
             oauthTokenJson = nil
@@ -540,54 +554,70 @@ struct WelcomeView: View {
         case .cloudKit:
             EmptyView()
         case .googleDrive:
-            manualOauthConnectRow
-            if oauthTokenJson != nil {
-                TextField("Folder ID", text: $googleDriveFolderId)
-                    .help("The Google Drive folder ID containing your library")
-            }
+            #if BAE_OAUTH_PROVIDERS
+                manualOauthConnectRow
+                if oauthTokenJson != nil {
+                    TextField("Folder ID", text: $googleDriveFolderId)
+                        .help(
+                            "The Google Drive folder ID containing your library"
+                        )
+                }
+            #else
+                EmptyView()
+            #endif
         case .dropbox:
-            manualOauthConnectRow
-            if oauthTokenJson != nil {
-                TextField("Folder Path", text: $dropboxFolderPath)
-                    .help("e.g. /Apps/bae/My Library")
-            }
+            #if BAE_OAUTH_PROVIDERS
+                manualOauthConnectRow
+                if oauthTokenJson != nil {
+                    TextField("Folder Path", text: $dropboxFolderPath)
+                        .help("e.g. /Apps/bae/My Library")
+                }
+            #else
+                EmptyView()
+            #endif
         case .oneDrive:
-            manualOauthConnectRow
-            if oauthTokenJson != nil {
-                TextField("Drive ID", text: $oneDriveDriveId)
-                TextField("Folder ID", text: $oneDriveFolderId)
-            }
+            #if BAE_OAUTH_PROVIDERS
+                manualOauthConnectRow
+                if oauthTokenJson != nil {
+                    TextField("Drive ID", text: $oneDriveDriveId)
+                    TextField("Folder ID", text: $oneDriveFolderId)
+                }
+            #else
+                EmptyView()
+            #endif
         }
     }
 
-    private var manualOauthConnectRow: some View {
-        HStack {
-            if oauthTokenJson != nil {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text("Connected")
-                    .foregroundStyle(.secondary)
-            }
-            else if isAuthorizing {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Authorizing...")
-                    .foregroundStyle(.secondary)
-                Button("Cancel") {
-                    isAuthorizing = false
+    #if BAE_OAUTH_PROVIDERS
+        private var manualOauthConnectRow: some View {
+            HStack {
+                if oauthTokenJson != nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Connected")
+                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.borderless)
-                .font(.callout)
-            }
-            else {
-                Button(
-                    "Connect \(cloudProviderLabel(provider: restoreProvider))"
-                ) {
-                    doOAuthAuthorize(provider: restoreProvider)
+                else if isAuthorizing {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Authorizing...")
+                        .foregroundStyle(.secondary)
+                    Button("Cancel") {
+                        isAuthorizing = false
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.callout)
+                }
+                else {
+                    Button(
+                        "Connect \(cloudProviderLabel(provider: restoreProvider))"
+                    ) {
+                        doOAuthAuthorize(provider: restoreProvider)
+                    }
                 }
             }
         }
-    }
+    #endif
 
     // MARK: - Validation
 
@@ -773,27 +803,29 @@ struct WelcomeView: View {
         }
     }
 
-    private func doOAuthAuthorize(provider: BridgeCloudProvider) {
-        isAuthorizing = true
-        error = nil
-        Task.detached {
-            do {
-                let tokenJson = try oauthAuthorize(provider: provider)
-                await MainActor.run {
-                    guard isAuthorizing else {
-                        return
+    #if BAE_OAUTH_PROVIDERS
+        private func doOAuthAuthorize(provider: BridgeCloudProvider) {
+            isAuthorizing = true
+            error = nil
+            Task.detached {
+                do {
+                    let tokenJson = try oauthAuthorize(provider: provider)
+                    await MainActor.run {
+                        guard isAuthorizing else {
+                            return
+                        }
+                        isAuthorizing = false
+                        oauthTokenJson = tokenJson
                     }
-                    isAuthorizing = false
-                    oauthTokenJson = tokenJson
                 }
-            }
-            catch {
-                await MainActor.run {
-                    isAuthorizing = false
-                    self.error = error.localizedDescription
+                catch {
+                    await MainActor.run {
+                        isAuthorizing = false
+                        self.error = error.localizedDescription
+                    }
                 }
             }
         }
-    }
+    #endif
 
 }

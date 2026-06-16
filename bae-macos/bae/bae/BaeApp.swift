@@ -389,7 +389,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
             // itself (it needs the platform CloudKit APIs); installing it is
             // idempotent and harmless for libraries that sync elsewhere, so it
             // belongs here at the composition root rather than at each open.
-            setCloudkitDriver(driver: CloudKitService.bae())
+            #if BAE_CLOUDKIT
+                setCloudkitDriver(driver: CloudKitService.bae())
+            #endif
         }
         loadInitialState()
     }

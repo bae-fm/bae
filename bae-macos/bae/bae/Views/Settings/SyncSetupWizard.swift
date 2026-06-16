@@ -23,32 +23,36 @@ private struct ProviderOption: Identifiable {
     let icon: String
 }
 
-private let providerOptions: [ProviderOption] = [
-    ProviderOption(
+/// Display data (name, blurb, icon) for every provider bae can sync to. The
+/// bridge decides which are actually compiled in via `availableCloudProviders()`;
+/// `providerOptions` filters this table to that set, so a libre (S3-only) build
+/// shows just S3.
+private let providerDisplay: [BridgeCloudProvider: ProviderOption] = [
+    .cloudKit: ProviderOption(
         id: .cloudKit,
         name: "iCloud",
         description: "Sync via your iCloud account",
         icon: "icloud"
     ),
-    ProviderOption(
+    .googleDrive: ProviderOption(
         id: .googleDrive,
         name: "Google Drive",
         description: "Sync via Google Drive",
         icon: "externaldrive"
     ),
-    ProviderOption(
+    .dropbox: ProviderOption(
         id: .dropbox,
         name: "Dropbox",
         description: "Sync via Dropbox",
         icon: "externaldrive"
     ),
-    ProviderOption(
+    .oneDrive: ProviderOption(
         id: .oneDrive,
         name: "OneDrive",
         description: "Sync via Microsoft OneDrive",
         icon: "externaldrive"
     ),
-    ProviderOption(
+    .s3: ProviderOption(
         id: .s3,
         name: "S3-compatible",
         description: "Any S3-compatible storage (AWS, Backblaze, Minio, ...)",
@@ -56,12 +60,21 @@ private let providerOptions: [ProviderOption] = [
     ),
 ]
 
+/// The providers this build offers, in the bridge's display order. Drives the
+/// wizard's provider list so the picker matches the compiled-in feature set.
+private let providerOptions: [ProviderOption] = availableCloudProviders()
+    .compactMap { providerDisplay[$0] }
+
 // MARK: - SyncSetupWizard (pure leaf)
 
 struct SyncSetupWizard: View {
     let onConnectS3: (BridgeSaveSyncConfig) async throws -> Void
     /// Awaits the OAuth browser round-trip; cancellation aborts the listener.
+    /// The OAuth provider UI that invokes this is compiled out of libre builds,
+    /// where the closure is an unused stub.
     let onConnectOAuth: (_ provider: BridgeCloudProvider) async throws -> Void
+    /// The iCloud UI that invokes this is compiled out of libre builds, where
+    /// the closure is an unused stub.
     let onConnectCloudKit: () async throws -> Void
     let onDone: () -> Void
 
@@ -190,15 +203,28 @@ struct SyncSetupWizard: View {
 
     // MARK: - Configure Step
 
+    @ViewBuilder
     private func configureStep(for provider: BridgeCloudProvider) -> some View {
         Form {
+            // The switch stays exhaustive over all five providers in every
+            // build; only the arms whose bridge calls are feature-gated are
+            // hollowed out. A gated-out provider never reaches here — it isn't
+            // in `availableCloudProviders()`, so it can't be selected.
             switch provider {
             case .s3:
                 s3Fields
             case .googleDrive, .dropbox, .oneDrive:
-                oauthFields(provider: provider)
+                #if BAE_OAUTH_PROVIDERS
+                    oauthFields(provider: provider)
+                #else
+                    EmptyView()
+                #endif
             case .cloudKit:
-                cloudKitFields
+                #if BAE_CLOUDKIT
+                    cloudKitFields
+                #else
+                    EmptyView()
+                #endif
             }
 
             if let error {
@@ -247,53 +273,57 @@ struct SyncSetupWizard: View {
 
     // MARK: - OAuth
 
-    private func oauthFields(provider: BridgeCloudProvider) -> some View {
-        Section {
-            VStack(spacing: 12) {
-                Text(
-                    "Opens your browser to authorize bae with \(cloudProviderLabel(provider: provider))."
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+    #if BAE_OAUTH_PROVIDERS
+        private func oauthFields(provider: BridgeCloudProvider) -> some View {
+            Section {
+                VStack(spacing: 12) {
+                    Text(
+                        "Opens your browser to authorize bae with \(cloudProviderLabel(provider: provider))."
+                    )
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                HStack {
-                    Spacer()
-                    Button(
-                        isWorking
-                            ? "Connecting..."
-                            : "Connect \(cloudProviderLabel(provider: provider))"
-                    ) {
-                        connectOAuth(provider: provider)
+                    HStack {
+                        Spacer()
+                        Button(
+                            isWorking
+                                ? "Connecting..."
+                                : "Connect \(cloudProviderLabel(provider: provider))"
+                        ) {
+                            connectOAuth(provider: provider)
+                        }
+                        .disabled(isWorking)
                     }
-                    .disabled(isWorking)
                 }
             }
         }
-    }
+    #endif
 
     // MARK: - iCloud
 
-    private var cloudKitFields: some View {
-        Section {
-            VStack(spacing: 12) {
-                Text(
-                    "Uses iCloud for sync. Requires iCloud to be enabled in System Settings."
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+    #if BAE_CLOUDKIT
+        private var cloudKitFields: some View {
+            Section {
+                VStack(spacing: 12) {
+                    Text(
+                        "Uses iCloud for sync. Requires iCloud to be enabled in System Settings."
+                    )
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                HStack {
-                    Spacer()
-                    Button("Use iCloud") {
-                        connectCloudKit()
+                    HStack {
+                        Spacer()
+                        Button("Use iCloud") {
+                            connectCloudKit()
+                        }
+                        .disabled(isWorking)
                     }
-                    .disabled(isWorking)
                 }
             }
         }
-    }
+    #endif
 
     // MARK: - Actions
 
@@ -309,13 +339,17 @@ struct SyncSetupWizard: View {
         runConnect { try await onConnectS3(data) }
     }
 
-    private func connectOAuth(provider: BridgeCloudProvider) {
-        runConnect { try await onConnectOAuth(provider) }
-    }
+    #if BAE_OAUTH_PROVIDERS
+        private func connectOAuth(provider: BridgeCloudProvider) {
+            runConnect { try await onConnectOAuth(provider) }
+        }
+    #endif
 
-    private func connectCloudKit() {
-        runConnect { try await onConnectCloudKit() }
-    }
+    #if BAE_CLOUDKIT
+        private func connectCloudKit() {
+            runConnect { try await onConnectCloudKit() }
+        }
+    #endif
 
     /// Shared task lifecycle for the async connect actions (OAuth, iCloud):
     /// cancel any in-flight attempt, run `operation`, finish the wizard on
@@ -351,9 +385,11 @@ struct SyncSetupWizard: View {
         if case BridgeError.Config(let msg) = error {
             return msg.contains("denied") ? "Access denied" : msg
         }
-        if case CloudKitError.Storage(let msg) = error {
-            return msg
-        }
+        #if BAE_CLOUDKIT
+            if case CloudKitError.Storage(let msg) = error {
+                return msg
+            }
+        #endif
         return error.localizedDescription
     }
 }
