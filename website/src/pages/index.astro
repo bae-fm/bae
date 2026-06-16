@@ -16,7 +16,7 @@
     --night:#100e1a; --night-2:#161327; --card:#1c1830; --card-2:#231d3a;
     --cream:#fdf5ef; --fg-dim:rgba(253,245,239,.66); --fg-faint:rgba(253,245,239,.4);
     --violet:#9b6cf6; --violet-deep:#7c4ddb;
-    --pink:#f7a8c4; --pink-deep:#ec6a99; --mint:#86e0c8;
+    --pink:#f7a8c4; --pink-deep:#ec6a99; --mint:#86e0c8; --amber:#f4c178; --sky:#7fb8f5;
     --line:rgba(253,245,239,.12);
     --disp:"Bricolage Grotesque",system-ui,sans-serif;
     --body:"Hanken Grotesk",system-ui,sans-serif;
@@ -52,25 +52,11 @@
   .btn.solid:hover{background:var(--violet-deep);border-color:var(--violet-deep);color:#fff;transform:translateY(-2px);box-shadow:0 12px 30px rgba(155,108,246,.45);}
   .btn.pink{background:var(--pink);border-color:var(--pink);color:#3a2230;}
   .btn.pink:hover{background:var(--pink-deep);border-color:var(--pink-deep);color:#fff;transform:translateY(-2px);box-shadow:0 12px 30px rgba(236,106,153,.4);}
-  .navgh{display:none;align-items:center;justify-content:center;width:42px;height:42px;color:var(--fg-dim);transition:color .22s;}
-  .navgh:hover{color:var(--cream);}
-  .navgh svg{width:22px;height:22px;}
-  .navtoggle{display:none;margin-left:auto;flex-direction:column;justify-content:center;gap:5px;width:42px;height:42px;padding:0 10px;border:1px solid var(--line);border-radius:12px;background:transparent;cursor:pointer;}
-  .navtoggle span{display:block;height:2px;width:100%;background:var(--cream);border-radius:2px;transition:transform .25s,opacity .2s;}
-  .navtoggle[aria-expanded="true"] span:nth-child(1){transform:translateY(7px) rotate(45deg);}
-  .navtoggle[aria-expanded="true"] span:nth-child(2){opacity:0;}
-  .navtoggle[aria-expanded="true"] span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
-  @media(max-width:720px){
-    .navin{gap:14px;}
-    .navlinks{position:absolute;top:100%;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;margin-left:0;padding:8px 0 16px;background:rgba(16,14,26,.96);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);opacity:0;visibility:hidden;transform:translateY(-8px);transition:opacity .22s,transform .22s,visibility .22s;}
-    .navlinks.open{opacity:1;visibility:visible;transform:none;}
-    .navlinks a{padding:13px 28px;font-size:16px;}
-    .navlinks a.ghlink{display:none;}
-    .navlinks a.btn{margin:12px 28px 4px;text-align:center;font-size:15px;}
-    .navgh{display:inline-flex;margin-left:auto;}
-    .navtoggle{display:inline-flex;margin-left:0;}
+  @media(max-width:560px){
+    .navin{gap:12px;}
+    .navlinks{gap:14px;}
+    .navlinks a{font-size:13.5px;}
   }
-  @media (prefers-reduced-motion: reduce){.navtoggle span,.navlinks{transition:none;}}
 
   /* hero */
   header.hero{padding:130px 0 70px;position:relative;overflow:hidden;}
@@ -182,6 +168,9 @@
   }
   .endcta h2 .cyc-pink{color:var(--pink);}
   .endcta h2 .cyc-violet{color:var(--violet);}
+  .endcta h2 .cyc-mint{color:var(--mint);}
+  .endcta h2 .cyc-amber{color:var(--amber);}
+  .endcta h2 .cyc-sky{color:var(--sky);}
   /* period folded into the cycling unit; cream so it reads as punctuation, not part of the word */
   .endcta h2 .cyc-dot{color:var(--cream);}
 
@@ -243,10 +232,8 @@
 <body>
 <nav id="nav"><div class="wrap navin">
   <span class="brand"><img src="/app-icon.png" alt="" />bae</span>
-  <a class="navgh" href="https://github.com/bae-fm/bae" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49l-.01-1.9c-2.78.62-3.37-1.2-3.37-1.2-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.9 1.56 2.36 1.11 2.93.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05A9.4 9.4 0 0 1 12 6.84c.85 0 1.71.12 2.51.34 1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9l-.01 2.81c0 .27.18.6.69.49A10.02 10.02 0 0 0 22 12.25C22 6.58 17.52 2 12 2z"/></svg></a>
-  <button id="navtoggle" class="navtoggle" aria-label="Menu" aria-expanded="false" aria-controls="navlinks"><span></span><span></span><span></span></button>
-  <div class="navlinks" id="navlinks">
-    <a href="#features">Features</a><a href="#cloud">No server</a><a href="#enc">Privacy</a><a class="ghlink" href="https://github.com/bae-fm/bae">GitHub</a>
+  <div class="navlinks">
+    <a href="/getting-started/installation">Docs</a><a href="https://github.com/bae-fm/bae">GitHub</a>
     <a class="btn pink" href="#get">Download</a>
   </div>
 </div></nav>
@@ -398,7 +385,7 @@
 
 <footer><div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;width:100%;">
   <span class="fb"><img src="/app-icon.png" alt="" />bae</span>
-  <div class="links"><a href="#features">Features</a><a href="#cloud">No server</a><a href="#enc">Privacy</a><a href="/getting-started/installation">Docs</a><a href="https://github.com/bae-fm/bae">GitHub</a></div>
+  <div class="links"><a href="/getting-started/installation">Docs</a><a href="https://github.com/bae-fm/bae">GitHub</a></div>
   <span class="cp">free &amp; open source</span>
 </div></footer>
 
@@ -420,11 +407,6 @@
     setTimeout(function(){els.forEach(show);els=[];},2400);
     var nav=document.getElementById('nav');
     addEventListener('scroll',function(){nav.classList.toggle('scrolled',scrollY>20);},{passive:true});
-    var tg=document.getElementById('navtoggle'),nl=document.getElementById('navlinks');
-    function setMenu(open){nl.classList.toggle('open',open);tg.setAttribute('aria-expanded',open?'true':'false');}
-    tg.addEventListener('click',function(){setMenu(!nl.classList.contains('open'));});
-    [].forEach.call(nl.querySelectorAll('a'),function(a){a.addEventListener('click',function(){setMenu(false);});});
-    addEventListener('resize',function(){if(innerWidth>720)setMenu(false);});
   })();
 
   /* end CTA: cycling final word ("home" / "everywhere") */
@@ -437,8 +419,11 @@
       if(!h2 || !cyc || !word || !dot) return;            // guard: do nothing if missing
 
       var WORDS = [
-        {text:'home',       cls:'cyc-pink',   col:'var(--pink)'},
-        {text:'everywhere', cls:'cyc-violet', col:'var(--violet)'}
+        {text:'home',          cls:'cyc-pink',   col:'var(--pink)'},
+        {text:'everywhere',    cls:'cyc-violet', col:'var(--violet)'},
+        {text:'together',      cls:'cyc-mint',   col:'var(--mint)'},
+        {text:'offline',       cls:'cyc-amber',  col:'var(--amber)'},
+        {text:'under control', cls:'cyc-sky',    col:'var(--sky)'}
       ];
       var HOLD=2100, TYPE=58, FLIP=620, RM_HOLD=4200;
       var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
