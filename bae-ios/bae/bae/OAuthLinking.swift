@@ -1,3 +1,5 @@
+#if BAE_OAUTH_PROVIDERS
+
 import AuthenticationServices
 import Foundation
 import os.log
@@ -236,3 +238,5 @@ final class WebAuthCoordinator: NSObject, ASWebAuthenticationPresentationContext
     presentationAnchor
   }
 }
+
+#endif

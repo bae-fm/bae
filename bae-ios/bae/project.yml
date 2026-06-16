@@ -11,11 +11,19 @@ targets:
   bae:
     type: application
     platform: iOS
+    # Config.xcconfig optionally pulls in the gitignored Features.xcconfig that
+    # bae-bridge/build-ios.sh generates, so the app's #if guards
+    # (BAE_OAUTH_PROVIDERS / BAE_CLOUDKIT) match the cargo feature set the bridge
+    # was built with (see Config.xcconfig).
+    configFiles:
+      Debug: Config.xcconfig
+      Release: Config.xcconfig
     sources:
       # iOS app sources (includes the gitignored bae_bridge.swift bindings,
-      # which build-ios.sh copies here — cloudkit-only, matching the iOS
-      # xcframework's exported symbols; the shared bae-bridge/swift-bindings/
-      # dir is scratch a macOS build regenerates with desktop methods).
+      # which build-ios.sh copies here — built with BAE_BRIDGE_FEATURES
+      # (default oauth-providers,cloudkit), matching the iOS xcframework's
+      # exported symbols; the shared bae-bridge/swift-bindings/ dir is scratch a
+      # macOS build regenerates with desktop methods).
       - bae
       # Shared data/service/domain layer compiled directly from the macOS app
       # — one copy serves both platforms. Each is AppKit-free and references

@@ -4,8 +4,12 @@ import SwiftUI
 /// open it, gate on the encryption key, or onboard. Once a library is open, the
 /// `LibraryView` browses it.
 struct ContentView: View {
-  let oauthLinking: OAuthLinking?
-  let oauthLinkingError: String?
+  // The host's OAuth client config, forwarded to onboarding. Present only in a
+  // full build; libre compiles out the OAuth link flow.
+  #if BAE_OAUTH_PROVIDERS
+    let oauthLinking: OAuthLinking?
+    let oauthLinkingError: String?
+  #endif
   let startupError: String?
 
   @State
@@ -26,11 +30,15 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
         case .onboarding:
-          OnboardingView(
-            oauthLinking: oauthLinking,
-            oauthLinkingError: oauthLinkingError,
-            onLinked: holder.onLinked
-          )
+          #if BAE_OAUTH_PROVIDERS
+            OnboardingView(
+              oauthLinking: oauthLinking,
+              oauthLinkingError: oauthLinkingError,
+              onLinked: holder.onLinked
+            )
+          #else
+            OnboardingView(onLinked: holder.onLinked)
+          #endif
 
         case .unlock(let lockedLibrary):
           UnlockView(

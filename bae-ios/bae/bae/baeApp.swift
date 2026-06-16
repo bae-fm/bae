@@ -2,13 +2,20 @@ import SwiftUI
 
 @main
 struct baeApp: App {
-  private let oauthLinking: OAuthLinking?
-  private let oauthLinkingError: String?
+  // The host's OAuth client config and any error loading it. Present only in a
+  // full build; a libre (S3-only) build compiles out the OAuth flow entirely, so
+  // there is nothing to load and no property to carry.
+  #if BAE_OAUTH_PROVIDERS
+    private let oauthLinking: OAuthLinking?
+    private let oauthLinkingError: String?
+  #endif
   private let startupError: String?
 
   init() {
-    var loadedOAuthLinking: OAuthLinking?
-    var oauthError: String?
+    #if BAE_OAUTH_PROVIDERS
+      var loadedOAuthLinking: OAuthLinking?
+      var oauthError: String?
+    #endif
     var launchError: String?
     do {
       // App processes on iOS have no $HOME, which bae-core needs to locate its
@@ -23,35 +30,44 @@ struct baeApp: App {
       // (it needs the platform CloudKit APIs); installing it is idempotent and
       // harmless for libraries that sync elsewhere, so it belongs here at the
       // composition root rather than at each library open.
-      setCloudkitDriver(driver: CloudKitService.bae())
+      #if BAE_CLOUDKIT
+        setCloudkitDriver(driver: CloudKitService.bae())
+      #endif
     } catch {
       launchError = error.localizedDescription
     }
 
-    if launchError == nil {
-      // Register the host's OAuth client creds (if a creds file is bundled) so
-      // coven can build authorization URLs and refresh provider tokens during
-      // sync. Absent file → cloud providers that need OAuth stay unavailable.
-      do {
-        loadedOAuthLinking = try OAuthLinking.load()
-        try loadedOAuthLinking?.register()
-      } catch {
-        oauthError = error.localizedDescription
+    #if BAE_OAUTH_PROVIDERS
+      if launchError == nil {
+        // Register the host's OAuth client creds (if a creds file is bundled) so
+        // coven can build authorization URLs and refresh provider tokens during
+        // sync. Absent file → cloud providers that need OAuth stay unavailable.
+        do {
+          loadedOAuthLinking = try OAuthLinking.load()
+          try loadedOAuthLinking?.register()
+        } catch {
+          oauthError = error.localizedDescription
+        }
       }
-    }
-    oauthLinking = loadedOAuthLinking
-    oauthLinkingError = oauthError
+      oauthLinking = loadedOAuthLinking
+      oauthLinkingError = oauthError
+    #endif
     startupError = launchError
   }
 
   var body: some Scene {
     WindowGroup {
-      ContentView(
-        oauthLinking: oauthLinking,
-        oauthLinkingError: oauthLinkingError,
-        startupError: startupError
-      )
-        .tint(Theme.accent)
+      #if BAE_OAUTH_PROVIDERS
+        ContentView(
+          oauthLinking: oauthLinking,
+          oauthLinkingError: oauthLinkingError,
+          startupError: startupError
+        )
+          .tint(Theme.accent)
+      #else
+        ContentView(startupError: startupError)
+          .tint(Theme.accent)
+      #endif
     }
   }
 

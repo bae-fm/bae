@@ -31,8 +31,12 @@ private final class LinkFlow {
 /// cloud sign-in when the provider needs it, inject the CloudKit driver when the
 /// library syncs through CloudKit, then restore.
 struct OnboardingView: View {
-  let oauthLinking: OAuthLinking?
-  let oauthLinkingError: String?
+  // The host's OAuth client config. Present only in a full build; libre
+  // (S3-only) compiles out the OAuth branch of the link flow.
+  #if BAE_OAUTH_PROVIDERS
+    let oauthLinking: OAuthLinking?
+    let oauthLinkingError: String?
+  #endif
   let onLinked: (BridgeLibrary) -> Void
 
   @State
@@ -45,8 +49,10 @@ struct OnboardingView: View {
   private var error: String?
   @State
   private var linkFlow: LinkFlow?
-  @State
-  private var presentationAnchor: ASPresentationAnchor?
+  #if BAE_OAUTH_PROVIDERS
+    @State
+    private var presentationAnchor: ASPresentationAnchor?
+  #endif
 
   var body: some View {
     Group {
@@ -65,11 +71,15 @@ struct OnboardingView: View {
     .onDisappear {
       linkFlow?.cancel()
     }
-    .background(
-      PresentationAnchorReader(presentationAnchor: $presentationAnchor)
-        .frame(width: 0, height: 0)
-        .allowsHitTesting(false)
-    )
+    #if BAE_OAUTH_PROVIDERS
+      // Captures the host window so the OAuth web-auth session has a
+      // presentation anchor. Only the OAuth link branch needs it.
+      .background(
+        PresentationAnchorReader(presentationAnchor: $presentationAnchor)
+          .frame(width: 0, height: 0)
+          .allowsHitTesting(false)
+      )
+    #endif
   }
 
   private var entryView: some View {
@@ -258,25 +268,33 @@ struct OnboardingView: View {
 
           // A provider that needs OAuth (e.g. Google Drive): run the
           // system auth session to obtain a token before restoring.
-          // CloudKit and S3 need none and restore with a nil token.
+          // CloudKit and S3 need none and restore with a nil token. A libre
+          // (S3-only) build can't sign in to OAuth providers at all, so a
+          // library that needs it can't be linked here.
           var oauthTokenJson: String? = nil
           if info.needsOauth {
-            if let oauthLinkingError {
-              error = oauthLinkingError
-              return
-            }
-            guard let linking = oauthLinking else {
+            #if BAE_OAUTH_PROVIDERS
+              if let oauthLinkingError {
+                error = oauthLinkingError
+                return
+              }
+              guard let linking = oauthLinking else {
+                error =
+                  "This library needs cloud sign-in, which isn't configured on this build."
+                return
+              }
+              guard let presentationAnchor else {
+                throw OAuthLinkingError.noPresentationAnchor
+              }
+              oauthTokenJson = try await linking.authorize(
+                provider: info.cloudProvider,
+                presentationAnchor: presentationAnchor
+              )
+            #else
               error =
-                "This library needs cloud sign-in, which isn't configured on this build."
+                "This library syncs through a cloud provider this build doesn't support."
               return
-            }
-            guard let presentationAnchor else {
-              throw OAuthLinkingError.noPresentationAnchor
-            }
-            oauthTokenJson = try await linking.authorize(
-              provider: info.cloudProvider,
-              presentationAnchor: presentationAnchor
-            )
+            #endif
           }
 
           let tokenJson = oauthTokenJson
@@ -319,18 +337,20 @@ struct OnboardingView: View {
   }
 }
 
-private struct PresentationAnchorReader: UIViewRepresentable {
-  @Binding
-  var presentationAnchor: ASPresentationAnchor?
+#if BAE_OAUTH_PROVIDERS
+  private struct PresentationAnchorReader: UIViewRepresentable {
+    @Binding
+    var presentationAnchor: ASPresentationAnchor?
 
-  func makeUIView(context: Context) -> UIView {
-    UIView(frame: .zero)
-  }
+    func makeUIView(context: Context) -> UIView {
+      UIView(frame: .zero)
+    }
 
-  func updateUIView(_ uiView: UIView, context: Context) {
-    let window = uiView.window
-    DispatchQueue.main.async {
-      presentationAnchor = window
+    func updateUIView(_ uiView: UIView, context: Context) {
+      let window = uiView.window
+      DispatchQueue.main.async {
+        presentationAnchor = window
+      }
     }
   }
-}
+#endif

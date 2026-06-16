@@ -1,0 +1,10 @@
+// Base build configuration for the iOS app.
+//
+// Swift compilation conditions (BAE_OAUTH_PROVIDERS / BAE_CLOUDKIT) are generated
+// by bae-bridge/build-ios.sh from the cargo feature set it compiled the bridge
+// with, so the app's #if guards match the generated bindings. That file is
+// gitignored and rewritten on every bridge build; it's absent before the first
+// build (this optional include is then a no-op and the conditions stay empty,
+// matching an S3-only bridge until the default oauth-providers,cloudkit build
+// regenerates it).
+#include? "Features.xcconfig"
