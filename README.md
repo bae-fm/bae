@@ -100,3 +100,7 @@ RUST_LOG=debug             # Detailed debugging
 RUST_LOG=bae=debug         # Debug only bae module
 RUST_LOG=bae::import=debug # Debug specific submodule
 ```
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).

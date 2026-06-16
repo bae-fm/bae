@@ -2,6 +2,7 @@
 name = "bae-windows-ffi"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
 
 # A thin C ABI over bae-core for the native Windows (WinUI/C#) app to P/Invoke.
 # Windows binds bae-core through this hand-written surface, the way macOS/Android
