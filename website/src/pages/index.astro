@@ -468,7 +468,7 @@
         var caret=document.createElement('span'); caret.className='cyc-caret';
         var buf=from.text;
         function render(){ word.textContent=buf; word.appendChild(caret); }
-        render(); setWidth(to.text);                       // box already at target width: no jump as we type
+        render(); word.style.width='auto';                 // hug the typed text so the centered line never sits off-center
         function type(){ if(buf.length<to.text.length){ buf=to.text.slice(0,buf.length+1); render(); later(type,TYPE); } else { if(caret.parentNode)caret.parentNode.removeChild(caret); word.textContent=to.text; done(); } }
         function back(){ if(buf.length>0){ buf=buf.slice(0,-1); render(); later(back,TYPE); } else { word.className='cyc-word '+to.cls; word.style.color=to.col; type(); } }
         later(back,TYPE);
@@ -489,14 +489,14 @@
         timers.push(iv);
       }
       function tFlip(from,to,done){
-        setWidth(to.text);                                 // width tweens once up front
         word.className='cyc-word '+from.cls; word.style.color=from.col;
         word.style.transformOrigin='center bottom';
-        word.style.transition='width .52s cubic-bezier(.22,.7,.2,1),transform '+(FLIP/2)+'ms ease-in,opacity '+(FLIP/2)+'ms ease-in';
+        word.style.transition='transform '+(FLIP/2)+'ms ease-in,opacity '+(FLIP/2)+'ms ease-in';
         word.style.transform='translateY(-.45em) rotateX(72deg)'; word.style.opacity='0';
         later(function(){
           paintPlain(to); word.style.color=to.col;
           word.style.transition='none'; word.style.transform='translateY(.45em) rotateX(-72deg)'; word.style.opacity='0';
+          setWidth(to.text);                               // snap to target width while invisible: flip-out stays at the old word's width
           void word.offsetWidth;                           // force reflow so the entry runs
           word.style.transition='transform '+(FLIP/2)+'ms ease-out,opacity '+(FLIP/2)+'ms ease-out';
           word.style.transform='none'; word.style.opacity='1';
