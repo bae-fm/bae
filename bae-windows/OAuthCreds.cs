@@ -39,6 +39,16 @@ internal static class OAuthCreds
     /// </summary>
     internal static void Register()
     {
+        // The libre build's native library exports no OAuth entry points
+        // (bae_set_oauth_client_creds among them), so even reaching the
+        // registration call would fault on a missing symbol. The
+        // available-provider set is the gate: an S3-only build has nothing to
+        // register, regardless of whether a creds file happens to be present.
+        if (!NativeBae.SupportsOAuthProviders())
+        {
+            return;
+        }
+
         var path = Path.Combine(AppContext.BaseDirectory, "oauth-creds.json");
         if (!File.Exists(path))
         {

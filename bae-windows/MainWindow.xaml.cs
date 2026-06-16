@@ -595,6 +595,14 @@ public sealed partial class MainWindow : Window
         string? oauthTokenJson = null;
         if (info.NeedsOauth)
         {
+            // The libre (S3-only) native library has no OAuth entry points, so a
+            // code for an OAuth provider can't be restored here — check the
+            // supported set before reaching the (absent) sign-in call.
+            if (!NativeBae.AvailableCloudProviders().Contains(info.Provider))
+            {
+                StatusText.Text = $"this build doesn't support {ProviderDisplayName(info.Provider)} sync";
+                return;
+            }
             if (!OAuthCreds.Available)
             {
                 StatusText.Text = OAuthCreds.RegistrationError
@@ -3824,10 +3832,24 @@ public sealed partial class MainWindow : Window
             return button;
         }
 
+        // Only offer the OAuth providers this build's native library supports.
+        // The libre (S3-only) DLL exports no OAuth entry points, so its available
+        // set is just S3 and no sign-in button renders — there's no path to call a
+        // missing symbol, independent of whether oauth-creds.json is present.
+        var available = NativeBae.AvailableCloudProviders();
         var oauthButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        oauthButtons.Children.Add(CloudButton("google drive", "google_drive"));
-        oauthButtons.Children.Add(CloudButton("dropbox", "dropbox"));
-        oauthButtons.Children.Add(CloudButton("onedrive", "onedrive"));
+        foreach (var (label, wire) in new[]
+                 {
+                     ("google drive", "google_drive"),
+                     ("dropbox", "dropbox"),
+                     ("onedrive", "onedrive"),
+                 })
+        {
+            if (available.Contains(wire))
+            {
+                oauthButtons.Children.Add(CloudButton(label, wire));
+            }
+        }
 
         var content = new StackPanel { Spacing = 8, MinWidth = 360 };
         var libraryLabel = new TextBlock { Text = $"Library: {s.LibraryName}" };

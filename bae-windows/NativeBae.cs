@@ -33,6 +33,33 @@ internal static class NativeBae
     internal static string? SetOauthClientCreds(string credsJson) =>
         ResultMessage(SetOauthClientCredsPtr(credsJson));
 
+    [DllImport(Dll, EntryPoint = "bae_available_cloud_providers", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr AvailableCloudProvidersPtr();
+
+    /// <summary>
+    /// The cloud-provider wire tags this build's native library supports. Always
+    /// includes <c>"s3"</c>; <c>"google_drive"</c>/<c>"dropbox"</c>/<c>"onedrive"</c>
+    /// are present only when bae_windows_ffi.dll was built with the oauth-providers
+    /// feature (the libre build omits them, and with it the OAuth entry points). The
+    /// UI offers only these providers, so it never P/Invokes an OAuth entry point a
+    /// libre DLL doesn't export. This entry point is always exported. Copies and frees.
+    /// </summary>
+    internal static string[] AvailableCloudProviders()
+    {
+        var json = CopyAndFree(AvailableCloudProvidersPtr())
+            ?? throw new InvalidOperationException("bae_available_cloud_providers returned null");
+        return JsonSerializer.Deserialize<string[]>(json)
+            ?? throw new InvalidOperationException($"bae_available_cloud_providers returned invalid JSON: {json}");
+    }
+
+    /// <summary>
+    /// Whether this build's native library supports any OAuth cloud provider (i.e. it
+    /// was built with the oauth-providers feature). When false, the OAuth entry points
+    /// are absent and no OAuth flow — including credential registration — must run.
+    /// </summary>
+    internal static bool SupportsOAuthProviders() =>
+        AvailableCloudProviders().Any(provider => provider is not "s3");
+
     /// <summary>Discovered libraries as JSON, or null. Copies and frees.</summary>
     [DllImport(Dll, EntryPoint = "bae_libraries", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr LibrariesPtr();
