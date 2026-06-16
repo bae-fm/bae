@@ -7,13 +7,6 @@ on:
       - 'website/**'
       - '.github/workflows/deploy-website.yml'
   workflow_dispatch:
-  workflow_call:
-    inputs:
-      screenshots_artifact:
-        description: 'Name of artifact containing screenshots (optional)'
-        required: false
-        type: string
-        default: ''
 
 jobs:
   deploy:
@@ -25,13 +18,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Download screenshots
-      if: inputs.screenshots_artifact != ''
-      uses: actions/download-artifact@v4
-      with:
-        name: ${{ inputs.screenshots_artifact }}
-        path: website/public/screenshots/
 
     - name: Setup Node.js
       uses: actions/setup-node@v4

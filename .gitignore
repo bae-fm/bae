@@ -33,10 +33,6 @@ node_modules/
 website/dist/
 website/.astro/
 website/.vercel/
-website/public/screenshots/
-
-# Fixture node_modules
-website/fixtures/screenshots/node_modules/
 
 # Development environment
 .env

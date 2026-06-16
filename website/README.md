@@ -18,10 +18,6 @@ npm run build
 npm run preview
 ```
 
-## Screenshots
-
-Screenshots are generated automatically in CI when website files change or on releases. The screenshot generation script is in `scripts/generate_screenshots.sh` and uses the bae app from the parent directory.
-
 ## Deployment
 
-Deployed automatically to Vercel whenever website files change (via GitHub Actions).
+Deployed to Vercel via GitHub Actions: the `Deploy Website` workflow runs on every push to `main` that touches `website/`, and can also be triggered manually.
