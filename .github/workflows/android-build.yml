@@ -17,6 +17,10 @@ on:
         description: 'debug or release. release passes --release to build-android.sh, assembles a signed APK, and uploads it.'
         type: string
         default: debug
+      edition:
+        description: "full (the bae product, OAuth providers on) or libre (baeium, S3-only). Picks the cargo feature set and the matching Gradle product flavor."
+        type: string
+        default: full
       version:
         description: 'BAE_VERSION stamped into the build. Blank keeps build.gradle.kts / build.rs dev defaults.'
         type: string
@@ -56,6 +60,23 @@ jobs:
 
     - name: Setup Rust environment
       uses: ./.github/actions/setup-rust
+
+    - name: Resolve edition (cargo feature set + Gradle flavor)
+      # build-android.sh reads BAE_BRIDGE_FEATURES to pick the bindings; the
+      # Gradle flavor must match (full → OAuth bindings + src/full; libre →
+      # S3-only bindings + the always-null OAuthLinker). An explicitly-empty
+      # BAE_BRIDGE_FEATURES is libre (build-android.sh's default-when-unset is
+      # the full set).
+      run: |
+        if [ "${{ inputs.edition }}" = "libre" ]; then
+          echo "BAE_BRIDGE_FEATURES=" >> "$GITHUB_ENV"
+          echo "GRADLE_FLAVOR=Libre" >> "$GITHUB_ENV"
+          echo "APK_FLAVOR=libre" >> "$GITHUB_ENV"
+        else
+          echo "BAE_BRIDGE_FEATURES=oauth-providers" >> "$GITHUB_ENV"
+          echo "GRADLE_FLAVOR=Full" >> "$GITHUB_ENV"
+          echo "APK_FLAVOR=full" >> "$GITHUB_ENV"
+        fi
 
     - name: Setup JDK 17
       # bae-android targets JavaVersion.VERSION_17 (app/build.gradle.kts).
@@ -107,7 +128,7 @@ jobs:
       # Robolectric/JVM tests (no device) over the app's playback and reducer
       # logic — including the audio-focus resume policy. Needs the generated
       # bindings from the cross-compile step above to compile the test sources.
-      run: cd bae-android && ./gradlew testDebugUnitTest --no-daemon
+      run: cd bae-android && ./gradlew "test${GRADLE_FLAVOR}DebugUnitTest" --no-daemon
 
     - name: Decode signing keystore
       if: inputs.profile == 'release'
@@ -121,7 +142,7 @@ jobs:
       if: inputs.profile != 'release'
       # Compiles the Kotlin app against the generated bindings and staged .so's,
       # catching binding drift on top of the Rust cross-compile.
-      run: cd bae-android && ./gradlew assembleDebug --no-daemon
+      run: cd bae-android && ./gradlew "assemble${GRADLE_FLAVOR}Debug" --no-daemon
 
     - name: Assemble signed release APK
       if: inputs.profile == 'release'
@@ -130,18 +151,18 @@ jobs:
         ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-      run: ./gradlew assembleRelease --no-daemon
+      run: ./gradlew "assemble${GRADLE_FLAVOR}Release" --no-daemon
 
     - name: Locate and verify signed APK
       if: inputs.profile == 'release'
       run: |
-        # app-release.apk is the signed output; app-release-unsigned.apk means the
-        # signing config did not apply, so target the signed name explicitly and
-        # confirm the signature rather than shipping an uninstallable APK.
-        APK="bae-android/app/build/outputs/apk/release/app-release.apk"
+        # app-<flavor>-release.apk is the signed output; an -unsigned suffix means
+        # the signing config did not apply, so target the signed name explicitly
+        # and confirm the signature rather than shipping an uninstallable APK.
+        APK="bae-android/app/build/outputs/apk/${APK_FLAVOR}/release/app-${APK_FLAVOR}-release.apk"
         if [[ ! -f "$APK" ]]; then
           echo "no signed release APK at $APK — signing config did not apply" >&2
-          ls -la bae-android/app/build/outputs/apk/release || true
+          ls -la "bae-android/app/build/outputs/apk/${APK_FLAVOR}/release" || true
           exit 1
         fi
         APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)

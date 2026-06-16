@@ -19,6 +19,14 @@ concurrency:
 
 jobs:
   build:
+    # Build both editions so a feature-gate or source-set edit can't break the
+    # one this push doesn't exercise: full (the bae product) and libre (baeium,
+    # the S3-only F-Droid app).
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [full, libre]
     uses: ./.github/workflows/android-build.yml
     with:
       profile: debug
+      edition: ${{ matrix.edition }}

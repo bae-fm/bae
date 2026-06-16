@@ -54,6 +54,9 @@ jobs:
     uses: ./.github/workflows/android-build.yml
     with:
       profile: release
+      # The signed store release is the full bae product (OAuth providers on).
+      # The libre baeium app is published to F-Droid from its own recipe.
+      edition: full
       version: ${{ needs.calculate-version.outputs.version }}
       version_code: ${{ github.run_number }}
     secrets: inherit
