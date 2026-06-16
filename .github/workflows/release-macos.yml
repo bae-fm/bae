@@ -58,17 +58,62 @@ jobs:
       ref: ${{ inputs.commit || github.sha }}
 
   release:
-    name: Build and Release macOS
+    name: Build and Release macOS (${{ matrix.edition }})
     runs-on: macos-26
     needs: [calculate-version, ci]
     permissions:
       contents: write
+    strategy:
+      # Build both editions from the one source: full (bae, OAuth + iCloud) and
+      # libre (baeium, S3-only). Serialized — they share the macos-v* tag, the
+      # GitHub release, and the orphan appcast branch, so running them in
+      # parallel would race on those. Full runs first and creates the tag/release
+      # + appcast.xml; libre adds its DMG to the same release + appcast-libre.xml.
+      max-parallel: 1
+      matrix:
+        edition: [full, libre]
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
       with:
         ref: ${{ inputs.commit || github.sha }}
+
+    - name: Resolve edition (features, identity, signing, feeds)
+      run: |
+        # The full edition keeps every value it ships today; the libre edition
+        # (baeium) gets a sibling identity (.libre bundle id), the S3-only feature
+        # set, the libre entitlements (no iCloud container), and its own DMG name
+        # + Sparkle feed so the two update streams never cross.
+        if [ "${{ matrix.edition }}" = "libre" ]; then
+          {
+            echo "BAE_BRIDGE_FEATURES=desktop"
+            echo "BUNDLE_ID=fm.bae.desktop.libre"
+            echo "PRODUCT_NAME=baeium"
+            echo "ENTITLEMENTS=bae-macos/bae/bae/bae-libre.entitlements"
+            echo "DMG_NAME=baeium-macos.dmg"
+            echo "APPCAST_FILE=appcast-libre.xml"
+            echo "APPCAST_TITLE=baeium Updates"
+            echo "ARTIFACT_NAME=baeium-macOS-native-signed"
+            echo "LATEST_RELEASE=baeium-macos-latest"
+            echo "LATEST_TITLE=macOS — latest (baeium)"
+            echo "SUFEED_URL=https://raw.githubusercontent.com/${{ github.repository }}/appcast/appcast-libre.xml"
+          } >> "$GITHUB_ENV"
+        else
+          {
+            echo "BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,desktop"
+            echo "BUNDLE_ID=fm.bae.desktop"
+            echo "PRODUCT_NAME=bae"
+            echo "ENTITLEMENTS=bae-macos/bae/bae/bae.entitlements"
+            echo "DMG_NAME=bae-macos.dmg"
+            echo "APPCAST_FILE=appcast.xml"
+            echo "APPCAST_TITLE=bae Updates"
+            echo "ARTIFACT_NAME=bae-macOS-native-signed"
+            echo "LATEST_RELEASE=macos-latest"
+            echo "LATEST_TITLE=macOS — latest (bae)"
+            echo "SUFEED_URL=https://raw.githubusercontent.com/${{ github.repository }}/appcast/appcast.xml"
+          } >> "$GITHUB_ENV"
+        fi
 
     - name: Setup macOS environment
       uses: ./.github/actions/setup-macos
@@ -110,22 +155,37 @@ jobs:
         /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" bae-macos/bae/bae/Info.plist
         /usr/libexec/PlistBuddy -c "Add :BAEGitCommit string $SHORT_SHA" bae-macos/bae/bae/Info.plist
         /usr/libexec/PlistBuddy -c "Add :BAECovenRev string $COVEN_REV" bae-macos/bae/bae/Info.plist
+        # Per-edition: display name (bae / baeium) and the Sparkle feed this build
+        # checks for updates (each edition has its own feed so they never cross).
+        /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $PRODUCT_NAME" bae-macos/bae/bae/Info.plist
+        /usr/libexec/PlistBuddy -c "Set :SUFeedURL $SUFEED_URL" bae-macos/bae/bae/Info.plist
 
     - name: Build app
       run: |
+        # PRODUCT_BUNDLE_IDENTIFIER + PRODUCT_NAME overrides on the xcodebuild
+        # command line win over the pbxproj, giving the libre build its sibling
+        # identity (fm.bae.desktop.libre) and app name (baeium.app). Signing is
+        # CODE_SIGNING_ALLOWED=NO here; the bundle is codesigned by hand below
+        # with the edition's entitlements.
         xcodebuild -project bae-macos/bae/bae.xcodeproj \
           -scheme bae \
           -configuration Release \
           -derivedDataPath build \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+          PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+          PRODUCT_NAME="$PRODUCT_NAME" \
           LIBRARY_SEARCH_PATHS="/opt/homebrew/lib /opt/bae-ffmpeg/lib ${FFMPEG_DIR}/lib" \
           build
-        echo "APP_PATH=build/Build/Products/Release/bae.app" >> $GITHUB_ENV
+        echo "APP_PATH=build/Build/Products/Release/${PRODUCT_NAME}.app" >> $GITHUB_ENV
 
     - name: Bundle dylibs into app
       run: ./bae-macos/scripts/bundle_dylibs.sh "$APP_PATH"
 
     - name: Embed provisioning profile
+      # Only the full edition needs it: the provisioning profile authorizes the
+      # iCloud container its entitlements request. The libre build drops the
+      # iCloud-container entitlement, so it signs (Developer ID) without one.
+      if: matrix.edition == 'full'
       env:
         PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
       run: |
@@ -180,19 +240,21 @@ jobs:
         find "$APP_PATH/Contents/Frameworks" -name "*.dylib" -exec \
           codesign --force --sign "$IDENTITY" --options runtime {} \;
 
-        # Expand $(AppIdentifierPrefix) in entitlements
-        ENTITLEMENTS=$(mktemp)
-        sed "s/\$(AppIdentifierPrefix)/${APPLE_TEAM_ID}./" bae-macos/bae/bae/bae.entitlements > "$ENTITLEMENTS"
+        # Expand $(AppIdentifierPrefix) in the edition's entitlements (full:
+        # bae.entitlements with iCloud container; libre: bae-libre.entitlements,
+        # keychain only).
+        EXPANDED_ENTITLEMENTS=$(mktemp)
+        sed "s/\$(AppIdentifierPrefix)/${APPLE_TEAM_ID}./" "$ENTITLEMENTS" > "$EXPANDED_ENTITLEMENTS"
 
         # Sign main app
-        codesign --force --sign "$IDENTITY" --options runtime --entitlements "$ENTITLEMENTS" "$APP_PATH"
+        codesign --force --sign "$IDENTITY" --options runtime --entitlements "$EXPANDED_ENTITLEMENTS" "$APP_PATH"
         codesign --verify --verbose "$APP_PATH"
 
     - name: Create signed DMG
       env:
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        DMG_PATH="target/bae-macos.dmg"
+        DMG_PATH="target/$DMG_NAME"
         IDENTITY=$(security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
 
         mkdir -p target
@@ -202,13 +264,13 @@ jobs:
         trap "rm -rf $DMG_TEMP" EXIT
 
         # Copy app bundle to temp directory
-        cp -R "$APP_PATH" "$DMG_TEMP/bae.app"
+        cp -R "$APP_PATH" "$DMG_TEMP/${PRODUCT_NAME}.app"
 
         # Create Applications folder symlink
         ln -s /Applications "$DMG_TEMP/Applications"
 
         # Create DMG from temp directory
-        hdiutil create -volname "bae" -srcfolder "$DMG_TEMP" -ov -format UDZO "$DMG_PATH"
+        hdiutil create -volname "$PRODUCT_NAME" -srcfolder "$DMG_TEMP" -ov -format UDZO "$DMG_PATH"
         codesign --force --sign "$IDENTITY" "$DMG_PATH"
 
     - name: Notarize DMG
@@ -217,7 +279,7 @@ jobs:
         APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        DMG_PATH="target/bae-macos.dmg"
+        DMG_PATH="target/$DMG_NAME"
 
         xcrun notarytool submit "$DMG_PATH" \
           --apple-id "$APPLE_ID" \
@@ -238,7 +300,7 @@ jobs:
       env:
         SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
       run: |
-        DMG_PATH="target/bae-macos.dmg"
+        DMG_PATH="target/$DMG_NAME"
 
         # Sign the DMG and capture only the signature (-p flag)
         SIGNATURE=$(echo "$SPARKLE_PRIVATE_KEY" | /tmp/sparkle/bin/sign_update "$DMG_PATH" -f - -p)
@@ -254,15 +316,15 @@ jobs:
       run: |
         VERSION="${{ needs.calculate-version.outputs.version }}"
         BUILD_NUMBER="${{ github.run_number }}"
-        DMG_URL="https://github.com/${{ github.repository }}/releases/download/macos-v${VERSION}/bae-macos.dmg"
+        DMG_URL="https://github.com/${{ github.repository }}/releases/download/macos-v${VERSION}/${DMG_NAME}"
 
-        cat > target/appcast.xml << EOF
+        cat > "target/$APPCAST_FILE" << EOF
         <?xml version="1.0" encoding="utf-8"?>
         <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
           <channel>
-            <title>bae Updates</title>
+            <title>${APPCAST_TITLE}</title>
             <link>https://github.com/${{ github.repository }}/releases</link>
-            <description>Most recent updates to bae</description>
+            <description>Most recent updates to ${PRODUCT_NAME}</description>
             <language>en</language>
             <item>
               <title>Version ${VERSION}</title>
@@ -294,32 +356,35 @@ jobs:
     - name: Upload signed DMG
       uses: actions/upload-artifact@v7
       with:
-        name: bae-macOS-native-signed
-        path: target/bae-macos.dmg
+        name: ${{ env.ARTIFACT_NAME }}
+        path: target/${{ env.DMG_NAME }}
         retention-days: 30
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
+        # Both editions attach to the one macos-v* release (full runs first and
+        # creates it; libre adds its DMG).
         tag_name: macos-v${{ needs.calculate-version.outputs.version }}
-        files: target/bae-macos.dmg
+        files: target/${{ env.DMG_NAME }}
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Refresh the macos-latest download
+    - name: Refresh the per-edition -latest download
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # Stable per-platform download link for the website:
-        # releases/download/macos-latest/bae-macos.dmg. The release/tag is created
-        # once and never moves; each build only replaces the asset. --latest=false
-        # keeps it from grabbing the repo's global "Latest" badge, which must stay
-        # on the real versioned releases.
-        gh release view macos-latest >/dev/null 2>&1 \
-          || gh release create macos-latest --latest=false --title "macOS — latest" \
-               --notes "Stable download link that always serves the newest macOS build."
-        gh release upload macos-latest target/bae-macos.dmg --clobber
+        # Stable per-edition download link for the website, e.g.
+        # releases/download/macos-latest/bae-macos.dmg (full) and
+        # releases/download/baeium-macos-latest/baeium-macos.dmg (libre). Each
+        # rolling release is created once and never moves; only its asset is
+        # replaced. --latest=false keeps the global "Latest" badge on the real
+        # versioned releases.
+        gh release view "$LATEST_RELEASE" >/dev/null 2>&1 \
+          || gh release create "$LATEST_RELEASE" --latest=false --title "$LATEST_TITLE" \
+               --notes "Stable download link that always serves the newest $PRODUCT_NAME macOS build."
+        gh release upload "$LATEST_RELEASE" "target/$DMG_NAME" --clobber
 
     - name: Publish appcast to the appcast branch
       run: |
@@ -333,10 +398,13 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git fetch origin appcast
+        # Each edition writes only its own feed file (full → appcast.xml, libre →
+        # appcast-libre.xml). Serialized (max-parallel: 1), so libre fetches the
+        # commit full just pushed and adds its file with no push race.
         git worktree add "$RUNNER_TEMP/appcast-wt" FETCH_HEAD
-        cp target/appcast.xml "$RUNNER_TEMP/appcast-wt/appcast.xml"
-        git -C "$RUNNER_TEMP/appcast-wt" add appcast.xml
-        git -C "$RUNNER_TEMP/appcast-wt" commit -m "appcast: macos-v$VERSION (build $BUILD_NUMBER)"
+        cp "target/$APPCAST_FILE" "$RUNNER_TEMP/appcast-wt/$APPCAST_FILE"
+        git -C "$RUNNER_TEMP/appcast-wt" add "$APPCAST_FILE"
+        git -C "$RUNNER_TEMP/appcast-wt" commit -m "appcast: $PRODUCT_NAME macos-v$VERSION (build $BUILD_NUMBER)"
         git -C "$RUNNER_TEMP/appcast-wt" push origin HEAD:appcast
 
     - name: Verify Sparkle feed resolves
@@ -344,10 +412,10 @@ jobs:
         # The DMG (a release asset) must resolve hard; the raw feed file is the
         # source of truth once pushed — its CDN copy may lag a few minutes.
         VERSION="${{ needs.calculate-version.outputs.version }}"
-        DMG="https://github.com/${{ github.repository }}/releases/download/macos-v${VERSION}/bae-macos.dmg"
+        DMG="https://github.com/${{ github.repository }}/releases/download/macos-v${VERSION}/${DMG_NAME}"
         curl -fsIL --retry 5 --retry-delay 3 "$DMG" -o /dev/null
         echo "DMG reachable: $DMG"
-        FEED="https://raw.githubusercontent.com/${{ github.repository }}/appcast/appcast.xml"
+        FEED="https://raw.githubusercontent.com/${{ github.repository }}/appcast/${APPCAST_FILE}"
         if curl -fsSL --retry 8 --retry-delay 5 "$FEED" | grep -q "<sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>"; then
           echo "feed live with $VERSION: $FEED"
         else

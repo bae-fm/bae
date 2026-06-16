@@ -10,12 +10,19 @@
          iCloud capability and a container owned by that account, so a build from
          source without it can't sign with them. build-macos.sh points
          CODE_SIGN_ENTITLEMENTS here whenever it compiles the bridge without the
-         cloudkit feature. -->
+         cloudkit feature.
+
+         The keychain group is the libre bundle id (fm.bae.desktop.libre), not
+         the full one — baeium installs as a distinct app alongside bae, and its
+         keychain (including the iCloud-Keychain-synced encryption keys) must
+         stay isolated from bae's rather than cross-syncing through a shared
+         group. iCloud Keychain syncs synchronizable items in any team-prefixed
+         group, so a distinct name keeps the cloud keychain working. -->
     <key>com.apple.security.network.client</key>
     <true/>
     <key>keychain-access-groups</key>
     <array>
-        <string>$(AppIdentifierPrefix)fm.bae.desktop</string>
+        <string>$(AppIdentifierPrefix)fm.bae.desktop.libre</string>
     </array>
 </dict>
 </plist>
