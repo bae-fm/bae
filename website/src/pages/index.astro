@@ -1,618 +1,338 @@
 ---
-import { Image } from 'astro:assets';
 ---
-
+<!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<meta name="description" content="bae - Your music easy as streaming. Metadata-driven import from MusicBrainz and Discogs, pregap-accurate playback, serverless encrypted sync." />
-	<title>bae - Your music easy as streaming</title>
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="bae is a music library for the albums you own, on your desktop and your phone, synced through cloud storage you already have. No server to keep running. Private, yours." />
+<title>bae, a library you actually own</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style is:global>
+  :root{
+    --night:#100e1a; --night-2:#161327; --card:#1c1830; --card-2:#231d3a;
+    --cream:#fdf5ef; --fg-dim:rgba(253,245,239,.66); --fg-faint:rgba(253,245,239,.4);
+    --violet:#9b6cf6; --violet-deep:#7c4ddb;
+    --pink:#f7a8c4; --pink-deep:#ec6a99; --mint:#86e0c8;
+    --line:rgba(253,245,239,.12);
+    --disp:"Bricolage Grotesque",system-ui,sans-serif;
+    --body:"Hanken Grotesk",system-ui,sans-serif;
+    --mono:"JetBrains Mono",monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;background:var(--night);color:var(--cream);font-family:var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+  a{color:inherit;text-decoration:none;}
+  ::selection{background:var(--pink);color:#3a2230;}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 28px;}
+
+  .r.is-pre{opacity:0;}
+  .r.is-in{animation:pop .85s cubic-bezier(.2,.8,.25,1);}
+  .r.is-in.d1{animation-delay:.08s;} .r.is-in.d2{animation-delay:.16s;} .r.is-in.d3{animation-delay:.24s;} .r.is-in.d4{animation-delay:.32s;}
+  @keyframes pop{from{opacity:0;transform:translateY(26px) scale(.985);}to{opacity:1;transform:none;}}
+  @media (prefers-reduced-motion: reduce){.r.is-in{animation:none;}}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg);}50%{transform:translateY(-16px) rotate(2deg);}}
+  @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+
+  /* nav */
+  nav{position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(16,14,26,.7);backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:border-color .3s;}
+  nav.scrolled{border-bottom:1px solid var(--line);}
+  .navin{display:flex;align-items:center;gap:26px;height:66px;}
+  .brand{font-family:var(--disp);font-weight:800;font-size:24px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;}
+  .brand img{width:30px;height:30px;}
+  .navlinks{margin-left:auto;display:flex;gap:26px;align-items:center;}
+  .navlinks a{font-size:14.5px;color:var(--fg-dim);font-weight:500;white-space:nowrap;}
+  .navlinks a:hover{color:var(--cream);}
+  .btn{font-family:var(--body);font-size:14.5px;font-weight:600;padding:11px 20px;border-radius:999px;border:1.5px solid var(--line);background:transparent;color:var(--cream);cursor:pointer;transition:transform .22s,border-color .22s,color .22s,background .22s,box-shadow .22s;}
+  .btn:hover{border-color:var(--pink);color:var(--pink);}
+  .btn.solid{background:var(--violet);border-color:var(--violet);color:#fff;}
+  .btn.solid:hover{background:var(--violet-deep);border-color:var(--violet-deep);color:#fff;transform:translateY(-2px);box-shadow:0 12px 30px rgba(155,108,246,.45);}
+  .btn.pink{background:var(--pink);border-color:var(--pink);color:#3a2230;}
+  .btn.pink:hover{background:var(--pink-deep);border-color:var(--pink-deep);color:#fff;transform:translateY(-2px);box-shadow:0 12px 30px rgba(236,106,153,.4);}
+
+  /* hero */
+  header.hero{padding:130px 0 70px;position:relative;overflow:hidden;}
+  .blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.5;pointer-events:none;}
+  .blob.v{width:520px;height:520px;background:rgba(155,108,246,.4);left:-120px;top:-40px;}
+  .blob.p{width:460px;height:460px;background:rgba(247,168,196,.32);right:-120px;top:80px;}
+  .heroin{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:30px;align-items:center;}
+  .tagpill{display:inline-flex;align-items:center;gap:8px;padding:8px 15px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;color:var(--fg-dim);margin-bottom:24px;}
+  .tagpill .led{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint);}
+  h1.jumbo{font-family:var(--disp);font-weight:800;font-size:clamp(46px,6.4vw,82px);line-height:.98;letter-spacing:-.03em;margin:0;}
+  h1.jumbo .pink{color:var(--pink);} h1.jumbo .violet{color:var(--violet);}
+  .dek{margin:26px 0 0;font-size:clamp(16px,1.4vw,18.5px);line-height:1.62;color:var(--fg-dim);max-width:48ch;}
+  .dek b{color:var(--cream);font-weight:600;}
+  .cta{display:flex;gap:13px;margin-top:34px;flex-wrap:wrap;align-items:center;}
+  .cta .meta{font-family:var(--mono);font-size:12px;color:var(--fg-faint);}
+
+  .herosheep{position:relative;display:grid;place-items:center;}
+  .sheepglow{position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(247,168,196,.34),rgba(155,108,246,.18) 50%,transparent 72%);}
+  .herosheep img{width:min(100%,400px);position:relative;animation:bob 6s ease-in-out infinite;filter:drop-shadow(0 24px 50px rgba(155,108,246,.4));}
+  @media (prefers-reduced-motion: reduce){.herosheep img{animation:none;}}
+  .note{position:absolute;background:var(--card-2);border:1px solid var(--line);border-radius:14px;padding:10px 14px;font-size:12.5px;font-weight:600;box-shadow:0 12px 30px rgba(0,0,0,.4);animation:floaty 5s ease-in-out infinite;}
+  .note .s{display:block;font-family:var(--mono);font-size:10.5px;color:var(--fg-faint);font-weight:400;margin-top:2px;}
+  .note.one{top:8%;left:-6%;} .note.two{bottom:12%;right:-4%;animation-delay:1.2s;}
+  .note .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;}
+
+  .trust{display:flex;gap:30px;flex-wrap:wrap;margin-top:54px;padding-top:26px;border-top:1px solid var(--line);position:relative;}
+  .trust .t{display:flex;flex-direction:column;gap:3px;}
+  .trust .t b{font-family:var(--disp);font-weight:700;font-size:23px;}
+  .trust .t b .a{color:var(--pink);}
+  .trust .t span{font-size:12.5px;color:var(--fg-faint);}
+
+  /* features */
+  .sec{padding:84px 0;}
+  .center{text-align:center;max-width:620px;margin:0 auto 50px;}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--pink);margin-bottom:14px;}
+  h2.sech{font-family:var(--disp);font-weight:800;font-size:clamp(32px,4.4vw,52px);letter-spacing:-.025em;margin:0 0 14px;line-height:1.02;}
+  .center p{font-size:17px;color:var(--fg-dim);line-height:1.6;margin:0;}
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;}
+  .fcard{background:linear-gradient(180deg,var(--card),var(--night-2));border:1px solid var(--line);border-radius:22px;padding:28px;transition:transform .3s,border-color .3s,box-shadow .3s;}
+  .fcard:hover{transform:translateY(-5px);border-color:rgba(247,168,196,.5);box-shadow:0 22px 50px rgba(0,0,0,.45);}
+  .fcard .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .fcard .emoji{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;}
+  .fcard .no{font-family:var(--mono);font-size:12px;color:var(--fg-faint);}
+  .fcard h3{font-family:var(--disp);font-weight:700;font-size:21px;letter-spacing:-.01em;margin:0 0 8px;}
+  .fcard p{margin:0;font-size:14.5px;line-height:1.6;color:var(--fg-dim);}
+  .fcard .tags{margin-top:16px;display:flex;gap:6px;flex-wrap:wrap;}
+  .fcard .tags span{font-family:var(--mono);font-size:10.5px;padding:4px 9px;border-radius:999px;background:var(--card-2);color:var(--fg-faint);letter-spacing:.03em;}
+  .fcard.wide{grid-column:1 / -1;display:flex;align-items:center;gap:26px;}
+  .fcard.wide .emoji{margin-bottom:0;flex:none;width:58px;height:58px;border-radius:17px;}
+  .fcard.wide .wtext{flex:1;min-width:0;}
+  .fcard.wide h3{margin-bottom:6px;}
+  .fcard.wide p{max-width:62ch;}
+  .ghbtn{flex:none;display:inline-flex;align-items:center;gap:9px;font-family:var(--body);font-weight:600;font-size:14px;color:var(--cream);padding:12px 20px;border-radius:999px;border:1.5px solid var(--line);transition:transform .22s,border-color .22s,color .22s,background .22s;}
+  .ghbtn:hover{border-color:var(--mint);color:var(--mint);transform:translateY(-2px);}
+  @media(max-width:860px){.fcard.wide{flex-direction:column;align-items:flex-start;gap:18px;}}
+
+  /* encryption */
+  .enc{background:radial-gradient(ellipse at 12% 0%,rgba(155,108,246,.18),transparent 55%),radial-gradient(ellipse at 92% 100%,rgba(247,168,196,.16),transparent 55%),var(--card);
+    border:1px solid var(--line);border-radius:28px;padding:48px;display:grid;grid-template-columns:1.05fr 1fr;gap:44px;align-items:center;}
+  .enc h2{font-family:var(--disp);font-weight:800;font-size:clamp(28px,3.6vw,42px);letter-spacing:-.025em;margin:0 0 16px;line-height:1.04;}
+  .enc h2 .p{color:var(--pink);}
+  .enc p{font-size:15px;line-height:1.65;color:var(--fg-dim);margin:0 0 12px;}
+  .flow{display:flex;flex-direction:column;gap:12px;}
+  .flownode{display:flex;align-items:center;gap:12px;padding:15px 17px;border:1px solid var(--line);border-radius:16px;background:var(--night-2);font-size:13.5px;font-weight:500;}
+  .flownode .n{width:9px;height:9px;border-radius:50%;flex:none;}
+  .flownode.a .n{background:var(--violet);box-shadow:0 0 10px var(--violet);}
+  .flownode.b .n{background:var(--pink);box-shadow:0 0 10px var(--pink);}
+  .flownode.c .n{background:var(--mint);box-shadow:0 0 10px var(--mint);}
+  .flownode em{font-family:var(--mono);font-style:normal;font-size:10.5px;color:var(--fg-faint);margin-left:auto;text-transform:uppercase;letter-spacing:.05em;}
+
+  /* providers */
+  .minigrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .mini{background:linear-gradient(180deg,var(--card),var(--night-2));border:1px solid var(--line);border-radius:18px;padding:24px;transition:transform .3s,border-color .3s,box-shadow .3s;}
+  .mini:hover{transform:translateY(-4px);border-color:rgba(247,168,196,.45);box-shadow:0 18px 40px rgba(0,0,0,.4);}
+  .mini .mico{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;margin-bottom:15px;}
+  .mini h4{font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:-.01em;margin:0 0 6px;}
+  .mini p{margin:0;font-size:13.5px;line-height:1.55;color:var(--fg-dim);}
+  @media(max-width:860px){.minigrid{grid-template-columns:1fr;}}
+  .provwrap{text-align:center;}
+  .provrow{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:30px;}
+  .pchip{font-family:var(--mono);font-size:12.5px;padding:12px 18px;border-radius:999px;background:var(--card);border:1px solid var(--line);transition:transform .25s,border-color .25s,color .25s;}
+  .pchip:hover{border-color:var(--pink);color:var(--pink);transform:translateY(-2px);}
+  .provnote{margin-top:26px;font-size:14.5px;color:var(--fg-faint);max-width:60ch;margin-left:auto;margin-right:auto;line-height:1.55;}
+  .provnote b{color:var(--fg-dim);font-weight:600;}
+
+  /* end */
+  .endcta{text-align:center;padding:96px 0;}
+  .endcta .ring{width:128px;height:128px;margin:0 auto 26px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,rgba(247,168,196,.3),transparent 70%);}
+  .endcta .ring img{width:118px;animation:bob 6s ease-in-out infinite;}
+  .endcta h2{font-family:var(--disp);font-weight:800;font-size:clamp(36px,5.2vw,68px);letter-spacing:-.03em;line-height:1;margin:0 0 16px;}
+  .endcta h2 .pink{color:var(--pink);} .endcta h2 .violet{color:var(--violet);}
+  .endcta p{font-size:17px;color:var(--fg-dim);margin:0 0 30px;}
+
+  footer{border-top:1px solid var(--line);padding:42px 0;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;}
+  footer .fb{font-family:var(--disp);font-weight:800;font-size:20px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;}
+  footer .fb img{width:26px;height:26px;}
+  footer .links{display:flex;gap:22px;flex-wrap:wrap;}
+  footer a{font-size:14px;color:var(--fg-dim);font-weight:500;} footer a:hover{color:var(--pink);}
+  footer .cp{font-family:var(--mono);font-size:11px;color:var(--fg-faint);}
+
+  @media(max-width:860px){.heroin{grid-template-columns:1fr;}.herosheep{order:-1;}.cards{grid-template-columns:1fr;}.enc{grid-template-columns:1fr;padding:32px;}}
+</style>
 </head>
 <body>
-	<nav>
-		<a href="/" class="logo"><img src="/sheep.png" alt="" class="logo-icon" />bae</a>
-		<div class="nav-links">
-			<a href="/getting-started/installation">Docs</a>
-			<a href="https://github.com/bae-fm/bae" target="_blank">GitHub</a>
-		</div>
-	</nav>
+<nav id="nav"><div class="wrap navin">
+  <span class="brand"><img src="/app-icon.png" alt="" />bae</span>
+  <div class="navlinks">
+    <a href="#features">Features</a><a href="#cloud">No server</a><a href="#enc">Privacy</a><a href="https://github.com/bae-fm/bae">GitHub</a>
+    <a class="btn pink" href="#get">Download</a>
+  </div>
+</div></nav>
 
-	<main>
-		<section class="hero">
-			<div class="hero-content">
-				<h1>Your music<br/><span class="accent">easy as streaming</span></h1>
-				<p class="tagline">Listen everywhere, synced effortlessly</p>
-				<div class="cta-group">
-					<a href="https://github.com/bae-fm/bae/releases/latest/download/bae-macos.dmg" class="btn primary">
-						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
-						</svg>
-						Download for macOS
-					</a>
-					<a href="/getting-started/installation" class="btn secondary">Read the docs</a>
-				</div>
-				</div>
-			<div class="hero-visual">
-				<img
-					src="/screenshots/library-grid.png"
-					alt="bae music library showing album grid view"
-					class="app-screenshot"
-					onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
-				/>
-				<div class="window-frame" style="display: none;">
-					<div class="window-controls">
-						<span></span><span></span><span></span>
-					</div>
-					<div class="window-content">
-						<div class="placeholder-app">
-							<div class="sidebar">
-								<div class="sidebar-item active"></div>
-								<div class="sidebar-item"></div>
-								<div class="sidebar-item"></div>
-								<div class="sidebar-item"></div>
-							</div>
-							<div class="content-area">
-								<div class="album-grid">
-									<div class="album"></div>
-									<div class="album"></div>
-									<div class="album"></div>
-									<div class="album"></div>
-									<div class="album"></div>
-									<div class="album"></div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</section>
+<header class="hero">
+  <div class="blob v"></div><div class="blob p"></div>
+  <div class="wrap heroin">
+    <div>
+      <div class="tagpill r"><span class="led"></span> A home for the music you own</div>
+      <h1 class="jumbo r d1">A library you<br/><span class="violet">actually</span> <span class="pink">own</span>.</h1>
+      <p class="dek r d2">Every album you own, on your desktop and your phone. Listen everywhere, synced effortlessly. No server to keep running. <b style="white-space:nowrap;">Private, yours.</b></p>
+      <div class="cta r d3">
+        <a class="btn pink" href="https://github.com/bae-fm/bae/releases/latest/download/bae-macos.dmg">Download for macOS</a>
+        <a class="btn" href="#features">Explore features</a>
+        <span class="meta">macOS · iOS · Windows · Android</span>
+      </div>
+      <div class="trust r d3">
+        <div class="t"><b>Yours<span class="a">.</span></b><span>to keep, for good</span></div>
+        <div class="t"><b>Every<span class="a"> device</span></b><span>always in sync</span></div>
+        <div class="t"><b>Encrypted<span class="a">.</span></b><span>only you hold the key</span></div>
+      </div>
+    </div>
+    <div class="herosheep r d2">
+      <div class="sheepglow"></div>
+      <img src="/sheep.png" alt="bae the sheep, wearing headphones" />
+      <div class="note one"><span class="dot" style="background:#32d74b"></span>Synced<span class="s">4 minutes ago</span></div>
+      <div class="note two">Neon Frequencies<span class="s">The Midnight Signal · 3:42</span></div>
+    </div>
+  </div>
+</header>
 
-		<section class="concepts">
-			<div class="concept">
-				<h2>Import & play</h2>
-				<p>bae understands releases, not just files. Point it at a folder, search MusicBrainz or Discogs, and bae pulls in cover art, track listings, and release details.</p>
-			</div>
-			<div class="concept">
-				<h2>Sync across devices</h2>
-				<p>Connect a cloud provider. bae creates an encrypted cloud home. Changes sync automatically.</p>
-			</div>
-			<div class="concept">
-				<h2>Serverless</h2>
-				<p>bae runs no server. Your devices sync through storage you already control — S3, Google Drive, Dropbox, OneDrive, or iCloud. Nothing bae operates sits in the middle.</p>
-			</div>
-			<div class="concept">
-				<h2>Encrypted end to end</h2>
-				<p>Everything is encrypted on your device before it leaves. The storage provider holds opaque blobs — it can't read your music, your metadata, or your keys.</p>
-			</div>
-			<div class="concept">
-				<h2>Open source</h2>
-				<p>Built with Rust. MIT licensed. <a href="https://github.com/bae-fm/bae" target="_blank">Contribute on GitHub</a>.</p>
-			</div>
-		</section>
+<section class="sec" id="features"><div class="wrap">
+  <div class="center r">
+    <div class="eyebrow">What you get</div>
+    <h2 class="sech">Your whole collection,<br/>finally in order.</h2>
+    <p>Bring the albums you already own into one good-looking library, and take it everywhere you go.</p>
+  </div>
+  <div class="cards">
+    <div class="fcard r">
+      <div class="top">
+        <div class="emoji" style="background:rgba(155,108,246,.18);color:var(--violet)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/><path d="M12 10v6m-2.5-2.5L12 16l2.5-2.5"/></svg></div>
+        <span class="no">01</span>
+      </div>
+      <h3>Everything in one place</h3>
+      <p>Add the music you already have, ripped CDs, downloads, Bandcamp buys, and bae matches each album to the right release for spot-on track names, cover art, and credits.</p>
+      <div class="tags"><span>MusicBrainz &amp; Discogs</span><span>Cover art</span><span>Release-accurate</span></div>
+    </div>
+    <div class="fcard r d1">
+      <div class="top">
+        <div class="emoji" style="background:rgba(247,168,196,.2);color:var(--pink-deep)"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+        <span class="no">02</span>
+      </div>
+      <h3>Sounds the way it should</h3>
+      <p>Whole albums play start to finish the way the artist meant them, gapless, with FLAC, CUE sheets, and vinyl side breaks all handled right.</p>
+      <div class="tags"><span>FLAC &amp; CUE</span><span>Gapless</span><span>Vinyl side breaks</span></div>
+    </div>
+    <div class="fcard r">
+      <div class="top">
+        <div class="emoji" style="background:rgba(134,224,200,.18);color:var(--mint)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg></div>
+        <span class="no">03</span>
+      </div>
+      <h3>On all your devices</h3>
+      <p>Start on your desktop and keep listening on your phone. Your library looks the same everywhere, updates on its own, and plays even when you're offline.</p>
+      <div class="tags"><span>Desktop &amp; phone</span><span>Always in sync</span><span>Works offline</span></div>
+    </div>
+    <div class="fcard r d1">
+      <div class="top">
+        <div class="emoji" style="background:rgba(155,108,246,.18);color:var(--violet)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 1 0 6 16h11.5z"/></svg></div>
+        <span class="no">04</span>
+      </div>
+      <h3>Yours for good</h3>
+      <p>Your music stays in normal files that you control, keep them, move them, back them up. Nobody can take your collection away or change the deal.</p>
+      <div class="tags"><span>You own the files</span><span>Yours to keep</span></div>
+    </div>
+    <div class="fcard wide r d2">
+      <div class="emoji" style="background:rgba(134,224,200,.18);color:var(--mint)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></div>
+      <div class="wtext">
+        <h3>Open source, all the way down</h3>
+        <p>The whole app is free and open source. See exactly how your music is handled, suggest a change, or build your own thing on top of it. It's all out in the open.</p>
+        <div class="tags"><span>Free &amp; open source</span><span>Built in the open</span></div>
+      </div>
+      <a class="ghbtn" href="https://github.com/bae-fm/bae"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49l-.01-1.9c-2.78.62-3.37-1.2-3.37-1.2-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.9 1.56 2.36 1.11 2.93.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05A9.4 9.4 0 0 1 12 6.84c.85 0 1.71.12 2.51.34 1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9l-.01 2.81c0 .27.18.6.69.49A10.02 10.02 0 0 0 22 12.25C22 6.58 17.52 2 12 2z"/></svg>View on GitHub</a>
+    </div>
+  </div>
+</div></section>
 
-		<section class="features">
-			<h2>Features</h2>
-			<div class="features-grid">
-				<div class="feature">
-					<h3>Import</h3>
-					<ul>
-						<li>Automatic identification</li>
-						<li>MusicBrainz and Discogs lookup</li>
-						<li>Automatic cover art</li>
-					</ul>
-				</div>
-				<div class="feature">
-					<h3>Playback</h3>
-					<ul>
-						<li>Native CUE/FLAC support</li>
-						<li>Gapless playback</li>
-						<li>Pause at vinyl side breaks</li>
-					</ul>
-				</div>
-				<div class="feature">
-					<h3>Storage</h3>
-					<ul>
-						<li>Many cloud providers / S3</li>
-						<li>End-to-end encryption</li>
-						<li>Choose where albums live</li>
-					</ul>
-				</div>
-				<div class="feature">
-					<h3>Sync</h3>
-					<ul>
-						<li>Offline-first</li>
-						<li>Automatic conflict resolution</li>
-						<li>Incremental sync</li>
-					</ul>
-				</div>
-				<div class="feature">
-					<h3>Serverless</h3>
-					<ul>
-						<li>No bae server</li>
-						<li>No bae account</li>
-						<li>Devices sync directly through your cloud</li>
-					</ul>
-				</div>
-				<div class="feature">
-					<h3>Cloud</h3>
-					<ul>
-						<li>S3, Google Drive, Dropbox, OneDrive, iCloud</li>
-						<li>Zero-knowledge encryption</li>
-					</ul>
-				</div>
-			</div>
-		</section>
+<section class="sec" id="enc"><div class="wrap">
+  <div class="enc r">
+    <div>
+      <div class="eyebrow">Private by default</div>
+      <h2>Your library is <span class="p">yours alone</span>.</h2>
+      <p>bae encrypts everything on your device before it syncs, so your collection stays private, readable only by you. Not bae, not whoever stores the files, just your own devices.</p>
+      <p>And you never have to think about it. It just works, quietly, in the background.</p>
+      <a href="/architecture/encryption" style="display:inline-block;margin-top:8px;font-size:13.5px;color:var(--fg-faint);font-weight:500;">Curious how the encryption works? It's all in the docs →</a>
+    </div>
+    <div class="flow">
+      <div class="flownode a"><span class="n"></span><span>Encrypted on your device</span><em>before it syncs</em></div>
+      <div class="flownode b"><span class="n"></span><span>Private on your storage</span><em>only you</em></div>
+      <div class="flownode c"><span class="n"></span><span>Only your devices hold the keys</span><em>always</em></div>
+    </div>
+  </div>
+</div></section>
 
-		<section class="download-cta">
-			<h2>Try bae</h2>
-			<p>Free, open source, no bae account.</p>
-			<a href="https://github.com/bae-fm/bae/releases/latest/download/bae-macos.dmg" class="btn primary large">
-				Download for macOS
-			</a>
-		</section>
-	</main>
+<section class="sec" style="padding-top:0;"><div class="wrap">
+  <div class="center r" style="margin-bottom:34px;">
+    <div class="eyebrow">Good to know</div>
+    <h2 class="sech">A few things you'll care about.</h2>
+  </div>
+  <div class="minigrid">
+    <div class="mini r">
+      <div class="mico" style="background:rgba(134,224,200,.18);color:var(--mint)"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></div>
+      <h4>Plays offline</h4>
+      <p>Your music lives right on your device, not just in the cloud. Lose signal or hop on a plane and it keeps playing.</p>
+    </div>
+    <div class="mini r d1">
+      <div class="mico" style="background:rgba(155,108,246,.18);color:var(--violet)"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg></div>
+      <h4>Original quality</h4>
+      <p>No re-encoding, ever. Your files stay exactly as they are, and you listen at that same original quality.</p>
+    </div>
+    <div class="mini r d2">
+      <div class="mico" style="background:rgba(247,168,196,.2);color:var(--pink-deep)"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg></div>
+      <h4>Use what you have</h4>
+      <p>Point bae at your sorted-just-so collection and it catalogs everything in place, no moving or copying. Backing it up to the cloud is opt-in.</p>
+    </div>
+  </div>
+</div></section>
 
-	<footer>
-		<div class="footer-content">
-			<span class="footer-logo">bae</span>
-			<div class="footer-links">
-				<a href="/getting-started/installation">Docs</a>
-				<a href="https://github.com/bae-fm/bae" target="_blank">GitHub</a>
-				<a href="https://github.com/bae-fm/bae/releases" target="_blank">Releases</a>
-			</div>
-		</div>
-	</footer>
+<section class="sec" id="cloud"><div class="wrap provwrap">
+  <div class="center r" style="margin-bottom:6px;">
+    <div class="eyebrow">No server, no fuss</div>
+    <h2 class="sech">Nothing to keep running.</h2>
+    <p>Unlike a home media server, there's nothing to set up, leave switched on, or maintain. Your devices sync straight through storage you already have, quietly, on their own. No bae cloud, no account.</p>
+  </div>
+  <div class="provrow r d1">
+    <span class="pchip">Google Drive</span><span class="pchip">Dropbox</span><span class="pchip">OneDrive</span>
+    <span class="pchip">iCloud Drive</span><span class="pchip">Your own server</span>
+  </div>
+</div></section>
+
+<section class="endcta" id="get"><div class="wrap">
+  <div class="ring r"><img src="/sheep.png" alt="" /></div>
+  <h2 class="r d1">Bring your collection <span class="pink">home</span>.</h2>
+  <p class="r d2">Free, open source, and in active development. Everything you add is yours from day one.</p>
+  <div class="cta r d3" style="justify-content:center;">
+    <a class="btn pink" href="https://github.com/bae-fm/bae/releases/latest/download/bae-macos.dmg">Download for macOS</a>
+    <a class="btn" href="/architecture/overview">See how it works</a>
+  </div>
+</div></section>
+
+<footer><div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;width:100%;">
+  <span class="fb"><img src="/app-icon.png" alt="" />bae</span>
+  <div class="links"><a href="#features">Features</a><a href="#cloud">No server</a><a href="#enc">Privacy</a><a href="/getting-started/installation">Docs</a><a href="https://github.com/bae-fm/bae">GitHub</a></div>
+  <span class="cp">free &amp; open source</span>
+</div></footer>
+
+<script is:inline>
+  (function(){
+    var els=[].slice.call(document.querySelectorAll('.r'));
+    els.forEach(function(e){e.classList.add('is-pre');});
+    function show(e){e.classList.remove('is-pre');e.classList.remove('is-in');e.style.opacity='1';e.style.transform='none';}
+    function reveal(){
+      var h=window.innerHeight||document.documentElement.clientHeight;
+      els=els.filter(function(e){
+        if(e.getBoundingClientRect().top < h*0.92){e.classList.remove('is-pre');e.classList.add('is-in');setTimeout(function(){show(e);},1000);return false;}
+        return true;
+      });
+    }
+    requestAnimationFrame(function(){requestAnimationFrame(reveal);});
+    addEventListener('scroll',reveal,{passive:true});addEventListener('resize',reveal);
+    setTimeout(reveal,500);
+    setTimeout(function(){els.forEach(show);els=[];},2400);
+    var nav=document.getElementById('nav');
+    addEventListener('scroll',function(){nav.classList.toggle('scrolled',scrollY>20);},{passive:true});
+  })();
+</script>
 </body>
 </html>
-
-<style>
-	* {
-		margin: 0;
-		padding: 0;
-		box-sizing: border-box;
-	}
-
-	:root {
-		--bg: #0a0a0c;
-		--bg-subtle: #111114;
-		--text: #e8e8ed;
-		--text-muted: #8b8b96;
-		--accent: #a855f7;
-		--accent-dim: #7c3aed;
-		--border: #1f1f24;
-	}
-
-	html {
-		font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-		background: var(--bg);
-		color: var(--text);
-		scroll-behavior: smooth;
-	}
-
-	body {
-		min-height: 100vh;
-		position: relative;
-		overflow-x: hidden;
-	}
-
-	nav {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 1.5rem 3rem;
-		max-width: 1400px;
-		margin: 0 auto;
-	}
-
-	.logo {
-		font-family: 'DM Serif Display', serif;
-		font-size: 1.85rem;
-		color: var(--text);
-		text-decoration: none;
-		letter-spacing: -0.02em;
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-	}
-
-	.logo-icon {
-		width: 120px;
-		height: 120px;
-		margin: -30px -20px -30px -15px;
-	}
-
-	.nav-links {
-		display: flex;
-		gap: 2rem;
-	}
-
-	.nav-links a {
-		color: var(--text-muted);
-		text-decoration: none;
-		font-size: 0.9rem;
-		transition: color 0.2s;
-	}
-
-	.nav-links a:hover {
-		color: var(--text);
-	}
-
-	main {
-		max-width: 1400px;
-		margin: 0 auto;
-		padding: 0 3rem;
-	}
-
-	/* Hero */
-
-	.hero {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 4rem;
-		align-items: center;
-		min-height: 80vh;
-		padding: 4rem 0;
-	}
-
-	h1 {
-		font-family: 'DM Serif Display', serif;
-		font-size: 3.5rem;
-		font-weight: 400;
-		line-height: 1.15;
-		letter-spacing: -0.02em;
-		margin-bottom: 1.5rem;
-	}
-
-	h1 .accent {
-		background: linear-gradient(135deg, var(--accent) 0%, #ec4899 100%);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
-	}
-
-	.tagline {
-		font-size: 1.1rem;
-		color: var(--text-muted);
-		margin-bottom: 2rem;
-		max-width: 440px;
-		line-height: 1.6;
-	}
-
-	.cta-group {
-		display: flex;
-		gap: 1rem;
-		margin-bottom: 1rem;
-	}
-
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.875rem 1.5rem;
-		border-radius: 8px;
-		text-decoration: none;
-		font-weight: 500;
-		font-size: 0.95rem;
-		transition: all 0.2s;
-	}
-
-	.btn.primary {
-		background: var(--accent);
-		color: white;
-	}
-
-	.btn.primary:hover {
-		background: var(--accent-dim);
-		transform: translateY(-1px);
-	}
-
-	.btn.secondary {
-		background: var(--bg-subtle);
-		color: var(--text);
-		border: 1px solid var(--border);
-	}
-
-	.btn.secondary:hover {
-		background: var(--border);
-	}
-
-	.btn.large {
-		padding: 1rem 2rem;
-		font-size: 1.1rem;
-	}
-
-	.hero-visual {
-		display: flex;
-		justify-content: center;
-	}
-
-	.app-screenshot {
-		width: 100%;
-		max-width: 600px;
-		border-radius: 12px;
-		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-	}
-
-	.window-frame {
-		background: var(--bg-subtle);
-		border: 1px solid var(--border);
-		border-radius: 12px;
-		overflow: hidden;
-		width: 100%;
-		max-width: 500px;
-		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-	}
-
-	.window-controls {
-		display: flex;
-		gap: 8px;
-		padding: 12px 16px;
-		background: var(--border);
-	}
-
-	.window-controls span {
-		width: 12px;
-		height: 12px;
-		border-radius: 50%;
-		background: #3f3f46;
-	}
-
-	.window-content {
-		padding: 0;
-	}
-
-	.placeholder-app {
-		display: flex;
-		height: 300px;
-	}
-
-	.sidebar {
-		width: 60px;
-		background: #18181b;
-		padding: 12px;
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
-
-	.sidebar-item {
-		width: 36px;
-		height: 36px;
-		border-radius: 8px;
-		background: #27272a;
-	}
-
-	.sidebar-item.active {
-		background: var(--accent-dim);
-	}
-
-	.content-area {
-		flex: 1;
-		padding: 16px;
-		background: var(--bg);
-	}
-
-	.album-grid {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 12px;
-	}
-
-	.album {
-		aspect-ratio: 1;
-		background: linear-gradient(135deg, #27272a 0%, #18181b 100%);
-		border-radius: 6px;
-	}
-
-	.album:nth-child(1) { background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%); }
-	.album:nth-child(2) { background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); }
-	.album:nth-child(3) { background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%); }
-	.album:nth-child(4) { background: linear-gradient(135deg, #10b981 0%, #047857 100%); }
-	.album:nth-child(5) { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
-
-	/* Concept sections */
-
-	.concepts {
-		padding: 2rem 0 4rem;
-	}
-
-	.concept {
-		max-width: 700px;
-		margin: 0 auto;
-		padding: 3rem 0;
-		border-top: 1px solid var(--border);
-	}
-
-	.concept h2 {
-		font-family: 'DM Serif Display', serif;
-		font-size: 2rem;
-		font-weight: 400;
-		margin-bottom: 1rem;
-	}
-
-	.concept p {
-		color: var(--text-muted);
-		font-size: 1.05rem;
-		line-height: 1.7;
-		margin-bottom: 0.75rem;
-	}
-
-	.concept p:last-child {
-		margin-bottom: 0;
-	}
-
-	.concept a {
-		color: var(--accent);
-		text-decoration: none;
-	}
-
-	.concept a:hover {
-		text-decoration: underline;
-	}
-
-	/* Features */
-
-	.features {
-		padding: 4rem 0;
-		border-top: 1px solid var(--border);
-	}
-
-	.features > h2 {
-		font-family: 'DM Serif Display', serif;
-		font-size: 2rem;
-		font-weight: 400;
-		text-align: center;
-		margin-bottom: 3rem;
-	}
-
-	.features-grid {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 2rem;
-		max-width: 1000px;
-		margin: 0 auto;
-	}
-
-	.feature {
-		background: var(--bg-subtle);
-		border: 1px solid var(--border);
-		border-radius: 10px;
-		padding: 2rem;
-	}
-
-	.feature h3 {
-		font-family: 'DM Serif Display', serif;
-		font-size: 1.25rem;
-		font-weight: 400;
-		color: var(--text);
-		margin-bottom: 1.25rem;
-		text-align: center;
-	}
-
-	.feature ul {
-		list-style: none;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.6rem;
-	}
-
-	.feature li {
-		color: var(--text-muted);
-		font-size: 0.875rem;
-		line-height: 1.5;
-		text-align: center;
-	}
-
-	/* Download CTA */
-
-	.download-cta {
-		text-align: center;
-		padding: 6rem 0;
-		border-top: 1px solid var(--border);
-	}
-
-	.download-cta h2 {
-		font-family: 'DM Serif Display', serif;
-		font-size: 2.5rem;
-		font-weight: 400;
-		margin-bottom: 1rem;
-	}
-
-	.download-cta p {
-		color: var(--text-muted);
-		margin-bottom: 2rem;
-	}
-
-	/* Footer */
-
-	footer {
-		border-top: 1px solid var(--border);
-		padding: 2rem 3rem;
-	}
-
-	.footer-content {
-		max-width: 1400px;
-		margin: 0 auto;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-
-	.footer-logo {
-		font-family: 'DM Serif Display', serif;
-		font-size: 1.25rem;
-		color: var(--text-muted);
-	}
-
-	.footer-links {
-		display: flex;
-		gap: 2rem;
-	}
-
-	.footer-links a {
-		color: var(--text-muted);
-		text-decoration: none;
-		font-size: 0.9rem;
-		transition: color 0.2s;
-	}
-
-	.footer-links a:hover {
-		color: var(--text);
-	}
-
-	/* Responsive */
-
-	@media (max-width: 1024px) {
-		.hero {
-			grid-template-columns: 1fr;
-			text-align: center;
-			min-height: auto;
-		}
-
-		h1 {
-			font-size: 2.75rem;
-		}
-
-		.tagline {
-			max-width: none;
-		}
-
-		.cta-group {
-			justify-content: center;
-		}
-	}
-
-	@media (max-width: 768px) {
-		.features-grid {
-			grid-template-columns: repeat(2, 1fr);
-		}
-	}
-
-	@media (max-width: 640px) {
-		nav, main, footer {
-			padding-left: 1.5rem;
-			padding-right: 1.5rem;
-		}
-
-		h1 {
-			font-size: 2.25rem;
-		}
-
-		.cta-group {
-			flex-direction: column;
-		}
-
-		.concept {
-			padding: 2rem 0;
-		}
-
-		.features-grid {
-			grid-template-columns: 1fr;
-		}
-	}
-</style>
