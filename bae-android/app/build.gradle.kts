@@ -47,8 +47,8 @@ android {
 
         // Package native libs for one ABI only when run.sh passes
         // -Pbae.abi=<abi> for the connected device. This filters every native
-        // source — our libbae_bridge.so plus AAR libs like ML Kit's
-        // libbarhopper.so — so the APK carries no other-ABI dead weight. With no
+        // source — our libbae_bridge.so plus AAR libs like JNA's
+        // libjnidispatch.so — so the APK carries no other-ABI dead weight. With no
         // property set (CI, Android Studio, release bundles) all ABIs are kept.
         (project.findProperty("bae.abi") as String?)?.let { requestedAbi ->
             ndk { abiFilters += requestedAbi }
@@ -121,7 +121,7 @@ dependencies {
     implementation("androidx.camera:camera-camera2:1.4.2")
     implementation("androidx.camera:camera-lifecycle:1.4.2")
     implementation("androidx.camera:camera-view:1.4.2")
-    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    implementation("com.google.zxing:core:3.5.3")
     implementation("androidx.media3:media3-session:1.7.1")
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("sh.calvin.reorderable:reorderable:2.4.0")
