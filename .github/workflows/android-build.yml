@@ -48,7 +48,7 @@ jobs:
     runs-on: macos-26
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup macOS environment
       # Host ffmpeg for the uniffi-bindgen host build.
@@ -59,7 +59,7 @@ jobs:
 
     - name: Setup JDK 17
       # bae-android targets JavaVersion.VERSION_17 (app/build.gradle.kts).
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: '17'
@@ -74,7 +74,7 @@ jobs:
 
     - name: Cache cross-built Android FFmpeg
       id: ffmpeg-cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: third_party/ffmpeg-android
         # Keyed on the build script + NDK version: rebuild only when the recipe
@@ -151,7 +151,7 @@ jobs:
 
     - name: Upload signed APK artifact
       if: inputs.profile == 'release'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: bae-android-release
         path: bae-android.apk
