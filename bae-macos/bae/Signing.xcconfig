@@ -1,0 +1,12 @@
+// macOS app signing config.
+//
+// The developer team is machine-specific, so it is NOT committed. To build the
+// signed app locally, create Signing.local.xcconfig next to this file with your
+// team:
+//
+//   DEVELOPMENT_TEAM = ABCDE12345
+//
+// That file is gitignored. CI builds with CODE_SIGNING_ALLOWED=NO (the release
+// workflow signs separately with the APPLE_TEAM_ID secret), so no team is needed
+// there, and this optional include is a no-op when the local file is absent.
+#include? "Signing.local.xcconfig"

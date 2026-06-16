@@ -48,6 +48,8 @@ bae-macos/bae/bae/Info.plist
 bae-macos/bae/bae/bae_bridge.swift
 bae-macos/BaeBridgeFFI.xcframework/
 bae-bridge/swift-bindings/
+# Machine-specific signing team (DEVELOPMENT_TEAM), not committed
+bae-macos/bae/Signing.local.xcconfig
 
 # sourcekit-lsp / xcode-build-server (local IDE config, machine-specific paths)
 buildServer.json
