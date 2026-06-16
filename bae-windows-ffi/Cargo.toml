@@ -21,3 +21,9 @@ serde_json = "1"
 # "sync" for the event-bus broadcast receiver; "rt-multi-thread" for the
 # one-off runtime that pre-init restore (no app handle yet) blocks on.
 tokio = { version = "1", features = ["sync", "rt-multi-thread"] }
+
+[features]
+# Enables the OAuth cloud-provider C-ABI surface (bae_oauth_authorize,
+# bae_sign_in_cloud, bae_set_oauth_client_creds) via bae-core/coven. Off by
+# default → the libre baeium build; the bae build turns it on.
+oauth-providers = ["bae-core/oauth-providers"]

@@ -80,6 +80,7 @@ pub extern "C" fn bae_startup() {
 ///
 /// # Safety
 /// `creds_json` must be a valid NUL-terminated UTF-8 C string.
+#[cfg(feature = "oauth-providers")]
 #[no_mangle]
 pub unsafe extern "C" fn bae_set_oauth_client_creds(creds_json: *const c_char) -> *mut c_char {
     let Some(creds_json) = cstr(creds_json) else {
@@ -571,6 +572,7 @@ struct FfiRestoreResult {
 /// The outcome of an OAuth flow: the provider's token JSON to hand on to a
 /// restore, or a message describing why it failed (denied, cancelled, timed
 /// out, network).
+#[cfg(feature = "oauth-providers")]
 #[derive(Serialize)]
 struct FfiOAuthResult {
     token: Option<String>,
@@ -588,6 +590,7 @@ struct FfiOAuthResult {
 ///
 /// # Safety
 /// `provider` must be a valid NUL-terminated UTF-8 C string.
+#[cfg(feature = "oauth-providers")]
 #[no_mangle]
 pub unsafe extern "C" fn bae_oauth_authorize(provider: *const c_char) -> *mut c_char {
     let Some(provider) = cstr(provider) else {
@@ -2427,6 +2430,7 @@ fn cloud_provider_name(provider: &bae_core::config::CloudProvider) -> &'static s
 /// Parse a wire tag into an OAuth cloud provider. Only the browser-OAuth
 /// providers are accepted here — S3 connects via its own entry point, and
 /// CloudKit is Apple-only.
+#[cfg(feature = "oauth-providers")]
 fn oauth_provider_from_str(provider: &str) -> Option<bae_core::config::CloudProvider> {
     use bae_core::config::CloudProvider;
     match provider {
@@ -2435,6 +2439,20 @@ fn oauth_provider_from_str(provider: &str) -> Option<bae_core::config::CloudProv
         "onedrive" => Some(CloudProvider::OneDrive),
         _ => None,
     }
+}
+
+/// The cloud providers this build supports, as a JSON array of wire tags
+/// ("s3", "google_drive", ...) in display order. S3 is always present; the
+/// OAuth providers only when compiled in. The WinUI picker renders from this
+/// instead of a hardcoded list, so a libre (S3-only) build offers only S3.
+/// Free the result with [`bae_string_free`].
+#[no_mangle]
+pub extern "C" fn bae_available_cloud_providers() -> *mut c_char {
+    #[allow(unused_mut)]
+    let mut providers = vec!["s3"];
+    #[cfg(feature = "oauth-providers")]
+    providers.extend(["google_drive", "dropbox", "onedrive"]);
+    json_cstring(&providers)
 }
 
 /// App settings the WinUI settings screen displays.
@@ -2663,6 +2681,7 @@ pub unsafe extern "C" fn bae_disconnect_warning(handle: *const BaeHandle) -> *mu
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
 /// `provider` must be a valid NUL-terminated UTF-8 C string.
+#[cfg(feature = "oauth-providers")]
 #[no_mangle]
 pub unsafe extern "C" fn bae_sign_in_cloud(
     handle: *const BaeHandle,
