@@ -24,7 +24,7 @@ if command -v sccache &> /dev/null; then
 fi
 
 echo "Building for macOS (arm64, $CARGO_PROFILE)..."
-cargo build $CARGO_FLAGS --target aarch64-apple-darwin -p bae-bridge --features cloudkit,desktop
+cargo build $CARGO_FLAGS --target aarch64-apple-darwin -p bae-bridge --features oauth-providers,cloudkit,desktop
 
 echo "Generating Swift bindings..."
 mkdir -p bae-bridge/swift-bindings

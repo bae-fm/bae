@@ -4682,6 +4682,7 @@ impl LibraryManager {
         Ok(())
     }
 
+    #[cfg(feature = "oauth-providers")]
     pub async fn sign_in_cloud_provider(&self, provider: CloudProvider) -> Result<(), String> {
         use crate::storage::cloud::setup;
 

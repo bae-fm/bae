@@ -9,6 +9,25 @@ fn parse_oauth_tokens(json: &str) -> Result<bae_core::oauth::OAuthTokens, Bridge
     })
 }
 
+/// The cloud providers this build supports, in display order. S3 is always
+/// available; the OAuth providers and CloudKit appear only when their features
+/// are compiled in. The UI renders its provider picker from this list instead of
+/// hardcoding one, so a libre (S3-only) build offers only S3.
+#[uniffi::export]
+pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
+    #[allow(unused_mut)]
+    let mut providers = vec![BridgeCloudProvider::S3];
+    #[cfg(feature = "oauth-providers")]
+    providers.extend([
+        BridgeCloudProvider::GoogleDrive,
+        BridgeCloudProvider::Dropbox,
+        BridgeCloudProvider::OneDrive,
+    ]);
+    #[cfg(feature = "cloudkit")]
+    providers.push(BridgeCloudProvider::CloudKit);
+    providers
+}
+
 /// Build a BridgeLibrary from its raw parts. The two call sites that wrap
 /// this — `local_library_active` for a freshly-opened Config,
 /// `local_library_from_info` for a discovery-scan entry — just differ in
@@ -116,6 +135,7 @@ async fn restore_from_code_config(
 /// Holds a handle to the in-progress OAuth runtime plus a cancellation flag.
 /// `oauth_cancel()` sends a signal via the oneshot, which the authorize flow
 /// selects on alongside the callback wait.
+#[cfg(feature = "oauth-providers")]
 static OAUTH_CANCEL_TX: Mutex<Option<tokio::sync::watch::Sender<bool>>> = Mutex::new(None);
 
 /// Point bae's data directory at `path/.bae` by exporting `path` as `$HOME`,
@@ -397,6 +417,7 @@ impl RestoreFromCodeOperation {
 }
 
 /// Create a new cancel channel, store the sender, return the receiver.
+#[cfg(feature = "oauth-providers")]
 pub(crate) fn new_oauth_cancel() -> tokio::sync::watch::Receiver<bool> {
     let (tx, rx) = tokio::sync::watch::channel(false);
     *OAUTH_CANCEL_TX
@@ -409,6 +430,7 @@ pub(crate) fn new_oauth_cancel() -> tokio::sync::watch::Receiver<bool> {
 ///
 /// Spawns a localhost callback server that lives until the browser redirects back
 /// or `oauth_cancel()` is called. Only one flow can run at a time.
+#[cfg(feature = "oauth-providers")]
 #[uniffi::export]
 pub fn oauth_authorize(provider: BridgeCloudProvider) -> Result<String, BridgeError> {
     // Cancel any lingering previous flow
@@ -440,6 +462,7 @@ pub fn oauth_authorize(provider: BridgeCloudProvider) -> Result<String, BridgeEr
 
 /// One step of the host-driven (mobile) OAuth flow: the URL to open and the
 /// PKCE verifier to pass back to [`oauth_complete`].
+#[cfg(feature = "oauth-providers")]
 #[derive(uniffi::Record)]
 pub struct BridgeOAuthRequest {
     pub auth_url: String,
@@ -451,6 +474,7 @@ pub struct BridgeOAuthRequest {
 /// any OAuth flow. `creds_json` is an object of
 /// `{ "<provider>": { "client_id": "...", "client_secret": null } }`. coven
 /// ships no credentials of its own — the consuming app registers its own.
+#[cfg(feature = "oauth-providers")]
 #[uniffi::export]
 pub fn set_oauth_client_creds(creds_json: String) -> Result<(), BridgeError> {
     let parsed: std::collections::HashMap<String, serde_json::Value> =
@@ -488,6 +512,7 @@ pub fn set_oauth_client_creds(creds_json: String) -> Result<(), BridgeError> {
 /// the redirect, and calls [`oauth_complete`]. Unlike [`oauth_authorize`] this
 /// binds no localhost port and opens no browser — it works in the iOS/Android
 /// sandbox.
+#[cfg(feature = "oauth-providers")]
 #[uniffi::export]
 pub fn oauth_begin(
     provider: BridgeCloudProvider,
@@ -507,6 +532,7 @@ pub fn oauth_begin(
 /// Complete a host-driven OAuth flow: exchange the captured `code` for tokens
 /// and return the token JSON to pass to [`restore_from_code`]. `redirect_uri`
 /// and `verifier` must match the originating [`oauth_begin`].
+#[cfg(feature = "oauth-providers")]
 #[uniffi::export]
 pub fn oauth_complete(
     provider: BridgeCloudProvider,
@@ -536,6 +562,7 @@ pub fn oauth_complete(
 
 /// Cancel an in-progress OAuth flow. Signals the callback server to shut down
 /// and frees the port.
+#[cfg(feature = "oauth-providers")]
 #[uniffi::export]
 pub fn oauth_cancel() {
     if let Some(tx) = OAUTH_CANCEL_TX

@@ -12,13 +12,14 @@ use crate::types::BridgeDiscogsSaveOutcome;
 use crate::types::BridgeMetadataSource;
 #[cfg(feature = "desktop")]
 use crate::types::BridgeRemoteCover;
+#[cfg(feature = "oauth-providers")]
+use crate::types::{bridge_cloud_provider_to_core, BridgeCloudProvider};
 use crate::types::{
-    bridge_cloud_provider_to_core, bridge_sort_to_core, BridgeAlbum, BridgeAlbumDetail,
-    BridgeAlbumSearchResult, BridgeCloudProvider, BridgeConfig, BridgeCoverSelection, BridgeError,
-    BridgeFile, BridgeGalleryItem, BridgeRelease, BridgeReleaseSummary, BridgeRepeatMode,
-    BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter,
-    BridgeStoragePage, BridgeStorageRow, BridgeStorageSort, BridgeTrack, BridgeTrackGroup,
-    BridgeTrackSearchResult,
+    bridge_sort_to_core, BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeConfig,
+    BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeRelease,
+    BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,
+    BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage, BridgeStorageRow,
+    BridgeStorageSort, BridgeTrack, BridgeTrackGroup, BridgeTrackSearchResult,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{bridge_storage_mode_to_core, BridgeStorageMode};
@@ -619,24 +620,6 @@ impl AppHandle {
             .map_err(|msg| BridgeError::Internal { msg })
     }
 
-    pub async fn sign_in_cloud_provider(
-        &self,
-        provider: BridgeCloudProvider,
-    ) -> Result<(), BridgeError> {
-        // OAuth + cloud-folder setup then starts sync — network; on a worker.
-        // Cancellation tears down the OAuth listener via coven's own drop guard.
-        let services = self.app_services.clone();
-        let core_provider = bridge_cloud_provider_to_core(provider);
-        self.spawn_on_runtime(async move {
-            services
-                .library_manager()
-                .sign_in_cloud_provider(core_provider)
-                .await
-        })
-        .await
-        .map_err(|msg| BridgeError::Config { msg })
-    }
-
     pub fn generate_restore_code(&self) -> Result<String, BridgeError> {
         self.app_services
             .library_manager()
@@ -756,6 +739,32 @@ impl AppHandle {
         self.spawn_on_runtime(async move { services.library_manager().use_cloudkit().await })
             .await
             .map_err(|msg| BridgeError::Config { msg })
+    }
+}
+
+// =========================================================================
+// OAuth-only: consumer-cloud sign-in (Google Drive, Dropbox, OneDrive)
+// =========================================================================
+
+#[cfg(feature = "oauth-providers")]
+#[uniffi::export(async_runtime = "tokio")]
+impl AppHandle {
+    pub async fn sign_in_cloud_provider(
+        &self,
+        provider: BridgeCloudProvider,
+    ) -> Result<(), BridgeError> {
+        // OAuth + cloud-folder setup then starts sync — network; on a worker.
+        // Cancellation tears down the OAuth listener via coven's own drop guard.
+        let services = self.app_services.clone();
+        let core_provider = bridge_cloud_provider_to_core(provider);
+        self.spawn_on_runtime(async move {
+            services
+                .library_manager()
+                .sign_in_cloud_provider(core_provider)
+                .await
+        })
+        .await
+        .map_err(|msg| BridgeError::Config { msg })
     }
 }
 

@@ -53,13 +53,13 @@ export RUSTFLAGS="${RUSTFLAGS:-} -C link-arg=-lz"
 echo "Building for iOS device (arm64, $CARGO_PROFILE)..."
 FFMPEG_DIR="$FFMPEG_DEVICE" \
 BINDGEN_EXTRA_CLANG_ARGS="--target=arm64-apple-ios16.0 -isysroot $DEVICE_SDK -I$FFMPEG_DEVICE/include" \
-cargo build $CARGO_FLAGS --target aarch64-apple-ios -p bae-bridge --features cloudkit
+cargo build $CARGO_FLAGS --target aarch64-apple-ios -p bae-bridge --features oauth-providers,cloudkit
 
 echo "Building for iOS simulator (arm64, $CARGO_PROFILE)..."
 FFMPEG_DIR="$FFMPEG_SIM" \
 SDKROOT="$SIM_SDK" \
 BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$SIM_SDK -target arm64-apple-ios16.0-simulator -I$FFMPEG_SIM/include" \
-cargo build $CARGO_FLAGS --target aarch64-apple-ios-sim -p bae-bridge --features cloudkit
+cargo build $CARGO_FLAGS --target aarch64-apple-ios-sim -p bae-bridge --features oauth-providers,cloudkit
 
 echo "Generating Swift bindings..."
 mkdir -p bae-bridge/swift-bindings

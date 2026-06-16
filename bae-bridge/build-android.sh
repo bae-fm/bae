@@ -69,7 +69,7 @@ for ABI in "${ABIS[@]}"; do
         exit 1
     fi
     echo "Building bae-bridge for $ABI ($TARGET, $CARGO_PROFILE)..."
-    FFMPEG_DIR="$FFMPEG_PREFIX/$FA" RUSTC_WRAPPER="" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge
+    FFMPEG_DIR="$FFMPEG_PREFIX/$FA" RUSTC_WRAPPER="" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features oauth-providers
 done
 
 # Generate bindings from the built static lib, not a host build, so the Kotlin
