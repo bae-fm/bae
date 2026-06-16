@@ -115,6 +115,54 @@ jobs:
         cargo test -p bae-core --features bae-core/test-utils -- --test-threads=1 --skip test_playback_cpu
         cargo test -p bae-core --release --features bae-core/test-utils --test test_playback_cpu
 
+  feature-parity:
+    # The split between the libre (S3-only) build and the full build is enforced
+    # only by cargo features + Swift #if, from one source tree. The `test` job
+    # exercises the default (libre) Rust config and builds the FULL macOS app, so
+    # on its own it can't catch an edit that breaks the config it doesn't run.
+    # This job covers the opposite two cells: the full Rust config must compile
+    # clean, and the libre macOS app (no OAuth/CloudKit Swift) must build. A
+    # feature-gate edit that breaks either config fails here.
+    name: Feature config parity
+    runs-on: macos-26
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.ref || github.sha }}
+
+    - name: Setup macOS environment
+      uses: ./.github/actions/setup-macos
+
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
+    - name: Clippy (full feature set)
+      run: |
+        cargo clippy -p bae-core --features oauth-providers -- -D warnings
+        cargo clippy -p bae-bridge --features oauth-providers,cloudkit -- -D warnings
+
+    - name: Build macOS app (libre, S3-only)
+      run: |
+        brew install xcodegen
+        BAE_BRIDGE_FEATURES=desktop ./bae-bridge/build-macos.sh
+        cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+        cd bae-macos/bae && xcodegen
+        xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+          -derivedDataPath .build/derivedData build
+
+    - name: Guard — libre bridge exports no OAuth/CloudKit binding
+      run: |
+        # The libre bridge build above must omit every feature-gated function.
+        # availableCloudProviders stays (always compiled in); these must not.
+        gated='oauthAuthorize|oauthBegin|oauthCancel|oauthComplete|setOauthClientCreds|signInCloudProvider|useCloudkit'
+        if grep -nE "func ($gated)" bae-bridge/swift-bindings/bae_bridge.swift; then
+          echo "::error::Libre bridge exported a feature-gated symbol (above): the gate leaked into the S3-only build."
+          exit 1
+        fi
+        echo "Libre bridge is clean: no OAuth/CloudKit bindings exported."
+
   security:
     name: Security Audit
     runs-on: macos-26
