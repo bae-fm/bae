@@ -89,6 +89,8 @@ bae-android/build/
 build/
 bae-macos/bae/build/
 bae-macos/bae/.build/
+# iOS derivedData (mirrors the macOS project dir; -derivedDataPath .build/derivedData)
+bae-ios/bae/.build/
 
 # Local working files
 plans/
