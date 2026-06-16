@@ -173,19 +173,17 @@
 
   /* Animated word: inline-block clipped box whose width we tween so the period
      (sibling .cyc-dot) keeps hugging it with no horizontal snap. */
+  /* inline-block (for the flip transform) at natural width. No overflow: that
+     would move the baseline to the box's bottom edge and drop the word off the
+     line. Scramble sets a fixed width itself for stability. */
   .endcta h2 .cyc-word{
     display:inline-block;vertical-align:baseline;
-    overflow:hidden;white-space:nowrap;
-    transition:width .52s cubic-bezier(.22,.7,.2,1);
-    will-change:width;
+    white-space:nowrap;
   }
   .endcta h2 .cyc-pink{color:var(--pink);}
   .endcta h2 .cyc-violet{color:var(--violet);}
   /* period folded into the cycling unit; cream so it reads as punctuation, not part of the word */
   .endcta h2 .cyc-dot{color:var(--cream);}
-
-  /* per-letter slots (scramble / flip / shuffle) */
-  .endcta h2 .cyc-ch{display:inline-block;white-space:pre;}
 
   /* typewriter caret -- present only during the type-ahead transition; inherits the word's colour */
   .endcta h2 .cyc-caret{
@@ -196,8 +194,8 @@
   @keyframes cycBlink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
 
   /* cross-fade helper (also the reduced-motion path) */
-  .endcta h2 .cyc-word.cyc-fade{transition:width .52s cubic-bezier(.22,.7,.2,1),opacity .42s ease,filter .42s ease;}
-  .endcta h2 .cyc-word.cyc-out{opacity:0;filter:blur(6px);}
+  .endcta h2 .cyc-word.cyc-fade{transition:opacity .42s ease;}
+  .endcta h2 .cyc-word.cyc-out{opacity:0;}
 
   /* hidden sizer: inherits the h2 font to measure word widths off-layout */
   .endcta h2 .cyc-sizer{
@@ -205,12 +203,18 @@
     white-space:nowrap;pointer-events:none;
   }
 
+  /* Narrow screens: drop the cycling word onto its own line so the headline
+     keeps a constant line count. Otherwise the long word wraps and the short
+     one does not, shifting everything below on each swap. */
+  @media (max-width:860px){
+    .endcta h2.cyc-on .cyc{display:block;}
+  }
+
   /* reduced motion: one calm cross-fade only -- no caret blink, no transforms,
      no scramble/flip/shuffle; JS pins the pool to the cross-fade. */
   @media (prefers-reduced-motion: reduce){
     .endcta h2 .cyc-caret{display:none;animation:none;}
-    .endcta h2 .cyc-word{transition:width .6s ease,opacity .6s ease;will-change:auto;}
-    .endcta h2 .cyc-ch{transition:none!important;transform:none!important;}
+    .endcta h2 .cyc-word{transition:opacity .6s ease;}
   }
   .endcta p{font-size:17px;color:var(--fg-dim);margin:0 0 30px;}
 
@@ -436,8 +440,7 @@
         {text:'home',       cls:'cyc-pink',   col:'var(--pink)'},
         {text:'everywhere', cls:'cyc-violet', col:'var(--violet)'}
       ];
-      var HOLD=2100, TYPE=58, SCRAM_TICK=40, SCRAM_FRAMES=9, FLIP=620, SETTLE=640, RM_HOLD=4200;
-      var GLYPHS='abcdefghijklmnopqrstuvwxyz';
+      var HOLD=2100, TYPE=58, FLIP=620, RM_HOLD=4200;
       var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 
       h2.classList.add('cyc-on');                          // take over from the no-JS fallback
@@ -456,9 +459,7 @@
       function setWidth(text){ word.style.width=Math.ceil(widths[text])+'px'; }
       function paintPlain(w){ word.className='cyc-word '+w.cls; word.style.color=''; word.textContent=w.text; }
       // settle: clean static single-word state after every transition (and on resume)
-      function settle(w){ word.style.transition=''; word.style.transform=''; word.style.opacity=''; word.style.transformOrigin=''; paintPlain(w); setWidth(w.text); }
-      function splitInto(w){ word.className='cyc-word '+w.cls; word.style.color=''; word.textContent=''; var nodes=[]; for(var i=0;i<w.text.length;i++){ var s=document.createElement('span'); s.className='cyc-ch'; s.textContent=w.text[i]; word.appendChild(s); nodes.push(s); } return nodes; }
-      function rnd(){ return GLYPHS[(Math.random()*GLYPHS.length)|0]; }
+      function settle(w){ word.classList.remove('cyc-out','cyc-fade'); word.style.transition=''; word.style.transform=''; word.style.opacity=''; word.style.filter=''; word.style.transformOrigin=''; word.style.width=''; paintPlain(w); }
 
       settle(WORDS[idx]);                                  // markup ships "home"; lock it in
 
@@ -475,18 +476,7 @@
       }
       function tFade(from,to,done){
         word.classList.add('cyc-fade'); word.classList.add('cyc-out');
-        later(function(){ paintPlain(to); word.classList.add('cyc-fade'); setWidth(to.text); word.classList.remove('cyc-out'); later(function(){ word.classList.remove('cyc-fade'); done(); },440); },300);
-      }
-      function tScramble(from,to,done){
-        var nodes=splitInto(to); setWidth(to.text);        // fixed box width = target word; period never jitters
-        var resolved=0, frame=0;
-        var iv=setInterval(function(){
-          frame++;
-          for(var i=0;i<nodes.length;i++){ nodes[i].textContent = i<resolved ? to.text[i] : rnd(); }
-          if(frame % SCRAM_FRAMES === 0 && resolved<nodes.length){ nodes[resolved].textContent=to.text[resolved]; resolved++; }
-          if(resolved>=nodes.length){ clearInterval(iv); word.textContent=to.text; word.className='cyc-word '+to.cls; done(); }
-        },SCRAM_TICK);
-        timers.push(iv);
+        later(function(){ paintPlain(to); word.classList.add('cyc-fade'); word.style.width=''; word.classList.remove('cyc-out'); later(function(){ word.classList.remove('cyc-fade'); done(); },440); },300);
       }
       function tFlip(from,to,done){
         word.className='cyc-word '+from.cls; word.style.color=from.col;
@@ -503,15 +493,8 @@
           later(function(){ word.style.transition=''; word.style.transform=''; word.style.opacity=''; word.style.transformOrigin=''; word.style.color=''; done(); },FLIP/2);
         },FLIP/2);
       }
-      function tShuffle(from,to,done){
-        var nodes=splitInto(to); setWidth(to.text);
-        for(var i=0;i<nodes.length;i++){ var dx=((Math.random()*2-1)*8).toFixed(1), dy=((Math.random()*2-1)*14).toFixed(1); nodes[i].style.transition='none'; nodes[i].style.transform='translate('+dx+'px,'+dy+'px)'; nodes[i].style.opacity='0'; }
-        void word.offsetWidth;
-        nodes.forEach(function(n,i){ later(function(){ n.style.transition='transform '+SETTLE+'ms cubic-bezier(.18,1.3,.3,1),opacity .3s ease'; n.style.transform='none'; n.style.opacity='1'; }, 30*i); });
-        later(function(){ word.textContent=to.text; word.className='cyc-word '+to.cls; word.style.color=''; done(); }, SETTLE + 30*nodes.length);
-      }
 
-      var POOL=[tType,tFade,tScramble,tFlip,tShuffle];
+      var POOL=[tType,tFade,tFlip];
       function pick(){ var i; do{ i=(Math.random()*POOL.length)|0; }while(i===last && POOL.length>1); last=i; return POOL[i]; }
 
       function step(){
@@ -520,7 +503,7 @@
         var from=WORDS[idx]; idx=(idx+1)%WORDS.length; var to=WORDS[idx];
         if(reduce){                                        // reduced motion: one calm cross-fade, nothing else
           word.classList.add('cyc-fade'); word.classList.add('cyc-out');
-          later(function(){ paintPlain(to); word.classList.add('cyc-fade'); setWidth(to.text); word.classList.remove('cyc-out'); later(function(){ word.classList.remove('cyc-fade'); later(step,RM_HOLD); },440); },420);
+          later(function(){ paintPlain(to); word.classList.add('cyc-fade'); word.style.width=''; word.classList.remove('cyc-out'); later(function(){ word.classList.remove('cyc-fade'); later(step,RM_HOLD); },440); },420);
           return;
         }
         pick()(from,to,function(){ settle(to); later(step,HOLD); });
