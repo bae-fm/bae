@@ -1,0 +1,243 @@
+name: Release Windows
+
+# Cuts a Windows release of both editions: an independent 0.N version line
+# (windows-v* tags). Each versioned release carries an UNSIGNED self-contained zip
+# per edition (bae-windows-x64.zip + baeium-windows-x64.zip) of the unpackaged
+# WinUI 3 app plus the native runtime DLLs. Unsigned for now — Authenticode
+# signing needs a Windows code-signing certificate the owner doesn't have yet;
+# SmartScreen warns on first launch until then. Edition differs only by exe/folder
+# name (unpackaged app → no OS-level package identity to collide); the libre dll
+# omits the OAuth entry points, which the C# app already detects at runtime via
+# NativeBae.SupportsOAuthProviders().
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, e.g. 0.2 (blank = auto-increment from windows-v* tags)'
+        required: false
+        default: ''
+
+concurrency:
+  group: release-windows
+  cancel-in-progress: true
+
+jobs:
+  calculate-version:
+    name: Calculate Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.calc.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Determine version
+      id: calc
+      run: |
+        # Explicit input wins; otherwise auto-increment the last component of the
+        # latest windows-v* tag (independent of the other platforms). First → 0.1.
+        if [[ -n "${{ inputs.version }}" ]]; then
+          VERSION="${{ inputs.version }}"
+        else
+          LATEST=$(git tag -l "windows-v*" | sed 's/^windows-v//' | sort -V | tail -1)
+          if [[ -z "$LATEST" ]]; then
+            VERSION="0.1"
+          else
+            VERSION="${LATEST%.*}.$(( ${LATEST##*.} + 1 ))"
+          fi
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "::notice::Windows release version $VERSION (build ${{ github.run_number }})"
+
+  build:
+    name: Build ${{ matrix.edition }} zip
+    runs-on: windows-latest
+    needs: calculate-version
+    env:
+      FFMPEG_VERSION: v8.0.1-bae8
+    strategy:
+      matrix:
+        edition: [full, libre]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve edition (cargo features, exe + zip names)
+        shell: pwsh
+        run: |
+          # full = OAuth providers on (bae.exe); libre = no features (baeium.exe).
+          # The C# app is identical for both; only the dll's exported symbols differ.
+          if ("${{ matrix.edition }}" -eq "libre") {
+            "CARGO_FEATURES=" | Out-File $env:GITHUB_ENV -Append
+            "EXE_NAME=baeium.exe" | Out-File $env:GITHUB_ENV -Append
+            "ZIP_NAME=baeium-windows-x64.zip" | Out-File $env:GITHUB_ENV -Append
+            "STAGE_DIR=baeium" | Out-File $env:GITHUB_ENV -Append
+          } else {
+            "CARGO_FEATURES=--features oauth-providers" | Out-File $env:GITHUB_ENV -Append
+            "EXE_NAME=bae.exe" | Out-File $env:GITHUB_ENV -Append
+            "ZIP_NAME=bae-windows-x64.zip" | Out-File $env:GITHUB_ENV -Append
+            "STAGE_DIR=bae" | Out-File $env:GITHUB_ENV -Append
+          }
+
+      - name: Install Rust (pinned toolchain)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92.0"
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install sccache + LLVM (libclang for ffmpeg-sys bindgen)
+        shell: pwsh
+        run: |
+          choco install -y sccache llvm
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Fetch libdiscid (MusicBrainz Windows binary)
+        shell: pwsh
+        run: |
+          $url = "https://github.com/metabrainz/libdiscid/releases/download/v0.6.5/libdiscid-0.6.5-win.zip"
+          curl.exe -L $url -o libdiscid.zip
+          Expand-Archive -Path libdiscid.zip -DestinationPath "$PWD\libdiscid" -Force
+          $x64 = "$PWD\libdiscid\libdiscid-0.6.5-win\x64"
+          echo "LIB=$x64;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "DISCID_BIN=$x64" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "$x64" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Fetch bae-ffmpeg (Windows x86_64)
+        shell: pwsh
+        run: |
+          $dist = "$PWD\bae-ffmpeg\dist"
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          $url = "https://github.com/bae-fm/bae-ffmpeg/releases/download/$env:FFMPEG_VERSION/ffmpeg-windows-x86_64.zip"
+          curl.exe -L $url -o ffmpeg.zip
+          Expand-Archive -Path ffmpeg.zip -DestinationPath $dist -Force
+          New-Item -ItemType Directory -Force -Path "$dist\lib" | Out-Null
+          Copy-Item "$dist\bin\*.lib" "$dist\lib\" -Force
+          echo "FFMPEG_DIR=$dist" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I$dist\include" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "$dist\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Provision ffmpeg's mingw runtime deps (msys2)
+        shell: pwsh
+        run: |
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
+          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Build the Windows FFI cdylib (release, per edition)
+        run: cargo build -p bae-windows-ffi --target x86_64-pc-windows-msvc --release ${{ env.CARGO_FEATURES }}
+
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build the WinUI app (Release, self-contained x64)
+        # Self-contained so the zip runs without a separate .NET install. MSBuild
+        # (not `dotnet build`) — the WinUI XAML markup compiler needs the full VS
+        # toolchain (WMC1509). Publish to a known dir we then stage from.
+        run: >
+          msbuild bae-windows\bae-windows.csproj /restore /t:Publish
+          /p:Configuration=Release /p:Platform=x64
+          /p:SelfContained=true /p:RuntimeIdentifier=win-x64
+          /p:PublishDir=publish\
+
+      - name: Stage the app + native runtime DLLs
+        shell: pwsh
+        run: |
+          $stage = "$PWD\stage\$env:STAGE_DIR"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+
+          # The published WinUI app (exe + .NET runtime + managed deps).
+          $pub = "bae-windows\publish"
+          if (-not (Test-Path $pub)) { Write-Host "FAIL: publish dir not found at $pub"; exit 1 }
+          Copy-Item "$pub\*" $stage -Recurse -Force
+
+          # The Rust FFI dll (P/Invoke resolves it from the app directory).
+          Copy-Item "target\x86_64-pc-windows-msvc\release\bae_windows_ffi.dll" $stage -Force
+
+          # FFmpeg DLLs (the FFI links them) + their mingw runtime deps + libdiscid.
+          Copy-Item "$env:FFMPEG_DIR\bin\*.dll" $stage -Force
+          foreach ($d in @("libiconv-2.dll","libmp3lame-0.dll","zlib1.dll","libwinpthread-1.dll","libgcc_s_seh-1.dll","libstdc++-6.dll")) {
+            $src = "C:\msys64\mingw64\bin\$d"
+            if (Test-Path $src) { Copy-Item $src $stage -Force }
+          }
+          if (Test-Path "$env:DISCID_BIN\discid.dll") { Copy-Item "$env:DISCID_BIN\discid.dll" $stage -Force }
+
+          # Name the launcher per edition (bae.exe / baeium.exe).
+          $exe = Get-ChildItem $stage -Filter "bae-windows.exe" | Select-Object -First 1
+          if (-not $exe) { Write-Host "FAIL: bae-windows.exe not found in staged output"; exit 1 }
+          Rename-Item $exe.FullName $env:EXE_NAME
+
+          Compress-Archive -Path "$PWD\stage\$env:STAGE_DIR" -DestinationPath "$PWD\$env:ZIP_NAME" -Force
+          Write-Host "PASS: built $env:ZIP_NAME"
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: bae-windows-release-${{ matrix.edition }}
+          path: ${{ env.ZIP_NAME }}
+          retention-days: 30
+
+  publish:
+    name: Publish release
+    needs: [calculate-version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout the built commit
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ github.sha }}
+
+    - name: Download both editions' zips
+      uses: actions/download-artifact@v8
+      with:
+        pattern: bae-windows-release-*
+        merge-multiple: true
+
+    - name: Create git tag
+      run: |
+        VERSION="${{ needs.calculate-version.outputs.version }}"
+        if ! git rev-parse "windows-v$VERSION" >/dev/null 2>&1; then
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "windows-v$VERSION"
+          git push origin "windows-v$VERSION"
+        fi
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: windows-v${{ needs.calculate-version.outputs.version }}
+        files: |
+          bae-windows-x64.zip
+          baeium-windows-x64.zip
+        body: |
+          Windows builds are **unsigned** zips of the unpackaged app — extract and
+          run bae.exe / baeium.exe. Windows SmartScreen may warn on first launch
+          (no code-signing certificate yet).
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Refresh the per-edition -latest downloads
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Stable per-edition download links for the website:
+        #   releases/download/windows-latest/bae-windows-x64.zip        (full)
+        #   releases/download/baeium-windows-latest/baeium-windows-x64.zip (libre)
+        gh release view windows-latest >/dev/null 2>&1 \
+          || gh release create windows-latest --latest=false --title "Windows — latest (bae)" \
+               --notes "Stable download link that always serves the newest full bae Windows build."
+        gh release upload windows-latest bae-windows-x64.zip --clobber
+
+        gh release view baeium-windows-latest >/dev/null 2>&1 \
+          || gh release create baeium-windows-latest --latest=false --title "Windows — latest (baeium)" \
+               --notes "Stable download link that always serves the newest libre baeium Windows build."
+        gh release upload baeium-windows-latest baeium-windows-x64.zip --clobber
