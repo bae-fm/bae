@@ -1,0 +1,233 @@
+name: Release iOS
+
+# Cuts an iOS release of both editions: an independent 0.N version line (ios-v*
+# tags). Each versioned release carries an UNSIGNED .ipa per edition
+# (bae-ios.ipa + baeium-ios.ipa) for sideload install (AltStore / Sideloadly /
+# Xcode re-sign with the user's own Apple ID). App Store / TestFlight is a later
+# upgrade: it needs the owner's Apple Developer Program enrollment, an App Store
+# Connect app record per bundle id, and an iOS distribution certificate — none of
+# which the GitHub-release sideload path requires.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Commit SHA to release (leave blank for HEAD)'
+        required: false
+        default: ''
+      version:
+        description: 'Version, e.g. 0.2 (blank = auto-increment from ios-v* tags)'
+        required: false
+        default: ''
+
+concurrency:
+  group: release-ios
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  calculate-version:
+    name: Calculate Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.calc.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+        ref: ${{ inputs.commit || github.sha }}
+
+    - name: Determine version
+      id: calc
+      run: |
+        # Explicit input wins; otherwise auto-increment the last component of the
+        # latest ios-v* tag (independent of macos-v* / android-v*). First → 0.1.
+        if [[ -n "${{ inputs.version }}" ]]; then
+          VERSION="${{ inputs.version }}"
+        else
+          LATEST=$(git tag -l "ios-v*" | sed 's/^ios-v//' | sort -V | tail -1)
+          if [[ -z "$LATEST" ]]; then
+            VERSION="0.1"
+          else
+            VERSION="${LATEST%.*}.$(( ${LATEST##*.} + 1 ))"
+          fi
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "::notice::iOS release version $VERSION (build ${{ github.run_number }})"
+
+  release:
+    name: Build and Release iOS (${{ matrix.edition }})
+    runs-on: macos-26
+    needs: calculate-version
+    permissions:
+      contents: write
+    strategy:
+      # Both editions from one source: full (bae, fm.bae.bae) and libre (baeium,
+      # fm.bae.bae.libre). Serialized — they share the ios-v* tag and release, so
+      # full runs first and creates them, libre adds its .ipa.
+      max-parallel: 1
+      matrix:
+        edition: [full, libre]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.commit || github.sha }}
+
+    - name: Resolve edition (features, identity, asset names)
+      run: |
+        # The full edition keeps its identity; libre (baeium) gets the .libre
+        # bundle id, the S3-only feature set (empty BAE_BRIDGE_FEATURES — build-ios.sh
+        # treats unset as full and empty as libre), and its own asset + rolling link.
+        if [ "${{ matrix.edition }}" = "libre" ]; then
+          {
+            echo "BAE_BRIDGE_FEATURES="
+            echo "BUNDLE_ID=fm.bae.bae.libre"
+            echo "PRODUCT_NAME=baeium"
+            echo "IPA_NAME=baeium-ios.ipa"
+            echo "ARTIFACT_NAME=baeium-iOS-unsigned"
+            echo "LATEST_RELEASE=baeium-ios-latest"
+            echo "LATEST_TITLE=iOS — latest (baeium)"
+          } >> "$GITHUB_ENV"
+        else
+          {
+            echo "BAE_BRIDGE_FEATURES=oauth-providers,cloudkit"
+            echo "BUNDLE_ID=fm.bae.bae"
+            echo "PRODUCT_NAME=bae"
+            echo "IPA_NAME=bae-ios.ipa"
+            echo "ARTIFACT_NAME=bae-iOS-unsigned"
+            echo "LATEST_RELEASE=ios-latest"
+            echo "LATEST_TITLE=iOS — latest (bae)"
+          } >> "$GITHUB_ENV"
+        fi
+
+    - name: Setup macOS environment
+      uses: ./.github/actions/setup-macos
+
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
+    - name: Install xcodegen
+      run: brew install xcodegen
+
+    - name: Cache cross-built iOS FFmpeg
+      id: ffmpeg-cache
+      uses: actions/cache@v5
+      with:
+        path: third_party/ffmpeg-ios
+        # Keyed on the build recipe: rebuild only when the FFmpeg cross-build
+        # script changes (mirrors the Android FFmpeg cache).
+        key: ffmpeg-ios-${{ hashFiles('scripts/build-ffmpeg-ios.sh') }}
+
+    - name: Build iOS FFmpeg (on cache miss)
+      if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+      run: ./scripts/build-ffmpeg-ios.sh
+
+    - name: Set release version
+      run: echo "BAE_VERSION=${{ needs.calculate-version.outputs.version }}" >> "$GITHUB_ENV"
+
+    - name: Build Rust bridge (iOS xcframework)
+      run: |
+        # build-ios.sh cross-compiles device + simulator, merges FFmpeg, and copies
+        # the Swift bindings into bae-ios. BAE_BRIDGE_FEATURES (set above) selects
+        # the edition; for libre it also writes the bae-libre.entitlements override
+        # into Features.xcconfig.
+        ./bae-bridge/build-ios.sh --release
+
+    - name: Generate Xcode project
+      working-directory: ./bae-ios/bae
+      run: xcodegen
+
+    - name: Set version + display name in Info.plist
+      run: |
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        BUILD_NUMBER="${{ github.run_number }}"
+        PLIST=bae-ios/bae/bae/Info.plist
+        /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $BAE_VERSION" "$PLIST"
+        /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST"
+        # CFBundleDisplayName may not exist in the iOS Info.plist; Add if missing.
+        /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $PRODUCT_NAME" "$PLIST" \
+          || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string $PRODUCT_NAME" "$PLIST"
+        /usr/libexec/PlistBuddy -c "Add :BAEGitCommit string $SHORT_SHA" "$PLIST" || true
+
+    - name: Archive app (unsigned)
+      run: |
+        # Unsigned device archive. CODE_SIGNING_ALLOWED=NO produces an unsigned
+        # .app; the PRODUCT_BUNDLE_IDENTIFIER + PRODUCT_NAME overrides give the
+        # libre build its sibling identity (fm.bae.bae.libre / baeium.app). The
+        # signing identity is supplied by whoever sideloads (AltStore/Sideloadly/
+        # Xcode re-sign with a free Apple ID).
+        xcodebuild -project bae-ios/bae/bae.xcodeproj \
+          -scheme bae \
+          -configuration Release \
+          -sdk iphoneos \
+          -destination 'generic/platform=iOS' \
+          -archivePath build/bae.xcarchive \
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+          PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+          PRODUCT_NAME="$PRODUCT_NAME" \
+          archive
+
+    - name: Package unsigned IPA
+      run: |
+        APP="build/bae.xcarchive/Products/Applications/${PRODUCT_NAME}.app"
+        if [[ ! -d "$APP" ]]; then
+          echo "archived app not found at $APP" >&2
+          ls -la build/bae.xcarchive/Products/Applications || true
+          exit 1
+        fi
+        rm -rf Payload && mkdir -p Payload
+        cp -R "$APP" "Payload/"
+        # An IPA is a zip with a top-level Payload/<App>.app.
+        rm -f "$IPA_NAME"
+        zip -qr "$IPA_NAME" Payload
+        rm -rf Payload
+        echo "Built unsigned IPA: $IPA_NAME"
+
+    - name: Create git tag
+      run: |
+        VERSION="${{ needs.calculate-version.outputs.version }}"
+        if ! git rev-parse "ios-v$VERSION" >/dev/null 2>&1; then
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "ios-v$VERSION"
+          git push origin "ios-v$VERSION"
+        fi
+
+    - name: Upload IPA artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.IPA_NAME }}
+        retention-days: 30
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        # Both editions attach to the one ios-v* release.
+        tag_name: ios-v${{ needs.calculate-version.outputs.version }}
+        files: ${{ env.IPA_NAME }}
+        body: |
+          iOS builds are **unsigned** .ipa files for sideloading — install with
+          AltStore, Sideloadly, or Xcode (they re-sign with your own Apple ID, no
+          paid Developer account needed for the libre baeium build). App Store
+          distribution is not yet set up.
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Refresh the per-edition -latest download
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Stable per-edition sideload link for the website, e.g.
+        #   releases/download/ios-latest/bae-ios.ipa          (full)
+        #   releases/download/baeium-ios-latest/baeium-ios.ipa (libre)
+        gh release view "$LATEST_RELEASE" >/dev/null 2>&1 \
+          || gh release create "$LATEST_RELEASE" --latest=false --title "$LATEST_TITLE" \
+               --notes "Stable sideload link that always serves the newest $PRODUCT_NAME iOS build (unsigned .ipa)."
+        gh release upload "$LATEST_RELEASE" "$IPA_NAME" --clobber

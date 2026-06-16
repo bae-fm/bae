@@ -9,10 +9,17 @@
          Those require a paid developer account with the iCloud capability and a
          container owned by that account, so a self-build with free provisioning
          can't sign with them. build-ios.sh points CODE_SIGN_ENTITLEMENTS here
-         whenever it compiles the bridge without the cloudkit feature. -->
+         whenever it compiles the bridge without the cloudkit feature.
+
+         The keychain group is fm.bae.desktop.libre — the SAME group the macOS
+         libre build uses (the full build shares fm.bae.desktop across macOS and
+         iOS the same way), so baeium on a Mac and baeium on an iPhone share one
+         iCloud-Keychain-synced set of library keys, isolated from the full bae
+         editions. The group need not match the bundle id; it only must be
+         team-prefixed. -->
     <key>keychain-access-groups</key>
     <array>
-        <string>$(AppIdentifierPrefix)fm.bae.desktop</string>
+        <string>$(AppIdentifierPrefix)fm.bae.desktop.libre</string>
     </array>
 </dict>
 </plist>
