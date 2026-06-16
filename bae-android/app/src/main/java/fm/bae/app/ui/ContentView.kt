@@ -21,7 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
-import fm.bae.app.OAuthLinking
+import fm.bae.app.OAuthLinker
 import kotlinx.coroutines.launch
 
 /**
@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun ContentView(
-    oauthLinking: OAuthLinking?,
+    oauthLinking: OAuthLinker?,
     oauthLinkingError: String?,
 ) {
     val context = LocalContext.current

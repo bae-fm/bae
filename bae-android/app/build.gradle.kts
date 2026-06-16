@@ -29,22 +29,6 @@ android {
         buildConfigField("String", "BAE_GIT_COMMIT", "\"$baeGitCommit\"")
         buildConfigField("String", "BAE_COVEN_REV", "\"$baeCovenRev\"")
 
-        // OAuth redirect scheme for the system-browser callback, read from the
-        // gitignored oauth-creds.json (the scheme of the first provider's
-        // redirect_uri). Absent → an inert placeholder, so the build works
-        // without credentials. OAuthRedirectActivity binds this in the manifest.
-        val oauthCreds = file("src/main/assets/oauth-creds.json")
-        val redirectScheme = if (oauthCreds.exists()) {
-            Regex(""""redirect_uri"\s*:\s*"([^:"\s]+):""")
-                .find(oauthCreds.readText())
-                ?.groupValues
-                ?.getOrNull(1)
-        } else {
-            null
-        }
-        manifestPlaceholders["oauthRedirectScheme"] =
-            redirectScheme ?: "fm.bae.oauth.unconfigured"
-
         // Package native libs for one ABI only when run.sh passes
         // -Pbae.abi=<abi> for the connected device. This filters every native
         // source — our libbae_bridge.so plus AAR libs like JNA's
@@ -52,6 +36,41 @@ android {
         // property set (CI, Android Studio, release bundles) all ABIs are kept.
         (project.findProperty("bae.abi") as String?)?.let { requestedAbi ->
             ndk { abiFilters += requestedAbi }
+        }
+    }
+
+    flavorDimensions += "edition"
+    productFlavors {
+        // full: the complete bae app. Its bridge bindings are built with the
+        // oauth-providers feature, so the OAuth functions exist and the OAuth
+        // sign-in flow (src/full) compiles. The redirect scheme for the
+        // system-browser callback is read from the gitignored
+        // src/full/assets/oauth-creds.json (the scheme of the first provider's
+        // redirect_uri); absent → an inert placeholder, so the build works
+        // without credentials. OAuthRedirectActivity binds it in the manifest.
+        create("full") {
+            dimension = "edition"
+            val oauthCreds = file("src/full/assets/oauth-creds.json")
+            val redirectScheme = if (oauthCreds.exists()) {
+                Regex(""""redirect_uri"\s*:\s*"([^:"\s]+):""")
+                    .find(oauthCreds.readText())
+                    ?.groupValues
+                    ?.getOrNull(1)
+            } else {
+                null
+            }
+            manifestPlaceholders["oauthRedirectScheme"] =
+                redirectScheme ?: "fm.bae.oauth.unconfigured"
+        }
+        // libre (baeium): S3-only. Its bridge bindings are built with no
+        // features, so the OAuth functions are absent — src/full is excluded and
+        // src/libre supplies an always-null OAuthLinker. No OAuthRedirectActivity
+        // and no scheme intent-filter ship (that manifest is src/full only), and
+        // no credentials are read. The placeholder is set to the inert value so
+        // the build never depends on an oauth-creds.json.
+        create("libre") {
+            dimension = "edition"
+            manifestPlaceholders["oauthRedirectScheme"] = "fm.bae.oauth.unconfigured"
         }
     }
 
@@ -100,8 +119,16 @@ android {
     }
 
     sourceSets {
-        getByName("main") {
-            java.srcDir("../../bae-bridge/kotlin-bindings")
+        // Each edition compiles against its own uniffi bindings: the full
+        // bindings (built --features oauth-providers) carry the OAuth functions;
+        // the libre bindings (built with no features) lack them, so any stray
+        // OAuth reference in shared code fails to compile. build-android.sh
+        // writes each set under its own dir keyed by the feature set.
+        getByName("full") {
+            java.srcDir("../../bae-bridge/kotlin-bindings-full")
+        }
+        getByName("libre") {
+            java.srcDir("../../bae-bridge/kotlin-bindings-libre")
         }
     }
 }

@@ -19,6 +19,13 @@ import java.io.IOException
 private const val TAG = "bae.OAuthLinking"
 
 /**
+ * Load the host's OAuth client creds (full edition); null when no
+ * `assets/oauth-creds.json` is bundled. The libre edition defines its own
+ * always-null `loadOAuthLinker`. [OAuthLinker.load] delegates here.
+ */
+fun loadOAuthLinker(context: Context): OAuthLinker? = OAuthLinking.load(context)
+
+/**
  * Per-device OAuth client config + the system-browser auth flow for providers
  * that need it (Google Drive, Dropbox, OneDrive). Loaded from a gitignored
  * `assets/oauth-creds.json` — bae and coven ship no credentials; register your
@@ -29,7 +36,7 @@ private const val TAG = "bae.OAuthLinking"
  */
 class OAuthLinking private constructor(
     private val providers: Map<String, ProviderConfig>,
-) {
+) : OAuthLinker {
     data class ProviderConfig(
         val clientId: String,
         val clientSecret: String?,
@@ -40,7 +47,7 @@ class OAuthLinking private constructor(
      * Register the client ids with the bridge so coven can build authorization
      * URLs and refresh provider tokens during sync. Idempotent; call at launch.
      */
-    fun register() {
+    override fun register() {
         val json = JSONObject()
         for ((provider, config) in providers) {
             val entry = JSONObject().put("client_id", config.clientId)
@@ -55,7 +62,7 @@ class OAuthLinking private constructor(
      * `restoreFromCode`. Opens the system browser via a Custom Tab and awaits
      * the redirect captured by [OAuthRedirectActivity].
      */
-    suspend fun authorize(context: Context, provider: BridgeCloudProvider): String {
+    override suspend fun authorize(context: Context, provider: BridgeCloudProvider): String {
         val key = providerKey(provider)
             ?: throw IllegalStateException("Cloud sign-in isn't configured for this provider.")
         val config = providers[key]

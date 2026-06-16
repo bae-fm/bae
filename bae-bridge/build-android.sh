@@ -9,6 +9,12 @@ usage() {
     echo "  Builds bae-bridge for Android. Debug by default."
     echo "  Without --abi, builds both ABIs. run.sh passes the connected device's"
     echo "  ABI so a local install builds and ships only that one."
+    echo ""
+    echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
+    echo "  'oauth-providers'), which picks the Gradle edition the bindings feed:"
+    echo "  a set containing oauth-providers writes the 'full' edition's bindings,"
+    echo "  anything else writes the 'libre' (S3-only) edition's. For libre:"
+    echo "  BAE_BRIDGE_FEATURES= $0"
 }
 
 CARGO_PROFILE="debug"
@@ -23,6 +29,20 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 [[ ${#ABIS[@]} -eq 0 ]] && ABIS=(arm64-v8a x86_64)
+
+# The cargo feature set the bridge compiles with. The Kotlin bindings only
+# export the bridge functions whose features are on, so each Gradle edition
+# compiles against the bindings built for it. The feature set picks the edition:
+# oauth-providers → the 'full' edition; no oauth-providers → 'libre' (S3-only).
+# Both the bindings dir and the edition derive from this one variable.
+BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers}"
+
+# Map the feature set to its Gradle edition's bindings dir (the srcDir each
+# flavor's sourceSets points at in bae-android/app/build.gradle.kts).
+case ",$BAE_BRIDGE_FEATURES," in
+    *,oauth-providers,*) BINDINGS_DIR="bae-bridge/kotlin-bindings-full" ;;
+    *) BINDINGS_DIR="bae-bridge/kotlin-bindings-libre" ;;
+esac
 
 NDK_HOME="${ANDROID_NDK_HOME:-/Users/dima/Library/Android/sdk/ndk/29.0.14206865}"
 TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64"
@@ -68,8 +88,8 @@ for ABI in "${ABIS[@]}"; do
         echo "FFmpeg for Android ($FA) not built. Run: ./scripts/build-ffmpeg-android.sh" >&2
         exit 1
     fi
-    echo "Building bae-bridge for $ABI ($TARGET, $CARGO_PROFILE)..."
-    FFMPEG_DIR="$FFMPEG_PREFIX/$FA" RUSTC_WRAPPER="" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features oauth-providers
+    echo "Building bae-bridge for $ABI ($TARGET, $CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
+    FFMPEG_DIR="$FFMPEG_PREFIX/$FA" RUSTC_WRAPPER="" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 done
 
 # Generate bindings from the built static lib, not a host build, so the Kotlin
@@ -81,12 +101,15 @@ done
 # selected target works; uniffi-bindgen reads it statically without loading the
 # object. (Mirrors build-ios.sh, which reads the iOS .a.)
 FIRST_TARGET=$(rust_target "${ABIS[0]}")
-echo "Generating Kotlin bindings..."
-mkdir -p bae-bridge/kotlin-bindings
+echo "Generating Kotlin bindings into $BINDINGS_DIR ..."
+# Wipe and regenerate so a stale function set from a previous feature set can't
+# linger (e.g. an OAuth function left in the libre bindings).
+rm -rf "$BINDINGS_DIR"
+mkdir -p "$BINDINGS_DIR"
 cargo run --bin uniffi-bindgen generate \
     --library "$CARGO_TARGET_DIR/$FIRST_TARGET/$CARGO_PROFILE/libbae_bridge.a" \
     --language kotlin \
-    --out-dir bae-bridge/kotlin-bindings/ \
+    --out-dir "$BINDINGS_DIR/" \
     --no-format
 
 # Install the .so files. Wipe both managed ABI dirs first so a stale other-ABI
@@ -124,4 +147,4 @@ for ABI in "${ABIS[@]}"; do
     echo "  $JNILIBS/$ABI/libbae_bridge.so (stripped)"
     echo "  bae-android/debug-symbols/$ABI/libbae_bridge.so.debug (symbols)"
 done
-echo "  bae-bridge/kotlin-bindings/"
+echo "  $BINDINGS_DIR/"

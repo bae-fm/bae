@@ -47,5 +47,7 @@ if [[ "${1:-}" != "--skip-rust" ]]; then
 fi
 
 cd bae-android
-./gradlew installDebug -Pbae.abi="$ABI"
+# Install the full edition for local dev (OAuth on). build-android.sh's default
+# BAE_BRIDGE_FEATURES=oauth-providers writes the full bindings this consumes.
+./gradlew installFullDebug -Pbae.abi="$ABI"
 adb shell am start -n fm.bae.app/.MainActivity

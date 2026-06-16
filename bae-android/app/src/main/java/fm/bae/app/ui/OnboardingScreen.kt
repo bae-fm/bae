@@ -9,7 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.ui.res.painterResource
-import fm.bae.app.OAuthLinking
+import fm.bae.app.OAuthLinker
 import fm.bae.app.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -70,7 +70,7 @@ private class LinkFlow(val job: Job) {
 
 @Composable
 fun OnboardingScreen(
-    oauthLinking: OAuthLinking?,
+    oauthLinking: OAuthLinker?,
     oauthLinkingError: String?,
     onLinked: (BridgeLibrary) -> Unit,
 ) {

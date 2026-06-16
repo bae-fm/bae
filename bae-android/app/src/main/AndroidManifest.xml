@@ -28,23 +28,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Captures the OAuth provider redirect (custom scheme) back from the
-             system browser and hands the code to the in-flight link flow. The
-             scheme is injected from oauth-creds.json at build time; an inert
-             placeholder when no credentials are configured. -->
-        <activity
-            android:name=".OAuthRedirectActivity"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:theme="@style/Theme.Bae">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="${oauthRedirectScheme}" />
-            </intent-filter>
-        </activity>
-
         <service
             android:name=".playback.PlaybackService"
             android:exported="true"

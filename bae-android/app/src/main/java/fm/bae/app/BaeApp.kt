@@ -9,7 +9,7 @@ import uniffi.bae_bridge.setDataDir
 private const val TAG = "bae.BaeApp"
 
 class BaeApp : Application() {
-    var oauthLinking: OAuthLinking? = null
+    var oauthLinking: OAuthLinker? = null
         private set
 
     var oauthLinkingError: String? = null
@@ -35,9 +35,10 @@ class BaeApp : Application() {
         initKeyring()
         // Register the host's OAuth client creds (if a creds file is bundled) so
         // coven can build authorization URLs and refresh provider tokens during
-        // sync. Absent file → cloud providers that need OAuth stay unavailable.
+        // sync. Null in the libre edition (no OAuth) or when no creds file is
+        // bundled (full) → cloud providers that need OAuth stay unavailable.
         try {
-            oauthLinking = OAuthLinking.load(this)
+            oauthLinking = OAuthLinker.load(this)
             oauthLinking?.register()
         } catch (e: Exception) {
             oauthLinkingError = e.toString()
