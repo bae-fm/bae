@@ -72,10 +72,12 @@ jobs:
           echo "BAE_BRIDGE_FEATURES=" >> "$GITHUB_ENV"
           echo "GRADLE_FLAVOR=Libre" >> "$GITHUB_ENV"
           echo "APK_FLAVOR=libre" >> "$GITHUB_ENV"
+          echo "EDITION_APK=baeium-android.apk" >> "$GITHUB_ENV"
         else
           echo "BAE_BRIDGE_FEATURES=oauth-providers" >> "$GITHUB_ENV"
           echo "GRADLE_FLAVOR=Full" >> "$GITHUB_ENV"
           echo "APK_FLAVOR=full" >> "$GITHUB_ENV"
+          echo "EDITION_APK=bae-android.apk" >> "$GITHUB_ENV"
         fi
 
     - name: Setup JDK 17
@@ -167,13 +169,14 @@ jobs:
         fi
         APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
         "$APKSIGNER" verify --verbose "$APK"
-        cp "$APK" "bae-android.apk"
-        echo "Verified signed APK: $APK"
+        cp "$APK" "$EDITION_APK"
+        echo "Verified signed APK: $APK -> $EDITION_APK"
 
     - name: Upload signed APK artifact
       if: inputs.profile == 'release'
       uses: actions/upload-artifact@v7
       with:
-        name: bae-android-release
-        path: bae-android.apk
+        # Edition-specific so the full and libre release jobs don't collide.
+        name: bae-android-release-${{ inputs.edition }}
+        path: ${{ env.EDITION_APK }}
         retention-days: 30

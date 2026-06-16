@@ -29,6 +29,10 @@ android {
         buildConfigField("String", "BAE_GIT_COMMIT", "\"$baeGitCommit\"")
         buildConfigField("String", "BAE_COVEN_REV", "\"$baeCovenRev\"")
 
+        // The launcher label. The libre flavor overrides it to "baeium" so the two
+        // editions are distinguishable once both are installed.
+        manifestPlaceholders["appLabel"] = "bae"
+
         // Package native libs for one ABI only when run.sh passes
         // -Pbae.abi=<abi> for the connected device. This filters every native
         // source — our libbae_bridge.so plus AAR libs like JNA's
@@ -71,6 +75,11 @@ android {
         create("libre") {
             dimension = "edition"
             manifestPlaceholders["oauthRedirectScheme"] = "fm.bae.oauth.unconfigured"
+            // baeium installs alongside the full bae build as a distinct app:
+            // applicationId fm.bae.app.libre (the namespace / R package stays
+            // fm.bae.app), labelled "baeium" on the launcher.
+            applicationIdSuffix = ".libre"
+            manifestPlaceholders["appLabel"] = "baeium"
         }
     }
 

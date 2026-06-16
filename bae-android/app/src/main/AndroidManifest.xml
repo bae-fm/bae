@@ -13,7 +13,7 @@
 
     <application
         android:name=".BaeApp"
-        android:label="bae"
+        android:label="${appLabel}"
         android:supportsRtl="true"
         android:theme="@style/Theme.Bae">
 
