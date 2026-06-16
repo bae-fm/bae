@@ -71,7 +71,7 @@ brew install cmake pkg-config libdiscid
 ```bash
 # Clone (no submodules — coven is a pinned Cargo git dependency, fetched at build)
 git clone <repository-url>
-cd baeium
+cd bae
 
 # Setup bae-ffmpeg (downloads prebuilt binaries)
 ./scripts/setup-ffmpeg.sh

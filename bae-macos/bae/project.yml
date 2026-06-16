@@ -29,7 +29,7 @@ targets:
       path: bae/Info.plist
       properties:
         CFBundleDisplayName: bae
-        SUFeedURL: https://raw.githubusercontent.com/bae-fm/baeium/appcast/appcast.xml
+        SUFeedURL: https://raw.githubusercontent.com/bae-fm/bae/appcast/appcast.xml
         SUPublicEDKey: cYiouOrDxmQrHspLwOf/XpQOQOMt3isdYDs6xEDBGs8=
         SUEnableAutomaticChecks: true
         CFBundleDocumentTypes:
