@@ -95,3 +95,17 @@ jobs:
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Refresh the android-latest download
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Stable per-platform download link for the website:
+        # releases/download/android-latest/bae-android.apk. The release/tag is
+        # created once and never moves; each build only replaces the asset.
+        # --latest=false keeps it from grabbing the repo's global "Latest" badge,
+        # which must stay on the real versioned releases.
+        gh release view android-latest >/dev/null 2>&1 \
+          || gh release create android-latest --latest=false --title "Android — latest" \
+               --notes "Stable download link that always serves the newest Android build."
+        gh release upload android-latest bae-android.apk --clobber

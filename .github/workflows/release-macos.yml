@@ -307,6 +307,20 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Refresh the macos-latest download
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Stable per-platform download link for the website:
+        # releases/download/macos-latest/bae-macos.dmg. The release/tag is created
+        # once and never moves; each build only replaces the asset. --latest=false
+        # keeps it from grabbing the repo's global "Latest" badge, which must stay
+        # on the real versioned releases.
+        gh release view macos-latest >/dev/null 2>&1 \
+          || gh release create macos-latest --latest=false --title "macOS — latest" \
+               --notes "Stable download link that always serves the newest macOS build."
+        gh release upload macos-latest target/bae-macos.dmg --clobber
+
     - name: Publish appcast to the appcast branch
       run: |
         # The Sparkle feed lives on a dedicated, orphan `appcast` branch — the app's
