@@ -297,11 +297,12 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
     h1.jumbo{line-height:1.05;}
     .tagpill{margin-bottom:32px;}
     .dek{margin-top:32px;line-height:1.68;}
+    .hero .cta{justify-content:center;}
     .cta{margin-top:46px;gap:15px;}
     .cta .meta{flex-basis:100%;text-align:center;margin-top:2px;}
     .devstatus-in{grid-template-columns:1fr;gap:12px;}
     .devstatus-mark{width:38px;height:38px;}
-    .trust{flex-direction:column;align-items:center;gap:22px;margin-top:48px;padding-top:34px;}
+    .trust{flex-direction:column;align-items:center;gap:22px;margin-top:48px;padding-top:34px;padding-bottom:34px;border-bottom:1px solid var(--line);}
     .trust .t{align-items:center;text-align:center;gap:4px;}
     .trust .t b{font-size:29px;}
     .trust .t span{font-size:15.5px;color:var(--fg-dim);}
@@ -357,8 +358,8 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
 <section class="sec" id="how"><div class="wrap">
   <div class="center r">
     <div class="eyebrow">Encrypted sync</div>
-    <h2 class="sech">Yours alone, on every device.</h2>
-    <p>Your devices sync through cloud storage you already own. No server to run. bae encrypts everything before it leaves your device. Only you can read it.</p>
+    <h2 class="sech">Yours alone, on <span style="white-space:nowrap;">every device.</span></h2>
+    <p>Your devices sync through cloud storage you choose. No server to run. Everything is encrypted before it leaves your device. Only you can read it.</p>
   </div>
   <div class="diagram r d1">
     <div class="dnode">
@@ -431,7 +432,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
 <section class="sec" id="engine"><div class="wrap">
   <div class="center r">
     <div class="eyebrow">Under the hood</div>
-    <h2 class="sech">Native apps on every platform.</h2>
+    <h2 class="sech">Native apps on <span style="white-space:nowrap;">every platform.</span></h2>
     <p>Each app is native to its platform. They all use the same Rust core for your library, playback, sync, and encryption.</p>
   </div>
   <div class="stack r d1">
