@@ -1248,6 +1248,7 @@ mod tests {
             metadata_source_release_id: None,
             managed: true,
             source_folder_name: None,
+            content_hash: None,
             created_at: now,
         }
     }

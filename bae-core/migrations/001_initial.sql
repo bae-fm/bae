@@ -67,6 +67,11 @@ CREATE TABLE IF NOT EXISTS releases (
     -- lives in `release_local_copy`, NOT here — it must not sync.
     managed BOOLEAN NOT NULL,
     source_folder_name TEXT,
+    -- SHA-256 over the imported folder's categorized file structure (sorted
+    -- relative paths + sizes). Location-independent content fingerprint: the
+    -- same rip in any parent folder hashes the same. Used to recognize an
+    -- already-imported folder and to pick the overwrite target on re-import.
+    content_hash TEXT,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE

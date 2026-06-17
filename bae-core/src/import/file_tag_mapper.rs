@@ -155,6 +155,7 @@ pub fn map_file_tags_to_db(
         // the release's audio is durably in the cloud.
         managed: false,
         source_folder_name: None,
+        content_hash: None,
         created_at: now,
     };
 

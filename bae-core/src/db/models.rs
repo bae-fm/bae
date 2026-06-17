@@ -271,6 +271,13 @@ pub struct DbRelease {
     /// path component, not the full path). Used to detect likely duplicates when
     /// the user re-scans the same folder.
     pub source_folder_name: Option<String>,
+    /// SHA-256 over the imported folder's categorized file structure (sorted
+    /// relative paths + sizes) — a location-independent content fingerprint.
+    /// `None` for releases not created by a folder import. The import worker
+    /// populates it just before insert; metadata edits / re-identify preserve
+    /// it (the files didn't change). Used to recognize an already-imported
+    /// folder and to pick the overwrite target on re-import.
+    pub content_hash: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -561,6 +568,7 @@ impl DbRelease {
             metadata_source_release_id: None,
             managed: true,
             source_folder_name: None,
+            content_hash: None,
             created_at: now,
         }
     }
@@ -595,6 +603,7 @@ impl DbRelease {
             // once the release's audio is durably in the cloud.
             managed: false,
             source_folder_name: None,
+            content_hash: None,
             created_at: now,
         }
     }
@@ -638,6 +647,7 @@ impl DbRelease {
             // once the release's audio is durably in the cloud.
             managed: false,
             source_folder_name: None,
+            content_hash: None,
             created_at: now,
         }
     }

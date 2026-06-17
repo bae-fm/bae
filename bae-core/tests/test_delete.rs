@@ -74,6 +74,7 @@ fn create_test_release(album_id: &str) -> DbRelease {
         metadata_source_release_id: None,
         managed: true,
         source_folder_name: None,
+        content_hash: None,
         created_at: Utc::now(),
     }
 }

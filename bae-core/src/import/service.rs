@@ -682,6 +682,10 @@ impl ImportService {
         .await
         .map_err(|e| format!("Folder scan task failed: {e}"))??;
 
+        // Content fingerprint of the folder tree. Used below to overwrite a
+        // prior import of the same files, then stamped onto the new release row.
+        let content_hash = categorized.content_hash();
+
         // Phase 0a: Reconcile the prepared release with existing library state
         send_event(
             &self.event_tx,
@@ -727,6 +731,19 @@ impl ImportService {
                 (parsed, Vec::new())
             }
         };
+
+        // Overwrite a prior import of the same folder tree: re-importing
+        // replaces rather than duplicates. Remove the existing release(s)
+        // carrying this content hash (and their managed files, via the library
+        // remove path) before reconciling, so the new import builds against
+        // post-removal state — a single-release album is freshly recreated; a
+        // multi-release album keeps its siblings and reassigns its primary. The
+        // source-metadata fetch above already ran, so the window between this
+        // removal and the new insert holds no fallible network step.
+        library_manager
+            .delete_releases_with_content_hash(&content_hash)
+            .await
+            .map_err(|e| format!("Failed to overwrite prior import: {e}"))?;
 
         let PreparedMetadata {
             db_album,
@@ -781,6 +798,7 @@ impl ImportService {
             .file_name()
             .and_then(|n| n.to_str())
             .map(|s| s.to_string());
+        db_release.content_hash = Some(content_hash);
 
         // Phase 0b: Remote cover art is downloaded through the
         // session-wide LRU cache. The UI may have pre-fetched the URL
@@ -2170,6 +2188,7 @@ mod tests {
             metadata_source_release_id: Some("rel-mb".to_string()),
             managed: true,
             source_folder_name: None,
+            content_hash: None,
             created_at: now,
         };
         let track = crate::db::DbTrack {
@@ -2379,6 +2398,7 @@ mod tests {
             metadata_source_release_id: Some("rel-mb".to_string()),
             managed: true,
             source_folder_name: None,
+            content_hash: None,
             created_at: now,
         };
         let track = crate::db::DbTrack {

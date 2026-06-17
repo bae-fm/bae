@@ -107,6 +107,7 @@ async fn create_pinned_release(mgr: &LibraryManager, filenames: &[&str]) -> Stri
         // drain the uploads exercise that real flip.
         managed: false,
         source_folder_name: None,
+        content_hash: None,
         created_at: now,
     };
     let release_id = release.id.clone();
@@ -315,6 +316,7 @@ async fn create_unmanaged_release(
         metadata_source_release_id: None,
         managed: true,
         source_folder_name: None,
+        content_hash: None,
         created_at: now,
     };
     let release_id = release.id.clone();
@@ -615,6 +617,7 @@ async fn create_cloud_only_release(
         metadata_source_release_id: None,
         managed: true,
         source_folder_name: None,
+        content_hash: None,
         created_at: now,
     };
     let release_id = release.id.clone();

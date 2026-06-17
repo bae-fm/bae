@@ -4148,6 +4148,19 @@ impl LibraryManager {
         Ok(())
     }
 
+    /// Remove any releases whose stored content hash equals `hash` — full
+    /// managed-file cleanup, primary-release reassignment, album cascade, and
+    /// removal events, via [`delete_release`](Self::delete_release) per match.
+    /// The import worker calls this before inserting a re-import of the same
+    /// folder tree, so the re-import overwrites the prior release(s) instead of
+    /// duplicating them.
+    pub async fn delete_releases_with_content_hash(&self, hash: &str) -> Result<(), LibraryError> {
+        for release_id in self.database.release_ids_for_content_hash(hash).await? {
+            self.delete_release(&release_id).await?;
+        }
+        Ok(())
+    }
+
     /// Delete an album and all its associated data
     ///
     /// This will:
@@ -5020,6 +5033,7 @@ mod tests {
             metadata_source_release_id: None,
             managed: true,
             source_folder_name: None,
+            content_hash: None,
             created_at: Utc::now(),
         }
     }
@@ -5067,6 +5081,39 @@ mod tests {
             .unwrap();
         assert_eq!(releases.len(), 1);
         assert_eq!(releases[0].id, release2.id);
+    }
+
+    #[tokio::test]
+    async fn delete_releases_with_content_hash_removes_only_matching() {
+        let (manager, _temp_dir) = setup_test_manager().await;
+        let album = create_test_album();
+        let mut matching1 = create_test_release(&album.id);
+        matching1.content_hash = Some("hash-shared".to_string());
+        let mut matching2 = create_test_release(&album.id);
+        matching2.content_hash = Some("hash-shared".to_string());
+        let mut other = create_test_release(&album.id);
+        other.content_hash = Some("hash-other".to_string());
+
+        manager.database.insert_album(&album).await.unwrap();
+        manager.database.insert_release(&matching1).await.unwrap();
+        manager.database.insert_release(&matching2).await.unwrap();
+        manager.database.insert_release(&other).await.unwrap();
+
+        manager
+            .delete_releases_with_content_hash("hash-shared")
+            .await
+            .unwrap();
+
+        // Both releases carrying the re-imported folder's hash are gone; the
+        // unrelated release survives. This is the overwrite the import worker
+        // performs before inserting a re-import of the same folder tree.
+        let remaining = manager
+            .database
+            .get_releases_for_album(&album.id)
+            .await
+            .unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].id, other.id);
     }
 
     /// Deleting one release of a multi-release album must drain the pinned

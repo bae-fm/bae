@@ -10,6 +10,7 @@
 use super::file_validation;
 use crate::cue_flac::CueFlacProcessor;
 use crate::util::content_type_hint::ContentTypeHint;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -146,6 +147,49 @@ pub struct CategorizedFiles {
     /// catalog/performer/title harvesting reads parsed data instead of
     /// re-reading the file.
     pub unpaired_cue_sheets: Vec<(PathBuf, crate::cue_flac::CueSheet)>,
+}
+
+impl CategorizedFiles {
+    /// Stable content fingerprint of this release's file structure: a SHA-256
+    /// over every audio, artwork, and document file's relative path + size,
+    /// sorted so the digest is independent of discovery order. Relative (not
+    /// absolute) paths make it location-independent — the same rip under any
+    /// parent folder hashes identically. Drives "already imported?" detection
+    /// and selects the overwrite target on re-import.
+    ///
+    /// Paired CUE files live on `audio` (not `documents`); unpaired CUE files
+    /// are in `documents`. Together with `artwork` that's every on-disk file,
+    /// each counted once. `unpaired_cue_sheets` is parsed-signal data, not a
+    /// file — its CUE is already covered as a document, so it's excluded.
+    pub fn content_hash(&self) -> String {
+        let mut entries: Vec<(&str, u64)> = Vec::new();
+        match &self.audio {
+            AudioContent::CueFlacPairs { pairs, .. } => {
+                for pair in pairs {
+                    entries.push((&pair.cue_file.relative_path, pair.cue_file.size));
+                    entries.push((&pair.audio_file.relative_path, pair.audio_file.size));
+                }
+            }
+            AudioContent::TrackFiles { tracks, .. } => {
+                for track in tracks {
+                    entries.push((&track.relative_path, track.size));
+                }
+            }
+        }
+        for file in self.artwork.iter().chain(&self.documents) {
+            entries.push((&file.relative_path, file.size));
+        }
+        entries.sort_unstable();
+
+        let mut hasher = Sha256::new();
+        for (path, size) in entries {
+            hasher.update(path.as_bytes());
+            hasher.update([0u8]);
+            hasher.update(size.to_le_bytes());
+            hasher.update([b'\n']);
+        }
+        format!("{:x}", hasher.finalize())
+    }
 }
 
 /// Commit-ready release data: the parsed DB-shape album/release/tracks plus
@@ -1098,6 +1142,65 @@ mod tests {
         assert_eq!(artwork_paths, vec!["cover.jpg"]);
 
         assert!(files.documents.is_empty());
+    }
+
+    #[test]
+    fn content_hash_is_location_independent_and_size_sensitive() {
+        let make = |root: &str, second_size: u64| CategorizedFiles {
+            audio: AudioContent::TrackFiles {
+                tracks: vec![
+                    ScannedFile::new(
+                        PathBuf::from(format!("{root}/01.flac")),
+                        "01.flac".to_string(),
+                        1000,
+                    ),
+                    ScannedFile::new(
+                        PathBuf::from(format!("{root}/02.flac")),
+                        "02.flac".to_string(),
+                        second_size,
+                    ),
+                ],
+                format_label: "FLAC".to_string(),
+            },
+            artwork: vec![],
+            documents: vec![],
+            unpaired_cue_sheets: vec![],
+        };
+
+        // The same relative structure under two different parent folders hashes
+        // identically — the fingerprint follows the rip, not where it sits.
+        let a = make("/Volumes/Music/Release", 2000);
+        let b = make("/Users/sam/Downloads/Release", 2000);
+        assert_eq!(a.content_hash(), b.content_hash());
+
+        // A single differing file size flips the hash.
+        let c = make("/Volumes/Music/Release", 2001);
+        assert_ne!(a.content_hash(), c.content_hash());
+    }
+
+    #[test]
+    fn content_hash_is_independent_of_discovery_order() {
+        let file =
+            |name: &str, size: u64| ScannedFile::new(PathBuf::from(name), name.to_string(), size);
+        let forward = CategorizedFiles {
+            audio: AudioContent::TrackFiles {
+                tracks: vec![file("01.flac", 1), file("02.flac", 2)],
+                format_label: "FLAC".to_string(),
+            },
+            artwork: vec![file("cover.jpg", 3)],
+            documents: vec![file("notes.txt", 4)],
+            unpaired_cue_sheets: vec![],
+        };
+        let shuffled = CategorizedFiles {
+            audio: AudioContent::TrackFiles {
+                tracks: vec![file("02.flac", 2), file("01.flac", 1)],
+                format_label: "FLAC".to_string(),
+            },
+            artwork: vec![file("cover.jpg", 3)],
+            documents: vec![file("notes.txt", 4)],
+            unpaired_cue_sheets: vec![],
+        };
+        assert_eq!(forward.content_hash(), shuffled.content_hash());
     }
 
     /// Creates a minimal CUE file content that references the given FLAC filename

@@ -161,6 +161,7 @@ async fn create_album_and_release(
         // Unmanaged when an in-place path is given; otherwise managed (cloud).
         managed: unmanaged_path.is_none(),
         source_folder_name: None,
+        content_hash: None,
         created_at: now,
     };
     db.insert_release(&release).await.unwrap();
@@ -441,6 +442,7 @@ async fn test_read_release_file_bytes_rejects_short_read() {
         metadata_source_release_id: None,
         managed: true,
         source_folder_name: None,
+        content_hash: None,
         created_at: Utc::now(),
     };
     // This device pins the release: reads come from the staged `storage/` copy.

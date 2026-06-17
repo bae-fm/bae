@@ -354,6 +354,7 @@ impl Database {
             metadata_source_release_id: row.get("metadata_source_release_id").unwrap(),
             managed: row.get("managed").unwrap(),
             source_folder_name: row.get("source_folder_name").unwrap(),
+            content_hash: row.get("content_hash").unwrap(),
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at").unwrap())
                 .unwrap()
                 .with_timezone(&Utc),
@@ -2789,6 +2790,23 @@ impl Database {
             .await
     }
 
+    /// Release ids whose stored `content_hash` equals `hash`. Normally zero or
+    /// one (the import overwrite path keeps the hash unique), but returns all
+    /// matches so a re-import sweeps any pre-existing duplicates.
+    pub async fn release_ids_for_content_hash(&self, hash: &str) -> Result<Vec<String>, DbError> {
+        let hash = hash.to_string();
+        self.inner
+            .coven_db
+            .call(move |conn| {
+                let mut stmt = conn.prepare("SELECT id FROM releases WHERE content_hash = ?")?;
+                let ids = stmt
+                    .query_map(params![hash], |row| row.get::<_, String>(0))?
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(ids)
+            })
+            .await
+    }
+
     /// Check, for each candidate in `checks`, whether the library already
     /// holds the same pressing or the same album (group). Drives the
     /// "in library" badges shown in the identify-pipeline result lists.
@@ -3153,8 +3171,8 @@ fn insert_release_row(conn: &Connection, release: &DbRelease, reg: &str) -> Resu
             disc_id, metadata_source, metadata_source_release_id,
             format, label, catalog_number, country, barcode,
             managed,
-            source_folder_name, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            source_folder_name, content_hash, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             release.id,
@@ -3171,6 +3189,7 @@ fn insert_release_row(conn: &Connection, release: &DbRelease, reg: &str) -> Resu
             release.pressing.barcode,
             release.managed,
             release.source_folder_name,
+            release.content_hash,
             reg,
             release.created_at.to_rfc3339(),
         ],

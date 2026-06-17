@@ -303,6 +303,7 @@ mod tests {
             metadata_source_release_id: None,
             managed: false,
             source_folder_name: None,
+            content_hash: None,
             created_at: Utc::now(),
         };
         database.insert_release(&release).await.unwrap();
