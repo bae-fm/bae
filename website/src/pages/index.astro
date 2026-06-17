@@ -115,6 +115,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
   .devstatus p{margin:7px 0 0;color:var(--fg-dim);font-size:14.5px;line-height:1.5;}
   .cta{display:flex;gap:13px;margin-top:34px;flex-wrap:wrap;align-items:center;}
   .cta .meta{font-family:var(--mono);font-size:12px;color:var(--fg-faint);}
+  .hero .cta .meta{margin-left:8px;}
 
   .herosheep{position:relative;display:grid;place-items:center;}
   .sheepglow{position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(247,168,196,.34),rgba(155,108,246,.18) 50%,transparent 72%);}
@@ -127,7 +128,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
   .note.dev{display:flex;align-items:center;gap:9px;}
   .note.dev svg{flex:none;}
 
-  .trust{display:flex;gap:30px;flex-wrap:wrap;margin-top:54px;padding-top:26px;border-top:1px solid var(--line);position:relative;}
+  .trust{display:flex;gap:30px;flex-wrap:wrap;margin-top:36px;padding-top:26px;border-top:1px solid var(--line);position:relative;}
   .trust .t{display:flex;flex-direction:column;gap:3px;}
   .trust .t b{font-family:var(--disp);font-weight:700;font-size:23px;}
   .trust .t b .a{color:var(--pink);}
@@ -300,9 +301,10 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
     .hero .cta{justify-content:center;}
     .cta{margin-top:46px;gap:15px;}
     .cta .meta{flex-basis:100%;text-align:center;margin-top:2px;}
+    .hero .cta .meta{margin-left:0;}
     .devstatus-in{grid-template-columns:1fr;gap:12px;}
     .devstatus-mark{width:38px;height:38px;}
-    .trust{flex-direction:column;align-items:center;gap:22px;margin-top:48px;padding-top:34px;padding-bottom:34px;border-bottom:1px solid var(--line);}
+    .trust{flex-direction:column;align-items:center;gap:22px;margin-top:34px;padding-top:34px;padding-bottom:34px;border-bottom:1px solid var(--line);}
     .trust .t{align-items:center;text-align:center;gap:4px;}
     .trust .t b{font-size:29px;}
     .trust .t span{font-size:15.5px;color:var(--fg-dim);}
@@ -341,9 +343,9 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
         <span class="meta">macOS · iOS · Windows · Android</span>
       </div>
       <div class="trust r d3">
-        <div class="t"><b>Yours<span class="a">.</span></b><span>your files stay yours</span></div>
-        <div class="t"><b>Everywhere<span class="a">.</span></b><span>synced through your cloud</span></div>
-        <div class="t"><b>Private<span class="a">.</span></b><span>your devices hold the keys</span></div>
+        <div class="t"><b>Yours</b><span>your files stay yours</span></div>
+        <div class="t"><b>Private</b><span>your devices hold the keys</span></div>
+        <div class="t"><b>Everywhere</b><span>synced through your cloud</span></div>
       </div>
     </div>
     <div class="herosheep r d2">
@@ -358,7 +360,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
 <section class="sec" id="how"><div class="wrap">
   <div class="center r">
     <div class="eyebrow">Encrypted sync</div>
-    <h2 class="sech">Yours alone, on <span style="white-space:nowrap;">every device.</span></h2>
+    <h2 class="sech">Yours alone, on <span style="white-space:nowrap;">every device</span></h2>
     <p>Your devices sync through cloud storage you choose. No server to run. Everything is encrypted before it leaves your device. Only you can read it.</p>
   </div>
   <div class="diagram r d1">
@@ -386,7 +388,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
 <section class="sec" id="features"><div class="wrap">
   <div class="center r">
     <div class="eyebrow">Library</div>
-    <h2 class="sech">Your whole collection,<br/>release-accurate.</h2>
+    <h2 class="sech">Your whole collection,<br/>release-accurate</h2>
     <p>Bring the albums you own into one library, then take them anywhere.</p>
   </div>
   <div class="cards">
@@ -432,7 +434,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
 <section class="sec" id="engine"><div class="wrap">
   <div class="center r">
     <div class="eyebrow">Under the hood</div>
-    <h2 class="sech">Native apps on <span style="white-space:nowrap;">every platform.</span></h2>
+    <h2 class="sech">Native apps on <span style="white-space:nowrap;">every platform</span></h2>
     <p>Each app is native to its platform. They all use the same Rust core for your library, playback, sync, and encryption.</p>
   </div>
   <div class="stack r d1">
@@ -462,7 +464,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
 <section class="sec" style="padding-top:0;"><div class="wrap">
   <div class="center r" style="margin-bottom:34px;">
     <div class="eyebrow">Playback</div>
-    <h2 class="sech">Built around your files.</h2>
+    <h2 class="sech">Built around your files</h2>
   </div>
   <div class="minigrid">
     <div class="mini r">
