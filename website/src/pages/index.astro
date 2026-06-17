@@ -13,16 +13,27 @@ if (!macFullUrl) {
 const macUrl = macFullUrl ?? '/getting-started/installation';
 ---
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="bae is a music library for the albums you own, on your desktop and your phone, synced through cloud storage you already have. bae is under active development and is not ready for general use." />
 <title>bae: Your Music Everywhere</title>
 <link rel="icon" type="image/png" href="/app-icon.png" />
+<link rel="preload" as="image" href="/sheep.png" fetchpriority="high" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script is:inline>
+  (function(){
+    var root=document.documentElement;
+    root.classList.remove('no-js');
+    root.classList.add('js','is-loading');
+    setTimeout(function(){
+      if(!root.classList.contains('is-ready')) root.classList.remove('is-loading');
+    },2600);
+  })();
+</script>
 <style is:global>
   :root{
     --night:#100e1a; --night-2:#161327; --card:#1c1830; --card-2:#231d3a;
@@ -41,11 +52,23 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
   ::selection{background:var(--pink);color:#3a2230;}
   .wrap{max-width:1140px;margin:0 auto;padding:0 28px;}
 
-  .r.is-pre{opacity:0;}
-  .r.is-in{animation:pop .85s cubic-bezier(.2,.8,.25,1);}
+  .js.is-loading .r,
+  .js.is-ready .r:not(.is-in):not(.is-shown){opacity:0;transform:translateY(22px) scale(.99);will-change:opacity,transform;}
+  .js.is-loading .herosheep img,
+  .js.is-loading .note,
+  .js.is-loading .endcta .ring img,
+  .js.is-loading .dwire::before,
+  .js.is-loading .core::before{animation-play-state:paused;}
+  .r.is-in{animation:pop .85s cubic-bezier(.2,.8,.25,1) both;}
   .r.is-in.d1{animation-delay:.08s;} .r.is-in.d2{animation-delay:.16s;} .r.is-in.d3{animation-delay:.24s;} .r.is-in.d4{animation-delay:.32s;}
+  .r.is-shown{opacity:1;transform:none;will-change:auto;}
   @keyframes pop{from{opacity:0;transform:translateY(26px) scale(.985);}to{opacity:1;transform:none;}}
-  @media (prefers-reduced-motion: reduce){.r.is-in{animation:none;}}
+  @media (prefers-reduced-motion: reduce){
+    .js.is-loading .r,
+    .js.is-ready .r:not(.is-in):not(.is-shown),
+    .r.is-shown{opacity:1;transform:none;will-change:auto;}
+    .r.is-in{animation:none;}
+  }
   @keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg);}50%{transform:translateY(-16px) rotate(2deg);}}
   @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
 
@@ -95,7 +118,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
 
   .herosheep{position:relative;display:grid;place-items:center;}
   .sheepglow{position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(247,168,196,.34),rgba(155,108,246,.18) 50%,transparent 72%);}
-  .herosheep img{width:min(100%,400px);position:relative;animation:bob 6s ease-in-out infinite;filter:drop-shadow(0 24px 50px rgba(155,108,246,.4));}
+  .herosheep img{width:min(100%,400px);height:auto;position:relative;animation:bob 6s ease-in-out infinite;filter:drop-shadow(0 24px 50px rgba(155,108,246,.4));}
   @media (prefers-reduced-motion: reduce){.herosheep img{animation:none;}}
   .note{position:absolute;background:var(--card-2);border:1px solid var(--line);border-radius:14px;padding:10px 14px;font-size:12.5px;font-weight:600;box-shadow:0 12px 30px rgba(0,0,0,.4);animation:floaty 5s ease-in-out infinite;}
   .note .s{display:block;font-family:var(--mono);font-size:10.5px;color:var(--fg-faint);font-weight:400;margin-top:2px;}
@@ -200,7 +223,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
   /* end */
   .endcta{text-align:center;padding:96px 0;}
   .endcta .ring{width:128px;height:128px;margin:0 auto 26px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,rgba(247,168,196,.3),transparent 70%);}
-  .endcta .ring img{width:118px;animation:bob 6s ease-in-out infinite;}
+  .endcta .ring img{width:118px;height:118px;object-fit:contain;animation:bob 6s ease-in-out infinite;}
   .endcta h2{font-family:var(--disp);font-weight:800;font-size:clamp(36px,5.2vw,68px);letter-spacing:-.03em;line-height:1;margin:0 0 16px;}
   .endcta h2 .pink{color:var(--pink);} .endcta h2 .violet{color:var(--violet);}
   /* end-CTA cycling final word ("home" / "everywhere") -- all scoped under .endcta */
@@ -286,7 +309,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
 </head>
 <body>
 <nav id="nav"><div class="wrap navin">
-  <span class="brand"><img src="/app-icon.png" alt="" />bae</span>
+  <span class="brand"><img src="/app-icon.png" alt="" width="30" height="30" decoding="async" />bae</span>
   <div class="navlinks">
     <a href="/getting-started/installation">Docs</a><a href="https://github.com/bae-fm/bae">GitHub</a>
     <a class="btn pink" href="#get">Download</a>
@@ -323,7 +346,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
     </div>
     <div class="herosheep r d2">
       <div class="sheepglow"></div>
-      <img src="/sheep.png" alt="bae the sheep, wearing headphones" />
+      <img src="/sheep.png" alt="bae the sheep, wearing headphones" width="1024" height="1024" decoding="async" fetchpriority="high" />
       <div class="note one"><span class="dot" style="background:#32d74b"></span>Synced<span class="s">across your devices</span></div>
       <div class="note two">Your cloud storage<span class="s">no server</span></div>
     </div>
@@ -460,7 +483,7 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
 </div></section>
 
 <section class="endcta" id="get"><div class="wrap">
-  <div class="ring r"><img src="/sheep.png" alt="" /></div>
+  <div class="ring r"><img src="/sheep.png" alt="" width="1024" height="1024" loading="lazy" decoding="async" /></div>
   <h2 class="r d1" aria-label="Bring your collection home">Bring your collection <span class="cyc" aria-hidden="true"><span class="cyc-word cyc-pink">home</span><span class="cyc-dot">.</span></span><span class="cyc-fallback">home.</span></h2>
   <p class="r d2">Private, open source, and in active development. Everything you add is yours from day one.</p>
   <div class="cta r d3" style="justify-content:center;">
@@ -470,29 +493,72 @@ const macUrl = macFullUrl ?? '/getting-started/installation';
 </div></section>
 
 <footer><div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;width:100%;">
-  <span class="fb"><img src="/app-icon.png" alt="" />bae</span>
+  <span class="fb"><img src="/app-icon.png" alt="" width="26" height="26" loading="lazy" decoding="async" />bae</span>
   <div class="links"><a href="/getting-started/installation">Docs</a><a href="https://github.com/bae-fm/bae">GitHub</a></div>
   <span class="cp">private &amp; open source</span>
 </div></footer>
 
 <script is:inline>
   (function(){
+    var root=document.documentElement;
+    root.classList.add('is-ready');
     var els=[].slice.call(document.querySelectorAll('.r'));
-    els.forEach(function(e){e.classList.add('is-pre');});
-    function show(e){e.classList.remove('is-pre');e.classList.remove('is-in');e.style.opacity='1';e.style.transform='none';}
+    var released=false;
+    var reduce=!!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    function show(e){e.classList.remove('is-in');e.classList.add('is-shown');}
     function reveal(){
       var h=window.innerHeight||document.documentElement.clientHeight;
       els=els.filter(function(e){
-        if(e.getBoundingClientRect().top < h*0.92){e.classList.remove('is-pre');e.classList.add('is-in');setTimeout(function(){show(e);},1000);return false;}
+        if(e.getBoundingClientRect().top < h*0.92){
+          e.classList.add('is-in');
+          e.addEventListener('animationend',function(){show(e);},{once:true});
+          setTimeout(function(){show(e);},1100);
+          return false;
+        }
         return true;
       });
     }
-    requestAnimationFrame(function(){requestAnimationFrame(reveal);});
-    addEventListener('scroll',reveal,{passive:true});addEventListener('resize',reveal);
-    setTimeout(reveal,500);
-    setTimeout(function(){els.forEach(show);els=[];},2400);
     var nav=document.getElementById('nav');
-    addEventListener('scroll',function(){nav.classList.toggle('scrolled',scrollY>20);},{passive:true});
+    function updateNav(){nav.classList.toggle('scrolled',scrollY>20);}
+    function wait(ms){return new Promise(function(resolve){setTimeout(resolve,ms);});}
+    function withTimeout(promise,ms){return Promise.race([promise.catch(function(){}),wait(ms)]);}
+    function domReady(){
+      if(document.readyState!=='loading') return Promise.resolve();
+      return new Promise(function(resolve){document.addEventListener('DOMContentLoaded',resolve,{once:true});});
+    }
+    function fontsReady(){
+      if(document.fonts && document.fonts.ready) return document.fonts.ready;
+      return Promise.resolve();
+    }
+    function heroReady(){
+      var img=document.querySelector('.herosheep img');
+      if(!img) return Promise.resolve();
+      if(img.complete && img.naturalWidth>0){
+        return img.decode ? img.decode().catch(function(){}) : Promise.resolve();
+      }
+      return new Promise(function(resolve){
+        img.addEventListener('load',resolve,{once:true});
+        img.addEventListener('error',resolve,{once:true});
+      });
+    }
+    function release(){
+      if(released) return;
+      released=true;
+      root.classList.remove('is-loading');
+      root.classList.add('is-loaded');
+      updateNav();
+      addEventListener('scroll',updateNav,{passive:true});
+      if(reduce){els.forEach(show);els=[];return;}
+      reveal();
+      addEventListener('scroll',reveal,{passive:true});
+      addEventListener('resize',reveal);
+      setTimeout(reveal,500);
+      setTimeout(function(){els.forEach(show);els=[];},2800);
+    }
+    Promise.all([domReady(),withTimeout(fontsReady(),900),withTimeout(heroReady(),900),wait(180)]).then(function(){
+      requestAnimationFrame(function(){requestAnimationFrame(release);});
+    });
+    setTimeout(release,1400);
   })();
 
   /* end CTA: cycling final word ("home" / "everywhere") */
