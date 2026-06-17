@@ -248,7 +248,9 @@ async fn folder_scan_produces_candidates() {
     generate_album_files(&album2, &["01 Track.flac"]);
 
     let mut scan_rx = f.handle.subscribe_folder_scan_events();
-    f.handle.enqueue_folder_scan(collection, false).unwrap();
+    f.handle
+        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .unwrap();
 
     let mut candidates = vec![];
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);

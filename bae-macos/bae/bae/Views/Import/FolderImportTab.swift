@@ -33,11 +33,6 @@ struct FolderImportTab: View {
     @Environment(UiStore.self)
     private var uiStore
 
-    /// All folder candidates in the store. One candidate per release.
-    private var folderCandidates: [Candidate] {
-        Array(importStore.folderCandidates.values)
-    }
-
     private var selectedCandidate: Candidate? {
         guard let key = selectedKey else {
             return nil
@@ -47,7 +42,7 @@ struct FolderImportTab: View {
 
     var body: some View {
         ZStack {
-            if folderCandidates.isEmpty {
+            if importStore.watchedFolders.isEmpty {
                 emptyState
             }
             else {
@@ -91,43 +86,58 @@ struct FolderImportTab: View {
         .onChange(of: selectedKey) { _, _ in
             uiStore.lightbox = nil
         }
+        .task {
+            // Hydrate the durable watched-folder list and scan each so its
+            // releases stream in as candidates. The reducer keeps already-loaded
+            // candidates' in-progress state on re-scan, so this is safe to re-run.
+            importStore.watchedFolders = importer.watchedFolders()
+            do {
+                try importer.scanWatchedFolders()
+            }
+            catch {
+                uiStore.showError(
+                    "Scan failed: \(error.localizedDescription)"
+                )
+            }
+        }
     }
 
     // MARK: - Empty state
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Button(action: { pickFolderAndScan(clearExisting: true) }) {
+            Button(action: { pickFolderAndAdd() }) {
                 Image(systemName: "plus.circle")
                     .font(.system(size: 48, weight: .thin))
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
-            Text("Scan a folder to import music")
+            Text("Add a folder to import music from")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Pick a folder and scan it. `clearExisting` true replaces the current
-    /// candidate list (the empty-state action); false appends to it (the
-    /// "add another" action).
-    private func pickFolderAndScan(clearExisting: Bool) {
+    /// Pick a folder and add it to the watch list; its releases scan in as
+    /// candidates and the folder persists across restarts.
+    private func pickFolderAndAdd() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.message = "Select a folder containing music to import"
-        panel.prompt = "Scan"
+        panel.message = "Select a folder to watch for music to import"
+        panel.prompt = "Add"
         guard panel.runModal() == .OK, let url = panel.url else {
             return
         }
         do {
-            try importer.enqueueFolderScan(url.path, clearExisting)
+            try importer.addWatchedFolder(url.path)
         }
         catch {
-            uiStore.showError("Scan failed: \(error.localizedDescription)")
+            uiStore.showError(
+                "Couldn't add folder: \(error.localizedDescription)"
+            )
         }
     }
 
@@ -148,7 +158,7 @@ struct FolderImportTab: View {
     }
 
     private func selectCandidate(_ candidate: Candidate) {
-        guard case .folder(let folderPath) = candidate.source else {
+        guard case .folder(let folderPath, _) = candidate.source else {
             return
         }
 
@@ -167,7 +177,7 @@ struct FolderImportTab: View {
 
     private var candidateList: some View {
         ImportCandidateListContent(
-            candidates: folderCandidates,
+            importStore: importStore,
             selectedKey: candidateSelectionBinding,
             isLikelyDupe: { name in
                 do {
@@ -180,49 +190,28 @@ struct FolderImportTab: View {
                     return false
                 }
             },
-            onAdd: { pickFolderAndScan(clearExisting: false) },
-            onClearAll: {
-                importer.clearAllCandidates()
-                selectedKey = nil
-            },
-            onClearCompleted: {
-                let completedKeys =
-                    folderCandidates
-                    .filter { candidate in
-                        if case .complete = candidate.importStatus {
-                            return true
-                        }
-                        return false
-                    }
-                    .map(\.key)
-                let completedSet = Set(completedKeys)
-                for key in completedSet {
-                    importer.removeCandidate(key)
-                }
-                if let key = selectedKey, completedSet.contains(key) {
-                    selectedKey = nil
-                }
-            },
-            onRemove: { key in
-                if selectedKey == key {
-                    let all = folderCandidates
-                    if let index = all.firstIndex(where: { $0.key == key }) {
-                        let neighbor =
-                            all.indices.contains(index - 1)
-                            ? all[index - 1]
-                            : all.indices.contains(index + 1)
-                                ? all[index + 1] : nil
-                        if let neighbor {
-                            selectCandidate(neighbor)
-                        }
-                        else {
-                            selectedKey = nil
-                        }
-                    }
-                }
-                importer.removeCandidate(key)
-            },
+            onAddFolder: { pickFolderAndAdd() },
+            onRemoveFolder: { path in removeWatchedFolder(path) },
         )
+    }
+
+    /// Stop watching `path`. If the selected candidate lived in that folder,
+    /// clear the selection — the reducer drops the folder's candidates when the
+    /// new watched-folder list arrives.
+    private func removeWatchedFolder(_ path: String) {
+        if let key = selectedKey,
+            importStore.folderCandidates[key]?.watchedFolderPath == path
+        {
+            selectedKey = nil
+        }
+        do {
+            try importer.removeWatchedFolder(path)
+        }
+        catch {
+            uiStore.showError(
+                "Couldn't remove folder: \(error.localizedDescription)"
+            )
+        }
     }
 
     // MARK: - Main pane
@@ -278,7 +267,7 @@ struct FolderImportTab: View {
             localTrackCount: candidate.trackCount,
             openSettings: { openSettings() },
             onAddAsUnknown: {
-                guard case .folder(let folderPath) = candidate.source else {
+                guard case .folder(let folderPath, _) = candidate.source else {
                     return
                 }
                 ImportSearchFlow.addAsUnknown(
@@ -389,7 +378,7 @@ struct FolderImportTab: View {
     }
 
     private func commitConfirmedImport(candidate: Candidate) {
-        guard case .folder(let folderPath) = candidate.source else {
+        guard case .folder(let folderPath, _) = candidate.source else {
             return
         }
         // Start each attempt from a clean error state so a prior failed

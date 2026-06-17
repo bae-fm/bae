@@ -1,11 +1,20 @@
 import Foundation
 
-/// Import-flow operations: scan, identify, candidate search, text
-/// scan, signal dismissal, file-tag preview, commit, candidate list
-/// mutations, duplicate-name check.
+/// Import-flow operations: watched-folder management, scan, identify,
+/// candidate search, signal dismissal, file-tag preview, commit, and the
+/// duplicate-name check.
 final class Importer: Sendable, Observable {
-    let enqueueFolderScan:
-        @Sendable (_ path: String, _ clearFirst: Bool) throws -> Void
+    /// The current watched-folder list. Fetched when the import view appears to
+    /// render the group headers (the durable list, not an event).
+    let watchedFolders: @Sendable () -> [BridgeWatchedFolder]
+    /// Add a folder to watch for imports: persist it and scan it. Already-watched
+    /// folders are left as-is.
+    let addWatchedFolder: @Sendable (_ path: String) throws -> Void
+    /// Stop watching a folder; its candidates drop out of the list.
+    let removeWatchedFolder: @Sendable (_ path: String) throws -> Void
+    /// Scan every watched folder, streaming candidates back as events. Called
+    /// when the import view appears to populate the list.
+    let scanWatchedFolders: @Sendable () throws -> Void
     let autoIdentifyFolder:
         @Sendable (_ candidateKey: String, _ folderPath: String) -> Void
     let autoIdentifyRelease:
@@ -27,15 +36,18 @@ final class Importer: Sendable, Observable {
             _ identityChoice: BridgeIdentityChoice,
             _ userEdit: BridgeReleaseUserEdit?
         ) throws -> Void
-    let clearAllCandidates: @Sendable () -> Void
-    let removeCandidate: @Sendable (_ candidateKey: String) -> Void
     let isSourceFolderNameImported: @Sendable (_ name: String) throws -> Bool
 
     init(
-        enqueueFolderScan: @escaping @Sendable (String, Bool) throws -> Void = {
-            _,
+        watchedFolders: @escaping @Sendable () -> [BridgeWatchedFolder] = {
+            []
+        },
+        addWatchedFolder: @escaping @Sendable (String) throws -> Void = { _ in
+        },
+        removeWatchedFolder: @escaping @Sendable (String) throws -> Void = {
             _ in
         },
+        scanWatchedFolders: @escaping @Sendable () throws -> Void = {},
         autoIdentifyFolder: @escaping @Sendable (String, String) -> Void = {
             _,
             _ in
@@ -63,12 +75,13 @@ final class Importer: Sendable, Observable {
                 String, String, BridgeCoverSelection?, BridgeStorageMode,
                 BridgeIdentityChoice, BridgeReleaseUserEdit?
             ) throws -> Void = { _, _, _, _, _, _ in },
-        clearAllCandidates: @escaping @Sendable () -> Void = {},
-        removeCandidate: @escaping @Sendable (String) -> Void = { _ in },
         isSourceFolderNameImported:
             @escaping @Sendable (String) throws -> Bool = { _ in false }
     ) {
-        self.enqueueFolderScan = enqueueFolderScan
+        self.watchedFolders = watchedFolders
+        self.addWatchedFolder = addWatchedFolder
+        self.removeWatchedFolder = removeWatchedFolder
+        self.scanWatchedFolders = scanWatchedFolders
         self.autoIdentifyFolder = autoIdentifyFolder
         self.autoIdentifyRelease = autoIdentifyRelease
         self.searchForCandidate = searchForCandidate
@@ -76,16 +89,15 @@ final class Importer: Sendable, Observable {
         self.rerunIdentifyForCandidate = rerunIdentifyForCandidate
         self.previewFileTagsForFolder = previewFileTagsForFolder
         self.startImport = startImport
-        self.clearAllCandidates = clearAllCandidates
-        self.removeCandidate = removeCandidate
         self.isSourceFolderNameImported = isSourceFolderNameImported
     }
 
     convenience init(handle: any AppHandleProtocol) {
         self.init(
-            enqueueFolderScan: {
-                try handle.enqueueFolderScan(path: $0, clearFirst: $1)
-            },
+            watchedFolders: { handle.watchedFolders() },
+            addWatchedFolder: { try handle.addWatchedFolder(path: $0) },
+            removeWatchedFolder: { try handle.removeWatchedFolder(path: $0) },
+            scanWatchedFolders: { try handle.scanWatchedFolders() },
             autoIdentifyFolder: {
                 handle.autoIdentifyFolder(candidateKey: $0, folderPath: $1)
             },
@@ -114,8 +126,6 @@ final class Importer: Sendable, Observable {
                     userEdit: $5
                 )
             },
-            clearAllCandidates: { handle.clearAllCandidates() },
-            removeCandidate: { handle.removeCandidate(candidateKey: $0) },
             isSourceFolderNameImported: {
                 try handle.isSourceFolderNameImported(name: $0)
             }

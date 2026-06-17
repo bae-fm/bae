@@ -409,12 +409,35 @@ pub enum BridgeCoverSelection {
 pub struct BridgeFolderCandidate {
     pub folder_path: String,
     pub source_folder_name: String,
+    /// Absolute path of the watched folder this candidate was scanned from —
+    /// the grouping key for the candidate-list section it renders under. Match
+    /// it against `BridgeWatchedFolder.path` for the section's display name.
+    pub watched_folder_path: String,
     /// Categorized files for this candidate. Delivered with the candidate so
     /// the receiver sees a fully populated value in a single event.
     pub files: BridgeCandidateFiles,
     /// Folder candidates always have files on disk and CUEs parsed during the
     /// scan, so track count is always known.
     pub track_count: u32,
+}
+
+/// A folder the user watches for imports — one candidate-list group.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeWatchedFolder {
+    /// Absolute path of the watched folder.
+    pub path: String,
+    /// Final path component — the group header label.
+    pub name: String,
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl BridgeWatchedFolder {
+    pub fn from_core(folder: bae_core::import::WatchedFolder) -> Self {
+        Self {
+            path: folder.path,
+            name: folder.name,
+        }
+    }
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -1018,15 +1041,15 @@ pub enum BridgeUiEvent {
     },
 
     // ── Scan ───────────────────────────────────────────────────────
+    /// The watched-folder list changed (loaded, or after add/remove). The
+    /// reducer replaces its list and drops candidates whose watched folder is
+    /// no longer present.
+    WatchedFoldersChanged {
+        folders: Vec<BridgeWatchedFolder>,
+    },
     FolderCandidateAdded {
         candidate: BridgeFolderCandidate,
     },
-    /// Core removed a candidate from the scan list.
-    ScanCandidateRemoved {
-        key: String,
-    },
-    FolderCandidatesCleared,
-    AllCandidatesCleared,
     ScanFinished,
 
     // ── Library ────────────────────────────────────────────────────

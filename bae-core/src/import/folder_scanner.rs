@@ -217,6 +217,10 @@ pub struct FolderCandidate {
     pub name: String,
     /// Pre-categorized files for this release
     pub files: CategorizedFiles,
+    /// Absolute path of the watched folder this candidate was scanned from —
+    /// the candidate-list group it belongs to. Equal to the scan root. The
+    /// group's display name comes from the watched-folder list, not here.
+    pub watched_folder_path: String,
 }
 
 // ── FileTree: abstract file source ──────────────────────────────────────────
@@ -941,12 +945,16 @@ where
     F: FnMut(FolderCandidate),
 {
     info!("Scanning for candidates in: {:?}", root);
+    // Every candidate from this scan belongs to the same watched folder (the
+    // scan root) — the group it renders under in the candidate list.
+    let watched_folder_path = root.to_string_lossy().into_owned();
     let tree = FileTree::from_filesystem(&root)?;
     scan_tree_recursive(&tree, &PathBuf::new(), &root, &mut |raw| {
         on_candidate(FolderCandidate {
             path: raw.path,
             name: raw.name,
             files: raw.files,
+            watched_folder_path: watched_folder_path.clone(),
         });
     })
 }

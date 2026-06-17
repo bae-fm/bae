@@ -135,16 +135,17 @@ pub enum UiBusEvent {
     },
 
     // ── Scan ───────────────────────────────────────────────────────
+    /// The watched-folder list changed (loaded, or after add/remove). The
+    /// reducer replaces its copy and drops candidates whose source folder is
+    /// no longer watched.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    WatchedFoldersChanged {
+        folders: Vec<crate::import::WatchedFolder>,
+    },
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     FolderCandidateAdded {
         candidate: crate::import::FolderCandidate,
     },
-    /// Core removed a candidate from the scan list.
-    ScanCandidateRemoved {
-        key: String,
-    },
-    FolderCandidatesCleared,
-    AllCandidatesCleared,
     ScanFinished,
 
     // ── Library ────────────────────────────────────────────────────

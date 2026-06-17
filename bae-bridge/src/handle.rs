@@ -901,19 +901,39 @@ impl AppHandle {
             .map_err(|e| BridgeError::Database { msg: e.to_string() })
     }
 
-    pub fn enqueue_folder_scan(&self, path: String, clear_first: bool) -> Result<(), BridgeError> {
+    /// The current watched-folder list. The UI fetches this when the import
+    /// view appears to render the group headers.
+    pub fn watched_folders(&self) -> Vec<crate::types::BridgeWatchedFolder> {
         self.app_services
             .import()
-            .enqueue_folder_scan(std::path::PathBuf::from(path), clear_first)
+            .watched_folders()
+            .into_iter()
+            .map(crate::types::BridgeWatchedFolder::from_core)
+            .collect()
+    }
+
+    pub fn add_watched_folder(&self, path: String) -> Result<(), BridgeError> {
+        self.app_services
+            .import()
+            .add_watched_folder(path)
             .map_err(|e| BridgeError::Import { msg: e })
     }
 
-    pub fn clear_all_candidates(&self) {
-        self.app_services.import().clear_all_candidates();
+    pub fn remove_watched_folder(&self, path: String) -> Result<(), BridgeError> {
+        self.app_services
+            .import()
+            .remove_watched_folder(path)
+            .map_err(|e| BridgeError::Import { msg: e })
     }
 
-    pub fn remove_candidate(&self, candidate_key: String) {
-        self.app_services.import().remove_candidate(candidate_key);
+    /// Scan every watched folder, streaming results back as
+    /// `FolderCandidateAdded` events. The UI calls this when the import view
+    /// appears to populate the candidate list.
+    pub fn scan_watched_folders(&self) -> Result<(), BridgeError> {
+        self.app_services
+            .import()
+            .scan_watched_folders()
+            .map_err(|e| BridgeError::Import { msg: e })
     }
 
     /// Search for releases with library status check in one call. Cancelled
@@ -1535,6 +1555,15 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
 
         // ── Scan ───────────────────────────────────────────────────
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        UiBusEvent::WatchedFoldersChanged { folders } => {
+            Some(BridgeUiEvent::WatchedFoldersChanged {
+                folders: folders
+                    .into_iter()
+                    .map(crate::types::BridgeWatchedFolder::from_core)
+                    .collect(),
+            })
+        }
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
         UiBusEvent::FolderCandidateAdded { candidate } => {
             let track_count = crate::bridge_utils::extract_track_count(&candidate.files)
                 .expect("folder candidate must have a known track count");
@@ -1542,16 +1571,12 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
                 candidate: BridgeFolderCandidate {
                     folder_path: candidate.path.to_string_lossy().to_string(),
                     source_folder_name: candidate.name,
+                    watched_folder_path: candidate.watched_folder_path,
                     files: categorized_files_to_bridge(candidate.files),
                     track_count,
                 },
             })
         }
-        UiBusEvent::ScanCandidateRemoved { key } => {
-            Some(BridgeUiEvent::ScanCandidateRemoved { key })
-        }
-        UiBusEvent::FolderCandidatesCleared => Some(BridgeUiEvent::FolderCandidatesCleared),
-        UiBusEvent::AllCandidatesCleared => Some(BridgeUiEvent::AllCandidatesCleared),
         UiBusEvent::ScanFinished => Some(BridgeUiEvent::ScanFinished),
 
         // ── Library ────────────────────────────────────────────────

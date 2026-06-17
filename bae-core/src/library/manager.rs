@@ -1153,6 +1153,12 @@ impl LibraryManager {
         &self.ids
     }
 
+    /// The library's on-disk directory. The import layer reads/writes its
+    /// sibling appdata files (e.g. the watched-folder registry) under it.
+    pub(crate) fn library_dir(&self) -> &LibraryDir {
+        &self.library_dir
+    }
+
     fn encryption_service_inner(&self) -> Option<EncryptionService> {
         #[cfg(feature = "test-utils")]
         if let Some((_, encryption)) = &self.test_overrides.cloud {

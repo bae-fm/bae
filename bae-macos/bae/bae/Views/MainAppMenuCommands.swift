@@ -12,17 +12,19 @@ struct ImportFolderButton: View {
             panel.canChooseDirectories = true
             panel.canChooseFiles = false
             panel.allowsMultipleSelection = false
-            panel.message = "Select a folder containing music to import"
-            panel.prompt = "Scan"
+            panel.message = "Select a folder to watch for music to import"
+            panel.prompt = "Add"
             guard panel.runModal() == .OK, let url = panel.url else {
                 return
             }
             do {
-                try importer.enqueueFolderScan(url.path, true)
+                try importer.addWatchedFolder(url.path)
                 uiStore.navigateToImport()
             }
             catch {
-                uiStore.showError("Scan failed: \(error.localizedDescription)")
+                uiStore.showError(
+                    "Couldn't add folder: \(error.localizedDescription)"
+                )
             }
         }
         .keyboardShortcut("i", modifiers: .command)

@@ -1,4 +1,5 @@
 use crate::discogs::DiscogsClient;
+use crate::import::folder_registry::{ImportFolderRegistry, WatchedFolder};
 use crate::import::folder_scanner::FolderCandidate;
 use crate::import::progress::ImportProgressHandle;
 use crate::import::types::{
@@ -6,6 +7,7 @@ use crate::import::types::{
 };
 use crate::library::LibraryManager;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, warn};
 
@@ -130,21 +132,26 @@ pub struct ImportServiceHandle {
     pub scan_tx: mpsc::UnboundedSender<ScanRequest>,
     /// Unified event channel — all import service events go here.
     pub event_tx: broadcast::Sender<ImportEvent>,
+    /// The persistent watched-folder list. Mutated by `add_watched_folder` /
+    /// `remove_watched_folder`, which persist it and broadcast the new list.
+    pub folder_registry: Arc<Mutex<ImportFolderRegistry>>,
 }
 
 #[derive(Debug, Clone)]
 pub enum ScanEvent {
+    /// The watched-folder list changed (queried at load, or after add/remove).
+    /// Carries the full ordered list; the reducer replaces its copy and drops
+    /// any candidate whose source folder is no longer watched.
+    WatchedFoldersChanged {
+        folders: Vec<WatchedFolder>,
+    },
     FolderCandidate(FolderCandidate),
-    CandidateRemoved { candidate_key: String },
-    FolderCandidatesCleared,
-    AllCandidatesCleared,
     Error(String),
     Finished,
 }
 
 pub struct ScanRequest {
     pub path: std::path::PathBuf,
-    pub clear_first: bool,
 }
 
 impl ImportServiceHandle {
@@ -155,6 +162,7 @@ impl ImportServiceHandle {
         runtime_handle: tokio::runtime::Handle,
         scan_tx: mpsc::UnboundedSender<ScanRequest>,
         event_tx: broadcast::Sender<ImportEvent>,
+        folder_registry: Arc<Mutex<ImportFolderRegistry>>,
     ) -> Self {
         let progress_handle =
             ImportProgressHandle::new(event_tx.subscribe(), runtime_handle.clone());
@@ -165,6 +173,7 @@ impl ImportServiceHandle {
             runtime_handle,
             scan_tx,
             event_tx,
+            folder_registry,
         }
     }
 
@@ -602,28 +611,67 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    pub fn enqueue_folder_scan(
-        &self,
-        path: std::path::PathBuf,
-        clear_first: bool,
-    ) -> Result<(), String> {
+    /// The current watched-folder list. The UI fetches this when the import
+    /// view appears to render the group headers, sidestepping the broadcast
+    /// race (the list is durable; events only fire on later changes).
+    pub fn watched_folders(&self) -> Vec<WatchedFolder> {
+        self.folder_registry.lock().unwrap().watched_folders()
+    }
+
+    /// Add a folder to watch for imports: persist it, broadcast the new list,
+    /// and scan it so its releases appear as candidates. A folder already
+    /// watched is left as-is.
+    pub fn add_watched_folder(&self, path: String) -> Result<(), String> {
+        let library_dir = self.library_manager.library_dir();
+        let mut registry = self.folder_registry.lock().unwrap();
+        let added = registry.add(library_dir, path.clone())?;
+        let folders = registry.watched_folders();
+        drop(registry);
+        if !added {
+            return Ok(());
+        }
+        send_event(
+            &self.event_tx,
+            ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),
+        );
         self.scan_tx
-            .send(ScanRequest { path, clear_first })
+            .send(ScanRequest {
+                path: std::path::PathBuf::from(path),
+            })
             .map_err(|_| "Failed to enqueue folder scan".to_string())
     }
 
-    pub fn clear_all_candidates(&self) {
-        send_event(
-            &self.event_tx,
-            ImportEvent::Scan(ScanEvent::AllCandidatesCleared),
-        );
+    /// Stop watching `path`: persist the removal and broadcast the new list.
+    /// The reducer drops the folder's candidates by reconciling against the
+    /// list, so no per-candidate removal events are needed.
+    pub fn remove_watched_folder(&self, path: String) -> Result<(), String> {
+        let library_dir = self.library_manager.library_dir();
+        let mut registry = self.folder_registry.lock().unwrap();
+        let removed = registry.remove(library_dir, &path)?;
+        let folders = registry.watched_folders();
+        drop(registry);
+        if removed {
+            send_event(
+                &self.event_tx,
+                ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),
+            );
+        }
+        Ok(())
     }
 
-    pub fn remove_candidate(&self, candidate_key: String) {
-        send_event(
-            &self.event_tx,
-            ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }),
-        );
+    /// Scan every watched folder, emitting one `FolderCandidate` per release
+    /// found. The UI calls this when the import view appears to populate the
+    /// candidate list (the scan results stream in as events).
+    pub fn scan_watched_folders(&self) -> Result<(), String> {
+        let folders = self.folder_registry.lock().unwrap().watched_folders();
+        for folder in folders {
+            self.scan_tx
+                .send(ScanRequest {
+                    path: std::path::PathBuf::from(folder.path),
+                })
+                .map_err(|_| "Failed to enqueue folder scan".to_string())?;
+        }
+        Ok(())
     }
 
     /// Subscribe to scan events, filtered from the unified event channel.

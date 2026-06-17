@@ -259,17 +259,11 @@ impl UiEventBus {
             loop {
                 match rx.recv().await {
                     Ok(ImportEvent::Scan(scan_event)) => match scan_event {
+                        ScanEvent::WatchedFoldersChanged { folders } => {
+                            bus.emit(UiBusEvent::WatchedFoldersChanged { folders });
+                        }
                         ScanEvent::FolderCandidate(c) => {
                             bus.emit(UiBusEvent::FolderCandidateAdded { candidate: c });
-                        }
-                        ScanEvent::CandidateRemoved { candidate_key } => {
-                            bus.emit(UiBusEvent::ScanCandidateRemoved { key: candidate_key });
-                        }
-                        ScanEvent::FolderCandidatesCleared => {
-                            bus.emit(UiBusEvent::FolderCandidatesCleared);
-                        }
-                        ScanEvent::AllCandidatesCleared => {
-                            bus.emit(UiBusEvent::AllCandidatesCleared);
                         }
                         ScanEvent::Finished => {
                             bus.emit(UiBusEvent::ScanFinished);

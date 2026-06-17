@@ -24,57 +24,35 @@ private struct ImportSidebarList<Header: View, Content: View>: View {
 
 // MARK: - ImportCandidateListContent
 
+/// The import candidate list, grouped by the watched folder each candidate was
+/// scanned from. One collapsible section per folder, in the order the folders
+/// were added.
 struct ImportCandidateListContent: View {
-    let candidates: [Candidate]
+    /// Read at the leaf: the watched folders and candidates, and the grouping /
+    /// filtering / sorting, all come from the store.
+    let importStore: ImportStore
     @Binding
     var selectedKey: String?
     let isLikelyDupe: (String) -> Bool
-    let onAdd: () -> Void
-    let onClearAll: () -> Void
-    let onClearCompleted: () -> Void
-    let onRemove: (String) -> Void
+    let onAddFolder: () -> Void
+    let onRemoveFolder: (_ path: String) -> Void
 
     @State
     private var filterText = ""
+    @State
+    private var collapsedFolders: Set<String> = []
     @AppStorage("importCandidateSort")
     private var sortOrder: CandidateSortOrder = .dateAddedNewest
 
-    private var hasImported: Bool {
-        candidates.contains { candidate in
-            if case .complete = candidate.importStatus {
-                return true
-            }
-            return false
-        }
-    }
-
-    private var displayedCandidates: [Candidate] {
-        var filtered = candidates
-
-        if !filterText.isEmpty {
-            let query = filterText.lowercased()
-            filtered = filtered.filter {
-                $0.displayName.lowercased().contains(query)
-                    || $0.key.lowercased().contains(query)
-            }
-        }
-
-        return switch sortOrder {
-        case .nameAZ:
-            filtered.sorted {
-                $0.displayName.localizedCaseInsensitiveCompare($1.displayName)
-                    == .orderedAscending
-            }
-        case .nameZA:
-            filtered.sorted {
-                $0.displayName.localizedCaseInsensitiveCompare($1.displayName)
-                    == .orderedDescending
-            }
-        case .dateAddedNewest:
-            filtered
-        case .dateAddedOldest:
-            filtered.reversed()
-        }
+    /// One section per watched folder, candidates filtered and sorted — built by
+    /// the store. `filterText` and `sortOrder` are this view's own UI state.
+    private var displayedGroups:
+        [(folder: BridgeWatchedFolder, candidates: [Candidate])]
+    {
+        importStore.candidateGroups(
+            filterText: filterText,
+            sortOrder: sortOrder
+        )
     }
 
     var body: some View {
@@ -97,86 +75,128 @@ struct ImportCandidateListContent: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            Menu {
-                Section("Sort") {
-                    Button {
-                        sortOrder = .nameAZ
-                    } label: {
-                        if sortOrder == .nameAZ {
-                            Label("Name (A\u{2013}Z)", systemImage: "checkmark")
-                        }
-                        else {
-                            Text("Name (A\u{2013}Z)")
-                        }
-                    }
-                    Button {
-                        sortOrder = .nameZA
-                    } label: {
-                        if sortOrder == .nameZA {
-                            Label("Name (Z\u{2013}A)", systemImage: "checkmark")
-                        }
-                        else {
-                            Text("Name (Z\u{2013}A)")
-                        }
-                    }
-                    Button {
-                        sortOrder = .dateAddedNewest
-                    } label: {
-                        if sortOrder == .dateAddedNewest {
-                            Label(
-                                "Date Added (Newest)",
-                                systemImage: "checkmark"
-                            )
-                        }
-                        else {
-                            Text("Date Added (Newest)")
-                        }
-                    }
-                    Button {
-                        sortOrder = .dateAddedOldest
-                    } label: {
-                        if sortOrder == .dateAddedOldest {
-                            Label(
-                                "Date Added (Oldest)",
-                                systemImage: "checkmark"
-                            )
-                        }
-                        else {
-                            Text("Date Added (Oldest)")
-                        }
-                    }
-                }
-                Divider()
-                Button("Clear All", action: onClearAll)
-                if hasImported {
-                    Button("Clear Imported", action: onClearCompleted)
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            Button(action: onAdd) {
+            sortMenu
+            Button(action: onAddFolder) {
                 Image(systemName: "plus")
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
+            .help("Add a folder to watch for imports")
         } content: {
-            List(
-                displayedCandidates,
-                id: \.key,
-                selection: $selectedKey,
-            ) { candidate in
-                CandidateRow(
-                    displayName: candidate.displayName,
-                    revealPath: candidate.folderPathIfReal,
-                    status: candidate.importStatus,
-                    isLikelyDupe: isLikelyDupe(candidate.displayName),
-                    onRemove: { onRemove(candidate.key) },
-                )
+            List(selection: $selectedKey) {
+                ForEach(displayedGroups, id: \.folder.path) { group in
+                    Section {
+                        if !collapsedFolders.contains(group.folder.path) {
+                            ForEach(group.candidates, id: \.key) { candidate in
+                                CandidateRow(
+                                    displayName: candidate.displayName,
+                                    revealPath: candidate.folderPathIfReal,
+                                    status: candidate.importStatus,
+                                    isLikelyDupe: isLikelyDupe(
+                                        candidate.displayName
+                                    ),
+                                )
+                                .tag(candidate.key)
+                            }
+                        }
+                    } header: {
+                        FolderSectionHeader(
+                            folder: group.folder,
+                            count: group.candidates.count,
+                            isCollapsed: collapsedFolders.contains(
+                                group.folder.path
+                            ),
+                            onToggle: { toggleCollapsed(group.folder.path) },
+                            onRemove: { onRemoveFolder(group.folder.path) },
+                        )
+                    }
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.surface)
+        }
+    }
+
+    private func toggleCollapsed(_ path: String) {
+        if collapsedFolders.contains(path) {
+            collapsedFolders.remove(path)
+        }
+        else {
+            collapsedFolders.insert(path)
+        }
+    }
+
+    private var sortMenu: some View {
+        Menu {
+            Section("Sort") {
+                sortButton(.nameAZ, "Name (A\u{2013}Z)")
+                sortButton(.nameZA, "Name (Z\u{2013}A)")
+                sortButton(.dateAddedNewest, "Date Added (Newest)")
+                sortButton(.dateAddedOldest, "Date Added (Oldest)")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+    }
+
+    @ViewBuilder
+    private func sortButton(_ order: CandidateSortOrder, _ label: String)
+        -> some View
+    {
+        Button {
+            sortOrder = order
+        } label: {
+            if sortOrder == order {
+                Label(label, systemImage: "checkmark")
+            }
+            else {
+                Text(label)
+            }
+        }
+    }
+}
+
+// MARK: - FolderSectionHeader
+
+private struct FolderSectionHeader: View {
+    let folder: BridgeWatchedFolder
+    let count: Int
+    let isCollapsed: Bool
+    let onToggle: () -> Void
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "chevron.right")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.tertiary)
+                .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+            Image(systemName: "folder")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(folder.name)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .textCase(.uppercase)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer()
+            Text("\(count)")
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onToggle)
+        .help(folder.path)
+        .contextMenu {
+            Button("Reveal in Finder") {
+                SystemActions.revealInFinder(path: folder.path)
+            }
+            Divider()
+            Button("Remove Folder", role: .destructive, action: onRemove)
         }
     }
 }
@@ -190,13 +210,9 @@ struct CandidateRow: View {
     let revealPath: String?
     let status: ImportStatus?
     let isLikelyDupe: Bool
-    let onRemove: () -> Void
 
     @Environment(OutboxStore.self)
     private var outboxStore
-
-    @State
-    private var isHovered = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -216,14 +232,6 @@ struct CandidateRow: View {
             }
             .opacity(isLikelyDupe ? 0.6 : 1.0)
             Spacer()
-            Button(action: onRemove) {
-                Image(systemName: "xmark")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .help("Remove")
-            .opacity(isHovered ? 1 : 0)
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
@@ -232,14 +240,7 @@ struct CandidateRow: View {
                 Button("Reveal in Finder") {
                     SystemActions.revealInFinder(path: revealPath)
                 }
-                Divider()
             }
-            Button("Remove") {
-                onRemove()
-            }
-        }
-        .onHover { hovering in
-            isHovered = hovering
         }
     }
 
@@ -278,21 +279,22 @@ struct CandidateRow: View {
 // MARK: - Previews
 
 #Preview("Candidate List") {
-    // Inject importStatus into a couple of preview candidates so we can see
-    // the badges render.
-    let candidates = PreviewData.folderCandidates.map { c -> Candidate in
-        var copy = c
-        copy.importStatus = PreviewData.importStatuses[c.key]
-        return copy
+    let store = ImportStore()
+    store.watchedFolders = [
+        BridgeWatchedFolder(path: "/Music/Downloads", name: "Downloads"),
+        BridgeWatchedFolder(path: "/Volumes/Rips", name: "Rips"),
+    ]
+    for candidate in PreviewData.folderCandidates {
+        var copy = candidate
+        copy.importStatus = PreviewData.importStatuses[candidate.key]
+        store.folderCandidates[copy.key] = copy
     }
     return ImportCandidateListContent(
-        candidates: candidates,
-        selectedKey: .constant(candidates[0].key),
+        importStore: store,
+        selectedKey: .constant(store.folderCandidates.keys.first),
         isLikelyDupe: { $0 == "Album Title One" },
-        onAdd: {},
-        onClearAll: {},
-        onClearCompleted: {},
-        onRemove: { _ in },
+        onAddFolder: {},
+        onRemoveFolder: { _ in },
     )
     .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
     .frame(width: 280, height: 500)

@@ -261,20 +261,20 @@ enum UiEventReducer {
             }
 
         // ── Scan ───────────────────────────────────────────────────────
+        case .watchedFoldersChanged(let folders):
+            // Pure assignment. Candidates of an unwatched folder aren't deleted
+            // here — `candidateGroups` only surfaces candidates whose folder is
+            // still watched, so a removed folder's rows simply stop rendering.
+            importStore.watchedFolders = folders
+
         case .folderCandidateAdded(let candidate):
+            // Insert only if absent: a re-scan (e.g. when the import view
+            // reappears) re-emits every candidate, and overwriting would wipe a
+            // candidate's in-progress identify/search/import state.
             let native = Candidate(bridge: candidate)
-            importStore.folderCandidates[native.key] = native
-
-        case .scanCandidateRemoved(let key):
-            importStore.folderCandidates.removeValue(forKey: key)
-            importStore.reIdentifyCandidates.removeValue(forKey: key)
-
-        case .folderCandidatesCleared:
-            importStore.folderCandidates.removeAll()
-
-        case .allCandidatesCleared:
-            importStore.folderCandidates.removeAll()
-            importStore.reIdentifyCandidates.removeAll()
+            if importStore.folderCandidates[native.key] == nil {
+                importStore.folderCandidates[native.key] = native
+            }
 
         case .scanFinished:
             // No state change needed — views react to candidate additions

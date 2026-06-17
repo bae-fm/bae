@@ -219,11 +219,11 @@ struct MainAppView: View {
             }
             DispatchQueue.main.async {
                 do {
-                    try importer.enqueueFolderScan(url.path, true)
+                    try importer.addWatchedFolder(url.path)
                 }
                 catch {
                     uiStore.showError(
-                        "Scan failed: \(error.localizedDescription)"
+                        "Couldn't add folder: \(error.localizedDescription)"
                     )
                 }
                 uiStore.navigateToImport()

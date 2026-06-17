@@ -410,11 +410,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
             }
             do {
                 try appService?.appHandle
-                    .enqueueFolderScan(path: url.path, clearFirst: true)
+                    .addWatchedFolder(path: url.path)
             }
             catch {
                 uiStore.showError(
-                    "Scan failed: \(error.localizedDescription)"
+                    "Couldn't add folder: \(error.localizedDescription)"
                 )
             }
             uiStore.navigateToImport()

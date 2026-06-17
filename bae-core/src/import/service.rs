@@ -12,6 +12,7 @@ use {
         DbAlbum, DbAlbumArtist, DbFile, DbImport, DbRelease, DbReleaseMetadata, DbTrack,
         DbTrackArtist,
     },
+    crate::import::folder_registry::ImportFolderRegistry,
     crate::import::folder_scanner::scan_for_candidates_with_callback,
     crate::import::handle::{fetch_artist_images, remap_album_artists, remap_track_artists},
     crate::import::track_to_file_mapper::map_tracks_to_files,
@@ -24,6 +25,7 @@ use {
     crate::util::content_type_hint::ContentTypeHint,
     std::collections::HashMap,
     std::path::{Path, PathBuf},
+    std::sync::{Arc, Mutex},
 };
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -313,15 +315,7 @@ impl ImportService {
         event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     ) {
         runtime_handle.spawn(async move {
-            while let Some(ScanRequest { path, clear_first }) = scan_rx.recv().await {
-                if clear_first {
-                    send_event(
-                        &event_tx,
-                        crate::import::handle::ImportEvent::Scan(
-                            ScanEvent::FolderCandidatesCleared,
-                        ),
-                    );
-                }
+            while let Some(ScanRequest { path }) = scan_rx.recv().await {
                 let result = Self::scan_folder(path, &event_tx).await;
 
                 match result {
@@ -408,12 +402,19 @@ impl ImportService {
             });
         });
 
+        // The watched-folder list is durable per-library appdata; `load` warns
+        // and starts empty if the file is corrupt, so app start never fails on it.
+        let folder_registry = Arc::new(Mutex::new(ImportFolderRegistry::load(
+            library_manager_for_handle.library_dir(),
+        )));
+
         ImportServiceHandle::new(
             commands_tx,
             library_manager_for_handle,
             runtime_handle,
             scan_tx,
             event_tx,
+            folder_registry,
         )
     }
 

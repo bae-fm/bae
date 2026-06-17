@@ -14,6 +14,11 @@ import SwiftUI
 @Observable
 class ImportStore {
     var folderCandidates: OrderedDictionary<String, Candidate> = [:]
+    /// The folders being watched for imports, in add order. The candidate list
+    /// renders one collapsible group per folder; each candidate's
+    /// `watchedFolderPath` matches one of these `path`s. Fetched when the import
+    /// view appears and refreshed on add/remove via `WatchedFoldersChanged`.
+    var watchedFolders: [BridgeWatchedFolder] = []
     /// Re-identify candidates — one per active "Re-identify..." sheet.
     /// Keyed by `reidentify:{releaseId}` so identify events route the same
     /// way folder events do. The sheet inserts on open and removes on dismiss.
@@ -104,6 +109,55 @@ class ImportStore {
             var c = reIdentifyCandidates[key]!
             mutate(&c)
             reIdentifyCandidates[key] = c
+        }
+    }
+
+    /// Folder candidates grouped for the candidate list: one entry per watched
+    /// folder (in add order), each holding that folder's candidates filtered by
+    /// `filterText` and ordered by `sortOrder`. Candidates whose watched folder
+    /// is no longer watched are excluded, and — while filtering — folders with
+    /// no matches drop out. The view iterates and renders this; the filtering,
+    /// sorting, and grouping live here in the state layer.
+    func candidateGroups(filterText: String, sortOrder: CandidateSortOrder)
+        -> [(folder: BridgeWatchedFolder, candidates: [Candidate])]
+    {
+        let query = filterText.lowercased()
+        return watchedFolders.compactMap { folder in
+            var rows = folderCandidates.values.filter {
+                $0.watchedFolderPath == folder.path
+            }
+            if !query.isEmpty {
+                rows = rows.filter {
+                    $0.displayName.lowercased().contains(query)
+                        || $0.key.lowercased().contains(query)
+                }
+                if rows.isEmpty {
+                    return nil
+                }
+            }
+            let ordered: [Candidate] =
+                switch sortOrder {
+                case .nameAZ:
+                    Self.sortedByName(rows, ascending: true)
+                case .nameZA:
+                    Self.sortedByName(rows, ascending: false)
+                case .dateAddedNewest:
+                    Array(rows)
+                case .dateAddedOldest:
+                    Array(rows.reversed())
+                }
+            return (folder, ordered)
+        }
+    }
+
+    private static func sortedByName(_ rows: [Candidate], ascending: Bool)
+        -> [Candidate]
+    {
+        let wanted: ComparisonResult =
+            ascending ? .orderedAscending : .orderedDescending
+        return rows.sorted {
+            $0.displayName.localizedCaseInsensitiveCompare($1.displayName)
+                == wanted
         }
     }
 }

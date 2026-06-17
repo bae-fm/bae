@@ -6,6 +6,8 @@ pub mod discid;
 pub mod discogs_mapper;
 pub mod file_tag_mapper;
 mod file_validation;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod folder_registry;
 pub mod folder_scanner;
 mod image_response;
 // The import pipeline (scanning, transcoding, identify orchestration) is
@@ -43,6 +45,8 @@ pub struct ParsedAlbum {
     pub identities: Vec<crate::import::types::ReleaseIdentity>,
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use folder_registry::{ImportFolderRegistry, WatchedFolder};
 pub use folder_scanner::{
     scan_for_candidates_with_callback, CategorizedFiles, FileEntry, FolderCandidate,
 };
