@@ -146,6 +146,11 @@ pub enum UiBusEvent {
     FolderCandidateAdded {
         candidate: crate::import::FolderCandidate,
     },
+    /// A candidate's folder was re-scanned by the watcher and the release is
+    /// gone. The reducer removes it by key.
+    ScanCandidateRemoved {
+        key: String,
+    },
     ScanFinished,
 
     // ── Library ────────────────────────────────────────────────────

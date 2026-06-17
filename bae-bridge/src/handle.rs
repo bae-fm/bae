@@ -1574,6 +1574,9 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
                 },
             })
         }
+        UiBusEvent::ScanCandidateRemoved { key } => {
+            Some(BridgeUiEvent::ScanCandidateRemoved { key })
+        }
         UiBusEvent::ScanFinished => Some(BridgeUiEvent::ScanFinished),
 
         // ── Library ────────────────────────────────────────────────

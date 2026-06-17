@@ -276,6 +276,11 @@ enum UiEventReducer {
                 importStore.folderCandidates[native.key] = native
             }
 
+        case .scanCandidateRemoved(let key):
+            // The watcher re-scanned the candidate's folder and the release is
+            // gone from disk; drop it.
+            importStore.folderCandidates.removeValue(forKey: key)
+
         case .scanFinished:
             // No state change needed — views react to candidate additions
             break

@@ -280,6 +280,91 @@ async fn folder_scan_produces_candidates() {
     println!("Folder scan produced 2 independent candidates");
 }
 
+/// The watcher reconciles a folder against the candidates it last emitted: a new
+/// release folder appears as a candidate, and a deleted one emits
+/// `CandidateRemoved`. Driven by `scan_watched_folders` re-triggers (plus the
+/// watcher's own debounced FS reconciles) over a fixed window, so it doesn't
+/// hinge on filesystem-event timing — both paths reconcile to the same on-disk
+/// truth, so `contains` assertions hold regardless of how many fire.
+#[tokio::test]
+#[serial]
+async fn watcher_reconciles_added_and_removed_candidates() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+
+    let collection = f.temp_path().join("Collection");
+    let album1 = collection.join("Artist - First Album");
+    fs::create_dir_all(&album1).unwrap();
+    generate_album_files(&album1, &["01 Track.flac"]);
+    let album1_key = album1.to_string_lossy().into_owned();
+
+    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    f.handle
+        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .unwrap();
+
+    let first = collect_scan_events(&mut scan_rx).await;
+    assert!(
+        first.added.contains(&album1_key),
+        "initial scan should surface the first album"
+    );
+    assert!(first.removed.is_empty());
+
+    // A new release folder appears on disk; re-scan surfaces it.
+    let album2 = collection.join("Artist - Second Album");
+    fs::create_dir_all(&album2).unwrap();
+    generate_album_files(&album2, &["01 Track.flac"]);
+    let album2_key = album2.to_string_lossy().into_owned();
+    f.handle.scan_watched_folders().unwrap();
+
+    let second = collect_scan_events(&mut scan_rx).await;
+    assert!(
+        second.added.contains(&album2_key),
+        "the newly-added folder should surface as a candidate"
+    );
+
+    // The first release folder is deleted; re-scan removes its candidate.
+    fs::remove_dir_all(&album1).unwrap();
+    f.handle.scan_watched_folders().unwrap();
+
+    let third = collect_scan_events(&mut scan_rx).await;
+    assert!(
+        third.removed.contains(&album1_key),
+        "the deleted folder's candidate should be removed"
+    );
+}
+
+struct ScanBatch {
+    added: Vec<String>,
+    removed: Vec<String>,
+}
+
+/// Drain scan events over a fixed window, collecting candidate paths added and
+/// candidate keys removed. A fixed window (rather than stopping at the first
+/// `Finished`) absorbs the watcher's debounced FS reconcile landing alongside an
+/// explicit re-scan.
+async fn collect_scan_events(
+    rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
+) -> ScanBatch {
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+    let mut added = Vec::new();
+    let mut removed = Vec::new();
+    while tokio::time::Instant::now() < deadline {
+        match tokio::time::timeout(std::time::Duration::from_millis(100), rx.recv()).await {
+            Ok(Some(ScanEvent::FolderCandidate(c))) => {
+                added.push(c.path.to_string_lossy().into_owned());
+            }
+            Ok(Some(ScanEvent::CandidateRemoved { candidate_key })) => {
+                removed.push(candidate_key);
+            }
+            Ok(Some(_)) => {}
+            Ok(None) => break,
+            Err(_) => {}
+        }
+    }
+    ScanBatch { added, removed }
+}
+
 /// 3. Unmanaged folder import: album, release, tracks all in DB, files stay in place.
 #[tokio::test]
 #[serial]

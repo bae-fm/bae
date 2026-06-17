@@ -1057,6 +1057,11 @@ pub enum BridgeUiEvent {
     FolderCandidateAdded {
         candidate: BridgeFolderCandidate,
     },
+    /// A candidate's folder was re-scanned and the release is gone — the reducer
+    /// removes it by key.
+    ScanCandidateRemoved {
+        key: String,
+    },
     ScanFinished,
 
     // ── Library ────────────────────────────────────────────────────

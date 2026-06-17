@@ -130,7 +130,7 @@ pub struct ImportServiceHandle {
     pub progress_handle: ImportProgressHandle,
     pub library_manager: LibraryManager,
     pub runtime_handle: tokio::runtime::Handle,
-    pub scan_tx: mpsc::UnboundedSender<ScanRequest>,
+    pub watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
     /// Unified event channel — all import service events go here.
     pub event_tx: broadcast::Sender<ImportEvent>,
     /// The persistent watched-folder list. Mutated by `add_watched_folder` /
@@ -141,18 +141,25 @@ pub struct ImportServiceHandle {
 #[derive(Debug, Clone)]
 pub enum ScanEvent {
     /// The watched-folder list changed (queried at load, or after add/remove).
-    /// Carries the full ordered list; the reducer replaces its copy and drops
-    /// any candidate whose source folder is no longer watched.
+    /// Carries the full ordered list; the reducer replaces its copy.
     WatchedFoldersChanged {
         folders: Vec<WatchedFolder>,
     },
     FolderCandidate(FolderCandidate),
-    Error(String),
+    /// A previously-emitted candidate no longer resolves on disk — the watcher
+    /// re-scanned its folder and the release is gone. The reducer removes it by
+    /// key (the key is the candidate's folder path).
+    CandidateRemoved {
+        candidate_key: String,
+    },
     Finished,
 }
 
-pub struct ScanRequest {
-    pub path: std::path::PathBuf,
+/// Commands to the folder watcher. `Watch` starts watching a folder (idempotent)
+/// and scans it; `Unwatch` stops watching it.
+pub enum WatcherCommand {
+    Watch(std::path::PathBuf),
+    Unwatch(std::path::PathBuf),
 }
 
 impl ImportServiceHandle {
@@ -161,7 +168,7 @@ impl ImportServiceHandle {
         requests_tx: mpsc::UnboundedSender<ImportCommand>,
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
-        scan_tx: mpsc::UnboundedSender<ScanRequest>,
+        watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
         event_tx: broadcast::Sender<ImportEvent>,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
     ) -> Self {
@@ -172,7 +179,7 @@ impl ImportServiceHandle {
             progress_handle,
             library_manager,
             runtime_handle,
-            scan_tx,
+            watcher_tx,
             event_tx,
             folder_registry,
         }
@@ -622,8 +629,8 @@ impl ImportServiceHandle {
     }
 
     /// Add a folder to watch for imports: persist it, broadcast the new list,
-    /// and scan it so its releases appear as candidates. A folder already
-    /// watched is left as-is.
+    /// and start watching + scanning it so its releases appear as candidates and
+    /// later on-disk changes propagate. A folder already watched is left as-is.
     pub fn add_watched_folder(&self, path: String) -> Result<(), String> {
         let library_dir = self.library_manager.library_dir();
         let mut registry = self.folder_registry.lock().unwrap();
@@ -637,16 +644,15 @@ impl ImportServiceHandle {
             &self.event_tx,
             ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),
         );
-        self.scan_tx
-            .send(ScanRequest {
-                path: std::path::PathBuf::from(path),
-            })
-            .map_err(|_| "Failed to enqueue folder scan".to_string())
+        self.watcher_tx
+            .send(WatcherCommand::Watch(std::path::PathBuf::from(path)))
+            .map_err(|_| "Failed to start watching folder".to_string())
     }
 
-    /// Stop watching `path`: persist the removal and broadcast the new list.
-    /// The reducer drops the folder's candidates by reconciling against the
-    /// list, so no per-candidate removal events are needed.
+    /// Stop watching `path`: persist the removal, broadcast the new list, and
+    /// stop the filesystem watcher for it. The reducer drops the folder's
+    /// candidates by reconciling against the list, so no per-candidate removal
+    /// events are needed here.
     pub fn remove_watched_folder(&self, path: String) -> Result<(), String> {
         let library_dir = self.library_manager.library_dir();
         let mut registry = self.folder_registry.lock().unwrap();
@@ -658,21 +664,22 @@ impl ImportServiceHandle {
                 &self.event_tx,
                 ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),
             );
+            self.watcher_tx
+                .send(WatcherCommand::Unwatch(std::path::PathBuf::from(path)))
+                .map_err(|_| "Failed to stop watching folder".to_string())?;
         }
         Ok(())
     }
 
-    /// Scan every watched folder, emitting one `FolderCandidate` per release
-    /// found. The UI calls this when the import view appears to populate the
-    /// candidate list (the scan results stream in as events).
+    /// Start watching + scanning every watched folder, emitting one
+    /// `FolderCandidate` per release found and `CandidateRemoved` for any that
+    /// have since vanished. The UI calls this when the import view appears.
     pub fn scan_watched_folders(&self) -> Result<(), String> {
         let folders = self.folder_registry.lock().unwrap().watched_folders();
         for folder in folders {
-            self.scan_tx
-                .send(ScanRequest {
-                    path: std::path::PathBuf::from(folder.path),
-                })
-                .map_err(|_| "Failed to enqueue folder scan".to_string())?;
+            self.watcher_tx
+                .send(WatcherCommand::Watch(std::path::PathBuf::from(folder.path)))
+                .map_err(|_| "Failed to start watching folder".to_string())?;
         }
         Ok(())
     }

@@ -1,6 +1,6 @@
 use crate::import::handle::ImportServiceHandle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::import::handle::{ScanEvent, ScanRequest};
+use crate::import::handle::{ScanEvent, WatcherCommand};
 use crate::import::types::{
     ImportCommand, ImportProgress, MetadataRef, MetadataSource, StorageMode,
 };
@@ -23,9 +23,12 @@ use {
     crate::storage::local::ReleaseStorageImpl,
     crate::util::content_type::ContentType,
     crate::util::content_type_hint::ContentTypeHint,
-    std::collections::HashMap,
+    notify::RecursiveMode,
+    notify_debouncer_full::{new_debouncer, DebounceEventResult},
+    std::collections::{HashMap, HashSet},
     std::path::{Path, PathBuf},
     std::sync::{Arc, Mutex},
+    std::time::Duration,
 };
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -307,55 +310,165 @@ impl ImportService {
     }
 }
 
+/// The watched roots that contain at least one of the `changed` paths, in
+/// `roots` order and without duplicates.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn affected_roots(changed: &[&Path], roots: &[PathBuf]) -> Vec<PathBuf> {
+    roots
+        .iter()
+        .filter(|root| changed.iter().any(|path| path.starts_with(root)))
+        .cloned()
+        .collect()
+}
+
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl ImportService {
-    fn start_scan_worker(
+    /// The folder watcher. Owns a debouncing filesystem watcher and, per watched
+    /// folder, the set of candidate keys it last emitted. A `Watch` command
+    /// starts watching and scanning a folder, a debounced filesystem change
+    /// under a watched folder re-scans it, and `Unwatch` stops. Every re-scan
+    /// reconciles against the last known keys, emitting `FolderCandidate` for
+    /// what's on disk and `CandidateRemoved` for what's gone, so changes
+    /// propagate beyond the first scan.
+    fn start_watcher(
         runtime_handle: &tokio::runtime::Handle,
-        mut scan_rx: mpsc::UnboundedReceiver<ScanRequest>,
+        mut cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
         event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     ) {
         runtime_handle.spawn(async move {
-            while let Some(ScanRequest { path }) = scan_rx.recv().await {
-                let result = Self::scan_folder(path, &event_tx).await;
-
-                match result {
-                    Ok(()) => {
-                        send_event(
-                            &event_tx,
-                            crate::import::handle::ImportEvent::Scan(ScanEvent::Finished),
-                        );
+            let (fs_tx, mut fs_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
+            let mut debouncer = match new_debouncer(
+                Duration::from_secs(1),
+                None,
+                move |result: DebounceEventResult| {
+                    // Runs on the debouncer's own thread; hand the batch to the
+                    // task. A send error means the task's receiver is gone (the
+                    // service is shutting down); the debouncer is dropped right
+                    // after, so this is benign but worth a line.
+                    if fs_tx.send(result).is_err() {
+                        warn!("folder watcher event dropped: task receiver gone");
                     }
-                    Err(error) => {
-                        send_event(
-                            &event_tx,
-                            crate::import::handle::ImportEvent::Scan(ScanEvent::Error(error)),
-                        );
-                        send_event(
-                            &event_tx,
-                            crate::import::handle::ImportEvent::Scan(ScanEvent::Finished),
-                        );
+                },
+            ) {
+                Ok(debouncer) => debouncer,
+                Err(e) => {
+                    error!("failed to start folder watcher: {e}");
+                    return;
+                }
+            };
+
+            let mut roots: Vec<PathBuf> = Vec::new();
+            let mut last_keys: HashMap<PathBuf, HashSet<String>> = HashMap::new();
+
+            loop {
+                tokio::select! {
+                    cmd = cmd_rx.recv() => {
+                        let Some(cmd) = cmd else { break };
+                        match cmd {
+                            WatcherCommand::Watch(path) => {
+                                if !roots.contains(&path) {
+                                    if let Err(e) =
+                                        debouncer.watch(&path, RecursiveMode::Recursive)
+                                    {
+                                        warn!("failed to watch {}: {e}", path.display());
+                                    }
+                                    roots.push(path.clone());
+                                }
+                                Self::rescan_and_reconcile(&path, &mut last_keys, &event_tx)
+                                    .await;
+                            }
+                            WatcherCommand::Unwatch(path) => {
+                                if let Err(e) = debouncer.unwatch(&path) {
+                                    warn!("failed to unwatch {}: {e}", path.display());
+                                }
+                                roots.retain(|p| p != &path);
+                                last_keys.remove(&path);
+                            }
+                        }
+                    }
+                    Some(result) = fs_rx.recv() => {
+                        let events = match result {
+                            Ok(events) => events,
+                            Err(errors) => {
+                                for e in errors {
+                                    warn!("folder watcher error: {e}");
+                                }
+                                continue;
+                            }
+                        };
+                        let changed: Vec<&Path> = events
+                            .iter()
+                            .flat_map(|e| e.paths.iter().map(PathBuf::as_path))
+                            .collect();
+                        for root in affected_roots(&changed, &roots) {
+                            Self::rescan_and_reconcile(&root, &mut last_keys, &event_tx).await;
+                        }
                     }
                 }
             }
         });
     }
 
-    async fn scan_folder(
-        path: PathBuf,
+    /// Re-scan `root` and reconcile against the candidate keys last emitted for
+    /// it: emit every current candidate (the reducer keeps in-progress state for
+    /// ones it already holds) and `CandidateRemoved` for any that vanished. A
+    /// scan error (folder unreadable/deleted) reconciles to empty, removing all
+    /// of the folder's candidates.
+    async fn rescan_and_reconcile(
+        root: &Path,
+        last_keys: &mut HashMap<PathBuf, HashSet<String>>,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
-    ) -> Result<(), String> {
-        let tx = event_tx.clone();
-        tokio::task::spawn_blocking(move || {
-            scan_for_candidates_with_callback(path, |candidate| {
-                send_event(
-                    &tx,
-                    crate::import::handle::ImportEvent::Scan(ScanEvent::FolderCandidate(candidate)),
-                );
-            })
+    ) {
+        let root_buf = root.to_path_buf();
+        let scanned = tokio::task::spawn_blocking(move || {
+            let mut candidates = Vec::new();
+            scan_for_candidates_with_callback(root_buf, |c| candidates.push(c)).map(|()| candidates)
         })
-        .await
-        .map_err(|e| format!("Scan task failed: {}", e))
-        .and_then(|r| r)
+        .await;
+
+        let candidates = match scanned {
+            Ok(Ok(candidates)) => candidates,
+            Ok(Err(e)) => {
+                warn!(
+                    "re-scan of {} failed ({e}); removing its candidates",
+                    root.display()
+                );
+                Vec::new()
+            }
+            Err(e) => {
+                error!("folder scan task panicked for {}: {e}", root.display());
+                return;
+            }
+        };
+
+        let new_keys: HashSet<String> = candidates
+            .iter()
+            .map(|c| c.path.to_string_lossy().into_owned())
+            .collect();
+
+        for candidate in candidates {
+            send_event(
+                event_tx,
+                crate::import::handle::ImportEvent::Scan(ScanEvent::FolderCandidate(candidate)),
+            );
+        }
+
+        if let Some(previous) = last_keys.get(root) {
+            for gone in previous.difference(&new_keys) {
+                send_event(
+                    event_tx,
+                    crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                        candidate_key: gone.clone(),
+                    }),
+                );
+            }
+        }
+        last_keys.insert(root.to_path_buf(), new_keys);
+
+        send_event(
+            event_tx,
+            crate::import::handle::ImportEvent::Scan(ScanEvent::Finished),
+        );
     }
 
     /// Start the import service worker.
@@ -368,12 +481,12 @@ impl ImportService {
         library_manager: LibraryManager,
     ) -> ImportServiceHandle {
         let (commands_tx, commands_rx) = mpsc::unbounded_channel();
-        let (scan_tx, scan_rx) = mpsc::unbounded_channel();
+        let (watcher_tx, watcher_rx) = mpsc::unbounded_channel();
         let (event_tx, _) = broadcast::channel(1024);
         let event_tx_for_worker = event_tx.clone();
         let library_manager_for_handle = library_manager.clone();
 
-        ImportService::start_scan_worker(&runtime_handle, scan_rx, event_tx.clone());
+        ImportService::start_watcher(&runtime_handle, watcher_rx, event_tx.clone());
 
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
@@ -412,7 +525,7 @@ impl ImportService {
             commands_tx,
             library_manager_for_handle,
             runtime_handle,
-            scan_tx,
+            watcher_tx,
             event_tx,
             folder_registry,
         )
@@ -2011,6 +2124,29 @@ mod tests {
     use super::*;
     use crate::clock::FixedClock;
     use crate::id_provider::SequentialIdProvider;
+
+    #[test]
+    fn affected_roots_maps_changed_paths_to_their_watched_roots() {
+        let root_a = PathBuf::from("/music/new rips");
+        let root_b = PathBuf::from("/downloads/bandcamp");
+        let roots = vec![root_a.clone(), root_b.clone()];
+
+        // A change inside one root flags only that root.
+        let changed = [Path::new("/music/new rips/Album/01.flac")];
+        assert_eq!(affected_roots(&changed, &roots), vec![root_a.clone()]);
+
+        // Changes under both roots flag both, in roots order, deduped.
+        let changed = [
+            Path::new("/downloads/bandcamp/X/cover.jpg"),
+            Path::new("/music/new rips/Y"),
+            Path::new("/music/new rips/Z"),
+        ];
+        assert_eq!(affected_roots(&changed, &roots), vec![root_a, root_b]);
+
+        // A change outside every watched root flags nothing.
+        let changed = [Path::new("/elsewhere/file")];
+        assert!(affected_roots(&changed, &roots).is_empty());
+    }
 
     /// `common_ancestor` derives the unmanaged-path root by folding over the
     /// files' parent dirs. It must compare path components, not string

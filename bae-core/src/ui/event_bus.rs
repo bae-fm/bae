@@ -265,11 +265,11 @@ impl UiEventBus {
                         ScanEvent::FolderCandidate(c) => {
                             bus.emit(UiBusEvent::FolderCandidateAdded { candidate: c });
                         }
+                        ScanEvent::CandidateRemoved { candidate_key } => {
+                            bus.emit(UiBusEvent::ScanCandidateRemoved { key: candidate_key });
+                        }
                         ScanEvent::Finished => {
                             bus.emit(UiBusEvent::ScanFinished);
-                        }
-                        ScanEvent::Error(msg) => {
-                            bus.emit(UiBusEvent::Error { message: msg });
                         }
                     },
                     Ok(ImportEvent::ImportProgress {
