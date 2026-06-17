@@ -2068,10 +2068,19 @@ impl LibraryManager {
             self.sync_paused.clone(),
             self.event_tx.clone(),
         );
+        // coven's `process_uploads` takes the home's at-rest cipher. bae homes are
+        // always encrypted, so wrap the library's `EncryptionService` as
+        // `CloudCipher::Encrypted`. Clone the service under the read lock, then drop
+        // the lock before building the local cipher lock coven seals blobs through.
+        let cipher = {
+            let service = encryption.read().unwrap();
+            coven::sync::cloud_storage::CloudCipher::Encrypted(service.clone())
+        };
+        let cipher = std::sync::RwLock::new(cipher);
         crate::sync::outbox::process_uploads(
             self.database.coven_db(),
             cloud_home,
-            encryption,
+            &cipher,
             &self.library_dir,
             self.clock.as_ref(),
             Some(&observer),
@@ -4054,8 +4063,20 @@ impl LibraryManager {
 
         // Cloud: the image row's DELETE changeset replicates the row removal,
         // but the blob itself is removed through the cloud outbox, like audio.
-        let cloud_key =
-            crate::sync::encrypted_storage::EncryptedSyncStorage::blob_key("images", release_id);
+        // bae homes are always obfuscated, so the blob is keyed by the hashed
+        // content-addressed path (no readable cloud_path).
+        let cloud_key = match crate::sync::CloudSyncStorage::blob_key(
+            crate::sync::BlobPathScheme::Hashed,
+            "images",
+            release_id,
+            None,
+        ) {
+            Ok(key) => key,
+            Err(e) => {
+                warn!("Failed to derive cover blob key for {release_id}: {e}");
+                return;
+            }
+        };
         if let Err(e) = self.database.add_cloud_outbox_delete(&cloud_key).await {
             warn!("Failed to enqueue cover blob delete for {release_id}: {e}");
         }
@@ -5159,8 +5180,13 @@ mod tests {
             .is_none());
 
         // Cloud blob delete enqueued under the image namespace.
-        let cloud_key =
-            crate::sync::encrypted_storage::EncryptedSyncStorage::blob_key("images", &release1.id);
+        let cloud_key = crate::sync::CloudSyncStorage::blob_key(
+            crate::sync::BlobPathScheme::Hashed,
+            "images",
+            &release1.id,
+            None,
+        )
+        .unwrap();
         let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
         assert!(
             deletes.iter().any(|d| d.cloud_key == cloud_key),
@@ -5212,8 +5238,13 @@ mod tests {
             .await
             .unwrap()
             .is_none());
-        let cloud_key =
-            crate::sync::encrypted_storage::EncryptedSyncStorage::blob_key("images", &release.id);
+        let cloud_key = crate::sync::CloudSyncStorage::blob_key(
+            crate::sync::BlobPathScheme::Hashed,
+            "images",
+            &release.id,
+            None,
+        )
+        .unwrap();
         let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
         assert!(deletes.iter().any(|d| d.cloud_key == cloud_key));
     }

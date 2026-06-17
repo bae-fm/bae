@@ -11,7 +11,7 @@ name = "bae_core"
 path = "src/lib.rs"
 
 [dependencies]
-coven = { git = "https://github.com/bae-fm/coven", rev = "9b23fb40a9ab7abf2ba2ccb17223e3abd1d6ef78" }
+coven = { git = "https://github.com/bae-fm/coven", rev = "4427b96681c5b2c1fe5e43314ef8698fd73c3631" }
 reqwest = { workspace = true, features = ["form", "json", "query", "rustls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -102,7 +102,7 @@ tempfile = "3.8"
 tokio = { version = "1.0", features = ["test-util"] }
 serial_test = "3.4.0"
 # coven's deterministic clock/id fakes for bae's tests (off in production builds).
-coven = { git = "https://github.com/bae-fm/coven", rev = "9b23fb40a9ab7abf2ba2ccb17223e3abd1d6ef78", features = ["test-utils"] }
+coven = { git = "https://github.com/bae-fm/coven", rev = "4427b96681c5b2c1fe5e43314ef8698fd73c3631", features = ["test-utils"] }
 
 [[test]]
 name = "test_playback_behavior"

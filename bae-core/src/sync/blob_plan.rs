@@ -36,6 +36,9 @@ impl BaeBlobPlan {
             id: id.to_string(),
             local_path: self.library_dir.image_path(id),
             scope: BlobScope::Master,
+            // bae homes use the hashed (obfuscated) blob layout, which keys off
+            // the id and ignores a readable cloud path.
+            cloud_path: None,
         }
     }
 

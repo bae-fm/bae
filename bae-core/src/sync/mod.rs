@@ -2,7 +2,12 @@
 //! `SyncManager` wrapper layered on top.
 
 // The sync substrate lives in coven; these resolve `crate::sync::<m>` unchanged.
-pub use coven::sync::{encrypted_storage, outbox, restore, restore_code};
+pub use coven::sync::{cloud_storage, outbox, restore, restore_code};
+
+// Blob-key construction at bae's call sites: `CloudSyncStorage::blob_key` keyed
+// by a `BlobPathScheme`. bae homes are always obfuscated, so they pass
+// `BlobPathScheme::Hashed`.
+pub use coven::sync::cloud_storage::{BlobPathScheme, CloudSyncStorage};
 
 // bae-only domain layers built on the substrate.
 pub mod blob_plan;

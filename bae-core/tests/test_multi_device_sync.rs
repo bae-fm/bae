@@ -21,8 +21,8 @@ use coven::changeset::RowChange;
 use coven::encryption::EncryptionService;
 use coven::keys::UserKeypair;
 use coven::library_dir::LibraryDir;
+use coven::sync::cloud_storage::{BlobPathScheme, CloudCipher, CloudSyncStorage};
 use coven::sync::cycle::run_single_sync_cycle;
-use coven::sync::encrypted_storage::EncryptedSyncStorage;
 use coven::sync::hlc::Hlc;
 
 /// An in-memory `CloudHome` whose state is shared across clones, so two devices
@@ -173,14 +173,11 @@ fn cloud_has_changeset(cloud: &SharedCloud, device_id: &str) -> bool {
 
 /// Run one sync cycle for `device_id` over `storage` (no cloud_home → no outbox
 /// processing; no blobs).
-async fn sync_cycle(
-    db: &Database,
-    storage: &EncryptedSyncStorage,
-    device_id: &str,
-    lib: &LibraryDir,
-) {
+async fn sync_cycle(db: &Database, storage: &CloudSyncStorage, device_id: &str, lib: &LibraryDir) {
     let hlc = Hlc::new(device_id.to_string());
-    let enc = RwLock::new(EncryptionService::new_with_key(&[9u8; 32]));
+    let cipher = RwLock::new(CloudCipher::Encrypted(EncryptionService::new_with_key(
+        &[9u8; 32],
+    )));
     let keypair = UserKeypair::generate();
     run_single_sync_cycle(
         storage,
@@ -188,7 +185,7 @@ async fn sync_cycle(
         &hlc,
         &SystemClock,
         db.coven_db(),
-        &enc,
+        &cipher,
         &keypair,
         lib,
         None,
@@ -211,9 +208,10 @@ async fn managed_catalog_pushed_by_device_a_reaches_device_b() {
     let db_a = Database::new_test(lib_a.db_path().to_str().unwrap(), Arc::new(SystemClock))
         .await
         .unwrap();
-    let storage_a = EncryptedSyncStorage::new(
+    let storage_a = CloudSyncStorage::new(
         Box::new(cloud.clone()),
-        EncryptionService::new_with_key(&key),
+        CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
+        BlobPathScheme::Hashed,
     );
 
     insert_managed_catalog(&db_a).await;
@@ -229,9 +227,10 @@ async fn managed_catalog_pushed_by_device_a_reaches_device_b() {
     let db_b = Database::new_test(lib_b.db_path().to_str().unwrap(), Arc::new(SystemClock))
         .await
         .unwrap();
-    let storage_b = EncryptedSyncStorage::new(
+    let storage_b = CloudSyncStorage::new(
         Box::new(cloud.clone()),
-        EncryptionService::new_with_key(&key),
+        CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
+        BlobPathScheme::Hashed,
     );
     assert_eq!(
         count(&db_b, "SELECT count(*) FROM releases").await,
@@ -311,9 +310,10 @@ async fn each_release_propagates_when_its_own_upload_flips_managed() {
     let db_a = Database::new_test(lib_a.db_path().to_str().unwrap(), Arc::new(SystemClock))
         .await
         .unwrap();
-    let storage_a = EncryptedSyncStorage::new(
+    let storage_a = CloudSyncStorage::new(
         Box::new(cloud.clone()),
-        EncryptionService::new_with_key(&key),
+        CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
+        BlobPathScheme::Hashed,
     );
 
     insert_two_uploading_releases(&db_a).await;
@@ -340,9 +340,10 @@ async fn each_release_propagates_when_its_own_upload_flips_managed() {
     let db_b = Database::new_test(lib_b.db_path().to_str().unwrap(), Arc::new(SystemClock))
         .await
         .unwrap();
-    let storage_b = EncryptedSyncStorage::new(
+    let storage_b = CloudSyncStorage::new(
         Box::new(cloud.clone()),
-        EncryptionService::new_with_key(&key),
+        CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
+        BlobPathScheme::Hashed,
     );
     sync_cycle(&db_b, &storage_b, "device-b", &lib_b).await;
     assert_eq!(

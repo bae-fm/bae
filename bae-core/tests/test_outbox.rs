@@ -8,6 +8,7 @@ use bae_core::clock::SystemClock;
 use bae_core::db::Database;
 use bae_core::encryption::EncryptionService;
 use bae_core::storage::cloud::{CloudHome, CloudHomeError, CloudHomeJoinInfo};
+use bae_core::sync::cloud_storage::CloudCipher;
 use bae_core::sync::outbox;
 use std::sync::{Mutex, RwLock};
 use tempfile::TempDir;
@@ -293,12 +294,14 @@ async fn test_process_uploads_success() {
         .unwrap();
 
     let cloud = MockCloudHome::new();
-    let enc = RwLock::new(EncryptionService::new_with_key(&[0u8; 32]));
+    let cipher = RwLock::new(CloudCipher::Encrypted(EncryptionService::new_with_key(
+        &[0u8; 32],
+    )));
 
     let count = outbox::process_uploads(
         db.coven_db(),
         &cloud,
-        &enc,
+        &cipher,
         &library_dir,
         &SystemClock,
         None,
@@ -338,12 +341,14 @@ async fn test_process_uploads_failure_retains_entry() {
         .unwrap();
 
     let cloud = MockCloudHome::failing_writes();
-    let enc = RwLock::new(EncryptionService::new_with_key(&[0u8; 32]));
+    let cipher = RwLock::new(CloudCipher::Encrypted(EncryptionService::new_with_key(
+        &[0u8; 32],
+    )));
 
     let count = outbox::process_uploads(
         db.coven_db(),
         &cloud,
-        &enc,
+        &cipher,
         &library_dir,
         &SystemClock,
         None,

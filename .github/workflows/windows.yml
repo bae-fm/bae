@@ -28,7 +28,7 @@ jobs:
       - name: Install Rust (pinned toolchain)
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92.0"
+          toolchain: "1.95.0"
           targets: x86_64-pc-windows-msvc
           components: clippy
 

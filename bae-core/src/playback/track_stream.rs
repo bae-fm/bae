@@ -245,8 +245,7 @@ impl TrackStream {
 
         if pulled > 0 {
             let channels = self.state.channels() as u64;
-            if channels > 0 {
-                let frames = pulled as u64 / channels;
+            if let Some(frames) = (pulled as u64).checked_div(channels) {
                 self.state
                     .position_samples
                     .fetch_add(frames, Ordering::Relaxed);

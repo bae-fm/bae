@@ -102,9 +102,13 @@ pub async fn restore_from_cloud(
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
     let app_dir = crate::config::bae_dir().map_err(|e| e.to_string())?;
+    // bae homes are always encrypted (a key is always present) and always
+    // obfuscate their blob paths, so the key is `Some` and `obfuscate_blob_paths`
+    // is `true`.
     let coven_config = crate::sync::restore::restore_from_cloud(
         library_id,
-        encryption_key_hex,
+        Some(encryption_key_hex),
+        true,
         library_name,
         &crate::sync::synced_tables(),
         source,
