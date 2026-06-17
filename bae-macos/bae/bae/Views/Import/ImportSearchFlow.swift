@@ -458,27 +458,24 @@ enum ImportSearchFlow {
     /// bae-core's job — `shape_user_edit_from_search_detail` masks the pressing
     /// fields per the choice — so this re-runs it rather than mutating fields
     /// in Swift.
+    ///
+    /// `detail` and `ref` come from the call site (the toggle only renders for
+    /// a source-backed pick, so both are in hand there) — no in-closure lookup
+    /// or guard.
     @MainActor
     static func changeChoice(
         importStore: ImportStore,
         key: String,
+        detail: BridgeReleaseDetail,
+        ref: (releaseId: String, source: MetadataSource),
         wantExact: Bool
     ) {
+        let choice = IdentityChoice.make(
+            exact: wantExact,
+            releaseId: ref.releaseId,
+            source: ref.source
+        )
         importStore.mutateCandidate(forKey: key) { candidate in
-            guard let detail = candidate.releaseDetailBridge,
-                let ref = candidate.identityChoice?.releaseRef
-            else {
-                // The toggle only shows for a source-backed pick, so both are
-                // present whenever this fires; a miss is a wiring bug.
-                logger.warning(
-                    "changeChoice with no source detail or release ref for key: \(key, privacy: .public)"
-                )
-                return
-            }
-            let choice: IdentityChoice =
-                wantExact
-                ? .exact(releaseId: ref.releaseId, source: ref.source)
-                : .approximate(releaseId: ref.releaseId, source: ref.source)
             candidate.identityChoice = choice
             let preview = shapeUserEditFromReleaseDetail(
                 detail: detail,
@@ -548,6 +545,30 @@ enum ImportSearchFlow {
         let importing = candidate.map(isImporting) ?? false
 
         if let candidate {
+            // The Exact / Metadata-only toggle applies only to a source-backed
+            // pick; Unknown imports have no detail or release ref and get no
+            // toggle. Unwrapping here means `changeChoice` needs no in-closure
+            // guard.
+            let exactness: ImportExactnessChoice? = {
+                guard let detail = candidate.releaseDetailBridge,
+                    let choice = candidate.identityChoice,
+                    let ref = choice.releaseRef
+                else {
+                    return nil
+                }
+                return ImportExactnessChoice(
+                    isMetadataOnly: choice.isApproximate,
+                    onSelect: { wantExact in
+                        changeChoice(
+                            importStore: importStore,
+                            key: key,
+                            detail: detail,
+                            ref: ref,
+                            wantExact: wantExact
+                        )
+                    }
+                )
+            }()
             ImportConfirmationView(
                 values: makeEditValuesBinding(
                     importStore: importStore,
@@ -564,16 +585,7 @@ enum ImportSearchFlow {
                 error: candidate.error,
                 hasCoverOptions: hasCoverOptions,
                 importing: importing,
-                canChooseExactness: candidate.releaseDetailBridge != nil,
-                isMetadataOnly: candidate.identityChoice?.isApproximate
-                    ?? false,
-                onSelectExactness: { wantExact in
-                    changeChoice(
-                        importStore: importStore,
-                        key: key,
-                        wantExact: wantExact
-                    )
-                },
+                exactness: exactness,
                 onConfirmImport: onConfirmImport,
                 onViewInLibrary: onViewInLibrary,
                 onEditCover: {

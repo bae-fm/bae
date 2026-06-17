@@ -503,22 +503,20 @@ pub enum BridgeImportStatus {
     },
 }
 
+/// One pressing under a release-group card. The card carries the album's
+/// title, artist, and cover, so the pressing projection keeps only the
+/// pressing-distinguishing fields the row renders plus the id/source the
+/// import commit needs. Grouping happens in core, so the group id isn't
+/// surfaced here.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMetadataResult {
     pub source: BridgeMetadataSource,
     pub release_id: String,
-    pub title: String,
-    pub artist: Option<String>,
     pub year: Option<i32>,
     pub format: Option<String>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
-    pub cover_url: Option<String>,
-    /// MB release-group ID for MusicBrainz results, Discogs master ID for
-    /// Discogs results. `None` when the search result didn't surface a group.
-    pub source_group_id: Option<String>,
-    pub release_url: Option<String>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -1894,20 +1892,14 @@ pub(crate) fn bridge_sort_to_core(c: &BridgeSortCriterion) -> bae_core::db::Albu
 pub(crate) fn metadata_result_to_bridge(
     r: bae_core::import::search::MetadataResult,
 ) -> BridgeMetadataResult {
-    let release_url = Some(r.source.release_url(&r.release_id));
     BridgeMetadataResult {
         source: BridgeMetadataSource::from_core(r.source),
         release_id: r.release_id,
-        title: r.title,
-        artist: r.artist,
         year: r.year,
         format: r.format,
         label: r.label,
         catalog_number: r.catalog_number,
         country: r.country,
-        cover_url: r.cover_url,
-        source_group_id: r.source_group_id,
-        release_url,
     }
 }
 

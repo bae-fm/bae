@@ -19,7 +19,6 @@ pub struct ReleaseGroup {
     /// belong to one group, otherwise the lone pressing's release id (an
     /// ungrouped result is its own single-pressing card).
     pub id: String,
-    pub source: MetadataSource,
     pub title: String,
     pub artist: Option<String>,
     /// Representative cover for the card — the first pressing that surfaced one.
@@ -62,7 +61,6 @@ impl ReleaseGroup {
         let meta_label = group_meta_label(&pressings);
         Self {
             id,
-            source,
             title,
             artist,
             cover_url,

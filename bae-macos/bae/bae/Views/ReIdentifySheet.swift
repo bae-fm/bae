@@ -183,17 +183,13 @@ struct ReIdentifySheet: View {
                 onSelectExactness: { wantExact in metadataOnly = !wantExact },
             )
             Button("Set identity") {
-                let choice: IdentityChoice =
-                    metadataOnly
-                    ? .approximate(
+                commit(
+                    .make(
+                        exact: !metadataOnly,
                         releaseId: result.releaseId,
                         source: result.source
                     )
-                    : .exact(
-                        releaseId: result.releaseId,
-                        source: result.source
-                    )
-                commit(choice)
+                )
             }
             .buttonStyle(.borderedProminent)
         }

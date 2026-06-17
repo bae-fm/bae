@@ -203,16 +203,11 @@ struct ImportSearchResultRow: View {
                 bridge: BridgeMetadataResult(
                     source: .musicBrainz,
                     releaseId: "p-1",
-                    title: "Album Title",
-                    artist: "Artist Name",
                     year: 1992,
                     format: "CD",
                     label: "Label Name",
                     catalogNumber: "CAT 3922 CD",
                     country: "BE",
-                    coverUrl: nil,
-                    sourceGroupId: "group-x",
-                    releaseUrl: nil,
                 )
             ),
             isImporting: false,
@@ -230,16 +225,11 @@ struct ImportSearchResultRow: View {
                 bridge: BridgeMetadataResult(
                     source: .musicBrainz,
                     releaseId: "p-2",
-                    title: "Album Title",
-                    artist: "Artist Name",
                     year: 2012,
                     format: "2×Vinyl",
                     label: "Label Name",
                     catalogNumber: "CAT 92021 LP",
                     country: "UK",
-                    coverUrl: nil,
-                    sourceGroupId: "group-x",
-                    releaseUrl: nil,
                 )
             ),
             isImporting: false,

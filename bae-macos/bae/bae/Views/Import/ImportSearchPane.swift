@@ -848,30 +848,20 @@ struct DiscogsKeyPopover: View {
         BridgeMetadataResult(
             source: .musicBrainz,
             releaseId: "rel-123",
-            title: "Album Title",
-            artist: "Artist Name",
             year: 1996,
             format: "CD",
             label: "Label Name",
             catalogNumber: "6006-2",
             country: "US",
-            coverUrl: nil,
-            sourceGroupId: "group-preview",
-            releaseUrl: nil,
         ),
         BridgeMetadataResult(
             source: .musicBrainz,
             releaseId: "rel-456",
-            title: "Album Title",
-            artist: "Artist Name",
             year: 1988,
             format: "CD",
             label: "Label Name",
             catalogNumber: "1871-2",
             country: "US",
-            coverUrl: nil,
-            sourceGroupId: "group-preview",
-            releaseUrl: nil,
         ),
     ]
     let provenance = Dictionary(
@@ -981,30 +971,20 @@ struct DiscogsKeyPopover: View {
                 BridgeMetadataResult(
                     source: .musicBrainz,
                     releaseId: "rel-aaa",
-                    title: "Album Title One",
-                    artist: "Artist Name",
                     year: 1996,
                     format: "CD",
                     label: "Label Name",
                     catalogNumber: "6006-2",
                     country: "US",
-                    coverUrl: nil,
-                    sourceGroupId: "grp-1",
-                    releaseUrl: nil,
                 ),
                 BridgeMetadataResult(
                     source: .musicBrainz,
                     releaseId: "rel-bbb",
-                    title: "Album Title One",
-                    artist: "Artist Name",
                     year: 1996,
                     format: "CD",
                     label: "Another Label",
                     catalogNumber: "AL-1234",
                     country: "JP",
-                    coverUrl: nil,
-                    sourceGroupId: "grp-1",
-                    releaseUrl: nil,
                 ),
             ],
         )
@@ -1022,16 +1002,11 @@ struct DiscogsKeyPopover: View {
                 BridgeMetadataResult(
                     source: .musicBrainz,
                     releaseId: "rel-ccc",
-                    title: "Album Title One (Remaster)",
-                    artist: "Artist Name",
                     year: 2005,
                     format: "CD",
                     label: "Reissue Records",
                     catalogNumber: "RR-500",
                     country: "EU",
-                    coverUrl: nil,
-                    sourceGroupId: "grp-2",
-                    releaseUrl: nil,
                 )
             ],
         )
@@ -1110,16 +1085,11 @@ struct DiscogsKeyPopover: View {
         BridgeMetadataResult(
             source: .musicBrainz,
             releaseId: "rel-disc-1",
-            title: "Album Title",
-            artist: "Artist Name",
             year: 1996,
             format: "CD",
             label: "Label A",
             catalogNumber: "AAA-001",
             country: "US",
-            coverUrl: nil,
-            sourceGroupId: "group-disc",
-            releaseUrl: nil,
         )
     ]
     .map(MetadataResult.init(bridge:))
@@ -1127,16 +1097,11 @@ struct DiscogsKeyPopover: View {
         BridgeMetadataResult(
             source: .musicBrainz,
             releaseId: "rel-bar-1",
-            title: "Album Title",
-            artist: "Artist Name",
             year: 2001,
             format: "CD",
             label: "Label B",
             catalogNumber: "BBB-002",
             country: "JP",
-            coverUrl: nil,
-            sourceGroupId: "group-bar",
-            releaseUrl: nil,
         )
     ]
     .map(MetadataResult.init(bridge:))

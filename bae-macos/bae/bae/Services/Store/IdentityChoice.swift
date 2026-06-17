@@ -53,4 +53,15 @@ enum IdentityChoice: Equatable {
         }
         return false
     }
+
+    /// Build Exact or Metadata-only (Approximate) against the same picked
+    /// release — the choice the pane's Import-as toggle and the re-identify
+    /// footer both flip.
+    static func make(exact: Bool, releaseId: String, source: MetadataSource)
+        -> IdentityChoice
+    {
+        exact
+            ? .exact(releaseId: releaseId, source: source)
+            : .approximate(releaseId: releaseId, source: source)
+    }
 }

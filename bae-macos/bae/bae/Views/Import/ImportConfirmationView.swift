@@ -40,14 +40,9 @@ struct ImportConfirmationView<
     let error: String?
     let hasCoverOptions: Bool
     let importing: Bool
-    /// Whether the Exact / Metadata-only choice applies. `false` for Unknown
-    /// imports, which have no source pressing to claim exactly.
-    let canChooseExactness: Bool
-    /// `true` when the current choice is Metadata only (pressing fields blank).
-    let isMetadataOnly: Bool
-    /// Flip the Exact / Metadata-only choice (`true` = Exact). Re-seeds the
-    /// editable fields from the source detail.
-    let onSelectExactness: (Bool) -> Void
+    /// Exact / Metadata-only choice. `nil` for Unknown imports (no source
+    /// pressing to claim exactly), which hides the toggle.
+    let exactness: ImportExactnessChoice?
     let onConfirmImport: () -> Void
     let onViewInLibrary: (String) -> Void
     let onEditCover: () -> Void
@@ -235,20 +230,19 @@ struct ImportConfirmationView<
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
 
-                if canChooseExactness {
+                if let exactness {
                     ImportAsToggle(
-                        isMetadataOnly: isMetadataOnly,
-                        onSelectExactness: onSelectExactness,
+                        isMetadataOnly: exactness.isMetadataOnly,
+                        onSelectExactness: exactness.onSelect,
                     )
-                    if isMetadataOnly {
+                    if exactness.isMetadataOnly {
                         MetadataOnlyNote()
                     }
                 }
 
                 EditMetadataForm(
                     form: $values,
-                    pressingFieldsDisabled: canChooseExactness
-                        && isMetadataOnly,
+                    pressingFieldsDisabled: exactness?.isMetadataOnly == true,
                 )
 
                 actionExtra()
@@ -612,9 +606,10 @@ struct CoverPickerView: View {
         error: nil,
         hasCoverOptions: false,
         importing: false,
-        canChooseExactness: true,
-        isMetadataOnly: false,
-        onSelectExactness: { _ in },
+        exactness: ImportExactnessChoice(
+            isMetadataOnly: false,
+            onSelect: { _ in }
+        ),
         onConfirmImport: {},
         onViewInLibrary: { _ in },
         onEditCover: {},
