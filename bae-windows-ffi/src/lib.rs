@@ -2600,8 +2600,10 @@ unsafe fn opt_cstr(ptr: *const c_char) -> Option<String> {
 }
 
 /// Connect cloud sync to an S3-compatible bucket. `endpoint` and `key_prefix`
-/// are optional (empty = unset). Probes the bucket before saving. Returns null
-/// on success, or an error-message C string (free with [`bae_string_free`]).
+/// are optional (empty = unset). `storage` is `"opaque"` (encrypted at rest,
+/// obfuscated blob paths) or `"browsable"` (stored in the clear at readable
+/// paths). Probes the bucket before saving. Returns null on success, or an
+/// error-message C string (free with [`bae_string_free`]).
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed; all
@@ -2616,6 +2618,7 @@ pub unsafe extern "C" fn bae_save_sync_config(
     key_prefix: *const c_char,
     access_key: *const c_char,
     secret_key: *const c_char,
+    storage: *const c_char,
 ) -> *mut c_char {
     let Some(handle) = handle.as_ref() else {
         return error_cstring("no app handle");
@@ -2628,6 +2631,9 @@ pub unsafe extern "C" fn bae_save_sync_config(
     ) else {
         return error_cstring("bucket, region, access key, and secret key are required");
     };
+    let Some(storage) = cstr(storage).as_deref().and_then(home_storage_from_str) else {
+        return error_cstring("storage must be \"opaque\" or \"browsable\"");
+    };
     let config = bae_core::sync::sync_manager::S3ConfigData {
         bucket,
         region,
@@ -2635,9 +2641,7 @@ pub unsafe extern "C" fn bae_save_sync_config(
         key_prefix: opt_cstr(key_prefix),
         access_key,
         secret_key,
-        // The Windows FFI does not yet surface the opaque/browsable choice, so it
-        // creates opaque (encrypted) homes as it always has.
-        storage: bae_core::config::HomeStorage::Opaque,
+        storage,
     };
     match handle
         .0
@@ -2676,19 +2680,22 @@ pub unsafe extern "C" fn bae_disconnect_warning(handle: *const BaeHandle) -> *mu
 }
 
 /// Connect cloud sync to an OAuth provider (`"google_drive"` / `"dropbox"` /
-/// `"onedrive"`). Runs the browser authorization (the core opens the system
-/// browser and waits for the redirect), then saves the tokens. Blocks until the
-/// user finishes — call off the UI thread. Returns null on success, or an
-/// error-message C string (free with [`bae_string_free`]).
+/// `"onedrive"`). `storage` is `"opaque"` (encrypted at rest, obfuscated blob
+/// paths) or `"browsable"` (stored in the clear at readable paths). Runs the
+/// browser authorization (the core opens the system browser and waits for the
+/// redirect), then saves the tokens. Blocks until the user finishes — call off
+/// the UI thread. Returns null on success, or an error-message C string (free
+/// with [`bae_string_free`]).
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
-/// `provider` must be a valid NUL-terminated UTF-8 C string.
+/// `provider` and `storage` must be valid NUL-terminated UTF-8 C strings.
 #[cfg(feature = "oauth-providers")]
 #[no_mangle]
 pub unsafe extern "C" fn bae_sign_in_cloud(
     handle: *const BaeHandle,
     provider: *const c_char,
+    storage: *const c_char,
 ) -> *mut c_char {
     let Some(handle) = handle.as_ref() else {
         return error_cstring("no app handle");
@@ -2699,13 +2706,14 @@ pub unsafe extern "C" fn bae_sign_in_cloud(
     let Some(provider) = oauth_provider_from_str(&provider) else {
         return error_cstring("unknown or unsupported provider");
     };
+    let Some(storage) = cstr(storage).as_deref().and_then(home_storage_from_str) else {
+        return error_cstring("storage must be \"opaque\" or \"browsable\"");
+    };
     let app = &handle.0;
     match app.runtime.block_on(
         app.services
             .library_manager()
-            // The Windows FFI does not yet surface the opaque/browsable choice, so
-            // it creates opaque (encrypted) homes as it always has.
-            .sign_in_cloud_provider(provider, bae_core::config::HomeStorage::Opaque),
+            .sign_in_cloud_provider(provider, storage),
     ) {
         Ok(()) => std::ptr::null_mut(),
         Err(e) => error_cstring(&e),
@@ -2916,6 +2924,18 @@ fn storage_mode_from_str(mode: &str) -> Option<bae_core::import::StorageMode> {
         "managed_unpinned" => Some(bae_core::import::StorageMode::Managed { pin: false }),
         "managed_pinned" => Some(bae_core::import::StorageMode::Managed { pin: true }),
         "unmanaged" => Some(bae_core::import::StorageMode::Unmanaged),
+        _ => None,
+    }
+}
+
+/// Parse the wire cloud-home storage tag into a [`bae_core::config::HomeStorage`].
+/// `opaque` encrypts every object at rest under the library key; `browsable`
+/// stores objects in the clear at readable paths. Not access control — the
+/// bucket's own credentials gate it either way.
+fn home_storage_from_str(storage: &str) -> Option<bae_core::config::HomeStorage> {
+    match storage {
+        "opaque" => Some(bae_core::config::HomeStorage::Opaque),
+        "browsable" => Some(bae_core::config::HomeStorage::Browsable),
         _ => None,
     }
 }

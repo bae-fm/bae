@@ -417,13 +417,17 @@ internal static class NativeBae
         [MarshalAs(UnmanagedType.LPUTF8Str)] string endpoint,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string keyPrefix,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string accessKey,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string secretKey);
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string secretKey,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string storage);
 
-    /// <summary>Connect sync to an S3 bucket; null on success, else the error.</summary>
+    /// <summary>
+    /// Connect sync to an S3 bucket; null on success, else the error. `storage`
+    /// is "opaque" (encrypted) or "browsable" (stored in the clear).
+    /// </summary>
     internal static string? SaveSyncConfig(
         IntPtr handle, string bucket, string region, string endpoint,
-        string keyPrefix, string accessKey, string secretKey) =>
-        ResultMessage(SaveSyncConfigPtr(handle, bucket, region, endpoint, keyPrefix, accessKey, secretKey));
+        string keyPrefix, string accessKey, string secretKey, string storage) =>
+        ResultMessage(SaveSyncConfigPtr(handle, bucket, region, endpoint, keyPrefix, accessKey, secretKey, storage));
 
     [DllImport(Dll, EntryPoint = "bae_disconnect_warning", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr DisconnectWarningPtr(IntPtr handle);
@@ -434,14 +438,16 @@ internal static class NativeBae
     [DllImport(Dll, EntryPoint = "bae_sign_in_cloud", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr SignInCloudPtr(
         IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string provider);
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string provider,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string storage);
 
     /// <summary>
     /// Sign in to an OAuth provider (google_drive / dropbox / onedrive); null on
-    /// success, else the error. Blocks on the browser flow — call off the UI thread.
+    /// success, else the error. `storage` is "opaque" (encrypted) or "browsable"
+    /// (stored in the clear). Blocks on the browser flow — call off the UI thread.
     /// </summary>
-    internal static string? SignInCloud(IntPtr handle, string provider) =>
-        ResultMessage(SignInCloudPtr(handle, provider));
+    internal static string? SignInCloud(IntPtr handle, string provider, string storage) =>
+        ResultMessage(SignInCloudPtr(handle, provider, storage));
 
     /// <summary>Disconnect cloud sync; null on success, else the error message.</summary>
     internal static string? DisconnectCloud(IntPtr handle) =>

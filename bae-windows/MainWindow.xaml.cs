@@ -3805,6 +3805,15 @@ public sealed partial class MainWindow : Window
         syncButtons.Children.Add(disconnect);
         syncButtons.Children.Add(syncNow);
 
+        // Opaque (encrypted) vs browsable (stored in the clear), applied to
+        // whichever provider is connected below. Defaults to the secure choice.
+        // Not access control — the bucket's own credentials gate it either way.
+        var storagePicker = new ComboBox { Header = "storage", SelectedIndex = 0 };
+        storagePicker.Items.Add(new ComboBoxItem { Content = "opaque — end-to-end encrypted", Tag = "opaque" });
+        storagePicker.Items.Add(new ComboBoxItem { Content = "browsable — stored unencrypted", Tag = "browsable" });
+        string SelectedStorage() =>
+            (storagePicker.SelectedItem as ComboBoxItem)?.Tag as string ?? "opaque";
+
         // OAuth providers: signing in runs the browser flow in the core, so it
         // blocks until the user finishes — run it off the UI thread.
         Button CloudButton(string label, string provider)
@@ -3819,7 +3828,8 @@ public sealed partial class MainWindow : Window
                     return;
                 }
                 syncStatus.Text = $"signing in to {label}…";
-                var error = await System.Threading.Tasks.Task.Run(() => NativeBae.SignInCloud(_handle, provider));
+                var storage = SelectedStorage();
+                var error = await System.Threading.Tasks.Task.Run(() => NativeBae.SignInCloud(_handle, provider, storage));
                 if (error is not null)
                 {
                     syncStatus.Text = error;
@@ -3872,6 +3882,7 @@ public sealed partial class MainWindow : Window
         connectS3.Click += async (_, _) =>
         {
             syncStatus.Text = "connecting to S3…";
+            var storage = SelectedStorage();
             var error = await System.Threading.Tasks.Task.Run(() => NativeBae.SaveSyncConfig(
                 _handle,
                 s3Bucket.Text ?? string.Empty,
@@ -3879,7 +3890,8 @@ public sealed partial class MainWindow : Window
                 s3Endpoint.Text ?? string.Empty,
                 s3KeyPrefix.Text ?? string.Empty,
                 s3AccessKey.Text ?? string.Empty,
-                s3SecretKey.Password ?? string.Empty));
+                s3SecretKey.Password ?? string.Empty,
+                storage));
             if (error is not null)
             {
                 syncStatus.Text = error;
@@ -3900,6 +3912,7 @@ public sealed partial class MainWindow : Window
 
         content.Children.Add(syncStatus);
         content.Children.Add(syncButtons);
+        content.Children.Add(storagePicker);
         content.Children.Add(oauthButtons);
         content.Children.Add(s3Form);
 
