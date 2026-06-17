@@ -48,7 +48,8 @@ struct ImportMainPane<RightPane: View>: View {
             ),
             showManualSearch: false,
             error: nil,
-            searchResults: [],
+            searchGroups: [],
+            selectedReleaseId: nil,
             isSearching: false,
             hasSearched: false,
             isImporting: false,
@@ -86,7 +87,7 @@ struct ImportMainPane<RightPane: View>: View {
             onAddAsUnknown: {},
             onToggleSignal: { _ in },
             onRerun: {},
-            onCommit: { _, _ in },
+            onSelect: { _ in },
         )
     }
     .frame(width: 900, height: 600)
@@ -107,7 +108,8 @@ struct ImportMainPane<RightPane: View>: View {
             identifyState: .notFoundAnywhere,
             showManualSearch: true,
             error: nil,
-            searchResults: [],
+            searchGroups: [],
+            selectedReleaseId: nil,
             isSearching: false,
             hasSearched: false,
             isImporting: false,
@@ -145,7 +147,7 @@ struct ImportMainPane<RightPane: View>: View {
             onAddAsUnknown: {},
             onToggleSignal: { _ in },
             onRerun: {},
-            onCommit: { _, _ in },
+            onSelect: { _ in },
         )
     }
     .frame(width: 900, height: 600)

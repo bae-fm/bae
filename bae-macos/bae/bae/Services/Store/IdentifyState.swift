@@ -58,23 +58,6 @@ enum BarcodeProgress: Equatable {
     }
 }
 
-/// Group identity of a `Found` result set: every match shares one release
-/// group. Drives the source-aware Found banner copy ("Matched N pressings
-/// on MusicBrainz" vs. "...on Discogs") and the "open release group on
-/// source" external link.
-struct GroupKey: Equatable {
-    /// Human-readable source name for banner copy, pre-built by core.
-    let sourceLabel: String
-    /// Editorial URL for this group (release-group on MB, master on
-    /// Discogs), pre-built by core.
-    let url: URL?
-
-    init(bridge: BridgeGroupKey) {
-        self.sourceLabel = bridge.sourceLabel
-        self.url = URL(string: bridge.groupUrl)
-    }
-}
-
 /// Which signals produced or confirmed one result, for the per-row badges.
 /// Mirrors `bae_core::identify::ResultProvenance`.
 struct ResultProvenance: Equatable {
@@ -106,12 +89,12 @@ enum IdentifyState: Equatable {
     /// both pipes settle.
     case triangulating(discid: DiscidProgress, barcode: BarcodeProgress)
     case found(
-        matches: [MetadataResult],
+        group: ReleaseGroup,
         libraryStatuses: [String: LibraryStatus],
         trackCount: UInt32,
-        group: GroupKey,
         source: IdentifySource,
-        provenance: [ResultProvenance],
+        /// Per-pressing provenance keyed by release id — the per-row badges.
+        provenance: [String: ResultProvenance],
     )
     /// Signals disagreed: empty intersection or multi-group result. The
     /// conflict surface presents the per-signal sections so the user can
@@ -140,22 +123,22 @@ enum IdentifyState: Equatable {
                 barcode: BarcodeProgress(bridge: barcode),
             )
         case .found(
-            let matches,
+            let group,
             let libraryStatuses,
             let trackCount,
-            let group,
             let source,
             let provenance
         ):
             self = .found(
-                matches: matches.map(MetadataResult.init(bridge:)),
+                group: ReleaseGroup(bridge: group),
                 libraryStatuses: libraryStatuses.mapValues(
                     LibraryStatus.init(bridge:)
                 ),
                 trackCount: trackCount,
-                group: GroupKey(bridge: group),
                 source: IdentifySource(bridge: source),
-                provenance: provenance.map(ResultProvenance.init(bridge:)),
+                provenance: provenance.mapValues(
+                    ResultProvenance.init(bridge:)
+                ),
             )
         case .conflict(
             let discidResults,
@@ -201,18 +184,16 @@ enum IdentifyState: Equatable {
         }
         switch self {
         case .found(
-            let matches,
+            let group,
             let libraryStatuses,
             let trackCount,
-            let group,
             let source,
             let provenance
         ):
             self = .found(
-                matches: matches,
+                group: group,
                 libraryStatuses: kept(libraryStatuses),
                 trackCount: trackCount,
-                group: group,
                 source: source,
                 provenance: provenance,
             )

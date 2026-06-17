@@ -981,26 +981,23 @@ impl AppHandle {
             ),
         };
 
-        let results = self
+        let grouped = self
             .app_services
             .import()
             .search_with_status(core_query)
             .await
             .map_err(|e| BridgeError::Import { msg: e })?;
 
-        let (metadata, statuses): (Vec<_>, Vec<_>) = results
-            .into_iter()
-            .map(|r| (r.result, r.library_status))
-            .unzip();
-
         Ok(crate::types::BridgeCandidateSearchResults {
             tab,
             source: bridge_source,
-            results: metadata
+            groups: grouped
+                .groups
                 .into_iter()
-                .map(crate::types::metadata_result_to_bridge)
+                .map(crate::types::release_group_to_bridge)
                 .collect(),
-            statuses: statuses
+            statuses: grouped
+                .statuses
                 .into_iter()
                 .map(crate::types::library_status_to_bridge)
                 .collect(),

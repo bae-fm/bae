@@ -24,11 +24,18 @@ import SwiftUI
 struct EditMetadataForm: View {
     @Binding
     var form: BridgeRawReleaseEdit
+    /// Greys out and locks the pressing fields. The import pane sets this when
+    /// the Metadata-only choice is active — those fields stay blank because the
+    /// user isn't claiming a specific pressing. Off everywhere else (the
+    /// post-commit edit sheet always edits the pressing).
+    var pressingFieldsDisabled: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             albumGroup
             pressingGroup
+                .disabled(pressingFieldsDisabled)
+                .opacity(pressingFieldsDisabled ? 0.55 : 1)
             tracksGroup
         }
     }

@@ -26,6 +26,14 @@ struct FolderImportTab: View {
     @AppStorage("importStoragePinned")
     private var storagePinned: Bool = true
 
+    /// Height of the docked confirm pane (drag-resizable); persists across
+    /// open/close so reopening restores the user's size.
+    @State
+    private var paneHeight: CGFloat = 384
+    /// Suppresses the open/close height animation while the user drags.
+    @State
+    private var paneDragging = false
+
     @State
     private var documentContent: (name: String, text: String)?
     @Environment(\.openSettings)
@@ -243,20 +251,87 @@ struct FolderImportTab: View {
             onError: { uiStore.showError($0) },
             previewState: importStore.previewState,
         ) {
-            if candidate.mode == .loadingDetail {
-                ProgressView("Loading release details...")
-            }
-            else if candidate.mode == .confirming {
-                confirmationView(for: candidate)
-            }
-            else {
-                searchAndResultsPane(for: candidate)
-            }
+            resultPane(for: candidate)
         }
         .animation(nil, value: selectedKey)
     }
 
-    private func searchAndResultsPane(for candidate: Candidate) -> some View {
+    /// True while the confirm pane is docked — during detail load and while
+    /// confirming.
+    private func paneOpen(_ candidate: Candidate) -> Bool {
+        candidate.mode == .loadingDetail || candidate.mode == .confirming
+    }
+
+    /// Search/results above, the confirm pane docked at the bottom. The results
+    /// stay visible and scrollable; the pane slides up when a pressing is
+    /// picked and is drag-resizable.
+    private func resultPane(for candidate: Candidate) -> some View {
+        GeometryReader { geo in
+            let open = paneOpen(candidate)
+            let height =
+                open
+                ? ImportPaneLayout.clamp(
+                    paneHeight,
+                    available: geo.size.height
+                )
+                : 0
+            VStack(spacing: 0) {
+                searchAndResultsPane(
+                    for: candidate,
+                    selectedReleaseId: open
+                        ? candidate.identityChoice?.releaseRef?.releaseId : nil
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                ImportResultBottomPane(
+                    height: $paneHeight,
+                    dragging: $paneDragging,
+                    available: geo.size.height,
+                    onClose: { closePane(candidate) },
+                ) {
+                    paneContent(for: candidate)
+                }
+                .frame(height: height)
+                .clipped()
+                .animation(
+                    paneDragging ? nil : .easeOut(duration: 0.28),
+                    value: height
+                )
+            }
+        }
+    }
+
+    /// Pane body: a loading spinner while the source detail loads, the
+    /// editable confirm form once it's in, and nothing when the pane is closed
+    /// (it's clipped to zero height then).
+    @ViewBuilder
+    private func paneContent(for candidate: Candidate) -> some View {
+        switch candidate.mode {
+        case .loadingDetail:
+            ProgressView("Loading release details...")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .confirming:
+            confirmationView(for: candidate)
+        case .identifying:
+            Color.clear
+        }
+    }
+
+    /// Close the pane and drop the seed cluster so reopening the identify
+    /// surface leaves no stale identity claim or file-tag edit behind.
+    private func closePane(_ candidate: Candidate) {
+        importStore.mutateCandidate(forKey: candidate.key) { c in
+            c.mode = .identifying
+            c.releaseDetailBridge = nil
+            c.identityChoice = nil
+            c.editValues = nil
+        }
+    }
+
+    private func searchAndResultsPane(
+        for candidate: Candidate,
+        selectedReleaseId: String?
+    ) -> some View {
         ImportSearchFlow.buildSearchPane(
             importer: importer,
             library: library,
@@ -266,6 +341,7 @@ struct FolderImportTab: View {
             candidate: candidate,
             localTrackCount: candidate.trackCount,
             openSettings: { openSettings() },
+            selectedReleaseId: selectedReleaseId,
             onAddAsUnknown: {
                 guard case .folder(let folderPath, _) = candidate.source else {
                     return
@@ -316,17 +392,6 @@ struct FolderImportTab: View {
             importDisabled: false,
             localArtwork: candidate.files.artwork,
             uiStore: uiStore,
-            onBack: {
-                importStore.mutateCandidate(forKey: key) { c in
-                    c.mode = .identifying
-                    c.releaseDetail = nil
-                    // Drop the whole seed cluster so returning to the
-                    // identify pane leaves no stale identity claim or
-                    // file-tag edit behind.
-                    c.identityChoice = nil
-                    c.editValues = nil
-                }
-            },
             onConfirmImport: {
                 commitConfirmedImport(candidate: candidate)
             },

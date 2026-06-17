@@ -112,8 +112,8 @@ enum ImportSearchFlow {
                 let resultSource = MetadataSource(bridge: response.source)
                 importStore.mutateCandidate(forKey: key) { candidate in
                     var tabResults = CandidateSearchState.TabResults()
-                    tabResults.results = response.results.map(
-                        MetadataResult.init(bridge:)
+                    tabResults.groups = response.groups.map(
+                        ReleaseGroup.init(bridge:)
                     )
                     tabResults.hasSearched = true
                     tabResults.isSearching = false
@@ -194,8 +194,9 @@ enum ImportSearchFlow {
             // Unknown imports never carry a source release — clear any
             // prior detail so the confirmation page falls back to its
             // detail-less rendering (no remote cover picker, no
-            // library-status banner, no track-count mismatch).
-            candidate.releaseDetail = nil
+            // library-status banner, no track-count mismatch, no
+            // Exact/Metadata choice).
+            candidate.releaseDetailBridge = nil
             // No source cover URL exists for Unknown; leave the local
             // artwork picker as the only cover affordance.
             candidate.selectedCoverUrl = nil
@@ -267,17 +268,19 @@ enum ImportSearchFlow {
                     bridgeSource,
                     localTrackCount
                 )
-                let nativeDetail = ImportReleaseDetail(bridge: bridgeDetail)
                 let preview = shapeUserEditFromReleaseDetail(
                     detail: bridgeDetail,
                     choice: identityChoice.bridge
                 )
                 importStore.mutateCandidate(forKey: key) { candidate in
-                    candidate.releaseDetail = nativeDetail
+                    // Keep the full source detail: flipping the Exact /
+                    // Metadata-only choice in the pane re-shapes the editor
+                    // from it without a re-fetch.
+                    candidate.releaseDetailBridge = bridgeDetail
                     // Manual prefetch: the user just picked a different
                     // release, so any prior pick was for a now-stale cover
                     // set — replace it with the new release's default.
-                    candidate.selectedCoverUrl = nativeDetail.defaultCoverUrl
+                    candidate.selectedCoverUrl = bridgeDetail.defaultCoverUrl
                     // Editor seed comes pre-shaped from bae-core (the
                     // Exact-vs-Approximate/Unknown pressing-field
                     // masking and per-track artist-override logic live
@@ -330,10 +333,11 @@ enum ImportSearchFlow {
 
     // MARK: - Shared search pane builder
 
-    /// `onCommit` defaults to the import flow's prefetch + confirmation
-    /// path. Re-identify overrides it with a direct `re_identify_release`
-    /// commit since the release is already in the library — there's no
-    /// second editable confirmation page.
+    /// `onSelect` defaults to the import flow's prefetch + docked-pane path
+    /// (picking a pressing opens the confirm pane). Re-identify overrides it
+    /// to select the pressing and commit `re_identify_release` from its own
+    /// footer, since the release is already in the library — there's no second
+    /// editable confirmation page.
     @MainActor
     @ViewBuilder
     static func buildSearchPane(
@@ -345,19 +349,27 @@ enum ImportSearchFlow {
         candidate: Candidate,
         localTrackCount: UInt32?,
         openSettings: @escaping () -> Void,
+        /// Release id of the pressing whose confirm pane is open, so its row
+        /// renders selected.
+        selectedReleaseId: String?,
         onAddAsUnknown: (() -> Void)?,
-        onCommit: ((MetadataResult, IdentityChoice) -> Void)? = nil,
+        onSelect: ((MetadataResult) -> Void)? = nil,
     ) -> some View {
         let tabResults = candidate.search.activeResults()
-        let resolvedOnCommit: (MetadataResult, IdentityChoice) -> Void =
-            onCommit
-            ?? { result, choice in
+        // Picking a pressing row defaults to claiming it as the exact pressing;
+        // the pane's Import-as toggle flips it to Metadata-only afterward.
+        let resolvedOnSelect: (MetadataResult) -> Void =
+            onSelect
+            ?? { result in
                 prefetchAndConfirm(
                     library: library,
                     importStore: importStore,
                     key: key,
                     result: result,
-                    identityChoice: choice,
+                    identityChoice: .exact(
+                        releaseId: result.releaseId,
+                        source: result.source
+                    ),
                     localTrackCount: localTrackCount
                 )
             }
@@ -366,7 +378,8 @@ enum ImportSearchFlow {
             identifyState: candidate.identifyState,
             showManualSearch: candidate.search.showManualSearch,
             error: candidate.error,
-            searchResults: tabResults.results,
+            searchGroups: tabResults.groups,
+            selectedReleaseId: selectedReleaseId,
             isSearching: tabResults.isSearching,
             hasSearched: tabResults.hasSearched,
             isImporting: isImporting(candidate),
@@ -433,8 +446,49 @@ enum ImportSearchFlow {
             onRerun: {
                 importer.rerunIdentifyForCandidate(key)
             },
-            onCommit: resolvedOnCommit,
+            onSelect: resolvedOnSelect,
         )
+    }
+
+    // MARK: - Import-as choice (in the pane)
+
+    /// Flip the open pane's Exact / Metadata-only choice and re-seed the
+    /// editor from the stored source detail. Exact seeds the pressing fields
+    /// from the picked release; Metadata-only blanks them. Re-shaping is
+    /// bae-core's job — `shape_user_edit_from_search_detail` masks the pressing
+    /// fields per the choice — so this re-runs it rather than mutating fields
+    /// in Swift.
+    @MainActor
+    static func changeChoice(
+        importStore: ImportStore,
+        key: String,
+        wantExact: Bool
+    ) {
+        importStore.mutateCandidate(forKey: key) { candidate in
+            guard let detail = candidate.releaseDetailBridge,
+                let ref = candidate.identityChoice?.releaseRef
+            else {
+                // The toggle only shows for a source-backed pick, so both are
+                // present whenever this fires; a miss is a wiring bug.
+                logger.warning(
+                    "changeChoice with no source detail or release ref for key: \(key, privacy: .public)"
+                )
+                return
+            }
+            let choice: IdentityChoice =
+                wantExact
+                ? .exact(releaseId: ref.releaseId, source: ref.source)
+                : .approximate(releaseId: ref.releaseId, source: ref.source)
+            candidate.identityChoice = choice
+            let preview = shapeUserEditFromReleaseDetail(
+                detail: detail,
+                choice: choice.bridge
+            )
+            candidate.editValues = rawReleaseEditFromUserEdit(
+                edit: preview,
+                trackIdPrefix: "import-track"
+            )
+        }
     }
 
     // MARK: - Shared confirmation view builder
@@ -484,7 +538,6 @@ enum ImportSearchFlow {
         importDisabled: Bool,
         localArtwork: [FileInfo],
         uiStore: UiStore,
-        onBack: @escaping () -> Void,
         onConfirmImport: @escaping () -> Void,
         onViewInLibrary: @escaping (String) -> Void,
         @ViewBuilder coverContent: @escaping () -> some View,
@@ -511,7 +564,16 @@ enum ImportSearchFlow {
                 error: candidate.error,
                 hasCoverOptions: hasCoverOptions,
                 importing: importing,
-                onBack: onBack,
+                canChooseExactness: candidate.releaseDetailBridge != nil,
+                isMetadataOnly: candidate.identityChoice?.isApproximate
+                    ?? false,
+                onSelectExactness: { wantExact in
+                    changeChoice(
+                        importStore: importStore,
+                        key: key,
+                        wantExact: wantExact
+                    )
+                },
                 onConfirmImport: onConfirmImport,
                 onViewInLibrary: onViewInLibrary,
                 onEditCover: {

@@ -19,18 +19,18 @@ enum MetadataSource: Equatable, Hashable {
     }
 }
 
+/// One pressing under a release-group card. The card carries the album's
+/// title, artist, and cover, so the pressing projection keeps only the
+/// pressing-distinguishing fields the row renders plus the id/source the
+/// import commit needs.
 struct MetadataResult: Equatable, Identifiable {
     let source: MetadataSource
     let releaseId: String
-    let title: String
-    let artist: String?
     let year: Int32?
     let format: String?
     let label: String?
     let catalogNumber: String?
     let country: String?
-    let coverImageSource: ImageLoader.Source?
-    let releaseUrl: String?
 
     var id: String {
         releaseId
@@ -39,15 +39,11 @@ struct MetadataResult: Equatable, Identifiable {
     init(bridge: BridgeMetadataResult) {
         source = MetadataSource(bridge: bridge.source)
         releaseId = bridge.releaseId
-        title = bridge.title
-        artist = bridge.artist
         year = bridge.year
         format = bridge.format
         label = bridge.label
         catalogNumber = bridge.catalogNumber
         country = bridge.country
-        coverImageSource = bridge.coverUrl.map { .remote(url: $0) }
-        releaseUrl = bridge.releaseUrl
     }
 }
 

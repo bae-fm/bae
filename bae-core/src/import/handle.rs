@@ -66,11 +66,12 @@ pub enum SearchQuery {
     },
 }
 
-/// A search result paired with its library dupe status.
+/// Search results grouped by release group, with the per-release library dupe
+/// statuses the UI looks up by release id.
 #[derive(Debug, Clone)]
-pub struct SearchResultWithStatus {
-    pub result: crate::import::search::MetadataResult,
-    pub library_status: crate::db::LibraryStatus,
+pub struct GroupedSearchResults {
+    pub groups: Vec<crate::import::release_group::ReleaseGroup>,
+    pub statuses: Vec<crate::db::LibraryStatus>,
 }
 
 /// What `save_discogs_token` did with a submitted key, after validating against
@@ -211,11 +212,12 @@ impl ImportServiceHandle {
             .map_err(|e| format!("Discogs search failed: {e}"))
     }
 
-    /// Search for releases and check library status in one call.
+    /// Search for releases, check library status, and bundle the results into
+    /// release-group cards in one call.
     pub async fn search_with_status(
         &self,
         query: SearchQuery,
-    ) -> Result<Vec<SearchResultWithStatus>, String> {
+    ) -> Result<GroupedSearchResults, String> {
         use crate::db::LibraryCheck;
 
         let results = match query {
@@ -280,19 +282,20 @@ impl ImportServiceHandle {
         // check, keyed by `release_id`, so a miss is a broken invariant —
         // surface it rather than fabricating a "not in library" default that
         // would silently misclassify a real failure.
-        let mut results_with_status = Vec::with_capacity(results.len());
-        for r in results {
+        let mut statuses = Vec::with_capacity(results.len());
+        for r in &results {
             let status = status_map
                 .get(&r.release_id)
                 .cloned()
                 .ok_or_else(|| format!("library status missing for release {}", r.release_id))?;
-            results_with_status.push(SearchResultWithStatus {
-                result: r,
-                library_status: status,
-            });
+            statuses.push(status);
         }
 
-        Ok(results_with_status)
+        // Grouping is the UI's shape, so it happens here in core: the search
+        // surface renders one card per release group with the pressings beneath.
+        let groups = crate::import::release_group::group_results(results);
+
+        Ok(GroupedSearchResults { groups, statuses })
     }
 
     pub async fn search_discogs(

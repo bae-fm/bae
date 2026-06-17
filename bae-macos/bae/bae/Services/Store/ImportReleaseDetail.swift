@@ -10,16 +10,11 @@ struct ImportReleaseDetail: Equatable {
     let trackCount: UInt32
     let trackCountMismatch: Bool
     let coverArt: [CoverArt]
-    /// The source's primary cover URL, pre-computed by core: what the
-    /// picker shows selected when the confirm pane mounts without a
-    /// manual pick.
-    let defaultCoverUrl: String?
 
     init(bridge: BridgeReleaseDetail) {
         releaseId = bridge.releaseId
         trackCount = bridge.trackCount
         trackCountMismatch = bridge.trackCountMismatch
         coverArt = bridge.coverArt.map(CoverArt.init(bridge:))
-        defaultCoverUrl = bridge.defaultCoverUrl
     }
 }

@@ -18,6 +18,8 @@ mod handle;
 pub mod musicbrainz_mapper;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod progress;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod release_group;
 pub mod search;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod service;
@@ -52,8 +54,8 @@ pub use folder_scanner::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{
-    parsed_album_to_user_edit, shape_user_edit_from_search_detail, DiscogsSaveOutcome, ImportEvent,
-    ImportServiceHandle, ScanEvent, SearchQuery, SearchResultWithStatus,
+    parsed_album_to_user_edit, shape_user_edit_from_search_detail, DiscogsSaveOutcome,
+    GroupedSearchResults, ImportEvent, ImportServiceHandle, ScanEvent, SearchQuery,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use progress::ImportProgressHandle;

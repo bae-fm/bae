@@ -48,6 +48,14 @@ struct ReIdentifySheet: View {
     private var commitTask: Task<Void, Never>?
     @State
     private var landingAlbumId: String?
+    /// The pressing the user clicked, pending the Exact / Metadata-only choice
+    /// in the footer. `nil` until a row is picked.
+    @State
+    private var selectedResult: MetadataResult?
+    /// Footer choice for the selected pressing: claim the album group only
+    /// rather than the exact pressing.
+    @State
+    private var metadataOnly = false
 
     private enum Phase: Equatable {
         case identifying
@@ -106,34 +114,41 @@ struct ReIdentifySheet: View {
         switch phase {
         case .identifying:
             if let candidate = importStore.reIdentifyCandidates[key] {
-                ImportSearchFlow.buildSearchPane(
-                    importer: importer,
-                    library: library,
-                    importStore: importStore,
-                    configStore: configStore,
-                    key: key,
-                    candidate: candidate,
-                    localTrackCount: trackCount,
-                    openSettings: { openSettings() },
-                    // Re-identify "Skip identifying" diverges from the import
-                    // flow: it commits Unknown in one click (no editable seed
-                    // page). The identity flips to FileTags and the rows are
-                    // reseeded from the rip's file tags as part of the commit
-                    // (graceful seeding), so the release immediately reflects
-                    // its own tags rather than the prior source's metadata —
-                    // there's no post-commit refresh prompt for Unknown.
-                    onAddAsUnknown: { commit(.unknown) },
-                    onCommit: { _, choice in
-                        // Re-identify commits the user's pick directly —
-                        // no prefetch, no editable confirmation page (the
-                        // release already has metadata; "Edit metadata..."
-                        // covers post-commit edits separately). The
-                        // identity choice arrives fully formed: the row
-                        // buttons embed the result's release id + source
-                        // when constructing it.
-                        commit(choice)
-                    },
-                )
+                VStack(spacing: 0) {
+                    ImportSearchFlow.buildSearchPane(
+                        importer: importer,
+                        library: library,
+                        importStore: importStore,
+                        configStore: configStore,
+                        key: key,
+                        candidate: candidate,
+                        localTrackCount: trackCount,
+                        openSettings: { openSettings() },
+                        selectedReleaseId: selectedResult?.releaseId,
+                        // Re-identify "Skip identifying" diverges from the
+                        // import flow: it commits Unknown in one click (no
+                        // editable seed page). The identity flips to FileTags
+                        // and the rows are reseeded from the rip's file tags as
+                        // part of the commit (graceful seeding), so the release
+                        // immediately reflects its own tags rather than the
+                        // prior source's metadata — there's no post-commit
+                        // refresh prompt for Unknown.
+                        onAddAsUnknown: { commit(.unknown) },
+                        // Re-identify has no editable confirm page (the release
+                        // already has metadata; "Edit metadata..." covers
+                        // post-commit edits). Picking a pressing selects it;
+                        // the footer carries the Exact / Metadata-only choice
+                        // and commits directly via `re_identify_release`.
+                        onSelect: { result in
+                            selectedResult = result
+                            metadataOnly = false
+                        },
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if let result = selectedResult {
+                        selectionFooter(for: result)
+                    }
+                }
             }
             else {
                 ProgressView("Starting re-identify...")
@@ -149,6 +164,44 @@ struct ReIdentifySheet: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .error(let message):
             errorBanner(message: message)
+        }
+    }
+
+    // MARK: - Selection footer
+
+    /// Footer shown once a pressing is picked: the Exact / Metadata-only
+    /// choice plus a Set-identity commit. Re-identify has no editable confirm
+    /// page, so the choice lives here instead of on the rows.
+    private func selectionFooter(for result: MetadataResult) -> some View {
+        HStack(spacing: 12) {
+            Text("Set identity to this pressing")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            Spacer()
+            ImportAsToggle(
+                isMetadataOnly: metadataOnly,
+                onSelectExactness: { wantExact in metadataOnly = !wantExact },
+            )
+            Button("Set identity") {
+                let choice: IdentityChoice =
+                    metadataOnly
+                    ? .approximate(
+                        releaseId: result.releaseId,
+                        source: result.source
+                    )
+                    : .exact(
+                        releaseId: result.releaseId,
+                        source: result.source
+                    )
+                commit(choice)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Theme.surface)
+        .overlay(alignment: .top) {
+            Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
         }
     }
 

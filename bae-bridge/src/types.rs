@@ -755,19 +755,27 @@ pub enum BridgeBarcodeProgress {
     Skipped,
 }
 
-/// Group identity of a `Found` result set: every match shares this
-/// `(source, source_group_id)`. Lets the UI render
-/// "N pressings of one release group" copy.
+/// An album's release group with the pressings the search/identify surfaced
+/// for it, plus the display labels the group card renders. Mirrors
+/// `bae_core::import::release_group::ReleaseGroup` — the grouping and label
+/// formatting happen in core; the UI just iterates and renders.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeGroupKey {
-    pub source: BridgeMetadataSource,
-    pub source_group_id: String,
-    /// Human-readable source name for banner copy ("MusicBrainz" /
-    /// "Discogs").
+pub struct BridgeReleaseGroup {
+    /// Stable card identity (shared group id, or the lone pressing's release
+    /// id for an ungrouped result).
+    pub id: String,
+    pub title: String,
+    pub artist: Option<String>,
+    /// Representative cover for the card.
+    pub cover_url: Option<String>,
+    /// Human-readable source name ("MusicBrainz" / "Discogs").
     pub source_label: String,
     /// Editorial URL for the group on its source (release-group on
-    /// MusicBrainz, master on Discogs).
-    pub group_url: String,
+    /// MusicBrainz, master on Discogs). `None` for an ungrouped result.
+    pub group_url: Option<String>,
+    /// Pre-formatted year span + pressing count, e.g. "1992 – 2012 · 4 pressings".
+    pub meta_label: String,
+    pub pressings: Vec<BridgeMetadataResult>,
 }
 
 /// The disc-ID signal. Mirrors `bae_core::signals::DiscIdSignal`.
@@ -835,17 +843,18 @@ pub enum BridgeIdentifyState {
         barcode: BridgeBarcodeProgress,
     },
     Found {
-        matches: Vec<BridgeMetadataResult>,
+        /// The single release group every match shares, with its pressings —
+        /// the UI renders it as one card with the pressings beneath.
+        group: BridgeReleaseGroup,
         /// Library status per matched release, keyed by release id, so the
         /// UI looks up a row's status directly without re-indexing a flat
         /// list.
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         track_count: u32,
-        group: BridgeGroupKey,
         source: BridgeIdentifySource,
-        /// Per-match provenance, index-aligned with `matches` — the per-row
-        /// signal badges.
-        provenance: Vec<BridgeResultProvenance>,
+        /// Per-pressing provenance keyed by release id — the per-row signal
+        /// badges.
+        provenance: std::collections::HashMap<String, BridgeResultProvenance>,
     },
     /// Signals disagreed: empty intersection or multi-group result. The UI
     /// presents the per-signal sections so the user can pick a section,
@@ -1281,7 +1290,10 @@ pub enum BridgeSearchQueryKind {
 pub struct BridgeCandidateSearchResults {
     pub tab: BridgeSearchQueryKind,
     pub source: BridgeMetadataSource,
-    pub results: Vec<BridgeMetadataResult>,
+    /// Results grouped into release-group cards, one card per group with its
+    /// pressings beneath.
+    pub groups: Vec<BridgeReleaseGroup>,
+    /// Per-release library dupe statuses, looked up by release id.
     pub statuses: Vec<BridgeLibraryStatus>,
 }
 
@@ -2043,14 +2055,22 @@ fn barcode_progress_to_bridge(p: bae_core::identify::BarcodeProgress) -> BridgeB
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn group_key_to_bridge(g: bae_core::identify::GroupKey) -> BridgeGroupKey {
-    let source_label = g.source.display_name().to_string();
-    let group_url = g.source.group_url(&g.source_group_id);
-    BridgeGroupKey {
-        source: BridgeMetadataSource::from_core(g.source),
-        source_group_id: g.source_group_id,
-        source_label,
-        group_url,
+pub(crate) fn release_group_to_bridge(
+    g: bae_core::import::release_group::ReleaseGroup,
+) -> BridgeReleaseGroup {
+    BridgeReleaseGroup {
+        id: g.id,
+        title: g.title,
+        artist: g.artist,
+        cover_url: g.cover_url,
+        source_label: g.source_label,
+        group_url: g.group_url,
+        meta_label: g.meta_label,
+        pressings: g
+            .pressings
+            .into_iter()
+            .map(metadata_result_to_bridge)
+            .collect(),
     }
 }
 
@@ -2141,17 +2161,28 @@ pub(crate) fn identify_state_to_bridge(
             source,
             provenance,
             context: _,
-        } => BridgeIdentifyState::Found {
-            matches: matches.into_iter().map(metadata_result_to_bridge).collect(),
-            library_statuses: library_statuses
-                .into_iter()
-                .map(|s| (s.release_id.clone(), library_status_to_bridge(s)))
-                .collect(),
-            track_count,
-            group: group_key_to_bridge(group),
-            source: identify_source_to_bridge(source),
-            provenance: provenance.into_iter().map(provenance_to_bridge).collect(),
-        },
+        } => {
+            // `matches` all share `group` (combine guarantees a single group)
+            // and `provenance` is index-aligned with them. Key the provenance
+            // by release id before folding the matches into the group card so
+            // the UI looks each pressing's badges up directly.
+            let provenance = matches
+                .iter()
+                .map(|m| m.release_id.clone())
+                .zip(provenance.into_iter().map(provenance_to_bridge))
+                .collect();
+            let group = bae_core::import::release_group::ReleaseGroup::from_group(group, matches);
+            BridgeIdentifyState::Found {
+                group: release_group_to_bridge(group),
+                library_statuses: library_statuses
+                    .into_iter()
+                    .map(|s| (s.release_id.clone(), library_status_to_bridge(s)))
+                    .collect(),
+                track_count,
+                source: identify_source_to_bridge(source),
+                provenance,
+            }
+        }
         IdentifyState::Conflict { context } => {
             // The per-signal sections come from the context's settled results.
             // Disc-id results all share one source; name it for the section

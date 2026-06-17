@@ -1,32 +1,6 @@
 import AppKit
 import SwiftUI
 
-// MARK: - MetadataResultListView
-
-struct MetadataResultListView: View {
-    let results: [MetadataResult]
-    let isImporting: Bool
-    let libraryStatuses: [String: LibraryStatus]
-    /// Per-result provenance keyed by release id, for the signal badges.
-    /// Empty for manual-search results (no auto-identify signals).
-    var provenance: [String: ResultProvenance] = [:]
-    let onCommit: (MetadataResult, IdentityChoice) -> Void
-
-    var body: some View {
-        List(results, id: \.releaseId) { result in
-            ImportSearchResultRow(
-                result: result,
-                isImporting: isImporting,
-                libraryStatus: libraryStatuses[result.releaseId],
-                provenance: provenance[result.releaseId],
-                onCommit: { choice in onCommit(result, choice) },
-            )
-        }
-        .scrollContentBackground(.hidden)
-        .background(Theme.background)
-    }
-}
-
 // MARK: - ImportSearchFormView
 
 struct ImportSearchFormView: View {
@@ -170,7 +144,9 @@ struct ImportSearchPane: View {
     let identifyState: IdentifyState
     let showManualSearch: Bool
     let error: String?
-    let searchResults: [MetadataResult]
+    let searchGroups: [ReleaseGroup]
+    /// Release id of the pressing whose confirm pane is open, for row selection.
+    let selectedReleaseId: String?
     let isSearching: Bool
     let hasSearched: Bool
     let isImporting: Bool
@@ -207,34 +183,25 @@ struct ImportSearchPane: View {
     let onToggleSignal: (ExcludedSignal) -> Void
     /// Re-run the lookups from the toolbar's `Re-run` action.
     let onRerun: () -> Void
-    let onCommit: (MetadataResult, IdentityChoice) -> Void
+    /// A pressing row was picked — the flow opens the docked confirm pane.
+    let onSelect: (MetadataResult) -> Void
 
-    /// Auto-identified matches, library statuses, and per-row provenance,
-    /// extracted from the identify state.
-    private var autoIdentifyResult:
+    /// The auto-identified release group, its library statuses, and per-row
+    /// provenance, extracted from the identify state. A `Found` state always
+    /// carries exactly one group.
+    private var foundResult:
         (
-            matches: [MetadataResult], statuses: [String: LibraryStatus],
-            provenance: [ResultProvenance]
+            group: ReleaseGroup, statuses: [String: LibraryStatus],
+            provenance: [String: ResultProvenance]
         )?
     {
         guard
-            case .found(let matches, let statuses, _, _, _, let provenance) =
+            case .found(let group, let statuses, _, _, let provenance) =
                 identifyState
         else {
             return nil
         }
-        return (matches, statuses, provenance)
-    }
-
-    /// Per-row provenance keyed by release id, for the auto-match badges.
-    private var autoMatchProvenance: [String: ResultProvenance] {
-        guard let result = autoIdentifyResult else {
-            return [:]
-        }
-        return Dictionary(
-            zip(result.matches.map(\.releaseId), result.provenance),
-            uniquingKeysWith: { first, _ in first }
-        )
+        return (group, statuses, provenance)
     }
 
     /// Whether the pipeline is mid-triangulation — drives the body's
@@ -293,9 +260,8 @@ struct ImportSearchPane: View {
 
     @ViewBuilder
     private var normalBody: some View {
-        let autoMatches = autoIdentifyResult?.matches ?? []
-        let hasAutoMatches = !autoMatches.isEmpty
-        let showingAutoMatches = hasAutoMatches && !showManualSearch
+        let found = foundResult
+        let showingAutoMatches = found != nil && !showManualSearch
 
         VStack(spacing: 0) {
             toolbar
@@ -313,13 +279,14 @@ struct ImportSearchPane: View {
                 .padding(.vertical, 6)
             }
 
-            if showingAutoMatches {
-                MetadataResultListView(
-                    results: autoMatches,
+            if showingAutoMatches, let found {
+                ReleaseGroupListView(
+                    groups: [found.group],
                     isImporting: isImporting,
-                    libraryStatuses: autoIdentifyResult?.statuses ?? [:],
-                    provenance: autoMatchProvenance,
-                    onCommit: onCommit,
+                    libraryStatuses: found.statuses,
+                    provenance: found.provenance,
+                    selectedReleaseId: selectedReleaseId,
+                    onSelect: onSelect,
                 )
             }
             else if isTriangulating, !showManualSearch {
@@ -361,7 +328,7 @@ struct ImportSearchPane: View {
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                else if searchResults.isEmpty {
+                else if searchGroups.isEmpty {
                     ContentUnavailableView(
                         "No matches found",
                         systemImage: "magnifyingglass",
@@ -372,11 +339,12 @@ struct ImportSearchPane: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 else {
-                    MetadataResultListView(
-                        results: searchResults,
+                    ReleaseGroupListView(
+                        groups: searchGroups,
                         isImporting: isImporting,
                         libraryStatuses: libraryStatuses,
-                        onCommit: onCommit,
+                        selectedReleaseId: selectedReleaseId,
+                        onSelect: onSelect,
                     )
                 }
             }
@@ -386,9 +354,7 @@ struct ImportSearchPane: View {
 
     @ViewBuilder
     private var identifyBanner: some View {
-        let autoMatches = autoIdentifyResult?.matches ?? []
-        let hasAutoMatches = !autoMatches.isEmpty
-        let showingAutoMatches = hasAutoMatches && !showManualSearch
+        let showingAutoMatches = foundResult != nil && !showManualSearch
 
         // The toolbar above owns the global escapes (Search manually / Skip
         // identifying / Re-run), so the banner carries only the status copy
@@ -399,13 +365,16 @@ struct ImportSearchPane: View {
             // The toolbar's spinning badges and the body placeholder cover
             // triangulation; the banner stays out of the way.
             EmptyView()
-        case .found(let matches, _, _, let group, _, _):
+        case .found(let group, _, _, _, _):
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                foundBannerText(matchCount: matches.count, group: group)
-                    .font(.callout)
-                if let url = group.url {
+                foundBannerText(
+                    matchCount: group.pressings.count,
+                    group: group
+                )
+                .font(.callout)
+                if let url = group.groupUrl {
                     Button {
                         NSWorkspace.shared.open(url)
                     } label: {
@@ -419,7 +388,9 @@ struct ImportSearchPane: View {
                 discIdInfoIcon
                 Spacer()
                 if !showingAutoMatches {
-                    Button("View automatic matches (\(matches.count))") {
+                    Button(
+                        "View automatic matches (\(group.pressings.count))"
+                    ) {
                         onViewMatches()
                     }
                     .buttonStyle(.link)
@@ -616,10 +587,10 @@ struct ImportSearchPane: View {
                 ForEach(results, id: \.releaseId) { result in
                     ImportSearchResultRow(
                         result: result,
-                        kind: .pressing,
                         isImporting: isImporting,
                         libraryStatus: libraryStatuses[result.releaseId],
-                        onCommit: { choice in onCommit(result, choice) },
+                        isSelected: result.releaseId == selectedReleaseId,
+                        onSelect: { onSelect(result) },
                     )
                     Rectangle().fill(.white.opacity(0.05)).frame(height: 1)
                 }
@@ -671,7 +642,7 @@ struct ImportSearchPane: View {
     /// (combine returns Found only when results agree on a group), so
     /// the banner can call that out directly. The match count and
     /// source name carry weight against the surrounding secondary text.
-    private func foundBannerText(matchCount: Int, group: GroupKey) -> Text {
+    private func foundBannerText(matchCount: Int, group: ReleaseGroup) -> Text {
         let secondary = Color.secondary
         switch matchCount {
         case 1:
@@ -873,7 +844,7 @@ struct DiscogsKeyPopover: View {
 // MARK: - Previews
 
 #Preview("Main Pane - Exact Matches") {
-    let results: [MetadataResult] = [
+    let pressings: [BridgeMetadataResult] = [
         BridgeMetadataResult(
             source: .musicBrainz,
             releaseId: "rel-123",
@@ -885,7 +856,7 @@ struct DiscogsKeyPopover: View {
             catalogNumber: "6006-2",
             country: "US",
             coverUrl: nil,
-            sourceGroupId: nil,
+            sourceGroupId: "group-preview",
             releaseUrl: nil,
         ),
         BridgeMetadataResult(
@@ -899,37 +870,46 @@ struct DiscogsKeyPopover: View {
             catalogNumber: "1871-2",
             country: "US",
             coverUrl: nil,
-            sourceGroupId: nil,
+            sourceGroupId: "group-preview",
             releaseUrl: nil,
         ),
     ]
-    .map(MetadataResult.init(bridge:))
-    ImportSearchPane(
-        identifyState: .found(
-            matches: results,
-            libraryStatuses: [:],
-            trackCount: 0,
-            group: GroupKey(
-                bridge: BridgeGroupKey(
-                    source: .musicBrainz,
-                    sourceGroupId: "group-preview",
-                    sourceLabel: "MusicBrainz",
-                    groupUrl:
-                        "https://musicbrainz.org/release-group/group-preview",
-                ),
-            ),
-            source: .discid,
-            provenance: results.map { _ in
+    let provenance = Dictionary(
+        uniqueKeysWithValues: pressings.map {
+            (
+                $0.releaseId,
                 ResultProvenance(
                     byDiscId: true,
                     byBarcode: false,
                     matchesCatalog: true
                 )
-            },
+            )
+        }
+    )
+    ImportSearchPane(
+        identifyState: .found(
+            group: ReleaseGroup(
+                bridge: BridgeReleaseGroup(
+                    id: "group-preview",
+                    title: "Album Title",
+                    artist: "Artist Name",
+                    coverUrl: nil,
+                    sourceLabel: "MusicBrainz",
+                    groupUrl:
+                        "https://musicbrainz.org/release-group/group-preview",
+                    metaLabel: "1988 \u{2013} 1996 \u{00b7} 2 pressings",
+                    pressings: pressings,
+                )
+            ),
+            libraryStatuses: [:],
+            trackCount: 0,
+            source: .discid,
+            provenance: provenance,
         ),
         showManualSearch: false,
         error: nil,
-        searchResults: [],
+        searchGroups: [],
+        selectedReleaseId: nil,
         isSearching: false,
         hasSearched: false,
         isImporting: false,
@@ -978,7 +958,7 @@ struct DiscogsKeyPopover: View {
         onAddAsUnknown: {},
         onToggleSignal: { _ in },
         onRerun: {},
-        onCommit: { _, _ in },
+        onSelect: { _ in },
     )
     .frame(width: 700, height: 600)
     .background(Theme.background)
@@ -988,77 +968,86 @@ struct DiscogsKeyPopover: View {
 }
 
 #Preview("Main Pane - Manual Search") {
-    let results: [MetadataResult] = [
-        BridgeMetadataResult(
-            source: .musicBrainz,
-            releaseId: "rel-aaa",
+    let groupOne = ReleaseGroup(
+        bridge: BridgeReleaseGroup(
+            id: "grp-1",
             title: "Album Title One",
             artist: "Artist Name",
-            year: 1996,
-            format: "CD",
-            label: "Label Name",
-            catalogNumber: "6006-2",
-            country: "US",
             coverUrl: nil,
-            sourceGroupId: nil,
-            releaseUrl: nil,
-        ),
-        BridgeMetadataResult(
-            source: .musicBrainz,
-            releaseId: "rel-bbb",
-            title: "Album Title One",
-            artist: "Artist Name",
-            year: 1996,
-            format: "CD",
-            label: "Another Label",
-            catalogNumber: "AL-1234",
-            country: "JP",
-            coverUrl: nil,
-            sourceGroupId: nil,
-            releaseUrl: nil,
-        ),
-        BridgeMetadataResult(
-            source: .musicBrainz,
-            releaseId: "rel-ccc",
+            sourceLabel: "MusicBrainz",
+            groupUrl: "https://musicbrainz.org/release-group/grp-1",
+            metaLabel: "1996 \u{00b7} 2 pressings",
+            pressings: [
+                BridgeMetadataResult(
+                    source: .musicBrainz,
+                    releaseId: "rel-aaa",
+                    title: "Album Title One",
+                    artist: "Artist Name",
+                    year: 1996,
+                    format: "CD",
+                    label: "Label Name",
+                    catalogNumber: "6006-2",
+                    country: "US",
+                    coverUrl: nil,
+                    sourceGroupId: "grp-1",
+                    releaseUrl: nil,
+                ),
+                BridgeMetadataResult(
+                    source: .musicBrainz,
+                    releaseId: "rel-bbb",
+                    title: "Album Title One",
+                    artist: "Artist Name",
+                    year: 1996,
+                    format: "CD",
+                    label: "Another Label",
+                    catalogNumber: "AL-1234",
+                    country: "JP",
+                    coverUrl: nil,
+                    sourceGroupId: "grp-1",
+                    releaseUrl: nil,
+                ),
+            ],
+        )
+    )
+    let groupTwo = ReleaseGroup(
+        bridge: BridgeReleaseGroup(
+            id: "grp-2",
             title: "Album Title One (Remaster)",
             artist: "Artist Name",
-            year: 2005,
-            format: "CD",
-            label: "Reissue Records",
-            catalogNumber: "RR-500",
-            country: "EU",
             coverUrl: nil,
-            sourceGroupId: nil,
-            releaseUrl: nil,
-        ),
-    ]
-    .map(MetadataResult.init(bridge:))
+            sourceLabel: "MusicBrainz",
+            groupUrl: "https://musicbrainz.org/release-group/grp-2",
+            metaLabel: "2005 \u{00b7} 1 pressing",
+            pressings: [
+                BridgeMetadataResult(
+                    source: .musicBrainz,
+                    releaseId: "rel-ccc",
+                    title: "Album Title One (Remaster)",
+                    artist: "Artist Name",
+                    year: 2005,
+                    format: "CD",
+                    label: "Reissue Records",
+                    catalogNumber: "RR-500",
+                    country: "EU",
+                    coverUrl: nil,
+                    sourceGroupId: "grp-2",
+                    releaseUrl: nil,
+                )
+            ],
+        )
+    )
     ImportSearchPane(
         identifyState: .found(
-            matches: results,
+            group: groupOne,
             libraryStatuses: [:],
             trackCount: 0,
-            group: GroupKey(
-                bridge: BridgeGroupKey(
-                    source: .musicBrainz,
-                    sourceGroupId: "group-preview",
-                    sourceLabel: "MusicBrainz",
-                    groupUrl:
-                        "https://musicbrainz.org/release-group/group-preview",
-                ),
-            ),
             source: .discid,
-            provenance: results.map { _ in
-                ResultProvenance(
-                    byDiscId: true,
-                    byBarcode: false,
-                    matchesCatalog: false
-                )
-            },
+            provenance: [:],
         ),
         showManualSearch: true,
         error: nil,
-        searchResults: results,
+        searchGroups: [groupOne, groupTwo],
+        selectedReleaseId: nil,
         isSearching: false,
         hasSearched: true,
         isImporting: false,
@@ -1107,7 +1096,7 @@ struct DiscogsKeyPopover: View {
         onAddAsUnknown: {},
         onToggleSignal: { _ in },
         onRerun: {},
-        onCommit: { _, _ in },
+        onSelect: { _ in },
     )
     .frame(width: 700, height: 600)
     .background(Theme.background)
@@ -1163,7 +1152,8 @@ struct DiscogsKeyPopover: View {
         ),
         showManualSearch: false,
         error: nil,
-        searchResults: [],
+        searchGroups: [],
+        selectedReleaseId: nil,
         isSearching: false,
         hasSearched: false,
         isImporting: false,
@@ -1201,7 +1191,7 @@ struct DiscogsKeyPopover: View {
         onAddAsUnknown: {},
         onToggleSignal: { _ in },
         onRerun: {},
-        onCommit: { _, _ in },
+        onSelect: { _ in },
     )
     .environment(UiStore())
     .environment(MediaPaths.stub)

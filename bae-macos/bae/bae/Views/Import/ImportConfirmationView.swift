@@ -40,7 +40,14 @@ struct ImportConfirmationView<
     let error: String?
     let hasCoverOptions: Bool
     let importing: Bool
-    let onBack: () -> Void
+    /// Whether the Exact / Metadata-only choice applies. `false` for Unknown
+    /// imports, which have no source pressing to claim exactly.
+    let canChooseExactness: Bool
+    /// `true` when the current choice is Metadata only (pressing fields blank).
+    let isMetadataOnly: Bool
+    /// Flip the Exact / Metadata-only choice (`true` = Exact). Re-seeds the
+    /// editable fields from the source detail.
+    let onSelectExactness: (Bool) -> Void
     let onConfirmImport: () -> Void
     let onViewInLibrary: (String) -> Void
     let onEditCover: () -> Void
@@ -93,16 +100,6 @@ struct ImportConfirmationView<
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Button {
-                    onBack()
-                } label: {
-                    Label("Back to Search", systemImage: "chevron.left")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .disabled(importing)
-
                 HStack(alignment: .top, spacing: 16) {
                     coverContent()
                         .overlay(alignment: .topTrailing) {
@@ -238,7 +235,21 @@ struct ImportConfirmationView<
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
 
-                EditMetadataForm(form: $values)
+                if canChooseExactness {
+                    ImportAsToggle(
+                        isMetadataOnly: isMetadataOnly,
+                        onSelectExactness: onSelectExactness,
+                    )
+                    if isMetadataOnly {
+                        MetadataOnlyNote()
+                    }
+                }
+
+                EditMetadataForm(
+                    form: $values,
+                    pressingFieldsDisabled: canChooseExactness
+                        && isMetadataOnly,
+                )
 
                 actionExtra()
             }
@@ -601,7 +612,9 @@ struct CoverPickerView: View {
         error: nil,
         hasCoverOptions: false,
         importing: false,
-        onBack: {},
+        canChooseExactness: true,
+        isMetadataOnly: false,
+        onSelectExactness: { _ in },
         onConfirmImport: {},
         onViewInLibrary: { _ in },
         onEditCover: {},

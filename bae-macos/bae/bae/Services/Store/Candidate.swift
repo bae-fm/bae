@@ -33,9 +33,10 @@ enum SearchTab: Hashable {
 
 /// Per-tab search state plus form fields and active tab/source.
 struct CandidateSearchState: Equatable {
-    /// Search results for one (tab, source) combination.
+    /// Search results for one (tab, source) combination, grouped into
+    /// release-group cards by core.
     struct TabResults: Equatable {
-        var results: [MetadataResult] = []
+        var groups: [ReleaseGroup] = []
         var hasSearched: Bool = false
         var isSearching: Bool = false
     }
@@ -102,7 +103,17 @@ struct Candidate: Equatable, Identifiable {
     var files: CandidateFiles
     var identifyState: IdentifyState = .idle
     var importStatus: ImportStatus?
-    var releaseDetail: ImportReleaseDetail?
+    /// Full release detail fetched after the user picks a pressing. Stored as
+    /// the bridge type (not just the `ImportReleaseDetail` projection) so the
+    /// bottom pane can re-seed the editor when the user flips the Exact /
+    /// Metadata-only choice — re-shaping needs the source detail, not only the
+    /// cover/track-count projection below.
+    var releaseDetailBridge: BridgeReleaseDetail?
+    /// Cover-art / track-count projection of the picked release, derived from
+    /// `releaseDetailBridge` for the confirm pane.
+    var releaseDetail: ImportReleaseDetail? {
+        releaseDetailBridge.map(ImportReleaseDetail.init(bridge:))
+    }
     var libraryStatuses: [String: LibraryStatus] = [:]
     var mode: CandidateMode = .identifying
     var error: String?
