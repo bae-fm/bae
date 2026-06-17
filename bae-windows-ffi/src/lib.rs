@@ -1670,8 +1670,6 @@ enum FfiEvent {
     CandidateRemoved {
         key: String,
     },
-    /// All scan candidates were cleared.
-    CandidatesCleared,
     /// The folder walk finished.
     ScanFinished,
     /// The cloud upload/delete outbox changed; the storage screen re-reads it.
@@ -1936,9 +1934,6 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             audio_paths: candidate_audio_paths(&candidate.files),
         },
         UiBusEvent::ScanCandidateRemoved { key } => FfiEvent::CandidateRemoved { key: key.clone() },
-        UiBusEvent::FolderCandidatesCleared | UiBusEvent::AllCandidatesCleared => {
-            FfiEvent::CandidatesCleared
-        }
         UiBusEvent::ScanFinished => FfiEvent::ScanFinished,
         UiBusEvent::OutboxChanged { .. } => FfiEvent::OutboxChanged,
         UiBusEvent::ConfigChanged { .. } => FfiEvent::ConfigChanged,
@@ -3048,10 +3043,13 @@ pub unsafe extern "C" fn bae_reidentify_release(
     }
 }
 
-/// Enqueue a folder scan. Discovered release candidates arrive as
-/// `CandidateAdded` events; `ScanFinished` fires when the walk completes.
-/// `clear_first` drops existing folder candidates before scanning. Returns null
-/// on success, or an error-message C string (free with [`bae_string_free`]).
+/// Add a folder to import from. The folder joins the watched-folder set, which
+/// scans it and reconciles its release candidates as the library changes on
+/// disk; discovered candidates arrive as `CandidateAdded` events and
+/// `ScanFinished` fires when the walk completes. `clear_first` is retained for
+/// ABI compatibility but ignored — the watched-folder model reconciles
+/// candidates rather than clearing them. Returns null on success, or an
+/// error-message C string (free with [`bae_string_free`]).
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
@@ -3060,7 +3058,7 @@ pub unsafe extern "C" fn bae_reidentify_release(
 pub unsafe extern "C" fn bae_scan_folder(
     handle: *const BaeHandle,
     path: *const c_char,
-    clear_first: bool,
+    _clear_first: bool,
 ) -> *mut c_char {
     let Some(handle) = handle.as_ref() else {
         return error_cstring("no app handle");
@@ -3068,12 +3066,7 @@ pub unsafe extern "C" fn bae_scan_folder(
     let Some(path) = cstr(path) else {
         return error_cstring("invalid folder path");
     };
-    match handle
-        .0
-        .services
-        .import()
-        .enqueue_folder_scan(std::path::PathBuf::from(path), clear_first)
-    {
+    match handle.0.services.import().add_watched_folder(path) {
         Ok(()) => std::ptr::null_mut(),
         Err(e) => error_cstring(&e),
     }

@@ -334,9 +334,8 @@ public sealed partial class MainWindow : Window
 
         _eventCallback = null;
         _queue = new List<QueueItem>();
-        // Scan candidates survive the import dialog closing, so clear them here:
-        // their CandidatesCleared event would come from the handle we just freed,
-        // so it never fires for the next library.
+        // Scan candidates are per-library in-memory state; clear them on teardown
+        // so the next library doesn't inherit the previous one's candidate list.
         _candidates.Clear();
         Albums.Clear();
         SearchBox.Text = string.Empty;
@@ -1013,9 +1012,6 @@ public sealed partial class MainWindow : Window
                 {
                     _candidates.Remove(removed);
                 }
-                break;
-            case "CandidatesCleared":
-                _candidates.Clear();
                 break;
             case "ScanFinished":
                 if (_scanStatus is not null)
