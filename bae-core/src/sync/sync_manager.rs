@@ -29,6 +29,8 @@ pub struct S3ConfigData {
     pub key_prefix: Option<String>,
     pub access_key: String,
     pub secret_key: String,
+    /// Opaque (encrypted, obfuscated) or browsable (plaintext, readable) home.
+    pub storage: crate::config::HomeStorage,
 }
 
 /// Build coven's `SyncManager` wired with bae's config provider, blob plan, and
@@ -44,7 +46,7 @@ pub struct S3ConfigData {
 pub fn build_sync_manager(
     config_handle: Arc<ConfigHandle>,
     key_service: KeyService,
-    encryption_service: EncryptionService,
+    encryption_service: Option<EncryptionService>,
     database: Database,
     outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
     upload_throughput: Arc<UploadThroughput>,

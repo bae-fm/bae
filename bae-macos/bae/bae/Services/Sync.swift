@@ -4,14 +4,18 @@ import Foundation
 /// restore-code generator used by the settings UI.
 final class Sync: Sendable, Observable {
     let signInCloudProvider:
-        @Sendable (_ provider: BridgeCloudProvider) async throws -> Void
+        @Sendable (
+            _ provider: BridgeCloudProvider, _ storage: BridgeHomeStorage
+        )
+            async throws -> Void
     let disconnectCloudProvider: @Sendable () throws -> Void
     /// Set up iCloud (CloudKit) as the sync provider: validate the iCloud
     /// account is usable, register the CloudKit driver with the bridge, then
     /// persist the provider. Throws before persisting when iCloud is
     /// unavailable, so a signed-out account never lands `provider: CloudKit`
     /// in the config.
-    let connectCloudkit: @Sendable () async throws -> Void
+    let connectCloudkit:
+        @Sendable (_ storage: BridgeHomeStorage) async throws -> Void
     let saveSyncConfig:
         @Sendable (_ configData: BridgeSaveSyncConfig) async throws -> Void
     let generateRestoreCode: @Sendable () throws -> String
@@ -44,11 +48,15 @@ final class Sync: Sendable, Observable {
 
     init(
         signInCloudProvider:
-            @escaping @Sendable (BridgeCloudProvider) async throws -> Void = {
-                _ in
+            @escaping @Sendable (BridgeCloudProvider, BridgeHomeStorage)
+            async throws ->
+            Void = { _, _ in
             },
         disconnectCloudProvider: @escaping @Sendable () throws -> Void = {},
-        connectCloudkit: @escaping @Sendable () async throws -> Void = {},
+        connectCloudkit:
+            @escaping @Sendable (BridgeHomeStorage) async throws -> Void = {
+                _ in
+            },
         saveSyncConfig:
             @escaping @Sendable (BridgeSaveSyncConfig) async throws -> Void = {
                 _ in
@@ -90,20 +98,23 @@ final class Sync: Sendable, Observable {
             // to bridge methods that exist only when their feature is compiled
             // in. The UI that calls these is compiled out of baeium builds, so
             // there the closures are unreachable stubs.
-            signInCloudProvider: { provider in
+            signInCloudProvider: { provider, storage in
                 #if BAE_OAUTH_PROVIDERS
-                    try await handle.signInCloudProvider(provider: provider)
+                    try await handle.signInCloudProvider(
+                        provider: provider,
+                        storage: storage
+                    )
                 #else
                     throw StubError.notImplemented
                 #endif
             },
             disconnectCloudProvider: { try handle.disconnectCloudProvider() },
-            connectCloudkit: {
+            connectCloudkit: { storage in
                 #if BAE_CLOUDKIT
                     // The driver is installed once at app startup; here we only
                     // pre-flight the iCloud account before persisting CloudKit.
                     try await CloudKitService.bae().checkAccountAvailable()
-                    try await handle.useCloudkit()
+                    try await handle.useCloudkit(storage: storage)
                 #else
                     throw StubError.notImplemented
                 #endif

@@ -72,10 +72,12 @@ struct SyncSetupWizard: View {
     /// Awaits the OAuth browser round-trip; cancellation aborts the listener.
     /// The OAuth provider UI that invokes this is compiled out of baeium builds,
     /// where the closure is an unused stub.
-    let onConnectOAuth: (_ provider: BridgeCloudProvider) async throws -> Void
+    let onConnectOAuth:
+        (_ provider: BridgeCloudProvider, _ storage: BridgeHomeStorage)
+            async throws -> Void
     /// The iCloud UI that invokes this is compiled out of baeium builds, where
     /// the closure is an unused stub.
-    let onConnectCloudKit: () async throws -> Void
+    let onConnectCloudKit: (_ storage: BridgeHomeStorage) async throws -> Void
     let onDone: () -> Void
 
     @State
@@ -86,6 +88,11 @@ struct SyncSetupWizard: View {
     private var isWorking = false
     @State
     private var connectTask: Task<Void, Never>?
+
+    // How the home stores its objects: opaque (encrypted) or browsable (stored in
+    // the clear). Applies to every provider; defaults to the secure choice.
+    @State
+    private var storage: BridgeHomeStorage = .opaque
 
     // S3 fields
     @State
@@ -206,6 +213,8 @@ struct SyncSetupWizard: View {
     @ViewBuilder
     private func configureStep(for provider: BridgeCloudProvider) -> some View {
         Form {
+            storageSection
+
             // The switch stays exhaustive over all five providers in every
             // build; only the arms whose bridge calls are feature-gated are
             // hollowed out. A gated-out provider never reaches here — it isn't
@@ -236,6 +245,34 @@ struct SyncSetupWizard: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    // MARK: - Storage mode
+
+    /// Opaque vs. browsable, shown for every provider. Opaque is the secure
+    /// default; browsable trades encryption for a bucket you can read by name.
+    /// This is not access control — the provider's own credentials gate the
+    /// bucket either way.
+    private var storageSection: some View {
+        Section("Storage") {
+            Picker("Storage", selection: $storage) {
+                Text("Opaque — end-to-end encrypted")
+                    .tag(BridgeHomeStorage.opaque)
+                Text("Browsable — stored unencrypted")
+                    .tag(BridgeHomeStorage.browsable)
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+
+            Text(
+                storage == .opaque
+                    ? "Every object is encrypted before upload. Anyone with access to the storage sees only ciphertext under opaque keys."
+                    : "Objects are stored in the clear at readable paths, so anyone with access to the storage can read your files by name. Sharing is unavailable for a browsable library."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     // MARK: - S3
@@ -335,19 +372,20 @@ struct SyncSetupWizard: View {
             keyPrefix: keyPrefix.isEmpty ? nil : keyPrefix,
             accessKey: accessKey,
             secretKey: secretKey,
+            storage: storage,
         )
         runConnect { try await onConnectS3(data) }
     }
 
     #if BAE_OAUTH_PROVIDERS
         private func connectOAuth(provider: BridgeCloudProvider) {
-            runConnect { try await onConnectOAuth(provider) }
+            runConnect { try await onConnectOAuth(provider, storage) }
         }
     #endif
 
     #if BAE_CLOUDKIT
         private func connectCloudKit() {
-            runConnect { try await onConnectCloudKit() }
+            runConnect { try await onConnectCloudKit(storage) }
         }
     #endif
 
@@ -399,8 +437,8 @@ struct SyncSetupWizard: View {
 #Preview("Provider Selection") {
     SyncSetupWizard(
         onConnectS3: { _ in },
-        onConnectOAuth: { _ in },
-        onConnectCloudKit: {},
+        onConnectOAuth: { _, _ in },
+        onConnectCloudKit: { _ in },
         onDone: {},
     )
 }

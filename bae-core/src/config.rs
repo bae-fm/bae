@@ -180,6 +180,13 @@ pub fn rfc3339_to_epoch_millis(s: &str) -> Result<i64, chrono::ParseError> {
 /// directly — same fields, extracted from bae — instead of a parallel copy.
 pub use coven::config::CloudHomeConfig;
 
+/// How a cloud home stores its objects: opaque (encrypted, obfuscated blob
+/// paths) or browsable (stored in the clear at readable paths). The host picks
+/// this when creating a cloud home; it drives both encryption-at-rest and the
+/// blob-path scheme. Not access control — the provider's own credentials gate
+/// the bucket either way; this is only about whether what's stored is legible.
+pub use coven::config::HomeStorage;
+
 /// The validation state of a stored Discogs API key. Only carried when a key
 /// exists (`Config::discogs` is `Some`). Distinct from `DiscogsTokenStatus`:
 /// this only describes a key that exists, whereas the status folds in the

@@ -14,12 +14,17 @@ use crate::types::BridgeMetadataSource;
 use crate::types::BridgeRemoteCover;
 #[cfg(feature = "oauth-providers")]
 use crate::types::{bridge_cloud_provider_to_core, BridgeCloudProvider};
+// `BridgeHomeStorage` is named only in the OAuth and CloudKit connect signatures;
+// `bridge_home_storage_to_core` is also used by the always-present S3 path below,
+// so it is imported unconditionally.
+#[cfg(any(feature = "oauth-providers", feature = "cloudkit"))]
+use crate::types::BridgeHomeStorage;
 use crate::types::{
-    bridge_sort_to_core, BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeConfig,
-    BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeRelease,
-    BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,
-    BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage, BridgeStorageRow,
-    BridgeStorageSort, BridgeTrack, BridgeTrackGroup, BridgeTrackSearchResult,
+    bridge_home_storage_to_core, bridge_sort_to_core, BridgeAlbum, BridgeAlbumDetail,
+    BridgeAlbumSearchResult, BridgeConfig, BridgeCoverSelection, BridgeError, BridgeFile,
+    BridgeGalleryItem, BridgeRelease, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
+    BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage,
+    BridgeStorageRow, BridgeStorageSort, BridgeTrack, BridgeTrackGroup, BridgeTrackSearchResult,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{bridge_storage_mode_to_core, BridgeStorageMode};
@@ -592,6 +597,7 @@ impl AppHandle {
                     key_prefix: config_data.key_prefix,
                     access_key: config_data.access_key,
                     secret_key: config_data.secret_key,
+                    storage: bridge_home_storage_to_core(config_data.storage),
                 })
                 .await
         })
@@ -733,10 +739,11 @@ impl AppHandle {
 #[cfg(feature = "cloudkit")]
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
-    pub async fn use_cloudkit(&self) -> Result<(), BridgeError> {
+    pub async fn use_cloudkit(&self, storage: BridgeHomeStorage) -> Result<(), BridgeError> {
         // Starts sync against CloudKit — deep; on a worker.
         let services = self.app_services.clone();
-        self.spawn_on_runtime(async move { services.library_manager().use_cloudkit().await })
+        let storage = bridge_home_storage_to_core(storage);
+        self.spawn_on_runtime(async move { services.library_manager().use_cloudkit(storage).await })
             .await
             .map_err(|msg| BridgeError::Config { msg })
     }
@@ -752,15 +759,17 @@ impl AppHandle {
     pub async fn sign_in_cloud_provider(
         &self,
         provider: BridgeCloudProvider,
+        storage: BridgeHomeStorage,
     ) -> Result<(), BridgeError> {
         // OAuth + cloud-folder setup then starts sync — network; on a worker.
         // Cancellation tears down the OAuth listener via coven's own drop guard.
         let services = self.app_services.clone();
         let core_provider = bridge_cloud_provider_to_core(provider);
+        let storage = bridge_home_storage_to_core(storage);
         self.spawn_on_runtime(async move {
             services
                 .library_manager()
-                .sign_in_cloud_provider(core_provider)
+                .sign_in_cloud_provider(core_provider, storage)
                 .await
         })
         .await

@@ -2635,6 +2635,9 @@ pub unsafe extern "C" fn bae_save_sync_config(
         key_prefix: opt_cstr(key_prefix),
         access_key,
         secret_key,
+        // The Windows FFI does not yet surface the opaque/browsable choice, so it
+        // creates opaque (encrypted) homes as it always has.
+        storage: bae_core::config::HomeStorage::Opaque,
     };
     match handle
         .0
@@ -2700,7 +2703,9 @@ pub unsafe extern "C" fn bae_sign_in_cloud(
     match app.runtime.block_on(
         app.services
             .library_manager()
-            .sign_in_cloud_provider(provider),
+            // The Windows FFI does not yet surface the opaque/browsable choice, so
+            // it creates opaque (encrypted) homes as it always has.
+            .sign_in_cloud_provider(provider, bae_core::config::HomeStorage::Opaque),
     ) {
         Ok(()) => std::ptr::null_mut(),
         Err(e) => error_cstring(&e),

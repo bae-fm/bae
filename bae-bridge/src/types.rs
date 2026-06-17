@@ -61,6 +61,18 @@ pub enum BridgeCloudProvider {
     CloudKit,
 }
 
+/// How a cloud home stores its objects, chosen when connecting the home.
+/// `Opaque` encrypts every object at rest under the library key and uses
+/// obfuscated, content-addressed keys; `Browsable` stores objects in the clear
+/// at readable paths. This is not access control — the provider's own
+/// credentials gate the bucket either way; it is only about whether what's
+/// stored is legible to someone who already has bucket access.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeHomeStorage {
+    Opaque,
+    Browsable,
+}
+
 /// A library known to bae on this device. A library is created here or restored
 /// onto this device from another of the owner's devices; every device holds the
 /// same single-owner library with full read/write, stored at `path`. `is_active`
@@ -1531,6 +1543,8 @@ pub struct BridgeSaveSyncConfig {
     pub key_prefix: Option<String>,
     pub access_key: String,
     pub secret_key: String,
+    /// Whether the home is opaque (encrypted) or browsable (stored in the clear).
+    pub storage: BridgeHomeStorage,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -1869,6 +1883,14 @@ pub(crate) fn bridge_cloud_provider_to_core(
         BridgeCloudProvider::Dropbox => CloudProvider::Dropbox,
         BridgeCloudProvider::OneDrive => CloudProvider::OneDrive,
         BridgeCloudProvider::CloudKit => CloudProvider::CloudKit,
+    }
+}
+
+pub(crate) fn bridge_home_storage_to_core(s: BridgeHomeStorage) -> bae_core::config::HomeStorage {
+    use bae_core::config::HomeStorage;
+    match s {
+        BridgeHomeStorage::Opaque => HomeStorage::Opaque,
+        BridgeHomeStorage::Browsable => HomeStorage::Browsable,
     }
 }
 

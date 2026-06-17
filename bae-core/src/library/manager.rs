@@ -1165,7 +1165,7 @@ impl LibraryManager {
             return Some(encryption.clone());
         }
         self.sync_manager_inner()
-            .map(|sm| sm.encryption_service().clone())
+            .and_then(|sm| sm.encryption_service().cloned())
     }
 
     /// Start background listeners (sync status → library events).
@@ -4719,6 +4719,7 @@ impl LibraryManager {
                 c.cloud_home.s3_region = Some(data.region);
                 c.cloud_home.s3_endpoint = data.endpoint.filter(|s| !s.is_empty());
                 c.cloud_home.s3_key_prefix = data.key_prefix.filter(|s| !s.is_empty());
+                c.cloud_home.storage = data.storage;
             })
             .map_err(|e| format!("Failed to save config: {e}"))?;
 
@@ -4731,7 +4732,11 @@ impl LibraryManager {
     }
 
     #[cfg(feature = "oauth-providers")]
-    pub async fn sign_in_cloud_provider(&self, provider: CloudProvider) -> Result<(), String> {
+    pub async fn sign_in_cloud_provider(
+        &self,
+        provider: CloudProvider,
+        storage: crate::config::HomeStorage,
+    ) -> Result<(), String> {
         use crate::storage::cloud::setup;
 
         // Hold the sender alive across the await so cancel.wait_for inside
@@ -4754,6 +4759,7 @@ impl LibraryManager {
                     .update(move |c| {
                         c.cloud_home.provider = Some(CloudProvider::GoogleDrive);
                         c.cloud_home.google_drive_folder_id = Some(folder_id);
+                        c.cloud_home.storage = storage;
                     })
                     .map_err(|e| e.to_string())?;
             }
@@ -4766,6 +4772,7 @@ impl LibraryManager {
                     .update(move |c| {
                         c.cloud_home.provider = Some(CloudProvider::Dropbox);
                         c.cloud_home.dropbox_folder_path = Some(folder_path);
+                        c.cloud_home.storage = storage;
                     })
                     .map_err(|e| e.to_string())?;
             }
@@ -4779,6 +4786,7 @@ impl LibraryManager {
                         c.cloud_home.provider = Some(CloudProvider::OneDrive);
                         c.cloud_home.onedrive_drive_id = Some(drive_id);
                         c.cloud_home.onedrive_folder_id = Some(folder_id);
+                        c.cloud_home.storage = storage;
                     })
                     .map_err(|e| e.to_string())?;
             }
@@ -4790,9 +4798,12 @@ impl LibraryManager {
         Ok(())
     }
 
-    pub async fn use_cloudkit(&self) -> Result<(), String> {
+    pub async fn use_cloudkit(&self, storage: crate::config::HomeStorage) -> Result<(), String> {
         self.config_handle
-            .update(|c| c.cloud_home.provider = Some(CloudProvider::CloudKit))
+            .update(move |c| {
+                c.cloud_home.provider = Some(CloudProvider::CloudKit);
+                c.cloud_home.storage = storage;
+            })
             .map_err(|e| format!("Failed to save CloudKit config: {e}"))?;
         self.ensure_sync_manager_and_start().await?;
         // A cloud home now exists, so every release gains its storage actions.
@@ -4853,26 +4864,28 @@ impl LibraryManager {
         })
     }
 
-    /// Build, start, and attach a sync manager from an already-unlocked
-    /// encryption service. Used once at startup for a returning user whose key
-    /// is in the keyring. Shares this manager's outbox in-flight set and event
-    /// channel with the sync loop's upload observer. Call before [`Self::start`].
+    /// Build, start, and attach a sync manager. Used once at startup for a
+    /// returning user with a configured cloud home: an unlocked key for an opaque
+    /// home (`Some`), or no key for a browsable home (`None`). Shares this manager's
+    /// outbox in-flight set and event channel with the sync loop's upload
+    /// observer. Call before [`Self::start`].
     pub async fn attach_and_start_sync(
         &self,
-        encryption_service: EncryptionService,
+        encryption_service: Option<EncryptionService>,
     ) -> Result<(), String> {
         self.build_and_install_sync_manager(encryption_service)
             .await?;
         Ok(())
     }
 
-    /// Build a `SyncManager` from an unlocked `EncryptionService`, wire it into the
-    /// running app via [`Self::install_sync_manager`], and return it so the caller
-    /// can inspect the started manager. All build inputs except the encryption
-    /// service come from this manager's shared state.
+    /// Build a `SyncManager`, wire it into the running app via
+    /// [`Self::install_sync_manager`], and return it so the caller can inspect the
+    /// started manager. The encryption service is `Some` for an opaque home and
+    /// `None` for a browsable one; all other build inputs come from this manager's
+    /// shared state.
     async fn build_and_install_sync_manager(
         &self,
-        encryption_service: EncryptionService,
+        encryption_service: Option<EncryptionService>,
     ) -> Result<Arc<SyncManager>, String> {
         let sm = Arc::new(build_sync_manager(
             Arc::clone(&self.config_handle),
@@ -4905,31 +4918,43 @@ impl LibraryManager {
             return Ok(());
         }
 
-        // Create encryption key. Idempotent: if already in keyring, returns the
-        // existing one — so a retry after a failed sync init reuses the key.
-        let enc_key_hex = self
-            .key_service
-            .get_or_create_encryption_key()
-            .map_err(|e| format!("Failed to create encryption key: {e}"))?;
-        let enc_service = EncryptionService::new(&enc_key_hex)
-            .map_err(|e| format!("Failed to create encryption service: {e}"))?;
-        let fingerprint = enc_service.fingerprint();
+        // An opaque home mints (or reuses) the library key and seals every object
+        // under it; a browsable home stores in the clear and has no key at all.
+        // Build the encryption service only for an opaque home, so a browsable
+        // home never mints a key it would never use. `get_or_create_encryption_key`
+        // is idempotent, so a retry after a failed sync init reuses the key.
+        let storage = self.config_handle.config().cloud_home.storage;
+        let (enc_service, fingerprint) = if storage.is_opaque() {
+            let enc_key_hex = self
+                .key_service
+                .get_or_create_encryption_key()
+                .map_err(|e| format!("Failed to create encryption key: {e}"))?;
+            let enc = EncryptionService::new(&enc_key_hex)
+                .map_err(|e| format!("Failed to create encryption service: {e}"))?;
+            let fingerprint = enc.fingerprint();
+            (Some(enc), Some(fingerprint))
+        } else {
+            (None, None)
+        };
 
         let sm = self.build_and_install_sync_manager(enc_service).await?;
 
-        // Only persist the encryption-key hint flag once the sync loop has
-        // actually started. start_sync() silently bails when create_cloud_home
-        // fails or init_sync returns None (unreachable backend, missing creds,
-        // …); recording the fingerprint anyway would tell the unlock flow on
-        // the next launch "this library has encryption set up", and any
-        // subsequent setup attempt would skip the unlock prompt while sync is
-        // still broken. Leaving the fingerprint unwritten makes the next
-        // attempt a clean retry; the SyncManager is kept around so the
-        // reconnect banner can drive recovery.
+        // For an opaque home, persist the encryption-key hint flag — but only once
+        // the sync loop has actually started. start_sync() silently bails when
+        // create_cloud_home fails or init_sync returns None (unreachable backend,
+        // missing creds, …); recording the fingerprint anyway would tell the
+        // unlock flow on the next launch "this library has encryption set up", and
+        // any subsequent setup attempt would skip the unlock prompt while sync is
+        // still broken. Leaving the fingerprint unwritten makes the next attempt a
+        // clean retry; the SyncManager is kept around so the reconnect banner can
+        // drive recovery. A browsable home records nothing — it has no key, so
+        // `encryption_key_stored` stays false and the next launch builds it keyless.
         if sm.is_sync_ready() {
-            self.config_handle
-                .record_encryption_key_fingerprint(fingerprint)
-                .map_err(|e| format!("Failed to save config: {e}"))?;
+            if let Some(fingerprint) = fingerprint {
+                self.config_handle
+                    .record_encryption_key_fingerprint(fingerprint)
+                    .map_err(|e| format!("Failed to save config: {e}"))?;
+            }
         } else {
             // The failure that caused is_sync_ready to return false was already
             // logged by start_sync ("Cloud home not available" / "Failed to

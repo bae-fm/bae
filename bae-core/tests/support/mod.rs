@@ -234,6 +234,7 @@ impl TestS3Endpoint {
             secret_key: secret_override
                 .map(str::to_string)
                 .unwrap_or_else(|| self.secret_key.clone()),
+            storage: bae_core::config::HomeStorage::Opaque,
         }
     }
 

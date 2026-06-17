@@ -82,12 +82,12 @@ struct LibrarySettingsTab: View {
                     try await sync.saveSyncConfig(config)
                     storeRestoreCode()
                 },
-                onConnectOAuth: { provider in
-                    try await sync.signInCloudProvider(provider)
+                onConnectOAuth: { provider, storage in
+                    try await sync.signInCloudProvider(provider, storage)
                     storeRestoreCode()
                 },
-                onConnectCloudKit: {
-                    try await sync.connectCloudkit()
+                onConnectCloudKit: { storage in
+                    try await sync.connectCloudkit(storage)
                     storeRestoreCode()
                 },
                 onDone: {

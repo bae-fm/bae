@@ -169,6 +169,13 @@ fn bootstrap_inner(
         None
     };
 
+    // A browsable home (a provider is configured but the home is stored in the
+    // clear) has no key, so the opaque/locked resolution above leaves
+    // `pending_enc` None. It still needs a keyless sync manager built at startup
+    // so a returning user resumes syncing.
+    let cloud_home_is_browsable =
+        config.cloud_home.provider.is_some() && config.cloud_home.storage.is_browsable();
+
     let config_handle = Arc::new(ConfigHandle::new(config));
 
     let library_manager = crate::library::LibraryManager::new(
@@ -188,8 +195,15 @@ fn bootstrap_inner(
     // loop. The database already holds the seeded `_updated_at` stamper from
     // `open` above; building the manager here only wires the cloud loop.
     if let Some(enc) = pending_enc {
+        // Opaque home, unlocked: build the sync manager with the library key.
         runtime
-            .block_on(library_manager.attach_and_start_sync(enc))
+            .block_on(library_manager.attach_and_start_sync(Some(enc)))
+            .map_err(BootstrapError::Database)?;
+    } else if cloud_home_is_browsable {
+        // Browsable home: no key, build a keyless sync manager (an opaque-but-
+        // locked home stays unbuilt above, awaiting unlock).
+        runtime
+            .block_on(library_manager.attach_and_start_sync(None))
             .map_err(BootstrapError::Database)?;
     }
 
