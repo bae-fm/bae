@@ -568,7 +568,12 @@ async fn two_sequential_imports() {
         let _ = title;
         let album_dir = f.temp_path().join(format!("album{}", i + 1));
         fs::create_dir_all(&album_dir).unwrap();
-        generate_album_files(&album_dir, &["01 Track.flac"]);
+        // Distinct filename per album so the two imports carry different content
+        // hashes. The content hash is the relative path + size of each file, and
+        // re-importing the same content overwrites the prior release, so reusing
+        // one name would make the second import delete the first.
+        let track_name = format!("01 Track {}.flac", i + 1);
+        generate_album_files(&album_dir, &[track_name.as_str()]);
 
         let import_id = uuid::Uuid::new_v4().to_string();
         f.handle
