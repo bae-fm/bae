@@ -85,6 +85,7 @@ object UiEventReducer {
                 configStore.setConfig(event.config)
                 configStore.setSyncReady(event.syncReady)
             }
+            is BridgeUiEvent.SyncingChanged -> configStore.setSyncing(event.syncing)
             is BridgeUiEvent.SyncError -> configStore.setSyncError(event.message)
 
             // ── Errors ─────────────────────────────────────────────────────
