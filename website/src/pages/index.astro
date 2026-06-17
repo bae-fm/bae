@@ -151,6 +151,12 @@
   .core::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 38%,rgba(253,245,239,.1) 50%,transparent 62%);transform:translateX(-130%);animation:sheen 3.6s ease-in-out infinite;}
   @keyframes sheen{0%{transform:translateX(-130%);}60%,100%{transform:translateX(130%);}}
   @media (prefers-reduced-motion: reduce){.core::before{display:none;}}
+  .legs-down{display:grid;grid-template-columns:repeat(3,1fr);height:24px;}
+  .legs-down i{justify-self:center;width:2px;height:100%;background:linear-gradient(180deg,rgba(155,108,246,.4),rgba(248,177,107,.2));}
+  .deprow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .dep{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px 12px;}
+  .dep b{font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.02em;color:var(--fg);}
+  .dep span{font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--fg-faint);}
   @media(max-width:640px){
     .platerow{grid-template-columns:repeat(2,1fr);}
     /* 4 column-aligned legs don't map onto a 2x2 grid; collapse to one
@@ -158,6 +164,8 @@
     .legs{display:flex;justify-content:center;height:28px;}
     .legs i:not(:first-child){display:none;}
     .core{flex-direction:column;align-items:flex-start;gap:14px;}
+    .legs-down{display:flex;justify-content:center;}
+    .legs-down i:not(:first-child){display:none;}
   }
 
   /* providers */
@@ -385,6 +393,12 @@
         <div class="csub">library · playback · sync · encryption</div>
       </div>
       <span class="ctag">one fast core</span>
+    </div>
+    <div class="legs-down"><i></i><i></i><i></i></div>
+    <div class="deprow">
+      <div class="dep"><b>FFmpeg</b><span>audio decoding</span></div>
+      <div class="dep"><b>SQLite</b><span>library database</span></div>
+      <div class="dep"><b>Cloud storage</b><span>sync backend</span></div>
     </div>
   </div>
 </div></section>
