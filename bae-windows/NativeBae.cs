@@ -40,9 +40,9 @@ internal static class NativeBae
     /// The cloud-provider wire tags this build's native library supports. Always
     /// includes <c>"s3"</c>; <c>"google_drive"</c>/<c>"dropbox"</c>/<c>"onedrive"</c>
     /// are present only when bae_windows_ffi.dll was built with the oauth-providers
-    /// feature (the libre build omits them, and with it the OAuth entry points). The
+    /// feature (the baeium build omits them, and with it the OAuth entry points). The
     /// UI offers only these providers, so it never P/Invokes an OAuth entry point a
-    /// libre DLL doesn't export. This entry point is always exported. Copies and frees.
+    /// baeium DLL doesn't export. This entry point is always exported. Copies and frees.
     /// </summary>
     internal static string[] AvailableCloudProviders()
     {

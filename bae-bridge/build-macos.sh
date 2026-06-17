@@ -12,7 +12,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
     echo "  'oauth-providers,cloudkit,desktop'). The Swift compilation"
     echo "  conditions are derived from the same set so the generated bindings"
-    echo "  and the app's #if guards never disagree. For a libre (S3-only)"
+    echo "  and the app's #if guards never disagree. For a baeium (S3-only)"
     echo "  build: BAE_BRIDGE_FEATURES=desktop $0"
     exit 0
 fi
@@ -41,14 +41,14 @@ case ",$BAE_BRIDGE_FEATURES," in
 esac
 SWIFT_CONDITIONS="$(echo "$SWIFT_CONDITIONS" | xargs)"
 
-# A build without cloudkit signs with the libre entitlements, which drop the
+# A build without cloudkit signs with the baeium entitlements, which drop the
 # iCloud-container keys (a paid account with the iCloud capability is required to
 # sign them) but keep keychain access for the cloud keychain. The full build
 # leaves CODE_SIGN_ENTITLEMENTS at the default Signing.xcconfig sets.
 ENTITLEMENTS_OVERRIDE=""
 case ",$BAE_BRIDGE_FEATURES," in
     *,cloudkit,*) ;;
-    *) ENTITLEMENTS_OVERRIDE="CODE_SIGN_ENTITLEMENTS = bae/bae-libre.entitlements" ;;
+    *) ENTITLEMENTS_OVERRIDE="CODE_SIGN_ENTITLEMENTS = bae/bae-baeium.entitlements" ;;
 esac
 
 # Use sccache if available

@@ -8,9 +8,9 @@ import uniffi.bae_bridge.BridgeCloudProvider
  * named without referencing the OAuth bridge bindings. Those bindings
  * (`oauthBegin`, `oauthComplete`, `setOauthClientCreds`) exist only in the
  * `full` edition; the implementation [OAuthLinking] lives in `src/full` and is
- * the sole thing that imports them. The `libre` (S3-only) edition compiles
+ * the sole thing that imports them. The `baeium` (S3-only) edition compiles
  * against bindings that lack the OAuth functions, so it has no implementation
- * and [load] returns null. Shared code holds an `OAuthLinker?` and, in libre,
+ * and [load] returns null. Shared code holds an `OAuthLinker?` and, in baeium,
  * it is always null — the `needsOauth` restore path is unreachable for an S3
  * code, and if a token were somehow required the null surfaces a clear error.
  */
@@ -30,9 +30,9 @@ interface OAuthLinker {
     companion object {
         /**
          * Load the host's OAuth client creds, or null when this edition ships no
-         * OAuth support (libre) or no `assets/oauth-creds.json` is bundled (full
+         * OAuth support (baeium) or no `assets/oauth-creds.json` is bundled (full
          * without configured credentials). Implemented per edition: the `full`
-         * source set reads the creds file; the `libre` source set always returns
+         * source set reads the creds file; the `baeium` source set always returns
          * null.
          */
         fun load(context: Context): OAuthLinker? = loadOAuthLinker(context)

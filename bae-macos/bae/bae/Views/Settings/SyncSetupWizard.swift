@@ -25,7 +25,7 @@ private struct ProviderOption: Identifiable {
 
 /// Display data (name, blurb, icon) for every provider bae can sync to. The
 /// bridge decides which are actually compiled in via `availableCloudProviders()`;
-/// `providerOptions` filters this table to that set, so a libre (S3-only) build
+/// `providerOptions` filters this table to that set, so a baeium (S3-only) build
 /// shows just S3.
 private let providerDisplay: [BridgeCloudProvider: ProviderOption] = [
     .cloudKit: ProviderOption(
@@ -70,10 +70,10 @@ private let providerOptions: [ProviderOption] = availableCloudProviders()
 struct SyncSetupWizard: View {
     let onConnectS3: (BridgeSaveSyncConfig) async throws -> Void
     /// Awaits the OAuth browser round-trip; cancellation aborts the listener.
-    /// The OAuth provider UI that invokes this is compiled out of libre builds,
+    /// The OAuth provider UI that invokes this is compiled out of baeium builds,
     /// where the closure is an unused stub.
     let onConnectOAuth: (_ provider: BridgeCloudProvider) async throws -> Void
-    /// The iCloud UI that invokes this is compiled out of libre builds, where
+    /// The iCloud UI that invokes this is compiled out of baeium builds, where
     /// the closure is an unused stub.
     let onConnectCloudKit: () async throws -> Void
     let onDone: () -> Void

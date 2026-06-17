@@ -88,7 +88,7 @@ final class Sync: Sendable, Observable {
         self.init(
             // `signInCloudProvider` (OAuth) and `connectCloudkit` (iCloud) bind
             // to bridge methods that exist only when their feature is compiled
-            // in. The UI that calls these is compiled out of libre builds, so
+            // in. The UI that calls these is compiled out of baeium builds, so
             // there the closures are unreachable stubs.
             signInCloudProvider: { provider in
                 #if BAE_OAUTH_PROVIDERS

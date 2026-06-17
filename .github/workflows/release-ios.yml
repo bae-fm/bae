@@ -65,12 +65,12 @@ jobs:
     permissions:
       contents: write
     strategy:
-      # Both editions from one source: full (bae, fm.bae.bae) and libre (baeium,
-      # fm.bae.bae.libre). Serialized — they share the ios-v* tag and release, so
-      # full runs first and creates them, libre adds its .ipa.
+      # Both editions from one source: full (bae, fm.bae.bae) and baeium (
+      # fm.bae.bae.baeium). Serialized — they share the ios-v* tag and release, so
+      # full runs first and creates them, baeium adds its .ipa.
       max-parallel: 1
       matrix:
-        edition: [full, libre]
+        edition: [full, baeium]
 
     steps:
     - name: Checkout code
@@ -80,13 +80,13 @@ jobs:
 
     - name: Resolve edition (features, identity, asset names)
       run: |
-        # The full edition keeps its identity; libre (baeium) gets the .libre
+        # The full edition keeps its identity; baeium gets the .baeium
         # bundle id, the S3-only feature set (empty BAE_BRIDGE_FEATURES — build-ios.sh
-        # treats unset as full and empty as libre), and its own asset + rolling link.
-        if [ "${{ matrix.edition }}" = "libre" ]; then
+        # treats unset as full and empty as baeium), and its own asset + rolling link.
+        if [ "${{ matrix.edition }}" = "baeium" ]; then
           {
             echo "BAE_BRIDGE_FEATURES="
-            echo "BUNDLE_ID=fm.bae.bae.libre"
+            echo "BUNDLE_ID=fm.bae.bae.baeium"
             echo "PRODUCT_NAME=baeium"
             echo "IPA_NAME=baeium-ios.ipa"
             echo "ARTIFACT_NAME=baeium-iOS-unsigned"
@@ -134,7 +134,7 @@ jobs:
       run: |
         # build-ios.sh cross-compiles device + simulator, merges FFmpeg, and copies
         # the Swift bindings into bae-ios. BAE_BRIDGE_FEATURES (set above) selects
-        # the edition; for libre it also writes the bae-libre.entitlements override
+        # the edition; for baeium it also writes the bae-baeium.entitlements override
         # into Features.xcconfig.
         ./bae-bridge/build-ios.sh --release
 
@@ -158,7 +158,7 @@ jobs:
       run: |
         # Unsigned device archive. CODE_SIGNING_ALLOWED=NO produces an unsigned
         # .app; the PRODUCT_BUNDLE_IDENTIFIER + PRODUCT_NAME overrides give the
-        # libre build its sibling identity (fm.bae.bae.libre / baeium.app). The
+        # baeium build its sibling identity (fm.bae.bae.baeium / baeium.app). The
         # signing identity is supplied by whoever sideloads (AltStore/Sideloadly/
         # Xcode re-sign with a free Apple ID).
         xcodebuild -project bae-ios/bae/bae.xcodeproj \
@@ -214,7 +214,7 @@ jobs:
         body: |
           iOS builds are **unsigned** .ipa files for sideloading — install with
           AltStore, Sideloadly, or Xcode (they re-sign with your own Apple ID, no
-          paid Developer account needed for the libre baeium build). App Store
+          paid Developer account needed for the baeium baeium build). App Store
           distribution is not yet set up.
         generate_release_notes: true
       env:
@@ -226,7 +226,7 @@ jobs:
       run: |
         # Stable per-edition sideload link for the website, e.g.
         #   releases/download/ios-latest/bae-ios.ipa          (full)
-        #   releases/download/baeium-ios-latest/baeium-ios.ipa (libre)
+        #   releases/download/baeium-ios-latest/baeium-ios.ipa (baeium)
         gh release view "$LATEST_RELEASE" >/dev/null 2>&1 \
           || gh release create "$LATEST_RELEASE" --latest=false --title "$LATEST_TITLE" \
                --notes "Stable sideload link that always serves the newest $PRODUCT_NAME iOS build (unsigned .ipa)."

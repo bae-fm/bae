@@ -34,7 +34,7 @@ tracing-android = "0.2"
 [features]
 default = []
 # Enables the OAuth cloud-provider surface (sign-in + the desktop/host OAuth
-# flows) via bae-core/coven. Off by default → the libre baeium build; the bae
+# flows) via bae-core/coven. Off by default → the baeium build; the bae
 # build turns it on.
 oauth-providers = ["bae-core/oauth-providers"]
 cloudkit = []

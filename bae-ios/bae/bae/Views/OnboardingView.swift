@@ -31,7 +31,7 @@ private final class LinkFlow {
 /// cloud sign-in when the provider needs it, inject the CloudKit driver when the
 /// library syncs through CloudKit, then restore.
 struct OnboardingView: View {
-  // The host's OAuth client config. Present only in a full build; libre
+  // The host's OAuth client config. Present only in a full build; baeium
   // (S3-only) compiles out the OAuth branch of the link flow.
   #if BAE_OAUTH_PROVIDERS
     let oauthLinking: OAuthLinking?
@@ -268,7 +268,7 @@ struct OnboardingView: View {
 
           // A provider that needs OAuth (e.g. Google Drive): run the
           // system auth session to obtain a token before restoring.
-          // CloudKit and S3 need none and restore with a nil token. A libre
+          // CloudKit and S3 need none and restore with a nil token. A baeium
           // (S3-only) build can't sign in to OAuth providers at all, so a
           // library that needs it can't be linked here.
           var oauthTokenJson: String? = nil

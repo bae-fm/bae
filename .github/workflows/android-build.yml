@@ -18,7 +18,7 @@ on:
         type: string
         default: debug
       edition:
-        description: "full (the bae product, OAuth providers on) or libre (baeium, S3-only). Picks the cargo feature set and the matching Gradle product flavor."
+        description: "full (the bae product, OAuth providers on) or baeium (S3-only). Picks the cargo feature set and the matching Gradle product flavor."
         type: string
         default: full
       version:
@@ -63,15 +63,15 @@ jobs:
 
     - name: Resolve edition (cargo feature set + Gradle flavor)
       # build-android.sh reads BAE_BRIDGE_FEATURES to pick the bindings; the
-      # Gradle flavor must match (full → OAuth bindings + src/full; libre →
+      # Gradle flavor must match (full → OAuth bindings + src/full; baeium →
       # S3-only bindings + the always-null OAuthLinker). An explicitly-empty
-      # BAE_BRIDGE_FEATURES is libre (build-android.sh's default-when-unset is
+      # BAE_BRIDGE_FEATURES is baeium (build-android.sh's default-when-unset is
       # the full set).
       run: |
-        if [ "${{ inputs.edition }}" = "libre" ]; then
+        if [ "${{ inputs.edition }}" = "baeium" ]; then
           echo "BAE_BRIDGE_FEATURES=" >> "$GITHUB_ENV"
-          echo "GRADLE_FLAVOR=Libre" >> "$GITHUB_ENV"
-          echo "APK_FLAVOR=libre" >> "$GITHUB_ENV"
+          echo "GRADLE_FLAVOR=Baeium" >> "$GITHUB_ENV"
+          echo "APK_FLAVOR=baeium" >> "$GITHUB_ENV"
           echo "EDITION_APK=baeium-android.apk" >> "$GITHUB_ENV"
         else
           echo "BAE_BRIDGE_FEATURES=oauth-providers" >> "$GITHUB_ENV"
@@ -176,7 +176,7 @@ jobs:
       if: inputs.profile == 'release'
       uses: actions/upload-artifact@v7
       with:
-        # Edition-specific so the full and libre release jobs don't collide.
+        # Edition-specific so the full and baeium release jobs don't collide.
         name: bae-android-release-${{ inputs.edition }}
         path: ${{ env.EDITION_APK }}
         retention-days: 30

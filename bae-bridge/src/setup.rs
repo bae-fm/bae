@@ -14,7 +14,7 @@ fn parse_oauth_tokens(json: &str) -> Result<bae_core::oauth::OAuthTokens, Bridge
 /// the order the picker used before it became data-driven. S3 is always
 /// available; CloudKit and the OAuth providers appear only when their features
 /// are compiled in. The UI renders its provider picker from this list instead of
-/// hardcoding one, so a libre (S3-only) build offers only S3.
+/// hardcoding one, so a baeium (S3-only) build offers only S3.
 #[uniffi::export]
 pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
     #[allow(unused_mut)]

@@ -35,7 +35,7 @@ class BaeApp : Application() {
         initKeyring()
         // Register the host's OAuth client creds (if a creds file is bundled) so
         // coven can build authorization URLs and refresh provider tokens during
-        // sync. Null in the libre edition (no OAuth) or when no creds file is
+        // sync. Null in the baeium edition (no OAuth) or when no creds file is
         // bundled (full) → cloud providers that need OAuth stay unavailable.
         try {
             oauthLinking = OAuthLinker.load(this)

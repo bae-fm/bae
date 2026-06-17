@@ -29,7 +29,7 @@ android {
         buildConfigField("String", "BAE_GIT_COMMIT", "\"$baeGitCommit\"")
         buildConfigField("String", "BAE_COVEN_REV", "\"$baeCovenRev\"")
 
-        // The launcher label. The libre flavor overrides it to "baeium" so the two
+        // The launcher label. The baeium flavor overrides it to "baeium" so the two
         // editions are distinguishable once both are installed.
         manifestPlaceholders["appLabel"] = "bae"
 
@@ -66,19 +66,19 @@ android {
             manifestPlaceholders["oauthRedirectScheme"] =
                 redirectScheme ?: "fm.bae.oauth.unconfigured"
         }
-        // libre (baeium): S3-only. Its bridge bindings are built with no
+        // baeium: S3-only. Its bridge bindings are built with no
         // features, so the OAuth functions are absent — src/full is excluded and
-        // src/libre supplies an always-null OAuthLinker. No OAuthRedirectActivity
+        // src/baeium supplies an always-null OAuthLinker. No OAuthRedirectActivity
         // and no scheme intent-filter ship (that manifest is src/full only), and
         // no credentials are read. The placeholder is set to the inert value so
         // the build never depends on an oauth-creds.json.
-        create("libre") {
+        create("baeium") {
             dimension = "edition"
             manifestPlaceholders["oauthRedirectScheme"] = "fm.bae.oauth.unconfigured"
             // baeium installs alongside the full bae build as a distinct app:
-            // applicationId fm.bae.app.libre (the namespace / R package stays
+            // applicationId fm.bae.app.baeium (the namespace / R package stays
             // fm.bae.app), labelled "baeium" on the launcher.
-            applicationIdSuffix = ".libre"
+            applicationIdSuffix = ".baeium"
             manifestPlaceholders["appLabel"] = "baeium"
         }
     }
@@ -130,14 +130,14 @@ android {
     sourceSets {
         // Each edition compiles against its own uniffi bindings: the full
         // bindings (built --features oauth-providers) carry the OAuth functions;
-        // the libre bindings (built with no features) lack them, so any stray
+        // the baeium bindings (built with no features) lack them, so any stray
         // OAuth reference in shared code fails to compile. build-android.sh
         // writes each set under its own dir keyed by the feature set.
         getByName("full") {
             java.srcDir("../../bae-bridge/kotlin-bindings-full")
         }
-        getByName("libre") {
-            java.srcDir("../../bae-bridge/kotlin-bindings-libre")
+        getByName("baeium") {
+            java.srcDir("../../bae-bridge/kotlin-bindings-baeium")
         }
     }
 }

@@ -2444,7 +2444,7 @@ fn oauth_provider_from_str(provider: &str) -> Option<bae_core::config::CloudProv
 /// The cloud providers this build supports, as a JSON array of wire tags
 /// ("s3", "google_drive", ...) in display order. S3 is always present; the
 /// OAuth providers only when compiled in. The WinUI picker renders from this
-/// instead of a hardcoded list, so a libre (S3-only) build offers only S3.
+/// instead of a hardcoded list, so a baeium (S3-only) build offers only S3.
 /// Free the result with [`bae_string_free`].
 #[no_mangle]
 pub extern "C" fn bae_available_cloud_providers() -> *mut c_char {

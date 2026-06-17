@@ -12,8 +12,8 @@
 #include? "Signing.local.xcconfig"
 
 // The full build's entitlements (CloudKit/iCloud container + keychain). The
-// generated Features.xcconfig below overrides this to bae/bae-libre.entitlements
-// for a libre (S3-only) build, which drops the iCloud-container keys a paid
+// generated Features.xcconfig below overrides this to bae/bae-baeium.entitlements
+// for a baeium (S3-only) build, which drops the iCloud-container keys a paid
 // account is required to sign. Set here, not in project.yml's settings.base, so
 // the later #include can override it (a pbxproj setting would win over both).
 CODE_SIGN_ENTITLEMENTS = bae/bae.entitlements

@@ -65,13 +65,13 @@ jobs:
       contents: write
     strategy:
       # Build both editions from the one source: full (bae, OAuth + iCloud) and
-      # libre (baeium, S3-only). Serialized — they share the macos-v* tag, the
+      # baeium (S3-only). Serialized — they share the macos-v* tag, the
       # GitHub release, and the orphan appcast branch, so running them in
       # parallel would race on those. Full runs first and creates the tag/release
-      # + appcast.xml; libre adds its DMG to the same release + appcast-libre.xml.
+      # + appcast.xml; baeium adds its DMG to the same release + appcast-baeium.xml.
       max-parallel: 1
       matrix:
-        edition: [full, libre]
+        edition: [full, baeium]
 
     steps:
     - name: Checkout code
@@ -81,23 +81,23 @@ jobs:
 
     - name: Resolve edition (features, identity, signing, feeds)
       run: |
-        # The full edition keeps every value it ships today; the libre edition
-        # (baeium) gets a sibling identity (.libre bundle id), the S3-only feature
-        # set, the libre entitlements (no iCloud container), and its own DMG name
+        # The full edition keeps every value it ships today; the baeium edition
+        # (baeium) gets a sibling identity (.baeium bundle id), the S3-only feature
+        # set, the baeium entitlements (no iCloud container), and its own DMG name
         # + Sparkle feed so the two update streams never cross.
-        if [ "${{ matrix.edition }}" = "libre" ]; then
+        if [ "${{ matrix.edition }}" = "baeium" ]; then
           {
             echo "BAE_BRIDGE_FEATURES=desktop"
-            echo "BUNDLE_ID=fm.bae.desktop.libre"
+            echo "BUNDLE_ID=fm.bae.desktop.baeium"
             echo "PRODUCT_NAME=baeium"
-            echo "ENTITLEMENTS=bae-macos/bae/bae/bae-libre.entitlements"
+            echo "ENTITLEMENTS=bae-macos/bae/bae/bae-baeium.entitlements"
             echo "DMG_NAME=baeium-macos.dmg"
-            echo "APPCAST_FILE=appcast-libre.xml"
+            echo "APPCAST_FILE=appcast-baeium.xml"
             echo "APPCAST_TITLE=baeium Updates"
             echo "ARTIFACT_NAME=baeium-macOS-native-signed"
             echo "LATEST_RELEASE=baeium-macos-latest"
             echo "LATEST_TITLE=macOS — latest (baeium)"
-            echo "SUFEED_URL=https://raw.githubusercontent.com/${{ github.repository }}/appcast/appcast-libre.xml"
+            echo "SUFEED_URL=https://raw.githubusercontent.com/${{ github.repository }}/appcast/appcast-baeium.xml"
           } >> "$GITHUB_ENV"
         else
           {
@@ -163,8 +163,8 @@ jobs:
     - name: Build app
       run: |
         # PRODUCT_BUNDLE_IDENTIFIER + PRODUCT_NAME overrides on the xcodebuild
-        # command line win over the pbxproj, giving the libre build its sibling
-        # identity (fm.bae.desktop.libre) and app name (baeium.app). Signing is
+        # command line win over the pbxproj, giving the baeium build its sibling
+        # identity (fm.bae.desktop.baeium) and app name (baeium.app). Signing is
         # CODE_SIGNING_ALLOWED=NO here; the bundle is codesigned by hand below
         # with the edition's entitlements.
         xcodebuild -project bae-macos/bae/bae.xcodeproj \
@@ -183,7 +183,7 @@ jobs:
 
     - name: Embed provisioning profile
       # Only the full edition needs it: the provisioning profile authorizes the
-      # iCloud container its entitlements request. The libre build drops the
+      # iCloud container its entitlements request. The baeium build drops the
       # iCloud-container entitlement, so it signs (Developer ID) without one.
       if: matrix.edition == 'full'
       env:
@@ -241,7 +241,7 @@ jobs:
           codesign --force --sign "$IDENTITY" --options runtime {} \;
 
         # Expand $(AppIdentifierPrefix) in the edition's entitlements (full:
-        # bae.entitlements with iCloud container; libre: bae-libre.entitlements,
+        # bae.entitlements with iCloud container; baeium: bae-baeium.entitlements,
         # keychain only).
         EXPANDED_ENTITLEMENTS=$(mktemp)
         sed "s/\$(AppIdentifierPrefix)/${APPLE_TEAM_ID}./" "$ENTITLEMENTS" > "$EXPANDED_ENTITLEMENTS"
@@ -364,7 +364,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         # Both editions attach to the one macos-v* release (full runs first and
-        # creates it; libre adds its DMG).
+        # creates it; baeium adds its DMG).
         tag_name: macos-v${{ needs.calculate-version.outputs.version }}
         files: target/${{ env.DMG_NAME }}
         generate_release_notes: true
@@ -377,7 +377,7 @@ jobs:
       run: |
         # Stable per-edition download link for the website, e.g.
         # releases/download/macos-latest/bae-macos.dmg (full) and
-        # releases/download/baeium-macos-latest/baeium-macos.dmg (libre). Each
+        # releases/download/baeium-macos-latest/baeium-macos.dmg (baeium). Each
         # rolling release is created once and never moves; only its asset is
         # replaced. --latest=false keeps the global "Latest" badge on the real
         # versioned releases.
@@ -398,8 +398,8 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git fetch origin appcast
-        # Each edition writes only its own feed file (full → appcast.xml, libre →
-        # appcast-libre.xml). Serialized (max-parallel: 1), so libre fetches the
+        # Each edition writes only its own feed file (full → appcast.xml, baeium →
+        # appcast-baeium.xml). Serialized (max-parallel: 1), so baeium fetches the
         # commit full just pushed and adds its file with no push race.
         git worktree add "$RUNNER_TEMP/appcast-wt" FETCH_HEAD
         cp "target/$APPCAST_FILE" "$RUNNER_TEMP/appcast-wt/$APPCAST_FILE"

@@ -20,7 +20,7 @@ private const val TAG = "bae.OAuthLinking"
 
 /**
  * Load the host's OAuth client creds (full edition); null when no
- * `assets/oauth-creds.json` is bundled. The libre edition defines its own
+ * `assets/oauth-creds.json` is bundled. The baeium edition defines its own
  * always-null `loadOAuthLinker`. [OAuthLinker.load] delegates here.
  */
 fun loadOAuthLinker(context: Context): OAuthLinker? = OAuthLinking.load(context)

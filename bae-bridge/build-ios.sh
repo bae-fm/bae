@@ -12,7 +12,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
     echo "  'oauth-providers,cloudkit'; iOS has no 'desktop'). The Swift"
     echo "  compilation conditions are derived from the same set so the generated"
-    echo "  bindings and the app's #if guards never disagree. For a libre"
+    echo "  bindings and the app's #if guards never disagree. For a baeium"
     echo "  (S3-only) build: BAE_BRIDGE_FEATURES= $0"
     exit 0
 fi
@@ -30,8 +30,8 @@ fi
 # variable — there's no second place to keep in sync. iOS omits the desktop
 # import/cd methods macOS pulls in, so its default is oauth-providers,cloudkit.
 # `-` (not `:-`) substitutes the default only when the variable is UNSET, so an
-# explicitly-empty `BAE_BRIDGE_FEATURES=` is the libre (S3-only) build — iOS has
-# no `desktop` feature to anchor a non-empty libre value the way macOS does.
+# explicitly-empty `BAE_BRIDGE_FEATURES=` is the baeium (S3-only) build — iOS has
+# no `desktop` feature to anchor a non-empty baeium value the way macOS does.
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,cloudkit}"
 
 # Map each Rust feature to its Swift compilation condition. A build compiled
@@ -45,7 +45,7 @@ case ",$BAE_BRIDGE_FEATURES," in
 esac
 SWIFT_CONDITIONS="$(echo "$SWIFT_CONDITIONS" | xargs)"
 
-# A build without cloudkit signs with the libre entitlements, which drop the
+# A build without cloudkit signs with the baeium entitlements, which drop the
 # iCloud-container keys (a paid account with the iCloud capability is required to
 # sign them) but keep keychain access for the cloud keychain — so a self-build
 # with free provisioning can ship. The full build leaves CODE_SIGN_ENTITLEMENTS
@@ -53,7 +53,7 @@ SWIFT_CONDITIONS="$(echo "$SWIFT_CONDITIONS" | xargs)"
 ENTITLEMENTS_OVERRIDE=""
 case ",$BAE_BRIDGE_FEATURES," in
     *,cloudkit,*) ;;
-    *) ENTITLEMENTS_OVERRIDE="CODE_SIGN_ENTITLEMENTS = bae/bae-libre.entitlements" ;;
+    *) ENTITLEMENTS_OVERRIDE="CODE_SIGN_ENTITLEMENTS = bae/bae-baeium.entitlements" ;;
 esac
 
 if command -v sccache &> /dev/null; then

@@ -67,7 +67,7 @@ targets:
         SWIFT_VERSION: "6.2"
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         # CODE_SIGN_ENTITLEMENTS is set in Config.xcconfig (full) and overridden
-        # by the generated Features.xcconfig (libre), not here — a setting in this
+        # by the generated Features.xcconfig (baeium), not here — a setting in this
         # block lands in the pbxproj and would override the xcconfig layer the
         # feature set drives.
         # No bundled app icon yet — drop xcodegen's default `AppIcon` lookup so

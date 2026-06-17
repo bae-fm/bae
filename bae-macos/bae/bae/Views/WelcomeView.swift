@@ -521,7 +521,7 @@ struct WelcomeView: View {
 
     @ViewBuilder
     private var manualRestoreFields: some View {
-        // The provider choices come from the compiled-in set, so a libre
+        // The provider choices come from the compiled-in set, so a baeium
         // (S3-only) build offers just S3 and never references an OAuth/CloudKit
         // bridge symbol that isn't there.
         Picker("Cloud provider", selection: $restoreProvider) {

@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct baeApp: App {
   // The host's OAuth client config and any error loading it. Present only in a
-  // full build; a libre (S3-only) build compiles out the OAuth flow entirely, so
+  // full build; a baeium (S3-only) build compiles out the OAuth flow entirely, so
   // there is nothing to load and no property to carry.
   #if BAE_OAUTH_PROVIDERS
     private let oauthLinking: OAuthLinking?

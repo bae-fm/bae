@@ -5,7 +5,7 @@ import SwiftUI
 /// `LibraryView` browses it.
 struct ContentView: View {
   // The host's OAuth client config, forwarded to onboarding. Present only in a
-  // full build; libre compiles out the OAuth link flow.
+  // full build; baeium compiles out the OAuth link flow.
   #if BAE_OAUTH_PROVIDERS
     let oauthLinking: OAuthLinking?
     let oauthLinkingError: String?

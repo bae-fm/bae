@@ -92,7 +92,7 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "6.2"
         # CODE_SIGN_ENTITLEMENTS is set in Signing.xcconfig (full) and overridden
-        # by the generated Features.xcconfig (libre), not here — a setting in this
+        # by the generated Features.xcconfig (baeium), not here — a setting in this
         # block lands in the pbxproj and would override the xcconfig layer the
         # feature set drives.
         LIBRARY_SEARCH_PATHS:

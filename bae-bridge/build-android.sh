@@ -13,7 +13,7 @@ usage() {
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
     echo "  'oauth-providers'), which picks the Gradle edition the bindings feed:"
     echo "  a set containing oauth-providers writes the 'full' edition's bindings,"
-    echo "  anything else writes the 'libre' (S3-only) edition's. For libre:"
+    echo "  anything else writes the 'baeium' (S3-only) edition's. For baeium:"
     echo "  BAE_BRIDGE_FEATURES= $0"
 }
 
@@ -33,7 +33,7 @@ done
 # The cargo feature set the bridge compiles with. The Kotlin bindings only
 # export the bridge functions whose features are on, so each Gradle edition
 # compiles against the bindings built for it. The feature set picks the edition:
-# oauth-providers → the 'full' edition; no oauth-providers → 'libre' (S3-only).
+# oauth-providers → the 'full' edition; no oauth-providers → 'baeium' (S3-only).
 # Both the bindings dir and the edition derive from this one variable.
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers}"
 
@@ -41,7 +41,7 @@ BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers}"
 # flavor's sourceSets points at in bae-android/app/build.gradle.kts).
 case ",$BAE_BRIDGE_FEATURES," in
     *,oauth-providers,*) BINDINGS_DIR="bae-bridge/kotlin-bindings-full" ;;
-    *) BINDINGS_DIR="bae-bridge/kotlin-bindings-libre" ;;
+    *) BINDINGS_DIR="bae-bridge/kotlin-bindings-baeium" ;;
 esac
 
 NDK_HOME="${ANDROID_NDK_HOME:-/Users/dima/Library/Android/sdk/ndk/29.0.14206865}"
@@ -103,7 +103,7 @@ done
 FIRST_TARGET=$(rust_target "${ABIS[0]}")
 echo "Generating Kotlin bindings into $BINDINGS_DIR ..."
 # Wipe and regenerate so a stale function set from a previous feature set can't
-# linger (e.g. an OAuth function left in the libre bindings).
+# linger (e.g. an OAuth function left in the baeium bindings).
 rm -rf "$BINDINGS_DIR"
 mkdir -p "$BINDINGS_DIR"
 cargo run --bin uniffi-bindgen generate \

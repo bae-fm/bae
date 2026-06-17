@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- The libre (S3-only) build's entitlements. It keeps network access and
+    <!-- The baeium (S3-only) build's entitlements. It keeps network access and
          keychain access — the cloud keychain (synchronizable items sync via
          iCloud Keychain) is the load-bearing usability feature and needs no
          iCloud container — but drops the CloudKit/iCloud-container entitlements
@@ -12,7 +12,7 @@
          CODE_SIGN_ENTITLEMENTS here whenever it compiles the bridge without the
          cloudkit feature.
 
-         The keychain group is the libre bundle id (fm.bae.desktop.libre), not
+         The keychain group is the baeium bundle id (fm.bae.desktop.baeium), not
          the full one — baeium installs as a distinct app alongside bae, and its
          keychain (including the iCloud-Keychain-synced encryption keys) must
          stay isolated from bae's rather than cross-syncing through a shared
@@ -22,7 +22,7 @@
     <true/>
     <key>keychain-access-groups</key>
     <array>
-        <string>$(AppIdentifierPrefix)fm.bae.desktop.libre</string>
+        <string>$(AppIdentifierPrefix)fm.bae.desktop.baeium</string>
     </array>
 </dict>
 </plist>

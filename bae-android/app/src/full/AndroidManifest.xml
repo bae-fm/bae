@@ -6,7 +6,7 @@
         <!-- Captures the OAuth provider redirect (custom scheme) back from the
              system browser and hands the code to the in-flight link flow. Only
              the full edition does OAuth, so the activity and its scheme filter
-             ship only here; the libre edition has neither. The scheme is
+             ship only here; the baeium edition has neither. The scheme is
              injected from oauth-creds.json at build time; an inert placeholder
              when no credentials are configured. -->
         <activity
