@@ -19,7 +19,7 @@ pub enum SignalOrigin {
     FolderName,
     /// A file's name.
     Filename,
-    /// An `.nfo` / `.txt` document.
+    /// A `.txt` document.
     TextFile,
 }
 

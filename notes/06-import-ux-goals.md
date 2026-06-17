@@ -76,7 +76,7 @@ Not a file browser — it's identification context. Grouped by type:
 
 - **Audio** — CUE+FLAC pairs or track files. Confirms track count and format.
 - **Images** — Scans often show catalog numbers, barcodes, edition info on spines and disc art.
-- **Documents** — Rip logs, NFO files with release info.
+- **Documents** — Rip logs and text files with release info.
 
 ### Search Form
 

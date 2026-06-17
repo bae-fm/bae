@@ -196,18 +196,18 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
         fs::write(folder.join("fixture.cue"), cue_body).unwrap();
     }
 
-    // Text files: each entry becomes an `.nfo` under the release folder.
+    // Text files: each entry becomes a `.txt` under the release folder.
     // File name is derived from the last component of the declared path so
     // tests can distinguish between multiple text files.
     for (idx, tf) in fixture.sources.text_files.iter().enumerate() {
         let basename = Path::new(&tf.path)
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_else(|| format!("fixture-text-{idx}.nfo"));
+            .unwrap_or_else(|| format!("fixture-text-{idx}.txt"));
         let name = if Path::new(&basename).extension().is_some() {
             basename
         } else {
-            format!("{basename}.nfo")
+            format!("{basename}.txt")
         };
         fs::write(folder.join(&name), tf.lines.join("\n")).unwrap();
     }

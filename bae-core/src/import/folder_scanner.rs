@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use tracing::{debug, info};
 
 const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp", "gif", "bmp"];
-const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "txt", "nfo", "m3u", "m3u8"];
+const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "txt", "m3u", "m3u8"];
 
 /// Extensions used by download clients and browsers to mark an
 /// in-progress download. Presence of any of these anywhere in a folder means
@@ -138,7 +138,7 @@ pub struct CategorizedFiles {
     pub audio: AudioContent,
     /// Artwork/image files (.jpg, .png, etc.)
     pub artwork: Vec<ScannedFile>,
-    /// Document files (.log, .txt, .nfo) - CUE files in pairs are NOT included here
+    /// Document files (.log, .txt, .m3u) - CUE files in pairs are NOT included here
     pub documents: Vec<ScannedFile>,
     /// Parsed sheets for CUEs that aren't part of a CUE+audio pair: multi-FILE
     /// CUEs (one FILE per TRACK — never pair) and aggregate CUEs alongside
@@ -435,7 +435,7 @@ fn is_image_file(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Check if a file is a document file (.cue, .log, .txt, .nfo)
+/// Check if a file is a document file (.cue, .log, .txt, .m3u)
 fn is_document_file(path: &Path) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())
@@ -2301,7 +2301,6 @@ FILE "02 - Track Two.flac" WAVE
         // Document sidecars — fall into `files.documents`.
         Log,
         M3u,
-        Nfo,
         Md5,
         Ffp,
         TracklistTxt,
@@ -2369,7 +2368,6 @@ FILE "02 - Track Two.flac" WAVE
             FileKind::Mkv => fake_mkv(),
             FileKind::Log => b"EAC log\n".to_vec(),
             FileKind::M3u => b"01.flac\n02.flac\n".to_vec(),
-            FileKind::Nfo => b"release notes\n".to_vec(),
             FileKind::Md5 => b"abc  01.flac\n".to_vec(),
             FileKind::Ffp => b"01.flac:abc\n".to_vec(),
             FileKind::TracklistTxt => b"01. Track One\n02. Track Two\n".to_vec(),
@@ -2563,7 +2561,6 @@ FILE "02 - Track Two.flac" WAVE
             FileKind::Mkv
             | FileKind::Log
             | FileKind::M3u
-            | FileKind::Nfo
             | FileKind::Md5
             | FileKind::Ffp
             | FileKind::TracklistTxt
@@ -2739,7 +2736,6 @@ FILE "02 - Track Two.flac" WAVE
         let tmp = tempfile::tempdir().unwrap();
         write_one(tmp.path(), "rip.log", FileKind::Log);
         write_one(tmp.path(), "playlist.m3u", FileKind::M3u);
-        write_one(tmp.path(), "info.nfo", FileKind::Nfo);
         write_one(tmp.path(), "checksums.md5", FileKind::Md5);
         write_one(tmp.path(), "checksums.ffp", FileKind::Ffp);
         write_one(tmp.path(), "Tracklist.txt", FileKind::TracklistTxt);
@@ -3111,7 +3107,7 @@ FILE "02 - Track Two.flac" WAVE
             kind: FileKind::Ffp,
         });
 
-        // --- CANDIDATE 10 — .log, .m3u, .nfo (C9). ---
+        // --- CANDIDATE 10 — .log, .m3u (C9). ---
         entries.push(FixtureEntry::Expect {
             rel_path: "Artist B/1998 - Album B5".into(),
             top_level_candidate: true,
@@ -3125,11 +3121,6 @@ FILE "02 - Track Two.flac" WAVE
             rel_path: "Artist B/1998 - Album B5/playlist.m3u".into(),
             kind: FileKind::M3u,
         });
-        entries.push(FixtureEntry::File {
-            rel_path: "Artist B/1998 - Album B5/info.nfo".into(),
-            kind: FileKind::Nfo,
-        });
-
         // --- Compilation folder (B6) — navigation container. ---
         entries.push(FixtureEntry::Expect {
             rel_path: "Artist C - Albums & Singles [mp3]".into(),
@@ -4245,9 +4236,9 @@ FILE "02 - Track Two.flac" WAVE
             .all(|a| { !a.file_name.ends_with(".md5") && !a.file_name.ends_with(".ffp") }));
     }
 
-    /// L1.36 — `.log`, `.m3u`, `.nfo` all surface as documents.
+    /// L1.36 — `.log` and `.m3u` surface as documents.
     #[test]
-    fn log_m3u_nfo_attach_as_documents() {
+    fn log_m3u_attach_as_documents() {
         let mut entries = flat_audio("Album", 3, FileKind::Flac);
         entries.extend([
             FixtureEntry::File {
@@ -4258,10 +4249,6 @@ FILE "02 - Track Two.flac" WAVE
                 rel_path: "Album/playlist.m3u".into(),
                 kind: FileKind::M3u,
             },
-            FixtureEntry::File {
-                rel_path: "Album/info.nfo".into(),
-                kind: FileKind::Nfo,
-            },
         ]);
         let result = run_scenario(entries);
         let docs: Vec<_> = result
@@ -4271,7 +4258,7 @@ FILE "02 - Track Two.flac" WAVE
             .iter()
             .map(|d| d.file_name.as_str())
             .collect();
-        for expected in ["rip.log", "playlist.m3u", "info.nfo"] {
+        for expected in ["rip.log", "playlist.m3u"] {
             assert!(docs.contains(&expected), "missing {expected} in {docs:?}");
         }
     }

@@ -8,7 +8,7 @@
 //! * [`disc_id`] — a MusicBrainz disc ID from LOG/CUE artifacts.
 //! * [`barcode`] — UPC/EAN codes from artwork OCR and CUE `CATALOG`.
 //! * [`text`] — catalog-number candidates and free text from artwork OCR,
-//!   folder name, filenames, CUE, and NFO/TXT.
+//!   folder name, filenames, CUE, and text files.
 //!
 //! Embedded audio metadata (artist/album/year from tags) is deliberately NOT
 //! a signal here: it isn't used to look up or narrow external matches. It

@@ -484,7 +484,7 @@ private enum SignalBadgeStyle {
         case .artwork: "Cover OCR"
         case .folderName: "folder name"
         case .filename: "file name"
-        case .textFile: "NFO file"
+        case .textFile: "Text file"
         }
     }
 

@@ -53,7 +53,7 @@ impl ContentTypeHint {
             "webp" => Self::Webp,
             "bmp" => Self::Bmp,
             "svg" => Self::Svg,
-            "txt" | "cue" | "log" | "nfo" | "m3u" | "m3u8" => Self::PlainText,
+            "txt" | "cue" | "log" | "m3u" | "m3u8" => Self::PlainText,
             "pdf" => Self::Pdf,
             _ => Self::Unknown(ext),
         }
@@ -165,10 +165,6 @@ mod tests {
         );
         assert_eq!(
             ContentTypeHint::from_extension("log"),
-            ContentTypeHint::PlainText
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("nfo"),
             ContentTypeHint::PlainText
         );
         assert_eq!(

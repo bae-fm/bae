@@ -2,7 +2,7 @@
 //!
 //! Input is a set of text lines harvested from one candidate's surfaces —
 //! artwork OCR is the most noisy source but path components, folder-name
-//! brackets, filenames, CUE sheets, and `.nfo`/`.txt` content all feed in.
+//! brackets, filenames, CUE sheets, and `.txt` content all feed in.
 //! This module is intentionally pure: no Vision, no I/O, just string
 //! transforms.
 //!

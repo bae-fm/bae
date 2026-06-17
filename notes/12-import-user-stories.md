@@ -70,7 +70,7 @@ Audio is collapsed because it's rarely needed for identification — images and 
 
 **Images** — always visible. Artwork files shown as a thumbnail grid (120px). These help identify the release — users look at scans for catalog numbers, spine text, disc art.
 
-**Documents** — always visible. Text/log/nfo files (name + size). Clickable (see US-5b). Rip logs and NFO files often contain release information.
+**Documents** — always visible. Text/log files (name + size). Clickable (see US-5b). Rip logs and text files often contain release information.
 
 Each section header shows the section name and count. Empty sections are hidden.
 
@@ -87,7 +87,7 @@ The gallery helps users identify releases by examining scans of spines, disc art
 
 ### US-5b: Document viewer
 
-Clicking a document file (log, nfo, m3u, cue, txt) in the file pane opens a viewer as a centered overlay with a dark backdrop. The viewer:
+Clicking a document file (log, m3u, cue, txt) in the file pane opens a viewer as a centered overlay with a dark backdrop. The viewer:
 - Shows the file content in a monospaced font
 - Text is selectable
 - Shows the filename in the header
@@ -95,7 +95,7 @@ Clicking a document file (log, nfo, m3u, cue, txt) in the file pane opens a view
 - Clicking the dark backdrop also dismisses it
 - Tries UTF-8 first, falls back to Shift-JIS (common for Japanese rip logs)
 
-NFO and log files often contain release info (catalog numbers, edition notes, rip details) that help with identification.
+Text and log files often contain release info (catalog numbers, edition notes, rip details) that help with identification.
 
 ### US-6: Empty file display
 
@@ -192,7 +192,7 @@ get_candidate_files(folder_path) -> CandidateFiles
 Returns categorized files for a scanned folder:
 - `audio`: either CUE+FLAC pairs or individual track files
 - `artwork`: image files
-- `documents`: text/log/nfo files
+- `documents`: text/log files
 - `bad_audio_count`, `bad_image_count`: corrupt file counts
 
 ### Candidate fields

@@ -7,7 +7,7 @@
 //!
 //! 1. **Fast pass.** Everything that resolves without OCR — the disc ID
 //!    (LOG/CUE), CUE `CATALOG` barcodes, and the non-OCR text sources
-//!    (folder-name brackets, path components, filenames, CUE, NFO/TXT) — is
+//!    (folder-name brackets, path components, filenames, CUE, text files) — is
 //!    gathered up front and emitted as the first `Signals`, so the disc-ID
 //!    lookup and the autocomplete populate before the first image OCR
 //!    completes.
@@ -50,7 +50,7 @@ pub enum ExtractionSource {
     Release { release_id: String },
 }
 
-/// Maximum size read from a single `.nfo` / `.txt` file. Caps pathological
+/// Maximum size read from a single `.txt` file. Caps pathological
 /// inputs (e.g. a 10 MB booklet transcription) without blowing memory.
 const MAX_TEXT_FILE_BYTES: u64 = 100 * 1024;
 
@@ -111,7 +111,7 @@ impl ExtractionServiceHandle {
 
     /// Kick off extraction for candidate `key` from `source`. A folder is
     /// scanned for its own sources (artwork, path components, filenames,
-    /// CUE, NFO/TXT); a release re-identify resolves its files from the
+    /// CUE, text files); a release re-identify resolves its files from the
     /// library. Cancels any prior in-flight extraction for the same key.
     pub fn start(&self, key: String, source: ExtractionSource) {
         let token = CancellationToken::new();
@@ -663,7 +663,7 @@ fn gather_non_ocr_sources(folder: &Path) -> FastPass {
         }
     }
 
-    // NFO / TXT files — one line per `\n`, treated like OCR input.
+    // Text files — one line per `\n`, treated like OCR input.
     for doc in text_file_paths(&categorized) {
         if let Some(text) = read_capped_text(&doc) {
             for line in text.lines() {
@@ -727,14 +727,14 @@ fn cue_sheet_names(sheet: &crate::cue_flac::CueSheet) -> Vec<String> {
     out
 }
 
-/// Returns `.nfo` and `.txt` files from the documents list. Excludes `.log`
+/// Returns `.txt` files from the documents list. Excludes `.log`
 /// (rip-technical data with no artist/album content) and `.cue` (handled
 /// separately).
 fn text_file_paths(categorized: &CategorizedFiles) -> Vec<PathBuf> {
     categorized
         .documents
         .iter()
-        .filter(|f| has_ext(&f.path, "nfo") || has_ext(&f.path, "txt"))
+        .filter(|f| has_ext(&f.path, "txt"))
         .map(|f| f.path.clone())
         .collect()
 }
