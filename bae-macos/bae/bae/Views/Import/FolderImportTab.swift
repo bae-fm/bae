@@ -200,7 +200,21 @@ struct FolderImportTab: View {
             },
             onAddFolder: { pickFolderAndAdd() },
             onRemoveFolder: { path in removeWatchedFolder(path) },
+            onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
         )
+    }
+
+    /// Mark the candidate at `key` skipped or unskipped. The reducer re-tabs the
+    /// row when the `candidateSkipChanged` event arrives.
+    private func setCandidateSkipped(_ key: String, _ skipped: Bool) {
+        do {
+            try importer.setCandidateSkipped(key, skipped)
+        }
+        catch {
+            uiStore.showError(
+                "Couldn't update skip state: \(error.localizedDescription)"
+            )
+        }
     }
 
     /// Stop watching `path`. If the selected candidate lived in that folder,

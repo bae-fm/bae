@@ -1916,6 +1916,14 @@ impl LibraryManager {
         Ok(self.database.find_release_by_id(release_id).await?)
     }
 
+    /// Whether a release whose stored content hash equals `hash` is in the
+    /// library. The import watcher stamps each scanned candidate with this so an
+    /// already-imported folder surfaces under the "Added" tab even after a
+    /// restart (it matches by file structure, not by name).
+    pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, LibraryError> {
+        Ok(self.database.is_content_hash_imported(hash).await?)
+    }
+
     /// This device's `release_local_copy` row for a release, if any.
     pub async fn get_release_local_copy(
         &self,

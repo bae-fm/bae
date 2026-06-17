@@ -47,6 +47,13 @@ impl WatchedFolder {
 pub struct ImportFolderRegistry {
     /// Watched folder paths, in the order the user added them.
     folders: Vec<String>,
+    /// Candidate folder paths the user manually marked as skipped. A skipped
+    /// candidate still scans but renders under the import view's "Skipped" tab
+    /// instead of "New". `#[serde(default)]` so an `import_folders.yaml` that
+    /// omits this field (only `folders`) still loads as an empty skip set
+    /// instead of failing to deserialize.
+    #[serde(default)]
+    skipped: Vec<String>,
 }
 
 impl ImportFolderRegistry {
@@ -128,6 +135,38 @@ impl ImportFolderRegistry {
         self.save(library_dir)?;
         Ok(true)
     }
+
+    /// Whether the candidate folder at `path` is manually marked as skipped.
+    pub fn is_skipped(&self, path: &str) -> bool {
+        self.skipped.iter().any(|p| p == path)
+    }
+
+    /// Mark `path` skipped (insert) or unskip it (remove), persisting on change.
+    /// Returns `true` when the skip set changed, `false` when the request was a
+    /// no-op (already in the requested state).
+    pub fn set_skipped(
+        &mut self,
+        library_dir: &LibraryDir,
+        path: String,
+        skipped: bool,
+    ) -> Result<bool, String> {
+        let changed = if skipped {
+            if self.skipped.contains(&path) {
+                false
+            } else {
+                self.skipped.push(path);
+                true
+            }
+        } else {
+            let before = self.skipped.len();
+            self.skipped.retain(|p| p != &path);
+            self.skipped.len() != before
+        };
+        if changed {
+            self.save(library_dir)?;
+        }
+        Ok(changed)
+    }
 }
 
 #[cfg(test)]
@@ -195,5 +234,87 @@ mod tests {
                 name: "b".to_string(),
             }]
         );
+    }
+
+    #[test]
+    fn skip_persists_and_survives_reload() {
+        let (_tmp, library_dir) = temp_library_dir();
+        let mut registry = ImportFolderRegistry::load(&library_dir);
+        assert!(!registry.is_skipped("/a"));
+
+        assert!(registry
+            .set_skipped(&library_dir, "/a".to_string(), true)
+            .unwrap());
+        // Skipping an already-skipped path is a no-op.
+        assert!(!registry
+            .set_skipped(&library_dir, "/a".to_string(), true)
+            .unwrap());
+        assert!(registry.is_skipped("/a"));
+
+        // A fresh load sees the persisted skip.
+        let reloaded = ImportFolderRegistry::load(&library_dir);
+        assert!(reloaded.is_skipped("/a"));
+        assert!(!reloaded.is_skipped("/b"));
+    }
+
+    #[test]
+    fn unskip_persists_and_reports_change() {
+        let (_tmp, library_dir) = temp_library_dir();
+        let mut registry = ImportFolderRegistry::load(&library_dir);
+        registry
+            .set_skipped(&library_dir, "/a".to_string(), true)
+            .unwrap();
+
+        assert!(registry
+            .set_skipped(&library_dir, "/a".to_string(), false)
+            .unwrap());
+        // Unskipping an already-unskipped path is a no-op.
+        assert!(!registry
+            .set_skipped(&library_dir, "/a".to_string(), false)
+            .unwrap());
+
+        let reloaded = ImportFolderRegistry::load(&library_dir);
+        assert!(!reloaded.is_skipped("/a"));
+    }
+
+    #[test]
+    fn skip_set_is_independent_of_watched_folders() {
+        // The skip set tracks candidate folders, which are distinct from the
+        // watched roots; the two lists don't interfere.
+        let (_tmp, library_dir) = temp_library_dir();
+        let mut registry = ImportFolderRegistry::load(&library_dir);
+        registry.add(&library_dir, "/root".to_string()).unwrap();
+        registry
+            .set_skipped(&library_dir, "/root/Album".to_string(), true)
+            .unwrap();
+
+        let reloaded = ImportFolderRegistry::load(&library_dir);
+        assert_eq!(
+            reloaded.watched_folders(),
+            vec![WatchedFolder {
+                path: "/root".to_string(),
+                name: "root".to_string(),
+            }]
+        );
+        assert!(reloaded.is_skipped("/root/Album"));
+    }
+
+    #[test]
+    fn loads_file_omitting_skipped_field() {
+        // An `import_folders.yaml` that omits the `skipped` field (only
+        // `folders`) must still load, defaulting to an empty skip set.
+        let (_tmp, library_dir) = temp_library_dir();
+        let path = ImportFolderRegistry::file_path(&library_dir);
+        std::fs::write(&path, "folders:\n  - /a\n").unwrap();
+
+        let registry = ImportFolderRegistry::load(&library_dir);
+        assert_eq!(
+            registry.watched_folders(),
+            vec![WatchedFolder {
+                path: "/a".to_string(),
+                name: "a".to_string(),
+            }]
+        );
+        assert!(!registry.is_skipped("/a"));
     }
 }

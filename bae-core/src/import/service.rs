@@ -334,6 +334,8 @@ impl ImportService {
         runtime_handle: &tokio::runtime::Handle,
         mut cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
         event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
+        library_manager: LibraryManager,
+        folder_registry: Arc<Mutex<ImportFolderRegistry>>,
     ) {
         runtime_handle.spawn(async move {
             let (fs_tx, mut fs_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
@@ -374,8 +376,14 @@ impl ImportService {
                                     }
                                     roots.push(path.clone());
                                 }
-                                Self::rescan_and_reconcile(&path, &mut last_keys, &event_tx)
-                                    .await;
+                                Self::rescan_and_reconcile(
+                                    &path,
+                                    &mut last_keys,
+                                    &event_tx,
+                                    &library_manager,
+                                    &folder_registry,
+                                )
+                                .await;
                             }
                             WatcherCommand::Unwatch(path) => {
                                 if let Err(e) = debouncer.unwatch(&path) {
@@ -401,7 +409,14 @@ impl ImportService {
                             .flat_map(|e| e.paths.iter().map(PathBuf::as_path))
                             .collect();
                         for root in affected_roots(&changed, &roots) {
-                            Self::rescan_and_reconcile(&root, &mut last_keys, &event_tx).await;
+                            Self::rescan_and_reconcile(
+                                &root,
+                                &mut last_keys,
+                                &event_tx,
+                                &library_manager,
+                                &folder_registry,
+                            )
+                            .await;
                         }
                     }
                 }
@@ -418,6 +433,8 @@ impl ImportService {
         root: &Path,
         last_keys: &mut HashMap<PathBuf, HashSet<String>>,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
+        library_manager: &LibraryManager,
+        folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
     ) {
         let root_buf = root.to_path_buf();
         let scanned = tokio::task::spawn_blocking(move || {
@@ -426,7 +443,7 @@ impl ImportService {
         })
         .await;
 
-        let candidates = match scanned {
+        let mut candidates = match scanned {
             Ok(Ok(candidates)) => candidates,
             Ok(Err(e)) => {
                 warn!(
@@ -440,6 +457,30 @@ impl ImportService {
                 return;
             }
         };
+
+        // The blocking walk left `skipped`/`is_added` at their defaults (it has
+        // neither the registry nor the DB). Stamp the real values now, before
+        // reconciling, so every emitted candidate carries its tab state.
+        for candidate in &mut candidates {
+            let path = candidate.path.to_string_lossy();
+            candidate.skipped = folder_registry.lock().unwrap().is_skipped(&path);
+            candidate.is_added = match library_manager
+                .is_content_hash_imported(&candidate.files.content_hash())
+                .await
+            {
+                Ok(is_added) => is_added,
+                Err(e) => {
+                    // A DB read fault leaves the candidate as "not added" rather
+                    // than dropping it — the user still sees it under "New" and
+                    // can act on it; the next re-scan retries the lookup.
+                    warn!(
+                        "added-state lookup failed for {}; treating as not added: {e}",
+                        candidate.path.display()
+                    );
+                    false
+                }
+            };
+        }
 
         let new_keys: HashSet<String> = candidates
             .iter()
@@ -486,7 +527,21 @@ impl ImportService {
         let event_tx_for_worker = event_tx.clone();
         let library_manager_for_handle = library_manager.clone();
 
-        ImportService::start_watcher(&runtime_handle, watcher_rx, event_tx.clone());
+        // The watched-folder list is durable per-library appdata; `load` warns
+        // and starts empty if the file is corrupt, so app start never fails on it.
+        // The same `Arc` is shared by the watcher (which reads the skip set while
+        // stamping candidates) and the handle (which mutates it on add/remove/skip).
+        let folder_registry = Arc::new(Mutex::new(ImportFolderRegistry::load(
+            library_manager_for_handle.library_dir(),
+        )));
+
+        ImportService::start_watcher(
+            &runtime_handle,
+            watcher_rx,
+            event_tx.clone(),
+            library_manager_for_handle.clone(),
+            folder_registry.clone(),
+        );
 
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
@@ -514,12 +569,6 @@ impl ImportService {
                 }
             });
         });
-
-        // The watched-folder list is durable per-library appdata; `load` warns
-        // and starts empty if the file is corrupt, so app start never fails on it.
-        let folder_registry = Arc::new(Mutex::new(ImportFolderRegistry::load(
-            library_manager_for_handle.library_dir(),
-        )));
 
         ImportServiceHandle::new(
             commands_tx,

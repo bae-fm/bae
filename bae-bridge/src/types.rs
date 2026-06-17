@@ -419,6 +419,12 @@ pub struct BridgeFolderCandidate {
     /// Folder candidates always have files on disk and CUEs parsed during the
     /// scan, so track count is always known.
     pub track_count: u32,
+    /// Whether the user manually marked this candidate as skipped — the import
+    /// view tabs it under "Skipped".
+    pub skipped: bool,
+    /// Whether this candidate's file structure was already imported (matched by
+    /// content hash). When true, the import view tabs it under "Added".
+    pub is_added: bool,
 }
 
 /// A folder the user watches for imports — one candidate-list group.
@@ -1061,6 +1067,12 @@ pub enum BridgeUiEvent {
     /// removes it by key.
     ScanCandidateRemoved {
         key: String,
+    },
+    /// The user manually skipped or unskipped a candidate — the reducer flips
+    /// its `skipped` flag, re-tabbing it New ↔ Skipped.
+    CandidateSkipChanged {
+        key: String,
+        skipped: bool,
     },
     ScanFinished,
 

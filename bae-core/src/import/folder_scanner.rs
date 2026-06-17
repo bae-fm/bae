@@ -221,6 +221,17 @@ pub struct FolderCandidate {
     /// the candidate-list group it belongs to. Equal to the scan root. The
     /// group's display name comes from the watched-folder list, not here.
     pub watched_folder_path: String,
+    /// Whether the user manually marked this candidate as skipped. The scanner's
+    /// blocking walk has no registry access, so it leaves this `false`; the
+    /// watcher stamps the real value from the folder registry after the scan.
+    pub skipped: bool,
+    /// Whether this folder's file structure was already imported (its
+    /// `CategorizedFiles::content_hash` matches a release in the library). Like
+    /// `skipped`, the scanner can't query the DB, so it leaves this `false`; the
+    /// watcher stamps it after the scan. Drives the import view's "Added" tab so
+    /// a re-scanned, already-imported folder still surfaces as added across
+    /// restarts.
+    pub is_added: bool,
 }
 
 // ── FileTree: abstract file source ──────────────────────────────────────────
@@ -955,6 +966,10 @@ where
             name: raw.name,
             files: raw.files,
             watched_folder_path: watched_folder_path.clone(),
+            // The blocking walk has neither the registry nor the DB; the watcher
+            // stamps the real per-candidate facts after this scan returns.
+            skipped: false,
+            is_added: false,
         });
     })
 }

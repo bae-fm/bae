@@ -152,6 +152,13 @@ pub enum ScanEvent {
     CandidateRemoved {
         candidate_key: String,
     },
+    /// The user manually skipped or unskipped a candidate. The reducer flips the
+    /// candidate's `skipped` flag in place; the import view re-tabs it from New
+    /// to Skipped (or back). The key is the candidate's folder path.
+    CandidateSkipChanged {
+        candidate_key: String,
+        skipped: bool,
+    },
     Finished,
 }
 
@@ -667,6 +674,27 @@ impl ImportServiceHandle {
             self.watcher_tx
                 .send(WatcherCommand::Unwatch(std::path::PathBuf::from(path)))
                 .map_err(|_| "Failed to stop watching folder".to_string())?;
+        }
+        Ok(())
+    }
+
+    /// Mark the candidate at `path` skipped or unskipped, persisting the change
+    /// and broadcasting it so the import view re-tabs the row (New ↔ Skipped).
+    /// A no-op request (already in the requested state) persists nothing and
+    /// emits no event.
+    pub fn set_candidate_skipped(&self, path: String, skipped: bool) -> Result<(), String> {
+        let library_dir = self.library_manager.library_dir();
+        let mut registry = self.folder_registry.lock().unwrap();
+        let changed = registry.set_skipped(library_dir, path.clone(), skipped)?;
+        drop(registry);
+        if changed {
+            send_event(
+                &self.event_tx,
+                ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+                    candidate_key: path,
+                    skipped,
+                }),
+            );
         }
         Ok(())
     }

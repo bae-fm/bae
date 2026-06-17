@@ -797,6 +797,8 @@ enum PreviewData {
             watchedFolderPath: "/Music/Downloads",
             files: bridgeCandidateFiles,
             trackCount: 9,
+            skipped: false,
+            isAdded: false,
         ),
         BridgeFolderCandidate(
             folderPath: "/Music/Downloads/Album Title Two [Label CAT-002]",
@@ -804,6 +806,9 @@ enum PreviewData {
             watchedFolderPath: "/Music/Downloads",
             files: bridgeCandidateFiles,
             trackCount: 12,
+            // Skipped example — renders under the Skipped tab.
+            skipped: true,
+            isAdded: false,
         ),
         BridgeFolderCandidate(
             folderPath: "/Music/Downloads/Compilation Vol. 3",
@@ -811,6 +816,8 @@ enum PreviewData {
             watchedFolderPath: "/Music/Downloads",
             files: bridgeCandidateFiles,
             trackCount: 15,
+            skipped: false,
+            isAdded: false,
         ),
         BridgeFolderCandidate(
             folderPath: "/Music/Downloads/EP Release",
@@ -818,6 +825,8 @@ enum PreviewData {
             watchedFolderPath: "/Music/Downloads",
             files: bridgeCandidateFiles,
             trackCount: 5,
+            skipped: false,
+            isAdded: false,
         ),
         BridgeFolderCandidate(
             folderPath: "/Music/Downloads/Live Recording 2023",
@@ -825,6 +834,9 @@ enum PreviewData {
             watchedFolderPath: "/Music/Downloads",
             files: bridgeCandidateFiles,
             trackCount: 18,
+            // Added example (content-hash match) — renders under the Added tab.
+            skipped: false,
+            isAdded: true,
         ),
     ]
     .map(Candidate.init(bridge:))
@@ -835,11 +847,7 @@ enum PreviewData {
             phase: nil,
             statusText: "Storing files..."
         ),
-        "/Music/Downloads/Live Recording 2023": .importing(
-            progressPercent: 30,
-            phase: "acquire",
-            statusText: "Downloading..."
-        ),
+        // A completed import — tabs under Added via its import status.
         "/Music/Downloads/EP Release": .complete(
             albumId: "preview-album",
             releaseId: "preview-release"

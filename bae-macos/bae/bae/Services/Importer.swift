@@ -12,6 +12,9 @@ final class Importer: Sendable, Observable {
     let addWatchedFolder: @Sendable (_ path: String) throws -> Void
     /// Stop watching a folder; its candidates drop out of the list.
     let removeWatchedFolder: @Sendable (_ path: String) throws -> Void
+    /// Mark a candidate skipped (or unskipped); the import view re-tabs the row.
+    let setCandidateSkipped:
+        @Sendable (_ path: String, _ skipped: Bool) throws -> Void
     /// Scan every watched folder, streaming candidates back as events. Called
     /// when the import view appears to populate the list.
     let scanWatchedFolders: @Sendable () throws -> Void
@@ -47,6 +50,8 @@ final class Importer: Sendable, Observable {
         removeWatchedFolder: @escaping @Sendable (String) throws -> Void = {
             _ in
         },
+        setCandidateSkipped:
+            @escaping @Sendable (String, Bool) throws -> Void = { _, _ in },
         scanWatchedFolders: @escaping @Sendable () throws -> Void = {},
         autoIdentifyFolder: @escaping @Sendable (String, String) -> Void = {
             _,
@@ -81,6 +86,7 @@ final class Importer: Sendable, Observable {
         self.watchedFolders = watchedFolders
         self.addWatchedFolder = addWatchedFolder
         self.removeWatchedFolder = removeWatchedFolder
+        self.setCandidateSkipped = setCandidateSkipped
         self.scanWatchedFolders = scanWatchedFolders
         self.autoIdentifyFolder = autoIdentifyFolder
         self.autoIdentifyRelease = autoIdentifyRelease
@@ -97,6 +103,9 @@ final class Importer: Sendable, Observable {
             watchedFolders: { handle.watchedFolders() },
             addWatchedFolder: { try handle.addWatchedFolder(path: $0) },
             removeWatchedFolder: { try handle.removeWatchedFolder(path: $0) },
+            setCandidateSkipped: {
+                try handle.setCandidateSkipped(path: $0, skipped: $1)
+            },
             scanWatchedFolders: { try handle.scanWatchedFolders() },
             autoIdentifyFolder: {
                 handle.autoIdentifyFolder(candidateKey: $0, folderPath: $1)

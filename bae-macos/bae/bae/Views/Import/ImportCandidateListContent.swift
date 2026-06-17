@@ -36,7 +36,11 @@ struct ImportCandidateListContent: View {
     let isLikelyDupe: (String) -> Bool
     let onAddFolder: () -> Void
     let onRemoveFolder: (_ path: String) -> Void
+    /// Skip (or unskip) the candidate at `key`. Wired to the row context menu.
+    let onSkip: (_ key: String, _ skipped: Bool) -> Void
 
+    @State
+    private var activeTab: CandidateTab = .new
     @State
     private var filterText = ""
     @State
@@ -44,12 +48,14 @@ struct ImportCandidateListContent: View {
     @AppStorage("importCandidateSort")
     private var sortOrder: CandidateSortOrder = .dateAddedNewest
 
-    /// One section per watched folder, candidates filtered and sorted — built by
-    /// the store. `filterText` and `sortOrder` are this view's own UI state.
+    /// One section per watched folder, candidates in the active tab, filtered and
+    /// sorted — built by the store. `activeTab`, `filterText`, and `sortOrder`
+    /// are this view's own UI state.
     private var displayedGroups:
         [(folder: BridgeWatchedFolder, candidates: [Candidate])]
     {
         importStore.candidateGroups(
+            tab: activeTab,
             filterText: filterText,
             sortOrder: sortOrder
         )
@@ -57,64 +63,104 @@ struct ImportCandidateListContent: View {
 
     var body: some View {
         ImportSidebarList {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.tertiary)
-                    .font(.callout)
-                TextField("Filter...", text: $filterText)
-                    .textFieldStyle(.plain)
-                    .font(.callout)
-                if !filterText.isEmpty {
-                    Button {
-                        filterText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.tertiary)
+            VStack(spacing: 8) {
+                CandidateTabBar(
+                    activeTab: $activeTab,
+                    importStore: importStore
+                )
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.tertiary)
+                        .font(.callout)
+                    TextField("Filter...", text: $filterText)
+                        .textFieldStyle(.plain)
+                        .font(.callout)
+                    if !filterText.isEmpty {
+                        Button {
+                            filterText = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    sortMenu
+                    Button(action: onAddFolder) {
+                        Image(systemName: "plus")
                     }
                     .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help("Add a folder to watch for imports")
                 }
             }
             .frame(maxWidth: .infinity)
-            sortMenu
-            Button(action: onAddFolder) {
-                Image(systemName: "plus")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .help("Add a folder to watch for imports")
         } content: {
-            List(selection: $selectedKey) {
-                ForEach(displayedGroups, id: \.folder.path) { group in
-                    Section {
-                        if !collapsedFolders.contains(group.folder.path) {
-                            ForEach(group.candidates, id: \.key) { candidate in
-                                CandidateRow(
-                                    displayName: candidate.displayName,
-                                    revealPath: candidate.folderPathIfReal,
-                                    status: candidate.importStatus,
-                                    isLikelyDupe: isLikelyDupe(
-                                        candidate.displayName
-                                    ),
-                                )
-                                .tag(candidate.key)
-                            }
+            if displayedGroups.isEmpty {
+                emptyState
+            }
+            else {
+                candidateList
+            }
+        }
+    }
+
+    /// Per-tab empty state: distinguishes "no matches" while filtering from
+    /// "nothing in this tab yet".
+    private var emptyState: some View {
+        ContentUnavailableView(
+            filterText.isEmpty ? "Nothing here yet" : "No matches",
+            systemImage: filterText.isEmpty
+                ? emptyTabSymbol : "magnifyingglass"
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.surface)
+    }
+
+    private var emptyTabSymbol: String {
+        switch activeTab {
+        case .new: "folder"
+        case .added: "checkmark.circle"
+        case .skipped: "minus.circle"
+        }
+    }
+
+    private var candidateList: some View {
+        List(selection: $selectedKey) {
+            ForEach(displayedGroups, id: \.folder.path) { group in
+                Section {
+                    if !collapsedFolders.contains(group.folder.path) {
+                        ForEach(group.candidates, id: \.key) { candidate in
+                            CandidateRow(
+                                displayName: candidate.displayName,
+                                revealPath: candidate.folderPathIfReal,
+                                status: candidate.importStatus,
+                                isAdded: candidate.isAdded,
+                                skipped: candidate.skipped,
+                                isLikelyDupe: isLikelyDupe(
+                                    candidate.displayName
+                                ),
+                                onSkip: { skipped in
+                                    onSkip(candidate.key, skipped)
+                                },
+                            )
+                            .tag(candidate.key)
                         }
-                    } header: {
-                        FolderSectionHeader(
-                            folder: group.folder,
-                            count: group.candidates.count,
-                            isCollapsed: collapsedFolders.contains(
-                                group.folder.path
-                            ),
-                            onToggle: { toggleCollapsed(group.folder.path) },
-                            onRemove: { onRemoveFolder(group.folder.path) },
-                        )
                     }
+                } header: {
+                    FolderSectionHeader(
+                        folder: group.folder,
+                        count: group.candidates.count,
+                        isCollapsed: collapsedFolders.contains(
+                            group.folder.path
+                        ),
+                        onToggle: { toggleCollapsed(group.folder.path) },
+                        onRemove: { onRemoveFolder(group.folder.path) },
+                    )
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.surface)
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.surface)
     }
 
     private func toggleCollapsed(_ path: String) {
@@ -155,6 +201,66 @@ struct ImportCandidateListContent: View {
                 Text(label)
             }
         }
+    }
+}
+
+// MARK: - CandidateTabBar
+
+/// The New / Added / Skipped tab bar above the candidate list. Three equal
+/// segments, each a label plus a count badge; the active one is highlighted.
+private struct CandidateTabBar: View {
+    @Binding
+    var activeTab: CandidateTab
+    /// Read the counts at the leaf so the parent isn't subscribed to every
+    /// candidate change just to pass them down.
+    let importStore: ImportStore
+
+    var body: some View {
+        let counts = importStore.candidateTabCounts()
+        HStack(spacing: 4) {
+            segment(.new, "New", counts.new)
+            segment(.added, "Added", counts.added)
+            segment(.skipped, "Skipped", counts.skipped)
+        }
+    }
+
+    private func segment(_ tab: CandidateTab, _ label: String, _ count: Int)
+        -> some View
+    {
+        let isActive = activeTab == tab
+        return Button {
+            activeTab = tab
+        } label: {
+            HStack(spacing: 4) {
+                Text(label)
+                    .font(.caption)
+                    .fontWeight(isActive ? .semibold : .regular)
+                Text("\(count)")
+                    .font(.caption2)
+                    .monospacedDigit()
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(
+                        Capsule()
+                            .fill(
+                                isActive
+                                    ? Color.accentColor.opacity(0.25)
+                                    : Color.secondary.opacity(0.15)
+                            )
+                    )
+            }
+            .foregroundStyle(isActive ? Color.accentColor : Color.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(
+                        isActive
+                            ? Color.accentColor.opacity(0.12) : Color.clear
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -209,7 +315,14 @@ struct CandidateRow: View {
     /// candidates.
     let revealPath: String?
     let status: ImportStatus?
+    /// The candidate was already imported from this folder (content-hash match),
+    /// shown the same as an in-session completed import.
+    let isAdded: Bool
+    /// The user manually skipped this candidate.
+    let skipped: Bool
     let isLikelyDupe: Bool
+    /// Skip (true) or unskip (false) this candidate.
+    let onSkip: (_ skipped: Bool) -> Void
 
     @Environment(OutboxStore.self)
     private var outboxStore
@@ -223,7 +336,7 @@ struct CandidateRow: View {
                     .font(.callout)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                if isLikelyDupe, status == nil {
+                if isLikelyDupe, status == nil, !isAdded, !skipped {
                     Text("Likely imported")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -236,7 +349,9 @@ struct CandidateRow: View {
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         .contextMenu {
+            Button(skipped ? "Move to New" : "Skip") { onSkip(!skipped) }
             if let revealPath {
+                Divider()
                 Button("Reveal in Finder") {
                     SystemActions.revealInFinder(path: revealPath)
                 }
@@ -246,7 +361,10 @@ struct CandidateRow: View {
 
     @ViewBuilder
     private var statusIcon: some View {
-        if let status {
+        if skipped {
+            icon("minus.circle", .secondary)
+        }
+        else if let status {
             switch status {
             case .importing:
                 ProgressView()
@@ -257,22 +375,29 @@ struct CandidateRow: View {
                 if let progress = outboxStore.progress(forRelease: releaseId),
                     !progress.isIdle
                 {
-                    Image(systemName: "icloud.and.arrow.up")
-                        .foregroundStyle(.secondary)
+                    icon("icloud.and.arrow.up", .secondary)
                 }
                 else {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                    icon("checkmark.circle.fill", .green)
                 }
             case .error:
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
+                icon("exclamationmark.triangle.fill", .red)
             }
         }
-        else {
-            Image(systemName: "folder")
-                .foregroundStyle(.secondary)
+        else if isAdded {
+            // An already-imported folder (content-hash match) shows the same
+            // green check as an in-session completed import.
+            icon("checkmark.circle.fill", .green)
         }
+        else {
+            icon("folder", .secondary)
+        }
+    }
+
+    private func icon<S: ShapeStyle>(_ systemName: String, _ style: S)
+        -> some View
+    {
+        Image(systemName: systemName).foregroundStyle(style)
     }
 }
 
@@ -295,6 +420,7 @@ struct CandidateRow: View {
         isLikelyDupe: { $0 == "Album Title One" },
         onAddFolder: {},
         onRemoveFolder: { _ in },
+        onSkip: { _, _ in },
     )
     .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
     .frame(width: 280, height: 500)

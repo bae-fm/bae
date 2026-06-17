@@ -2,6 +2,14 @@ import Combine
 import OrderedCollections
 import SwiftUI
 
+/// The three state tabs the import candidate list groups candidates under.
+/// `tab(for:)` assigns each candidate to exactly one.
+enum CandidateTab: Hashable {
+    case new
+    case added
+    case skipped
+}
+
 /// Session state for the import flow. Mixed-writer: the reducer drives
 /// event-driven fields (scan, identify, preview state), while views drive
 /// user-set fields (mode, selectedCoverUrl) via `mutateCandidate(forKey:_:)`.
@@ -112,19 +120,41 @@ class ImportStore {
         }
     }
 
+    /// The state tab a candidate belongs to. Skipped wins (a skipped candidate
+    /// stays under Skipped even if it was also imported); otherwise a candidate
+    /// that completed an import this session or matches an already-imported
+    /// folder is Added; everything else is New.
+    func tab(for candidate: Candidate) -> CandidateTab {
+        if candidate.skipped {
+            return .skipped
+        }
+        if case .complete = candidate.importStatus {
+            return .added
+        }
+        if candidate.isAdded {
+            return .added
+        }
+        return .new
+    }
+
     /// Folder candidates grouped for the candidate list: one entry per watched
-    /// folder (in add order), each holding that folder's candidates filtered by
-    /// `filterText` and ordered by `sortOrder`. Candidates whose watched folder
-    /// is no longer watched are excluded, and — while filtering — folders with
-    /// no matches drop out. The view iterates and renders this; the filtering,
-    /// sorting, and grouping live here in the state layer.
-    func candidateGroups(filterText: String, sortOrder: CandidateSortOrder)
+    /// folder (in add order), each holding that folder's candidates that belong
+    /// to `tab`, filtered by `filterText` and ordered by `sortOrder`. Candidates
+    /// whose watched folder is no longer watched are excluded, and — while
+    /// filtering — folders with no matches drop out. The view iterates and
+    /// renders this; the tab-assignment, filtering, sorting, and grouping live
+    /// here in the state layer.
+    func candidateGroups(
+        tab: CandidateTab,
+        filterText: String,
+        sortOrder: CandidateSortOrder
+    )
         -> [(folder: BridgeWatchedFolder, candidates: [Candidate])]
     {
         let query = filterText.lowercased()
         return watchedFolders.compactMap { folder in
             var rows = folderCandidates.values.filter {
-                $0.watchedFolderPath == folder.path
+                $0.watchedFolderPath == folder.path && self.tab(for: $0) == tab
             }
             if !query.isEmpty {
                 rows = rows.filter {
@@ -148,6 +178,22 @@ class ImportStore {
                 }
             return (folder, ordered)
         }
+    }
+
+    /// Per-tab candidate counts across every folder candidate (independent of
+    /// the active filter), for the tab bar's count badges. A candidate whose
+    /// watched folder is no longer present still counts — the watcher drops such
+    /// candidates from the store, so the store only holds live ones.
+    func candidateTabCounts() -> (new: Int, added: Int, skipped: Int) {
+        var counts = (new: 0, added: 0, skipped: 0)
+        for candidate in folderCandidates.values {
+            switch tab(for: candidate) {
+            case .new: counts.new += 1
+            case .added: counts.added += 1
+            case .skipped: counts.skipped += 1
+            }
+        }
+        return counts
     }
 
     private static func sortedByName(_ rows: [Candidate], ascending: Bool)

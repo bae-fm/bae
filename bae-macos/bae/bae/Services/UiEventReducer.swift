@@ -281,6 +281,12 @@ enum UiEventReducer {
             // gone from disk; drop it.
             importStore.folderCandidates.removeValue(forKey: key)
 
+        case .candidateSkipChanged(let key, let skipped):
+            // The user skipped or unskipped the candidate; flip its flag so the
+            // import view re-tabs it New ↔ Skipped. In-place mutation keeps the
+            // candidate's identify/search/import state.
+            importStore.mutateCandidate(forKey: key) { $0.skipped = skipped }
+
         case .scanFinished:
             // No state change needed — views react to candidate additions
             break

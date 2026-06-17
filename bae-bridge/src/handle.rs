@@ -926,6 +926,16 @@ impl AppHandle {
             .map_err(|e| BridgeError::Import { msg: e })
     }
 
+    /// Mark the candidate at `path` skipped or unskipped. Persists the change and
+    /// broadcasts a `CandidateSkipChanged` event so the import view re-tabs the
+    /// row.
+    pub fn set_candidate_skipped(&self, path: String, skipped: bool) -> Result<(), BridgeError> {
+        self.app_services
+            .import()
+            .set_candidate_skipped(path, skipped)
+            .map_err(|e| BridgeError::Import { msg: e })
+    }
+
     /// Scan every watched folder, streaming results back as
     /// `FolderCandidateAdded` events. The UI calls this when the import view
     /// appears to populate the candidate list.
@@ -1571,11 +1581,16 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
                     watched_folder_path: candidate.watched_folder_path,
                     files: categorized_files_to_bridge(candidate.files),
                     track_count,
+                    skipped: candidate.skipped,
+                    is_added: candidate.is_added,
                 },
             })
         }
         UiBusEvent::ScanCandidateRemoved { key } => {
             Some(BridgeUiEvent::ScanCandidateRemoved { key })
+        }
+        UiBusEvent::CandidateSkipChanged { key, skipped } => {
+            Some(BridgeUiEvent::CandidateSkipChanged { key, skipped })
         }
         UiBusEvent::ScanFinished => Some(BridgeUiEvent::ScanFinished),
 

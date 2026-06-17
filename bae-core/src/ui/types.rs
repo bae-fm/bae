@@ -151,6 +151,12 @@ pub enum UiBusEvent {
     ScanCandidateRemoved {
         key: String,
     },
+    /// The user manually skipped or unskipped a candidate. The reducer flips the
+    /// candidate's `skipped` flag in place, re-tabbing it New ↔ Skipped.
+    CandidateSkipChanged {
+        key: String,
+        skipped: bool,
+    },
     ScanFinished,
 
     // ── Library ────────────────────────────────────────────────────

@@ -268,6 +268,15 @@ impl UiEventBus {
                         ScanEvent::CandidateRemoved { candidate_key } => {
                             bus.emit(UiBusEvent::ScanCandidateRemoved { key: candidate_key });
                         }
+                        ScanEvent::CandidateSkipChanged {
+                            candidate_key,
+                            skipped,
+                        } => {
+                            bus.emit(UiBusEvent::CandidateSkipChanged {
+                                key: candidate_key,
+                                skipped,
+                            });
+                        }
                         ScanEvent::Finished => {
                             bus.emit(UiBusEvent::ScanFinished);
                         }

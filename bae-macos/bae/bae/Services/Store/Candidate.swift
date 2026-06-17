@@ -103,6 +103,14 @@ struct Candidate: Equatable, Identifiable {
     var files: CandidateFiles
     var identifyState: IdentifyState = .idle
     var importStatus: ImportStatus?
+    /// Whether the user manually skipped this candidate. Drives the import view's
+    /// Skipped tab; flipped by the reducer on a `candidateSkipChanged` event.
+    var skipped: Bool = false
+    /// Whether this candidate's file structure was already imported (matched by
+    /// content hash). Set from the scan; drives the Added tab so an
+    /// already-imported folder surfaces as added even without a fresh import in
+    /// the session.
+    var isAdded: Bool = false
     /// Full release detail fetched after the user picks a pressing. Stored as
     /// the bridge type (not just the `ImportReleaseDetail` projection) so the
     /// bottom pane can re-seed the editor when the user flips the Exact /
@@ -162,6 +170,8 @@ struct Candidate: Equatable, Identifiable {
         displayName = bridge.sourceFolderName
         trackCount = bridge.trackCount
         files = CandidateFiles(bridge: bridge.files)
+        skipped = bridge.skipped
+        isAdded = bridge.isAdded
     }
 
     /// Construct a re-identify candidate. The release already lives in

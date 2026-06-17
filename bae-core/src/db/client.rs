@@ -2807,6 +2807,28 @@ impl Database {
             .await
     }
 
+    /// The album id of a release stored from the file structure that hashes to
+    /// `hash`, or `None` when no release carries that content hash. The import
+    /// Whether some release in the library was imported from this exact file
+    /// structure (its `content_hash` matches `hash`). The import view uses this
+    /// to mark a scanned folder as already added.
+    pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, DbError> {
+        let hash = hash.to_string();
+        self.inner
+            .coven_db
+            .call(move |conn| {
+                conn.query_row(
+                    "SELECT 1 FROM releases WHERE content_hash = ? LIMIT 1",
+                    params![hash],
+                    |_| Ok(()),
+                )
+                .optional()
+                .map(|o| o.is_some())
+                .map_err(DbError::from)
+            })
+            .await
+    }
+
     /// Check, for each candidate in `checks`, whether the library already
     /// holds the same pressing or the same album (group). Drives the
     /// "in library" badges shown in the identify-pipeline result lists.
