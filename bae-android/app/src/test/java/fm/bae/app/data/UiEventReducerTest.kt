@@ -82,6 +82,21 @@ class UiEventReducerTest {
     }
 
     @Test
+    fun syncingChangedRoutesIntoConfigStore() {
+        val (library, config) = stores()
+        assertEquals(false, config.syncing.value)
+
+        // config.syncing is the flow the library screen observes to show or hide
+        // its sync indicator, so the reducer must mirror the SyncingChanged
+        // signal onto it.
+        UiEventReducer.reduce(BridgeUiEvent.SyncingChanged(syncing = true), library, config, noopPlayer)
+        assertEquals(true, config.syncing.value)
+
+        UiEventReducer.reduce(BridgeUiEvent.SyncingChanged(syncing = false), library, config, noopPlayer)
+        assertEquals(false, config.syncing.value)
+    }
+
+    @Test
     fun playbackLoadingForwardsResolvedTrackMetadataToThePlayer() {
         val (library, config) = stores()
         var received: BridgeLoadingTrackInfo? = null

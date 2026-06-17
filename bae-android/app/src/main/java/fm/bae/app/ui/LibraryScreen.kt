@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -24,13 +23,16 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -52,6 +54,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,10 +82,13 @@ private fun BridgeSortField.label(): String = when (this) {
 }
 
 /**
- * Library browse. Top bar with sync status, an album grid paginated from the
- * database, navigation into an album's detail, and a persistent now-playing
- * bar once playback starts. The grid re-queries whenever the library shape
- * changes (sync streams albums in over time).
+ * Library browse. A top bar (wordmark + search/sort/settings) over an album
+ * grid paginated from the database, navigation into an album's detail, and a
+ * persistent now-playing bar once playback starts. Search is tap-to-open: the
+ * search icon swaps the top bar for a focused query field. A thin indeterminate
+ * bar shows under the top bar only while a sync cycle is mid-flight. The grid
+ * re-queries whenever the library shape changes (sync streams albums in over
+ * time).
  */
 private const val TAG = "bae.LibraryScreen"
 
@@ -89,9 +97,11 @@ private const val TAG = "bae.LibraryScreen"
 fun LibraryScreen(session: OpenLibrary, onLeaveLibrary: () -> Unit) {
     var selectedAlbumId by remember { mutableStateOf<String?>(null) }
     var showSettings by remember { mutableStateOf(false) }
-    // Declared before the detail early-return so the active query survives a
-    // round-trip into an album's detail and back.
+    // Declared before the detail early-return so the active query (and whether
+    // the search bar is open) survive a round-trip into an album's detail and
+    // back.
     var searchQuery by remember { mutableStateOf("") }
+    var searchOpen by remember { mutableStateOf(false) }
     // Survives the detail round-trip (declared before the early return). Changing
     // it resets the paged accumulator below, which keys on it.
     var sortCriterion by remember {
@@ -120,7 +130,7 @@ fun LibraryScreen(session: OpenLibrary, onLeaveLibrary: () -> Unit) {
     }
 
     val generation by session.libraryStore.generation.collectAsState()
-    val syncReady by session.configStore.syncReady.collectAsState()
+    val syncing by session.configStore.syncing.collectAsState()
     val syncError by session.configStore.syncError.collectAsState()
     val appError by session.configStore.error.collectAsState()
 
@@ -216,14 +226,25 @@ fun LibraryScreen(session: OpenLibrary, onLeaveLibrary: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        LibraryTopBar(
-            syncReady = syncReady,
-            sortCriterion = sortCriterion,
-            onSortChange = { sortCriterion = it },
-            onSettings = { showSettings = true },
-        )
+        if (searchOpen) {
+            LibrarySearchBar(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                onClose = {
+                    searchOpen = false
+                    searchQuery = ""
+                },
+            )
+        } else {
+            LibraryTopBar(
+                onOpenSearch = { searchOpen = true },
+                sortCriterion = sortCriterion,
+                onSortChange = { sortCriterion = it },
+                onSettings = { showSettings = true },
+            )
+        }
 
-        SearchField(query = searchQuery, onQueryChange = { searchQuery = it })
+        SyncIndicatorBar(syncing = syncing)
 
         // A failed append (over already-loaded albums) surfaces in this banner
         // with a Retry; a first-page failure shows in-grid below instead.
@@ -316,7 +337,7 @@ fun LibraryScreen(session: OpenLibrary, onLeaveLibrary: () -> Unit) {
 
 @Composable
 private fun LibraryTopBar(
-    syncReady: Boolean,
+    onOpenSearch: () -> Unit,
     sortCriterion: BridgeSortCriterion,
     onSortChange: (BridgeSortCriterion) -> Unit,
     onSettings: () -> Unit,
@@ -328,20 +349,79 @@ private fun LibraryTopBar(
         ) {
             Text(text = "bae", fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = onOpenSearch) {
+                Icon(imageVector = Icons.Filled.Search, contentDescription = "Search")
+            }
             SortMenu(criterion = sortCriterion, onChange = onSortChange)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = if (syncReady) "synced" else "syncing…",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             IconButton(onClick = onSettings) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = "Settings",
-                )
+                Icon(imageVector = Icons.Filled.Settings, contentDescription = "Settings")
             }
         }
+    }
+}
+
+/**
+ * Top bar in search mode: a back affordance that closes search, a focused query
+ * field (autofocused on open), and a clear button once there's a query. Swapped
+ * in for [LibraryTopBar] while the search field is open.
+ */
+@Composable
+private fun LibrarySearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Close search",
+                )
+            }
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.weight(1f).focusRequester(focusRequester),
+                placeholder = { Text("Search albums and tracks") },
+                singleLine = true,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                ),
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                        }
+                    }
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Sync shows only when it's happening: a thin indeterminate bar while a sync
+ * cycle is mid-flight, gone otherwise. Driven by the real `SyncingChanged`
+ * signal (see [fm.bae.app.data.ConfigStore.syncing]); pull-to-refresh kicks a
+ * cycle, which surfaces here.
+ */
+@Composable
+private fun SyncIndicatorBar(syncing: Boolean) {
+    if (syncing) {
+        LinearProgressIndicator(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surface,
+        )
     }
 }
 
@@ -407,27 +487,6 @@ private fun SortMenu(
             )
         }
     }
-}
-
-@Composable
-private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        placeholder = { Text("Search albums and tracks") },
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Filled.Close, contentDescription = "Clear search")
-                }
-            }
-        },
-        singleLine = true,
-    )
 }
 
 @Composable

@@ -24,6 +24,16 @@ class ConfigStore(initialConfig: BridgeConfig, initialSyncReady: Boolean) {
     private val _syncReady = MutableStateFlow(initialSyncReady)
     val syncReady: StateFlow<Boolean> = _syncReady.asStateFlow()
 
+    /**
+     * Whether the sync loop is currently mid-cycle. Distinct from [syncReady]
+     * (the loop being alive): this is true only while a cycle is actively
+     * pulling, from a sync kick through to the cycle finishing. The library
+     * screen shows its progress indicator while this holds. Mirrors the macOS
+     * `ConfigStore.syncing`; populated by the `SyncingChanged` event.
+     */
+    private val _syncing = MutableStateFlow(false)
+    val syncing: StateFlow<Boolean> = _syncing.asStateFlow()
+
     /** Latest sync-loop error message; null clears a prior failure. */
     private val _syncError = MutableStateFlow<String?>(null)
     val syncError: StateFlow<String?> = _syncError.asStateFlow()
@@ -38,6 +48,10 @@ class ConfigStore(initialConfig: BridgeConfig, initialSyncReady: Boolean) {
 
     fun setSyncReady(ready: Boolean) {
         _syncReady.value = ready
+    }
+
+    fun setSyncing(syncing: Boolean) {
+        _syncing.value = syncing
     }
 
     fun setSyncError(message: String?) {
