@@ -225,19 +225,19 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Refresh the per-edition -latest downloads
+  refresh-website:
+    # Republish the website so its build-time latest.json and download buttons
+    # resolve to this new release. Replaces the old rolling `-latest` releases:
+    # immutable releases make those impossible to update — a tag, once used by an
+    # immutable release, can't be reused, and an immutable release's assets can't
+    # be replaced — so the site resolves the newest versioned release instead.
+    name: Refresh website downloads
+    needs: [publish]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+    - name: Trigger website deploy
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Stable per-edition download links for the website:
-        #   releases/download/windows-latest/bae-windows-x64.zip        (full)
-        #   releases/download/baeium-windows-latest/baeium-windows-x64.zip (baeium)
-        gh release view windows-latest >/dev/null 2>&1 \
-          || gh release create windows-latest --latest=false --title "Windows — latest (bae)" \
-               --notes "Stable download link that always serves the newest full bae Windows build."
-        gh release upload windows-latest bae-windows-x64.zip --clobber
-
-        gh release view baeium-windows-latest >/dev/null 2>&1 \
-          || gh release create baeium-windows-latest --latest=false --title "Windows — latest (baeium)" \
-               --notes "Stable download link that always serves the newest baeium baeium Windows build."
-        gh release upload baeium-windows-latest baeium-windows-x64.zip --clobber
+      run: gh workflow run deploy-website.yml --repo ${{ github.repository }} --ref main

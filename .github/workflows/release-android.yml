@@ -110,22 +110,19 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Refresh the per-edition -latest downloads
+  refresh-website:
+    # Republish the website so its build-time latest.json and download buttons
+    # resolve to this new release. Replaces the old rolling `-latest` releases:
+    # immutable releases make those impossible to update — a tag, once used by an
+    # immutable release, can't be reused, and an immutable release's assets can't
+    # be replaced — so the site resolves the newest versioned release instead.
+    name: Refresh website downloads
+    needs: [publish]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+    - name: Trigger website deploy
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Stable per-edition download links for the website:
-        #   releases/download/android-latest/bae-android.apk        (full)
-        #   releases/download/baeium-android-latest/baeium-android.apk (baeium)
-        # Each rolling release is created once and never moves; only its asset is
-        # replaced. --latest=false keeps the global "Latest" badge on the real
-        # versioned releases.
-        gh release view android-latest >/dev/null 2>&1 \
-          || gh release create android-latest --latest=false --title "Android — latest (bae)" \
-               --notes "Stable download link that always serves the newest full bae Android build."
-        gh release upload android-latest bae-android.apk --clobber
-
-        gh release view baeium-android-latest >/dev/null 2>&1 \
-          || gh release create baeium-android-latest --latest=false --title "Android — latest (baeium)" \
-               --notes "Stable download link that always serves the newest baeium baeium Android build."
-        gh release upload baeium-android-latest baeium-android.apk --clobber
+      run: gh workflow run deploy-website.yml --repo ${{ github.repository }} --ref main

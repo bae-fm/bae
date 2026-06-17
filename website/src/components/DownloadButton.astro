@@ -1,0 +1,28 @@
+---
+// A download button whose href is resolved at build time to the latest
+// versioned release asset for this platform/edition (see ../lib/releases). When
+// that platform hasn't shipped yet, it renders as a disabled "coming soon"
+// affordance instead of a link to a non-existent asset.
+import { getLatest, type Platform, type Edition } from '../lib/releases';
+
+interface Props {
+  platform: Platform;
+  edition: Edition;
+  class?: string;
+}
+
+const { platform, edition, class: className = 'sl-button' } = Astro.props;
+const download = (await getLatest())[platform]?.[edition];
+---
+
+{
+  download ? (
+    <a href={download.url} class={className}>
+      <slot />
+    </a>
+  ) : (
+    <span class={`${className} download-unavailable`} aria-disabled="true">
+      <slot /> (coming soon)
+    </span>
+  )
+}

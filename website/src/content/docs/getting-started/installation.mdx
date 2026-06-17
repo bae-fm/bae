@@ -3,6 +3,8 @@ title: Installation
 description: Download and install bae or baeium on every platform
 ---
 
+import DownloadButton from '../../../components/DownloadButton.astro';
+
 ## Two editions
 
 Every platform ships in two editions, built from the same source:
@@ -14,8 +16,8 @@ They install side by side, each with its own library and its own (iCloud-Keychai
 
 ## macOS
 
-<a href="https://github.com/bae-fm/bae/releases/download/macos-latest/bae-macos.dmg" class="sl-button primary">Download bae for macOS</a>
-<a href="https://github.com/bae-fm/bae/releases/download/baeium-macos-latest/baeium-macos.dmg" class="sl-button">Download baeium for macOS</a>
+<DownloadButton platform="macos" edition="full" class="sl-button primary">Download bae for macOS</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">Download baeium for macOS</DownloadButton>
 
 1. Open the downloaded `.dmg`
 2. Drag the app to your Applications folder
@@ -27,13 +29,13 @@ Both editions auto-update through their own Sparkle feed.
 
 iOS builds are **unsigned `.ipa` files for sideloading** — install with [AltStore](https://altstore.io) or [Sideloadly](https://sideloadly.io), or re-sign in Xcode with your own Apple ID (a free Apple ID works for baeium). App Store distribution isn't set up yet.
 
-<a href="https://github.com/bae-fm/bae/releases/download/ios-latest/bae-ios.ipa" class="sl-button primary">Download bae for iOS</a>
-<a href="https://github.com/bae-fm/bae/releases/download/baeium-ios-latest/baeium-ios.ipa" class="sl-button">Download baeium for iOS</a>
+<DownloadButton platform="ios" edition="full" class="sl-button primary">Download bae for iOS</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">Download baeium for iOS</DownloadButton>
 
 ## Android
 
-<a href="https://github.com/bae-fm/bae/releases/download/android-latest/bae-android.apk" class="sl-button primary">Download bae for Android</a>
-<a href="https://github.com/bae-fm/bae/releases/download/baeium-android-latest/baeium-android.apk" class="sl-button">Download baeium for Android</a>
+<DownloadButton platform="android" edition="full" class="sl-button primary">Download bae for Android</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">Download baeium for Android</DownloadButton>
 
 Enable installing from your browser/files when prompted, then open the `.apk`.
 
@@ -41,8 +43,8 @@ Enable installing from your browser/files when prompted, then open the `.apk`.
 
 Windows builds are **unsigned** zips of the unpackaged app — extract and run `bae.exe` / `baeium.exe`. SmartScreen may warn on first launch.
 
-<a href="https://github.com/bae-fm/bae/releases/download/windows-latest/bae-windows-x64.zip" class="sl-button primary">Download bae for Windows</a>
-<a href="https://github.com/bae-fm/bae/releases/download/baeium-windows-latest/baeium-windows-x64.zip" class="sl-button">Download baeium for Windows</a>
+<DownloadButton platform="windows" edition="full" class="sl-button primary">Download bae for Windows</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">Download baeium for Windows</DownloadButton>
 
 ## Linux
 

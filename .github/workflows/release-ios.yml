@@ -90,8 +90,6 @@ jobs:
             echo "PRODUCT_NAME=baeium"
             echo "IPA_NAME=baeium-ios.ipa"
             echo "ARTIFACT_NAME=baeium-iOS-unsigned"
-            echo "LATEST_RELEASE=baeium-ios-latest"
-            echo "LATEST_TITLE=iOS — latest (baeium)"
           } >> "$GITHUB_ENV"
         else
           {
@@ -100,8 +98,6 @@ jobs:
             echo "PRODUCT_NAME=bae"
             echo "IPA_NAME=bae-ios.ipa"
             echo "ARTIFACT_NAME=bae-iOS-unsigned"
-            echo "LATEST_RELEASE=ios-latest"
-            echo "LATEST_TITLE=iOS — latest (bae)"
           } >> "$GITHUB_ENV"
         fi
 
@@ -220,14 +216,19 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Refresh the per-edition -latest download
+  refresh-website:
+    # Republish the website so its build-time latest.json and download buttons
+    # resolve to this new release. Replaces the old rolling `-latest` releases:
+    # immutable releases make those impossible to update — a tag, once used by an
+    # immutable release, can't be reused, and an immutable release's assets can't
+    # be replaced — so the site resolves the newest versioned release instead.
+    name: Refresh website downloads
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+    - name: Trigger website deploy
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Stable per-edition sideload link for the website, e.g.
-        #   releases/download/ios-latest/bae-ios.ipa          (full)
-        #   releases/download/baeium-ios-latest/baeium-ios.ipa (baeium)
-        gh release view "$LATEST_RELEASE" >/dev/null 2>&1 \
-          || gh release create "$LATEST_RELEASE" --latest=false --title "$LATEST_TITLE" \
-               --notes "Stable sideload link that always serves the newest $PRODUCT_NAME iOS build (unsigned .ipa)."
-        gh release upload "$LATEST_RELEASE" "$IPA_NAME" --clobber
+      run: gh workflow run deploy-website.yml --repo ${{ github.repository }} --ref main
