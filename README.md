@@ -1,5 +1,10 @@
 # bae
 
+> [!WARNING]
+> bae is under active development and is not ready for general use. Builds are
+> for testing while the app is pre-1.0; data and sync formats can change without
+> migration.
+
 A music library manager that uses decentralized identity and end-to-end encryption over pluggable storage for serverless, multi-device sync.
 
 You pick releases from MusicBrainz or Discogs, point bae at your files, and it handles storage, playback, and organization. Everything in the cloud is encrypted. The storage provider sees opaque blobs. All trust lives in cryptography, not in the storage backend.
