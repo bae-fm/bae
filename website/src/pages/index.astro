@@ -1,4 +1,16 @@
 ---
+import { getLatest } from '../lib/releases';
+
+// Landing CTAs point at the latest macOS build (the desktop flagship), resolved
+// at build time from the newest versioned release. If there's no published
+// macOS build, the CTAs fall back to the install page (which lists every
+// platform's state) — logged here so an unexpectedly-missing flagship build is
+// visible in the build, not silently swapped.
+const macFullUrl = (await getLatest()).macos?.full?.url;
+if (!macFullUrl) {
+  console.warn('index: no macOS full build resolved; landing CTAs fall back to the install page');
+}
+const macUrl = macFullUrl ?? '/getting-started/installation';
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -279,7 +291,7 @@
       <h1 class="jumbo r d1">Your music<br/><span class="pink">everywhere</span></h1>
       <p class="dek r d2">All your music, on your desktop and your phone. Listen everywhere, synced effortlessly. No server to keep running. <b style="white-space:nowrap;">Private, yours.</b></p>
       <div class="cta r d3">
-        <a class="btn pink" href="https://github.com/bae-fm/bae/releases/download/macos-latest/bae-macos.dmg">Download for macOS</a>
+        <a class="btn pink" href={macUrl}>Download for macOS</a>
         <a class="btn" href="#features">Explore features</a>
         <span class="meta">macOS · iOS · Windows · Android</span>
       </div>
@@ -432,7 +444,7 @@
   <h2 class="r d1" aria-label="Bring your collection home">Bring your collection <span class="cyc" aria-hidden="true"><span class="cyc-word cyc-pink">home</span><span class="cyc-dot">.</span></span><span class="cyc-fallback">home.</span></h2>
   <p class="r d2">Private, open source, and in active development. Everything you add is yours from day one.</p>
   <div class="cta r d3" style="justify-content:center;">
-    <a class="btn pink" href="https://github.com/bae-fm/bae/releases/download/macos-latest/bae-macos.dmg">Download for macOS</a>
+    <a class="btn pink" href={macUrl}>Download for macOS</a>
     <a class="btn" href="/architecture/overview">See how it works</a>
   </div>
 </div></section>

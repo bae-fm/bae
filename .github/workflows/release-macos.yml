@@ -95,8 +95,6 @@ jobs:
             echo "APPCAST_FILE=appcast-baeium.xml"
             echo "APPCAST_TITLE=baeium Updates"
             echo "ARTIFACT_NAME=baeium-macOS-native-signed"
-            echo "LATEST_RELEASE=baeium-macos-latest"
-            echo "LATEST_TITLE=macOS — latest (baeium)"
             echo "SUFEED_URL=https://raw.githubusercontent.com/${{ github.repository }}/appcast/appcast-baeium.xml"
           } >> "$GITHUB_ENV"
         else
@@ -109,8 +107,6 @@ jobs:
             echo "APPCAST_FILE=appcast.xml"
             echo "APPCAST_TITLE=bae Updates"
             echo "ARTIFACT_NAME=bae-macOS-native-signed"
-            echo "LATEST_RELEASE=macos-latest"
-            echo "LATEST_TITLE=macOS — latest (bae)"
             echo "SUFEED_URL=https://raw.githubusercontent.com/${{ github.repository }}/appcast/appcast.xml"
           } >> "$GITHUB_ENV"
         fi
@@ -371,21 +367,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Refresh the per-edition -latest download
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Stable per-edition download link for the website, e.g.
-        # releases/download/macos-latest/bae-macos.dmg (full) and
-        # releases/download/baeium-macos-latest/baeium-macos.dmg (baeium). Each
-        # rolling release is created once and never moves; only its asset is
-        # replaced. --latest=false keeps the global "Latest" badge on the real
-        # versioned releases.
-        gh release view "$LATEST_RELEASE" >/dev/null 2>&1 \
-          || gh release create "$LATEST_RELEASE" --latest=false --title "$LATEST_TITLE" \
-               --notes "Stable download link that always serves the newest $PRODUCT_NAME macOS build."
-        gh release upload "$LATEST_RELEASE" "target/$DMG_NAME" --clobber
-
     - name: Publish appcast to the appcast branch
       run: |
         # The Sparkle feed lives on a dedicated, orphan `appcast` branch — the app's
@@ -421,3 +402,20 @@ jobs:
         else
           echo "::warning::appcast pushed to branch but raw feed not yet showing $VERSION (CDN lag); it will catch up"
         fi
+
+  refresh-website:
+    # Republish the website so its build-time latest.json and download buttons
+    # resolve to this new release. Replaces the old rolling `-latest` releases:
+    # immutable releases make those impossible to update — a tag, once used by an
+    # immutable release, can't be reused, and an immutable release's assets can't
+    # be replaced — so the site resolves the newest versioned release instead.
+    name: Refresh website downloads
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+    - name: Trigger website deploy
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh workflow run deploy-website.yml --repo ${{ github.repository }} --ref main
