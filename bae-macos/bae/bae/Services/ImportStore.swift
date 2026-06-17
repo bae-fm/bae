@@ -10,6 +10,21 @@ enum CandidateTab: Hashable {
     case skipped
 }
 
+/// One row under the Skipped tab: a manually-skipped candidate, or an invalid
+/// folder (looked like a release but failed validation). The view renders each
+/// case with its own row; the data layer decides which folder a row belongs to.
+enum SkippedRow: Identifiable {
+    case candidate(Candidate)
+    case invalid(BridgeInvalidCandidate)
+
+    var id: String {
+        switch self {
+        case .candidate(let c): c.key
+        case .invalid(let c): c.folderPath
+        }
+    }
+}
+
 /// Session state for the import flow. Mixed-writer: the reducer drives
 /// event-driven fields (scan, identify, preview state), while views drive
 /// user-set fields (mode, selectedCoverUrl) via `mutateCandidate(forKey:_:)`.
@@ -22,6 +37,13 @@ enum CandidateTab: Hashable {
 @Observable
 class ImportStore {
     var folderCandidates: OrderedDictionary<String, Candidate> = [:]
+    /// Folders that look like a release but failed validation, keyed by folder
+    /// path. They carry no files or identify state — they can't be imported —
+    /// only a reason. Surfaced under the Skipped tab with a warning. A folder is
+    /// never in both `folderCandidates` and here: the reducer moves it across as
+    /// validity flips.
+    var invalidCandidates: OrderedDictionary<String, BridgeInvalidCandidate> =
+        [:]
     /// The folders being watched for imports, in add order. The candidate list
     /// renders one collapsible group per folder; each candidate's
     /// `watchedFolderPath` matches one of these `path`s. Fetched when the import
@@ -165,25 +187,58 @@ class ImportStore {
                     return nil
                 }
             }
-            let ordered: [Candidate] =
-                switch sortOrder {
-                case .nameAZ:
-                    Self.sortedByName(rows, ascending: true)
-                case .nameZA:
-                    Self.sortedByName(rows, ascending: false)
-                case .dateAddedNewest:
-                    Array(rows)
-                case .dateAddedOldest:
-                    Array(rows.reversed())
-                }
+            let ordered = Self.ordered(
+                rows,
+                by: sortOrder,
+                name: \.displayName
+            )
             return (folder, ordered)
+        }
+    }
+
+    /// Rows for the Skipped tab, grouped per watched folder: each folder's
+    /// manually-skipped candidates plus the invalid candidates scanned from it,
+    /// filtered by `filterText` (display name or path) and ordered by
+    /// `sortOrder`. Folders with no matching rows drop out. The view iterates and
+    /// renders this; the grouping/filtering/sorting lives here in the data layer.
+    func skippedGroups(filterText: String, sortOrder: CandidateSortOrder)
+        -> [(folder: BridgeWatchedFolder, rows: [SkippedRow])]
+    {
+        let query = filterText.lowercased()
+        let skippedByFolder = candidateGroups(
+            tab: .skipped,
+            filterText: filterText,
+            sortOrder: sortOrder
+        )
+        return watchedFolders.compactMap { folder in
+            let candidateRows: [SkippedRow] =
+                (skippedByFolder.first { $0.folder.path == folder.path }?
+                .candidates ?? [])
+                .map(SkippedRow.candidate)
+
+            var invalid = invalidCandidates.values.filter {
+                $0.watchedFolderPath == folder.path
+            }
+            if !query.isEmpty {
+                invalid = invalid.filter {
+                    $0.sourceFolderName.lowercased().contains(query)
+                        || $0.folderPath.lowercased().contains(query)
+                }
+            }
+            let invalidRows: [SkippedRow] =
+                Self.ordered(invalid, by: sortOrder, name: \.sourceFolderName)
+                .map(SkippedRow.invalid)
+
+            let rows = candidateRows + invalidRows
+            return rows.isEmpty ? nil : (folder, rows)
         }
     }
 
     /// Per-tab candidate counts across every folder candidate (independent of
     /// the active filter), for the tab bar's count badges. A candidate whose
     /// watched folder is no longer present still counts — the watcher drops such
-    /// candidates from the store, so the store only holds live ones.
+    /// candidates from the store, so the store only holds live ones. Invalid
+    /// candidates count under Skipped alongside manually-skipped ones.
     func candidateTabCounts() -> (new: Int, added: Int, skipped: Int) {
         var counts = (new: 0, added: 0, skipped: 0)
         for candidate in folderCandidates.values {
@@ -193,17 +248,33 @@ class ImportStore {
             case .skipped: counts.skipped += 1
             }
         }
+        counts.skipped += invalidCandidates.count
         return counts
     }
 
-    private static func sortedByName(_ rows: [Candidate], ascending: Bool)
-        -> [Candidate]
-    {
-        let wanted: ComparisonResult =
-            ascending ? .orderedAscending : .orderedDescending
-        return rows.sorted {
-            $0.displayName.localizedCaseInsensitiveCompare($1.displayName)
-                == wanted
+    /// Order `rows` by `sortOrder`, keying the name cases off `name`. One
+    /// dispatch for both candidate rows (by display name) and invalid rows (by
+    /// folder name), so a new `CandidateSortOrder` case is handled in one place.
+    private static func ordered<T>(
+        _ rows: [T],
+        by sortOrder: CandidateSortOrder,
+        name: (T) -> String
+    ) -> [T] {
+        switch sortOrder {
+        case .nameAZ:
+            return rows.sorted {
+                name($0).localizedCaseInsensitiveCompare(name($1))
+                    == .orderedAscending
+            }
+        case .nameZA:
+            return rows.sorted {
+                name($0).localizedCaseInsensitiveCompare(name($1))
+                    == .orderedDescending
+            }
+        case .dateAddedNewest:
+            return rows
+        case .dateAddedOldest:
+            return rows.reversed()
         }
     }
 }

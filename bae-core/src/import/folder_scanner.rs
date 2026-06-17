@@ -206,6 +206,32 @@ pub struct PreparedRelease {
     pub metadata_pairs: Vec<(String, String)>,
 }
 
+/// A leaf folder that looks like a release (it has audio) but failed
+/// validation: corrupt or zero-byte audio, a corrupt image, or a CUE that
+/// references missing audio. Carries no files or identify state — it can't be
+/// imported — only enough to surface it under the Skipped tab with its reason.
+#[derive(Debug, Clone)]
+pub struct InvalidCandidate {
+    /// Root path of the folder that failed validation.
+    pub path: PathBuf,
+    /// Display name (derived from folder name).
+    pub name: String,
+    /// Absolute path of the watched folder this was scanned from — the
+    /// candidate-list group it belongs to. Equal to the scan root.
+    pub watched_folder_path: String,
+    /// Why the folder failed validation, ready to render as the failure
+    /// reason next to the warning icon.
+    pub reason: String,
+}
+
+/// One item the scan callback yields per leaf folder: a valid release
+/// candidate, or an invalid one (looked like a release but failed validation).
+#[derive(Debug, Clone)]
+pub enum ScanItem {
+    Valid(FolderCandidate),
+    Invalid(InvalidCandidate),
+}
+
 /// A folder candidate (leaf directory) detected during filesystem scanning.
 /// Called "candidate" because it hasn't been identified yet. One candidate
 /// per release; per-disc breakdown lives on `ScannedFile.dir_prefix`.
@@ -615,16 +641,32 @@ fn tree_is_leaf_directory(tree: &FileTree, dir: &Path) -> bool {
 
 // ── File categorization ─────────────────────────────────────────────────────
 
+/// The result of categorizing a leaf folder's files: a valid release, or an
+/// invalid one carrying the reason it failed validation (corrupt/zero-byte
+/// audio, corrupt image, CUE referencing missing audio). `Err` is reserved for
+/// genuine I/O faults, which are not the same as a failed-validation leaf.
+#[derive(Debug)]
+enum CategorizeOutcome {
+    Valid(CategorizedFiles),
+    Invalid(String),
+}
+
+/// Shorthand for a failed-validation leaf carrying `reason`.
+fn invalid(reason: impl Into<String>) -> Result<CategorizeOutcome, String> {
+    Ok(CategorizeOutcome::Invalid(reason.into()))
+}
+
 /// Categorize files from a FileTree for a given release root.
 ///
 /// `fs_root` is the folder being imported: file validation reads actual bytes
 /// from disk.
-/// Returns None if no valid audio files are found (candidate should be skipped).
+/// Returns `Invalid(reason)` when the folder has audio but fails validation, so
+/// the caller can surface why it can't be imported.
 fn categorize_files_from_tree(
     tree: &FileTree,
     release_root: &Path,
     fs_root: &Path,
-) -> Result<Option<CategorizedFiles>, String> {
+) -> Result<CategorizeOutcome, String> {
     let mut all_audio: Vec<ScannedFile> = Vec::new();
     let mut all_cue: Vec<ScannedFile> = Vec::new();
     let mut artwork: Vec<ScannedFile> = Vec::new();
@@ -654,8 +696,8 @@ fn categorize_files_from_tree(
             let valid = file_validation::is_valid_audio(&absolute_path)
                 .map_err(|e| format!("Failed to validate audio file {absolute_path:?}: {e}"))?;
             if entry.size == 0 || !valid {
-                info!("Skipping candidate: corrupt audio file {:?}", entry.path);
-                return Ok(None);
+                info!("Invalid candidate: corrupt or zero-byte audio file {relative_path}");
+                return invalid(format!("corrupt or zero-byte audio file: {relative_path}"));
             }
 
             all_audio.push(ScannedFile::new(
@@ -675,8 +717,8 @@ fn categorize_files_from_tree(
             let valid = file_validation::is_valid_image(&absolute_path)
                 .map_err(|e| format!("Failed to validate image file {absolute_path:?}: {e}"))?;
             if entry.size == 0 || !valid {
-                info!("Skipping candidate: corrupt image file {:?}", entry.path);
-                return Ok(None);
+                info!("Invalid candidate: corrupt or zero-byte image {relative_path}");
+                return invalid(format!("corrupt or zero-byte image: {relative_path}"));
             }
 
             artwork.push(ScannedFile::new(
@@ -768,12 +810,12 @@ fn categorize_files_from_tree(
 
         if cue_sheet.tracks.len() > on_disk_audio {
             info!(
-                "Skipping candidate: CUE {:?} declares {} tracks but only {} audio files on disk",
+                "Invalid candidate: CUE {:?} declares {} tracks but only {} audio files on disk",
                 cue.path,
                 cue_sheet.tracks.len(),
                 on_disk_audio
             );
-            return Ok(None);
+            return invalid("CUE references a missing audio file");
         }
     }
 
@@ -844,7 +886,10 @@ fn categorize_files_from_tree(
                 .and_then(|e| e.to_str())
                 .expect("Audio file must have an extension")
                 .to_uppercase(),
-            None => return Ok(None),
+            None => {
+                info!("Invalid candidate: no valid audio files after categorization");
+                return invalid("no valid audio files");
+            }
         };
         let audio = AudioContent::TrackFiles {
             tracks,
@@ -861,7 +906,7 @@ fn categorize_files_from_tree(
     artwork.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
     documents.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
 
-    Ok(Some(CategorizedFiles {
+    Ok(CategorizeOutcome::Valid(CategorizedFiles {
         audio,
         artwork,
         documents,
@@ -871,22 +916,29 @@ fn categorize_files_from_tree(
 
 // ── Tree walker ─────────────────────────────────────────────────────────────
 
-/// Internal leaf data emitted by the tree walker. The public API functions
-/// wrap this into the appropriate candidate type.
-pub(crate) struct RawCandidate {
-    pub(crate) path: PathBuf,
-    pub(crate) name: String,
-    pub(crate) files: CategorizedFiles,
+/// Internal leaf data emitted by the tree walker. The public API stamps
+/// `watched_folder_path` to turn this into a `ScanItem`.
+pub(crate) enum RawScanItem {
+    Valid {
+        path: PathBuf,
+        name: String,
+        files: CategorizedFiles,
+    },
+    Invalid {
+        path: PathBuf,
+        name: String,
+        reason: String,
+    },
 }
 
 fn scan_tree_recursive<F>(
     tree: &FileTree,
     dir: &Path,
     fs_root: &Path,
-    on_candidate: &mut F,
+    on_item: &mut F,
 ) -> Result<(), String>
 where
-    F: FnMut(RawCandidate),
+    F: FnMut(RawScanItem),
 {
     if tree_is_leaf_directory(tree, dir) {
         // Release-level marker check: a leaf is a release, and markers
@@ -916,30 +968,35 @@ where
 
         info!("Found candidate leaf: {:?}", dir);
 
-        if let Some(files) = categorize_files_from_tree(tree, dir, fs_root)? {
-            let candidate_path = fs_root.join(dir);
-
-            on_candidate(RawCandidate {
-                path: candidate_path,
-                name,
-                files,
-            });
-        } else {
-            // Structurally this looked like a leaf (a release), but
-            // categorization failed: zero-byte audio, corrupt file, CUE
-            // references a missing file, etc. Suppress the whole release.
-            // Symmetric with the partial-markers-deep check above.
-            info!(
-                "Skipping leaf {:?}: categorization failed (incomplete release)",
-                dir
-            );
+        let candidate_path = fs_root.join(dir);
+        match categorize_files_from_tree(tree, dir, fs_root)? {
+            CategorizeOutcome::Valid(files) => {
+                on_item(RawScanItem::Valid {
+                    path: candidate_path,
+                    name,
+                    files,
+                });
+            }
+            CategorizeOutcome::Invalid(reason) => {
+                // Structurally this looked like a leaf (a release), but
+                // categorization failed: zero-byte audio, corrupt file, CUE
+                // references a missing file, etc. Surface it with its reason so
+                // the user sees why the folder didn't import. Symmetric with
+                // the partial-markers-deep check above (which truly suppresses).
+                info!("Invalid leaf {:?}: {reason}", dir);
+                on_item(RawScanItem::Invalid {
+                    path: candidate_path,
+                    name,
+                    reason,
+                });
+            }
         }
 
         return Ok(());
     }
 
     for subdir in tree.immediate_subdirs(dir) {
-        scan_tree_recursive(tree, &subdir, fs_root, on_candidate)?;
+        scan_tree_recursive(tree, &subdir, fs_root, on_item)?;
     }
 
     Ok(())
@@ -947,30 +1004,39 @@ where
 
 // ── Public API: folder scanning (filesystem) ────────────────────────────────
 
-/// Scan a folder for candidates and invoke callback as each is found.
-pub fn scan_for_candidates_with_callback<F>(
-    root: PathBuf,
-    mut on_candidate: F,
-) -> Result<(), String>
+/// Scan a folder and invoke `on_item` for each leaf: a valid release candidate,
+/// or an invalid one (looked like a release but failed validation). Both carry
+/// `watched_folder_path` stamped from the scan root.
+pub fn scan_for_candidates_with_callback<F>(root: PathBuf, mut on_item: F) -> Result<(), String>
 where
-    F: FnMut(FolderCandidate),
+    F: FnMut(ScanItem),
 {
     info!("Scanning for candidates in: {:?}", root);
-    // Every candidate from this scan belongs to the same watched folder (the
-    // scan root) — the group it renders under in the candidate list.
+    // Every item from this scan belongs to the same watched folder (the scan
+    // root) — the group it renders under in the candidate list.
     let watched_folder_path = root.to_string_lossy().into_owned();
     let tree = FileTree::from_filesystem(&root)?;
-    scan_tree_recursive(&tree, &PathBuf::new(), &root, &mut |raw| {
-        on_candidate(FolderCandidate {
-            path: raw.path,
-            name: raw.name,
-            files: raw.files,
-            watched_folder_path: watched_folder_path.clone(),
-            // The blocking walk has neither the registry nor the DB; the watcher
-            // stamps the real per-candidate facts after this scan returns.
-            skipped: false,
-            is_added: false,
-        });
+    scan_tree_recursive(&tree, &PathBuf::new(), &root, &mut |raw| match raw {
+        RawScanItem::Valid { path, name, files } => {
+            on_item(ScanItem::Valid(FolderCandidate {
+                path,
+                name,
+                files,
+                watched_folder_path: watched_folder_path.clone(),
+                // The blocking walk has neither the registry nor the DB; the
+                // watcher stamps the real per-candidate facts after this scan.
+                skipped: false,
+                is_added: false,
+            }));
+        }
+        RawScanItem::Invalid { path, name, reason } => {
+            on_item(ScanItem::Invalid(InvalidCandidate {
+                path,
+                name,
+                watched_folder_path: watched_folder_path.clone(),
+                reason,
+            }));
+        }
     })
 }
 
@@ -981,8 +1047,12 @@ where
 /// Unrecognized file types are ignored.
 pub fn collect_release_candidate_files(release_root: &Path) -> Result<CategorizedFiles, String> {
     let tree = FileTree::from_filesystem(release_root)?;
-    categorize_files_from_tree(&tree, &PathBuf::new(), release_root)?
-        .ok_or_else(|| format!("No valid audio files found in {:?}", release_root))
+    // An invalid folder can't be imported: surface its reason as the error so
+    // the import-commit caller fails with why the folder is unusable.
+    match categorize_files_from_tree(&tree, &PathBuf::new(), release_root)? {
+        CategorizeOutcome::Valid(files) => Ok(files),
+        CategorizeOutcome::Invalid(reason) => Err(reason),
+    }
 }
 
 #[cfg(test)]
@@ -999,6 +1069,25 @@ mod tests {
         // STREAMINFO: 34 bytes, all zeros -> sample_rate=0 so size check is skipped
         buf.extend_from_slice(&[0u8; 34]);
         buf
+    }
+
+    /// Every scan item (valid + invalid) for `root`.
+    fn scan_items(root: impl Into<PathBuf>) -> Vec<ScanItem> {
+        let mut items = Vec::new();
+        scan_for_candidates_with_callback(root.into(), |item| items.push(item)).unwrap();
+        items
+    }
+
+    /// Only the valid `FolderCandidate`s for `root` — the shape most scanner
+    /// tests assert against (counts, paths, categorized files).
+    fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
+        scan_items(root)
+            .into_iter()
+            .filter_map(|item| match item {
+                ScanItem::Valid(c) => Some(c),
+                ScanItem::Invalid(_) => None,
+            })
+            .collect()
     }
 
     #[test]
@@ -1270,8 +1359,7 @@ FILE "{flac_filename}" WAVE
             std::fs::write(album_dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
         }
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         // An artist/discography container is NOT a candidate — each album
         // inside it is its own candidate.
@@ -1313,8 +1401,7 @@ FILE "{flac_filename}" WAVE
             .unwrap();
         }
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         // The multi-disc album is the sole candidate. Its CUE/FLAC pairs
         // cover both discs.
@@ -1348,8 +1435,7 @@ FILE "{flac_filename}" WAVE
             std::fs::write(disc_dir.join("track.flac"), fake_flac()).unwrap();
         }
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         assert_eq!(
             candidates.len(),
@@ -1391,8 +1477,7 @@ FILE "{flac_filename}" WAVE
             std::fs::write(album_dir.join("track.flac"), fake_flac()).unwrap();
         }
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         assert_eq!(
             candidates.len(),
@@ -1458,7 +1543,7 @@ FILE "{flac_filename}" WAVE
     }
 
     #[test]
-    fn test_cue_with_corrupt_ape_detected_as_bad() {
+    fn test_cue_with_corrupt_ape_surfaces_as_invalid_candidate() {
         let temp_dir = tempfile::tempdir().unwrap();
         let root = temp_dir.path().join("APE Album");
         std::fs::create_dir(&root).unwrap();
@@ -1475,14 +1560,20 @@ FILE "album.ape" WAVE
         std::fs::write(root.join("album.ape"), b"fake ape data").unwrap();
         std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
-
-        assert_eq!(
-            candidates.len(),
-            0,
-            "Folder with only corrupt audio should not be emitted as a candidate"
-        );
+        // A folder whose only audio is corrupt is not dropped and not a valid
+        // candidate — it surfaces as an invalid candidate carrying the reason.
+        let items = scan_items(root);
+        assert_eq!(items.len(), 1, "exactly one scan item for the leaf");
+        match &items[0] {
+            ScanItem::Invalid(invalid) => {
+                assert!(
+                    invalid.reason.contains("audio"),
+                    "reason names the audio fault, got: {}",
+                    invalid.reason,
+                );
+            }
+            ScanItem::Valid(_) => panic!("corrupt-audio folder must not be a valid candidate"),
+        }
     }
 
     #[test]
@@ -1491,8 +1582,7 @@ FILE "album.ape" WAVE
         let root = temp_dir.path().join("Empty Album");
         std::fs::create_dir(&root).unwrap();
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         assert_eq!(candidates.len(), 0, "Empty folder should not be detected");
     }
@@ -1510,8 +1600,7 @@ FILE "album.ape" WAVE
         )
         .unwrap();
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         assert_eq!(
             candidates.len(),
@@ -1531,8 +1620,7 @@ FILE "album.ape" WAVE
         std::fs::write(video_ts.join("VIDEO_TS.VOB"), b"fake video").unwrap();
         std::fs::write(video_ts.join("VTS_01_1.VOB"), b"fake video").unwrap();
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         assert_eq!(
             candidates.len(),
@@ -1555,8 +1643,7 @@ FILE "album.ape" WAVE
             std::fs::write(vol_dir.join("track.flac"), fake_flac()).unwrap();
         }
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         // `Vol. NN (...)` names carry descriptive text — they do NOT match
         // the disc-indicator pattern, so the parent is a navigation container
@@ -1582,8 +1669,7 @@ FILE "album.ape" WAVE
         std::fs::write(root.join("02 - Track Two.flac"), b"").unwrap();
         std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         assert_eq!(
             candidates.len(),
@@ -1602,8 +1688,7 @@ FILE "album.ape" WAVE
         std::fs::write(root.join("02 - Track Two.flac"), b"").unwrap();
         std::fs::write(root.join("03 - Track Three.flac"), b"").unwrap();
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root.clone(), |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root.clone());
 
         assert_eq!(
             candidates.len(),
@@ -1623,8 +1708,7 @@ FILE "album.ape" WAVE
         std::fs::write(root.join("back.jpg"), b"not a jpeg").unwrap();
         std::fs::write(root.join("inlay.png"), b"").unwrap();
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         assert_eq!(
             candidates.len(),
@@ -1651,8 +1735,7 @@ FILE "album.ape" WAVE
         // Marker one level below the multi-disc leaf.
         std::fs::write(disc2.join("02.flac.part"), b"in progress").unwrap();
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         assert_eq!(
             candidates.len(),
@@ -1681,8 +1764,7 @@ FILE "album.ape" WAVE
         // Zero-byte file marks this disc as in-progress / abandoned.
         std::fs::write(disc2.join("02.flac"), b"").unwrap();
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root, |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root);
 
         assert!(
             candidates.is_empty(),
@@ -1819,9 +1901,7 @@ FILE "album.ape" WAVE
         // folder.jpg at album root
         std::fs::write(album.join("folder.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(tmp.path().join("Collection"), |c| candidates.push(c))
-            .unwrap();
+        let candidates = scan_valid(tmp.path().join("Collection"));
 
         assert_eq!(
             candidates.len(),
@@ -3262,8 +3342,7 @@ FILE "02 - Track Two.flac" WAVE
         assert_fixture_invariants(root, &spec);
 
         // Run the real scanner.
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root.to_path_buf(), |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root.to_path_buf());
 
         // --- Assertion 1: exact top-level candidate set ---
 
@@ -3456,8 +3535,7 @@ FILE "02 - Track Two.flac" WAVE
         let root = tmp.path().to_path_buf();
         build_fixture(&root, &entries);
         assert_fixture_invariants(&root, &entries);
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(root.clone(), |c| candidates.push(c)).unwrap();
+        let candidates = scan_valid(root.clone());
         ScenarioResult {
             _tmp: tmp,
             candidates,
@@ -3989,9 +4067,7 @@ FILE "02 - Track Two.flac" WAVE
              FILE \"03.m4a\" WAVE\n  TRACK 03 AUDIO\n    INDEX 01 00:00:00\n",
         )
         .unwrap();
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(tmp.path().to_path_buf(), |c| candidates.push(c))
-            .unwrap();
+        let candidates = scan_valid(tmp.path().to_path_buf());
         assert_eq!(candidates.len(), 1);
         let c = &candidates[0];
         match &c.files.audio {
@@ -4026,9 +4102,7 @@ FILE "02 - Track Two.flac" WAVE
              TRACK 02 AUDIO\n    INDEX 01 03:00:00\n",
         )
         .unwrap();
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(tmp.path().to_path_buf(), |c| candidates.push(c))
-            .unwrap();
+        let candidates = scan_valid(tmp.path().to_path_buf());
         assert_eq!(candidates.len(), 1);
         match &candidates[0].files.audio {
             AudioContent::CueFlacPairs { pairs, .. } => {
@@ -4594,9 +4668,7 @@ FILE "02 - Track Two.flac" WAVE
             "PERFORMER \"X\"\nTITLE \"Y\"\nFILE \"Album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\nFILE \"Missing.flac\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 05:00:00\n",
         )
         .unwrap();
-        let mut candidates = Vec::new();
-        scan_for_candidates_with_callback(tmp.path().to_path_buf(), |c| candidates.push(c))
-            .unwrap();
+        let candidates = scan_valid(tmp.path().to_path_buf());
         assert_eq!(
             candidates.len(),
             0,

@@ -16,7 +16,7 @@ use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsRelease, DiscogsTrack};
 use bae_core::import::discid::compute_discid_from_categorized;
 use bae_core::import::folder_scanner::{
-    collect_release_candidate_files, scan_for_candidates_with_callback, AudioContent,
+    collect_release_candidate_files, scan_for_candidates_with_callback, AudioContent, ScanItem,
 };
 use bae_core::import::{
     IdentityChoice, ImportCommand, ImportService, MetadataRef, MetadataSource, StorageMode,
@@ -265,8 +265,16 @@ fn scanner_recognizes_cue_alac_pair() {
     std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
 
     let mut candidates = Vec::new();
-    scan_for_candidates_with_callback(album_dir.clone(), |c| candidates.push(c))
-        .expect("scan folder");
+    scan_for_candidates_with_callback(album_dir.clone(), |item| match item {
+        ScanItem::Valid(c) => candidates.push(c),
+        ScanItem::Invalid(c) => {
+            panic!(
+                "ALAC fixture must scan as a valid release, got invalid: {}",
+                c.reason
+            )
+        }
+    })
+    .expect("scan folder");
 
     assert_eq!(candidates.len(), 1, "one release in the folder");
     let candidate = &candidates[0];

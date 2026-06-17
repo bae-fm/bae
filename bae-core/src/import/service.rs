@@ -13,7 +13,9 @@ use {
         DbTrackArtist,
     },
     crate::import::folder_registry::ImportFolderRegistry,
-    crate::import::folder_scanner::scan_for_candidates_with_callback,
+    crate::import::folder_scanner::{
+        scan_for_candidates_with_callback, InvalidCandidate, ScanItem,
+    },
     crate::import::handle::{fetch_artist_images, remap_album_artists, remap_track_artists},
     crate::import::track_to_file_mapper::map_tracks_to_files,
     crate::import::types::{
@@ -438,19 +440,24 @@ impl ImportService {
     ) {
         let root_buf = root.to_path_buf();
         let scanned = tokio::task::spawn_blocking(move || {
-            let mut candidates = Vec::new();
-            scan_for_candidates_with_callback(root_buf, |c| candidates.push(c)).map(|()| candidates)
+            let mut valid = Vec::new();
+            let mut invalid = Vec::new();
+            scan_for_candidates_with_callback(root_buf, |item| match item {
+                ScanItem::Valid(c) => valid.push(c),
+                ScanItem::Invalid(c) => invalid.push(c),
+            })
+            .map(|()| (valid, invalid))
         })
         .await;
 
-        let mut candidates = match scanned {
-            Ok(Ok(candidates)) => candidates,
+        let (mut candidates, invalid_candidates): (_, Vec<InvalidCandidate>) = match scanned {
+            Ok(Ok(split)) => split,
             Ok(Err(e)) => {
                 warn!(
                     "re-scan of {} failed ({e}); removing its candidates",
                     root.display()
                 );
-                Vec::new()
+                (Vec::new(), Vec::new())
             }
             Err(e) => {
                 error!("folder scan task panicked for {}: {e}", root.display());
@@ -460,7 +467,8 @@ impl ImportService {
 
         // The blocking walk left `skipped`/`is_added` at their defaults (it has
         // neither the registry nor the DB). Stamp the real values now, before
-        // reconciling, so every emitted candidate carries its tab state.
+        // reconciling, so every emitted candidate carries its tab state. Invalid
+        // candidates carry no files or tab state, so they need no stamping.
         for candidate in &mut candidates {
             let path = candidate.path.to_string_lossy();
             candidate.skipped = folder_registry.lock().unwrap().is_skipped(&path);
@@ -482,15 +490,30 @@ impl ImportService {
             };
         }
 
+        // Reconciliation keys span both lists: a folder that flipped valid →
+        // invalid (or vice versa) keeps the same path key, so a removal is only
+        // emitted when the path drops out of the scan entirely.
         let new_keys: HashSet<String> = candidates
             .iter()
             .map(|c| c.path.to_string_lossy().into_owned())
+            .chain(
+                invalid_candidates
+                    .iter()
+                    .map(|c| c.path.to_string_lossy().into_owned()),
+            )
             .collect();
 
         for candidate in candidates {
             send_event(
                 event_tx,
                 crate::import::handle::ImportEvent::Scan(ScanEvent::FolderCandidate(candidate)),
+            );
+        }
+
+        for invalid in invalid_candidates {
+            send_event(
+                event_tx,
+                crate::import::handle::ImportEvent::Scan(ScanEvent::InvalidCandidate(invalid)),
             );
         }
 

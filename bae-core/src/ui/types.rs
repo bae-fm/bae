@@ -146,6 +146,13 @@ pub enum UiBusEvent {
     FolderCandidateAdded {
         candidate: crate::import::FolderCandidate,
     },
+    /// A leaf folder looked like a release but failed validation. The reducer
+    /// surfaces it under the Skipped tab with its reason, dropping the folder
+    /// from the valid-candidate list if it was there before.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    InvalidCandidate {
+        candidate: crate::import::InvalidCandidate,
+    },
     /// A candidate's folder was re-scanned by the watcher and the release is
     /// gone. The reducer removes it by key.
     ScanCandidateRemoved {

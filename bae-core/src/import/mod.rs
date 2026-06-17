@@ -51,6 +51,7 @@ pub struct ParsedAlbum {
 pub use folder_registry::{ImportFolderRegistry, WatchedFolder};
 pub use folder_scanner::{
     scan_for_candidates_with_callback, CategorizedFiles, FileEntry, FolderCandidate,
+    InvalidCandidate, ScanItem,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{

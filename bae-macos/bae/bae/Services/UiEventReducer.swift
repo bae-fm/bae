@@ -270,16 +270,30 @@ enum UiEventReducer {
         case .folderCandidateAdded(let candidate):
             // Insert only if absent: a re-scan (e.g. when the import view
             // reappears) re-emits every candidate, and overwriting would wipe a
-            // candidate's in-progress identify/search/import state.
+            // candidate's in-progress identify/search/import state. The folder
+            // may have been invalid before (a corrupt file got fixed), so drop
+            // it from the invalid list — a folder is never in both.
             let native = Candidate(bridge: candidate)
+            importStore.invalidCandidates.removeValue(forKey: native.key)
             if importStore.folderCandidates[native.key] == nil {
                 importStore.folderCandidates[native.key] = native
             }
 
+        case .invalidCandidate(let candidate):
+            // A folder that looks like a release but failed validation. Surface
+            // it under Skipped, and drop it from the valid-candidate list — it
+            // may have been valid before (a file got corrupted); a folder is
+            // never in both lists.
+            importStore.invalidCandidates[candidate.folderPath] = candidate
+            importStore.folderCandidates.removeValue(
+                forKey: candidate.folderPath
+            )
+
         case .scanCandidateRemoved(let key):
-            // The watcher re-scanned the candidate's folder and the release is
-            // gone from disk; drop it.
+            // The watcher re-scanned the candidate's folder and it's gone from
+            // disk; drop it from whichever list holds it.
             importStore.folderCandidates.removeValue(forKey: key)
+            importStore.invalidCandidates.removeValue(forKey: key)
 
         case .candidateSkipChanged(let key, let skipped):
             // The user skipped or unskipped the candidate; flip its flag so the

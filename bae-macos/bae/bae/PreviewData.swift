@@ -854,6 +854,17 @@ enum PreviewData {
         ),
     ]
 
+    /// Folders that look like a release but failed validation — surface under
+    /// the Skipped tab with a warning and reason.
+    static let invalidCandidates: [BridgeInvalidCandidate] = [
+        BridgeInvalidCandidate(
+            folderPath: "/Music/Downloads/Broken Rip",
+            sourceFolderName: "Broken Rip",
+            watchedFolderPath: "/Music/Downloads",
+            reason: "corrupt or zero-byte audio file: 03.flac"
+        )
+    ]
+
     static let bridgeCandidateFiles = BridgeCandidateFiles(
         audio: .cueFlacPairs(pairs: [
             BridgeCueFlacPair(

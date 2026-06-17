@@ -50,7 +50,8 @@ struct ImportCandidateListContent: View {
 
     /// One section per watched folder, candidates in the active tab, filtered and
     /// sorted — built by the store. `activeTab`, `filterText`, and `sortOrder`
-    /// are this view's own UI state.
+    /// are this view's own UI state. Used for the New and Added tabs; the
+    /// Skipped tab uses `displayedSkippedGroups` (it also holds invalid rows).
     private var displayedGroups:
         [(folder: BridgeWatchedFolder, candidates: [Candidate])]
     {
@@ -59,6 +60,23 @@ struct ImportCandidateListContent: View {
             filterText: filterText,
             sortOrder: sortOrder
         )
+    }
+
+    /// One section per watched folder for the Skipped tab: manually-skipped
+    /// candidates plus invalid folders, built by the store.
+    private var displayedSkippedGroups:
+        [(folder: BridgeWatchedFolder, rows: [SkippedRow])]
+    {
+        importStore.skippedGroups(
+            filterText: filterText,
+            sortOrder: sortOrder
+        )
+    }
+
+    /// True when the active tab has nothing to show — drives the empty state.
+    private var activeTabIsEmpty: Bool {
+        activeTab == .skipped
+            ? displayedSkippedGroups.isEmpty : displayedGroups.isEmpty
     }
 
     var body: some View {
@@ -95,8 +113,11 @@ struct ImportCandidateListContent: View {
             }
             .frame(maxWidth: .infinity)
         } content: {
-            if displayedGroups.isEmpty {
+            if activeTabIsEmpty {
                 emptyState
+            }
+            else if activeTab == .skipped {
+                skippedList
             }
             else {
                 candidateList
@@ -161,6 +182,59 @@ struct ImportCandidateListContent: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.surface)
+    }
+
+    /// The Skipped tab: manually-skipped candidates and invalid folders, grouped
+    /// by watched folder. Invalid rows aren't selectable — selecting their key is
+    /// a no-op upstream (they aren't in `folderCandidates`, so no detail pane
+    /// opens).
+    private var skippedList: some View {
+        List(selection: $selectedKey) {
+            ForEach(displayedSkippedGroups, id: \.folder.path) { group in
+                Section {
+                    if !collapsedFolders.contains(group.folder.path) {
+                        ForEach(group.rows) { row in
+                            skippedRow(row)
+                        }
+                    }
+                } header: {
+                    FolderSectionHeader(
+                        folder: group.folder,
+                        count: group.rows.count,
+                        isCollapsed: collapsedFolders.contains(
+                            group.folder.path
+                        ),
+                        onToggle: { toggleCollapsed(group.folder.path) },
+                        onRemove: { onRemoveFolder(group.folder.path) },
+                    )
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.surface)
+    }
+
+    @ViewBuilder
+    private func skippedRow(_ row: SkippedRow) -> some View {
+        switch row {
+        case .candidate(let candidate):
+            CandidateRow(
+                displayName: candidate.displayName,
+                revealPath: candidate.folderPathIfReal,
+                status: candidate.importStatus,
+                isAdded: candidate.isAdded,
+                skipped: candidate.skipped,
+                isLikelyDupe: isLikelyDupe(candidate.displayName),
+                onSkip: { skipped in onSkip(candidate.key, skipped) },
+            )
+            .tag(candidate.key)
+        case .invalid(let invalid):
+            InvalidCandidateRow(
+                displayName: invalid.sourceFolderName,
+                reason: invalid.reason,
+                revealPath: invalid.folderPath,
+            )
+        }
     }
 
     private func toggleCollapsed(_ path: String) {
@@ -401,6 +475,46 @@ struct CandidateRow: View {
     }
 }
 
+// MARK: - InvalidCandidateRow
+
+/// A folder that looked like a release but failed validation. Shows a warning
+/// icon and the reason; it has no Skip action and no detail pane (selecting it
+/// is a no-op — its key isn't a real candidate).
+private struct InvalidCandidateRow: View {
+    let displayName: String
+    let reason: String
+    /// Real filesystem path for Reveal in Finder.
+    let revealPath: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(.orange)
+                .frame(width: 16)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(displayName)
+                    .font(.callout)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(reason)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer()
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .help(reason)
+        .contextMenu {
+            Button("Reveal in Finder") {
+                SystemActions.revealInFinder(path: revealPath)
+            }
+        }
+    }
+}
+
 // MARK: - Previews
 
 #Preview("Candidate List") {
@@ -413,6 +527,9 @@ struct CandidateRow: View {
         var copy = candidate
         copy.importStatus = PreviewData.importStatuses[candidate.key]
         store.folderCandidates[copy.key] = copy
+    }
+    for invalid in PreviewData.invalidCandidates {
+        store.invalidCandidates[invalid.folderPath] = invalid
     }
     return ImportCandidateListContent(
         importStore: store,

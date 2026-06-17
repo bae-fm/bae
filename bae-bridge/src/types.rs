@@ -427,6 +427,23 @@ pub struct BridgeFolderCandidate {
     pub is_added: bool,
 }
 
+/// A leaf folder that looks like a release but failed validation — the import
+/// view surfaces it under the Skipped tab with a warning and the reason. Mirror
+/// of `bae_core::import::InvalidCandidate`; carries no files or identify state
+/// because an invalid folder can't be imported.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeInvalidCandidate {
+    pub folder_path: String,
+    pub source_folder_name: String,
+    /// Absolute path of the watched folder this was scanned from — the grouping
+    /// key for the candidate-list section. Match it against
+    /// `BridgeWatchedFolder.path` for the section's display name.
+    pub watched_folder_path: String,
+    /// Why the folder failed validation, ready to render next to the warning
+    /// icon (e.g. "corrupt or zero-byte audio file: 01.flac").
+    pub reason: String,
+}
+
 /// A folder the user watches for imports — one candidate-list group.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeWatchedFolder {
@@ -1062,6 +1079,12 @@ pub enum BridgeUiEvent {
     },
     FolderCandidateAdded {
         candidate: BridgeFolderCandidate,
+    },
+    /// A leaf folder looked like a release but failed validation — the reducer
+    /// surfaces it under the Skipped tab with its reason and drops the folder
+    /// from the valid-candidate list if it was there before.
+    InvalidCandidate {
+        candidate: BridgeInvalidCandidate,
     },
     /// A candidate's folder was re-scanned and the release is gone — the reducer
     /// removes it by key.

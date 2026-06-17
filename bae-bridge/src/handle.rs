@@ -1586,6 +1586,15 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
                 },
             })
         }
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        UiBusEvent::InvalidCandidate { candidate } => Some(BridgeUiEvent::InvalidCandidate {
+            candidate: BridgeInvalidCandidate {
+                folder_path: candidate.path.to_string_lossy().to_string(),
+                source_folder_name: candidate.name,
+                watched_folder_path: candidate.watched_folder_path,
+                reason: candidate.reason,
+            },
+        }),
         UiBusEvent::ScanCandidateRemoved { key } => {
             Some(BridgeUiEvent::ScanCandidateRemoved { key })
         }

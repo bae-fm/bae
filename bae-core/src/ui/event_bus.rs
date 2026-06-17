@@ -265,6 +265,9 @@ impl UiEventBus {
                         ScanEvent::FolderCandidate(c) => {
                             bus.emit(UiBusEvent::FolderCandidateAdded { candidate: c });
                         }
+                        ScanEvent::InvalidCandidate(c) => {
+                            bus.emit(UiBusEvent::InvalidCandidate { candidate: c });
+                        }
                         ScanEvent::CandidateRemoved { candidate_key } => {
                             bus.emit(UiBusEvent::ScanCandidateRemoved { key: candidate_key });
                         }

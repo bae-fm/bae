@@ -1,6 +1,6 @@
 use crate::discogs::DiscogsClient;
 use crate::import::folder_registry::{ImportFolderRegistry, WatchedFolder};
-use crate::import::folder_scanner::FolderCandidate;
+use crate::import::folder_scanner::{FolderCandidate, InvalidCandidate};
 use crate::import::progress::ImportProgressHandle;
 use crate::import::types::{
     DiscoveredFile, ImportCommand, ImportProgress, MetadataSource, StorageMode,
@@ -146,6 +146,11 @@ pub enum ScanEvent {
         folders: Vec<WatchedFolder>,
     },
     FolderCandidate(FolderCandidate),
+    /// A leaf folder that looks like a release but failed validation
+    /// (corrupt/zero-byte audio, corrupt image, CUE referencing missing audio).
+    /// The reducer surfaces it under the Skipped tab with its reason. The key is
+    /// the folder path, shared with `CandidateRemoved` for reconciliation.
+    InvalidCandidate(InvalidCandidate),
     /// A previously-emitted candidate no longer resolves on disk — the watcher
     /// re-scanned its folder and the release is gone. The reducer removes it by
     /// key (the key is the candidate's folder path).
