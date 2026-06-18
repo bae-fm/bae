@@ -1870,22 +1870,74 @@ pub enum BridgeExportFormat {
     Mp3,
 }
 
+/// The kind of diagnostic failure. The UI shows one generic localized line per
+/// category; `detail` is the underlying Rust error chain — logged and offered in
+/// a copyable disclosure, never translated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeErrorCategory {
+    Database,
+    Config,
+    Internal,
+    Import,
+    Export,
+}
+
+/// What a `NotFound` was looking for, so the UI can localize "… not found".
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeEntityKind {
+    Library,
+    Album,
+    Release,
+    Track,
+    File,
+}
+
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum BridgeError {
-    #[error("Cancelled")]
+    /// The user cancelled — the UI shows nothing.
+    #[error("cancelled")]
     Cancelled,
-    #[error("Not found: {msg}")]
-    NotFound { msg: String },
-    #[error("Configuration error: {msg}")]
-    Config { msg: String },
-    #[error("Database error: {msg}")]
-    Database { msg: String },
-    #[error("Internal error: {msg}")]
-    Internal { msg: String },
-    #[error("Import error: {msg}")]
-    Import { msg: String },
-    #[error("Export error: {msg}")]
-    Export { msg: String },
+    /// A specific entity was missing. User-facing and keyed; the UI localizes it.
+    #[error("not found: {entity:?} {id}")]
+    NotFound {
+        entity: BridgeEntityKind,
+        id: String,
+    },
+    /// A diagnostic failure. The UI shows a generic per-category line; `detail`
+    /// is the opaque Rust error chain for logs / a copyable disclosure, never
+    /// translated.
+    #[error("{category:?}: {detail}")]
+    Diagnostic {
+        category: BridgeErrorCategory,
+        detail: String,
+    },
+}
+
+impl BridgeError {
+    pub(crate) fn diagnostic(
+        category: BridgeErrorCategory,
+        detail: impl std::fmt::Display,
+    ) -> Self {
+        BridgeError::Diagnostic {
+            category,
+            detail: detail.to_string(),
+        }
+    }
+    pub(crate) fn database(detail: impl std::fmt::Display) -> Self {
+        Self::diagnostic(BridgeErrorCategory::Database, detail)
+    }
+    pub(crate) fn config(detail: impl std::fmt::Display) -> Self {
+        Self::diagnostic(BridgeErrorCategory::Config, detail)
+    }
+    pub(crate) fn internal(detail: impl std::fmt::Display) -> Self {
+        Self::diagnostic(BridgeErrorCategory::Internal, detail)
+    }
+    pub(crate) fn import(detail: impl std::fmt::Display) -> Self {
+        Self::diagnostic(BridgeErrorCategory::Import, detail)
+    }
+    pub(crate) fn export(detail: impl std::fmt::Display) -> Self {
+        Self::diagnostic(BridgeErrorCategory::Export, detail)
+    }
 }
 
 #[cfg(feature = "cloudkit")]

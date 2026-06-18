@@ -420,8 +420,10 @@ struct SyncSetupWizard: View {
     /// sentence in `msg`, but its `localizedDescription` is the reflected
     /// enum, so unwrap the case instead.
     private func connectErrorMessage(_ error: Error) -> String {
-        if case BridgeError.Config(let msg) = error {
-            return msg.contains("denied") ? "Access denied" : msg
+        if case BridgeError.Diagnostic(let category, let detail) = error,
+            category == .config
+        {
+            return detail.contains("denied") ? "Access denied" : detail
         }
         #if BAE_CLOUDKIT
             if case CloudKitError.Storage(let msg) = error {

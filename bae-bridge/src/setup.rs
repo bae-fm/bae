@@ -4,9 +4,8 @@
 //! that AppHandle will later open).
 
 fn parse_oauth_tokens(json: &str) -> Result<bae_core::oauth::OAuthTokens, BridgeError> {
-    serde_json::from_str(json).map_err(|e| BridgeError::Config {
-        msg: format!("Invalid OAuth token JSON: {e}"),
-    })
+    serde_json::from_str(json)
+        .map_err(|e| BridgeError::config(format!("Invalid OAuth token JSON: {e}")))
 }
 
 /// The cloud providers this build supports, in display order: the credential /
@@ -104,9 +103,9 @@ fn get_cloudkit_ops() -> Option<std::sync::Arc<dyn bae_core::storage::cloud::clo
 fn restore_error_to_bridge(error: RestoreFromCodeError) -> BridgeError {
     match error {
         RestoreFromCodeError::Cancelled => BridgeError::Cancelled,
-        RestoreFromCodeError::Restore(error) => BridgeError::Internal {
-            msg: format!("Failed to restore library: {error}"),
-        },
+        RestoreFromCodeError::Restore(error) => {
+            BridgeError::internal(format!("Failed to restore library: {error}"))
+        }
     }
 }
 
@@ -211,9 +210,7 @@ pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError
         Some(n) => bae_core::library::create_library(n, ids.as_ref()),
         None => bae_core::library::create_library_default(ids.as_ref()),
     }
-    .map_err(|e| BridgeError::Config {
-        msg: format!("{e}"),
-    })?;
+    .map_err(|e| BridgeError::config(format!("{e}")))?;
 
     Ok(local_library_active(&config))
 }
@@ -276,9 +273,8 @@ pub fn restore_from_cloud(
                 secret_key,
             },
             BridgeRestoreSource::CloudKit => {
-                let ops = get_cloudkit_ops().ok_or_else(|| BridgeError::Internal {
-                    msg: "CloudKit driver not set".to_string(),
-                })?;
+                let ops = get_cloudkit_ops()
+                    .ok_or_else(|| BridgeError::internal("CloudKit driver not set".to_string()))?;
                 RestoreSource::CloudKit { ops }
             }
             BridgeRestoreSource::GoogleDrive {
@@ -320,9 +316,7 @@ pub fn restore_from_cloud(
             |status| info!("{}", status),
         )
         .await
-        .map_err(|e| BridgeError::Internal {
-            msg: format!("Failed to restore library: {e}"),
-        })?;
+        .map_err(|e| BridgeError::internal(format!("Failed to restore library: {e}")))?;
 
         Ok(local_library_active(&config))
     })
@@ -332,7 +326,7 @@ pub fn restore_from_cloud(
 #[uniffi::export]
 pub fn decode_restore_code(code: String) -> Result<BridgeRestoreCodeInfo, BridgeError> {
     let info = bae_core::sync::restore_code::decode_restore_code_info(&code)
-        .map_err(|e| BridgeError::Config { msg: e.to_string() })?;
+        .map_err(BridgeError::config)?;
 
     Ok(BridgeRestoreCodeInfo {
         library_id: info.library_id,
@@ -395,9 +389,9 @@ impl RestoreFromCodeOperation {
         {
             let mut started = self.started.lock().expect("restore started mutex poisoned");
             if *started {
-                return Err(BridgeError::Internal {
-                    msg: "restore operation already started".to_string(),
-                });
+                return Err(BridgeError::internal(
+                    "restore operation already started".to_string(),
+                ));
             }
             *started = true;
         }
@@ -445,13 +439,10 @@ pub fn oauth_authorize(provider: BridgeCloudProvider) -> Result<String, BridgeEr
         let clock = std::sync::Arc::new(bae_core::clock::SystemClock);
         let tokens = bae_core::oauth::authorize_provider(core_provider, cancel, clock.as_ref())
             .await
-            .map_err(|e| BridgeError::Config {
-                msg: format!("OAuth authorization failed: {e}"),
-            })?;
+            .map_err(|e| BridgeError::config(format!("OAuth authorization failed: {e}")))?;
 
-        serde_json::to_string(&tokens).map_err(|e| BridgeError::Internal {
-            msg: format!("Failed to serialize tokens: {e}"),
-        })
+        serde_json::to_string(&tokens)
+            .map_err(|e| BridgeError::internal(format!("Failed to serialize tokens: {e}")))
     });
 
     // Clean up
@@ -480,16 +471,15 @@ pub struct BridgeOAuthRequest {
 #[uniffi::export]
 pub fn set_oauth_client_creds(creds_json: String) -> Result<(), BridgeError> {
     let parsed: std::collections::HashMap<String, serde_json::Value> =
-        serde_json::from_str(&creds_json).map_err(|e| BridgeError::Config {
-            msg: format!("Invalid OAuth creds JSON: {e}"),
-        })?;
+        serde_json::from_str(&creds_json)
+            .map_err(|e| BridgeError::config(format!("Invalid OAuth creds JSON: {e}")))?;
     let mut creds = std::collections::HashMap::new();
     for (provider, value) in parsed {
         let client_id = value
             .get("client_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| BridgeError::Config {
-                msg: format!("OAuth creds for {provider} missing client_id"),
+            .ok_or_else(|| {
+                BridgeError::config(format!("OAuth creds for {provider} missing client_id"))
             })?
             .to_string();
         let client_secret = value
@@ -522,9 +512,7 @@ pub fn oauth_begin(
 ) -> Result<BridgeOAuthRequest, BridgeError> {
     let core_provider = bridge_cloud_provider_to_core(provider);
     let req = bae_core::oauth::build_authorize_request_for_provider(core_provider, &redirect_uri)
-        .map_err(|e| BridgeError::Config {
-        msg: format!("OAuth begin failed: {e}"),
-    })?;
+        .map_err(|e| BridgeError::config(format!("OAuth begin failed: {e}")))?;
     Ok(BridgeOAuthRequest {
         auth_url: req.auth_url,
         verifier: req.verifier,
@@ -554,12 +542,9 @@ pub fn oauth_complete(
         )
         .await
     })
-    .map_err(|e| BridgeError::Config {
-        msg: format!("OAuth token exchange failed: {e}"),
-    })?;
-    serde_json::to_string(&tokens).map_err(|e| BridgeError::Internal {
-        msg: format!("Failed to serialize tokens: {e}"),
-    })
+    .map_err(|e| BridgeError::config(format!("OAuth token exchange failed: {e}")))?;
+    serde_json::to_string(&tokens)
+        .map_err(|e| BridgeError::internal(format!("Failed to serialize tokens: {e}")))
 }
 
 /// Cancel an in-progress OAuth flow. Signals the callback server to shut down
@@ -580,8 +565,7 @@ pub fn oauth_cancel() {
 /// Validates the key against the stored fingerprint, then saves it to the keyring.
 #[uniffi::export]
 pub fn unlock_library(library_id: String, key_hex: String) -> Result<(), BridgeError> {
-    bae_core::library::unlock_library(&library_id, &key_hex)
-        .map_err(|e| BridgeError::Config { msg: e.to_string() })
+    bae_core::library::unlock_library(&library_id, &key_hex).map_err(BridgeError::config)
 }
 
 /// Validate restore form fields for a given cloud provider.

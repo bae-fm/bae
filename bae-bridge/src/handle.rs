@@ -101,9 +101,7 @@ impl AppHandle {
                 .library_manager()
                 .get_album_page(&sort, offset, limit)
                 .await
-                .map_err(|e| BridgeError::Database {
-                    msg: format!("{e}"),
-                })?;
+                .map_err(|e| BridgeError::database(format!("{e}")))?;
 
             Ok(albums.into_iter().map(convert_album_summary).collect())
         })
@@ -115,9 +113,7 @@ impl AppHandle {
                 .library_manager()
                 .get_album_count()
                 .await
-                .map_err(|e| BridgeError::Database {
-                    msg: format!("{e}"),
-                })
+                .map_err(|e| BridgeError::database(format!("{e}")))
         })
     }
 
@@ -144,9 +140,7 @@ impl AppHandle {
                 .library_manager()
                 .file_local_path(&file_id)
                 .await
-                .map_err(|e| BridgeError::Database {
-                    msg: format!("{e}"),
-                })?;
+                .map_err(|e| BridgeError::database(format!("{e}")))?;
             Ok(path.and_then(|p| p.to_str().map(|s| s.to_string())))
         })
     }
@@ -158,11 +152,10 @@ impl AppHandle {
                 .library_manager()
                 .find_album_detail(&album_id)
                 .await
-                .map_err(|e| BridgeError::Database {
-                    msg: format!("{e}"),
-                })?
+                .map_err(|e| BridgeError::database(format!("{e}")))?
                 .ok_or_else(|| BridgeError::NotFound {
-                    msg: format!("Album '{album_id}' not found"),
+                    entity: crate::types::BridgeEntityKind::Album,
+                    id: album_id.to_string(),
                 })?;
 
             Ok(convert_album_detail(detail))
@@ -181,9 +174,7 @@ impl AppHandle {
                 .library_manager()
                 .find_release_detail(&release_id)
                 .await
-                .map_err(|e| BridgeError::Database {
-                    msg: format!("{e}"),
-                })?;
+                .map_err(|e| BridgeError::database(format!("{e}")))?;
             Ok(detail.map(convert_release_detail))
         })
     }
@@ -206,9 +197,7 @@ impl AppHandle {
                 .library_manager()
                 .get_storage_page(&core_sort, core_filter, offset, limit)
                 .await
-                .map_err(|e| BridgeError::Database {
-                    msg: format!("{e}"),
-                })?;
+                .map_err(|e| BridgeError::database(format!("{e}")))?;
 
             Ok(BridgeStoragePage {
                 rows: page.rows.into_iter().map(convert_storage_row).collect(),
@@ -226,9 +215,7 @@ impl AppHandle {
                 .library_manager()
                 .get_storage_count(core_filter)
                 .await
-                .map_err(|e| BridgeError::Database {
-                    msg: format!("{e}"),
-                })
+                .map_err(|e| BridgeError::database(format!("{e}")))
         })
     }
 
@@ -238,9 +225,7 @@ impl AppHandle {
             .library_manager()
             .search_library(&query, 50)
             .await
-            .map_err(|e| BridgeError::Database {
-                msg: format!("{e}"),
-            })?;
+            .map_err(|e| BridgeError::database(format!("{e}")))?;
         Ok(BridgeSearchResults {
             albums: results
                 .albums
@@ -387,7 +372,7 @@ impl AppHandle {
                 .library_manager()
                 .resolve_to_track_ids(&ids)
                 .await
-                .map_err(|e| BridgeError::Database { msg: e.to_string() })
+                .map_err(BridgeError::database)
         })
     }
 
@@ -438,21 +423,21 @@ impl AppHandle {
         self.app_services
             .library_manager()
             .rename_library(&library_id, &name)
-            .map_err(|e| BridgeError::Config { msg: e.to_string() })
+            .map_err(BridgeError::config)
     }
 
     pub fn lock_active_library(&self) -> Result<(), BridgeError> {
         self.app_services
             .library_manager()
             .forget_encryption_key()
-            .map_err(|e| BridgeError::Internal { msg: e })
+            .map_err(BridgeError::internal)
     }
 
     pub fn get_discogs_token(&self) -> Result<Option<String>, BridgeError> {
         self.app_services
             .library_manager()
             .get_discogs_token()
-            .map_err(|msg| BridgeError::Config { msg })
+            .map_err(BridgeError::config)
     }
 
     // Discogs token writes live on the desktop-only import service (see the
@@ -488,9 +473,7 @@ impl AppHandle {
             .library_manager()
             .change_cover(&album_id, &release_id, core_selection)
             .await
-            .map_err(|e| BridgeError::Internal {
-                msg: format!("{e}"),
-            })
+            .map_err(|e| BridgeError::internal(format!("{e}")))
     }
 
     pub fn set_primary_release(
@@ -503,9 +486,7 @@ impl AppHandle {
                 .library_manager()
                 .set_album_primary_release(&album_id, &release_id)
                 .await
-                .map_err(|e| BridgeError::Internal {
-                    msg: format!("{e}"),
-                })
+                .map_err(|e| BridgeError::internal(format!("{e}")))
         })
     }
 
@@ -525,7 +506,7 @@ impl AppHandle {
             async move { services.library_manager().unpin_release(&release_id).await },
         )
         .await
-        .map_err(|msg| BridgeError::Internal { msg })
+        .map_err(BridgeError::internal)
     }
 
     pub async fn manage_release(
@@ -542,7 +523,7 @@ impl AppHandle {
                 .await
         })
         .await
-        .map_err(|msg| BridgeError::Internal { msg })
+        .map_err(BridgeError::internal)
     }
 
     pub async fn unmanage_release(
@@ -558,7 +539,7 @@ impl AppHandle {
                 .await
         })
         .await
-        .map_err(|msg| BridgeError::Internal { msg })
+        .map_err(BridgeError::internal)
     }
 
     pub fn delete_release(&self, release_id: String) {
@@ -602,14 +583,14 @@ impl AppHandle {
                 .await
         })
         .await
-        .map_err(|msg| BridgeError::Config { msg })
+        .map_err(BridgeError::config)
     }
 
     pub fn disconnect_cloud_provider(&self) -> Result<(), BridgeError> {
         self.app_services
             .library_manager()
             .disconnect_cloud_provider()
-            .map_err(|msg| BridgeError::Config { msg })
+            .map_err(BridgeError::config)
     }
 
     /// Warning text for the disconnect-sync confirmation when releases live
@@ -623,14 +604,14 @@ impl AppHandle {
                     .library_manager()
                     .disconnect_warning_message(),
             )
-            .map_err(|msg| BridgeError::Internal { msg })
+            .map_err(BridgeError::internal)
     }
 
     pub fn generate_restore_code(&self) -> Result<String, BridgeError> {
         self.app_services
             .library_manager()
             .generate_restore_code()
-            .map_err(|msg| BridgeError::Config { msg })
+            .map_err(BridgeError::config)
     }
 
     /// Forget the active local library on this device: delete its key, clear the
@@ -641,7 +622,7 @@ impl AppHandle {
         self.app_services
             .library_manager()
             .forget_library()
-            .map_err(|e| BridgeError::Config { msg: e })?;
+            .map_err(BridgeError::config)?;
 
         info!("Forgot local library");
         Ok(())
@@ -661,7 +642,7 @@ impl AppHandle {
         let snapshot = self
             .runtime
             .block_on(self.app_services.library_manager().outbox_snapshot())
-            .map_err(|e| BridgeError::Internal { msg: e.to_string() })?;
+            .map_err(BridgeError::internal)?;
         Ok(convert_outbox_snapshot(snapshot))
     }
 
@@ -669,14 +650,14 @@ impl AppHandle {
     pub fn retry_outbox(&self) -> Result<(), BridgeError> {
         self.runtime
             .block_on(self.app_services.library_manager().retry_outbox_now())
-            .map_err(|e| BridgeError::Internal { msg: e.to_string() })
+            .map_err(BridgeError::internal)
     }
 
     /// Cancel one queued outbox entry by id (dequeues it; the local file stays).
     pub fn cancel_outbox_item(&self, id: i64) -> Result<(), BridgeError> {
         self.runtime
             .block_on(self.app_services.library_manager().cancel_outbox_item(id))
-            .map_err(|e| BridgeError::Internal { msg: e.to_string() })
+            .map_err(BridgeError::internal)
     }
 
     /// Pause or resume the cloud-upload pipeline. While paused, new enqueues
@@ -751,7 +732,7 @@ impl AppHandle {
             .library_manager()
             .load_gallery_image(&release_id, &file_id)
             .await
-            .map_err(|e| BridgeError::Import { msg: e.to_string() })
+            .map_err(BridgeError::import)
     }
 }
 
@@ -768,7 +749,7 @@ impl AppHandle {
         let storage = bridge_home_storage_to_core(storage);
         self.spawn_on_runtime(async move { services.library_manager().use_cloudkit(storage).await })
             .await
-            .map_err(|msg| BridgeError::Config { msg })
+            .map_err(BridgeError::config)
     }
 }
 
@@ -796,7 +777,7 @@ impl AppHandle {
                 .await
         })
         .await
-        .map_err(|msg| BridgeError::Config { msg })
+        .map_err(BridgeError::config)
     }
 }
 
@@ -821,7 +802,7 @@ impl AppHandle {
             .save_discogs_token(&token)
             .await
             .map(BridgeDiscogsSaveOutcome::from)
-            .map_err(|e| BridgeError::Config { msg: e })
+            .map_err(BridgeError::config)
     }
 
     /// Re-check a stored `Unvalidated` key against Discogs. No-op when no key is
@@ -832,14 +813,14 @@ impl AppHandle {
             .import()
             .revalidate_discogs_token()
             .await
-            .map_err(|e| BridgeError::Config { msg: e })
+            .map_err(BridgeError::config)
     }
 
     pub fn remove_discogs_token(&self) -> Result<(), BridgeError> {
         self.app_services
             .import()
             .remove_discogs_token()
-            .map_err(|e| BridgeError::Config { msg: e })
+            .map_err(BridgeError::config)
     }
 
     /// Register the platform artwork analyzer. Called once at app boot
@@ -926,11 +907,11 @@ impl AppHandle {
         library_manager
             .re_identify_release(&release_id, core_choice)
             .await
-            .map_err(|e| BridgeError::Import { msg: e.to_string() })?;
+            .map_err(BridgeError::import)?;
         library_manager
             .get_album_id_for_release(&release_id)
             .await
-            .map_err(|e| BridgeError::Database { msg: e.to_string() })
+            .map_err(BridgeError::database)
     }
 
     /// The current watched-folder list. The UI fetches this when the import
@@ -948,14 +929,14 @@ impl AppHandle {
         self.app_services
             .import()
             .add_watched_folder(path)
-            .map_err(|e| BridgeError::Import { msg: e })
+            .map_err(BridgeError::import)
     }
 
     pub fn remove_watched_folder(&self, path: String) -> Result<(), BridgeError> {
         self.app_services
             .import()
             .remove_watched_folder(path)
-            .map_err(|e| BridgeError::Import { msg: e })
+            .map_err(BridgeError::import)
     }
 
     /// Mark the candidate at `path` skipped or unskipped. Persists the change and
@@ -965,7 +946,7 @@ impl AppHandle {
         self.app_services
             .import()
             .set_candidate_skipped(path, skipped)
-            .map_err(|e| BridgeError::Import { msg: e })
+            .map_err(BridgeError::import)
     }
 
     /// Scan every watched folder, streaming results back as
@@ -975,7 +956,7 @@ impl AppHandle {
         self.app_services
             .import()
             .scan_watched_folders()
-            .map_err(|e| BridgeError::Import { msg: e })
+            .map_err(BridgeError::import)
     }
 
     /// Search for releases with library status check in one call. Cancelled
@@ -1028,7 +1009,7 @@ impl AppHandle {
             .import()
             .search_with_status(core_query)
             .await
-            .map_err(|e| BridgeError::Import { msg: e })?;
+            .map_err(BridgeError::import)?;
 
         Ok(crate::types::BridgeCandidateSearchResults {
             tab,
@@ -1052,9 +1033,7 @@ impl AppHandle {
                 .library_manager()
                 .is_source_folder_name_imported(&name)
                 .await
-                .map_err(|e| BridgeError::Database {
-                    msg: format!("{e}"),
-                })
+                .map_err(|e| BridgeError::database(format!("{e}")))
         })
     }
 
@@ -1085,7 +1064,7 @@ impl AppHandle {
                 user_edit,
             )
             .map(|_| ())
-            .map_err(|e| BridgeError::Import { msg: e })
+            .map_err(BridgeError::import)
     }
 
     /// Project the embedded tags of a folder's audio files into the
@@ -1102,7 +1081,7 @@ impl AppHandle {
             .import()
             .preview_file_tags_for_folder(std::path::PathBuf::from(&folder_path))
             .await
-            .map_err(|e| BridgeError::Import { msg: e })?;
+            .map_err(BridgeError::import)?;
         Ok(crate::types::release_user_edit_to_bridge(edit))
     }
 
@@ -1119,7 +1098,7 @@ impl AppHandle {
             .library_manager()
             .apply_release_metadata_user_edit(&release_id, &core_edit)
             .await
-            .map_err(|e| BridgeError::Import { msg: e.to_string() })
+            .map_err(BridgeError::import)
     }
 
     /// Seed the EditMetadataSheet's raw form from a library release's current
@@ -1134,7 +1113,7 @@ impl AppHandle {
             .library_manager()
             .release_edit_seed(&release_id)
             .await
-            .map_err(|e| BridgeError::Import { msg: e.to_string() })?;
+            .map_err(BridgeError::import)?;
         Ok(crate::types::raw_release_edit_to_bridge(raw))
     }
 
@@ -1153,7 +1132,7 @@ impl AppHandle {
             .library_manager()
             .reset_metadata_to_source(&release_id)
             .await
-            .map_err(|e| BridgeError::Import { msg: e.to_string() })?;
+            .map_err(BridgeError::import)?;
         Ok(crate::types::release_user_edit_to_bridge(edit))
     }
 
@@ -1168,7 +1147,7 @@ impl AppHandle {
             .import()
             .prefetch_release(&release_id, source.to_core())
             .await
-            .map_err(|e| BridgeError::Import { msg: e })?;
+            .map_err(BridgeError::import)?;
         Ok(crate::types::release_detail_to_bridge(
             detail,
             local_track_count,
@@ -1184,7 +1163,7 @@ impl AppHandle {
             .import()
             .fetch_remote_covers(&release_id)
             .await
-            .map_err(|e| BridgeError::Import { msg: e })?;
+            .map_err(BridgeError::import)?;
         Ok(covers
             .into_iter()
             .map(crate::types::remote_cover_data_to_bridge)
@@ -1200,7 +1179,7 @@ impl AppHandle {
             .import()
             .fetch_cover_bytes(url)
             .await
-            .map_err(|e| BridgeError::Import { msg: e })
+            .map_err(BridgeError::import)
     }
 }
 
@@ -1230,9 +1209,7 @@ impl AppHandle {
             .library_manager()
             .export_track(&track_id, std::path::Path::new(&output_path), core_format)
             .await
-            .map_err(|e| BridgeError::Export {
-                msg: format!("{e}"),
-            })
+            .map_err(|e| BridgeError::export(format!("{e}")))
     }
 }
 
