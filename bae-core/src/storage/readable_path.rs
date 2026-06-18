@@ -6,9 +6,16 @@
 //! unencrypted at stable, structured paths built from the album/release/artist
 //! ids, with the file's real name intact:
 //!
-//! - audio:        `storage/{album_id}/{release_id}/{filename}`
+//! - audio:        `storage/{album_id}/{release_id}/{source_folder}/{filename}`
 //! - cover image:  `{album_id}/{release_id}/cover.{ext}`   (under the `images` namespace)
 //! - artist image: `{artist_id}/artist.{ext}`             (under the `images` namespace)
+//!
+//! `{source_folder}` is the name of the folder the release was imported from
+//! (`releases.source_folder_name`), so a browsable bucket mirrors the original
+//! release folder. It is omitted when absent (a non-folder import); the
+//! `{release_id}` level already makes the key unique either way. Covers/artist
+//! art are bae's own (not part of the imported folder), so they carry no
+//! `{source_folder}` level.
 //!
 //! Ids are immutable and unique, so this is collision-free by construction — a
 //! release's folder is written once and never absorbs another release's files
@@ -46,24 +53,38 @@ pub fn image_extension(content_type: &ContentType) -> &'static str {
     }
 }
 
-/// Replace path separators in a filename so it stays a single component under
-/// its `{release_id}` folder. A real on-disk filename has none (the filesystem
-/// forbids `/`), so this only guards against a stray separator from an odd
-/// source creating an unintended sub-level; it does not otherwise alter the
-/// name, since the `{release_id}` folder already makes every key unique.
-fn safe_filename(filename: &str) -> String {
-    filename.replace(['/', '\\'], "_")
+/// Replace path separators in a single path component (a folder name or a
+/// filename) so it can't open an unintended sub-level. A real on-disk name has
+/// none (the filesystem forbids `/`), so this is purely defensive against an odd
+/// source; it does not otherwise alter the name, since the `{release_id}` level
+/// already makes every key unique.
+fn safe_component(component: &str) -> String {
+    component.replace(['/', '\\'], "_")
 }
 
-/// The cloud key for an audio file on a browsable home:
-/// `storage/{album_id}/{release_id}/{filename}`. The `storage/` prefix is bae's
-/// audio namespace (an opaque home shards audio under the same prefix), keeping
-/// the key clear of coven's reserved root prefixes.
-pub fn audio_key(album_id: &str, release_id: &str, filename: &str) -> String {
-    format!(
-        "storage/{album_id}/{release_id}/{}",
-        safe_filename(filename)
-    )
+/// The cloud key for a release file on a browsable home:
+/// `storage/{album_id}/{release_id}/{source_folder}/{filename}`, mirroring the
+/// folder the release was imported from. `source_folder` is `None` for a
+/// non-folder import — that level is then omitted; the `{release_id}` level
+/// keeps the key unique either way. (`source_folder_name` comes from
+/// `Path::file_name`, which is `None` or a non-empty name, so `Some("")` never
+/// occurs and isn't guarded here.) The `storage/` prefix is bae's release-file
+/// namespace (an opaque home shards under the same prefix), keeping the key
+/// clear of coven's reserved root prefixes.
+pub fn audio_key(
+    album_id: &str,
+    release_id: &str,
+    source_folder: Option<&str>,
+    filename: &str,
+) -> String {
+    let filename = safe_component(filename);
+    match source_folder {
+        Some(folder) => format!(
+            "storage/{album_id}/{release_id}/{}/{filename}",
+            safe_component(folder)
+        ),
+        None => format!("storage/{album_id}/{release_id}/{filename}"),
+    }
 }
 
 /// The `cloud_path` for a cover image on a browsable home, RELATIVE to the
@@ -86,24 +107,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn audio_key_is_album_release_filename_under_storage() {
+    fn audio_key_includes_source_folder_when_present() {
         assert_eq!(
-            audio_key("album-1", "rel-1", "01 Track Title.flac"),
+            audio_key(
+                "album-1",
+                "rel-1",
+                Some("Album Folder [FLAC]"),
+                "01 Track Title.flac"
+            ),
+            "storage/album-1/rel-1/Album Folder [FLAC]/01 Track Title.flac"
+        );
+    }
+
+    #[test]
+    fn audio_key_omits_source_folder_when_absent() {
+        // A non-folder import has no source folder; the release-id level still
+        // makes the key unique.
+        assert_eq!(
+            audio_key("album-1", "rel-1", None, "01 Track Title.flac"),
             "storage/album-1/rel-1/01 Track Title.flac"
         );
     }
 
     #[test]
-    fn safe_filename_strips_path_separators_only() {
-        // A stray separator can't open a sub-level; everything else is verbatim.
+    fn safe_component_strips_path_separators_only() {
+        // A stray separator in either the folder or the filename can't open a
+        // sub-level; everything else is verbatim.
         assert_eq!(
-            audio_key("album-1", "rel-1", "sub/dir\\track.flac"),
-            "storage/album-1/rel-1/sub_dir_track.flac"
+            audio_key("album-1", "rel-1", Some("a/b"), "sub/dir\\track.flac"),
+            "storage/album-1/rel-1/a_b/sub_dir_track.flac"
         );
         // Spaces, punctuation, unicode all pass through untouched — the
-        // {release_id} folder already guarantees uniqueness.
+        // {release_id} level already guarantees uniqueness.
         assert_eq!(
-            audio_key("album-1", "rel-1", "01 — Track (Live) 音.flac"),
+            audio_key("album-1", "rel-1", None, "01 — Track (Live) 音.flac"),
             "storage/album-1/rel-1/01 — Track (Live) 音.flac"
         );
     }

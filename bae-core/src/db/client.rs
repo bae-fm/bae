@@ -3527,54 +3527,65 @@ fn upsert_library_image_row(
     .map_err(DbError::from)
 }
 
-/// The album a release belongs to, for the `{album_id}/{release_id}` folder
-/// path. The release row always exists when one of its blobs is being keyed (it
-/// was just inserted), so a missing row is a broken invariant surfaced as an
-/// error, not masked.
-fn release_album_id(conn: &Connection, release_id: &str) -> Result<String, DbError> {
+/// A release's `(album_id, source_folder_name)` — the release-scoped context a
+/// browsable key is built from. The release row always exists when one of its
+/// blobs is being keyed (it was just inserted), so a missing row is a broken
+/// invariant surfaced as an error, not masked. `source_folder_name` is `None`
+/// for a non-folder import.
+fn release_path_context(
+    conn: &Connection,
+    release_id: &str,
+) -> Result<(String, Option<String>), DbError> {
     conn.query_row(
-        "SELECT album_id FROM releases WHERE id = ?",
+        "SELECT album_id, source_folder_name FROM releases WHERE id = ?",
         params![release_id],
-        |row| row.get::<_, String>(0),
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
     )
     .map_err(DbError::from)
 }
 
-/// Build a release-scoped browsable key: look up the release's album id, then
-/// let `make_key` shape `(album_id, release_id)` into the final path. Shared by
-/// the audio and cover resolvers; the artist-image resolver keys off the artist
-/// id alone and stands apart.
+/// Build a release-scoped browsable key: look up the release's `(album_id,
+/// source_folder)` context once, then let `make_key` shape it into the final
+/// path. Shared by the audio and cover resolvers; the artist-image resolver keys
+/// off the artist id alone and stands apart.
 fn resolve_release_path(
     conn: &Connection,
     release_id: &str,
-    make_key: impl FnOnce(&str, &str) -> String,
+    make_key: impl FnOnce(&str, &str, Option<&str>) -> String,
 ) -> Result<String, DbError> {
-    let album_id = release_album_id(conn, release_id)?;
-    Ok(make_key(&album_id, release_id))
+    let (album_id, source_folder) = release_path_context(conn, release_id)?;
+    Ok(make_key(&album_id, release_id, source_folder.as_deref()))
 }
 
-/// The cloud key for an audio file on a browsable home:
-/// `storage/{album_id}/{release_id}/{filename}`. Ids are immutable and unique, so
-/// the key is stable and collision-free by construction — no disambiguation.
+/// The cloud key for a release file on a browsable home:
+/// `storage/{album_id}/{release_id}/{source_folder}/{filename}`, mirroring the
+/// imported folder. Ids are immutable and unique, so the key is stable and
+/// collision-free by construction — no disambiguation.
 fn resolve_audio_cloud_path(
     conn: &Connection,
     release_id: &str,
     original_filename: &str,
 ) -> Result<String, DbError> {
-    resolve_release_path(conn, release_id, |album_id, release_id| {
-        crate::storage::readable_path::audio_key(album_id, release_id, original_filename)
+    resolve_release_path(conn, release_id, |album_id, release_id, source_folder| {
+        crate::storage::readable_path::audio_key(
+            album_id,
+            release_id,
+            source_folder,
+            original_filename,
+        )
     })
 }
 
 /// The `cloud_path` for a cover image on a browsable home:
 /// `{album_id}/{release_id}/cover.{ext}` (relative to the `images` namespace
-/// coven prepends). The cover's id is its release id.
+/// coven prepends). The cover's id is its release id. Covers are bae's own art,
+/// not part of the imported folder, so they carry no `{source_folder}` level.
 fn resolve_cover_cloud_path(
     conn: &Connection,
     release_id: &str,
     content_type: &ContentType,
 ) -> Result<String, DbError> {
-    resolve_release_path(conn, release_id, |album_id, release_id| {
+    resolve_release_path(conn, release_id, |album_id, release_id, _source_folder| {
         crate::storage::readable_path::cover_cloud_path(album_id, release_id, content_type)
     })
 }
@@ -3793,10 +3804,26 @@ mod readable_cloud_path_tests {
     }
 
     #[test]
-    fn audio_key_is_album_release_filename() {
+    fn audio_key_omits_source_folder_when_release_has_none() {
+        // The seeded release has no source_folder_name (a non-folder import).
         let conn = seeded_conn();
         let key = resolve_audio_cloud_path(&conn, "rel-1", "01 Track Title.flac").unwrap();
         assert_eq!(key, "storage/album-1/rel-1/01 Track Title.flac");
+    }
+
+    #[test]
+    fn audio_key_includes_source_folder_from_the_release_row() {
+        let conn = seeded_conn();
+        conn.execute(
+            "UPDATE releases SET source_folder_name = 'Album Folder [FLAC]' WHERE id = 'rel-1'",
+            [],
+        )
+        .unwrap();
+        let key = resolve_audio_cloud_path(&conn, "rel-1", "01 Track Title.flac").unwrap();
+        assert_eq!(
+            key,
+            "storage/album-1/rel-1/Album Folder [FLAC]/01 Track Title.flac"
+        );
     }
 
     #[test]

@@ -11,7 +11,7 @@ The `CloudHome` trait is the abstraction that makes bae backend-agnostic. Everyt
 
 ### What's universal (above the trait)
 
-- **Cloud home layout** -- `changes/`, `heads/`, `snapshot.db`, `images/`, `storage/`, `membership/`, `keys/`. Same logical paths regardless of backend. An opaque home shards audio and artwork under `storage/` and `images/` by a hash of their id; a browsable home lays them out under the same two prefixes at stable id-keyed paths with real filenames (`storage/{album_id}/{release_id}/01 Track.flac`, `images/{album_id}/{release_id}/cover.jpg`).
+- **Cloud home layout** -- `changes/`, `heads/`, `snapshot.db`, `images/`, `storage/`, `membership/`, `keys/`. Same logical paths regardless of backend. An opaque home shards audio and artwork under `storage/` and `images/` by a hash of their id; a browsable home lays them out under the same two prefixes at stable id-keyed paths with real filenames (`storage/{album_id}/{release_id}/{import_folder}/01 Track.flac`, `images/{album_id}/{release_id}/cover.jpg`).
 - **Encryption** -- one symmetric key per library; on an opaque home everything is encrypted before it leaves the device. A browsable home skips encryption and stores plaintext (the `.enc` suffix is dropped).
 - **Sync protocol** -- changesets, snapshots, conflict resolution via last-writer-wins. Same algorithm everywhere.
 - **Membership chain** -- append-only log with Ed25519 signatures, encryption key wrapped to each member's public key.
