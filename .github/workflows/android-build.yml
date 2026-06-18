@@ -108,6 +108,25 @@ jobs:
       if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
       run: ./scripts/build-ffmpeg-android.sh
 
+    - name: Clippy (Android target)
+      # Run clippy against the Android target so cfg(target_os = "android")-gated
+      # dead-code warnings are caught. The host clippy in ci.yml targets macOS,
+      # where not(any(target_os = "ios", target_os = "android")) is true and those
+      # warnings don't fire. One ABI is enough; dead-code warnings are
+      # target-specific, not ABI-specific.
+      run: |
+        NDK_HOME="${ANDROID_NDK_HOME}"
+        TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64"
+        FFMPEG_PREFIX="$(pwd)/third_party/ffmpeg-android"
+        rustup target add aarch64-linux-android 2>/dev/null || true
+        CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TOOLCHAIN/bin/aarch64-linux-android35-clang" \
+        CC_aarch64_linux_android="$TOOLCHAIN/bin/aarch64-linux-android35-clang" \
+        AR_aarch64_linux_android="$TOOLCHAIN/bin/llvm-ar" \
+        BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--target=aarch64-linux-android35 --sysroot=$TOOLCHAIN/sysroot -I$FFMPEG_PREFIX/aarch64/include" \
+        FFMPEG_DIR="$FFMPEG_PREFIX/aarch64" \
+        CARGO_TARGET_DIR="target-android" \
+        cargo clippy --target aarch64-linux-android -p bae-bridge -- -D warnings
+
     - name: Set release version + stamps
       # Release stamps an explicit version/code and the source commits into the
       # build; debug leaves these unset so build.gradle.kts / build.rs use their

@@ -1993,6 +1993,10 @@ pub(crate) fn remote_cover_data_to_bridge(
     }
 }
 
+#[cfg(any(
+    feature = "desktop",
+    not(any(target_os = "ios", target_os = "android"))
+))]
 fn bridge_remote_cover_selection(
     url: String,
     source: bae_core::import::MetadataSource,
