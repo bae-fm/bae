@@ -80,6 +80,9 @@ cargo run --bin uniffi-bindgen generate \
     --language swift \
     --out-dir bae-bridge/swift-bindings/
 
+echo "Generating localization String Catalog (Apple)..."
+cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-bridge/loc/generated/apple
+
 echo "Creating XCFramework..."
 rm -rf bae-macos/BaeBridgeFFI.xcframework
 

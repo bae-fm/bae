@@ -140,6 +140,10 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge"; then
 
     cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
 
+    # Copy the generated String Catalog into the app tree before xcodegen, so
+    # the generated project includes it (the `sources` glob runs at gen time).
+    cp bae-bridge/loc/generated/apple/Core.xcstrings bae-macos/bae/bae/Core.xcstrings
+
     if ! command -v xcodegen &> /dev/null; then
         echo "⚠️  xcodegen not installed, skipping macOS build check"
     else
