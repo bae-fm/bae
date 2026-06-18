@@ -58,7 +58,7 @@ import uniffi.bae_bridge.BridgeRepeatMode
  * Pure iterate-and-render: the seek labels and the software-decode flag are
  * pre-derived by core; this screen formats nothing.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun ExpandedNowPlayingScreen(
     session: OpenLibrary,
