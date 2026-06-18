@@ -8,9 +8,24 @@ complexity:
     active: false
   CyclomaticComplexMethod:
     active: false
+  # @Composable functions pass all their data as parameters; Kotlin data classes
+  # and interface implementations are naturally parameter-heavy. The default
+  # threshold of 6 fires on almost every screen and callback in the codebase.
+  LongParameterList:
+    active: false
+  # BaeCorePlayer implements a media session which requires many methods.
+  TooManyFunctions:
+    active: false
 
 style:
   # Color and dimension literals in theme files (BaeTheme.kt) don't need
   # extraction to named constants — the literal IS the constant at that callsite.
   MagicNumber:
+    active: false
+
+exceptions:
+  # Kotlin coroutines surface arbitrary platform exceptions as `Exception`.
+  # Catching the base type is the correct pattern when the caller cannot
+  # enumerate all possible subtypes from a heterogeneous async call stack.
+  TooGenericExceptionCaught:
     active: false

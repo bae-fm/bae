@@ -76,10 +76,10 @@ final class MediaPaths: Sendable, Observable {
         }
     #endif
 
+    // periphery:ignore
     /// All-no-op instance for SwiftUI previews. Returns nil paths and
     /// empty cover bytes; previews don't have a live library to read
     /// from.
-    // periphery:ignore
     static let stub = MediaPaths()
 
     /// Separates the on-disk path from its cache-busting version in the

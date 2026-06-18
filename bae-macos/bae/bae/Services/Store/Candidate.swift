@@ -147,14 +147,14 @@ struct Candidate: Equatable, Identifiable {
     /// as the metadata overlay alongside the import command.
     var editValues: BridgeRawReleaseEdit?
 
+    // periphery:ignore
     /// In-flight search task. Replacing it cancels the old one via the
     /// previous wrapper's `deinit`; clearing it after the task completes
     /// lets the wrapper drop without re-cancelling. Removing the candidate
     /// from the store drops the wrapper too, cancelling the request.
-    // periphery:ignore
     var searchTask: CancelOnDeinit?
-    /// In-flight prefetch task. Same pattern as `searchTask`.
     // periphery:ignore
+    /// In-flight prefetch task. Same pattern as `searchTask`.
     var prefetchTask: CancelOnDeinit?
 
     var id: String {

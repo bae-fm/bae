@@ -1343,6 +1343,7 @@ private class ExportFormatDelegate: NSObject {
         private var store = LibraryStore()
 
         var body: some View {
+            // swiftlint:disable:next redundant_discardable_let
             let _ = seedIfNeeded()
             if let summary = store.albumSummaries["a-04"],
                 let selected = store.releaseDetails[selectedReleaseId]

@@ -351,7 +351,7 @@ private struct OutboxSection: View {
                 header(snapshot)
                 if !collapsed {
                     if snapshot.total.bytesTotal > 0 {
-                        OutboxMasterProgress(snapshot: snapshot)
+                        OutboxTotalProgress(snapshot: snapshot)
                     }
                     Divider()
                     itemList(snapshot)
@@ -466,7 +466,7 @@ private struct OutboxSection: View {
 
 /// Master progress strip: filled progress bar + bytes done/total, throughput,
 /// and ETA. All three labels are pre-formatted by core.
-private struct OutboxMasterProgress: View {
+private struct OutboxTotalProgress: View {
     let snapshot: BridgeOutboxSnapshot
 
     var body: some View {

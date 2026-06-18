@@ -408,14 +408,11 @@ private struct LiveTextOverlay: NSViewRepresentable {
 }
 
 #Preview {
-    LightboxView(
-        // swiftlint:disable:next force_unwrapping
-        cursor: Cursor(items: [
-            LightboxItem(id: "1", label: "Front.jpg", path: nil),
-            LightboxItem(id: "2", label: "Back.jpg", path: nil),
-        ])!,
-        onUpdate: { _ in },
-        onDismiss: {},
-    )
-    .environment(MediaPaths.stub)
+    if let cursor = Cursor(items: [
+        LightboxItem(id: "1", label: "Front.jpg", path: nil),
+        LightboxItem(id: "2", label: "Back.jpg", path: nil),
+    ]) {
+        LightboxView(cursor: cursor, onUpdate: { _ in }, onDismiss: {})
+            .environment(MediaPaths.stub)
+    }
 }
