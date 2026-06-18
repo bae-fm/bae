@@ -25,7 +25,10 @@ interface OAuthLinker {
      * Run the OAuth flow for [provider] and return the token JSON to hand to
      * `restoreFromCode`.
      */
-    suspend fun authorize(context: Context, provider: BridgeCloudProvider): String
+    suspend fun authorize(
+        context: Context,
+        provider: BridgeCloudProvider,
+    ): String
 
     companion object {
         /**

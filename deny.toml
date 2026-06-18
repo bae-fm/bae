@@ -36,6 +36,8 @@ allow = [
     # uniffi crates (MPL-2.0) and option-ext (MPL-2.0) — copyleft only when
     # the covered files themselves are modified and distributed.
     "MPL-2.0",
+    # webpki-root-certs: CA certificate data, CDLA-Permissive-2.0 (open data license).
+    "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.8
 

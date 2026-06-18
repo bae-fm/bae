@@ -29,7 +29,10 @@ import uniffi.bae_bridge.BridgeLoadingTrackInfo
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class PlaybackActivationTest {
-    private fun player(context: Context, foreground: Boolean): BaeCorePlayer {
+    private fun player(
+        context: Context,
+        foreground: Boolean,
+    ): BaeCorePlayer {
         val handle = FakeAppHandle(imagePaths = emptyMap())
         return BaeCorePlayer(
             applicationLooper = Looper.getMainLooper(),
@@ -41,14 +44,16 @@ class PlaybackActivationTest {
         )
     }
 
-    private fun loadingTrack() = BridgeLoadingTrackInfo(
-        trackTitle = "Track Title",
-        artistNames = "Artist Name",
-        albumId = "alb-1",
-        albumTitle = "Album Title",
-        coverImageId = null,
-        durationMs = 210_000uL,
-    )
+    private fun loadingTrack() =
+        BridgeLoadingTrackInfo(
+            trackTitle = "Track Title",
+            artistNames = "Artist Name",
+            albumId = "alb-1",
+            albumTitle = "Album Title",
+            coverImageId = null,
+            durationMs = 210_000uL,
+            durationLabel = "3:30",
+        )
 
     @Test
     fun loadingWithResolvedMetadataIsAnEngagedBufferingState() {

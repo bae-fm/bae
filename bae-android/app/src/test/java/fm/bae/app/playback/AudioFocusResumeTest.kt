@@ -25,7 +25,10 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class AudioFocusResumeTest {
-    private fun player(context: Context, handle: FakeAppHandle): BaeCorePlayer =
+    private fun player(
+        context: Context,
+        handle: FakeAppHandle,
+    ): BaeCorePlayer =
         BaeCorePlayer(
             applicationLooper = Looper.getMainLooper(),
             appHandle = handle,
@@ -35,11 +38,9 @@ class AudioFocusResumeTest {
             isAppForeground = { false },
         )
 
-    private fun BaeCorePlayer.startPlaying() =
-        onPlaying("t1", "Track Title", "Artist Name", "Album Title", null, 200_000L)
+    private fun BaeCorePlayer.startPlaying() = onPlaying("t1", "Track Title", "Artist Name", "Album Title", null, 200_000L)
 
-    private fun BaeCorePlayer.reportPaused() =
-        onPaused("t1", "Track Title", "Artist Name", "Album Title", null, 200_000L)
+    private fun BaeCorePlayer.reportPaused() = onPaused("t1", "Track Title", "Artist Name", "Album Title", null, 200_000L)
 
     @Test
     fun transientLossWhileUserPausedDoesNotResumeOnRegain() {

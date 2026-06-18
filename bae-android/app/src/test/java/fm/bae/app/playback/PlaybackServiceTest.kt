@@ -1,13 +1,13 @@
 package fm.bae.app.playback
 
 import android.os.Looper
+import androidx.media3.common.Player
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.OpenLibrary
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryStore
-import androidx.media3.common.Player
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -92,14 +92,15 @@ class PlaybackServiceTest {
             library = library,
             libraryStore = LibraryStore(),
             configStore = ConfigStore(BridgeFixtures.config(), initialSyncReady = false),
-            playback = BaeCorePlayer(
-                applicationLooper = looper,
-                appHandle = handle,
-                library = library,
-                context = context,
-                scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-                isAppForeground = { false },
-            ),
+            playback =
+                BaeCorePlayer(
+                    applicationLooper = looper,
+                    appHandle = handle,
+                    library = library,
+                    context = context,
+                    scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+                    isAppForeground = { false },
+                ),
             appContext = context,
         )
     }
@@ -109,10 +110,11 @@ class PlaybackServiceTest {
         field.isAccessible = true
         field.set(AppSessionHolder, session)
     }
-
 }
 
-internal class FakeAppHandle(private val imagePaths: Map<String, String>) : AppHandle(NoHandle) {
+internal class FakeAppHandle(
+    private val imagePaths: Map<String, String>,
+) : AppHandle(NoHandle) {
     var pauseCount = 0
     var resumeCount = 0
 

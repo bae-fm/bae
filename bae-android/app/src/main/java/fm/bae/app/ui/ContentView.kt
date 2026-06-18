@@ -62,9 +62,11 @@ fun ContentView(
         ) {
             Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
                 when (val current = screen) {
-                    AppScreen.Loading -> LoadingScreen()
+                    AppScreen.Loading -> {
+                        LoadingScreen()
+                    }
 
-                    AppScreen.Onboarding ->
+                    AppScreen.Onboarding -> {
                         OnboardingScreen(
                             oauthLinking = oauthLinking,
                             oauthLinkingError = oauthLinkingError,
@@ -74,8 +76,9 @@ fun ContentView(
                                 }
                             },
                         )
+                    }
 
-                    is AppScreen.Unlock ->
+                    is AppScreen.Unlock -> {
                         UnlockScreen(
                             libraryId = current.libraryId,
                             libraryName = current.libraryName,
@@ -89,8 +92,9 @@ fun ContentView(
                                 }
                             },
                         )
+                    }
 
-                    is AppScreen.LibraryOpen ->
+                    is AppScreen.LibraryOpen -> {
                         LibraryScreen(
                             session = current.session,
                             onLeaveLibrary = {
@@ -101,8 +105,11 @@ fun ContentView(
                                 }
                             },
                         )
+                    }
 
-                    is AppScreen.Failed -> FailedScreen(message = current.message)
+                    is AppScreen.Failed -> {
+                        FailedScreen(message = current.message)
+                    }
                 }
             }
         }
