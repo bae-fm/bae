@@ -1,0 +1,43 @@
+[advisories]
+# Same ignores as cargo-audit in the security job: phantom deps or awaiting
+# an upstream release.
+ignore = [
+    # rsa: phantom dep from sqlx-macros-core optional mysql backend, never compiled.
+    # https://github.com/rust-lang/cargo/issues/10801
+    "RUSTSEC-2023-0071",
+    # rustls-webpki: DoS in CRL parsing. Fix in 0.103.13, not yet on crates.io.
+    # Remove once `cargo update -p rustls-webpki` picks up the fix.
+    "RUSTSEC-2026-0104",
+]
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+    "CC0-1.0",
+    "OpenSSL",
+]
+confidence-threshold = 0.8
+
+[bans]
+# Warn on duplicate versions of the same crate — duplicates bloat binaries and
+# can hide version-skew bugs. Deny is too strict for a workspace with many
+# transitive deps; warn keeps it visible without blocking upgrades.
+multiple-versions = "warn"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = [
+    # bae's uniffi fork (adds Swift task-cancellation support).
+    "https://github.com/bae-fm/uniffi-rs",
+    # coven: cloud-sync library, private.
+    "https://github.com/bae-fm/coven",
+]

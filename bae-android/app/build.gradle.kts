@@ -127,6 +127,14 @@ android {
         unitTests.isReturnDefaultValues = true
     }
 
+    lint {
+        abortOnError = true
+        // Only errors fail the build; warnings are visible in the report but
+        // don't block CI. Avoids noise from rules that don't apply (missing
+        // translations, etc.).
+        warningsAsErrors = false
+    }
+
     sourceSets {
         // Each edition compiles against its own uniffi bindings: the full
         // bindings (built --features oauth-providers) carry the OAuth functions;

@@ -1,19 +1,12 @@
-# SwiftLint configuration for the iOS app. CI runs:
-#   swiftlint lint --strict --config .swiftlint.yml bae-ios/bae/bae
-# The Swift sources follow the same house style as macOS, which is enforced by
-# `swift-format` (run separately in CI), not SwiftLint. SwiftLint is kept as a
-# light extra gate, so the opinionated default rules the codebase doesn't adopt
-# are disabled here and --strict passes on the existing iOS sources.
 disabled_rules:
-  - statement_position
-  - closure_parameter_position
-  - function_body_length
-  - type_body_length
-  - opening_brace
-  - line_length
-  - function_parameter_count
-  - type_name
-  - identifier_name
-  - cyclomatic_complexity
-  - optional_data_string_conversion
-  - implicit_optional_initialization
+  - todo                   # TODOs are tracked in issues, not the linter
+  - trailing_whitespace    # covered by swift-format
+
+opt_in_rules:
+  - force_unwrapping       # flag optional force-unwraps (expr!)
+
+excluded:
+  - bae-macos/bae/bae/bae_bridge.swift
+  - bae-ios/bae/bae/bae_bridge.swift
+  - .build
+  - .claude

@@ -172,6 +172,11 @@ jobs:
         detekt --input bae-android/app/src/main/java \
           --config bae-android/detekt.yml --build-upon-default-config
 
+    - name: Android Lint
+      # lint { abortOnError = true } is set in app/build.gradle.kts; only errors
+      # block the build, warnings are visible in the HTML report.
+      run: cd bae-android && ./gradlew "lint${GRADLE_FLAVOR}Debug" --no-daemon
+
     - name: Decode signing keystore
       if: inputs.profile == 'release'
       env:
