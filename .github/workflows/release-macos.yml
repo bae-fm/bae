@@ -57,19 +57,17 @@ jobs:
     with:
       ref: ${{ inputs.commit || github.sha }}
 
-  release:
-    name: Build and Release macOS (${{ matrix.edition }})
+  build:
+    name: Build macOS (${{ matrix.edition }})
     runs-on: macos-26
     needs: [calculate-version, ci]
     permissions:
-      contents: write
+      contents: read
     strategy:
       # Build both editions from the one source: full (bae, OAuth + iCloud) and
-      # baeium (S3-only). Serialized — they share the macos-v* tag, the
-      # GitHub release, and the orphan appcast branch, so running them in
-      # parallel would race on those. Full runs first and creates the tag/release
-      # + appcast.xml; baeium adds its DMG to the same release + appcast-baeium.xml.
-      max-parallel: 1
+      # baeium (S3-only). Each only uploads its signed DMG + appcast as an
+      # artifact; the publish job creates the one macos-v* release from both, so
+      # they share no remote state and run in parallel.
       matrix:
         edition: [full, baeium]
 
@@ -339,6 +337,40 @@ jobs:
         </rss>
         EOF
 
+    - name: Upload signed DMG + appcast
+      uses: actions/upload-artifact@v7
+      with:
+        # The publish job pulls both: the DMG to attach to the release, the
+        # appcast (its enclosure already points at the macos-v* DMG URL) to push
+        # to the appcast branch once that release exists.
+        name: ${{ env.ARTIFACT_NAME }}
+        path: |
+          target/${{ env.DMG_NAME }}
+          target/${{ env.APPCAST_FILE }}
+        retention-days: 30
+
+  publish:
+    name: Publish release
+    needs: [calculate-version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout the built commit
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.commit || github.sha }}
+        fetch-depth: 0
+
+    - name: Download both editions' DMGs + appcasts
+      uses: actions/download-artifact@v8
+      with:
+        # bae-macOS-native-signed + baeium-macOS-native-signed, each carrying its
+        # DMG and appcast, merged into one dir.
+        pattern: '*-macOS-native-signed'
+        path: dist
+        merge-multiple: true
+
     - name: Create git tag
       run: |
         VERSION="${{ needs.calculate-version.outputs.version }}"
@@ -349,59 +381,56 @@ jobs:
           git push origin "macos-v$VERSION"
         fi
 
-    - name: Upload signed DMG
-      uses: actions/upload-artifact@v7
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: target/${{ env.DMG_NAME }}
-        retention-days: 30
-
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        # Both editions attach to the one macos-v* release (full runs first and
-        # creates it; baeium adds its DMG).
+        # One immutable macos-v* release carrying both editions' signed DMGs.
+        # Created once with both files — an immutable release rejects a later
+        # append, so the second edition can't be added after the fact.
         tag_name: macos-v${{ needs.calculate-version.outputs.version }}
-        files: target/${{ env.DMG_NAME }}
+        files: |
+          dist/bae-macos.dmg
+          dist/baeium-macos.dmg
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Publish appcast to the appcast branch
+    - name: Publish appcasts to the appcast branch
       run: |
-        # The Sparkle feed lives on a dedicated, orphan `appcast` branch — the app's
-        # SUFeedURL is the raw URL of this file. That decouples it from GitHub's
-        # "latest" release pointer, so releases of any other platform can never
-        # affect it; only this job writes it. The enclosure inside points at the
-        # macos-v* release DMG created above.
+        # The Sparkle feeds live on a dedicated orphan `appcast` branch — each
+        # app's SUFeedURL is the raw URL of its file. Pushed after the release
+        # exists so each enclosure points at a live macos-v* DMG. Both editions'
+        # feeds land in one commit; a single job, so no push race.
         VERSION="${{ needs.calculate-version.outputs.version }}"
         BUILD_NUMBER="${{ github.run_number }}"
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git fetch origin appcast
-        # Each edition writes only its own feed file (full → appcast.xml, baeium →
-        # appcast-baeium.xml). Serialized (max-parallel: 1), so baeium fetches the
-        # commit full just pushed and adds its file with no push race.
         git worktree add "$RUNNER_TEMP/appcast-wt" FETCH_HEAD
-        cp "target/$APPCAST_FILE" "$RUNNER_TEMP/appcast-wt/$APPCAST_FILE"
-        git -C "$RUNNER_TEMP/appcast-wt" add "$APPCAST_FILE"
-        git -C "$RUNNER_TEMP/appcast-wt" commit -m "appcast: $PRODUCT_NAME macos-v$VERSION (build $BUILD_NUMBER)"
+        cp dist/appcast.xml "$RUNNER_TEMP/appcast-wt/appcast.xml"
+        cp dist/appcast-baeium.xml "$RUNNER_TEMP/appcast-wt/appcast-baeium.xml"
+        git -C "$RUNNER_TEMP/appcast-wt" add appcast.xml appcast-baeium.xml
+        git -C "$RUNNER_TEMP/appcast-wt" commit -m "appcast: macos-v$VERSION (build $BUILD_NUMBER)"
         git -C "$RUNNER_TEMP/appcast-wt" push origin HEAD:appcast
 
-    - name: Verify Sparkle feed resolves
+    - name: Verify Sparkle feeds resolve
       run: |
-        # The DMG (a release asset) must resolve hard; the raw feed file is the
-        # source of truth once pushed — its CDN copy may lag a few minutes.
+        # Each DMG (a release asset) must resolve hard; the raw feed files are the
+        # source of truth once pushed — their CDN copies may lag a few minutes.
         VERSION="${{ needs.calculate-version.outputs.version }}"
-        DMG="https://github.com/${{ github.repository }}/releases/download/macos-v${VERSION}/${DMG_NAME}"
-        curl -fsIL --retry 5 --retry-delay 3 "$DMG" -o /dev/null
-        echo "DMG reachable: $DMG"
-        FEED="https://raw.githubusercontent.com/${{ github.repository }}/appcast/${APPCAST_FILE}"
-        if curl -fsSL --retry 8 --retry-delay 5 "$FEED" | grep -q "<sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>"; then
-          echo "feed live with $VERSION: $FEED"
-        else
-          echo "::warning::appcast pushed to branch but raw feed not yet showing $VERSION (CDN lag); it will catch up"
-        fi
+        for pair in "appcast.xml:bae-macos.dmg" "appcast-baeium.xml:baeium-macos.dmg"; do
+          FEED_FILE="${pair%%:*}"
+          DMG_NAME="${pair##*:}"
+          DMG="https://github.com/${{ github.repository }}/releases/download/macos-v${VERSION}/${DMG_NAME}"
+          curl -fsIL --retry 5 --retry-delay 3 "$DMG" -o /dev/null
+          echo "DMG reachable: $DMG"
+          FEED="https://raw.githubusercontent.com/${{ github.repository }}/appcast/${FEED_FILE}"
+          if curl -fsSL --retry 8 --retry-delay 5 "$FEED" | grep -q "<sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>"; then
+            echo "feed live with $VERSION: $FEED"
+          else
+            echo "::warning::appcast $FEED_FILE pushed but raw feed not yet showing $VERSION (CDN lag); it will catch up"
+          fi
+        done
 
   refresh-website:
     # Republish the website so its build-time latest.json and download buttons
@@ -410,7 +439,7 @@ jobs:
     # immutable release, can't be reused, and an immutable release's assets can't
     # be replaced — so the site resolves the newest versioned release instead.
     name: Refresh website downloads
-    needs: [release]
+    needs: [publish]
     runs-on: ubuntu-latest
     permissions:
       actions: write
