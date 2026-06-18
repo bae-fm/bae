@@ -88,6 +88,20 @@ async fn setup_db_with_cloud(
     (db, mgr, cloud)
 }
 
+/// Like [`setup_db_with_cloud`], but the home is browsable: its blobs are stored
+/// in the clear at readable paths, so `cloud_blob_cipher` resolves to plaintext
+/// and managed reads must return the verbatim bytes (no decryption). The cloud
+/// override still carries an `EncryptionService`, but a browsable home never
+/// consults it.
+async fn setup_db_with_browsable_cloud(
+    temp: &TempDir,
+    library_path: &Path,
+) -> (Database, LibraryManager, Arc<MockCloudHome>) {
+    let (db, mgr, cloud) = setup_db_with_cloud(temp, library_path).await;
+    mgr.set_home_storage(bae_core::config::HomeStorage::Browsable);
+    (db, mgr, cloud)
+}
+
 /// Write unmanaged original files to disk under `dir` and insert DbFile rows.
 /// Returns (filename, bytes) pairs.
 async fn create_unmanaged_files(
@@ -881,17 +895,17 @@ async fn upsert_local_copy_preserves_delete_unmanaged_source_intent() {
 }
 
 /// Insert DbFile rows for a cloud-only managed release (no local copy on disk)
-/// and seed each file's encrypted blob at its content-addressed cloud key,
-/// encrypted with the library master key. Returns (file_id, bytes).
+/// and seed each file's blob at its content-addressed cloud key, sealed through
+/// the home's at-rest cipher exactly as the upload outbox would — encrypted
+/// under the library master key on an opaque home, stored verbatim on a
+/// browsable one. Returns (file_id, bytes).
 async fn seed_cloud_only_files(
     mgr: &LibraryManager,
     cloud: &MockCloudHome,
     release_id: &str,
     files: &[(&str, &[u8])],
 ) -> Vec<(String, Vec<u8>)> {
-    let content_enc = mgr
-        .get_encryption_service()
-        .expect("the library is unlocked");
+    let cipher = mgr.cloud_blob_cipher().expect("the home has a blob cipher");
 
     let mut result = Vec::new();
     for (name, data) in files {
@@ -904,7 +918,8 @@ async fn seed_cloud_only_files(
             chrono::Utc::now(),
         );
         let key = bae_core::storage::local::storage_path(&db_file.id);
-        cloud.put(&key, content_enc.encrypt(data));
+        // Managed audio is master-scoped; `seal` matches the outbox's seal.
+        cloud.put(&key, cipher.seal(data));
         mgr.add_file(&db_file).await.unwrap();
         result.push((db_file.id.clone(), data.to_vec()));
     }
@@ -961,6 +976,70 @@ async fn test_pin_cloud_only_downloads_chunked() {
     }
 
     // The download used range reads only — never a full-object read.
+    assert_eq!(
+        cloud.full_read_count(),
+        0,
+        "chunked pin must not issue a full-object read"
+    );
+
+    use bae_core::album_detail::ReleaseStorageState;
+    assert_eq!(
+        storage_state(&mgr, &release_id).await,
+        ReleaseStorageState::Pinned
+    );
+}
+
+/// Pinning a cloud-only release on a browsable home: the blobs are stored
+/// verbatim (no encryption), so the chunked download must read them through the
+/// plaintext cipher and land them byte-identical in `storage/` — never trying
+/// to decrypt plaintext through a fabricated nonce. Same path as the opaque pin
+/// with the home's cipher flipped.
+#[tokio::test]
+async fn test_pin_cloud_only_browsable_downloads_verbatim() {
+    tracing_init();
+
+    let temp = TempDir::new().unwrap();
+    let library_path = temp.path().join("library");
+    tokio::fs::create_dir_all(&library_path).await.unwrap();
+    let library_dir = LibraryDir::new(library_path.clone());
+
+    let (db, mgr, cloud) = setup_db_with_browsable_cloud(&temp, &library_path).await;
+    let (_album_id, release_id) = create_album_and_release(&db, None, false).await;
+
+    // A blob spanning multiple 1 MiB download windows, plus a tiny one.
+    let big: Vec<u8> = (0..(3 * 1_048_576 + 4242))
+        .map(|i| (i % 251) as u8)
+        .collect();
+    let small = b"a short final track".to_vec();
+    let files = seed_cloud_only_files(
+        &mgr,
+        &cloud,
+        &release_id,
+        &[("track1.flac", &big), ("track2.flac", &small)],
+    )
+    .await;
+
+    let service = TransferService::new(mgr.clone());
+    let rx = service.pin_release_task(release_id.clone()).0;
+    let events = collect_progress(rx).await;
+
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, TransferProgress::Complete { .. })),
+        "pin of a cloud-only browsable release should complete"
+    );
+    assert!(!events
+        .iter()
+        .any(|e| matches!(e, TransferProgress::Failed { .. })));
+
+    // The verbatim bytes landed in storage/, byte-identical to the originals.
+    for (file_id, data) in &files {
+        let stored = library_dir.join(bae_core::storage::local::storage_path(file_id));
+        let on_disk = tokio::fs::read(&stored).await.unwrap();
+        assert_eq!(&on_disk, data, "pinned browsable bytes for {file_id}");
+    }
+
     assert_eq!(
         cloud.full_read_count(),
         0,

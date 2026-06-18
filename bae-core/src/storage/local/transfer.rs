@@ -27,15 +27,16 @@ use super::cleanup::PendingDeletion;
 
 /// Read one release file's bytes from wherever it currently lives: this
 /// device's local copy (managed `storage/` copy or an unmanaged original),
-/// the original source of a still-pending cloud upload, or otherwise a
-/// cloud download + decrypt. Verifies `bytes.len() == file.file_size` so a
-/// short or zero read aborts the caller before any delete is queued (SAFETY
+/// the original source of a still-pending cloud upload, or otherwise a cloud
+/// read through the home's at-rest cipher. Verifies `bytes.len() == file.file_size`
+/// so a short or zero read aborts the caller before any delete is queued (SAFETY
 /// INVARIANT).
 ///
-/// Decryption happens only on the cloud path — a local read never decrypts.
-/// Managed cloud audio is encrypted with the library master key; a missing
-/// encryption service there is a broken invariant (a managed release always
-/// has an unlocked library), surfaced as an error rather than masked.
+/// The cipher applies only on the cloud path — a local read is always verbatim.
+/// An opaque home decrypts the blob under the library master key; a browsable
+/// home reads the verbatim bytes. The cipher is absent only for an opaque,
+/// locked library — a broken invariant for a managed release (which always has
+/// an unlocked library), surfaced as an error rather than masked.
 pub async fn read_release_file_bytes(
     local_copy: Option<&DbReleaseLocalCopy>,
     file: &DbFile,
@@ -64,13 +65,22 @@ pub async fn read_release_file_bytes(
                     file.id
                 )
             })?;
-            let encryption = mgr.get_encryption_service().ok_or_else(|| {
-                format!("no encryption service for managed release file {}", file.id)
-            })?;
-            let key = storage_path(&file.id);
-            let raw = cloud_home.read(&key).await?;
-            // Managed cloud audio is encrypted with the library master key.
-            encryption.decrypt(&raw)?
+            let cipher = mgr
+                .cloud_blob_cipher()
+                .ok_or_else(|| format!("no blob cipher for managed release file {}", file.id))?;
+            // Read the whole object through the home's cipher: one ranged read
+            // that decrypts under the master key on an opaque home, or returns
+            // the verbatim bytes on a browsable one. Every managed blob is
+            // master-scoped (see `BaeBlobPlan`).
+            let source_size = file.file_size as u64;
+            let reader = crate::storage::BlobRangeReader::new(
+                cloud_home,
+                &cipher,
+                coven::blob::ResolvedScope::Master,
+                storage_path(&file.id),
+                source_size,
+            );
+            reader.read(0, source_size).await?
         }
         ReadableFileSource::Unreachable => {
             return Err(format!("File {} has no readable location", file.id).into());
@@ -372,14 +382,15 @@ async fn do_pin(
                 let cloud_home = mgr
                     .get_cloud_home()
                     .ok_or("Cannot pin a cloud-only release without a cloud home")?;
-                // Only the cloud download decrypts; a managed release always has
-                // an unlocked library, so a missing key here is a broken
-                // invariant, surfaced as an error rather than masked.
-                let encryption = mgr
-                    .get_encryption_service()
-                    .ok_or_else(|| "no encryption service for managed release".to_string())?;
+                // The cloud download reads through the home's cipher: it decrypts
+                // on an opaque home, reads verbatim on a browsable one. The cipher
+                // is absent only for an opaque, locked library — a broken
+                // invariant for a managed release, surfaced as an error.
+                let cipher = mgr
+                    .cloud_blob_cipher()
+                    .ok_or_else(|| "no blob cipher for managed release".to_string())?;
                 let dest = mgr.local_storage_path_for_file(file);
-                download_cloud_file_chunked(cloud_home, encryption, file, &dest, &report_progress)
+                download_cloud_file_chunked(cloud_home, cipher, file, &dest, &report_progress)
                     .await?;
             }
             ReadableFileSource::Unreachable => {
@@ -405,29 +416,31 @@ async fn do_pin(
     Ok(())
 }
 
-/// Plaintext window size for a chunked cloud pin download: one window is read,
-/// decrypted, and appended to the temp file before the next is fetched, so peak
-/// memory is one window regardless of file size.
+/// Plaintext window size for a chunked cloud pin download: one window is read
+/// (decrypted on an opaque home, verbatim on a browsable one) and appended to
+/// the temp file before the next is fetched, so peak memory is one window
+/// regardless of file size.
 const PIN_DOWNLOAD_WINDOW: u64 = 1_048_576;
 
-/// Download a single managed cloud file to `dest`, decrypting on the fly, one
-/// `PIN_DOWNLOAD_WINDOW`-sized plaintext window at a time. Each window is
-/// retried so a transient provider stall doesn't kill the whole pin. The bytes
-/// land in a `<dest>.part` temp file that is length-verified, fsync'd, and
-/// renamed into place; any failure removes the temp file so a partial download
-/// never masquerades as a pinned copy.
+/// Download a single managed cloud file to `dest` through the home's `cipher`,
+/// one `PIN_DOWNLOAD_WINDOW`-sized plaintext window at a time — decrypting on an
+/// opaque home, reading verbatim on a browsable one. Each window is retried so a
+/// transient provider stall doesn't kill the whole pin. The bytes land in a
+/// `<dest>.part` temp file that is length-verified, fsync'd, and renamed into
+/// place; any failure removes the temp file so a partial download never
+/// masquerades as a pinned copy.
 async fn download_cloud_file_chunked(
     cloud_home: std::sync::Arc<dyn crate::storage::cloud::CloudHome>,
-    encryption: crate::encryption::EncryptionService,
+    cipher: coven::sync::cloud_storage::CloudCipher,
     file: &DbFile,
     dest: &std::path::Path,
     on_progress: &(dyn Fn(u8) + Send + Sync),
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let source_size = file.file_size as u64;
-    // Every managed blob is master-key-scoped (see `BaeBlobPlan`).
+    // Every managed blob is master-scoped (see `BaeBlobPlan`).
     let reader = crate::storage::BlobRangeReader::new(
         cloud_home,
-        &coven::sync::cloud_storage::CloudCipher::Encrypted(encryption),
+        &cipher,
         coven::blob::ResolvedScope::Master,
         storage_path(&file.id),
         source_size,

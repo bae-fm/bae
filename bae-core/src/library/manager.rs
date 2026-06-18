@@ -1121,6 +1121,17 @@ impl LibraryManager {
         self.test_overrides.cleanup_delay = Some(delay);
     }
 
+    /// Set the cloud home's storage mode in config, so a test can exercise the
+    /// browsable read/write paths against an injected cloud override (production
+    /// sets this through the cloud-setup wizard). `cloud_blob_cipher` reads it to
+    /// pick plaintext vs. encrypted.
+    #[cfg(feature = "test-utils")]
+    pub fn set_home_storage(&self, storage: crate::config::HomeStorage) {
+        self.config_handle
+            .update(|c| c.cloud_home.storage = storage)
+            .expect("set test home storage mode");
+    }
+
     /// Spawn the deferred drain of the pending-deletions manifest. Every
     /// deletion entry point (delete_release/delete_album/unpin/unmanage) routes
     /// through here so the queued local `storage/` copies are actually removed.
@@ -1694,6 +1705,21 @@ impl LibraryManager {
             return Some(cloud_home.clone());
         }
         self.sync_manager_inner().and_then(|sm| sm.cloud_home())
+    }
+
+    /// The at-rest cipher protecting this library's managed cloud blobs, from
+    /// the home's storage mode (see [`coven::sync::cloud_storage::CloudCipher::for_storage`]):
+    /// `Encrypted` under the master key for an opaque home, `Plaintext` for a
+    /// browsable one. `None` for an opaque home with no encryption service (a
+    /// locked library). Every managed cloud read — playback, pin, unmanage —
+    /// builds a [`crate::storage::BlobRangeReader`] with this so the read applies
+    /// the same protection the upload sealed under: an opaque home decrypts, a
+    /// browsable home reads the verbatim bytes.
+    pub fn cloud_blob_cipher(&self) -> Option<coven::sync::cloud_storage::CloudCipher> {
+        coven::sync::cloud_storage::CloudCipher::for_storage(
+            self.config_handle.config().cloud_home.storage,
+            self.get_encryption_service(),
+        )
     }
 
     pub fn generate_restore_code(&self) -> Result<String, String> {

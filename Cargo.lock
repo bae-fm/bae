@@ -1247,7 +1247,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "0.0.0-dev"
-source = "git+https://github.com/bae-fm/coven?rev=64870ed54444a03ed99fa8288b690e683756afab#64870ed54444a03ed99fa8288b690e683756afab"
+source = "git+https://github.com/bae-fm/coven?rev=bac449365d9dc1489482475edd2319791ac43436#bac449365d9dc1489482475edd2319791ac43436"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
