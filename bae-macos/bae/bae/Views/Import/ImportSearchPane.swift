@@ -843,86 +843,62 @@ struct DiscogsKeyPopover: View {
 
 // MARK: - Previews
 
-#Preview("Main Pane - Exact Matches") {
-    let pressings: [BridgeMetadataResult] = [
-        BridgeMetadataResult(
-            source: .musicBrainz,
-            releaseId: "rel-123",
-            year: 1996,
-            format: "CD",
-            label: "Label Name",
-            catalogNumber: "6006-2",
-            country: "US",
-        ),
-        BridgeMetadataResult(
-            source: .musicBrainz,
-            releaseId: "rel-456",
-            year: 1988,
-            format: "CD",
-            label: "Label Name",
-            catalogNumber: "1871-2",
-            country: "US",
-        ),
-    ]
-    let provenance = Dictionary(
-        uniqueKeysWithValues: pressings.map {
-            (
-                $0.releaseId,
-                ResultProvenance(
-                    byDiscId: true,
-                    byBarcode: false,
-                    matchesCatalog: true
-                )
+#if DEBUG
+    extension ImportSearchPane {
+        /// Preview builder — fixes the form bindings and action callbacks to inert
+        /// defaults so a preview states only the result situation it exercises.
+        static func preview(
+            identifyState: IdentifyState,
+            showManualSearch: Bool = false,
+            searchGroups: [ReleaseGroup] = [],
+            hasSearched: Bool = false,
+            signals: Signals? = nil,
+            signalsToolbar: SignalsToolbar = SignalsToolbar(signals: []),
+            searchArtist: String = "",
+            searchAlbum: String = "",
+        ) -> ImportSearchPane {
+            ImportSearchPane(
+                identifyState: identifyState,
+                showManualSearch: showManualSearch,
+                error: nil,
+                searchGroups: searchGroups,
+                selectedReleaseId: nil,
+                isSearching: false,
+                hasSearched: hasSearched,
+                isImporting: false,
+                libraryStatuses: [:],
+                activeTab: .constant(.general),
+                activeSource: .constant(.musicBrainz),
+                searchArtist: .constant(searchArtist),
+                searchAlbum: .constant(searchAlbum),
+                searchCatalog: .constant(""),
+                searchBarcode: .constant(""),
+                discogsEnabled: true,
+                signals: signals,
+                signalsToolbar: signalsToolbar,
+                onSearch: {},
+                onOpenSettings: {},
+                onSearchManually: {},
+                onViewMatches: {},
+                onAddAsUnknown: {},
+                onToggleSignal: { _ in },
+                onRerun: {},
+                onSelect: { _ in },
             )
         }
-    )
-    ImportSearchPane(
+    }
+#endif
+
+#Preview("Main Pane - Exact Matches") {
+    ImportSearchPane.preview(
         identifyState: .found(
-            group: ReleaseGroup(
-                bridge: BridgeReleaseGroup(
-                    id: "group-preview",
-                    title: "Album Title",
-                    artist: "Artist Name",
-                    coverUrl: nil,
-                    sourceLabel: "MusicBrainz",
-                    groupUrl:
-                        "https://musicbrainz.org/release-group/group-preview",
-                    metaLabel: "1988 \u{2013} 1996 \u{00b7} 2 pressings",
-                    pressings: pressings,
-                )
-            ),
+            group: PreviewData.searchGroupExact,
             libraryStatuses: [:],
             trackCount: 0,
             source: .discid,
-            provenance: provenance,
+            provenance: PreviewData.searchProvenanceExact,
         ),
-        showManualSearch: false,
-        error: nil,
-        searchGroups: [],
-        selectedReleaseId: nil,
-        isSearching: false,
-        hasSearched: false,
-        isImporting: false,
-        libraryStatuses: [:],
-        activeTab: .constant(.general),
-        activeSource: .constant(.musicBrainz),
-        searchArtist: .constant(""),
-        searchAlbum: .constant(""),
-        searchCatalog: .constant(""),
-        searchBarcode: .constant(""),
-        discogsEnabled: true,
-        signals: Signals(
-            text: .settled(
-                catalogs: ["WPCR-80001"],
-                freeText: [
-                    "Artist Name",
-                    "Album Title",
-                    "Label Records JP - WPCR-80001",
-                    "Recorded at Studio A",
-                    "Produced by Producer Name",
-                ]
-            )
-        ),
+        signals: PreviewData.settledSignals,
         signalsToolbar: SignalsToolbar(signals: [
             ToolbarSignal(
                 kind: .discId,
@@ -941,14 +917,6 @@ struct DiscogsKeyPopover: View {
                 excluded: false
             ),
         ]),
-        onSearch: {},
-        onOpenSettings: {},
-        onSearchManually: {},
-        onViewMatches: {},
-        onAddAsUnknown: {},
-        onToggleSignal: { _ in },
-        onRerun: {},
-        onSelect: { _ in },
     )
     .frame(width: 700, height: 600)
     .background(Theme.background)
@@ -958,94 +926,18 @@ struct DiscogsKeyPopover: View {
 }
 
 #Preview("Main Pane - Manual Search") {
-    let groupOne = ReleaseGroup(
-        bridge: BridgeReleaseGroup(
-            id: "grp-1",
-            title: "Album Title One",
-            artist: "Artist Name",
-            coverUrl: nil,
-            sourceLabel: "MusicBrainz",
-            groupUrl: "https://musicbrainz.org/release-group/grp-1",
-            metaLabel: "1996 \u{00b7} 2 pressings",
-            pressings: [
-                BridgeMetadataResult(
-                    source: .musicBrainz,
-                    releaseId: "rel-aaa",
-                    year: 1996,
-                    format: "CD",
-                    label: "Label Name",
-                    catalogNumber: "6006-2",
-                    country: "US",
-                ),
-                BridgeMetadataResult(
-                    source: .musicBrainz,
-                    releaseId: "rel-bbb",
-                    year: 1996,
-                    format: "CD",
-                    label: "Another Label",
-                    catalogNumber: "AL-1234",
-                    country: "JP",
-                ),
-            ],
-        )
-    )
-    let groupTwo = ReleaseGroup(
-        bridge: BridgeReleaseGroup(
-            id: "grp-2",
-            title: "Album Title One (Remaster)",
-            artist: "Artist Name",
-            coverUrl: nil,
-            sourceLabel: "MusicBrainz",
-            groupUrl: "https://musicbrainz.org/release-group/grp-2",
-            metaLabel: "2005 \u{00b7} 1 pressing",
-            pressings: [
-                BridgeMetadataResult(
-                    source: .musicBrainz,
-                    releaseId: "rel-ccc",
-                    year: 2005,
-                    format: "CD",
-                    label: "Reissue Records",
-                    catalogNumber: "RR-500",
-                    country: "EU",
-                )
-            ],
-        )
-    )
-    ImportSearchPane(
+    ImportSearchPane.preview(
         identifyState: .found(
-            group: groupOne,
+            group: PreviewData.searchGroupsManual[0],
             libraryStatuses: [:],
             trackCount: 0,
             source: .discid,
             provenance: [:],
         ),
         showManualSearch: true,
-        error: nil,
-        searchGroups: [groupOne, groupTwo],
-        selectedReleaseId: nil,
-        isSearching: false,
+        searchGroups: PreviewData.searchGroupsManual,
         hasSearched: true,
-        isImporting: false,
-        libraryStatuses: [:],
-        activeTab: .constant(.general),
-        activeSource: .constant(.musicBrainz),
-        searchArtist: .constant("Artist Name"),
-        searchAlbum: .constant("Album Title One"),
-        searchCatalog: .constant(""),
-        searchBarcode: .constant(""),
-        discogsEnabled: true,
-        signals: Signals(
-            text: .settled(
-                catalogs: ["WPCR-80001"],
-                freeText: [
-                    "Artist Name",
-                    "Album Title One",
-                    "Label Records JP - WPCR-80001",
-                    "Second Pressing",
-                    "Manufactured in Japan",
-                ]
-            )
-        ),
+        signals: PreviewData.settledSignals,
         signalsToolbar: SignalsToolbar(signals: [
             ToolbarSignal(
                 kind: .discId,
@@ -1064,14 +956,8 @@ struct DiscogsKeyPopover: View {
                 excluded: false
             ),
         ]),
-        onSearch: {},
-        onOpenSettings: {},
-        onSearchManually: {},
-        onViewMatches: {},
-        onAddAsUnknown: {},
-        onToggleSignal: { _ in },
-        onRerun: {},
-        onSelect: { _ in },
+        searchArtist: "Artist Name",
+        searchAlbum: "Album Title One",
     )
     .frame(width: 700, height: 600)
     .background(Theme.background)
@@ -1081,56 +967,16 @@ struct DiscogsKeyPopover: View {
 }
 
 #Preview("Main Pane - Conflict") {
-    let discidResults: [MetadataResult] = [
-        BridgeMetadataResult(
-            source: .musicBrainz,
-            releaseId: "rel-disc-1",
-            year: 1996,
-            format: "CD",
-            label: "Label A",
-            catalogNumber: "AAA-001",
-            country: "US",
-        )
-    ]
-    .map(MetadataResult.init(bridge:))
-    let barcodeResults: [MetadataResult] = [
-        BridgeMetadataResult(
-            source: .musicBrainz,
-            releaseId: "rel-bar-1",
-            year: 2001,
-            format: "CD",
-            label: "Label B",
-            catalogNumber: "BBB-002",
-            country: "JP",
-        )
-    ]
-    .map(MetadataResult.init(bridge:))
-    ImportSearchPane(
+    ImportSearchPane.preview(
         identifyState: .conflict(
-            discidResults: discidResults,
+            discidResults: PreviewData.conflictDiscidResults,
             discidLibraryStatuses: [:],
-            barcodeResults: barcodeResults,
+            barcodeResults: PreviewData.conflictBarcodeResults,
             barcodeLibraryStatuses: [:],
             discidSourceLabel: "MusicBrainz",
             matchedBarcode: "5051961234567",
             trackCount: 11,
         ),
-        showManualSearch: false,
-        error: nil,
-        searchGroups: [],
-        selectedReleaseId: nil,
-        isSearching: false,
-        hasSearched: false,
-        isImporting: false,
-        libraryStatuses: [:],
-        activeTab: .constant(.general),
-        activeSource: .constant(.musicBrainz),
-        searchArtist: .constant(""),
-        searchAlbum: .constant(""),
-        searchCatalog: .constant(""),
-        searchBarcode: .constant(""),
-        discogsEnabled: true,
-        signals: nil,
         signalsToolbar: SignalsToolbar(signals: [
             ToolbarSignal(
                 kind: .discId,
@@ -1149,14 +995,6 @@ struct DiscogsKeyPopover: View {
                 excluded: false
             ),
         ]),
-        onSearch: {},
-        onOpenSettings: {},
-        onSearchManually: {},
-        onViewMatches: {},
-        onAddAsUnknown: {},
-        onToggleSignal: { _ in },
-        onRerun: {},
-        onSelect: { _ in },
     )
     .environment(UiStore())
     .environment(MediaPaths.stub)

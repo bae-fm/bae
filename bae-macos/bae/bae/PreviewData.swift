@@ -962,4 +962,152 @@ enum PreviewData {
     static let releaseDetail: ImportReleaseDetail = ImportReleaseDetail(
         bridge: releaseDetailBridge
     )
+
+    // MARK: - Import search
+
+    /// Two pressings of one release group — the exact-match results state.
+    static let exactPressings: [BridgeMetadataResult] = [
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: "rel-123",
+            year: 1996,
+            format: "CD",
+            label: "Label Name",
+            catalogNumber: "6006-2",
+            country: "US",
+        ),
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: "rel-456",
+            year: 1988,
+            format: "CD",
+            label: "Label Name",
+            catalogNumber: "1871-2",
+            country: "US",
+        ),
+    ]
+
+    static let searchGroupExact = ReleaseGroup(
+        bridge: BridgeReleaseGroup(
+            id: "group-preview",
+            title: "Album Title",
+            artist: "Artist Name",
+            coverUrl: nil,
+            sourceLabel: "MusicBrainz",
+            groupUrl: "https://musicbrainz.org/release-group/group-preview",
+            metaLabel: "1988 \u{2013} 1996 \u{00b7} 2 pressings",
+            pressings: exactPressings,
+        )
+    )
+
+    static let searchProvenanceExact: [String: ResultProvenance] = Dictionary(
+        uniqueKeysWithValues: exactPressings.map {
+            (
+                $0.releaseId,
+                ResultProvenance(
+                    byDiscId: true,
+                    byBarcode: false,
+                    matchesCatalog: true
+                )
+            )
+        }
+    )
+
+    /// Two distinct release groups — the manual-search results state.
+    static let searchGroupsManual: [ReleaseGroup] = [
+        ReleaseGroup(
+            bridge: BridgeReleaseGroup(
+                id: "grp-1",
+                title: "Album Title One",
+                artist: "Artist Name",
+                coverUrl: nil,
+                sourceLabel: "MusicBrainz",
+                groupUrl: "https://musicbrainz.org/release-group/grp-1",
+                metaLabel: "1996 \u{00b7} 2 pressings",
+                pressings: [
+                    BridgeMetadataResult(
+                        source: .musicBrainz,
+                        releaseId: "rel-aaa",
+                        year: 1996,
+                        format: "CD",
+                        label: "Label Name",
+                        catalogNumber: "6006-2",
+                        country: "US",
+                    ),
+                    BridgeMetadataResult(
+                        source: .musicBrainz,
+                        releaseId: "rel-bbb",
+                        year: 1996,
+                        format: "CD",
+                        label: "Another Label",
+                        catalogNumber: "AL-1234",
+                        country: "JP",
+                    ),
+                ],
+            )
+        ),
+        ReleaseGroup(
+            bridge: BridgeReleaseGroup(
+                id: "grp-2",
+                title: "Album Title One (Remaster)",
+                artist: "Artist Name",
+                coverUrl: nil,
+                sourceLabel: "MusicBrainz",
+                groupUrl: "https://musicbrainz.org/release-group/grp-2",
+                metaLabel: "2005 \u{00b7} 1 pressing",
+                pressings: [
+                    BridgeMetadataResult(
+                        source: .musicBrainz,
+                        releaseId: "rel-ccc",
+                        year: 2005,
+                        format: "CD",
+                        label: "Reissue Records",
+                        catalogNumber: "RR-500",
+                        country: "EU",
+                    )
+                ],
+            )
+        ),
+    ]
+
+    /// disc-id vs barcode candidate lists — the conflict results state.
+    static let conflictDiscidResults: [MetadataResult] = [
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: "rel-disc-1",
+            year: 1996,
+            format: "CD",
+            label: "Label A",
+            catalogNumber: "AAA-001",
+            country: "US",
+        )
+    ]
+    .map(MetadataResult.init(bridge:))
+
+    static let conflictBarcodeResults: [MetadataResult] = [
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: "rel-bar-1",
+            year: 2001,
+            format: "CD",
+            label: "Label B",
+            catalogNumber: "BBB-002",
+            country: "JP",
+        )
+    ]
+    .map(MetadataResult.init(bridge:))
+
+    /// Settled OCR/text signals — catalogs plus cover free-text.
+    static let settledSignals = Signals(
+        text: .settled(
+            catalogs: ["WPCR-80001"],
+            freeText: [
+                "Artist Name",
+                "Album Title",
+                "Label Records JP - WPCR-80001",
+                "Recorded at Studio A",
+                "Produced by Producer Name",
+            ]
+        )
+    )
 }
