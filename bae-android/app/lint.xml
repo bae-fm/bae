@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!--
+        Generated uniffi Kotlin bindings use java.lang.ref.Cleaner (requires
+        API 33) for memory management. These files are generated at build time
+        from Rust type definitions and cannot be annotated. Suppress NewApi
+        for the generated binding directories; all other source is checked
+        against minSdk normally.
+    -->
+    <issue id="NewApi">
+        <ignore path="**/kotlin-bindings*/**" />
+    </issue>
+</lint>
