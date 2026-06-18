@@ -1,4 +1,4 @@
-namespace Bae.Windows;
+﻿namespace Bae.Windows;
 
 /// <summary>What a restore code decodes to (from <c>bae_decode_restore_code</c>).</summary>
 public sealed class RestoreCodeInfo

@@ -1,4 +1,4 @@
-namespace Bae.Windows;
+﻿namespace Bae.Windows;
 
 /// <summary>
 /// One remote cover-art candidate, deserialized from the FFI's

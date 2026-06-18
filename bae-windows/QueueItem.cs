@@ -1,4 +1,4 @@
-namespace Bae.Windows;
+﻿namespace Bae.Windows;
 
 /// <summary>One track in the play queue, from the <c>QueueUpdated</c> event JSON.</summary>
 public sealed class QueueItem

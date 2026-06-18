@@ -1,4 +1,4 @@
-namespace Bae.Windows;
+﻿namespace Bae.Windows;
 
 /// <summary>A library discovered by the FFI's <c>bae_libraries</c>.</summary>
 public sealed class Library

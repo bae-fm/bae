@@ -1,4 +1,4 @@
-namespace Bae.Windows;
+﻿namespace Bae.Windows;
 
 /// <summary>
 /// Whether a candidate release is already in the library, deserialized from the

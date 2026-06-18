@@ -1,4 +1,4 @@
-namespace Bae.Windows;
+﻿namespace Bae.Windows;
 
 /// <summary>App settings from the FFI's <c>bae_settings</c> JSON.</summary>
 public sealed class Settings

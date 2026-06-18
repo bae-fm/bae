@@ -1,4 +1,4 @@
-namespace Bae.Windows;
+﻿namespace Bae.Windows;
 
 /// <summary>
 /// The outcome of an OAuth flow (<c>bae_oauth_authorize</c>): the provider's token

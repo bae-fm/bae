@@ -1,4 +1,4 @@
-namespace Bae.Windows;
+﻿namespace Bae.Windows;
 
 /// <summary>One image in a release's gallery, from the FFI's <c>bae_gallery</c> JSON.</summary>
 public sealed class GalleryImage

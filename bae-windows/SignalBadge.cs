@@ -1,4 +1,4 @@
-namespace Bae.Windows;
+﻿namespace Bae.Windows;
 
 /// <summary>
 /// One signals-toolbar badge (from a <c>CandidateIdentifyState</c> event) — a

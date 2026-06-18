@@ -1,4 +1,4 @@
-namespace Bae.Windows;
+﻿namespace Bae.Windows;
 
 /// <summary>
 /// One of a release's local image files offered as a cover-art choice,
