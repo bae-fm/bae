@@ -28,11 +28,12 @@ pub fn init_app(
 fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
     match e {
         BootstrapError::LibraryNotFound(id) => BridgeError::NotFound {
-            msg: format!("Library '{id}' not found"),
+            entity: crate::types::BridgeEntityKind::Library,
+            id,
         },
-        BootstrapError::Config(msg) => BridgeError::Config { msg },
-        BootstrapError::Database(msg) => BridgeError::Database { msg },
-        BootstrapError::Internal(msg) => BridgeError::Internal { msg },
+        BootstrapError::Config(msg) => BridgeError::config(msg),
+        BootstrapError::Database(msg) => BridgeError::database(msg),
+        BootstrapError::Internal(msg) => BridgeError::internal(msg),
     }
 }
 
