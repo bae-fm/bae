@@ -135,6 +135,7 @@ private const val TAG = "bae.BaeCorePlayer"
  * so this requests focus when playback starts and pauses core on focus loss /
  * unplug — the pause reflects back as a `PlaybackPaused` event.
  */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class BaeCorePlayer(
     applicationLooper: Looper,
     private val appHandle: AppHandle,

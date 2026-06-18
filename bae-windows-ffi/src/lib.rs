@@ -1,4 +1,4 @@
-#![allow(rustdoc::private_intra_doc_links)]
+#![allow(rustdoc::broken_intra_doc_links)]
 //! C ABI over bae-core for the native Windows app (WinUI 3 / C#).
 //!
 //! Windows binds bae-core through this hand-written `extern "C"` surface, the way
