@@ -352,41 +352,53 @@ private struct QueueDropDelegate: DropDelegate {
     }
 }
 
+#if DEBUG
+    extension QueueView {
+        /// Preview builder — fixes the image resolver and the action callbacks
+        /// to inert defaults so a preview states only its queue state.
+        static func preview(
+            isActive: Bool,
+            nowPlayingTitle: String?,
+            nowPlayingArtist: String?,
+            items: [QueueItem]
+        ) -> QueueView {
+            QueueView(
+                isActive: isActive,
+                nowPlayingTitle: nowPlayingTitle,
+                nowPlayingArtist: nowPlayingArtist,
+                nowPlayingPath: nil,
+                items: items,
+                resolveImagePath: { _ in nil },
+                onClose: {},
+                onClear: {},
+                onSkipTo: { _ in },
+                onRemove: { _ in },
+                onReorder: { _, _ in },
+                onInsertTracks: { _, _ in }
+            )
+        }
+    }
+#endif
+
 // MARK: - Previews
 
 #Preview("With items") {
-    QueueView(
+    QueueView.preview(
         isActive: true,
         nowPlayingTitle: PreviewData.nowPlayingTitle,
         nowPlayingArtist: PreviewData.nowPlayingArtist,
-        nowPlayingPath: nil,
-        items: PreviewData.queueItems,
-        resolveImagePath: { _ in nil },
-        onClose: {},
-        onClear: {},
-        onSkipTo: { _ in },
-        onRemove: { _ in },
-        onReorder: { _, _ in },
-        onInsertTracks: { _, _ in },
+        items: PreviewData.queueItems
     )
     .frame(width: 350, height: 500)
     .environment(MediaPaths.stub)
 }
 
 #Preview("Empty") {
-    QueueView(
+    QueueView.preview(
         isActive: false,
         nowPlayingTitle: nil,
         nowPlayingArtist: nil,
-        nowPlayingPath: nil,
-        items: [],
-        resolveImagePath: { _ in nil },
-        onClose: {},
-        onClear: {},
-        onSkipTo: { _ in },
-        onRemove: { _ in },
-        onReorder: { _, _ in },
-        onInsertTracks: { _, _ in },
+        items: []
     )
     .frame(width: 350, height: 400)
     .environment(MediaPaths.stub)
