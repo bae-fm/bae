@@ -516,22 +516,6 @@ pub enum ImportPhase {
     Store,
 }
 
-impl ImportPhase {
-    pub fn key(&self) -> &'static str {
-        match self {
-            Self::Acquire => "acquire",
-            Self::Store => "store",
-        }
-    }
-
-    pub fn display_text(&self) -> &'static str {
-        match self {
-            Self::Acquire => "Downloading...",
-            Self::Store => "Storing files...",
-        }
-    }
-}
-
 /// Steps during phase 0 preparation (in ImportHandle, before pipeline starts)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrepareStep {
@@ -542,17 +526,12 @@ pub enum PrepareStep {
     SavingToDatabase,
 }
 
-impl PrepareStep {
-    /// Human-readable display text for UI
-    pub fn display_text(&self) -> &'static str {
-        match self {
-            PrepareStep::ParsingMetadata => "Parsing metadata...",
-            PrepareStep::WritingCoverArt => "Writing cover art...",
-            PrepareStep::DiscoveringFiles => "Discovering files...",
-            PrepareStep::ValidatingTracks => "Validating tracks...",
-            PrepareStep::SavingToDatabase => "Saving to database...",
-        }
-    }
+/// Which step of an import is in progress, for the candidate progress UI. The
+/// UI localizes each step; bae-core no longer renders display text for it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImportStep {
+    Preparing(PrepareStep),
+    Running(ImportPhase),
 }
 
 /// Maps a logical track to the audio file that contains its samples.

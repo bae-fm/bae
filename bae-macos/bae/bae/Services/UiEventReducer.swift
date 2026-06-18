@@ -236,14 +236,12 @@ enum UiEventReducer {
         case .candidateImportImporting(
             let key,
             let progressPercent,
-            let phase,
-            let statusText
+            let step
         ):
             importStore.mutateCandidate(forKey: key) {
                 $0.importStatus = .importing(
                     progressPercent: progressPercent,
-                    phase: phase,
-                    statusText: statusText
+                    step: step
                 )
             }
 

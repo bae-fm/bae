@@ -775,8 +775,7 @@ enum PreviewData {
     static let importStatuses: [String: ImportStatus] = [
         "/Music/Downloads/Compilation Vol. 3": .importing(
             progressPercent: 45,
-            phase: nil,
-            statusText: "Storing files..."
+            step: .running(phase: .store)
         ),
         // A completed import — tabs under Added via its import status.
         "/Music/Downloads/EP Release": .complete(

@@ -144,8 +144,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
             storagePinned: $storagePinned,
             importStatus: .importing(
                 progressPercent: 45,
-                phase: nil,
-                statusText: "Storing files..."
+                step: .running(phase: .store)
             ),
             importing: true
         )

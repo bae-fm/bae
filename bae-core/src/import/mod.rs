@@ -64,7 +64,7 @@ pub use progress::ImportProgressHandle;
 pub use service::ImportService;
 pub use types::{
     CoverSelection, EditValidationError, IdentityChoice, ImportCommand, ImportPhase,
-    ImportProgress, MetadataPointer, MetadataRef, MetadataSource, PrepareStep, PressingEdit,
-    RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseIdentity, ReleaseUserEdit, StorageMode,
-    TrackFile, TrackUserEdit,
+    ImportProgress, ImportStep, MetadataPointer, MetadataRef, MetadataSource, PrepareStep,
+    PressingEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseIdentity, ReleaseUserEdit,
+    StorageMode, TrackFile, TrackUserEdit,
 };

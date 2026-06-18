@@ -546,21 +546,119 @@ pub struct BridgeCandidateFiles {
     pub documents: Vec<BridgeFileInfo>,
 }
 
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeImportStatus {
-    Importing {
-        progress_percent: u32,
-        /// "acquire" (ripping/downloading) or "store" (encrypting/storing), or nil for folder imports
-        phase: Option<String>,
-        /// Human-readable status text (e.g. "Downloading cover art...")
-        status_text: Option<String>,
-    },
-    Complete {
-        album_id: String,
-    },
-    Error {
-        message: String,
-    },
+/// Phase-0 preparation step, mirroring bae-core's `PrepareStep`. The UI
+/// localizes each variant via its catalog key (`bridge_prepare_step_key`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgePrepareStep {
+    ParsingMetadata,
+    WritingCoverArt,
+    DiscoveringFiles,
+    ValidatingTracks,
+    SavingToDatabase,
+}
+
+impl BridgePrepareStep {
+    pub(crate) fn loc_key(self) -> &'static str {
+        match self {
+            Self::ParsingMetadata => "core.import.prepare.parsing_metadata",
+            Self::WritingCoverArt => "core.import.prepare.writing_cover_art",
+            Self::DiscoveringFiles => "core.import.prepare.discovering_files",
+            Self::ValidatingTracks => "core.import.prepare.validating_tracks",
+            Self::SavingToDatabase => "core.import.prepare.saving_to_database",
+        }
+    }
+}
+
+/// Pipeline phase, mirroring bae-core's `ImportPhase`. Localized via
+/// `bridge_import_phase_key`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeImportPhase {
+    Acquire,
+    Store,
+}
+
+impl BridgeImportPhase {
+    pub(crate) fn loc_key(self) -> &'static str {
+        match self {
+            Self::Acquire => "core.import.phase.acquire",
+            Self::Store => "core.import.phase.store",
+        }
+    }
+}
+
+/// Which step of an import is in progress, mirroring bae-core's `ImportStep`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeImportStep {
+    Preparing { step: BridgePrepareStep },
+    Running { phase: BridgeImportPhase },
+}
+
+pub(crate) fn import_step_to_bridge(s: bae_core::import::ImportStep) -> BridgeImportStep {
+    use bae_core::import::{ImportPhase, ImportStep, PrepareStep};
+    match s {
+        ImportStep::Preparing(p) => BridgeImportStep::Preparing {
+            step: match p {
+                PrepareStep::ParsingMetadata => BridgePrepareStep::ParsingMetadata,
+                PrepareStep::WritingCoverArt => BridgePrepareStep::WritingCoverArt,
+                PrepareStep::DiscoveringFiles => BridgePrepareStep::DiscoveringFiles,
+                PrepareStep::ValidatingTracks => BridgePrepareStep::ValidatingTracks,
+                PrepareStep::SavingToDatabase => BridgePrepareStep::SavingToDatabase,
+            },
+        },
+        ImportStep::Running(phase) => BridgeImportStep::Running {
+            phase: match phase {
+                ImportPhase::Acquire => BridgeImportPhase::Acquire,
+                ImportPhase::Store => BridgeImportPhase::Store,
+            },
+        },
+    }
+}
+
+/// Localization key for a prepare step — resolved by the UI against the `Core`
+/// string table. One source for every platform.
+#[uniffi::export]
+pub fn bridge_prepare_step_key(step: BridgePrepareStep) -> String {
+    step.loc_key().to_string()
+}
+
+/// Localization key for an import phase.
+#[uniffi::export]
+pub fn bridge_import_phase_key(phase: BridgeImportPhase) -> String {
+    phase.loc_key().to_string()
+}
+
+#[cfg(test)]
+mod import_step_tests {
+    use super::{BridgeImportPhase, BridgePrepareStep};
+
+    /// Every import-step key must exist in the catalog, so a renamed key fails
+    /// the build instead of rendering a raw key in the progress UI.
+    #[test]
+    fn keys_exist_in_catalog() {
+        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
+            .expect("catalog parses");
+        let prepare = [
+            BridgePrepareStep::ParsingMetadata,
+            BridgePrepareStep::WritingCoverArt,
+            BridgePrepareStep::DiscoveringFiles,
+            BridgePrepareStep::ValidatingTracks,
+            BridgePrepareStep::SavingToDatabase,
+        ];
+        for step in prepare {
+            assert!(
+                cat.messages.contains_key(step.loc_key()),
+                "catalog missing `{}`",
+                step.loc_key()
+            );
+        }
+        for phase in [BridgeImportPhase::Acquire, BridgeImportPhase::Store] {
+            assert!(
+                cat.messages.contains_key(phase.loc_key()),
+                "catalog missing `{}`",
+                phase.loc_key()
+            );
+        }
+    }
 }
 
 /// One pressing under a release-group card. The card carries the album's
@@ -1091,8 +1189,7 @@ pub enum BridgeUiEvent {
     CandidateImportImporting {
         key: String,
         progress_percent: u32,
-        phase: Option<String>,
-        status_text: Option<String>,
+        step: Option<BridgeImportStep>,
     },
     CandidateImportComplete {
         key: String,

@@ -293,24 +293,21 @@ impl UiEventBus {
                                 Some(UiBusEvent::CandidateImportImporting {
                                     key: candidate_key.clone(),
                                     progress_percent: 0,
-                                    phase: None,
-                                    status_text: Some(step.display_text().to_string()),
+                                    step: Some(crate::import::ImportStep::Preparing(step)),
                                 })
                             }
                             ImportProgress::Started { .. } => {
                                 Some(UiBusEvent::CandidateImportImporting {
                                     key: candidate_key.clone(),
                                     progress_percent: 0,
-                                    phase: None,
-                                    status_text: None,
+                                    step: None,
                                 })
                             }
                             ImportProgress::Progress { percent, phase, .. } => {
                                 Some(UiBusEvent::CandidateImportImporting {
                                     key: candidate_key.clone(),
                                     progress_percent: percent as u32,
-                                    phase: phase.map(|p| p.key().to_string()),
-                                    status_text: phase.map(|p| p.display_text().to_string()),
+                                    step: phase.map(crate::import::ImportStep::Running),
                                 })
                             }
                             ImportProgress::Complete { id, album_id, .. } => {
