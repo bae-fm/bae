@@ -1201,11 +1201,11 @@ async fn create_named_unmanaged_release(
     (album.id, release.id)
 }
 
-/// Managing a release into a BROWSABLE home stores a readable
-/// `{artist}/{album}/{filename}` on each `release_files.cloud_path`, enqueues the
-/// outbox upload under that same key, and the playback/read path resolves to the
-/// same key — so the synced row and the cloud object agree on a human-readable
-/// path with no `storage/` prefix.
+/// Managing a release into a BROWSABLE home stores
+/// `storage/{album_id}/{release_id}/{filename}` on each `release_files.cloud_path`,
+/// enqueues the outbox upload under that same key, and the playback/read path
+/// resolves to the same key — so the synced row and the cloud object agree on
+/// the id-structured, collision-free path (not the hashed `storage/ab/cd/{id}`).
 #[tokio::test]
 async fn test_manage_browsable_stores_readable_cloud_path() {
     tracing_init();
@@ -1216,7 +1216,7 @@ async fn test_manage_browsable_stores_readable_cloud_path() {
     let source_dir = temp.path().join("originals");
 
     let (db, mgr, _cloud) = setup_db_with_browsable_cloud(&temp, &library_path).await;
-    let (_album_id, release_id) = create_named_unmanaged_release(
+    let (album_id, release_id) = create_named_unmanaged_release(
         &db,
         "Artist Name",
         "Album Title",
@@ -1225,26 +1225,27 @@ async fn test_manage_browsable_stores_readable_cloud_path() {
     .await;
     let originals = create_unmanaged_files(&mgr, &release_id, &source_dir).await;
 
-    // Manage cloud-only: enqueues uploads, sets the readable cloud_path. The
-    // release stays unmanaged here (no live sync loop flips it), but the file
-    // rows and outbox are written.
+    // Manage cloud-only: enqueues uploads, sets the cloud_path. The release stays
+    // unmanaged here (no live sync loop flips it), but the file rows and outbox
+    // are written.
     mgr.manage_release(&release_id, false, false).await.unwrap();
 
-    // Each file row now carries the readable key: under the `storage/` audio
-    // namespace, but the readable `{artist}/{album}/{filename}` shape rather than
-    // the hashed `storage/{ab}/{cd}/{id}` shards an opaque home uses.
+    // Each file row carries the id-structured key under the `storage/` audio
+    // namespace — `storage/{album_id}/{release_id}/{filename}`, not the hashed
+    // `storage/{ab}/{cd}/{id}` shards an opaque home uses.
+    let release_prefix = format!("storage/{album_id}/{release_id}/");
     let files = mgr.get_files_for_release(&release_id).await.unwrap();
     for file in &files {
         assert_eq!(
             file.cloud_path.as_deref(),
-            Some(format!("storage/Artist Name/Album Title/{}", file.original_filename).as_str()),
-            "browsable file {} carries the readable cloud_path",
+            Some(format!("{release_prefix}{}", file.original_filename).as_str()),
+            "browsable file {} carries the id-structured cloud_path",
             file.original_filename
         );
     }
 
-    // The outbox enqueued each upload under the SAME readable key (never the
-    // hashed storage_path).
+    // The outbox enqueued each upload under the SAME key (never the hashed
+    // storage_path).
     let uploads = mgr.get_pending_cloud_uploads().await.unwrap();
     assert_eq!(uploads.len(), originals.len());
     for file in &files {
@@ -1253,11 +1254,10 @@ async fn test_manage_browsable_stores_readable_cloud_path() {
             uploads.iter().any(|u| u.cloud_key == key),
             "outbox enqueued {key}"
         );
-        // The readable form, not the hashed `storage/{ab}/{cd}/{id}` an opaque
-        // home would use.
+        // Under the release folder, not the hashed `storage/{ab}/{cd}/{id}`.
         assert!(
-            key.starts_with("storage/Artist Name/Album Title/"),
-            "a browsable key is the readable form: {key}"
+            key.starts_with(&release_prefix),
+            "a browsable key sits under the release folder: {key}"
         );
         assert_ne!(
             key,
@@ -1319,9 +1319,9 @@ async fn test_manage_opaque_leaves_cloud_path_null() {
     }
 }
 
-/// A cover set on a BROWSABLE home stores a readable `library_images.cloud_path`,
+/// A cover set on a BROWSABLE home stores an id-structured `library_images.cloud_path`,
 /// and the `BlobPlan` carries it through to `BlobRef.cloud_path` as
-/// `Artist Name/Album Title/cover.jpg`. On an OPAQUE home both stay NULL/None.
+/// `{album_id}/{release_id}/cover.jpg`. On an OPAQUE home both stay NULL/None.
 #[tokio::test]
 async fn test_cover_blob_ref_cloud_path_browsable_vs_opaque() {
     tracing_init();
@@ -1331,27 +1331,25 @@ async fn test_cover_blob_ref_cloud_path_browsable_vs_opaque() {
     use bae_core::util::content_type::ContentType;
     use coven::blob::BlobPlan;
 
-    // --- Browsable: the cover keys readably and the plan reflects it. ---
+    // --- Browsable: the cover keys by id and the plan reflects it. ---
     let temp = TempDir::new().unwrap();
     let library_path = temp.path().join("library");
     tokio::fs::create_dir_all(&library_path).await.unwrap();
     let (db, mgr, _cloud) = setup_db_with_browsable_cloud(&temp, &library_path).await;
-    let (_album_id, release_id) = create_named_unmanaged_release(
+    let (album_id, release_id) = create_named_unmanaged_release(
         &db,
         "Artist Name",
         "Album Title",
         temp.path().join("orig").to_str().unwrap(),
     )
     .await;
+    let expected_cover = format!("{album_id}/{release_id}/cover.jpg");
 
-    // Compute + store the cover's readable cloud_path the way change_cover does.
+    // Compute + store the cover's cloud_path the way change_cover does.
     let cloud_path = mgr
         .cover_cloud_path_for_test(&release_id, &ContentType::Jpeg)
         .await;
-    assert_eq!(
-        cloud_path.as_deref(),
-        Some("Artist Name/Album Title/cover.jpg")
-    );
+    assert_eq!(cloud_path.as_deref(), Some(expected_cover.as_str()));
     mgr.upsert_library_image(&bae_core::db::DbLibraryImage {
         id: release_id.clone(),
         image_type: LibraryImageType::Cover,
@@ -1384,8 +1382,8 @@ async fn test_cover_blob_ref_cloud_path_browsable_vs_opaque() {
     assert_eq!(cover_ref.namespace, "images");
     assert_eq!(
         cover_ref.cloud_path.as_deref(),
-        Some("Artist Name/Album Title/cover.jpg"),
-        "browsable cover BlobRef carries the readable cloud_path"
+        Some(expected_cover.as_str()),
+        "browsable cover BlobRef carries the id-structured cloud_path"
     );
 
     // --- Opaque: the cover keys by id and the plan carries no readable path. ---

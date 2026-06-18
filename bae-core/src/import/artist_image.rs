@@ -96,19 +96,10 @@ pub async fn fetch_and_save_artist_image(
     );
 
     let now = library_manager.clock().now();
-    // Under a browsable home the artist image blob lands at a readable
-    // `{artist}/artist.{ext}` key, computed + stored here; an opaque home leaves
-    // `cloud_path` NULL (hashed-by-id).
-    let cloud_path = match library_manager
-        .artist_image_cloud_path(artist_id, &content_type)
-        .await
-    {
-        Ok(path) => path,
-        Err(e) => {
-            warn!("Failed to compute artist image cloud path: {}", e);
-            return false;
-        }
-    };
+    // Under a browsable home the artist image blob lands at an `{artist_id}/
+    // artist.{ext}` key, stored here; an opaque home leaves `cloud_path` NULL
+    // (hashed-by-id).
+    let cloud_path = library_manager.artist_image_cloud_path(artist_id, &content_type);
     let db_image = DbLibraryImage {
         id: artist_id.to_string(),
         image_type: LibraryImageType::Artist,

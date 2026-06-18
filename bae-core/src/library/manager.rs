@@ -2112,12 +2112,7 @@ impl LibraryManager {
         let storage = self.config_handle.config().cloud_home.storage;
         match self
             .database
-            .audio_cloud_path_for_storage(
-                storage,
-                &file.release_id,
-                &file.original_filename,
-                &file.id,
-            )
+            .audio_cloud_path_for_storage(storage, &file.release_id, &file.original_filename)
             .await?
         {
             Some(readable) => {
@@ -3982,16 +3977,14 @@ impl LibraryManager {
     /// The readable `cloud_path` for an artist image under the current home:
     /// `None` (hashed-by-id) on an opaque home, `Some({artist}/artist.{ext})`
     /// on a browsable one. The manager owns config, so it reads the storage mode.
-    pub async fn artist_image_cloud_path(
+    pub fn artist_image_cloud_path(
         &self,
         artist_id: &str,
         content_type: &crate::util::content_type::ContentType,
-    ) -> Result<Option<String>, LibraryError> {
+    ) -> Option<String> {
         let storage = self.config_handle.config().cloud_home.storage;
-        Ok(self
-            .database
+        self.database
             .artist_image_cloud_path_for_storage(storage, artist_id, content_type)
-            .await?)
     }
 
     /// Get a library image by ID and type

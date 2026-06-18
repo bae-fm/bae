@@ -1723,7 +1723,6 @@ impl Database {
                             &tx,
                             &file.release_id,
                             &file.original_filename,
-                            &file.id,
                         )?;
                         file_cloud_keys.insert(file.id.clone(), key.clone());
                         Some(key)
@@ -2993,13 +2992,12 @@ impl Database {
 
     // ---- Readable cloud paths (browsable homes) ----
 
-    /// Run a readable-cloud-key resolver, but only on a browsable home: an
-    /// opaque home keys blobs by hashed id and has no stored `cloud_path`, so it
+    /// Run a cloud-key resolver, but only on a browsable home: an opaque home
+    /// keys blobs by hashed id and has no stored `cloud_path`, so it
     /// short-circuits to `Ok(None)`. The resolver runs on the owned coven
-    /// connection, where it reads the release/album/artist naming and the
-    /// already-taken keys in one place so the result is unique across the library
-    /// at compute time. The three `*_cloud_path_for_storage` accessors differ
-    /// only in which resolver they pass.
+    /// connection (where it reads the release's album id). The two
+    /// release-scoped `*_cloud_path_for_storage` accessors differ only in which
+    /// resolver they pass.
     async fn cloud_path_if_browsable<F>(
         &self,
         storage: crate::config::HomeStorage,
@@ -3018,26 +3016,24 @@ impl Database {
     }
 
     /// The cloud object key for an audio file under `storage`: `None` for an
-    /// opaque home (keyed by the hashed id, the default), or the readable,
-    /// collision-safe `storage/{artist}/{album}/{filename}` for a browsable one.
+    /// opaque home (keyed by the hashed id, the default), or the
+    /// `storage/{album_id}/{release_id}/{filename}` path for a browsable one.
     pub async fn audio_cloud_path_for_storage(
         &self,
         storage: crate::config::HomeStorage,
         release_id: &str,
         original_filename: &str,
-        file_id: &str,
     ) -> Result<Option<String>, DbError> {
         let release_id = release_id.to_string();
         let original_filename = original_filename.to_string();
-        let file_id = file_id.to_string();
         self.cloud_path_if_browsable(storage, move |conn| {
-            resolve_audio_cloud_path(conn, &release_id, &original_filename, &file_id)
+            resolve_audio_cloud_path(conn, &release_id, &original_filename)
         })
         .await
     }
 
     /// The `cloud_path` for a cover image under `storage`: `None` for an opaque
-    /// home, or the readable `{artist}/{album}/cover.{ext}` for a browsable one.
+    /// home, or `{album_id}/{release_id}/cover.{ext}` for a browsable one.
     pub async fn cover_cloud_path_for_storage(
         &self,
         storage: crate::config::HomeStorage,
@@ -3053,19 +3049,18 @@ impl Database {
     }
 
     /// The `cloud_path` for an artist image under `storage`: `None` for an
-    /// opaque home, or the readable `{artist}/artist.{ext}` for a browsable one.
-    pub async fn artist_image_cloud_path_for_storage(
+    /// opaque home, or `{artist_id}/artist.{ext}` for a browsable one. Keyed by
+    /// the artist id alone, so it needs no DB lookup.
+    pub fn artist_image_cloud_path_for_storage(
         &self,
         storage: crate::config::HomeStorage,
         artist_id: &str,
         content_type: &ContentType,
-    ) -> Result<Option<String>, DbError> {
-        let artist_id = artist_id.to_string();
-        let content_type = content_type.clone();
-        self.cloud_path_if_browsable(storage, move |conn| {
-            resolve_artist_cloud_path(conn, &artist_id, &content_type)
-        })
-        .await
+    ) -> Option<String> {
+        if !storage.is_browsable() {
+            return None;
+        }
+        Some(resolve_artist_cloud_path(artist_id, content_type))
     }
 
     /// Persist the readable cloud key on an existing `release_files` row (the
@@ -3532,191 +3527,63 @@ fn upsert_library_image_row(
     .map_err(DbError::from)
 }
 
-/// The artist name + album title backing a release, for building a readable
-/// cloud key. `artist` is the album's primary artist (`albums.artist_id` →
-/// `artists.name`); for a compilation that is whatever the album points at
-/// (e.g. "Various Artists").
-struct ReleaseNaming {
-    artist: String,
-    album: String,
-}
-
-/// Resolve a release's primary artist name + album title in one join. The
-/// release/album/artist rows always exist when a blob is being keyed (the row
-/// the blob belongs to was just inserted), so a missing row is a broken
-/// invariant surfaced as an error, not masked.
-fn release_naming(conn: &Connection, release_id: &str) -> Result<ReleaseNaming, DbError> {
+/// The album a release belongs to, for the `{album_id}/{release_id}` folder
+/// path. The release row always exists when one of its blobs is being keyed (it
+/// was just inserted), so a missing row is a broken invariant surfaced as an
+/// error, not masked.
+fn release_album_id(conn: &Connection, release_id: &str) -> Result<String, DbError> {
     conn.query_row(
-        r#"
-        SELECT ar.name, al.title
-        FROM releases r
-        JOIN albums al ON al.id = r.album_id
-        JOIN artists ar ON ar.id = al.artist_id
-        WHERE r.id = ?
-        "#,
+        "SELECT album_id FROM releases WHERE id = ?",
         params![release_id],
-        |row| {
-            Ok(ReleaseNaming {
-                artist: row.get(0)?,
-                album: row.get(1)?,
-            })
-        },
-    )
-    .map_err(DbError::from)
-}
-
-/// The artist name backing an artist image, for building a readable cloud key.
-/// The artist row always exists when its image is being keyed.
-fn artist_name(conn: &Connection, artist_id: &str) -> Result<String, DbError> {
-    conn.query_row(
-        "SELECT name FROM artists WHERE id = ?",
-        params![artist_id],
         |row| row.get::<_, String>(0),
     )
     .map_err(DbError::from)
 }
 
-/// The blob whose key is being (re)computed — used to exclude its own stored
-/// `cloud_path` from the collision set so recomputing a key for an existing blob
-/// doesn't collide with itself.
-enum CloudPathOwner<'a> {
-    ReleaseFile(&'a str),
-    LibraryImage(&'a str),
-}
-
-/// Every readable cloud key currently stored in the `owner`'s OWN table,
-/// EXCLUDING its own row. Backs the collision check so a new readable key never
-/// silently overwrites a different blob.
-///
-/// Audio (`release_files`) and images (`library_images`) live in disjoint cloud
-/// namespaces — audio under `storage/`, images under coven's `images/` — so a
-/// key in one table can never equal a key in the other. The collision check
-/// therefore scans only the owner's table: audio-vs-audio and image-vs-image are
-/// the only reachable clashes (two same-named tracks in a release, or two
-/// releases of one album both wanting `{artist}/{album}/cover.{ext}`).
-///
-/// Concurrency note: two truly-concurrent cross-device imports that pick the
-/// same key before either has synced can still both land it — `cloud_path`
-/// syncs, so any import that runs after the sync observes the taken key and
-/// disambiguates. That narrow window is an accepted greenfield limitation.
-fn taken_cloud_paths(
-    conn: &Connection,
-    owner: CloudPathOwner<'_>,
-) -> Result<std::collections::HashSet<String>, DbError> {
-    // The table name is a fixed identifier (never user input); the owner's own
-    // id is bound as a parameter and excluded so a recompute doesn't collide
-    // with itself.
-    let (table, exclude_id) = match owner {
-        CloudPathOwner::ReleaseFile(id) => ("release_files", id),
-        CloudPathOwner::LibraryImage(id) => ("library_images", id),
-    };
-    let sql = format!("SELECT cloud_path FROM {table} WHERE cloud_path IS NOT NULL AND id <> ?");
-    let mut stmt = conn.prepare(&sql)?;
-    let rows = stmt.query_map(params![exclude_id], |row| row.get::<_, Option<String>>(0))?;
-
-    let mut taken = std::collections::HashSet::new();
-    for path in rows {
-        if let Some(path) = path? {
-            taken.insert(path);
-        }
-    }
-    Ok(taken)
-}
-
-/// Make `candidate` unique among the keys already stored for the `owner`'s
-/// table, so a freshly computed readable key never overwrites a different blob.
-/// The shared tail of the three `resolve_*_cloud_path` builders — each computes
-/// its own naming and candidate (the parts that genuinely differ), then lands
-/// here.
-fn disambiguate_against_stored(
-    conn: &Connection,
-    owner: CloudPathOwner<'_>,
-    candidate: String,
-) -> Result<String, DbError> {
-    let taken = taken_cloud_paths(conn, owner)?;
-    Ok(crate::storage::readable_path::disambiguate(
-        &candidate,
-        |k| taken.contains(k),
-    ))
-}
-
-/// Resolve a release-scoped readable key: look up the release's artist/album
-/// naming once, let `make_candidate` shape it into a candidate key, then make
-/// that unique against the keys already stored for `owner`. The shared shape of
-/// the audio and cover builders; the artist-image builder keys off the artist,
-/// not a release, so it stands on its own. Works on a bare connection so it runs
-/// inside the import transaction (where the album/artist rows were just
-/// inserted) or standalone (the manage path).
+/// Build a release-scoped browsable key: look up the release's album id, then
+/// let `make_key` shape `(album_id, release_id)` into the final path. Shared by
+/// the audio and cover resolvers; the artist-image resolver keys off the artist
+/// id alone and stands apart.
 fn resolve_release_path(
     conn: &Connection,
     release_id: &str,
-    owner: CloudPathOwner<'_>,
-    make_candidate: impl FnOnce(&ReleaseNaming) -> String,
+    make_key: impl FnOnce(&str, &str) -> String,
 ) -> Result<String, DbError> {
-    let naming = release_naming(conn, release_id)?;
-    let candidate = make_candidate(&naming);
-    disambiguate_against_stored(conn, owner, candidate)
+    let album_id = release_album_id(conn, release_id)?;
+    Ok(make_key(&album_id, release_id))
 }
 
-/// The readable, collision-safe cloud key for an audio file under a browsable
-/// home: `storage/{artist}/{album}/{filename}`.
+/// The cloud key for an audio file on a browsable home:
+/// `storage/{album_id}/{release_id}/{filename}`. Ids are immutable and unique, so
+/// the key is stable and collision-free by construction — no disambiguation.
 fn resolve_audio_cloud_path(
     conn: &Connection,
     release_id: &str,
     original_filename: &str,
-    file_id: &str,
 ) -> Result<String, DbError> {
-    resolve_release_path(
-        conn,
-        release_id,
-        CloudPathOwner::ReleaseFile(file_id),
-        |naming| {
-            crate::storage::readable_path::audio_key(
-                &naming.artist,
-                &naming.album,
-                original_filename,
-                release_id,
-                file_id,
-            )
-        },
-    )
+    resolve_release_path(conn, release_id, |album_id, release_id| {
+        crate::storage::readable_path::audio_key(album_id, release_id, original_filename)
+    })
 }
 
-/// The readable, collision-safe `cloud_path` for a cover image under a browsable
-/// home: `{artist}/{album}/cover.{ext}` (relative to the `images` namespace
+/// The `cloud_path` for a cover image on a browsable home:
+/// `{album_id}/{release_id}/cover.{ext}` (relative to the `images` namespace
 /// coven prepends). The cover's id is its release id.
 fn resolve_cover_cloud_path(
     conn: &Connection,
     release_id: &str,
     content_type: &ContentType,
 ) -> Result<String, DbError> {
-    resolve_release_path(
-        conn,
-        release_id,
-        CloudPathOwner::LibraryImage(release_id),
-        |naming| {
-            crate::storage::readable_path::cover_cloud_path(
-                &naming.artist,
-                &naming.album,
-                content_type,
-                release_id,
-            )
-        },
-    )
+    resolve_release_path(conn, release_id, |album_id, release_id| {
+        crate::storage::readable_path::cover_cloud_path(album_id, release_id, content_type)
+    })
 }
 
-/// Compute the readable, collision-safe `cloud_path` for an artist image under a
-/// browsable home: `{artist}/artist.{ext}` (relative to the `images` namespace).
-/// The artist image's id is its artist id.
-fn resolve_artist_cloud_path(
-    conn: &Connection,
-    artist_id: &str,
-    content_type: &ContentType,
-) -> Result<String, DbError> {
-    let name = artist_name(conn, artist_id)?;
-    let candidate =
-        crate::storage::readable_path::artist_cloud_path(&name, content_type, artist_id);
-    disambiguate_against_stored(conn, CloudPathOwner::LibraryImage(artist_id), candidate)
+/// The `cloud_path` for an artist image on a browsable home:
+/// `{artist_id}/artist.{ext}` (relative to the `images` namespace). Keyed by the
+/// artist id alone, so it needs no DB lookup.
+fn resolve_artist_cloud_path(artist_id: &str, content_type: &ContentType) -> String {
+    crate::storage::readable_path::artist_cloud_path(artist_id, content_type)
 }
 
 /// Insert one row into `release_identities`. Shared by the atomic import path
@@ -3899,21 +3766,21 @@ mod readable_cloud_path_tests {
     use super::*;
 
     /// An in-memory DB on the real schema with one artist/album/release, so the
-    /// connection-level resolvers can look up naming and check stored keys.
-    fn seeded_conn(artist: &str, album: &str) -> Connection {
+    /// connection-level resolvers can look up a release's album id.
+    fn seeded_conn() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(include_str!("../../migrations/001_initial.sql"))
             .unwrap();
         let now = "2026-01-01T00:00:00Z";
         conn.execute(
-            "INSERT INTO artists (id, name, _updated_at, created_at) VALUES ('artist-1', ?, ?, ?)",
-            params![artist, now, now],
+            "INSERT INTO artists (id, name, _updated_at, created_at) VALUES ('artist-1', 'Artist Name', ?, ?)",
+            params![now, now],
         )
         .unwrap();
         conn.execute(
             "INSERT INTO albums (id, title, artist_id, is_compilation, _updated_at, created_at) \
-             VALUES ('album-1', ?, 'artist-1', 0, ?, ?)",
-            params![album, now, now],
+             VALUES ('album-1', 'Album Title', 'artist-1', 0, ?, ?)",
+            params![now, now],
         )
         .unwrap();
         conn.execute(
@@ -3925,99 +3792,32 @@ mod readable_cloud_path_tests {
         conn
     }
 
-    fn insert_file(conn: &Connection, id: &str, filename: &str, cloud_path: Option<&str>) {
-        let now = "2026-01-01T00:00:00Z";
-        conn.execute(
-            "INSERT INTO release_files \
-             (id, release_id, original_filename, file_size, content_type, cloud_path, _updated_at, created_at) \
-             VALUES (?, 'rel-1', ?, 1, 'audio/flac', ?, ?, ?)",
-            params![id, filename, cloud_path, now, now],
-        )
-        .unwrap();
-    }
-
-    /// Insert a `library_images` cover row at a stored `cloud_path` (the readable
-    /// key relative to the `images` namespace coven prepends).
-    fn insert_cover(conn: &Connection, id: &str, cloud_path: &str) {
-        let now = "2026-01-01T00:00:00Z";
-        conn.execute(
-            "INSERT INTO library_images \
-             (id, type, content_type, file_size, source, cloud_path, _updated_at, created_at) \
-             VALUES (?, 'cover', 'image/jpeg', 1, 'local', ?, ?, ?)",
-            params![id, cloud_path, now, now],
-        )
-        .unwrap();
+    #[test]
+    fn audio_key_is_album_release_filename() {
+        let conn = seeded_conn();
+        let key = resolve_audio_cloud_path(&conn, "rel-1", "01 Track Title.flac").unwrap();
+        assert_eq!(key, "storage/album-1/rel-1/01 Track Title.flac");
     }
 
     #[test]
-    fn audio_key_is_storage_artist_album_filename() {
-        let conn = seeded_conn("Artist Name", "Album Title");
-        let key =
-            resolve_audio_cloud_path(&conn, "rel-1", "01 Track Title.flac", "file-1").unwrap();
-        assert_eq!(key, "storage/Artist Name/Album Title/01 Track Title.flac");
-    }
-
-    #[test]
-    fn distinct_filenames_do_not_collide() {
-        let conn = seeded_conn("Artist Name", "Album Title");
-        // file-1 already stored at its readable key.
-        insert_file(
-            &conn,
-            "file-1",
-            "01 Track Title.flac",
-            Some("storage/Artist Name/Album Title/01 Track Title.flac"),
-        );
-        // A different filename gets the clean key (no disambiguation).
-        let key =
-            resolve_audio_cloud_path(&conn, "rel-1", "02 Track Title.flac", "file-2").unwrap();
-        assert_eq!(key, "storage/Artist Name/Album Title/02 Track Title.flac");
-    }
-
-    #[test]
-    fn duplicate_filename_is_disambiguated() {
-        let conn = seeded_conn("Artist Name", "Album Title");
-        // A different blob already holds the clean key.
-        insert_file(
-            &conn,
-            "file-1",
-            "01 Track Title.flac",
-            Some("storage/Artist Name/Album Title/01 Track Title.flac"),
-        );
-        // A second file with the SAME filename must not overwrite it — it gets
-        // ` (2)` inserted before the extension.
-        let key =
-            resolve_audio_cloud_path(&conn, "rel-1", "01 Track Title.flac", "file-2").unwrap();
-        assert_eq!(
-            key,
-            "storage/Artist Name/Album Title/01 Track Title (2).flac"
-        );
-    }
-
-    #[test]
-    fn recomputing_own_key_does_not_collide_with_itself() {
-        let conn = seeded_conn("Artist Name", "Album Title");
-        insert_file(
-            &conn,
-            "file-1",
-            "01 Track Title.flac",
-            Some("storage/Artist Name/Album Title/01 Track Title.flac"),
-        );
-        // Recomputing file-1's own key sees its stored value excluded, so it
-        // resolves back to the clean key rather than disambiguating against self.
-        let key =
-            resolve_audio_cloud_path(&conn, "rel-1", "01 Track Title.flac", "file-1").unwrap();
-        assert_eq!(key, "storage/Artist Name/Album Title/01 Track Title.flac");
-    }
-
-    #[test]
-    fn cover_disambiguates_against_another_cover() {
-        // A second release of the same album wants the same readable cover key;
-        // it must be disambiguated rather than overwrite the first release's
-        // cover. (Audio lives under `storage/` and images under `images/`, so a
-        // cover never clashes with an audio key — only with another image.)
-        let conn = seeded_conn("Artist Name", "Album Title");
-        insert_cover(&conn, "rel-2", "Artist Name/Album Title/cover.jpg");
+    fn cover_key_is_album_release_cover() {
+        let conn = seeded_conn();
         let key = resolve_cover_cloud_path(&conn, "rel-1", &ContentType::Jpeg).unwrap();
-        assert_eq!(key, "Artist Name/Album Title/cover (2).jpg");
+        assert_eq!(key, "album-1/rel-1/cover.jpg");
+    }
+
+    #[test]
+    fn artist_key_is_artist_id() {
+        // Keyed by the artist id alone — no DB lookup.
+        let key = resolve_artist_cloud_path("artist-1", &ContentType::Png);
+        assert_eq!(key, "artist-1/artist.png");
+    }
+
+    #[test]
+    fn missing_release_is_an_error() {
+        // The release row must exist when a blob is keyed; its absence is a
+        // broken invariant surfaced as an error, not masked.
+        let conn = seeded_conn();
+        assert!(resolve_audio_cloud_path(&conn, "no-such-release", "x.flac").is_err());
     }
 }

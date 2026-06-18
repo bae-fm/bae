@@ -44,7 +44,7 @@ A release that only exists in the cloud home (e.g., synced from another device t
 When you set up the cloud home you choose how it stores objects, for any provider:
 
 - **Opaque** (default) encrypts every object with the library key and stores it at an obfuscated path. The provider sees only ciphertext.
-- **Browsable** stores everything unencrypted at readable paths — `storage/Artist/Album/01 Track.flac` for audio, `images/Artist/Album/cover.jpg` for artwork — so you can open the bucket and recognize, play, or copy your music with any tool. Nothing is encrypted; the home relies on the provider's access control. Browsable is not public — the bucket's credentials gate it either way.
+- **Browsable** stores everything unencrypted with real filenames intact, under stable id-keyed paths — `storage/{album_id}/{release_id}/01 Track.flac` for audio, `images/{album_id}/{release_id}/cover.jpg` for artwork — so you can open the bucket and play or copy your actual files with any tool. The folders are ids (not artist/album text), which keeps the layout collision-free and each release's folder immutable. Nothing is encrypted; the home relies on the provider's access control. Browsable is not public — the bucket's credentials gate it either way.
 
 See [Encryption](/architecture/encryption#storage-modes-opaque-and-browsable) for the full comparison.
 
