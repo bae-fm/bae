@@ -329,12 +329,12 @@ struct ImportConfirmationView<
         }
         else if let status = importStatus {
             switch status {
-            case .importing(_, _, let statusText):
+            case .importing(_, let step):
                 HStack(spacing: 6) {
                     ProgressView()
                         .controlSize(.small)
-                    if let statusText {
-                        Text(statusText)
+                    if let step {
+                        Text(step.localizedText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)

@@ -118,8 +118,7 @@ pub enum UiBusEvent {
     CandidateImportImporting {
         key: String,
         progress_percent: u32,
-        phase: Option<String>,
-        status_text: Option<String>,
+        step: Option<crate::import::ImportStep>,
     },
     CandidateImportComplete {
         key: String,

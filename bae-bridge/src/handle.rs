@@ -1543,13 +1543,11 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         UiBusEvent::CandidateImportImporting {
             key,
             progress_percent,
-            phase,
-            status_text,
+            step,
         } => Some(BridgeUiEvent::CandidateImportImporting {
             key,
             progress_percent,
-            phase,
-            status_text,
+            step: step.map(crate::types::import_step_to_bridge),
         }),
         UiBusEvent::CandidateImportComplete {
             key,

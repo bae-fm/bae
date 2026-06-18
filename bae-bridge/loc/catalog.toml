@@ -16,6 +16,34 @@ value = "Album must have at least one artist"
 comment = "Import edit: the year field is not a number."
 value = "Year must be a number"
 
+[messages."core.import.prepare.parsing_metadata"]
+comment = "Import progress: preparing — parsing metadata."
+value = "Parsing metadata..."
+
+[messages."core.import.prepare.writing_cover_art"]
+comment = "Import progress: preparing — writing cover art."
+value = "Writing cover art..."
+
+[messages."core.import.prepare.discovering_files"]
+comment = "Import progress: preparing — discovering files."
+value = "Discovering files..."
+
+[messages."core.import.prepare.validating_tracks"]
+comment = "Import progress: preparing — validating tracks."
+value = "Validating tracks..."
+
+[messages."core.import.prepare.saving_to_database"]
+comment = "Import progress: preparing — saving to the database."
+value = "Saving to database..."
+
+[messages."core.import.phase.acquire"]
+comment = "Import progress: downloading or ripping the files."
+value = "Downloading..."
+
+[messages."core.import.phase.store"]
+comment = "Import progress: encrypting and storing the files."
+value = "Storing files..."
+
 [messages."core.identify.barcode.looking_up"]
 comment = "Identify: which barcode is being looked up, of how many."
 args = { position = "Int", total = "Int" }
