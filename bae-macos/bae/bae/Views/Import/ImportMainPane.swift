@@ -43,29 +43,7 @@ struct ImportMainPane<RightPane: View>: View {
     ) {
         ImportResultPane(open: false, onClose: {}) {
             ImportSearchPane.preview(
-                identifyState: .triangulating(
-                    discid: .lookingUp,
-                    barcode: .skipped,
-                ),
-                discogsEnabled: false,
-                signalsToolbar: SignalsToolbar(signals: [
-                    ToolbarSignal(
-                        kind: .discId,
-                        role: .identity,
-                        value: "disc-hash",
-                        origin: .discToc,
-                        state: .lookingUp,
-                        excluded: false
-                    ),
-                    ToolbarSignal(
-                        kind: .barcode,
-                        role: .identity,
-                        value: nil,
-                        origin: .artwork,
-                        state: .skipped,
-                        excluded: false
-                    ),
-                ])
+                state: PreviewData.searchStateTriangulating
             )
         } pane: {
             EmptyView()
@@ -86,28 +64,7 @@ struct ImportMainPane<RightPane: View>: View {
         previewState: .idle,
     ) {
         ImportResultPane(open: false, onClose: {}) {
-            ImportSearchPane.preview(
-                identifyState: .notFoundAnywhere,
-                showManualSearch: true,
-                signalsToolbar: SignalsToolbar(signals: [
-                    ToolbarSignal(
-                        kind: .discId,
-                        role: .identity,
-                        value: "disc-hash",
-                        origin: .discToc,
-                        state: .noMatch,
-                        excluded: false
-                    ),
-                    ToolbarSignal(
-                        kind: .barcode,
-                        role: .identity,
-                        value: "5051961234567",
-                        origin: .artwork,
-                        state: .noMatch,
-                        excluded: false
-                    ),
-                ])
-            )
+            ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
         } pane: {
             EmptyView()
         }

@@ -67,16 +67,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     @State
     var storagePinned = true
     ImportResultPane(open: true, onClose: {}) {
-        ImportSearchPane.preview(
-            identifyState: .found(
-                group: PreviewData.searchGroupExact,
-                libraryStatuses: [:],
-                trackCount: 0,
-                source: .discid,
-                provenance: PreviewData.searchProvenanceExact,
-            ),
-            signals: PreviewData.settledSignals
-        )
+        ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
     } pane: {
         ImportConfirmationView(
             values: $values,

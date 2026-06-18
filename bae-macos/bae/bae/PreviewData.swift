@@ -1110,4 +1110,192 @@ enum PreviewData {
             ]
         )
     )
+
+    /// Exact-match display state: disc-id found one group, catalog confirms it.
+    static let searchStateFoundExact = ImportSearchState(
+        identifyState: .found(
+            group: searchGroupExact,
+            libraryStatuses: [:],
+            trackCount: 0,
+            source: .discid,
+            provenance: searchProvenanceExact,
+        ),
+        showManualSearch: false,
+        error: nil,
+        searchGroups: [],
+        selectedReleaseId: nil,
+        isSearching: false,
+        hasSearched: false,
+        isImporting: false,
+        libraryStatuses: [:],
+        discogsEnabled: true,
+        signals: settledSignals,
+        signalsToolbar: SignalsToolbar(signals: [
+            ToolbarSignal(
+                kind: .discId,
+                role: .identity,
+                value: "disc-hash",
+                origin: .discToc,
+                state: .found(count: 3),
+                excluded: false
+            ),
+            ToolbarSignal(
+                kind: .catalog,
+                role: .filter,
+                value: "WPCR-80001",
+                origin: .folderName,
+                state: .confirms(count: 1),
+                excluded: false
+            ),
+        ]),
+    )
+
+    /// Manual-search display state: results listed, the form open.
+    static let searchStateManual = ImportSearchState(
+        identifyState: .found(
+            group: searchGroupsManual[0],
+            libraryStatuses: [:],
+            trackCount: 0,
+            source: .discid,
+            provenance: [:],
+        ),
+        showManualSearch: true,
+        error: nil,
+        searchGroups: searchGroupsManual,
+        selectedReleaseId: nil,
+        isSearching: false,
+        hasSearched: true,
+        isImporting: false,
+        libraryStatuses: [:],
+        discogsEnabled: true,
+        signals: settledSignals,
+        signalsToolbar: SignalsToolbar(signals: [
+            ToolbarSignal(
+                kind: .discId,
+                role: .identity,
+                value: "disc-hash",
+                origin: .discToc,
+                state: .found(count: 2),
+                excluded: false
+            ),
+            ToolbarSignal(
+                kind: .catalog,
+                role: .filter,
+                value: "WPCR-80001",
+                origin: .folderName,
+                state: .confirms(count: 0),
+                excluded: false
+            ),
+        ]),
+    )
+
+    /// Conflict display state: disc-id and barcode disagree on identity.
+    static let searchStateConflict = ImportSearchState(
+        identifyState: .conflict(
+            discidResults: conflictDiscidResults,
+            discidLibraryStatuses: [:],
+            barcodeResults: conflictBarcodeResults,
+            barcodeLibraryStatuses: [:],
+            discidSourceLabel: "MusicBrainz",
+            matchedBarcode: "5051961234567",
+            trackCount: 11,
+        ),
+        showManualSearch: false,
+        error: nil,
+        searchGroups: [],
+        selectedReleaseId: nil,
+        isSearching: false,
+        hasSearched: false,
+        isImporting: false,
+        libraryStatuses: [:],
+        discogsEnabled: true,
+        signals: nil,
+        signalsToolbar: SignalsToolbar(signals: [
+            ToolbarSignal(
+                kind: .discId,
+                role: .identity,
+                value: "disc-hash",
+                origin: .discToc,
+                state: .found(count: 2),
+                excluded: false
+            ),
+            ToolbarSignal(
+                kind: .barcode,
+                role: .identity,
+                value: "5051961234567",
+                origin: .artwork,
+                state: .found(count: 3),
+                excluded: false
+            ),
+        ]),
+    )
+
+    /// Auto-lookup in progress: disc-id looking up, barcode skipped.
+    static let searchStateTriangulating = ImportSearchState(
+        identifyState: .triangulating(
+            discid: .lookingUp,
+            barcode: .skipped,
+        ),
+        showManualSearch: false,
+        error: nil,
+        searchGroups: [],
+        selectedReleaseId: nil,
+        isSearching: false,
+        hasSearched: false,
+        isImporting: false,
+        libraryStatuses: [:],
+        discogsEnabled: false,
+        signals: nil,
+        signalsToolbar: SignalsToolbar(signals: [
+            ToolbarSignal(
+                kind: .discId,
+                role: .identity,
+                value: "disc-hash",
+                origin: .discToc,
+                state: .lookingUp,
+                excluded: false
+            ),
+            ToolbarSignal(
+                kind: .barcode,
+                role: .identity,
+                value: nil,
+                origin: .artwork,
+                state: .skipped,
+                excluded: false
+            ),
+        ]),
+    )
+
+    /// Manual search after both signals came up empty.
+    static let searchStateNotFound = ImportSearchState(
+        identifyState: .notFoundAnywhere,
+        showManualSearch: true,
+        error: nil,
+        searchGroups: [],
+        selectedReleaseId: nil,
+        isSearching: false,
+        hasSearched: false,
+        isImporting: false,
+        libraryStatuses: [:],
+        discogsEnabled: true,
+        signals: nil,
+        signalsToolbar: SignalsToolbar(signals: [
+            ToolbarSignal(
+                kind: .discId,
+                role: .identity,
+                value: "disc-hash",
+                origin: .discToc,
+                state: .noMatch,
+                excluded: false
+            ),
+            ToolbarSignal(
+                kind: .barcode,
+                role: .identity,
+                value: "5051961234567",
+                origin: .artwork,
+                state: .noMatch,
+                excluded: false
+            ),
+        ]),
+    )
 }
