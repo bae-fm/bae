@@ -42,6 +42,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Size
+import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -152,19 +153,23 @@ private fun ZoomableGalleryImage(
                 .data(data)
                 .crossfade(true)
                 .apply {
+                    // A local on-disk file can be disk-cached by its identifier;
+                    // in-memory bytes (a fetched cloud image) aren't disk-cacheable,
+                    // so the disk key only applies to the File source.
+                    if (data is File) {
+                        diskCacheKey(cacheKey)
+                    }
                     if (fullRes) {
                         // Decode at the source's full resolution and reuse the
                         // already-cached downsampled image as the placeholder, so
                         // the zoomed view sharpens in place instead of blanking.
                         size(Size.ORIGINAL)
                         memoryCacheKey("$cacheKey#orig")
-                        diskCacheKey(cacheKey)
                         placeholderMemoryCacheKey(cacheKey)
                     } else {
                         // Default size resolves to the page bounds: Coil
                         // downsamples the source to fit, the cheap initial decode.
                         memoryCacheKey(cacheKey)
-                        diskCacheKey(cacheKey)
                     }
                 }
                 .build()
