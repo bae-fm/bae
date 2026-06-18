@@ -1252,156 +1252,119 @@ private class ExportFormatDelegate: NSObject {
     }
 }
 
-// MARK: - Preview helpers
-
-@MainActor
-private func previewExpansion(
-    albumId: String,
-    currentTrackId: String? = nil,
-    loadingTrackId: String? = nil,
-    isPlaying: Bool = false,
-) -> some View {
-    let store = LibraryStore()
-    store.handleAlbumAdded(album: PreviewData.albumDetails[albumId]!)
-    let summary = store.albumSummaries[albumId]!
-    let primary = store.releaseDetails[summary.primaryReleaseId]!
-    guard
-        let cursor = Cursor(
-            items: summary.releaseIds.map { ReleaseRef(id: $0) },
-            preferring: summary.primaryReleaseId,
-        )
-    else {
-        fatalError("preview album has empty releaseIds")
-    }
-    return AlbumExpansionContent(
-        summary: summary,
-        selectedRelease: primary,
-        coverPath: nil,
-        lightboxItems: [],
-        releaseCursor: .constant(cursor),
-        currentTrackId: currentTrackId,
-        loadingTrackId: loadingTrackId,
-        isPlaying: isPlaying,
-        onClose: {},
-        onPlay: {},
-        onShuffle: {},
-        onPlayFromTrack: { _ in },
-        onTogglePlayPause: {},
-        onAddNext: { _ in },
-        onAddToQueue: { _ in },
-        onAddNextAlbum: {},
-        onAddAlbumToQueue: {},
-        onChangeCover: {},
-        onEditMetadata: {},
-        onReIdentify: {},
-        onManage: {},
-        onSetPrimaryRelease: {},
-        onDeleteRelease: {},
-        onExportTrack: { _ in },
-    )
-    .padding()
-    .frame(width: 1100)
-    .background(Theme.background)
-    .environment(UiStore())
-    .environment(store)
-}
-
-// MARK: - Previews
-
-#Preview("Single Disc") {
-    previewExpansion(albumId: "a-01", currentTrackId: "t-d1-2", isPlaying: true)
-}
-
-#Preview("Single Disc — Track Loading") {
-    previewExpansion(
-        albumId: "a-01",
-        currentTrackId: "t-d1-2",
-        loadingTrackId: "t-d1-3",
-        isPlaying: true
-    )
-}
-
-#Preview("Vinyl — Two Sides") {
-    previewExpansion(albumId: "a-21", currentTrackId: "t-d2-3", isPlaying: true)
-}
-
-#Preview("CD — Two Discs") {
-    previewExpansion(albumId: "a-22")
-}
-
-struct MultiReleasePreview: View {
-    @State
-    private var selectedReleaseId: String = "rel-a-04-0"
-    @State
-    private var store = LibraryStore()
-
-    var body: some View {
-        let _ = seedIfNeeded()
-        let summary = store.albumSummaries["a-04"]!
-        let selected = store.releaseDetails[selectedReleaseId]!
-        AlbumExpansionContent(
-            summary: summary,
-            selectedRelease: selected,
-            coverPath: nil,
-            lightboxItems: [],
-            releaseCursor: Binding(
-                get: {
-                    guard
-                        let cursor = Cursor(
-                            items: summary.releaseIds.map {
-                                ReleaseRef(id: $0)
-                            },
-                            preferring: selectedReleaseId,
-                        )
-                    else {
-                        fatalError("preview album has empty releaseIds")
-                    }
-                    return cursor
-                },
-                set: { selectedReleaseId = $0.current.id },
-            ),
-            currentTrackId: "t-d2-3",
-            loadingTrackId: nil,
-            isPlaying: true,
-            onClose: {},
-            onPlay: {},
-            onShuffle: {},
-            onPlayFromTrack: { _ in },
-            onTogglePlayPause: {},
-            onAddNext: { _ in },
-            onAddToQueue: { _ in },
-            onAddNextAlbum: {},
-            onAddAlbumToQueue: {},
-            onChangeCover: {},
-            onEditMetadata: {},
-            onReIdentify: {},
-            onManage: {},
-            onSetPrimaryRelease: {},
-            onDeleteRelease: {},
-            onExportTrack: { _ in },
-        )
-        .padding()
-        .frame(width: 1100, height: 700, alignment: .top)
-        .background(Theme.background)
-        .environment(UiStore())
-        .environment(store)
-        .environment(MediaPaths.stub)
-    }
+#if DEBUG
+    // MARK: - Previews
 
     @MainActor
-    private func seedIfNeeded() {
-        if store.albumSummaries["a-04"] == nil {
-            store.handleAlbumAdded(album: PreviewData.albumDetails["a-04"]!)
+    private func previewExpansion(
+        albumId: String,
+        currentTrackId: String? = nil,
+        loadingTrackId: String? = nil,
+        isPlaying: Bool = false,
+    ) -> some View {
+        let store = LibraryStore()
+        store.handleAlbumAdded(album: PreviewData.albumDetails[albumId]!)
+        let summary = store.albumSummaries[albumId]!
+        let primary = store.releaseDetails[summary.primaryReleaseId]!
+        let cursor = PreviewData.releaseCursor(
+            releaseIds: summary.releaseIds,
+            preferring: summary.primaryReleaseId
+        )
+        return
+            PreviewData.albumExpansionContent(
+                summary: summary,
+                selectedRelease: primary,
+                releaseCursor: .constant(cursor),
+                currentTrackId: currentTrackId,
+                loadingTrackId: loadingTrackId,
+                isPlaying: isPlaying,
+            )
+            .padding()
+            .frame(width: 1100)
+            .background(Theme.background)
+            .environment(UiStore())
+            .environment(store)
+    }
+
+    #Preview("Single Disc") {
+        previewExpansion(
+            albumId: "a-01",
+            currentTrackId: "t-d1-2",
+            isPlaying: true
+        )
+    }
+
+    #Preview("Single Disc — Track Loading") {
+        previewExpansion(
+            albumId: "a-01",
+            currentTrackId: "t-d1-2",
+            loadingTrackId: "t-d1-3",
+            isPlaying: true
+        )
+    }
+
+    #Preview("Vinyl — Two Sides") {
+        previewExpansion(
+            albumId: "a-21",
+            currentTrackId: "t-d2-3",
+            isPlaying: true
+        )
+    }
+
+    #Preview("CD — Two Discs") {
+        previewExpansion(albumId: "a-22")
+    }
+
+    struct MultiReleasePreview: View {
+        @State
+        private var selectedReleaseId: String = "rel-a-04-0"
+        @State
+        private var store = LibraryStore()
+
+        var body: some View {
+            let _ = seedIfNeeded()
+            let summary = store.albumSummaries["a-04"]!
+            let selected = store.releaseDetails[selectedReleaseId]!
+            PreviewData.albumExpansionContent(
+                summary: summary,
+                selectedRelease: selected,
+                // Live cursor so selecting a release in the picker cycles the
+                // preview to that release's detail.
+                releaseCursor: Binding(
+                    get: {
+                        PreviewData.releaseCursor(
+                            releaseIds: summary.releaseIds,
+                            preferring: selectedReleaseId
+                        )
+                    },
+                    set: { selectedReleaseId = $0.current.id },
+                ),
+                currentTrackId: "t-d2-3",
+                isPlaying: true,
+            )
+            .padding()
+            .frame(width: 1100, height: 700, alignment: .top)
+            .background(Theme.background)
+            .environment(UiStore())
+            .environment(store)
+            .environment(MediaPaths.stub)
+        }
+
+        @MainActor
+        private func seedIfNeeded() {
+            if store.albumSummaries["a-04"] == nil {
+                store.handleAlbumAdded(album: PreviewData.albumDetails["a-04"]!)
+            }
         }
     }
-}
 
-#Preview("Multiple Releases") {
-    MultiReleasePreview()
-        .environment(MediaPaths.stub)
-        .environment(UiStore())
-        .environment(LibraryStore())
-}
+    #Preview("Multiple Releases") {
+        MultiReleasePreview()
+            .environment(MediaPaths.stub)
+            .environment(UiStore())
+            .environment(LibraryStore())
+    }
+#endif
 
 extension View {
     /// Presents an OK-dismissible alert bound to an optional error message,

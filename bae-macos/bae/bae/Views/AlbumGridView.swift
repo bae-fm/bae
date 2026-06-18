@@ -450,171 +450,92 @@ private class MenuItem: NSMenuItem {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-private struct GridPreview: View {
-    let width: CGFloat
-    let height: CGFloat
-    @State
-    private var selectedAlbumId: String? = "a-04"
-    @State
-    private var sortCriteria: [BridgeSortCriterion] = [
-        BridgeSortCriterion(field: .dateAdded, direction: .descending)
-    ]
-    @State
-    private var selectedReleaseId: String = "r-04"
-    @State
-    private var libraryStore = LibraryStore()
+    private struct GridPreview: View {
+        let width: CGFloat
+        let height: CGFloat
+        /// The seeded store the grid interns its list into. Shared with the
+        /// `#Preview` root, which injects the same instance via
+        /// `albumDetailPreviewEnvironment` so the audit resolves the
+        /// `AlbumDetailView` chain's environment from one place.
+        let store: LibraryStore
+        @State
+        private var selectedAlbumId: String? = "a-04"
+        @State
+        private var sortCriteria: [BridgeSortCriterion] = [
+            BridgeSortCriterion(field: .dateAdded, direction: .descending)
+        ]
 
-    var body: some View {
-        let list = AlbumList.preview(
-            albums: PreviewData.albums,
-            sort: sortCriteria,
-            store: libraryStore
-        )
-        AlbumGridView(
-            list: list,
-            selectedAlbumId: $selectedAlbumId,
-            sortCriteria: $sortCriteria,
-            availableFields: BridgeSortField.allCases,
-            onPlay: { _ in },
-            onAddToQueue: { _ in },
-            onAddNext: { _ in },
-            headerTitle: "Library",
-        ) { albumId in
-            if let bridge = PreviewData.albumDetails[albumId] {
-                PreviewAlbumExpansion(
-                    bridge: bridge,
-                    store: libraryStore,
-                    selectedReleaseId: $selectedReleaseId,
-                    onClose: { selectedAlbumId = nil },
-                )
-            }
-        }
-        .frame(width: width, height: height)
-        .environment(UiStore())
-        .environment(libraryStore)
-    }
-}
-
-/// Preview wrapper: seeds the passed-in `LibraryStore` with the preview
-/// bridge payload, then renders `AlbumExpansionContent` against the
-/// store. Previews that instantiate this see the real component with
-/// real slice reads.
-private struct PreviewAlbumExpansion: View {
-    let bridge: BridgeAlbumDetail
-    let store: LibraryStore
-    @Binding
-    var selectedReleaseId: String
-    let onClose: () -> Void
-
-    var body: some View {
-        let _ = seedIfNeeded()
-        if let summary = store.albumSummaries[bridge.album.id],
-            let selected = store.releaseDetails[selectedReleaseId]
-                ?? summary.releaseIds.first.flatMap({ store.releaseDetails[$0] }
-                )
-        {
-            AlbumExpansionContent(
-                summary: summary,
-                selectedRelease: selected,
-                coverPath: nil,
-                lightboxItems: [],
-                releaseCursor: Binding(
-                    get: {
-                        guard
-                            let cursor = Cursor(
-                                items: summary.releaseIds.map {
-                                    ReleaseRef(id: $0)
-                                },
-                                preferring: selectedReleaseId,
-                            )
-                        else {
-                            fatalError("preview album has empty releaseIds")
-                        }
-                        return cursor
-                    },
-                    set: { selectedReleaseId = $0.current.id },
-                ),
-                currentTrackId: nil,
-                loadingTrackId: nil,
-                isPlaying: false,
-                onClose: onClose,
-                onPlay: {},
-                onShuffle: {},
-                onPlayFromTrack: { _ in },
-                onTogglePlayPause: {},
-                onAddNext: { _ in },
+        var body: some View {
+            let list = AlbumList.preview(
+                albums: PreviewData.albumDetailAlbums,
+                sort: sortCriteria,
+                store: store
+            )
+            AlbumGridView(
+                list: list,
+                selectedAlbumId: $selectedAlbumId,
+                sortCriteria: $sortCriteria,
+                availableFields: BridgeSortField.allCases,
+                onPlay: { _ in },
                 onAddToQueue: { _ in },
-                onAddNextAlbum: {},
-                onAddAlbumToQueue: {},
-                onChangeCover: {},
-                onEditMetadata: {},
-                onReIdentify: {},
-                onManage: {},
-                onSetPrimaryRelease: {},
-                onDeleteRelease: {},
-                onExportTrack: { _ in },
+                onAddNext: { _ in },
+                headerTitle: "Library",
+            ) { albumId in
+                AlbumDetailView(albumId: albumId)
+            }
+            .frame(width: width, height: height)
+        }
+    }
+
+    #Preview("Grid \u{2014} Wide") {
+        let store = PreviewData.seededLibraryStore()
+        GridPreview(width: 1100, height: 700, store: store)
+            .albumDetailPreviewEnvironment(store: store)
+    }
+
+    #Preview("Grid \u{2014} Medium") {
+        let store = PreviewData.seededLibraryStore()
+        GridPreview(width: 700, height: 600, store: store)
+            .albumDetailPreviewEnvironment(store: store)
+    }
+
+    #Preview("Grid \u{2014} Narrow") {
+        let store = PreviewData.seededLibraryStore()
+        GridPreview(width: 400, height: 600, store: store)
+            .albumDetailPreviewEnvironment(store: store)
+    }
+
+    #Preview("Album Card") {
+        let album = PreviewData.albums[0]
+        let selected = PreviewData.albums[3]
+        HStack(spacing: 20) {
+            AlbumCardView(
+                title: album.title,
+                artistNames: album.artistNames,
+                year: album.year,
+                coverPath: nil,
+                isSelected: false,
+                size: albumCardSize,
+                onPlay: {},
+                onAddToQueue: {},
+                onAddNext: {},
+            )
+            AlbumCardView(
+                title: selected.title,
+                artistNames: selected.artistNames,
+                year: selected.year,
+                coverPath: nil,
+                isSelected: true,
+                size: albumCardSize,
+                onPlay: {},
+                onAddToQueue: {},
+                onAddNext: {},
             )
         }
-    }
-
-    @MainActor
-    private func seedIfNeeded() {
-        if store.albumSummaries[bridge.album.id] == nil {
-            store.handleAlbumAdded(album: bridge)
-        }
-    }
-}
-
-#Preview("Grid \u{2014} Wide") {
-    GridPreview(width: 1100, height: 700)
+        .padding()
         .environment(MediaPaths.stub)
-        .environment(UiStore())
-        .environment(LibraryStore())
-}
-
-#Preview("Grid \u{2014} Medium") {
-    GridPreview(width: 700, height: 600)
-        .environment(MediaPaths.stub)
-        .environment(UiStore())
-        .environment(LibraryStore())
-}
-
-#Preview("Grid \u{2014} Narrow") {
-    GridPreview(width: 400, height: 600)
-        .environment(MediaPaths.stub)
-        .environment(UiStore())
-        .environment(LibraryStore())
-}
-
-#Preview("Album Card") {
-    let album = PreviewData.albums[0]
-    let selected = PreviewData.albums[3]
-    HStack(spacing: 20) {
-        AlbumCardView(
-            title: album.title,
-            artistNames: album.artistNames,
-            year: album.year,
-            coverPath: nil,
-            isSelected: false,
-            size: albumCardSize,
-            onPlay: {},
-            onAddToQueue: {},
-            onAddNext: {},
-        )
-        AlbumCardView(
-            title: selected.title,
-            artistNames: selected.artistNames,
-            year: selected.year,
-            coverPath: nil,
-            isSelected: true,
-            size: albumCardSize,
-            onPlay: {},
-            onAddToQueue: {},
-            onAddNext: {},
-        )
     }
-    .padding()
-    .environment(MediaPaths.stub)
-}
+#endif
