@@ -1,5 +1,13 @@
 import Foundation
 
+#if os(iOS)
+    /// A `MediaPaths` capability that isn't wired in this iOS context — the
+    /// preview stub, or a desktop-only closure (`fetchCoverBytes`) that iOS
+    /// never calls. Throwing surfaces misuse instead of masking it with empty
+    /// bytes.
+    private struct MediaPathsUnavailable: Error {}
+#endif
+
 /// Image and file path resolution against the live library. Wraps the
 /// narrow subset of `AppHandle` that views need to render artwork and
 /// resolve local file paths — separated out so leaves can take this
@@ -8,6 +16,15 @@ final class MediaPaths: Sendable, Observable {
     let imagePathIfExists: @Sendable (_ imageId: String) -> String?
     let filePath: @Sendable (_ fileId: String) throws -> String?
     let fetchCoverBytes: @Sendable (_ url: String) async throws -> Data
+    #if os(iOS)
+        /// Bytes of a release's gallery image, downloaded from the cloud (and
+        /// decrypted) when it isn't on disk here. The lightbox calls this for
+        /// gallery items with no local path. iOS-only: the macOS lightbox shows
+        /// local images only (the desktop pins releases on view).
+        let fetchGalleryImage:
+            @Sendable (_ releaseId: String, _ fileId: String) async throws ->
+                Data
+    #endif
 
     init(
         imagePathIfExists: @escaping @Sendable (String) -> String? = { _ in nil
@@ -20,7 +37,29 @@ final class MediaPaths: Sendable, Observable {
         self.imagePathIfExists = imagePathIfExists
         self.filePath = filePath
         self.fetchCoverBytes = fetchCoverBytes
+        #if os(iOS)
+            // No-arg form is the preview stub; a real fetch is wired by the
+            // iOS designated init below. Throw rather than return empty bytes.
+            self.fetchGalleryImage = { _, _ in throw MediaPathsUnavailable() }
+        #endif
     }
+
+    #if os(iOS)
+        /// iOS designated initializer that wires the cloud-only gallery image
+        /// fetch the lightbox needs. `fetchCoverBytes` is desktop-only and never
+        /// called on iOS, so it throws rather than masking with empty bytes.
+        init(
+            imagePathIfExists: @escaping @Sendable (String) -> String?,
+            filePath: @escaping @Sendable (String) throws -> String?,
+            fetchGalleryImage:
+                @escaping @Sendable (String, String) async throws -> Data
+        ) {
+            self.imagePathIfExists = imagePathIfExists
+            self.filePath = filePath
+            self.fetchCoverBytes = { _ in throw MediaPathsUnavailable() }
+            self.fetchGalleryImage = fetchGalleryImage
+        }
+    #endif
 
     // `fetchCoverBytes` pulls remote cover art for the desktop import flow and
     // isn't exported on iOS. This `handle`-wiring convenience initializer

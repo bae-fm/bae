@@ -148,9 +148,14 @@ fun AlbumDetailScreen(
                 AlbumDetailContent(
                     detail = loaded,
                     selectedRelease = release,
-                    // The cover is the selected release's first gallery item; its
-                    // localPath is an absolute path the bridge already resolved.
-                    coverPath = release?.galleryItems?.firstOrNull()?.localPath,
+                    // The release's pre-resolved cover identifier (an absolute
+                    // path the bridge already computed), or null when no cover is
+                    // cached — the header shows a placeholder then.
+                    coverPath = release?.coverPath,
+                    // Fetches a cloud-only gallery image's bytes for the lightbox.
+                    fetchGalleryImage = { releaseId, fileId ->
+                        session.appHandle.fetchGalleryImage(releaseId, fileId)
+                    },
                     onSelectRelease = { newId ->
                         selectedReleaseId = newId
                     },
@@ -219,6 +224,7 @@ private fun AlbumDetailContent(
     detail: BridgeAlbumDetail,
     selectedRelease: BridgeRelease?,
     coverPath: String?,
+    fetchGalleryImage: suspend (releaseId: String, fileId: String) -> ByteArray,
     currentTrackId: String?,
     isPlaying: Boolean,
     onSelectRelease: (String) -> Unit,
@@ -235,9 +241,14 @@ private fun AlbumDetailContent(
     val isCompilation = album.isCompilation
 
     var showGallery by remember { mutableStateOf(false) }
-    val galleryItems = selectedRelease?.galleryItems ?: emptyList()
-    if (showGallery && galleryItems.isNotEmpty()) {
-        GalleryDialog(items = galleryItems, onDismiss = { showGallery = false })
+    val galleryRelease = selectedRelease
+    val galleryItems = galleryRelease?.galleryItems ?: emptyList()
+    if (showGallery && galleryRelease != null && galleryItems.isNotEmpty()) {
+        GalleryDialog(
+            items = galleryItems,
+            loadImage = { fileId -> fetchGalleryImage(galleryRelease.id, fileId) },
+            onDismiss = { showGallery = false },
+        )
     }
 
     LazyColumn(

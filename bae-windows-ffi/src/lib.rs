@@ -1016,9 +1016,14 @@ pub unsafe extern "C" fn bae_gallery(
     let items: Vec<FfiGalleryItem> = detail
         .gallery_items
         .into_iter()
-        .map(|item| FfiGalleryItem {
-            label: item.label,
-            path: item.local_path,
+        // Local images only on Windows (the desktop pins releases on view); a
+        // cloud-only item has no local path here, so it's dropped rather than
+        // shown as a blank entry.
+        .filter_map(|item| {
+            item.local_path.map(|path| FfiGalleryItem {
+                label: item.label,
+                path,
+            })
         })
         .collect();
     json_cstring(&items)

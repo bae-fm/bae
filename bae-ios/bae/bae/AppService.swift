@@ -63,7 +63,10 @@ final class AppService: Observable {
         // on-disk covers, so build `MediaPaths` without it.
         mediaPaths = MediaPaths(
             imagePathIfExists: { appHandle.imagePathIfExists(imageId: $0) },
-            filePath: { try appHandle.filePath(fileId: $0) }
+            filePath: { try appHandle.filePath(fileId: $0) },
+            fetchGalleryImage: {
+                try await appHandle.fetchGalleryImage(releaseId: $0, fileId: $1)
+            }
         )
         sync = Sync(handle: appHandle)
     }

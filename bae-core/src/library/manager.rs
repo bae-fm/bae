@@ -3514,17 +3514,18 @@ pub(crate) fn resolve_release(
         gallery.push(GalleryItem {
             id: "cover".to_string(),
             label: "Cover".to_string(),
-            local_path: cover_identifier,
+            local_path: Some(cover_identifier),
         });
     }
+    // Every image file the release has, whether or not it's on disk here. A
+    // cloud-only file (no local copy on this device) gets a None path; the
+    // lightbox fetches its bytes on demand via `load_gallery_image`.
     for f in &image_files {
-        if let Some(path) = image_file_local_path(f) {
-            gallery.push(GalleryItem {
-                id: f.id.clone(),
-                label: f.original_filename.clone(),
-                local_path: path,
-            });
-        }
+        gallery.push(GalleryItem {
+            id: f.id.clone(),
+            label: f.original_filename.clone(),
+            local_path: image_file_local_path(f),
+        });
     }
 
     let display_name = build_release_display_name(
@@ -3676,6 +3677,31 @@ impl LibraryManager {
         release_id: &str,
     ) -> Result<Vec<DbFile>, LibraryError> {
         Ok(self.database.get_files_for_release(release_id).await?)
+    }
+
+    /// Bytes of one of a release's image files, read from the local copy when it
+    /// exists here and otherwise downloaded from the release's cloud home (and
+    /// decrypted). Backs the lightbox for cloud-only gallery items — the ones
+    /// whose `GalleryItem.local_path` is `None`.
+    pub async fn load_gallery_image(
+        &self,
+        release_id: &str,
+        file_id: &str,
+    ) -> Result<Vec<u8>, LibraryError> {
+        let file = self
+            .get_files_for_release(release_id)
+            .await?
+            .into_iter()
+            .find(|f| f.id == file_id)
+            .ok_or_else(|| {
+                LibraryError::Import(format!(
+                    "Image file {file_id} is not part of release {release_id}"
+                ))
+            })?;
+        let local_copy = self.get_release_local_copy(release_id).await?;
+        crate::storage::local::transfer::read_release_file_bytes(local_copy.as_ref(), &file, self)
+            .await
+            .map_err(|e| LibraryError::Import(e.to_string()))
     }
     /// Get a specific file by ID
     ///
@@ -5832,6 +5858,47 @@ mod tests {
         assert!(
             detail.tracks.iter().any(|t| t.title == "Closing"),
             "closing track surfaced"
+        );
+    }
+
+    #[tokio::test]
+    async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
+        let (manager, _temp_dir) = setup_test_manager().await;
+        let album = create_test_album();
+        let release = create_test_release(&album.id);
+        manager.database.insert_album(&album).await.unwrap();
+        manager.database.insert_release(&release).await.unwrap();
+
+        // An image file for the release with no local copy on this device — the
+        // release's images live only in the cloud here.
+        let image = crate::db::DbFile::new(
+            &release.id,
+            "back.jpg",
+            1234,
+            crate::util::content_type::ContentType::Jpeg,
+            Uuid::new_v4().to_string(),
+            Utc::now(),
+        );
+        manager.add_file(&image).await.unwrap();
+
+        let detail = manager
+            .find_release_detail(&release.id)
+            .await
+            .unwrap()
+            .expect("detail present");
+
+        // The lightbox shows every image the release has: the cloud-only image
+        // is surfaced as a gallery item (so it can be fetched on demand), with
+        // no local path because it isn't downloaded here.
+        let item = detail
+            .gallery_items
+            .iter()
+            .find(|g| g.id == image.id)
+            .expect("cloud-only image surfaced in gallery");
+        assert_eq!(item.label, "back.jpg");
+        assert!(
+            item.local_path.is_none(),
+            "a cloud-only image has no local path until fetched"
         );
     }
 

@@ -91,7 +91,12 @@ struct AlbumDetailView: View {
             .padding(16)
         }
         .fullScreenCover(isPresented: $showGallery) {
-            GalleryView(items: detail.galleryItems)
+            GalleryView(
+                items: detail.galleryItems,
+                loadImage: { fileId in
+                    try await mediaPaths.fetchGalleryImage(releaseId, fileId)
+                }
+            )
         }
     }
 
