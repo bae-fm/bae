@@ -146,14 +146,12 @@ struct BaeApp: App {
                 )
             ) { sheet in
                 RenameLibrarySheet(
+                    // `sheet` is the item `.sheet(item:)` already unwrapped; use
+                    // it as the fallback so the dismissal frame (when
+                    // `renameLibrarySheet` has gone back to nil) shows the last
+                    // real value rather than an empty-string sentinel.
                     state: Binding(
-                        get: {
-                            appDelegate.renameLibrarySheet
-                                ?? RenameLibrarySheetState(
-                                    id: "",
-                                    newName: ""
-                                )
-                        },
+                        get: { appDelegate.renameLibrarySheet ?? sheet },
                         set: { appDelegate.renameLibrarySheet = $0 }
                     ),
                     onCancel: { appDelegate.renameLibrarySheet = nil },
