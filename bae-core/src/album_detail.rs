@@ -161,11 +161,23 @@ pub struct FileDetail {
     pub file_size_label: String,
     pub is_image: bool,
     pub content_type: String,
-    /// One-line audio-format descriptor for display, e.g.
-    /// "FLAC · 44.1 kHz · 16-bit · stereo" or "MP3 · 320 kbps · 44.1 kHz ·
-    /// stereo". `None` for non-audio files (images, cue sheets) and for audio
-    /// files with no stored format row.
-    pub audio_format_label: Option<String>,
+    /// Structured audio format. `None` for non-audio files (images, cue sheets)
+    /// and for audio files with no stored format row.
+    pub audio_format: Option<AudioFormat>,
+}
+
+/// Structured audio-format descriptor. The UI composes the one-line label
+/// ("FLAC · 44.1 kHz · 16-bit · stereo") from these parts: the codec is a
+/// proper noun, the channel count maps to a localized word, and the numbers
+/// format per locale. `bits_per_sample` present means lossless (show the bit
+/// depth); absent means lossy (show `bitrate_kbps` instead).
+#[derive(Debug, Clone)]
+pub struct AudioFormat {
+    pub codec: String,
+    pub sample_rate_hz: i64,
+    pub bits_per_sample: Option<i64>,
+    pub bitrate_kbps: Option<i64>,
+    pub channels: i64,
 }
 
 /// Resolved release summary: the slim projection that list views (storage

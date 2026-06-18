@@ -994,8 +994,8 @@ private struct StorageFileCell: View {
             case .format:
                 // Audio files carry a label; non-audio files (images, cue)
                 // have none, so their Format cell is simply empty.
-                if let label = file.audioFormatLabel {
-                    Text(label)
+                if let format = file.audioFormat {
+                    Text(format.text)
                         .lineLimit(1)
                         .foregroundStyle(.secondary)
                 }

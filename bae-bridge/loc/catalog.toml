@@ -62,6 +62,14 @@ value = "Downloading..."
 comment = "Import progress: encrypting and storing the files."
 value = "Storing files..."
 
+[messages."core.audio.channels.mono"]
+comment = "Audio format: single-channel audio."
+value = "mono"
+
+[messages."core.audio.channels.stereo"]
+comment = "Audio format: two-channel audio."
+value = "stereo"
+
 [messages."core.identify.barcode.looking_up"]
 comment = "Identify: which barcode is being looked up, of how many."
 args = { position = "Int", total = "Int" }

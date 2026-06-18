@@ -3432,7 +3432,7 @@ pub(crate) fn resolve_release(
         .files
         .into_iter()
         .map(|f| {
-            let audio_format_label = match file_format.get(f.id.as_str()) {
+            let audio_format = match file_format.get(f.id.as_str()) {
                 Some(af) => {
                     // Lossy codecs store no bit depth; show the average bitrate
                     // (file bytes over the file's audio duration) when the full
@@ -3454,13 +3454,13 @@ pub(crate) fn resolve_release(
                     } else {
                         None
                     };
-                    Some(crate::util::format::format_audio_label(
-                        af.content_type.display_name(),
-                        af.sample_rate,
-                        af.bits_per_sample,
-                        af.channels,
+                    Some(crate::album_detail::AudioFormat {
+                        codec: af.content_type.display_name().to_string(),
+                        sample_rate_hz: af.sample_rate,
+                        bits_per_sample: af.bits_per_sample,
                         bitrate_kbps,
-                    ))
+                        channels: af.channels,
+                    })
                 }
                 None => {
                     // A non-audio file (image, cue) legitimately has no format
@@ -3478,7 +3478,7 @@ pub(crate) fn resolve_release(
                 file_size_label: crate::util::format::format_bytes_signed(f.file_size),
                 is_image: f.content_type.is_image(),
                 content_type: f.content_type.to_string(),
-                audio_format_label,
+                audio_format,
                 id: f.id,
                 original_filename: f.original_filename,
                 file_size: f.file_size,

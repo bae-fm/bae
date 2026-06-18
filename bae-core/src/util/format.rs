@@ -91,52 +91,6 @@ pub fn format_bytes_signed(bytes: i64) -> String {
     format_bytes(bytes as u64)
 }
 
-/// A sample rate in Hz as kHz, e.g. 44100 → "44.1 kHz", 48000 → "48 kHz",
-/// 88200 → "88.2 kHz". Whole-kHz rates drop the decimal.
-fn format_sample_rate(hz: i64) -> String {
-    if hz % 1000 == 0 {
-        format!("{} kHz", hz / 1000)
-    } else {
-        format!("{:.1} kHz", hz as f64 / 1000.0)
-    }
-}
-
-/// A channel count as a word: 1 → "mono", 2 → "stereo", otherwise "Nch".
-fn format_channels(channels: i64) -> String {
-    match channels {
-        1 => "mono".to_string(),
-        2 => "stereo".to_string(),
-        n => format!("{n}ch"),
-    }
-}
-
-/// One-line audio-format descriptor, e.g.
-/// "FLAC · 44.1 kHz · 16-bit · stereo" (lossless) or
-/// "MP3 · 320 kbps · 44.1 kHz · stereo" (lossy). Bit depth is shown when
-/// `bits_per_sample` is present (lossless); otherwise the average `bitrate_kbps`
-/// is shown when known — lossy codecs define no bit depth, so the average
-/// bitrate stands in its place.
-pub fn format_audio_label(
-    codec: &str,
-    sample_rate: i64,
-    bits_per_sample: Option<i64>,
-    channels: i64,
-    bitrate_kbps: Option<i64>,
-) -> String {
-    let mut parts = vec![codec.to_string()];
-    if bits_per_sample.is_none() {
-        if let Some(kbps) = bitrate_kbps {
-            parts.push(format!("{kbps} kbps"));
-        }
-    }
-    parts.push(format_sample_rate(sample_rate));
-    if let Some(bits) = bits_per_sample {
-        parts.push(format!("{bits}-bit"));
-    }
-    parts.push(format_channels(channels));
-    parts.join(" · ")
-}
-
 /// Convert a 1-indexed side number to a letter (1=A, 2=B, ..., 26=Z).
 fn side_letter(side: i32) -> char {
     (b'A' + (side - 1) as u8) as char
@@ -224,47 +178,6 @@ pub fn group_tracks_by_side(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn audio_label_lossless_shows_bit_depth() {
-        // FLAC: bit depth present, no bitrate.
-        assert_eq!(
-            format_audio_label("FLAC", 44_100, Some(16), 2, None),
-            "FLAC · 44.1 kHz · 16-bit · stereo"
-        );
-        // A whole-kHz rate drops the decimal; bitrate is ignored when bit depth
-        // is known.
-        assert_eq!(
-            format_audio_label("FLAC", 96_000, Some(24), 2, Some(9000)),
-            "FLAC · 96 kHz · 24-bit · stereo"
-        );
-    }
-
-    #[test]
-    fn audio_label_lossy_shows_bitrate() {
-        // MP3: no bit depth, average bitrate leads the rate.
-        assert_eq!(
-            format_audio_label("MP3", 44_100, None, 2, Some(320)),
-            "MP3 · 320 kbps · 44.1 kHz · stereo"
-        );
-        // Unknown bitrate (no duration) drops that part rather than guessing.
-        assert_eq!(
-            format_audio_label("MP3", 44_100, None, 2, None),
-            "MP3 · 44.1 kHz · stereo"
-        );
-    }
-
-    #[test]
-    fn audio_label_channel_words() {
-        assert_eq!(
-            format_audio_label("FLAC", 48_000, Some(16), 1, None),
-            "FLAC · 48 kHz · 16-bit · mono"
-        );
-        assert_eq!(
-            format_audio_label("FLAC", 48_000, Some(24), 6, None),
-            "FLAC · 48 kHz · 24-bit · 6ch"
-        );
-    }
 
     #[test]
     fn duration_label_basic() {
