@@ -1031,6 +1031,39 @@ enum PreviewData {
             trackIdPrefix: "import-track"
         )
 
+    /// A raw release edit for the EditMetadataForm / EditMetadataSheet previews:
+    /// the album + pressing fields plus `trackCount` tracks. Blank track artists
+    /// (the default) exercise the "track artist falls back to album artist"
+    /// placeholder path the form renders — both previews wrap that form.
+    static func editMetadataSeed(
+        trackCount: Int,
+        blankTrackArtists: Bool = true
+    ) -> BridgeRawReleaseEdit {
+        BridgeRawReleaseEdit(
+            albumTitle: "Album Title",
+            albumArtistText: "Artist Name",
+            pressing: BridgeRawPressingEdit(
+                year: "1997",
+                format: "CD",
+                label: "Some Label",
+                catalogNumber: "CAT-0001",
+                country: "US",
+                barcode: "000000000000"
+            ),
+            tracks: (1...trackCount)
+                .map { n in
+                    BridgeRawTrackEdit(
+                        id: "t-\(n)",
+                        title: "Track Title \(n)",
+                        artistText: blankTrackArtists
+                            ? "" : "Track Artist \(n)",
+                        side: 1,
+                        trackNumber: Int32(n)
+                    )
+                }
+        )
+    }
+
     /// Per-track audio candidate (nine FLAC files) plus one cover image and two
     /// documents — the track-files counterpart to `candidateFiles` (CUE+FLAC).
     static let candidateFilesTracks = CandidateFiles(

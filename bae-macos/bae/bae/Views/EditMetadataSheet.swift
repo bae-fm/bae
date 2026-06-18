@@ -193,34 +193,7 @@ struct EditMetadataSheet: View {
 
 #Preview("Edit Metadata") {
     EditMetadataSheet(
-        initialForm: BridgeRawReleaseEdit(
-            albumTitle: "Album Title",
-            albumArtistText: "Artist Name",
-            pressing: BridgeRawPressingEdit(
-                year: "2024",
-                format: "Vinyl",
-                label: "Some Label",
-                catalogNumber: "CAT-001",
-                country: "US",
-                barcode: ""
-            ),
-            tracks: [
-                BridgeRawTrackEdit(
-                    id: "t-1",
-                    title: "Track One",
-                    artistText: "",
-                    side: 1,
-                    trackNumber: 1
-                ),
-                BridgeRawTrackEdit(
-                    id: "t-2",
-                    title: "Track Two",
-                    artistText: "",
-                    side: 1,
-                    trackNumber: 2
-                ),
-            ]
-        ),
+        initialForm: PreviewData.editMetadataSeed(trackCount: 2),
         onSave: { _ in },
         onCancel: {},
     )

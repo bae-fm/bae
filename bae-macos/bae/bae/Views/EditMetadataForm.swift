@@ -466,28 +466,7 @@ private struct FieldChrome: ViewModifier {
 #Preview("Edit Metadata Form") {
     @Previewable
     @State
-    var form = BridgeRawReleaseEdit(
-        albumTitle: "Album Title",
-        albumArtistText: "Artist Name",
-        pressing: BridgeRawPressingEdit(
-            year: "1997",
-            format: "CD",
-            label: "Some Label",
-            catalogNumber: "CAT-11601",
-            country: "US",
-            barcode: "008811160128"
-        ),
-        tracks: (1...13)
-            .map { n in
-                BridgeRawTrackEdit(
-                    id: "t-\(n)",
-                    title: "Track Title \(n)",
-                    artistText: "",
-                    side: 1,
-                    trackNumber: Int32(n)
-                )
-            }
-    )
+    var form = PreviewData.editMetadataSeed(trackCount: 13)
     ScrollView {
         EditMetadataForm(form: $form)
             .padding(20)
