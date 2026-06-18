@@ -264,6 +264,59 @@ enum PreviewData {
     static let nowPlayingTitle = "Broadcast"
     static let nowPlayingArtist = "The Midnight Signal"
 
+    // MARK: - Search
+
+    /// Search results — three album hits and two track hits — for the
+    /// SearchView "With results" preview.
+    static let searchResults = SearchResults(
+        bridge: BridgeSearchResults(
+            albums: [
+                BridgeAlbumSearchResult(
+                    id: "a-02",
+                    title: "Pacific Standard",
+                    year: 2019,
+                    primaryReleaseId: "r-02",
+                    artistName: "Glass Harbor"
+                ),
+                BridgeAlbumSearchResult(
+                    id: "a-14",
+                    title: "Landlocked",
+                    year: 2022,
+                    primaryReleaseId: "r-14",
+                    artistName: "Glass Harbor"
+                ),
+                BridgeAlbumSearchResult(
+                    id: "a-03",
+                    title: "Proof by Induction",
+                    year: 2021,
+                    primaryReleaseId: "r-03",
+                    artistName: "Velvet Mathematics"
+                ),
+            ],
+            tracks: [
+                BridgeTrackSearchResult(
+                    id: "t-03",
+                    title: "Tide Pool",
+                    durationMs: 198_000,
+                    durationLabel: "3:18",
+                    albumId: "a-02",
+                    albumTitle: "Pacific Standard",
+                    artistName: "Glass Harbor"
+                ),
+                BridgeTrackSearchResult(
+                    id: "t-05",
+                    title: "Axiom",
+                    durationMs: 187_000,
+                    durationLabel: "3:07",
+                    albumId: "a-03",
+                    albumTitle: "Proof by Induction",
+                    artistName: "Velvet Mathematics"
+                ),
+            ],
+        ),
+        query: "glass"
+    )
+
     // MARK: - Album Details
 
     private static func makeTracks(
