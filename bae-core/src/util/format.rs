@@ -91,22 +91,6 @@ pub fn format_bytes_signed(bytes: i64) -> String {
     format_bytes(bytes as u64)
 }
 
-/// Format a total duration in milliseconds as "X min" or "X hr Y min".
-pub fn format_total_duration(ms: i64) -> String {
-    let total_minutes = ms / 1000 / 60;
-    if total_minutes >= 60 {
-        let hours = total_minutes / 60;
-        let mins = total_minutes % 60;
-        if mins > 0 {
-            format!("{hours} hr {mins} min")
-        } else {
-            format!("{hours} hr")
-        }
-    } else {
-        format!("{total_minutes} min")
-    }
-}
-
 /// A sample rate in Hz as kHz, e.g. 44100 → "44.1 kHz", 48000 → "48 kHz",
 /// 88200 → "88.2 kHz". Whole-kHz rates drop the decimal.
 fn format_sample_rate(hz: i64) -> String {

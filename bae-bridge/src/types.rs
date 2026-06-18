@@ -210,7 +210,8 @@ pub struct BridgeRelease {
     /// including cloud-only ones, which carry no local path and are fetched on
     /// demand. Consumers render this as-is.
     pub gallery_items: Vec<BridgeGalleryItem>,
-    pub total_duration_label: String,
+    /// Total duration across all tracks, in milliseconds. The UI formats it.
+    pub total_duration_ms: i64,
     pub file_count: i64,
     pub total_size: i64,
     /// Pre-formatted total size, e.g. "350 MB".

@@ -3561,7 +3561,7 @@ pub(crate) fn resolve_release(
         catalog_number: release.pressing.catalog_number,
         country: release.pressing.country,
         compact_metadata,
-        total_duration_label: crate::util::format::format_total_duration(total_duration_ms),
+        total_duration_ms,
         tracks,
         track_groups,
         files,
