@@ -69,7 +69,10 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     .frame(width: 700, height: 600)
     .background(Theme.background)
     .preferredColorScheme(.dark)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }
 
 #Preview("Confirming — track-count warning") {
@@ -96,7 +99,10 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     .frame(width: 700, height: 600)
     .background(Theme.background)
     .preferredColorScheme(.dark)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }
 
 #Preview("Confirming — metadata only") {
@@ -122,7 +128,10 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     .frame(width: 700, height: 600)
     .background(Theme.background)
     .preferredColorScheme(.dark)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }
 
 #Preview("Confirming — importing") {
@@ -153,7 +162,10 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     .frame(width: 700, height: 600)
     .background(Theme.background)
     .preferredColorScheme(.dark)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }
 
 #Preview("Confirming — commit error") {
@@ -179,7 +191,10 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     .frame(width: 700, height: 600)
     .background(Theme.background)
     .preferredColorScheme(.dark)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }
 
 #Preview("Loading detail") {
@@ -192,7 +207,10 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     .frame(width: 700, height: 600)
     .background(Theme.background)
     .preferredColorScheme(.dark)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }
 
 #Preview("Conflict — dock closed") {
@@ -204,7 +222,10 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     .frame(width: 700, height: 600)
     .background(Theme.background)
     .preferredColorScheme(.dark)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }
 
 #Preview("Confirming — already in library") {
@@ -238,7 +259,10 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     .frame(width: 700, height: 600)
     .background(Theme.background)
     .preferredColorScheme(.dark)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }
 
 #Preview("Confirming — cover options") {
@@ -264,5 +288,8 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     .frame(width: 700, height: 600)
     .background(Theme.background)
     .preferredColorScheme(.dark)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }

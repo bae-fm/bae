@@ -790,6 +790,43 @@ enum PreviewData {
 
     // MARK: - Import
 
+    static let importWatchedFolder = BridgeWatchedFolder(
+        path: "/Music/Downloads",
+        name: "Downloads"
+    )
+
+    /// Shared preview ConfigStore. ConfigStore is a non-Sendable `@Observable`,
+    /// so it needs `@MainActor` isolation to hold as a static.
+    @MainActor
+    static let configStore = ConfigStore(
+        config: Config(
+            bridge: BridgeConfig(
+                libraryId: "lib-preview",
+                libraryName: "Preview Library",
+                libraryPath: "/preview",
+                encryptionKeyStored: false,
+                encryptionKeyFingerprint: nil,
+                discogsTokenStatus: .notConfigured,
+                discogsUsable: false,
+                sync: nil
+            )
+        ),
+        syncReady: false
+    )
+
+    /// Seeded ImportStore for the FolderImportTab whole-view preview — the
+    /// watched folder plus every folder candidate. ImportStore is a non-Sendable
+    /// `@Observable`, so it needs `@MainActor` isolation to hold as a static.
+    @MainActor
+    static let folderImportStore: ImportStore = {
+        let s = ImportStore()
+        s.watchedFolders = [importWatchedFolder]
+        for candidate in folderCandidates {
+            s.folderCandidates[candidate.key] = candidate
+        }
+        return s
+    }()
+
     static let folderCandidates: [Candidate] = [
         BridgeFolderCandidate(
             folderPath: "/Music/Downloads/Album Title One",
