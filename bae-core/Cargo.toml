@@ -21,9 +21,7 @@ thiserror = "1.0"
 keyring-core = "0.7"
 uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
-sha1 = "0.10"
 sha2 = "0.10"
-base64 = "0.22"
 hex = "0.4"
 aws-config = { version = "1.8", default-features = false, features = ["credentials-process", "rt-tokio", "sso"] }
 aws-sdk-s3 = { version = "1.122", default-features = false, features = ["rt-tokio", "sigv4a"] }
@@ -38,8 +36,6 @@ regex = "1.11"
 strsim = "0.11"
 unicode-normalization = "0.1"
 libc = "0.2"
-crc32fast = "1.4"
-if-addrs = "0.14"
 chardetng = "0.1"
 encoding_rs = "0.8"
 rtrb = "0.3.2"

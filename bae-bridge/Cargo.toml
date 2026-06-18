@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 
+[package.metadata.cargo-machete]
+# libsqlite3-sys is a link/build dependency (bundled SQLite with the session
+# extension); it has no direct `use` here, so cargo-machete misreads it as unused.
+ignored = ["libsqlite3-sys"]
+
 [lib]
 name = "bae_bridge"
 crate-type = ["lib", "staticlib", "cdylib"]
