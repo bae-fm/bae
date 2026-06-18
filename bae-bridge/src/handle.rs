@@ -1678,7 +1678,7 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
         file_size_label: f.file_size_label,
         is_image: f.is_image,
         content_type: f.content_type,
-        audio_format_label: f.audio_format_label,
+        audio_format: f.audio_format.map(crate::types::audio_format_to_bridge),
     };
     let convert_gallery_item = |g: bae_core::album_detail::GalleryItem| BridgeGalleryItem {
         id: g.id,

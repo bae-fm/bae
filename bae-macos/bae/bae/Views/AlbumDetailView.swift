@@ -1086,8 +1086,8 @@ struct ManageReleaseSheet: View {
                 TableColumn("Format") { file in
                     // Audio files carry a label; non-audio files (images, cue)
                     // have none, so their Format cell is simply empty.
-                    if let label = file.audioFormatLabel {
-                        Text(label)
+                    if let format = file.audioFormat {
+                        Text(format.text)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }

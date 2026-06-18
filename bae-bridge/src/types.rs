@@ -292,9 +292,57 @@ pub struct BridgeFile {
     pub file_size_label: String,
     pub content_type: String,
     pub is_image: bool,
-    /// Audio-format descriptor, e.g. "FLAC · 44.1 kHz · 16-bit · stereo".
-    /// `None` for non-audio files. The UI renders it as-is.
-    pub audio_format_label: Option<String>,
+    /// Structured audio format; `None` for non-audio files. The UI composes the
+    /// one-line descriptor from it.
+    pub audio_format: Option<BridgeAudioFormat>,
+}
+
+/// Mirror of bae-core's `AudioFormat`. The UI composes "FLAC · 44.1 kHz ·
+/// 16-bit · stereo" from these parts: the codec is a proper noun, the channel
+/// count maps to a localized word (`bridge_audio_channels_key`), and numbers
+/// format per locale.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeAudioFormat {
+    pub codec: String,
+    pub sample_rate_hz: i64,
+    pub bits_per_sample: Option<i64>,
+    pub bitrate_kbps: Option<i64>,
+    pub channels: i64,
+}
+
+pub(crate) fn audio_format_to_bridge(f: bae_core::album_detail::AudioFormat) -> BridgeAudioFormat {
+    BridgeAudioFormat {
+        codec: f.codec,
+        sample_rate_hz: f.sample_rate_hz,
+        bits_per_sample: f.bits_per_sample,
+        bitrate_kbps: f.bitrate_kbps,
+        channels: f.channels,
+    }
+}
+
+/// Localization key for a channel count's word ("mono"/"stereo"), or `None` for
+/// counts the UI renders as "{n}ch". One source of the keys for every platform.
+#[uniffi::export]
+pub fn bridge_audio_channels_key(channels: i64) -> Option<String> {
+    match channels {
+        1 => Some("core.audio.channels.mono".to_string()),
+        2 => Some("core.audio.channels.stereo".to_string()),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod audio_format_tests {
+    /// The channel-word keys the UI resolves must exist in the catalog.
+    #[test]
+    fn channel_keys_exist_in_catalog() {
+        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
+            .expect("catalog parses");
+        for channels in [1_i64, 2] {
+            let key = super::bridge_audio_channels_key(channels).expect("1 and 2 have words");
+            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
+        }
+    }
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
