@@ -240,20 +240,23 @@ pub struct ReleaseDetail {
     pub track_groups: Vec<TrackGroup>,
     pub files: Vec<FileDetail>,
     pub image_files: Vec<FileDetail>,
-    /// Cover (if on disk) followed by image files. Items without a
-    /// resolvable local path are omitted.
+    /// Cover (if on disk) followed by every image file the release has —
+    /// including cloud-only ones not yet downloaded (those carry no local path;
+    /// the lightbox fetches them on demand).
     pub gallery_items: Vec<GalleryItem>,
 }
 
 /// One slot in a release's lightbox gallery.
 #[derive(Debug, Clone)]
 pub struct GalleryItem {
-    /// Stable identifier: `"cover"` for the release cover, or the file id.
+    /// Stable identifier: `"cover"` for the release cover, or the file id. For a
+    /// cloud-only image this is the file id the lightbox passes back to fetch it.
     pub id: String,
     /// Display label: `"Cover"` or the file's original filename.
     pub label: String,
-    /// Absolute local path. Items without a resolvable path are never emitted.
-    pub local_path: String,
+    /// Absolute local path when the image is on disk; `None` for a cloud-only
+    /// image file that hasn't been downloaded yet.
+    pub local_path: Option<String>,
 }
 
 /// Full album detail: album + releases (with tracks, files, gallery).

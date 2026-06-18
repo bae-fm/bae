@@ -733,6 +733,29 @@ impl AppHandle {
 }
 
 // =========================================================================
+// Release gallery (all platforms)
+// =========================================================================
+
+#[uniffi::export(async_runtime = "tokio")]
+impl AppHandle {
+    /// Bytes of a release's gallery image, fetched from the release's cloud home
+    /// (and decrypted) when it isn't on disk here. The lightbox calls this for
+    /// gallery items whose `local_path` is `None` — the release's cloud-only
+    /// image files. `file_id` is the gallery item's `id`.
+    pub async fn fetch_gallery_image(
+        &self,
+        release_id: String,
+        file_id: String,
+    ) -> Result<Vec<u8>, BridgeError> {
+        self.app_services
+            .library_manager()
+            .load_gallery_image(&release_id, &file_id)
+            .await
+            .map_err(|e| BridgeError::Import { msg: e.to_string() })
+    }
+}
+
+// =========================================================================
 // Apple-only: CloudKit
 // =========================================================================
 

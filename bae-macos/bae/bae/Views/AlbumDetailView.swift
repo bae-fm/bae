@@ -70,6 +70,9 @@ struct AlbumDetailView: View {
                         coverPath: mediaPaths.imagePathIfExists(
                             selectedReleaseId
                         ),
+                        // Every gallery item; a cloud-only one carries a nil path
+                        // and the lightbox renders it as "No image" (the desktop
+                        // pins releases on view, so it doesn't fetch on demand).
                         lightboxItems: selectedDetail.galleryItems.map {
                             LightboxItem(
                                 id: $0.id,

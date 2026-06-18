@@ -206,8 +206,9 @@ pub struct BridgeRelease {
     pub track_groups: Vec<BridgeTrackGroup>,
     pub files: Vec<BridgeFile>,
     pub image_files: Vec<BridgeFile>,
-    /// Cover first (if on disk), then each image file that resolves to a
-    /// local path. Consumers render this as-is.
+    /// Cover first (if on disk), then every image file the release has —
+    /// including cloud-only ones, which carry no local path and are fetched on
+    /// demand. Consumers render this as-is.
     pub gallery_items: Vec<BridgeGalleryItem>,
     pub total_duration_label: String,
     pub file_count: i64,
@@ -297,12 +298,14 @@ pub struct BridgeFile {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeGalleryItem {
-    /// Stable identifier: "cover" for the release cover, or the file id.
+    /// Stable identifier: "cover" for the release cover, or the file id. For a
+    /// cloud-only image, the file id the lightbox passes to `fetch_gallery_image`.
     pub id: String,
     /// Display label: "Cover" or the file's original filename.
     pub label: String,
-    /// Absolute local path (required — items without a path aren't emitted).
-    pub local_path: String,
+    /// Absolute local path when the image is on disk; `None` for a cloud-only
+    /// image file not downloaded here — the lightbox fetches its bytes on demand.
+    pub local_path: Option<String>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
