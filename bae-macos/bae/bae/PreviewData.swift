@@ -963,6 +963,68 @@ enum PreviewData {
         bridge: releaseDetailBridge
     )
 
+    /// Editor seed for the confirming previews — the raw release edit produced
+    /// from the exact-pressing choice over `releaseDetailBridge`.
+    static let confirmEditValues: BridgeRawReleaseEdit =
+        rawReleaseEditFromUserEdit(
+            edit: shapeUserEditFromReleaseDetail(
+                detail: releaseDetailBridge,
+                choice: .exact(
+                    releaseId: releaseDetailBridge.releaseId,
+                    source: releaseDetailBridge.source,
+                )
+            ),
+            trackIdPrefix: "import-track"
+        )
+
+    /// Per-track audio candidate (nine FLAC files) plus one cover image and two
+    /// documents — the track-files counterpart to `candidateFiles` (CUE+FLAC).
+    static let candidateFilesTracks = CandidateFiles(
+        bridge: BridgeCandidateFiles(
+            audio: .trackFiles(
+                files: (1...9)
+                    .map { i in
+                        BridgeFileInfo(
+                            name: "Track \(i).flac",
+                            size: UInt64(35_000_000 + i * 2_000_000),
+                            sizeLabel: "\(33 + i * 2) MB",
+                            dirPrefix: nil,
+                            fileName: "Track \(i).flac",
+                            localPath: "/tmp/fake/Track \(i).flac",
+                        )
+                    }
+            ),
+            artwork: [
+                BridgeFileInfo(
+                    name: "Front.png",
+                    size: 2_500_000,
+                    sizeLabel: "2 MB",
+                    dirPrefix: nil,
+                    fileName: "Front.png",
+                    localPath: "/tmp/fake/Front.png"
+                )
+            ],
+            documents: [
+                BridgeFileInfo(
+                    name: "info.log",
+                    size: 6000,
+                    sizeLabel: "6 KB",
+                    dirPrefix: nil,
+                    fileName: "info.log",
+                    localPath: "/tmp/fake/info.log"
+                ),
+                BridgeFileInfo(
+                    name: "notes.txt",
+                    size: 1200,
+                    sizeLabel: "1 KB",
+                    dirPrefix: nil,
+                    fileName: "notes.txt",
+                    localPath: "/tmp/fake/notes.txt"
+                ),
+            ],
+        )
+    )
+
     // MARK: - Import search
 
     /// Two pressings of one release group — the exact-match results state.

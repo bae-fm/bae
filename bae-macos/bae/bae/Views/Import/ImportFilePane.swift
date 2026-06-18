@@ -378,51 +378,7 @@ extension View {
 
 #Preview("File Pane - Track Files") {
     ImportFilePane(
-        files: CandidateFiles(
-            bridge: BridgeCandidateFiles(
-                audio: .trackFiles(
-                    files: (1...9)
-                        .map { i in
-                            BridgeFileInfo(
-                                name: "Track \(i).flac",
-                                size: UInt64(35_000_000 + i * 2_000_000),
-                                sizeLabel: "\(33 + i * 2) MB",
-                                dirPrefix: nil,
-                                fileName: "Track \(i).flac",
-                                localPath: "/tmp/fake/Track \(i).flac",
-                            )
-                        }
-                ),
-                artwork: [
-                    BridgeFileInfo(
-                        name: "Front.png",
-                        size: 2_500_000,
-                        sizeLabel: "2 MB",
-                        dirPrefix: nil,
-                        fileName: "Front.png",
-                        localPath: "/tmp/fake/Front.png"
-                    )
-                ],
-                documents: [
-                    BridgeFileInfo(
-                        name: "info.log",
-                        size: 6000,
-                        sizeLabel: "6 KB",
-                        dirPrefix: nil,
-                        fileName: "info.log",
-                        localPath: "/tmp/fake/info.log"
-                    ),
-                    BridgeFileInfo(
-                        name: "notes.txt",
-                        size: 1200,
-                        sizeLabel: "1 KB",
-                        dirPrefix: nil,
-                        fileName: "notes.txt",
-                        localPath: "/tmp/fake/notes.txt"
-                    ),
-                ],
-            )
-        ),
+        files: PreviewData.candidateFilesTracks,
         onOpenGallery: { _ in },
         onOpenDocument: { _, _ in },
         onPreviewAudio: { _ in },

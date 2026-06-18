@@ -147,6 +147,8 @@ struct ImportSearchState {
     let showManualSearch: Bool
     let error: String?
     let searchGroups: [ReleaseGroup]
+    /// Release id of the pressing whose confirm pane is open, so its row renders
+    /// selected.
     let selectedReleaseId: String?
     let isSearching: Bool
     let hasSearched: Bool
@@ -154,6 +156,8 @@ struct ImportSearchState {
     let libraryStatuses: [String: LibraryStatus]
     let discogsEnabled: Bool
     let signals: Signals?
+    /// The interactive signals toolbar — the pre-shaped badge list. Empty until
+    /// the first identify transition; the toolbar is hidden until then.
     let signalsToolbar: SignalsToolbar
 }
 
@@ -883,8 +887,7 @@ struct DiscogsKeyPopover: View {
         .frame(width: 700, height: 600)
         .background(Theme.background)
         .preferredColorScheme(.dark)
-        .environment(MediaPaths.stub)
-        .environment(UiStore())
+        .importPreviewEnvironment()
 }
 
 #Preview("Main Pane - Manual Search") {
@@ -896,17 +899,15 @@ struct DiscogsKeyPopover: View {
     .frame(width: 700, height: 600)
     .background(Theme.background)
     .preferredColorScheme(.dark)
-    .environment(MediaPaths.stub)
-    .environment(UiStore())
+    .importPreviewEnvironment()
 }
 
 #Preview("Main Pane - Conflict") {
     ImportSearchPane.preview(state: PreviewData.searchStateConflict)
-        .environment(UiStore())
-        .environment(MediaPaths.stub)
         .frame(width: 700, height: 600)
         .background(Theme.background)
         .preferredColorScheme(.dark)
+        .importPreviewEnvironment()
 }
 
 #Preview("Source Picker - Discogs Disabled") {

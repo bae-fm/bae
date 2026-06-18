@@ -50,8 +50,7 @@ struct ImportMainPane<RightPane: View>: View {
         }
     }
     .frame(width: 900, height: 600)
-    .environment(MediaPaths.stub)
-    .environment(UiStore())
+    .importPreviewEnvironment()
 }
 
 #Preview("Manual search — no results") {
@@ -70,6 +69,56 @@ struct ImportMainPane<RightPane: View>: View {
         }
     }
     .frame(width: 900, height: 600)
-    .environment(MediaPaths.stub)
-    .environment(UiStore())
+    .importPreviewEnvironment()
+}
+
+#Preview("Main pane — tracks, manual search") {
+    ImportMainPane(
+        files: PreviewData.candidateFilesTracks,
+        onOpenGallery: { _ in },
+        onOpenDocument: { _, _ in },
+        onPreviewAudio: { _ in },
+        onError: { _ in },
+        previewState: .idle,
+    ) {
+        ImportResultPane(open: false, onClose: {}) {
+            ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
+        } pane: {
+            EmptyView()
+        }
+    }
+    .frame(width: 900, height: 600)
+    .importPreviewEnvironment()
+}
+
+#Preview("Main pane — confirming (tracks)") {
+    @Previewable
+    @State
+    var values = PreviewData.confirmEditValues
+    @Previewable
+    @State
+    var storageManaged = true
+    @Previewable
+    @State
+    var storagePinned = true
+    ImportMainPane(
+        files: PreviewData.candidateFilesTracks,
+        onOpenGallery: { _ in },
+        onOpenDocument: { _, _ in },
+        onPreviewAudio: { _ in },
+        onError: { _ in },
+        previewState: .idle,
+    ) {
+        ImportResultPane(open: true, onClose: {}) {
+            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+        } pane: {
+            ImportConfirmationPreview.make(
+                values: $values,
+                storageManaged: $storageManaged,
+                storagePinned: $storagePinned
+            )
+        }
+    }
+    .frame(width: 900, height: 600)
+    .importPreviewEnvironment()
 }
