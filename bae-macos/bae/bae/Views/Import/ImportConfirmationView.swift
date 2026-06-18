@@ -628,4 +628,21 @@ struct CoverPickerView: View {
     .background(Theme.background)
     .preferredColorScheme(.dark)
     .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(
+        ConfigStore(
+            config: Config(
+                bridge: BridgeConfig(
+                    libraryId: "lib-preview",
+                    libraryName: "Preview Library",
+                    libraryPath: "/preview",
+                    encryptionKeyStored: false,
+                    encryptionKeyFingerprint: nil,
+                    discogsTokenStatus: .notConfigured,
+                    discogsUsable: false,
+                    sync: nil
+                )
+            ),
+            syncReady: false
+        )
+    )
 }
