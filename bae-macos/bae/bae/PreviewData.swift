@@ -791,7 +791,7 @@ enum PreviewData {
             folderPath: "/Music/Downloads/Broken Rip",
             sourceFolderName: "Broken Rip",
             watchedFolderPath: "/Music/Downloads",
-            reason: "corrupt or zero-byte audio file: 03.flac"
+            reason: .corruptAudioFile(path: "03.flac")
         )
     ]
 

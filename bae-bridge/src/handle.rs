@@ -1594,7 +1594,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
                 folder_path: candidate.path.to_string_lossy().to_string(),
                 source_folder_name: candidate.name,
                 watched_folder_path: candidate.watched_folder_path,
-                reason: candidate.reason,
+                reason: crate::types::invalid_reason_to_bridge(candidate.reason),
             },
         }),
         UiBusEvent::ScanCandidateRemoved { key } => {

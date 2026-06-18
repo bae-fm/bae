@@ -458,6 +458,73 @@ pub struct BridgeFolderCandidate {
     pub is_added: bool,
 }
 
+/// Mirror of bae-core's `InvalidReason`. The UI localizes each variant via its
+/// catalog key (`bridge_invalid_reason_key`), interpolating the path where set.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeInvalidReason {
+    CorruptAudioFile { path: String },
+    CorruptImage { path: String },
+    CueMissingAudio,
+    NoValidAudio,
+}
+
+impl BridgeInvalidReason {
+    pub(crate) fn loc_key(&self) -> &'static str {
+        match self {
+            Self::CorruptAudioFile { .. } => "core.import.invalid.corrupt_audio",
+            Self::CorruptImage { .. } => "core.import.invalid.corrupt_image",
+            Self::CueMissingAudio => "core.import.invalid.cue_missing_audio",
+            Self::NoValidAudio => "core.import.invalid.no_valid_audio",
+        }
+    }
+}
+
+pub(crate) fn invalid_reason_to_bridge(r: bae_core::import::InvalidReason) -> BridgeInvalidReason {
+    use bae_core::import::InvalidReason as R;
+    match r {
+        R::CorruptAudioFile { path } => BridgeInvalidReason::CorruptAudioFile { path },
+        R::CorruptImage { path } => BridgeInvalidReason::CorruptImage { path },
+        R::CueMissingAudio => BridgeInvalidReason::CueMissingAudio,
+        R::NoValidAudio => BridgeInvalidReason::NoValidAudio,
+    }
+}
+
+/// Localization key for an invalid-candidate reason — resolved by the UI against
+/// the `Core` string table; the UI interpolates the path arg where present.
+#[uniffi::export]
+pub fn bridge_invalid_reason_key(reason: BridgeInvalidReason) -> String {
+    reason.loc_key().to_string()
+}
+
+#[cfg(test)]
+mod invalid_reason_tests {
+    use super::BridgeInvalidReason;
+
+    /// Every invalid-reason key must exist in the catalog.
+    #[test]
+    fn keys_exist_in_catalog() {
+        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
+            .expect("catalog parses");
+        let reasons = [
+            BridgeInvalidReason::CorruptAudioFile {
+                path: String::new(),
+            },
+            BridgeInvalidReason::CorruptImage {
+                path: String::new(),
+            },
+            BridgeInvalidReason::CueMissingAudio,
+            BridgeInvalidReason::NoValidAudio,
+        ];
+        for r in &reasons {
+            assert!(
+                cat.messages.contains_key(r.loc_key()),
+                "catalog missing `{}`",
+                r.loc_key()
+            );
+        }
+    }
+}
+
 /// A leaf folder that looks like a release but failed validation — the import
 /// view surfaces it under the Skipped tab with a warning and the reason. Mirror
 /// of `bae_core::import::InvalidCandidate`; carries no files or identify state
@@ -470,9 +537,8 @@ pub struct BridgeInvalidCandidate {
     /// key for the candidate-list section. Match it against
     /// `BridgeWatchedFolder.path` for the section's display name.
     pub watched_folder_path: String,
-    /// Why the folder failed validation, ready to render next to the warning
-    /// icon (e.g. "corrupt or zero-byte audio file: 01.flac").
-    pub reason: String,
+    /// Why the folder failed validation — the UI localizes this typed reason.
+    pub reason: BridgeInvalidReason,
 }
 
 /// A folder the user watches for imports — one candidate-list group.

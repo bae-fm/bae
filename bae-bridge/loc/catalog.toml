@@ -16,6 +16,24 @@ value = "Album must have at least one artist"
 comment = "Import edit: the year field is not a number."
 value = "Year must be a number"
 
+[messages."core.import.invalid.corrupt_audio"]
+comment = "Import scan: a folder's audio file is corrupt or zero-byte ({path} is the file path)."
+args = { path = "Str" }
+value = "corrupt or zero-byte audio file: {path}"
+
+[messages."core.import.invalid.corrupt_image"]
+comment = "Import scan: a folder's image is corrupt or zero-byte ({path} is the file path)."
+args = { path = "Str" }
+value = "corrupt or zero-byte image: {path}"
+
+[messages."core.import.invalid.cue_missing_audio"]
+comment = "Import scan: a CUE sheet references an audio file that isn't present."
+value = "CUE references a missing audio file"
+
+[messages."core.import.invalid.no_valid_audio"]
+comment = "Import scan: the folder has no usable audio files."
+value = "no valid audio files"
+
 [messages."core.import.prepare.parsing_metadata"]
 comment = "Import progress: preparing — parsing metadata."
 value = "Parsing metadata..."

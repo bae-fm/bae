@@ -210,6 +210,21 @@ pub struct PreparedRelease {
 /// validation: corrupt or zero-byte audio, a corrupt image, or a CUE that
 /// references missing audio. Carries no files or identify state — it can't be
 /// imported — only enough to surface it under the Skipped tab with its reason.
+/// Why a candidate folder failed validation. The `Display` text is the terse
+/// internal form (used by the import-commit error channel); the UI localizes the
+/// typed variant for the Skipped tab.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum InvalidReason {
+    #[error("corrupt or zero-byte audio file: {path}")]
+    CorruptAudioFile { path: String },
+    #[error("corrupt or zero-byte image: {path}")]
+    CorruptImage { path: String },
+    #[error("CUE references a missing audio file")]
+    CueMissingAudio,
+    #[error("no valid audio files")]
+    NoValidAudio,
+}
+
 #[derive(Debug, Clone)]
 pub struct InvalidCandidate {
     /// Root path of the folder that failed validation.
@@ -219,9 +234,8 @@ pub struct InvalidCandidate {
     /// Absolute path of the watched folder this was scanned from — the
     /// candidate-list group it belongs to. Equal to the scan root.
     pub watched_folder_path: String,
-    /// Why the folder failed validation, ready to render as the failure
-    /// reason next to the warning icon.
-    pub reason: String,
+    /// Why the folder failed validation — the UI localizes this typed reason.
+    pub reason: InvalidReason,
 }
 
 /// One item the scan callback yields per leaf folder: a valid release
@@ -648,12 +662,12 @@ fn tree_is_leaf_directory(tree: &FileTree, dir: &Path) -> bool {
 #[derive(Debug)]
 enum CategorizeOutcome {
     Valid(CategorizedFiles),
-    Invalid(String),
+    Invalid(InvalidReason),
 }
 
 /// Shorthand for a failed-validation leaf carrying `reason`.
-fn invalid(reason: impl Into<String>) -> Result<CategorizeOutcome, String> {
-    Ok(CategorizeOutcome::Invalid(reason.into()))
+fn invalid(reason: InvalidReason) -> Result<CategorizeOutcome, String> {
+    Ok(CategorizeOutcome::Invalid(reason))
 }
 
 /// Categorize files from a FileTree for a given release root.
@@ -697,7 +711,9 @@ fn categorize_files_from_tree(
                 .map_err(|e| format!("Failed to validate audio file {absolute_path:?}: {e}"))?;
             if entry.size == 0 || !valid {
                 info!("Invalid candidate: corrupt or zero-byte audio file {relative_path}");
-                return invalid(format!("corrupt or zero-byte audio file: {relative_path}"));
+                return invalid(InvalidReason::CorruptAudioFile {
+                    path: relative_path.to_string(),
+                });
             }
 
             all_audio.push(ScannedFile::new(
@@ -718,7 +734,9 @@ fn categorize_files_from_tree(
                 .map_err(|e| format!("Failed to validate image file {absolute_path:?}: {e}"))?;
             if entry.size == 0 || !valid {
                 info!("Invalid candidate: corrupt or zero-byte image {relative_path}");
-                return invalid(format!("corrupt or zero-byte image: {relative_path}"));
+                return invalid(InvalidReason::CorruptImage {
+                    path: relative_path.to_string(),
+                });
             }
 
             artwork.push(ScannedFile::new(
@@ -815,7 +833,7 @@ fn categorize_files_from_tree(
                 cue_sheet.tracks.len(),
                 on_disk_audio
             );
-            return invalid("CUE references a missing audio file");
+            return invalid(InvalidReason::CueMissingAudio);
         }
     }
 
@@ -888,7 +906,7 @@ fn categorize_files_from_tree(
                 .to_uppercase(),
             None => {
                 info!("Invalid candidate: no valid audio files after categorization");
-                return invalid("no valid audio files");
+                return invalid(InvalidReason::NoValidAudio);
             }
         };
         let audio = AudioContent::TrackFiles {
@@ -927,7 +945,7 @@ pub(crate) enum RawScanItem {
     Invalid {
         path: PathBuf,
         name: String,
-        reason: String,
+        reason: InvalidReason,
     },
 }
 
@@ -1051,7 +1069,7 @@ pub fn collect_release_candidate_files(release_root: &Path) -> Result<Categorize
     // the import-commit caller fails with why the folder is unusable.
     match categorize_files_from_tree(&tree, &PathBuf::new(), release_root)? {
         CategorizeOutcome::Valid(files) => Ok(files),
-        CategorizeOutcome::Invalid(reason) => Err(reason),
+        CategorizeOutcome::Invalid(reason) => Err(reason.to_string()),
     }
 }
 
@@ -1567,7 +1585,7 @@ FILE "album.ape" WAVE
         match &items[0] {
             ScanItem::Invalid(invalid) => {
                 assert!(
-                    invalid.reason.contains("audio"),
+                    matches!(invalid.reason, InvalidReason::CorruptAudioFile { .. }),
                     "reason names the audio fault, got: {}",
                     invalid.reason,
                 );

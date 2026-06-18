@@ -482,7 +482,7 @@ struct CandidateRow: View {
 /// is a no-op — its key isn't a real candidate).
 private struct InvalidCandidateRow: View {
     let displayName: String
-    let reason: String
+    let reason: BridgeInvalidReason
     /// Real filesystem path for Reveal in Finder.
     let revealPath: String
 
@@ -496,7 +496,7 @@ private struct InvalidCandidateRow: View {
                     .font(.callout)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Text(reason)
+                Text(reason.localizedText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -506,7 +506,7 @@ private struct InvalidCandidateRow: View {
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
-        .help(reason)
+        .help(reason.localizedText)
         .contextMenu {
             Button("Reveal in Finder") {
                 SystemActions.revealInFinder(path: revealPath)
