@@ -29,3 +29,29 @@ exceptions:
   # enumerate all possible subtypes from a heterogeneous async call stack.
   TooGenericExceptionCaught:
     active: false
+  # UI error handlers deliberately catch and convert exceptions to display
+  # state; logging every swallowed exception in UI code is unnecessary noise.
+  SwallowedException:
+    active: false
+  # Using throw IllegalStateException() is equivalent to error(); the choice
+  # is stylistic. Don't mandate one form over the other.
+  UseCheckOrError:
+    active: false
+
+naming:
+  # Jetpack Compose @Composable functions use PascalCase by convention
+  # (same exemption applied to ktlint via .editorconfig). detekt's
+  # FunctionNaming doesn't understand the Compose annotation.
+  FunctionNaming:
+    active: false
+
+style:
+  # Having 3 return statements in a function is normal Kotlin control flow;
+  # the default limit of 2 fires on straightforward when-expression patterns.
+  ReturnCount:
+    active: false
+  # Keyring.kt is the JNI bootstrap for the native keyring library; it uses
+  # class + companion object to produce the correct JNI symbol names. Making
+  # it an `object` would break the JNI ABI.
+  UtilityClassWithPublicConstructor:
+    active: false
