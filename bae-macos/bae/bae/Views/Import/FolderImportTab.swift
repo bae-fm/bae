@@ -33,6 +33,14 @@ struct FolderImportTab: View {
     @Environment(UiStore.self)
     private var uiStore
 
+    /// Seeds the initially-selected candidate so a preview can render the
+    /// populated view. Production constructs `FolderImportTab()`, leaving the
+    /// list unselected.
+    init(initialSelection: String? = nil) {
+        _selectedKey = State(initialValue: initialSelection)
+        _documentContent = State(initialValue: nil)
+    }
+
     private var selectedCandidate: Candidate? {
         guard let key = selectedKey else {
             return nil
@@ -501,3 +509,25 @@ struct FolderImportTab: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Folder import — whole view") {
+        FolderImportTab(
+            initialSelection: PreviewData.folderCandidates.first?.key
+        )
+        .frame(width: 1100, height: 700)
+        .environment(MediaPaths.stub)
+        .environment(UiStore())
+        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(PreviewData.configStore)
+        .environment(Library.stub)
+        .environment(PreviewAudio.stub)
+        .environment(PreviewData.folderImportStore)
+        .environment(
+            // FolderImportTab's .task re-hydrates watchedFolders from the
+            // Importer, so it must return the seeded folder or the view falls
+            // back to its empty state.
+            Importer(watchedFolders: { [PreviewData.importWatchedFolder] })
+        )
+    }
+#endif

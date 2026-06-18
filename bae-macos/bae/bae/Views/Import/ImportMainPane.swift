@@ -50,7 +50,10 @@ struct ImportMainPane<RightPane: View>: View {
         }
     }
     .frame(width: 900, height: 600)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }
 
 #Preview("Manual search — no results") {
@@ -69,7 +72,10 @@ struct ImportMainPane<RightPane: View>: View {
         }
     }
     .frame(width: 900, height: 600)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }
 
 #Preview("Main pane — tracks, manual search") {
@@ -88,7 +94,10 @@ struct ImportMainPane<RightPane: View>: View {
         }
     }
     .frame(width: 900, height: 600)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }
 
 #Preview("Main pane — confirming (tracks)") {
@@ -120,5 +129,8 @@ struct ImportMainPane<RightPane: View>: View {
         }
     }
     .frame(width: 900, height: 600)
-    .importPreviewEnvironment()
+    .environment(MediaPaths.stub)
+    .environment(UiStore())
+    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(PreviewData.configStore)
 }

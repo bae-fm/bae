@@ -1,35 +1,6 @@
 #if DEBUG
     import SwiftUI
 
-    /// Stores the import previews read, injected as one modifier so a preview
-    /// only states its data. Covers both the search pane (MediaPaths, UiStore)
-    /// and the confirmation pane (OutboxStore, ConfigStore).
-    extension View {
-        func importPreviewEnvironment() -> some View {
-            self
-                .environment(MediaPaths.stub)
-                .environment(UiStore())
-                .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-                .environment(
-                    ConfigStore(
-                        config: Config(
-                            bridge: BridgeConfig(
-                                libraryId: "lib-preview",
-                                libraryName: "Preview Library",
-                                libraryPath: "/preview",
-                                encryptionKeyStored: false,
-                                encryptionKeyFingerprint: nil,
-                                discogsTokenStatus: .notConfigured,
-                                discogsUsable: false,
-                                sync: nil
-                            )
-                        ),
-                        syncReady: false
-                    )
-                )
-        }
-    }
-
     /// Preview builder for ImportConfirmationView — fixes the cover placeholder,
     /// the EmptyView action extra, and the action callbacks, exposing only the
     /// display knobs a permutation varies. (ImportConfirmationView is generic
