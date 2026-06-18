@@ -48,6 +48,9 @@ bae-macos/bae/bae/Info.plist
 bae-macos/bae/bae/bae_bridge.swift
 bae-macos/BaeBridgeFFI.xcframework/
 bae-bridge/swift-bindings/
+# Localization String Catalog (loc-gen emit) and its staging dir
+bae-macos/bae/bae/Core.xcstrings
+bae-bridge/loc/generated/
 # Machine-specific signing team (DEVELOPMENT_TEAM), not committed
 bae-macos/bae/Signing.local.xcconfig
 # Swift compilation conditions derived from the bridge's cargo feature set

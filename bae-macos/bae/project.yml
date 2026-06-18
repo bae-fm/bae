@@ -69,6 +69,12 @@ targets:
           if [ ! -f "$BINDINGS" ] || [ "bae-bridge/swift-bindings/bae_bridge.swift" -nt "$BINDINGS" ]; then
             cp bae-bridge/swift-bindings/bae_bridge.swift "$BINDINGS"
           fi
+          # Same copy-if-newer for the generated localization String Catalog.
+          XCSTRINGS="bae-macos/bae/bae/Core.xcstrings"
+          STAGED="bae-bridge/loc/generated/apple/Core.xcstrings"
+          if [ -f "$STAGED" ] && { [ ! -f "$XCSTRINGS" ] || [ "$STAGED" -nt "$XCSTRINGS" ]; }; then
+            cp "$STAGED" "$XCSTRINGS"
+          fi
     dependencies:
       - framework: ../BaeBridgeFFI.xcframework
         embed: false
