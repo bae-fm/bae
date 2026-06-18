@@ -1,0 +1,82 @@
+#if DEBUG
+    import SwiftUI
+
+    /// Stores the import previews read, injected as one modifier so a preview
+    /// only states its data. Covers both the search pane (MediaPaths, UiStore)
+    /// and the confirmation pane (OutboxStore, ConfigStore).
+    extension View {
+        func importPreviewEnvironment() -> some View {
+            self
+                .environment(MediaPaths.stub)
+                .environment(UiStore())
+                .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+                .environment(
+                    ConfigStore(
+                        config: Config(
+                            bridge: BridgeConfig(
+                                libraryId: "lib-preview",
+                                libraryName: "Preview Library",
+                                libraryPath: "/preview",
+                                encryptionKeyStored: false,
+                                encryptionKeyFingerprint: nil,
+                                discogsTokenStatus: .notConfigured,
+                                discogsUsable: false,
+                                sync: nil
+                            )
+                        ),
+                        syncReady: false
+                    )
+                )
+        }
+    }
+
+    /// Preview builder for ImportConfirmationView — fixes the cover placeholder,
+    /// the EmptyView action extra, and the action callbacks, exposing only the
+    /// display knobs a permutation varies. (ImportConfirmationView is generic
+    /// over its cover/action content, so this returns `some View`.)
+    enum ImportConfirmationPreview {
+        static func make(
+            values: Binding<BridgeRawReleaseEdit>,
+            storageManaged: Binding<Bool>,
+            storagePinned: Binding<Bool>,
+            trackCountMismatch: Bool = false,
+            expectedTrackCount: UInt32 = 9,
+            libraryStatus: LibraryStatus? = nil,
+            importStatus: ImportStatus? = nil,
+            error: String? = nil,
+            hasCoverOptions: Bool = false,
+            importing: Bool = false,
+            metadataOnly: Bool = false,
+        ) -> some View {
+            ImportConfirmationView(
+                values: values,
+                storageManaged: storageManaged,
+                storagePinned: storagePinned,
+                importDisabled: false,
+                trackCountMismatch: trackCountMismatch,
+                expectedTrackCount: expectedTrackCount,
+                libraryStatus: libraryStatus,
+                importStatus: importStatus,
+                error: error,
+                hasCoverOptions: hasCoverOptions,
+                importing: importing,
+                exactness: ImportExactnessChoice(
+                    isMetadataOnly: metadataOnly,
+                    onSelect: { _ in }
+                ),
+                onConfirmImport: {},
+                onViewInLibrary: { _ in },
+                onEditCover: {},
+                coverContent: {
+                    ZStack {
+                        Theme.placeholder
+                        Image(systemName: "photo").foregroundStyle(.tertiary)
+                    }
+                    .frame(width: 80, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                },
+                actionExtra: EmptyView.init
+            )
+        }
+    }
+#endif
