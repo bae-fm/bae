@@ -23,6 +23,19 @@ allow = [
     "Zlib",
     "CC0-1.0",
     "OpenSSL",
+    # discid / discid-sys: LGPL-2.1 C library, dynamically linked (not statically embedded).
+    "LGPL-2.1",
+    "LGPL-2.1-only",
+    "LGPL-2.1-or-later",
+    "LGPL-3.0",
+    "LGPL-3.0-only",
+    "LGPL-3.0-or-later",
+    # ffmpeg-next / ffmpeg-sys-next: WTFPL is their Rust wrapper license; the
+    # underlying FFmpeg C libs are LGPL-2.1+ (already covered above).
+    "WTFPL",
+    # uniffi crates (MPL-2.0) and option-ext (MPL-2.0) — copyleft only when
+    # the covered files themselves are modified and distributed.
+    "MPL-2.0",
 ]
 confidence-threshold = 0.8
 

@@ -2,6 +2,7 @@ package fm.bae.app
 
 import android.app.Application
 import android.util.Log
+import io.crates.keyring.Keyring
 import uniffi.bae_bridge.initKeyring
 import uniffi.bae_bridge.setCaCertDir
 import uniffi.bae_bridge.setDataDir
@@ -31,7 +32,7 @@ class BaeApp : Application() {
         // Initialize the Android NDK context for the keyring store.
         // Must be called before initKeyring() so the Rust side has
         // access to the Android Context for SharedPreferences / KeyStore.
-        io.crates.keyring.Keyring.initializeNdkContext(this)
+        Keyring.initializeNdkContext(this)
         initKeyring()
         // Register the host's OAuth client creds (if a creds file is bundled) so
         // coven can build authorization URLs and refresh provider tokens during

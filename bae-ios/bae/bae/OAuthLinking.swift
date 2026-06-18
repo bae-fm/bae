@@ -130,7 +130,9 @@ struct OAuthLinking {
             credsForBridge[provider] = entry
         }
         let json = try JSONSerialization.data(withJSONObject: credsForBridge)
-        let jsonString = String(decoding: json, as: UTF8.self)
+        guard let jsonString = String(bytes: json, encoding: .utf8) else {
+            preconditionFailure("JSONSerialization produced non-UTF-8 data")
+        }
         try setOauthClientCreds(credsJson: jsonString)
     }
 
