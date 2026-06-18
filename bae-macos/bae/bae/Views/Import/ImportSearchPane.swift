@@ -887,10 +887,7 @@ struct DiscogsKeyPopover: View {
         .frame(width: 700, height: 600)
         .background(Theme.background)
         .preferredColorScheme(.dark)
-        .environment(MediaPaths.stub)
-        .environment(UiStore())
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-        .environment(PreviewData.configStore)
+        .importPreviewEnvironment()
 }
 
 #Preview("Main Pane - Manual Search") {
@@ -902,10 +899,7 @@ struct DiscogsKeyPopover: View {
     .frame(width: 700, height: 600)
     .background(Theme.background)
     .preferredColorScheme(.dark)
-    .environment(MediaPaths.stub)
-    .environment(UiStore())
-    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-    .environment(PreviewData.configStore)
+    .importPreviewEnvironment()
 }
 
 #Preview("Main Pane - Conflict") {
@@ -913,10 +907,7 @@ struct DiscogsKeyPopover: View {
         .frame(width: 700, height: 600)
         .background(Theme.background)
         .preferredColorScheme(.dark)
-        .environment(MediaPaths.stub)
-        .environment(UiStore())
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-        .environment(PreviewData.configStore)
+        .importPreviewEnvironment()
 }
 
 #Preview("Source Picker - Discogs Disabled") {

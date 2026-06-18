@@ -474,10 +474,7 @@ struct FolderImportTab: View {
             initialSelection: PreviewData.folderCandidates.first?.key
         )
         .frame(width: 1100, height: 700)
-        .environment(MediaPaths.stub)
-        .environment(UiStore())
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-        .environment(PreviewData.configStore)
+        .importPreviewEnvironment()
         .environment(Library.stub)
         .environment(PreviewAudio.stub)
         .environment(PreviewData.folderImportStore)
