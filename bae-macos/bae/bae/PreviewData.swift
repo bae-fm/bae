@@ -317,6 +317,42 @@ enum PreviewData {
         query: "glass"
     )
 
+    // MARK: - Cover sheet
+
+    /// Remote cover candidates (front + back) for the CoverSheetView preview.
+    static let remoteCovers: [BridgeRemoteCover] = [
+        remoteCover(
+            url: "https://example.com/cover1.jpg",
+            thumbnailUrl: "https://example.com/thumb1.jpg",
+            label: "Front"
+        ),
+        remoteCover(
+            url: "https://example.com/cover2.jpg",
+            thumbnailUrl: "https://example.com/thumb2.jpg",
+            label: "Back"
+        ),
+    ]
+
+    private static func remoteCover(
+        url: String,
+        thumbnailUrl: String,
+        label: String
+    ) -> BridgeRemoteCover {
+        BridgeRemoteCover(
+            coverChoice: BridgeCoverChoice(
+                selection: .remoteCover(
+                    selection: BridgeRemoteCoverSelection(
+                        url: url,
+                        source: .musicBrainz
+                    )
+                ),
+                previewSource: .remote(url: url),
+                thumbnailSource: .remote(url: thumbnailUrl)
+            ),
+            label: label
+        )
+    }
+
     // MARK: - Album Details
 
     private static func makeTracks(

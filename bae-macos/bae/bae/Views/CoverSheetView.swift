@@ -162,45 +162,13 @@ struct CoverSheetView: View {
     }
 }
 
-private func previewRemoteCover(
-    url: String,
-    thumbnailUrl: String,
-    label: String
-) -> BridgeRemoteCover {
-    let selection = BridgeRemoteCoverSelection(
-        url: url,
-        source: .musicBrainz
-    )
-    return BridgeRemoteCover(
-        coverChoice: BridgeCoverChoice(
-            selection: .remoteCover(selection: selection),
-            previewSource: .remote(url: url),
-            thumbnailSource: .remote(url: thumbnailUrl)
-        ),
-        label: label
-    )
-}
-
 #Preview("Cover Sheet") {
     CoverSheetView(
         releaseImages: [
             (id: "file-1", name: "cover.jpg", path: nil),
             (id: "file-2", name: "back.jpg", path: nil),
         ],
-        fetchRemoteCovers: {
-            [
-                previewRemoteCover(
-                    url: "https://example.com/cover1.jpg",
-                    thumbnailUrl: "https://example.com/thumb1.jpg",
-                    label: "Front"
-                ),
-                previewRemoteCover(
-                    url: "https://example.com/cover2.jpg",
-                    thumbnailUrl: "https://example.com/thumb2.jpg",
-                    label: "Back"
-                ),
-            ]
-        },
+        fetchRemoteCovers: { PreviewData.remoteCovers },
         onSelectRemote: { _ in },
         onSelectReleaseImage: { _ in },
         onDone: {},
