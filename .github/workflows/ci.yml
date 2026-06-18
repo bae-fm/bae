@@ -55,6 +55,11 @@ jobs:
         cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
         cargo clippy -p bae-bridge -- -D warnings
 
+    - name: Run localization + bridge tests
+      run: |
+        cargo test -p bae-loc
+        cargo test -p bae-bridge --lib
+
     - name: Build macOS app
       id: build_macos
       run: |
