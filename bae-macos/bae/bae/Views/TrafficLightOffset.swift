@@ -15,7 +15,8 @@ private func disableHostingViewSizingOptions(_ window: NSWindow) {
     guard contentView.responds(to: sel) else {
         return
     }
-    let imp = class_getMethodImplementation(type(of: contentView), sel)!
+    guard let imp = class_getMethodImplementation(type(of: contentView), sel)
+    else { return }
     typealias Fn = @convention(c) (AnyObject, Selector, Int) -> Void
     unsafeBitCast(imp, to: Fn.self)(contentView, sel, 0)
 }

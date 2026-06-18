@@ -118,7 +118,7 @@ final class PaginatedList<Row: Identifiable & Sendable> where Row.ID: Sendable {
     func idAt(_ position: Int) -> Row.ID? {
         var best: Segment? = nil
         for seg in segments where seg.range.contains(position) {
-            if best == nil || seg.generation > best!.generation {
+            if best.map({ seg.generation > $0.generation }) ?? true {
                 best = seg
             }
         }

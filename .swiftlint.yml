@@ -1,9 +1,24 @@
 disabled_rules:
-  - todo                   # TODOs are tracked in issues, not the linter
-  - trailing_whitespace    # covered by swift-format
+  - todo                               # tracked in issues, not linter
+  - trailing_whitespace                # swift-format handles this
+  - statement_position                 # swift-format puts else on its own line
+  - trailing_comma                     # trailing commas in multiline collections are idiomatic
+  - opening_brace                      # swift-format controls brace placement
+  - closure_parameter_position         # swift-format controls this
+  - multiple_closures_with_trailing_closure  # style preference
+  - identifier_name                    # single-letter loop vars (i, s, n) are idiomatic
+  - file_length                        # preview/fixture files are long by nature
+  - type_body_length                   # not a code quality signal
+  - function_body_length               # not a code quality signal
+  - line_length                        # swift-format controls this
+  - implicit_optional_initialization   # explicitly initializing to nil is clear
+  - function_parameter_count           # preview helpers legitimately have many params
+  - large_tuple                        # style preference
+  - cyclomatic_complexity              # not a code quality signal at our scale
+  - type_name                          # swift-format handles naming
 
 opt_in_rules:
-  - force_unwrapping       # flag optional force-unwraps (expr!)
+  - force_unwrapping                   # flag optional force-unwraps (expr!)
 
 excluded:
   - bae-macos/bae/bae/bae_bridge.swift

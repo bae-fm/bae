@@ -49,6 +49,13 @@ oauth-providers = ["bae-core/oauth-providers"]
 cloudkit = []
 desktop = []
 
+# libsqlite3-sys is listed directly to enable the `session` and `bundled`
+# features, which sqlx picks up transitively. No API is called from this
+# crate — it's a feature-activation dep. cargo-machete can't tell the
+# difference, so suppress the false positive.
+[package.metadata.cargo-machete]
+ignored = ["libsqlite3-sys"]
+
 [lints.clippy]
 large_enum_variant = "allow"
 

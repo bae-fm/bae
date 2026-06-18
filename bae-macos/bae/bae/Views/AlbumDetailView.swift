@@ -1272,9 +1272,21 @@ private class ExportFormatDelegate: NSObject {
         isPlaying: Bool = false,
     ) -> some View {
         let store = LibraryStore()
-        store.handleAlbumAdded(album: PreviewData.albumDetails[albumId]!)
-        let summary = store.albumSummaries[albumId]!
-        let primary = store.releaseDetails[summary.primaryReleaseId]!
+        guard let album = PreviewData.albumDetails[albumId] else {
+            fatalError("no preview album for id: \(albumId)")
+        }
+        store.handleAlbumAdded(album: album)
+        guard let summary = store.albumSummaries[albumId] else {
+            fatalError(
+                "handleAlbumAdded did not seed summary for id: \(albumId)"
+            )
+        }
+        guard let primary = store.releaseDetails[summary.primaryReleaseId]
+        else {
+            fatalError(
+                "no releaseDetail seeded for id: \(summary.primaryReleaseId)"
+            )
+        }
         let cursor = PreviewData.releaseCursor(
             releaseIds: summary.releaseIds,
             preferring: summary.primaryReleaseId
@@ -1332,37 +1344,42 @@ private class ExportFormatDelegate: NSObject {
 
         var body: some View {
             let _ = seedIfNeeded()
-            let summary = store.albumSummaries["a-04"]!
-            let selected = store.releaseDetails[selectedReleaseId]!
-            PreviewData.albumExpansionContent(
-                summary: summary,
-                selectedRelease: selected,
-                // Live cursor so selecting a release in the picker cycles the
-                // preview to that release's detail.
-                releaseCursor: Binding(
-                    get: {
-                        PreviewData.releaseCursor(
-                            releaseIds: summary.releaseIds,
-                            preferring: selectedReleaseId
-                        )
-                    },
-                    set: { selectedReleaseId = $0.current.id },
-                ),
-                currentTrackId: "t-d2-3",
-                isPlaying: true,
-            )
-            .padding()
-            .frame(width: 1100, height: 700, alignment: .top)
-            .background(Theme.background)
-            .environment(UiStore())
-            .environment(store)
-            .environment(MediaPaths.stub)
+            if let summary = store.albumSummaries["a-04"],
+                let selected = store.releaseDetails[selectedReleaseId]
+            {
+                PreviewData.albumExpansionContent(
+                    summary: summary,
+                    selectedRelease: selected,
+                    // Live cursor so selecting a release in the picker cycles the
+                    // preview to that release's detail.
+                    releaseCursor: Binding(
+                        get: {
+                            PreviewData.releaseCursor(
+                                releaseIds: summary.releaseIds,
+                                preferring: selectedReleaseId
+                            )
+                        },
+                        set: { selectedReleaseId = $0.current.id },
+                    ),
+                    currentTrackId: "t-d2-3",
+                    isPlaying: true,
+                )
+                .padding()
+                .frame(width: 1100, height: 700, alignment: .top)
+                .background(Theme.background)
+                .environment(UiStore())
+                .environment(store)
+                .environment(MediaPaths.stub)
+            }
         }
 
         @MainActor
         private func seedIfNeeded() {
             if store.albumSummaries["a-04"] == nil {
-                store.handleAlbumAdded(album: PreviewData.albumDetails["a-04"]!)
+                guard let album = PreviewData.albumDetails["a-04"] else {
+                    fatalError("a-04 not in PreviewData.albumDetails")
+                }
+                store.handleAlbumAdded(album: album)
             }
         }
     }

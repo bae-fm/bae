@@ -507,7 +507,14 @@ enum ImportSearchFlow {
         // populated by the time this binding is read. Force-unwrap on
         // get keeps the binding non-optional for the form.
         Binding(
-            get: { candidate.editValues! },
+            get: {
+                guard let values = candidate.editValues else {
+                    preconditionFailure(
+                        "editValues must be seeded before the confirm binding is read"
+                    )
+                }
+                return values
+            },
             set: { newValue in
                 importStore.mutateCandidate(forKey: key) {
                     $0.editValues = newValue
