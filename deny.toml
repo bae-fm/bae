@@ -1,6 +1,4 @@
 [advisories]
-# Same ignores as cargo-audit in the security job: phantom deps or awaiting
-# an upstream release.
 ignore = [
     # rsa: phantom dep from sqlx-macros-core optional mysql backend, never compiled.
     # https://github.com/rust-lang/cargo/issues/10801
@@ -8,6 +6,11 @@ ignore = [
     # rustls-webpki: DoS in CRL parsing. Fix in 0.103.13, not yet on crates.io.
     # Remove once `cargo update -p rustls-webpki` picks up the fix.
     "RUSTSEC-2026-0104",
+    # paste: unmaintained proc-macro crate. Compile-time only; no runtime exposure.
+    "RUSTSEC-2024-0436",
+    # rand: unsound only when a custom global logger races rand::rng(). We use no
+    # custom global logger, so this unsoundness path is never reached.
+    "RUSTSEC-2026-0097",
 ]
 
 [licenses]
