@@ -1112,6 +1112,10 @@ impl ImportService {
                 height: None,
                 source: source.as_str().to_string(),
                 source_url: Some(url),
+                // The import's finalize transaction computes the readable
+                // cloud_path under a browsable home (it needs the album/artist
+                // rows it inserts); it stays NULL on an opaque one.
+                cloud_path: None,
                 created_at: now,
             })
         } else {
@@ -1605,6 +1609,8 @@ impl ImportService {
                     height: None,
                     source: "embedded".to_string(),
                     source_url: None,
+                    // Computed in the finalize transaction (see above).
+                    cloud_path: None,
                     created_at: now,
                 })
             }
@@ -1807,6 +1813,8 @@ impl ImportService {
             height: None,
             source: "local".to_string(),
             source_url: Some(source_url),
+            // Computed in the finalize transaction under a browsable home.
+            cloud_path: None,
             created_at: now,
         };
 

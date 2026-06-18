@@ -10,9 +10,9 @@ Release files can live in up to three places. When you import a release, you cho
 |                              | Unmanaged        | Managed — local    | Managed — cloud    |
 |------------------------------|------------------|--------------------|--------------------|
 | Files live at                | Your location    | `~/.bae/libraries/` | Cloud provider    |
-| bae copies files on import   | No               | Yes                | Yes (encrypted)    |
+| bae copies files on import   | No               | Yes                | Yes                |
 | Available offline            | Yes              | Yes                | No                 |
-| Encrypted at rest            | No               | No                 | Yes                |
+| Encrypted at rest            | No               | No                 | Opaque home only   |
 | Can sync to cloud            | No               | Yes                | —                  |
 | Syncs to other devices       | No               | No                 | Yes                |
 | Delete release removes files | No               | Yes                | Yes                |
@@ -33,11 +33,20 @@ When you import a release as managed, bae copies the files into the library home
 
 ## Managed — cloud
 
-A cloud home is a single remote storage location that holds encrypted release files, metadata changesets, artwork, and snapshots. Setting one up enables multi-device sync and cloud backup.
+A cloud home is a single remote storage location that holds your release files, metadata changesets, artwork, and snapshots. Setting one up enables multi-device sync and cloud backup.
 
-When you import a managed release with a cloud home configured, bae copies files to the library home *and* encrypts and uploads them to the cloud home. Both happen at import time.
+When you import a managed release with a cloud home configured, bae copies files to the library home *and* uploads them to the cloud home. Both happen at import time.
 
 A release that only exists in the cloud home (e.g., synced from another device that hasn't downloaded it yet) is not available for offline playback until the files are pulled locally.
+
+### Opaque or browsable
+
+When you set up the cloud home you choose how it stores objects, for any provider:
+
+- **Opaque** (default) encrypts every object with the library key and stores it at an obfuscated path. The provider sees only ciphertext.
+- **Browsable** stores everything unencrypted at readable paths — `storage/Artist/Album/01 Track.flac` for audio, `images/Artist/Album/cover.jpg` for artwork — so you can open the bucket and recognize, play, or copy your music with any tool. Nothing is encrypted; the home relies on the provider's access control. Browsable is not public — the bucket's credentials gate it either way.
+
+See [Encryption](/architecture/encryption#storage-modes-opaque-and-browsable) for the full comparison.
 
 ### Supported providers
 
@@ -53,7 +62,7 @@ Consumer cloud providers (Google Drive, Dropbox, etc.) use OAuth sign-in — no 
 
 1. Import a release — choose **managed** or **unmanaged**
 2. Managed imports copy files to the library home (local)
-3. If a cloud home is configured, managed imports also encrypt and upload files there
+3. If a cloud home is configured, managed imports also upload files there — encrypted on an opaque home, in the clear on a browsable one
 4. Other devices connected to the same cloud home sync automatically
 
 See [Sync](/storage/sync) for how multi-device sync works and [Encryption](/architecture/encryption) for how files are encrypted.

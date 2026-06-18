@@ -17,6 +17,41 @@ use tracing::{debug, info, warn};
 use crate::db::Database;
 use crate::library::LibraryEvent;
 
+/// The `library_images` columns in DDL (schema) order — the single source of
+/// truth this module reads `cloud_path` at, kept in lockstep with
+/// `bae-core/migrations/001_initial.sql`. A coven changeset's `RowChange.columns`
+/// holds values in this order, so the index of `cloud_path` here IS the index to
+/// read it at from a changeset. A guard test inserts a real row, captures the
+/// changeset, and asserts the value at `LIBRARY_IMAGES_CLOUD_PATH_INDEX` equals
+/// the stored `cloud_path`, so a DDL reorder fails loudly.
+const LIBRARY_IMAGES_COLUMNS: &[&str] = &[
+    "id",
+    "type",
+    "content_type",
+    "file_size",
+    "width",
+    "height",
+    "source",
+    "source_url",
+    "cloud_path",
+    "_updated_at",
+    "created_at",
+];
+
+/// The changeset column index `cloud_path` lives at for `library_images`,
+/// derived from [`LIBRARY_IMAGES_COLUMNS`] so it can never drift from that list.
+const LIBRARY_IMAGES_CLOUD_PATH_INDEX: usize = {
+    let mut i = 0;
+    while i < LIBRARY_IMAGES_COLUMNS.len() {
+        // `str::eq` isn't const, so compare bytes.
+        if matches!(LIBRARY_IMAGES_COLUMNS[i].as_bytes(), b"cloud_path") {
+            break;
+        }
+        i += 1;
+    }
+    i
+};
+
 /// Maps bae's blob-bearing rows to their cloud blobs. Push and pull move the
 /// same set (an INSERT's blob is uploaded on push, downloaded on pull).
 pub struct BaeBlobPlan {
@@ -29,16 +64,18 @@ impl BaeBlobPlan {
     }
 
     /// A `library_images` row's blob. Every image — cover or artist — encrypts
-    /// with the library master key.
-    fn image_ref(&self, id: &str) -> BlobRef {
+    /// with the library master key. `cloud_path` is the row's stored value:
+    /// `None` on an opaque home (coven's `Hashed` scheme keys off the id), the
+    /// readable key on a browsable one (coven's `Plain` scheme uses it verbatim).
+    /// The LOCAL file always lives at the hashed `image_path(id)` regardless —
+    /// only the cloud key becomes readable.
+    fn image_ref(&self, id: &str, cloud_path: Option<String>) -> BlobRef {
         BlobRef {
             namespace: "images".to_string(),
             id: id.to_string(),
             local_path: self.library_dir.image_path(id),
             scope: BlobScope::Master,
-            // bae homes use the hashed (obfuscated) blob layout, which keys off
-            // the id and ignores a readable cloud path.
-            cloud_path: None,
+            cloud_path,
         }
     }
 
@@ -59,7 +96,12 @@ impl BaeBlobPlan {
             };
             // `library_images` is the only blob-bearing table.
             if change.table == "library_images" {
-                refs.push(self.image_ref(id));
+                // The row's stored `cloud_path` (readable key on a browsable
+                // home, absent on an opaque one), read at its DDL column index.
+                let cloud_path = change
+                    .col(LIBRARY_IMAGES_CLOUD_PATH_INDEX)
+                    .map(|s| s.to_string());
+                refs.push(self.image_ref(id, cloud_path));
             }
         }
         refs
@@ -89,10 +131,13 @@ impl BlobPlan for BaeBlobPlan {
     ) -> coven::rusqlite::Result<Vec<BlobRef>> {
         let mut refs = Vec::new();
         {
-            let mut stmt = conn.prepare("SELECT id FROM library_images")?;
-            let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+            let mut stmt = conn.prepare("SELECT id, cloud_path FROM library_images")?;
+            let rows = stmt.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
+            })?;
             for row in rows {
-                refs.push(self.image_ref(&row?));
+                let (id, cloud_path) = row?;
+                refs.push(self.image_ref(&id, cloud_path));
             }
         }
         Ok(refs)
@@ -420,15 +465,27 @@ mod tests {
         BaeBlobPlan::new(LibraryDir::new("/lib"))
     }
 
+    /// A full `library_images` `RowChange` in DDL order, with `cloud_path`
+    /// placed via the module's index constant so the plan reads the same key the
+    /// production walker would. NULL columns model an opaque-home row.
+    fn image_row(op: ChangeOp, id: &str, image_type: &str, cloud_path: Option<&str>) -> RowChange {
+        let mut columns: Vec<Option<String>> = vec![None; LIBRARY_IMAGES_COLUMNS.len()];
+        columns[0] = Some(id.to_string());
+        columns[1] = Some(image_type.to_string());
+        columns[LIBRARY_IMAGES_CLOUD_PATH_INDEX] = cloud_path.map(|p| p.to_string());
+        RowChange {
+            table: "library_images".to_string(),
+            op,
+            columns,
+        }
+    }
+
     #[test]
     fn every_image_uses_master_scope() {
         // Covers and artist images both encrypt with the library master key.
         for image_type in ["cover", "artist"] {
-            let refs = plan().blobs_to_push(&[row(
-                "library_images",
-                ChangeOp::Insert,
-                &["img-1", image_type],
-            )]);
+            let refs =
+                plan().blobs_to_push(&[image_row(ChangeOp::Insert, "img-1", image_type, None)]);
             assert_eq!(refs.len(), 1);
             assert_eq!(refs[0].namespace, "images");
             assert_eq!(refs[0].id, "img-1");
@@ -437,15 +494,34 @@ mod tests {
     }
 
     #[test]
-    fn blobs_in_db_lists_every_image_row_with_master_scope() {
-        // The snapshot-bootstrap enumeration must produce the same (id → scope)
-        // mapping as the changeset path: every image → master. (Audio lives in
-        // other tables and is never listed — it streams on demand.)
+    fn opaque_image_carries_no_cloud_path_browsable_carries_it() {
+        // An opaque-home row (cloud_path NULL) → BlobRef.cloud_path None; a
+        // browsable-home row → the stored readable key, read at its DDL index.
+        let refs = plan().blobs_to_push(&[image_row(ChangeOp::Insert, "rel-1", "cover", None)]);
+        assert_eq!(refs[0].cloud_path, None);
+
+        let refs = plan().blobs_to_push(&[image_row(
+            ChangeOp::Insert,
+            "rel-1",
+            "cover",
+            Some("Artist Name/Album Title/cover.jpg"),
+        )]);
+        assert_eq!(
+            refs[0].cloud_path.as_deref(),
+            Some("Artist Name/Album Title/cover.jpg")
+        );
+    }
+
+    #[test]
+    fn blobs_in_db_lists_every_image_row_with_scope_and_cloud_path() {
+        // The snapshot-bootstrap enumeration must produce the same (id → scope,
+        // cloud_path) mapping as the changeset path. (Audio lives in other
+        // tables and is never listed — it streams on demand.)
         let conn = coven::rusqlite::Connection::open_in_memory().unwrap();
         conn.execute_batch(
-            "CREATE TABLE library_images (id TEXT PRIMARY KEY, type TEXT NOT NULL);\n\
-             INSERT INTO library_images (id, type) VALUES ('rel-1', 'cover');\n\
-             INSERT INTO library_images (id, type) VALUES ('img-2', 'artist');",
+            "CREATE TABLE library_images (id TEXT PRIMARY KEY, type TEXT NOT NULL, cloud_path TEXT);\n\
+             INSERT INTO library_images (id, type, cloud_path) VALUES ('rel-1', 'cover', 'Artist Name/Album Title/cover.jpg');\n\
+             INSERT INTO library_images (id, type, cloud_path) VALUES ('img-2', 'artist', NULL);",
         )
         .unwrap();
 
@@ -455,10 +531,15 @@ mod tests {
         let cover = refs.iter().find(|r| r.id == "rel-1").unwrap();
         assert_eq!(cover.namespace, "images");
         assert_eq!(cover.scope, BlobScope::Master);
+        assert_eq!(
+            cover.cloud_path.as_deref(),
+            Some("Artist Name/Album Title/cover.jpg")
+        );
 
         let artist = refs.iter().find(|r| r.id == "img-2").unwrap();
         assert_eq!(artist.namespace, "images");
         assert_eq!(artist.scope, BlobScope::Master);
+        assert_eq!(artist.cloud_path, None);
     }
 
     #[test]
@@ -466,11 +547,65 @@ mod tests {
         // Image bytes never change on update; deletes go through the cloud
         // outbox; non-blob tables (albums, etc.) carry nothing.
         let changes = [
-            row("library_images", ChangeOp::Update, &["img-1", "cover"]),
-            row("library_images", ChangeOp::Delete, &["img-1", "cover"]),
+            image_row(ChangeOp::Update, "img-1", "cover", None),
+            image_row(ChangeOp::Delete, "img-1", "cover", None),
             row("albums", ChangeOp::Insert, &["a-1"]),
         ];
         assert!(plan().blobs_to_push(&changes).is_empty());
         assert!(plan().blobs_to_pull(&changes).is_empty());
+    }
+
+    /// Pins the DDL↔index coupling: insert a `library_images` row through the
+    /// REAL migration schema, capture the emitted changeset with a real SQLite
+    /// session, walk it with coven's production walker, and assert the value at
+    /// `LIBRARY_IMAGES_CLOUD_PATH_INDEX` is the stored `cloud_path`. A column
+    /// reorder in `001_initial.sql` (or in `LIBRARY_IMAGES_COLUMNS`) moves the
+    /// real index out from under the constant and fails here loudly.
+    #[test]
+    fn changeset_cloud_path_index_matches_real_schema() {
+        use coven::rusqlite::session::Session;
+
+        let conn = coven::rusqlite::Connection::open_in_memory().unwrap();
+        // The actual bae schema — the single source of truth for column order.
+        conn.execute_batch(include_str!("../../migrations/001_initial.sql"))
+            .unwrap();
+
+        let mut session = Session::new(&conn).unwrap();
+        session.attach(Some("library_images")).unwrap();
+
+        let now = "2026-01-01T00:00:00Z";
+        conn.execute(
+            "INSERT INTO library_images \
+             (id, type, content_type, file_size, source, cloud_path, _updated_at, created_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            coven::rusqlite::params![
+                "rel-1",
+                "cover",
+                "image/jpeg",
+                123,
+                "local",
+                "Artist Name/Album Title/cover.jpg",
+                now,
+                now,
+            ],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        session.changeset_strm(&mut buf).unwrap();
+        let changes = coven::changeset::walk(&buf).unwrap();
+
+        let row = changes
+            .iter()
+            .find(|c| c.table == "library_images")
+            .expect("the insert is in the changeset");
+        // The DDL column count must match the constant list, or the index is
+        // meaningless.
+        assert_eq!(row.columns.len(), LIBRARY_IMAGES_COLUMNS.len());
+        assert_eq!(
+            row.col(LIBRARY_IMAGES_CLOUD_PATH_INDEX),
+            Some("Artist Name/Album Title/cover.jpg"),
+            "cloud_path is at the index the constant claims",
+        );
     }
 }

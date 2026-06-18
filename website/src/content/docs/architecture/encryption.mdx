@@ -3,7 +3,18 @@ title: Encryption
 description: How bae encrypts your data
 ---
 
-bae encrypts your music files and library metadata before they leave your machine. The storage provider sees ciphertext only.
+By default, bae encrypts your music files and library metadata before they leave your machine, and the storage provider sees ciphertext only. A cloud home can instead be set to store everything in the clear at readable paths — see [Storage modes](#storage-modes-opaque-and-browsable) below.
+
+## Storage modes: opaque and browsable
+
+When you set up a cloud home you choose how it stores its objects. The choice is fixed for that home and is offered for every provider.
+
+- **Opaque** (the default) — every object is encrypted with the library key and stored at an obfuscated, content-addressed path (`storage/ab/cd/{id}` for audio, `images/ab/cd/{id}` for artwork). The provider sees only ciphertext at unintelligible keys. Choose this when you don't want the provider — or anyone who reaches the bucket — to read your library.
+- **Browsable** — objects are stored unencrypted at readable paths (`storage/Artist/Album/01 Track.flac`, `images/Artist/Album/cover.jpg`). You can open the bucket in the provider's web UI or a file browser and recognize, play, or copy your music directly. Nothing is encrypted, so the home's protection rests entirely on the provider's own access control.
+
+Browsable does not mean public: access to the bucket is gated by the provider's credentials exactly as it is for an opaque home. The mode only changes whether what's stored is legible to whoever already has access.
+
+The rest of this page describes an **opaque** home. A browsable home performs none of the encryption below — each object is written as plaintext at its readable key.
 
 ## Library key
 
@@ -19,7 +30,7 @@ Files are encrypted with XChaCha20-Poly1305 in 64 KB chunks. Each file gets a ra
 
 ## Cloud home encryption
 
-Everything in the cloud home is encrypted:
+On an opaque home, everything in the cloud home is encrypted:
 
 - **Changesets** — encrypted with the library key
 - **Snapshots** — encrypted with the library key

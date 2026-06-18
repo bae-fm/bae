@@ -536,6 +536,7 @@ async fn prepare_track_for_playback(
         let reader = create_audio_reader(
             resolved.source.clone(),
             &resolved.file_id,
+            &resolved.cloud_key,
             library_manager,
             move |path| AudioReadConfig { path, source_size },
         )?;

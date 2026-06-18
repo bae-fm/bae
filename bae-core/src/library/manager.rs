@@ -690,6 +690,11 @@ pub struct ResolvedTrackAudio {
     /// File id backing this track's audio data. Used as a cache key and to address
     /// cloud-only files.
     pub file_id: String,
+    /// The cloud object key for this file's managed blob: the row's stored
+    /// `cloud_path` (a readable key on a browsable home) or `storage_path(id)`
+    /// (the hashed-by-id default) when it is NULL. A cloud-only read addresses
+    /// the object by this; a local read ignores it.
+    pub cloud_key: String,
     pub file_size: u64,
     /// Where this file's bytes can be read: a local path (this device's copy
     /// or a still-pending upload's original), a queued upload whose source is
@@ -714,10 +719,19 @@ impl ResolvedTrackAudio {
     /// Build a resolved view of a track's audio from raw DB records + the
     /// readable source resolved by the caller.
     pub(crate) fn from_meta(meta: &TrackAudioMeta, source: ReadableFileSource) -> Self {
+        // The blob's cloud key is the file row's stored `cloud_path` (readable
+        // on a browsable home) or `storage_path(id)` (the hashed-by-id default)
+        // when NULL — the documented fallback, resolved through the one helper
+        // every consumer shares.
+        let cloud_key = crate::storage::local::effective_cloud_key(
+            meta.audio_file.cloud_path.as_deref(),
+            &meta.file_id,
+        );
         Self {
             track_id: meta.track.id.clone(),
             release_id: meta.track.release_id.clone(),
             file_id: meta.file_id.clone(),
+            cloud_key,
             file_size: meta.audio_file.file_size as u64,
             source,
             duration_ms: meta.track.duration_ms,
@@ -1130,6 +1144,38 @@ impl LibraryManager {
         self.config_handle
             .update(|c| c.cloud_home.storage = storage)
             .expect("set test home storage mode");
+    }
+
+    /// The cloud object key the read path resolves for a managed file: the row's
+    /// stored `cloud_path` (readable on a browsable home) or the hashed
+    /// `storage_path(id)` default. Mirrors what `ResolvedTrackAudio` threads into
+    /// the cloud reader, exposed so a test can assert the read key matches the
+    /// stored upload key without setting up full playback.
+    #[cfg(feature = "test-utils")]
+    pub async fn resolve_track_cloud_key_for_test(&self, file_id: &str) -> String {
+        let file = self
+            .database
+            .find_file_by_id(file_id)
+            .await
+            .expect("file lookup")
+            .expect("file exists");
+        file.cloud_key()
+    }
+
+    /// The readable cover `cloud_path` the current home would store for a
+    /// release: `Some({artist}/{album}/cover.{ext})` on a browsable home, `None`
+    /// on an opaque one. Exposes the same computation `change_cover` performs.
+    #[cfg(feature = "test-utils")]
+    pub async fn cover_cloud_path_for_test(
+        &self,
+        release_id: &str,
+        content_type: &crate::util::content_type::ContentType,
+    ) -> Option<String> {
+        let storage = self.config_handle.config().cloud_home.storage;
+        self.database
+            .cover_cloud_path_for_storage(storage, release_id, content_type)
+            .await
+            .expect("compute cover cloud path")
     }
 
     /// Spawn the deferred drain of the pending-deletions manifest. Every
@@ -2046,6 +2092,45 @@ impl LibraryManager {
             .await?;
         self.emit_outbox_changed().await;
         Ok(())
+    }
+
+    /// The cloud object key a managed file's blob uploads to, and (under a
+    /// browsable home) the readable key persisted on its `release_files.cloud_path`
+    /// so every later read/delete/pull addresses the same object.
+    ///
+    /// Opaque home: `storage_path(file.id)` (hashed by id), the row's
+    /// `cloud_path` stays NULL. Browsable home: the readable
+    /// `{artist}/{album}/{filename}`, computed once and STORED on the row here —
+    /// the manage path creates the file row before its cloud destination exists,
+    /// so the key lands when the file is first uploaded, not at import.
+    pub async fn cloud_key_for_managed_file(&self, file: &DbFile) -> Result<String, LibraryError> {
+        // A file already carrying a readable key keeps it (idempotent re-manage):
+        // the stored value is the blob's address, never re-derived.
+        if let Some(existing) = &file.cloud_path {
+            return Ok(existing.clone());
+        }
+        let storage = self.config_handle.config().cloud_home.storage;
+        match self
+            .database
+            .audio_cloud_path_for_storage(
+                storage,
+                &file.release_id,
+                &file.original_filename,
+                &file.id,
+            )
+            .await?
+        {
+            Some(readable) => {
+                self.database
+                    .set_file_cloud_path(&file.id, &readable)
+                    .await?;
+                Ok(readable)
+            }
+            // NULL cloud_path means hashed-by-id — the documented opaque layout,
+            // not a masked error. `file.cloud_path` is None on this arm, so
+            // `cloud_key()` resolves to the hashed default.
+            None => Ok(file.cloud_key()),
+        }
     }
 
     pub async fn get_pending_cloud_uploads(&self) -> Result<Vec<OutboxEntry>, LibraryError> {
@@ -2969,6 +3054,10 @@ impl LibraryManager {
         local_copy: Option<&DbReleaseLocalCopy>,
         cloud_uploads: &[crate::db::DbCloudUpload],
     ) -> Result<(), LibraryError> {
+        // The home's storage mode decides the managed blob layout (opaque
+        // hashed-by-id vs. browsable readable paths); the manager owns config,
+        // so it reads the mode here rather than threading it from the importer.
+        let storage = self.config_handle.config().cloud_home.storage;
         self.database
             .finalize_import_atomic(
                 album,
@@ -2985,6 +3074,7 @@ impl LibraryManager {
                 identities,
                 local_copy,
                 cloud_uploads,
+                storage,
             )
             .await?;
         Ok(())
@@ -3863,6 +3953,21 @@ impl LibraryManager {
         Ok(())
     }
 
+    /// The readable `cloud_path` for an artist image under the current home:
+    /// `None` (hashed-by-id) on an opaque home, `Some({artist}/artist.{ext})`
+    /// on a browsable one. The manager owns config, so it reads the storage mode.
+    pub async fn artist_image_cloud_path(
+        &self,
+        artist_id: &str,
+        content_type: &crate::util::content_type::ContentType,
+    ) -> Result<Option<String>, LibraryError> {
+        let storage = self.config_handle.config().cloud_home.storage;
+        Ok(self
+            .database
+            .artist_image_cloud_path_for_storage(storage, artist_id, content_type)
+            .await?)
+    }
+
     /// Get a library image by ID and type
     pub async fn get_library_image(
         &self,
@@ -3956,9 +4061,16 @@ impl LibraryManager {
         }
         std::fs::write(&cover_path, &bytes)?;
 
-        // Record in database. The cover's `id` IS the release id, so blob_plan
-        // scopes its blob to the release's item key with no key on the row.
+        // Record in database. The cover's `id` IS the release id. Under a
+        // browsable home the cover blob lands at a readable
+        // `{artist}/{album}/cover.{ext}` key, computed + stored here; an opaque
+        // home leaves `cloud_path` NULL (hashed-by-id).
         let now = self.clock.now();
+        let storage = self.config_handle.config().cloud_home.storage;
+        let cloud_path = self
+            .database
+            .cover_cloud_path_for_storage(storage, release_id, &content_type)
+            .await?;
         let library_image = DbLibraryImage {
             id: release_id.to_string(),
             image_type: LibraryImageType::Cover,
@@ -3968,6 +4080,7 @@ impl LibraryManager {
             height: None,
             source,
             source_url,
+            cloud_path,
             created_at: now,
         };
         self.upsert_library_image(&library_image).await?;
@@ -4047,9 +4160,12 @@ impl LibraryManager {
             }
         }
 
-        // Queue cloud outbox deletes and cancel pending uploads.
+        // Queue cloud outbox deletes and cancel pending uploads. The delete key
+        // must match the key the blob was uploaded under: the row's stored
+        // `cloud_path` (readable on a browsable home), or the hashed
+        // `storage_path` default when it is NULL.
         for file in files {
-            let cloud_key = crate::storage::local::storage_path(&file.id);
+            let cloud_key = file.cloud_key();
 
             // Cancel any pending upload for this file
             if let Err(e) = self
@@ -4078,19 +4194,19 @@ impl LibraryManager {
     /// Best-effort: each step logs and continues so a cleanup hiccup never
     /// aborts the delete.
     async fn queue_release_cover_for_deletion(&self, release_id: &str) {
-        match self
+        let cover = match self
             .database
             .find_library_image(release_id, &LibraryImageType::Cover)
             .await
         {
-            Ok(Some(_)) => {}
+            Ok(Some(cover)) => cover,
             // No cover: nothing to clean up.
             Ok(None) => return,
             Err(e) => {
                 warn!("Failed to look up cover for release {release_id}: {e}");
                 return;
             }
-        }
+        };
 
         // Local: queue the on-disk cover for deferred deletion.
         let cover_path = self.library_dir.image_path(release_id);
@@ -4103,13 +4219,19 @@ impl LibraryManager {
 
         // Cloud: the image row's DELETE changeset replicates the row removal,
         // but the blob itself is removed through the cloud outbox, like audio.
-        // bae homes are always obfuscated, so the blob is keyed by the hashed
-        // content-addressed path (no readable cloud_path).
+        // The blob's key must match what it was uploaded under: the row's stored
+        // readable `cloud_path` (`Plain` scheme) on a browsable home, or the
+        // hashed content-addressed path (`Hashed`, no readable path) on an
+        // opaque one.
+        let scheme = match &cover.cloud_path {
+            Some(_) => crate::sync::BlobPathScheme::Plain,
+            None => crate::sync::BlobPathScheme::Hashed,
+        };
         let cloud_key = match crate::sync::CloudSyncStorage::blob_key(
-            crate::sync::BlobPathScheme::Hashed,
+            scheme,
             "images",
             release_id,
-            None,
+            cover.cloud_path.as_deref(),
         ) {
             Ok(key) => key,
             Err(e) => {
@@ -5272,6 +5394,7 @@ mod tests {
                 height: None,
                 source: "local".to_string(),
                 source_url: None,
+                cloud_path: None,
                 created_at: manager.clock.now(),
             })
             .await
@@ -5338,6 +5461,7 @@ mod tests {
                 height: None,
                 source: "local".to_string(),
                 source_url: None,
+                cloud_path: None,
                 created_at: manager.clock.now(),
             })
             .await
@@ -6379,6 +6503,7 @@ mod tests {
                     original_filename: format!("{i}.flac"),
                     file_size: 1000,
                     content_type: crate::util::content_type::ContentType::Flac,
+                    cloud_path: None,
                     created_at: Utc::now(),
                 };
                 manager.database.insert_file(&file).await.unwrap();
@@ -6413,6 +6538,7 @@ mod tests {
                 original_filename: "a.flac".to_string(),
                 file_size: *file_size,
                 content_type: crate::util::content_type::ContentType::Flac,
+                cloud_path: None,
                 created_at: Utc::now(),
             };
             manager.database.insert_file(&file).await.unwrap();
@@ -6463,6 +6589,7 @@ mod tests {
             original_filename: "a.flac".to_string(),
             file_size: 1000,
             content_type: crate::util::content_type::ContentType::Flac,
+            cloud_path: None,
             created_at: Utc::now(),
         };
         manager.database.insert_file(&uploading_file).await.unwrap();
@@ -6507,6 +6634,7 @@ mod tests {
             original_filename: "a.flac".to_string(),
             file_size: 1000,
             content_type: crate::util::content_type::ContentType::Flac,
+            cloud_path: None,
             created_at: Utc::now(),
         };
         manager.database.insert_file(&file).await.unwrap();
@@ -6619,6 +6747,7 @@ mod tests {
             original_filename: "a.flac".to_string(),
             file_size: 1000,
             content_type: crate::util::content_type::ContentType::Flac,
+            cloud_path: None,
             created_at: Utc::now(),
         };
         manager.database.insert_file(&file).await.unwrap();
@@ -6682,6 +6811,7 @@ mod tests {
             original_filename: "a.flac".to_string(),
             file_size: 1000,
             content_type: crate::util::content_type::ContentType::Flac,
+            cloud_path: None,
             created_at: Utc::now(),
         };
         manager.database.insert_file(&file).await.unwrap();

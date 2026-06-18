@@ -1142,3 +1142,298 @@ async fn test_pin_cloud_only_failure_leaves_no_partial() {
         ReleaseStorageState::CloudOnly
     );
 }
+
+/// Create an album + release with explicit artist/album names (so a browsable
+/// readable cloud key is predictable) and an unmanaged in-place local copy at
+/// `unmanaged_path`. Returns (album_id, release_id).
+async fn create_named_unmanaged_release(
+    db: &Database,
+    artist_name: &str,
+    album_title: &str,
+    unmanaged_path: &str,
+) -> (String, String) {
+    let now = Utc::now();
+    let artist_id = Uuid::new_v4().to_string();
+    db.insert_artist(&bae_core::db::DbArtist {
+        id: artist_id.clone(),
+        name: artist_name.to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: now,
+    })
+    .await
+    .unwrap();
+
+    let album = DbAlbum {
+        id: Uuid::new_v4().to_string(),
+        title: album_title.to_string(),
+        artist_id,
+        year: Some(2024),
+        primary_release_id: None,
+        is_compilation: false,
+        created_at: now,
+    };
+    db.insert_album(&album).await.unwrap();
+
+    let release = DbRelease {
+        id: Uuid::new_v4().to_string(),
+        album_id: album.id.clone(),
+        release_name: None,
+        pressing: Pressing::blank(),
+        disc_id: None,
+        metadata_source: ReleaseMetadataSource::FileTags,
+        metadata_source_release_id: None,
+        managed: false,
+        source_folder_name: None,
+        content_hash: None,
+        created_at: now,
+    };
+    db.insert_release(&release).await.unwrap();
+    db.upsert_release_local_copy(&bae_core::db::DbReleaseLocalCopy {
+        release_id: release.id.clone(),
+        unmanaged_path: Some(unmanaged_path.to_string()),
+        pinned_locally: false,
+    })
+    .await
+    .unwrap();
+
+    (album.id, release.id)
+}
+
+/// Managing a release into a BROWSABLE home stores a readable
+/// `{artist}/{album}/{filename}` on each `release_files.cloud_path`, enqueues the
+/// outbox upload under that same key, and the playback/read path resolves to the
+/// same key — so the synced row and the cloud object agree on a human-readable
+/// path with no `storage/` prefix.
+#[tokio::test]
+async fn test_manage_browsable_stores_readable_cloud_path() {
+    tracing_init();
+
+    let temp = TempDir::new().unwrap();
+    let library_path = temp.path().join("library");
+    tokio::fs::create_dir_all(&library_path).await.unwrap();
+    let source_dir = temp.path().join("originals");
+
+    let (db, mgr, _cloud) = setup_db_with_browsable_cloud(&temp, &library_path).await;
+    let (_album_id, release_id) = create_named_unmanaged_release(
+        &db,
+        "Artist Name",
+        "Album Title",
+        source_dir.to_str().unwrap(),
+    )
+    .await;
+    let originals = create_unmanaged_files(&mgr, &release_id, &source_dir).await;
+
+    // Manage cloud-only: enqueues uploads, sets the readable cloud_path. The
+    // release stays unmanaged here (no live sync loop flips it), but the file
+    // rows and outbox are written.
+    mgr.manage_release(&release_id, false, false).await.unwrap();
+
+    // Each file row now carries the readable key: under the `storage/` audio
+    // namespace, but the readable `{artist}/{album}/{filename}` shape rather than
+    // the hashed `storage/{ab}/{cd}/{id}` shards an opaque home uses.
+    let files = mgr.get_files_for_release(&release_id).await.unwrap();
+    for file in &files {
+        assert_eq!(
+            file.cloud_path.as_deref(),
+            Some(format!("storage/Artist Name/Album Title/{}", file.original_filename).as_str()),
+            "browsable file {} carries the readable cloud_path",
+            file.original_filename
+        );
+    }
+
+    // The outbox enqueued each upload under the SAME readable key (never the
+    // hashed storage_path).
+    let uploads = mgr.get_pending_cloud_uploads().await.unwrap();
+    assert_eq!(uploads.len(), originals.len());
+    for file in &files {
+        let key = file.cloud_path.clone().unwrap();
+        assert!(
+            uploads.iter().any(|u| u.cloud_key == key),
+            "outbox enqueued {key}"
+        );
+        // The readable form, not the hashed `storage/{ab}/{cd}/{id}` an opaque
+        // home would use.
+        assert!(
+            key.starts_with("storage/Artist Name/Album Title/"),
+            "a browsable key is the readable form: {key}"
+        );
+        assert_ne!(
+            key,
+            bae_core::storage::local::storage_path(&file.id),
+            "a browsable key is not the hashed storage_path"
+        );
+    }
+
+    // The read path resolves the same key (the hashed storage_path is NOT used).
+    for file in &files {
+        let resolved = mgr.resolve_track_cloud_key_for_test(&file.id).await;
+        assert_eq!(
+            resolved,
+            file.cloud_path.clone().unwrap(),
+            "read path resolves the stored readable key for {}",
+            file.original_filename
+        );
+    }
+}
+
+/// Managing a release into an OPAQUE home leaves every `release_files.cloud_path`
+/// NULL and enqueues each upload under the hashed `storage_path(file_id)` —
+/// byte-identical to the pre-readable-path behavior (no regression).
+#[tokio::test]
+async fn test_manage_opaque_leaves_cloud_path_null() {
+    tracing_init();
+
+    let temp = TempDir::new().unwrap();
+    let library_path = temp.path().join("library");
+    tokio::fs::create_dir_all(&library_path).await.unwrap();
+    let source_dir = temp.path().join("originals");
+
+    // setup_db_with_cloud is opaque (the default storage mode).
+    let (db, mgr, _cloud) = setup_db_with_cloud(&temp, &library_path).await;
+    let (_album_id, release_id) = create_named_unmanaged_release(
+        &db,
+        "Artist Name",
+        "Album Title",
+        source_dir.to_str().unwrap(),
+    )
+    .await;
+    let _originals = create_unmanaged_files(&mgr, &release_id, &source_dir).await;
+
+    mgr.manage_release(&release_id, false, false).await.unwrap();
+
+    let files = mgr.get_files_for_release(&release_id).await.unwrap();
+    let uploads = mgr.get_pending_cloud_uploads().await.unwrap();
+    for file in &files {
+        assert_eq!(
+            file.cloud_path, None,
+            "opaque file {} leaves cloud_path NULL",
+            file.original_filename
+        );
+        let hashed = bae_core::storage::local::storage_path(&file.id);
+        assert!(
+            uploads.iter().any(|u| u.cloud_key == hashed),
+            "opaque upload enqueued under the hashed storage_path {hashed}"
+        );
+    }
+}
+
+/// A cover set on a BROWSABLE home stores a readable `library_images.cloud_path`,
+/// and the `BlobPlan` carries it through to `BlobRef.cloud_path` as
+/// `Artist Name/Album Title/cover.jpg`. On an OPAQUE home both stay NULL/None.
+#[tokio::test]
+async fn test_cover_blob_ref_cloud_path_browsable_vs_opaque() {
+    tracing_init();
+
+    use bae_core::db::LibraryImageType;
+    use bae_core::sync::blob_plan::BaeBlobPlan;
+    use bae_core::util::content_type::ContentType;
+    use coven::blob::BlobPlan;
+
+    // --- Browsable: the cover keys readably and the plan reflects it. ---
+    let temp = TempDir::new().unwrap();
+    let library_path = temp.path().join("library");
+    tokio::fs::create_dir_all(&library_path).await.unwrap();
+    let (db, mgr, _cloud) = setup_db_with_browsable_cloud(&temp, &library_path).await;
+    let (_album_id, release_id) = create_named_unmanaged_release(
+        &db,
+        "Artist Name",
+        "Album Title",
+        temp.path().join("orig").to_str().unwrap(),
+    )
+    .await;
+
+    // Compute + store the cover's readable cloud_path the way change_cover does.
+    let cloud_path = mgr
+        .cover_cloud_path_for_test(&release_id, &ContentType::Jpeg)
+        .await;
+    assert_eq!(
+        cloud_path.as_deref(),
+        Some("Artist Name/Album Title/cover.jpg")
+    );
+    mgr.upsert_library_image(&bae_core::db::DbLibraryImage {
+        id: release_id.clone(),
+        image_type: LibraryImageType::Cover,
+        content_type: ContentType::Jpeg,
+        file_size: 10,
+        width: None,
+        height: None,
+        source: "local".to_string(),
+        source_url: None,
+        cloud_path,
+        created_at: Utc::now(),
+    })
+    .await
+    .unwrap();
+
+    let library_dir = LibraryDir::new(library_path.clone());
+    let plan = BaeBlobPlan::new(library_dir.clone());
+    let refs = db
+        .coven_db()
+        .call(move |conn| {
+            plan.blobs_in_db(conn)
+                .map_err(coven::database::DbError::from)
+        })
+        .await
+        .unwrap();
+    let cover_ref = refs
+        .iter()
+        .find(|r| r.id == release_id)
+        .expect("cover blob ref present");
+    assert_eq!(cover_ref.namespace, "images");
+    assert_eq!(
+        cover_ref.cloud_path.as_deref(),
+        Some("Artist Name/Album Title/cover.jpg"),
+        "browsable cover BlobRef carries the readable cloud_path"
+    );
+
+    // --- Opaque: the cover keys by id and the plan carries no readable path. ---
+    let temp2 = TempDir::new().unwrap();
+    let library_path2 = temp2.path().join("library");
+    tokio::fs::create_dir_all(&library_path2).await.unwrap();
+    let (db2, mgr2, _cloud2) = setup_db_with_cloud(&temp2, &library_path2).await;
+    let (_a2, release_id2) = create_named_unmanaged_release(
+        &db2,
+        "Artist Name",
+        "Album Title",
+        temp2.path().join("orig").to_str().unwrap(),
+    )
+    .await;
+    let opaque_path = mgr2
+        .cover_cloud_path_for_test(&release_id2, &ContentType::Jpeg)
+        .await;
+    assert_eq!(opaque_path, None, "opaque cover stores no cloud_path");
+    mgr2.upsert_library_image(&bae_core::db::DbLibraryImage {
+        id: release_id2.clone(),
+        image_type: LibraryImageType::Cover,
+        content_type: ContentType::Jpeg,
+        file_size: 10,
+        width: None,
+        height: None,
+        source: "local".to_string(),
+        source_url: None,
+        cloud_path: None,
+        created_at: Utc::now(),
+    })
+    .await
+    .unwrap();
+    let plan2 = BaeBlobPlan::new(LibraryDir::new(library_path2.clone()));
+    let refs2 = db2
+        .coven_db()
+        .call(move |conn| {
+            plan2
+                .blobs_in_db(conn)
+                .map_err(coven::database::DbError::from)
+        })
+        .await
+        .unwrap();
+    let cover_ref2 = refs2
+        .iter()
+        .find(|r| r.id == release_id2)
+        .expect("opaque cover blob ref present");
+    assert_eq!(
+        cover_ref2.cloud_path, None,
+        "opaque cover BlobRef carries no readable cloud_path"
+    );
+}

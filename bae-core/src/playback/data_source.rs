@@ -163,6 +163,7 @@ impl AudioDataReader for LocalReader {
 pub fn create_audio_reader(
     source: crate::library::manager::ReadableFileSource,
     file_id: &str,
+    cloud_key: &str,
     library_manager: &crate::library::LibraryManager,
     make_read_config: impl FnOnce(String) -> AudioReadConfig,
 ) -> Result<Box<dyn AudioDataReader>, crate::playback::PlaybackError> {
@@ -183,12 +184,13 @@ pub fn create_audio_reader(
             // a managed release always has an unlocked library, so a missing
             // cipher there is a broken invariant, surfaced as an error rather
             // than masked. A browsable home's cipher is plaintext and always
-            // present.
+            // present. The object key is the resolved `cloud_key` (the row's
+            // readable `cloud_path`, or the hashed `storage_path` default).
             if let Some(cloud_home) = library_manager.get_cloud_home() {
                 let cipher = library_manager.cloud_blob_cipher().ok_or_else(|| {
                     PlaybackError::not_found("blob cipher for managed cloud file", file_id)
                 })?;
-                let read_config = make_read_config(crate::storage::local::storage_path(file_id));
+                let read_config = make_read_config(cloud_key.to_string());
                 Ok(Box::new(CloudReader::new(read_config, cloud_home, cipher)))
             } else {
                 Err(PlaybackError::SyncDisconnected)

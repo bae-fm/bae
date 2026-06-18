@@ -330,6 +330,7 @@ mod tests {
                 original_filename: filename.to_string(),
                 file_size: size,
                 content_type,
+                cloud_path: None,
                 created_at: Utc::now(),
             };
             database.insert_file(&file).await.unwrap();

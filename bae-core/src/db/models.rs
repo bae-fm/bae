@@ -383,13 +383,22 @@ pub struct DbFile {
     pub original_filename: String,
     pub file_size: i64,
     pub content_type: ContentType,
+    /// Cloud object key for this file's managed blob, mirroring coven's
+    /// `BlobRef.cloud_path`. `None` = the hashed-by-id layout
+    /// (`storage_path(id)`), used by opaque homes and as the read fallback;
+    /// `Some` = the explicit readable key set when the file entered a browsable
+    /// home. Every upload/read/delete addresses the blob through this value
+    /// (falling back to `storage_path(id)` when `None`).
+    pub cloud_path: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
 /// A cloud-upload intent committed inside `finalize_import_atomic`'s
 /// transaction — one per file of a managed import, so the release either
-/// lands with its uploads queued or doesn't land at all. The cloud key is
-/// always `storage_path(file_id)` and is derived at insert, not carried.
+/// lands with its uploads queued or doesn't land at all. The cloud object key
+/// is computed inside the transaction (the same value written to the file's
+/// `release_files.cloud_path`): the hashed `storage_path(file_id)` on an opaque
+/// home, the readable `{artist}/{album}/{filename}` on a browsable one.
 #[derive(Debug, Clone)]
 pub struct DbCloudUpload {
     pub file_id: String,
@@ -741,6 +750,9 @@ impl DbFile {
             original_filename: original_filename.to_string(),
             file_size,
             content_type,
+            // Files start opaque-keyed (hashed by id). A browsable managed
+            // import / manage sets the readable key explicitly before insert.
+            cloud_path: None,
             created_at: now,
         }
     }
@@ -751,6 +763,15 @@ impl DbFile {
         library_dir: &crate::library_dir::LibraryDir,
     ) -> std::path::PathBuf {
         library_dir.join(crate::storage::local::storage_path(&self.id))
+    }
+
+    /// The cloud object key this file's blob lives at — its stored readable
+    /// `cloud_path` on a browsable home, or the hashed-by-id default on an opaque
+    /// one. See [`crate::storage::local::effective_cloud_key`]; every read,
+    /// delete, and pull resolves the key through this so no consumer re-states
+    /// the NULL-means-hashed fallback.
+    pub fn cloud_key(&self) -> String {
+        crate::storage::local::effective_cloud_key(self.cloud_path.as_deref(), &self.id)
     }
 }
 impl DbAudioFormat {
@@ -945,6 +966,14 @@ pub struct DbLibraryImage {
     pub source: String,
     /// MB: CAA image ID, Discogs: URL, local: "release://{path}"
     pub source_url: Option<String>,
+    /// Cloud object key for this image's blob (relative to the `images`
+    /// namespace coven prepends), mirroring coven's `BlobRef.cloud_path`.
+    /// `None` = the hashed-by-id layout used by opaque homes; `Some` = the
+    /// explicit readable key set when the image entered a browsable home
+    /// (cover: `{artist}/{album}/cover.{ext}`, artist: `{artist}/artist.{ext}`).
+    /// The local on-disk image file stays at the hashed `image_path(id)`
+    /// regardless — only the cloud key becomes readable.
+    pub cloud_path: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 

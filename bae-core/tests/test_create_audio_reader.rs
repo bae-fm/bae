@@ -22,9 +22,13 @@ fn cloud_only_no_cloud_returns_sync_disconnected() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (manager, _tmp) = setup_fresh_library(&runtime);
 
-    let err = create_audio_reader(ReadableFileSource::CloudOnly, "file-1", &manager, |_| {
-        unreachable!("no source should not build read config")
-    })
+    let err = create_audio_reader(
+        ReadableFileSource::CloudOnly,
+        "file-1",
+        "Artist Name/Album Title/01 Track Title.flac",
+        &manager,
+        |_| unreachable!("no source should not build read config"),
+    )
     .err()
     .expect("expected error for a cloud-only track with no cloud connection");
     assert!(
@@ -44,6 +48,7 @@ fn upload_pending_reports_pending() {
     let err = create_audio_reader(
         ReadableFileSource::UploadPendingSourceMissing,
         "file-1",
+        "Artist Name/Album Title/01 Track Title.flac",
         &manager,
         |_| unreachable!("a pending upload should not build a read config"),
     )
@@ -62,9 +67,13 @@ fn unreachable_returns_not_found() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (manager, _tmp) = setup_fresh_library(&runtime);
 
-    let err = create_audio_reader(ReadableFileSource::Unreachable, "file-1", &manager, |_| {
-        unreachable!("no source should not build read config")
-    })
+    let err = create_audio_reader(
+        ReadableFileSource::Unreachable,
+        "file-1",
+        "Artist Name/Album Title/01 Track Title.flac",
+        &manager,
+        |_| unreachable!("no source should not build read config"),
+    )
     .err()
     .expect("expected error for an unreachable track");
     assert!(
@@ -86,9 +95,13 @@ fn unreachable_returns_not_found_even_with_cloud_connected() {
         EncryptionService::new_with_key(&[7u8; 32]),
     );
 
-    let err = create_audio_reader(ReadableFileSource::Unreachable, "file-1", &manager, |_| {
-        unreachable!("an unreachable source must not build a read config")
-    })
+    let err = create_audio_reader(
+        ReadableFileSource::Unreachable,
+        "file-1",
+        "Artist Name/Album Title/01 Track Title.flac",
+        &manager,
+        |_| unreachable!("an unreachable source must not build a read config"),
+    )
     .err()
     .expect("expected error for an unreachable track");
     assert!(

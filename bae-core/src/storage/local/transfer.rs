@@ -21,8 +21,6 @@ use crate::library::LibraryManager;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-use super::storage_path;
-
 use super::cleanup::PendingDeletion;
 
 /// Read one release file's bytes from wherever it currently lives: this
@@ -71,13 +69,15 @@ pub async fn read_release_file_bytes(
             // Read the whole object through the home's cipher: one ranged read
             // that decrypts under the master key on an opaque home, or returns
             // the verbatim bytes on a browsable one. Every managed blob is
-            // master-scoped (see `BaeBlobPlan`).
+            // master-scoped (see `BaeBlobPlan`). The object key is the row's
+            // stored `cloud_path`; a NULL value means the hashed-by-id layout
+            // (`storage_path`), the documented default — not a masked error.
             let source_size = file.file_size as u64;
             let reader = crate::storage::BlobRangeReader::new(
                 cloud_home,
                 &cipher,
                 coven::blob::ResolvedScope::Master,
-                storage_path(&file.id),
+                file.cloud_key(),
                 source_size,
             );
             reader.read(0, source_size).await?
@@ -437,12 +437,14 @@ async fn download_cloud_file_chunked(
     on_progress: &(dyn Fn(u8) + Send + Sync),
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let source_size = file.file_size as u64;
-    // Every managed blob is master-scoped (see `BaeBlobPlan`).
+    // Every managed blob is master-scoped (see `BaeBlobPlan`). The object key is
+    // the file's effective cloud key (its stored `cloud_path`, else the
+    // hashed-by-id default).
     let reader = crate::storage::BlobRangeReader::new(
         cloud_home,
         &cipher,
         coven::blob::ResolvedScope::Master,
-        storage_path(&file.id),
+        file.cloud_key(),
         source_size,
     );
 
@@ -719,9 +721,11 @@ async fn do_manage(
         // cloud-only. `managed` stays false until then.
         mgr.pin_release_locally(release_id).await?;
 
-        // Now enqueue uploads that read the staged `storage/` copies.
+        // Now enqueue uploads that read the staged `storage/` copies. The key
+        // is the readable path on a browsable home (computed + stored on the
+        // file row here) or the hashed `storage_path` on an opaque one.
         for file in &files {
-            let cloud_key = storage_path(&file.id);
+            let cloud_key = mgr.cloud_key_for_managed_file(file).await?;
             mgr.add_cloud_outbox_upload(&file.id, &cloud_key, None)
                 .await?;
         }
@@ -775,7 +779,9 @@ async fn do_manage(
 
             let source = std::path::Path::new(&unmanaged_path).join(&file.original_filename);
             let source_str = source.to_string_lossy().to_string();
-            let cloud_key = storage_path(&file.id);
+            // Readable key on a browsable home (computed + stored on the row),
+            // hashed `storage_path` on an opaque one.
+            let cloud_key = mgr.cloud_key_for_managed_file(file).await?;
             mgr.add_cloud_outbox_upload(&file.id, &cloud_key, Some(&source_str))
                 .await?;
         }

@@ -154,6 +154,13 @@ CREATE TABLE IF NOT EXISTS release_files (
     original_filename TEXT NOT NULL,
     file_size INTEGER NOT NULL,
     content_type TEXT NOT NULL,
+    -- Cloud object key for this file's managed blob, mirroring coven's
+    -- BlobRef.cloud_path. NULL = the hashed-by-id layout (opaque homes); a
+    -- value = the explicit readable key set when the file entered a browsable
+    -- home (`{artist}/{album}/{filename}`). Synced, so every device addresses
+    -- the blob the same way; computed once at upload time and never re-derived,
+    -- so a metadata rename never moves the blob.
+    cloud_path TEXT,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
@@ -183,6 +190,10 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE
 );
 
+-- Column order here is the single source of truth for the changeset column
+-- INDEX `BlobPlan` reads `cloud_path` at; `bae-core/src/sync/blob_plan.rs`
+-- mirrors it in `LIBRARY_IMAGES_COLUMNS` / `LIBRARY_IMAGES_CLOUD_PATH_INDEX`,
+-- with a guard test that fails loudly if this DDL and that index drift.
 CREATE TABLE IF NOT EXISTS library_images (
     id TEXT PRIMARY KEY,
     type TEXT NOT NULL,
@@ -192,6 +203,12 @@ CREATE TABLE IF NOT EXISTS library_images (
     height INTEGER,
     source TEXT NOT NULL,
     source_url TEXT,
+    -- Cloud object key for this image's blob, mirroring coven's
+    -- BlobRef.cloud_path. NULL = the hashed-by-id layout (opaque homes); a
+    -- value = the explicit readable key (relative to the `images` namespace)
+    -- set when the image entered a browsable home (cover:
+    -- `{artist}/{album}/cover.{ext}`, artist: `{artist}/artist.{ext}`).
+    cloud_path TEXT,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL
 );

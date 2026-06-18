@@ -598,6 +598,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
         original_filename: f1.file_name().unwrap().to_string_lossy().into_owned(),
         file_size: std::fs::metadata(&f1).unwrap().len() as i64,
         content_type: ContentType::Flac,
+        cloud_path: None,
         created_at: now,
     };
     let file2 = DbFile {
@@ -606,6 +607,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
         original_filename: f2.file_name().unwrap().to_string_lossy().into_owned(),
         file_size: std::fs::metadata(&f2).unwrap().len() as i64,
         content_type: ContentType::Flac,
+        cloud_path: None,
         created_at: now,
     };
     db.insert_file(&file1).await.unwrap();
