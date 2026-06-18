@@ -285,7 +285,7 @@ mod tests {
             label: None,
             catalog_number: catalog.map(str::to_string),
             country: None,
-            cover_url: None,
+            cover_art: None,
             source_group_id: group_id.map(str::to_string),
         }
     }

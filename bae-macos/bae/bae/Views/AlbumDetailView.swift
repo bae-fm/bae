@@ -282,10 +282,7 @@ struct AlbumDetailView: View {
                     changeCover(
                         albumId: albumId,
                         releaseId: selectedReleaseId,
-                        selection: .remoteCover(
-                            url: cover.url,
-                            source: cover.source
-                        ),
+                        selection: cover.coverChoice.selection,
                     )
                 },
                 onSelectReleaseImage: { fileId in

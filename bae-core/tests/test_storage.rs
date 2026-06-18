@@ -25,7 +25,11 @@ fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     library_manager: LibraryManager,
 ) -> bae_core::import::ImportServiceHandle {
-    ImportService::start(runtime_handle.clone(), library_manager)
+    ImportService::start(
+        runtime_handle.clone(),
+        library_manager,
+        bae_core::import::cover_art::CoverArtArchiveClient::new(),
+    )
 }
 
 /// Initialize tracing for tests
@@ -665,7 +669,11 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
     );
     let runtime_handle = tokio::runtime::Handle::current();
     // Use the real API resolver since this test exercises real Discogs data
-    let import_handle = ImportService::start(runtime_handle, library_manager.clone());
+    let import_handle = ImportService::start(
+        runtime_handle,
+        library_manager.clone(),
+        bae_core::import::cover_art::CoverArtArchiveClient::new(),
+    );
     let import_id = import_handle
         .start_import(
             "test",

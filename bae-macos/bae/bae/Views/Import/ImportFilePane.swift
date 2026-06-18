@@ -120,7 +120,7 @@ struct ImportFilePane: View {
     // MARK: - Artwork cell
 
     /// 1:1 thumbnail. Tap opens the gallery at this index.
-    private func artworkCell(_ file: FileInfo, index: Int)
+    private func artworkCell(_ file: ArtworkFile, index: Int)
         -> some View
     {
         Color.clear

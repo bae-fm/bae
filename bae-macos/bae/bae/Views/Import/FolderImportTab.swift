@@ -394,8 +394,9 @@ struct FolderImportTab: View {
             },
             coverContent: {
                 folderCoverThumb(
-                    selectedUrl: candidate.selectedCoverUrl,
-                    artwork: candidate.files.artwork,
+                    source: candidate.selectedCover.map {
+                        ImageLoader.Source(bridge: $0.thumbnailSource)
+                    },
                 )
             },
             actionExtra: EmptyView.init,
@@ -404,29 +405,15 @@ struct FolderImportTab: View {
 
     // MARK: - Folder-specific cover thumbnail (supports local artwork)
 
-    private func folderCoverThumb(selectedUrl: String?, artwork: [FileInfo])
+    private func folderCoverThumb(source: ImageLoader.Source?)
         -> some View
     {
         Group {
-            if let url = selectedUrl {
-                if url.hasPrefix("local:") {
-                    let filename = String(url.dropFirst("local:".count))
-                    let localPath =
-                        artwork.first(where: { $0.name == filename })?
-                        .localPath
-                    if let localPath {
-                        ImageView(
-                            source: .local(path: localPath),
-                            pointSize: 80
-                        )
-                    }
-                    else {
-                        Theme.placeholder
-                    }
-                }
-                else {
-                    ImageView(source: .remote(url: url), pointSize: 80)
-                }
+            if let source {
+                ImageView(
+                    source: source,
+                    pointSize: 80
+                )
             }
             else {
                 Theme.placeholder
@@ -443,36 +430,7 @@ struct FolderImportTab: View {
         // Start each attempt from a clean error state so a prior failed
         // commit's banner doesn't linger over a now-succeeding retry.
         importStore.mutateCandidate(forKey: candidate.key) { $0.error = nil }
-        let selectedUrl = candidate.selectedCoverUrl
-
-        let coverSelection: BridgeCoverSelection?
-        if let url = selectedUrl {
-            if url.hasPrefix("local:") {
-                let filename = String(url.dropFirst("local:".count))
-                coverSelection = .releaseImage(fileId: filename)
-            }
-            else {
-                // Remote cover URLs only originate from the source
-                // detail's `coverArt`, so source is always populated
-                // when the user picked a remote URL.
-                guard
-                    let coverSource = candidate.releaseDetail?.coverArt
-                        .first?
-                        .source
-                else {
-                    fatalError(
-                        "remote cover selected with no source cover art"
-                    )
-                }
-                coverSelection = .remoteCover(
-                    url: url,
-                    source: coverSource.bridge
-                )
-            }
-        }
-        else {
-            coverSelection = nil
-        }
+        let coverSelection = candidate.selectedCover?.selection
 
         let storageMode = configStore.config.importStorageMode(
             managed: storageManaged,

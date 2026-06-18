@@ -403,10 +403,20 @@ pub enum BridgePreviewState {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRemoteCover {
-    pub url: String,
-    pub thumbnail_url: String,
+    pub cover_choice: BridgeCoverChoice,
     pub label: String,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeRemoteCoverSelection {
+    pub url: String,
     pub source: BridgeMetadataSource,
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeCoverImageSource {
+    Remote { url: String },
+    Local { path: String },
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -415,9 +425,15 @@ pub enum BridgeCoverSelection {
         file_id: String,
     },
     RemoteCover {
-        url: String,
-        source: BridgeMetadataSource,
+        selection: BridgeRemoteCoverSelection,
     },
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCoverChoice {
+    pub selection: BridgeCoverSelection,
+    pub preview_source: BridgeCoverImageSource,
+    pub thumbnail_source: BridgeCoverImageSource,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -494,6 +510,12 @@ pub struct BridgeFileInfo {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeArtworkFile {
+    pub file: BridgeFileInfo,
+    pub cover_choice: BridgeCoverChoice,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCueFlacPair {
     pub cue_name: String,
     pub cue_size: u64,
@@ -520,7 +542,7 @@ pub enum BridgeAudioContent {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateFiles {
     pub audio: BridgeAudioContent,
-    pub artwork: Vec<BridgeFileInfo>,
+    pub artwork: Vec<BridgeArtworkFile>,
     pub documents: Vec<BridgeFileInfo>,
 }
 
@@ -803,7 +825,7 @@ pub struct BridgeReleaseGroup {
     pub title: String,
     pub artist: Option<String>,
     /// Representative cover for the card.
-    pub cover_url: Option<String>,
+    pub cover_art: Option<BridgeRemoteCover>,
     /// Human-readable source name ("MusicBrainz" / "Discogs").
     pub source_label: String,
     /// Editorial URL for the group on its source (release-group on
@@ -1351,15 +1373,6 @@ pub struct BridgeCandidateSearchResults {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeCoverArt {
-    pub url: String,
-    pub source: BridgeMetadataSource,
-    /// Pre-built name of the service this cover came from ("Cover Art
-    /// Archive" / "Discogs") — the UI renders it without switching on `source`.
-    pub source_label: String,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseDetail {
     pub release_id: String,
     pub source: BridgeMetadataSource,
@@ -1380,11 +1393,8 @@ pub struct BridgeReleaseDetail {
     pub track_count: u32,
     pub track_count_mismatch: bool,
     pub tracks: Vec<BridgeReleaseTrack>,
-    pub cover_art: Vec<BridgeCoverArt>,
-    /// The source's primary cover URL (first entry). What the confirm
-    /// pane shows selected before a manual pick. `None` when the source
-    /// surfaced no cover art.
-    pub default_cover_url: Option<String>,
+    pub cover_art: Vec<BridgeRemoteCover>,
+    pub default_cover: Option<BridgeCoverChoice>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -1859,8 +1869,8 @@ pub(crate) fn bridge_cover_to_import(c: BridgeCoverSelection) -> bae_core::impor
         BridgeCoverSelection::ReleaseImage { file_id } => {
             bae_core::import::CoverSelection::Local(file_id)
         }
-        BridgeCoverSelection::RemoteCover { url, source } => {
-            bae_core::import::CoverSelection::Remote(url, source.to_core())
+        BridgeCoverSelection::RemoteCover { selection } => {
+            bae_core::import::CoverSelection::Remote(selection.url, selection.source.to_core())
         }
     }
 }
@@ -1968,15 +1978,68 @@ pub(crate) fn metadata_result_to_bridge(
     }
 }
 
+#[cfg(any(
+    feature = "desktop",
+    not(any(target_os = "ios", target_os = "android"))
+))]
+pub(crate) fn remote_cover_data_to_bridge(
+    c: bae_core::import::cover_art::RemoteCover,
+) -> BridgeRemoteCover {
+    let selection = bridge_remote_cover_selection(c.url, c.source);
+    let cover_choice = remote_cover_choice_to_bridge(&selection, &c.thumbnail_url);
+    BridgeRemoteCover {
+        cover_choice,
+        label: c.label,
+    }
+}
+
+fn bridge_remote_cover_selection(
+    url: String,
+    source: bae_core::import::MetadataSource,
+) -> BridgeRemoteCoverSelection {
+    BridgeRemoteCoverSelection {
+        url,
+        source: BridgeMetadataSource::from_core(source),
+    }
+}
+
+#[cfg(any(
+    feature = "desktop",
+    not(any(target_os = "ios", target_os = "android"))
+))]
+fn remote_cover_choice_to_bridge(
+    selection: &BridgeRemoteCoverSelection,
+    thumbnail_url: &str,
+) -> BridgeCoverChoice {
+    BridgeCoverChoice {
+        selection: BridgeCoverSelection::RemoteCover {
+            selection: selection.clone(),
+        },
+        preview_source: BridgeCoverImageSource::Remote {
+            url: selection.url.clone(),
+        },
+        thumbnail_source: BridgeCoverImageSource::Remote {
+            url: thumbnail_url.to_string(),
+        },
+    }
+}
+
 #[cfg(feature = "desktop")]
 pub(crate) fn release_detail_to_bridge(
     d: bae_core::import::search::ImportSearchReleaseDetail,
     local_track_count: Option<u32>,
 ) -> BridgeReleaseDetail {
-    // Mismatch + default-cover derivations live on `ImportSearchReleaseDetail`
-    // in bae-core; the bridge just copies the results.
     let track_count_mismatch = d.track_count_mismatch(local_track_count);
-    let default_cover_url = d.default_cover_url();
+    let default_cover = d
+        .default_cover()
+        .cloned()
+        .map(remote_cover_data_to_bridge)
+        .map(|c| c.cover_choice);
+    let cover_art: Vec<BridgeRemoteCover> = d
+        .cover_art
+        .into_iter()
+        .map(remote_cover_data_to_bridge)
+        .collect();
     BridgeReleaseDetail {
         release_id: d.release_id,
         source: BridgeMetadataSource::from_core(d.source),
@@ -2005,16 +2068,29 @@ pub(crate) fn release_detail_to_bridge(
                 position_label: t.position_label,
             })
             .collect(),
-        cover_art: d
-            .cover_art
-            .into_iter()
-            .map(|c| BridgeCoverArt {
-                url: c.url,
-                source: BridgeMetadataSource::from_core(c.source),
-                source_label: c.source.cover_source_label().to_string(),
-            })
-            .collect(),
-        default_cover_url,
+        cover_art,
+        default_cover,
+    }
+}
+
+#[cfg(feature = "desktop")]
+fn bridge_remote_cover_to_core(c: BridgeRemoteCover) -> bae_core::import::cover_art::RemoteCover {
+    let BridgeCoverChoice {
+        selection,
+        thumbnail_source,
+        ..
+    } = c.cover_choice;
+    let BridgeCoverSelection::RemoteCover { selection } = selection else {
+        unreachable!("BridgeRemoteCover must carry a remote cover selection");
+    };
+    let BridgeCoverImageSource::Remote { url: thumbnail_url } = thumbnail_source else {
+        unreachable!("BridgeRemoteCover must carry a remote cover thumbnail");
+    };
+    bae_core::import::cover_art::RemoteCover {
+        url: selection.url,
+        thumbnail_url,
+        label: c.label,
+        source: selection.source.to_core(),
     }
 }
 
@@ -2056,10 +2132,7 @@ pub(crate) fn release_detail_from_bridge(
         cover_art: d
             .cover_art
             .into_iter()
-            .map(|c| bae_core::import::search::CoverArt {
-                url: c.url,
-                source: c.source.to_core(),
-            })
+            .map(bridge_remote_cover_to_core)
             .collect(),
     }
 }
@@ -2119,7 +2192,7 @@ pub(crate) fn release_group_to_bridge(
         id: g.id,
         title: g.title,
         artist: g.artist,
-        cover_url: g.cover_url,
+        cover_art: g.cover_art.map(remote_cover_data_to_bridge),
         source_label: g.source_label,
         group_url: g.group_url,
         meta_label: g.meta_label,
@@ -2301,6 +2374,21 @@ fn scanned_file_to_bridge(f: bae_core::import::folder_scanner::ScannedFile) -> B
     }
 }
 
+fn scanned_artwork_to_bridge(
+    f: bae_core::import::folder_scanner::ScannedFile,
+) -> BridgeArtworkFile {
+    let file_id = f.relative_path.clone();
+    let path = f.path.to_string_lossy().to_string();
+    BridgeArtworkFile {
+        file: scanned_file_to_bridge(f),
+        cover_choice: BridgeCoverChoice {
+            selection: BridgeCoverSelection::ReleaseImage { file_id },
+            preview_source: BridgeCoverImageSource::Local { path: path.clone() },
+            thumbnail_source: BridgeCoverImageSource::Local { path },
+        },
+    }
+}
+
 pub(crate) fn categorized_files_to_bridge(
     files: bae_core::import::folder_scanner::CategorizedFiles,
 ) -> BridgeCandidateFiles {
@@ -2333,7 +2421,7 @@ pub(crate) fn categorized_files_to_bridge(
         artwork: files
             .artwork
             .into_iter()
-            .map(scanned_file_to_bridge)
+            .map(scanned_artwork_to_bridge)
             .collect(),
         documents: files
             .documents

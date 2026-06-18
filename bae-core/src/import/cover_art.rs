@@ -2,13 +2,15 @@ use crate::import::MetadataSource;
 use crate::network::upgrade_to_https;
 use crate::util::content_type::ContentType;
 use lru::LruCache;
+use std::collections::HashMap;
 use std::num::NonZeroUsize;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
+use tokio::sync::{OnceCell, Semaphore};
 use tracing::{debug, info, warn};
 
 /// A remote cover art option from an external source.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RemoteCover {
     pub url: String,
     pub thumbnail_url: String,
@@ -22,6 +24,9 @@ const MAX_RETRIES: u32 = 3;
 /// Base delay between retries (doubles each attempt: 1s, 2s, 4s).
 const RETRY_BASE_DELAY: Duration = Duration::from_secs(1);
 
+const CAA_LOOKUP_CACHE_CAPACITY: usize = 128;
+const CAA_MAX_CONCURRENT_LOOKUPS: usize = 4;
+
 /// Capacity for the cover-bytes LRU cache. Sized for a typical session;
 /// a miss costs one HTTP fetch.
 const COVER_CACHE_CAPACITY: usize = 25;
@@ -33,6 +38,10 @@ const COVER_CACHE_CAPACITY: usize = 25;
 /// commit worker calls it again at import time. Both go through this
 /// cache, so the bytes hit the wire at most once per URL per session.
 type CoverCacheValue = (Vec<u8>, ContentType);
+/// Outer `None` means the lookup failed and must not be cached; inner `None`
+/// means CAA returned a cacheable no-cover result.
+type CaaLookup = Option<Option<RemoteCover>>;
+type CaaLookupCell = Arc<OnceCell<CaaLookup>>;
 
 fn cover_bytes_cache() -> &'static Mutex<LruCache<String, CoverCacheValue>> {
     static CACHE: OnceLock<Mutex<LruCache<String, CoverCacheValue>>> = OnceLock::new();
@@ -43,43 +52,188 @@ fn cover_bytes_cache() -> &'static Mutex<LruCache<String, CoverCacheValue>> {
     })
 }
 
+/// Cover Art Archive lookup client for release/release-group cover selection.
+#[derive(Clone)]
+pub struct CoverArtArchiveClient {
+    http: reqwest::Client,
+    lookup_cache: Arc<Mutex<LruCache<String, Option<RemoteCover>>>>,
+    in_flight: Arc<Mutex<HashMap<String, CaaLookupCell>>>,
+    lookup_limiter: Arc<Semaphore>,
+}
+
+impl CoverArtArchiveClient {
+    pub fn new() -> Self {
+        let http = crate::util::http::client_builder()
+            .build()
+            .expect("Failed to create HTTP client for Cover Art Archive");
+        Self {
+            http,
+            lookup_cache: Arc::new(Mutex::new(LruCache::new(
+                NonZeroUsize::new(CAA_LOOKUP_CACHE_CAPACITY)
+                    .expect("CAA_LOOKUP_CACHE_CAPACITY > 0"),
+            ))),
+            in_flight: Arc::new(Mutex::new(HashMap::new())),
+            lookup_limiter: Arc::new(Semaphore::new(CAA_MAX_CONCURRENT_LOOKUPS)),
+        }
+    }
+
+    /// Fetch cover art candidates from Cover Art Archive for a MusicBrainz
+    /// release and release group.
+    pub async fn fetch_candidates(
+        &self,
+        release_id: Option<&str>,
+        release_group_id: Option<&str>,
+    ) -> Vec<RemoteCover> {
+        let mut covers = Vec::new();
+        if let Some(rid) = release_id {
+            if let Some(cover) = self.fetch_release(rid).await {
+                push_unique_cover(&mut covers, cover);
+            }
+        }
+        if let Some(rg_id) = release_group_id {
+            if let Some(cover) = self.fetch_release_group(rg_id).await {
+                push_unique_cover(&mut covers, cover);
+            }
+        }
+        covers
+    }
+
+    /// Fetch cover art from Cover Art Archive for a MusicBrainz release.
+    ///
+    /// Retries up to 3 times on transient failures (network errors, 5xx).
+    /// Does not retry on 404 (no cover art exists) or other client errors.
+    pub async fn fetch_release(&self, release_id: &str) -> Option<RemoteCover> {
+        self.fetch_entity(
+            "release",
+            "release",
+            release_id,
+            MetadataSource::MusicBrainz.cover_source_label().to_string(),
+        )
+        .await
+    }
+
+    /// Fetch cover art from Cover Art Archive for a MusicBrainz release group.
+    ///
+    /// The release-group endpoint returns the community-selected best cover for the
+    /// album concept, which may differ from any specific release's cover.
+    pub async fn fetch_release_group(&self, release_group_id: &str) -> Option<RemoteCover> {
+        self.fetch_entity(
+            "release-group",
+            "release group",
+            release_group_id,
+            format!(
+                "{} (Album)",
+                MetadataSource::MusicBrainz.cover_source_label()
+            ),
+        )
+        .await
+    }
+}
+
+impl Default for CoverArtArchiveClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Whether an HTTP error is transient and worth retrying.
 fn is_transient_status(status: reqwest::StatusCode) -> bool {
     status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS
 }
 
-/// Fetch cover art URL from Cover Art Archive for a MusicBrainz release.
-///
-/// Retries up to 3 times on transient failures (network errors, 5xx).
-/// Does not retry on 404 (no cover art exists) or other client errors.
-pub async fn fetch_cover_art_from_archive(release_id: &str) -> Option<String> {
-    let url = format!("https://coverartarchive.org/release/{}", release_id);
-    fetch_cover_art_from_url(&url, "release", release_id).await
+pub(crate) fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
+    if !covers.iter().any(|existing| existing.url == cover.url) {
+        covers.push(cover);
+    }
 }
 
-/// Fetch cover art URL from Cover Art Archive for a MusicBrainz release group.
-///
-/// The release-group endpoint returns the community-selected best cover for the
-/// album concept, which may differ from any specific release's cover.
-pub async fn fetch_cover_art_from_release_group(release_group_id: &str) -> Option<String> {
-    let url = format!(
-        "https://coverartarchive.org/release-group/{}",
-        release_group_id
-    );
-    fetch_cover_art_from_url(&url, "release group", release_group_id).await
+impl CoverArtArchiveClient {
+    async fn fetch_entity(
+        &self,
+        caa_entity: &str,
+        log_entity: &str,
+        id: &str,
+        label: String,
+    ) -> Option<RemoteCover> {
+        self.fetch_url(
+            format!("{caa_entity}:{id}"),
+            format!("https://coverartarchive.org/{caa_entity}/{id}"),
+            log_entity,
+            id,
+            label,
+        )
+        .await
+    }
+
+    async fn fetch_url(
+        &self,
+        cache_key: String,
+        json_url: String,
+        entity: &str,
+        id: &str,
+        label: String,
+    ) -> Option<RemoteCover> {
+        if let Some(cached) = self
+            .lookup_cache
+            .lock()
+            .expect("Cover Art Archive lookup cache mutex poisoned")
+            .get(&cache_key)
+            .cloned()
+        {
+            return cached;
+        }
+
+        let cell = {
+            let mut inflight = self
+                .in_flight
+                .lock()
+                .expect("Cover Art Archive in-flight map mutex poisoned");
+            inflight
+                .entry(cache_key.clone())
+                .or_insert_with(|| Arc::new(OnceCell::new()))
+                .clone()
+        };
+
+        let owned_id = id.to_string();
+        let entity = entity.to_string();
+        cell.get_or_init(|| async move {
+            let lookup = match self.lookup_limiter.acquire().await {
+                Ok(permit) => {
+                    let _permit = permit;
+                    fetch_cover_art_from_url(&self.http, json_url, &entity, &owned_id, label).await
+                }
+                Err(e) => {
+                    warn!("Cover Art Archive lookup limiter closed: {}", e);
+                    None
+                }
+            };
+            if let Some(cache_value) = &lookup {
+                self.lookup_cache
+                    .lock()
+                    .expect("Cover Art Archive lookup cache mutex poisoned")
+                    .put(cache_key.clone(), cache_value.clone());
+            }
+            self.in_flight
+                .lock()
+                .expect("Cover Art Archive in-flight map mutex poisoned")
+                .remove(&cache_key);
+            lookup
+        })
+        .await
+        .clone()
+        .flatten()
+    }
 }
 
 /// Shared implementation for fetching cover art from a Cover Art Archive URL.
-async fn fetch_cover_art_from_url(json_url: &str, entity: &str, id: &str) -> Option<String> {
+async fn fetch_cover_art_from_url(
+    client: &reqwest::Client,
+    json_url: String,
+    entity: &str,
+    id: &str,
+    label: String,
+) -> CaaLookup {
     debug!("Fetching cover art from Cover Art Archive: {}", json_url);
-
-    let client = match crate::util::http::client_builder().build() {
-        Ok(client) => client,
-        Err(e) => {
-            warn!("Failed to create HTTP client for Cover Art Archive: {}", e);
-            return None;
-        }
-    };
 
     let mut last_error = String::new();
     for attempt in 0..=MAX_RETRIES {
@@ -97,16 +251,16 @@ async fn fetch_cover_art_from_url(json_url: &str, entity: &str, id: &str) -> Opt
             tokio::time::sleep(delay).await;
         }
 
-        match client.get(json_url).send().await {
+        match client.get(&json_url).send().await {
             Ok(response) => {
                 if response.status().is_success() {
-                    return parse_cover_art_response(response, json_url).await;
+                    return parse_cover_art_response(response, &json_url, &label).await;
                 } else if response.status() == reqwest::StatusCode::NOT_FOUND {
                     debug!(
                         "No cover art found in Cover Art Archive for {} {}",
                         entity, id
                     );
-                    return None;
+                    return Some(None);
                 } else if is_transient_status(response.status()) {
                     last_error = format!("status {}", response.status());
                     continue;
@@ -138,7 +292,11 @@ async fn fetch_cover_art_from_url(json_url: &str, entity: &str, id: &str) -> Opt
 }
 
 /// Parse the Cover Art Archive JSON response, extracting the best image URL.
-async fn parse_cover_art_response(response: reqwest::Response, url: &str) -> Option<String> {
+async fn parse_cover_art_response(
+    response: reqwest::Response,
+    url: &str,
+    label: &str,
+) -> CaaLookup {
     let json = match response.json::<serde_json::Value>().await {
         Ok(json) => json,
         Err(e) => {
@@ -149,34 +307,76 @@ async fn parse_cover_art_response(response: reqwest::Response, url: &str) -> Opt
             return None;
         }
     };
-    select_cover_url(&json)
+    match select_cover_candidate(&json, label) {
+        Some(cover) => Some(Some(cover)),
+        None => {
+            debug!(
+                "Cover Art Archive JSON from {} had no usable cover image",
+                url
+            );
+            Some(None)
+        }
+    }
 }
 
 /// Pick the best image URL from a Cover Art Archive JSON body: prefer the
 /// front cover, else the first image. Pure (no I/O) so the selection rules are
 /// testable without a live response.
-fn select_cover_url(json: &serde_json::Value) -> Option<String> {
+fn select_cover_candidate(json: &serde_json::Value, label: &str) -> Option<RemoteCover> {
     let images = json.get("images").and_then(|i| i.as_array())?;
 
     // Prefer the front cover
     for image in images {
         if image.get("front").and_then(|f| f.as_bool()) == Some(true) {
-            if let Some(url) = extract_image_url(image) {
-                return Some(url);
+            if let Some(cover) = extract_cover_candidate(image, label) {
+                return Some(cover);
             }
         }
     }
 
-    // Fall back to first available image
-    images.first().and_then(extract_image_url)
+    // Fall back to the first image with a usable URL.
+    images
+        .iter()
+        .find_map(|image| extract_cover_candidate(image, label))
 }
 
-/// Extract the best available image URL from a Cover Art Archive image entry.
+/// Extract the selected image URL and thumbnail from a Cover Art Archive image entry.
+fn extract_cover_candidate(image: &serde_json::Value, label: &str) -> Option<RemoteCover> {
+    let url = extract_image_url(image)?;
+    let thumbnail_url = extract_thumbnail_url(image, &url);
+    Some(RemoteCover {
+        url,
+        thumbnail_url,
+        label: label.to_string(),
+        source: MetadataSource::MusicBrainz,
+    })
+}
+
+/// Extract the image URL from a Cover Art Archive image entry.
 fn extract_image_url(image: &serde_json::Value) -> Option<String> {
-    for key in ["image", "thumb", "small"] {
-        if let Some(url) = image.get(key).and_then(|v| v.as_str()) {
-            debug!("Using cover art ({}): {}", key, url);
-            return Some(upgrade_to_https(url));
+    let (key, url) = find_url_in(image, &["image", "thumb", "small"])?;
+    debug!("Using cover art ({}): {}", key, url);
+    Some(url)
+}
+
+/// Extract the thumbnail URL from a Cover Art Archive image entry.
+fn extract_thumbnail_url(image: &serde_json::Value, image_url: &str) -> String {
+    if let Some(thumbnails) = image.get("thumbnails") {
+        if let Some((_key, url)) = find_url_in(thumbnails, &["250", "small", "500", "large"]) {
+            return url;
+        }
+    }
+    if let Some((_key, url)) = find_url_in(image, &["thumb", "small"]) {
+        return url;
+    }
+    debug!("CAA image {image_url} has no thumbnail URL; using image URL");
+    image_url.to_string()
+}
+
+fn find_url_in<'a>(value: &serde_json::Value, keys: &'a [&'a str]) -> Option<(&'a str, String)> {
+    for key in keys {
+        if let Some(url) = value.get(*key).and_then(|v| v.as_str()) {
+            return Some((*key, upgrade_to_https(url)));
         }
     }
     None
@@ -297,18 +497,26 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn select_cover_url_prefers_front_then_first() {
+    fn select_cover_candidate_prefers_front_then_first() {
         // A front cover wins even when it isn't first in the list.
         let body = json!({
             "images": [
                 { "front": false, "image": "https://caa.example/back.jpg" },
-                { "front": true, "image": "https://caa.example/front.jpg" },
+                {
+                    "front": true,
+                    "image": "https://caa.example/front.jpg",
+                    "thumbnails": {
+                        "250": "https://caa.example/front-250.jpg",
+                        "500": "https://caa.example/front-500.jpg"
+                    }
+                },
             ]
         });
-        assert_eq!(
-            select_cover_url(&body),
-            Some("https://caa.example/front.jpg".to_string())
-        );
+        let cover = select_cover_candidate(&body, "Cover Art Archive").unwrap();
+        assert_eq!(cover.url, "https://caa.example/front.jpg");
+        assert_eq!(cover.thumbnail_url, "https://caa.example/front-250.jpg");
+        assert_eq!(cover.label, "Cover Art Archive");
+        assert_eq!(cover.source, MetadataSource::MusicBrainz);
 
         // With no front cover, the first image is the fallback.
         let body = json!({
@@ -317,27 +525,27 @@ mod tests {
                 { "front": false, "image": "https://caa.example/b.jpg" },
             ]
         });
-        assert_eq!(
-            select_cover_url(&body),
-            Some("https://caa.example/a.jpg".to_string())
-        );
+        let cover = select_cover_candidate(&body, "Cover Art Archive").unwrap();
+        assert_eq!(cover.url, "https://caa.example/a.jpg");
+        assert_eq!(cover.thumbnail_url, "https://caa.example/a.jpg");
 
-        // No images array / empty list → nothing to select.
-        assert_eq!(select_cover_url(&json!({})), None);
-        assert_eq!(select_cover_url(&json!({ "images": [] })), None);
+        // No images array / empty list means nothing to select.
+        assert!(select_cover_candidate(&json!({}), "Cover Art Archive").is_none());
+        assert!(select_cover_candidate(&json!({ "images": [] }), "Cover Art Archive").is_none());
     }
 
     #[test]
-    fn extract_image_url_walks_keys_and_upgrades_to_https() {
+    fn extract_cover_candidate_walks_keys_and_upgrades_to_https() {
         // 'image' is preferred over 'thumb'/'small' and http is upgraded.
         let image = json!({
             "image": "http://caa.example/full.jpg",
-            "thumb": "http://caa.example/thumb.jpg",
+            "thumbnails": {
+                "small": "http://caa.example/thumb.jpg",
+            },
         });
-        assert_eq!(
-            extract_image_url(&image),
-            Some("https://caa.example/full.jpg".to_string())
-        );
+        let cover = extract_cover_candidate(&image, "Cover Art Archive").unwrap();
+        assert_eq!(cover.url, "https://caa.example/full.jpg");
+        assert_eq!(cover.thumbnail_url, "https://caa.example/thumb.jpg");
 
         // Falls through to 'thumb' then 'small' when 'image' is absent.
         assert_eq!(
@@ -347,6 +555,29 @@ mod tests {
 
         // An entry with none of the keys yields nothing.
         assert_eq!(extract_image_url(&json!({ "front": true })), None);
+    }
+
+    #[test]
+    fn push_unique_cover_dedupes_by_url() {
+        let mut covers = vec![RemoteCover {
+            url: "https://caa.example/cover.jpg".to_string(),
+            thumbnail_url: "https://caa.example/thumb-a.jpg".to_string(),
+            label: "Cover Art Archive".to_string(),
+            source: MetadataSource::MusicBrainz,
+        }];
+
+        push_unique_cover(
+            &mut covers,
+            RemoteCover {
+                url: "https://caa.example/cover.jpg".to_string(),
+                thumbnail_url: "https://caa.example/thumb-b.jpg".to_string(),
+                label: "Cover Art Archive (Album)".to_string(),
+                source: MetadataSource::MusicBrainz,
+            },
+        );
+
+        assert_eq!(covers.len(), 1);
+        assert_eq!(covers[0].thumbnail_url, "https://caa.example/thumb-a.jpg");
     }
 
     #[test]
@@ -399,6 +630,137 @@ mod tests {
             let _ = axum::serve(listener, app).await;
         });
         format!("http://{addr}/cover.jpg")
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn caa_lookup_does_not_cache_transient_failure() {
+        let success = br#"{
+            "images": [
+                {
+                    "front": true,
+                    "image": "https://caa.example/cover.jpg",
+                    "thumbnails": {
+                        "250": "https://caa.example/thumb.jpg"
+                    }
+                }
+            ]
+        }"#
+        .to_vec();
+        let url = start_mock(vec![
+            (503, vec![]),
+            (503, vec![]),
+            (503, vec![]),
+            (503, vec![]),
+            (200, success),
+        ])
+        .await;
+        let cache_key = "release:transient-cache-test".to_string();
+        let label = MetadataSource::MusicBrainz.cover_source_label().to_string();
+        let client = CoverArtArchiveClient::new();
+
+        assert!(client
+            .fetch_url(
+                cache_key.clone(),
+                url.clone(),
+                "release",
+                "transient-cache-test",
+                label.clone(),
+            )
+            .await
+            .is_none());
+
+        let cover = client
+            .fetch_url(cache_key, url, "release", "transient-cache-test", label)
+            .await
+            .expect("transient failure should not be cached");
+
+        assert_eq!(cover.url, "https://caa.example/cover.jpg");
+        assert_eq!(cover.thumbnail_url, "https://caa.example/thumb.jpg");
+    }
+
+    #[tokio::test]
+    async fn caa_lookup_caches_selected_cover() {
+        let first = br#"{
+            "images": [
+                {
+                    "front": true,
+                    "image": "https://caa.example/cover-a.jpg",
+                    "thumbnails": {
+                        "250": "https://caa.example/thumb-a.jpg"
+                    }
+                }
+            ]
+        }"#
+        .to_vec();
+        let second = br#"{
+            "images": [
+                {
+                    "front": true,
+                    "image": "https://caa.example/cover-b.jpg",
+                    "thumbnails": {
+                        "250": "https://caa.example/thumb-b.jpg"
+                    }
+                }
+            ]
+        }"#
+        .to_vec();
+        let url = start_mock(vec![(200, first), (200, second)]).await;
+        let cache_key = "release:cover-cache-test".to_string();
+        let label = MetadataSource::MusicBrainz.cover_source_label().to_string();
+        let client = CoverArtArchiveClient::new();
+
+        let first = client
+            .fetch_url(
+                cache_key.clone(),
+                url.clone(),
+                "release",
+                "cover-cache-test",
+                label.clone(),
+            )
+            .await
+            .unwrap();
+        let second = client
+            .fetch_url(cache_key, url, "release", "cover-cache-test", label)
+            .await
+            .unwrap();
+
+        assert_eq!(first.url, "https://caa.example/cover-a.jpg");
+        assert_eq!(second.url, "https://caa.example/cover-a.jpg");
+    }
+
+    #[tokio::test]
+    async fn caa_lookup_caches_not_found() {
+        let success = br#"{
+            "images": [
+                {
+                    "front": true,
+                    "image": "https://caa.example/cover.jpg",
+                    "thumbnails": {
+                        "250": "https://caa.example/thumb.jpg"
+                    }
+                }
+            ]
+        }"#
+        .to_vec();
+        let url = start_mock(vec![(404, vec![]), (200, success)]).await;
+        let cache_key = "release:not-found-cache-test".to_string();
+        let label = MetadataSource::MusicBrainz.cover_source_label().to_string();
+        let client = CoverArtArchiveClient::new();
+
+        assert!(client
+            .fetch_url(
+                cache_key.clone(),
+                url.clone(),
+                "release",
+                "not-found-cache-test",
+                label.clone(),
+            )
+            .await
+            .is_none());
+        assert!(client
+            .fetch_url(cache_key, url, "release", "not-found-cache-test", label,)
+            .await
+            .is_none());
     }
 
     #[tokio::test]

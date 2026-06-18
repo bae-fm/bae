@@ -9,12 +9,12 @@ struct ImportReleaseDetail: Equatable {
     let releaseId: String
     let trackCount: UInt32
     let trackCountMismatch: Bool
-    let coverArt: [CoverArt]
+    let coverArt: [BridgeRemoteCover]
 
     init(bridge: BridgeReleaseDetail) {
         releaseId = bridge.releaseId
         trackCount = bridge.trackCount
         trackCountMismatch = bridge.trackCountMismatch
-        coverArt = bridge.coverArt.map(CoverArt.init(bridge:))
+        coverArt = bridge.coverArt
     }
 }

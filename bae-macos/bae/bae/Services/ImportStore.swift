@@ -27,7 +27,7 @@ enum SkippedRow: Identifiable {
 
 /// Session state for the import flow. Mixed-writer: the reducer drives
 /// event-driven fields (scan, identify, preview state), while views drive
-/// user-set fields (mode, selectedCoverUrl) via `mutateCandidate(forKey:_:)`.
+/// user-set fields (mode, selectedCover) via `mutateCandidate(forKey:_:)`.
 /// The single-writer rule applies per field, not per store.
 ///
 /// One ordered dictionary per source: folder-scan candidates and re-identify

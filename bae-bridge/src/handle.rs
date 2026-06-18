@@ -478,9 +478,9 @@ impl AppHandle {
             BridgeCoverSelection::ReleaseImage { file_id } => {
                 CoverSelection::ReleaseImage { file_id }
             }
-            BridgeCoverSelection::RemoteCover { url, source } => CoverSelection::RemoteCover {
-                url,
-                source: source.to_core(),
+            BridgeCoverSelection::RemoteCover { selection } => CoverSelection::RemoteCover {
+                url: selection.url,
+                source: selection.source.to_core(),
             },
         };
 
@@ -1187,12 +1187,7 @@ impl AppHandle {
             .map_err(|e| BridgeError::Import { msg: e })?;
         Ok(covers
             .into_iter()
-            .map(|c| BridgeRemoteCover {
-                url: c.url,
-                thumbnail_url: c.thumbnail_url,
-                label: c.label,
-                source: BridgeMetadataSource::from_core(c.source),
-            })
+            .map(crate::types::remote_cover_data_to_bridge)
             .collect())
     }
 

@@ -23,6 +23,21 @@ struct FileInfo: Equatable {
     }
 }
 
+// MARK: - ArtworkFile
+
+struct ArtworkFile: Equatable {
+    let file: FileInfo
+    let coverChoice: BridgeCoverChoice
+
+    var name: String { file.name }
+    var localPath: String { file.localPath }
+
+    init(bridge: BridgeArtworkFile) {
+        file = FileInfo(bridge: bridge.file)
+        coverChoice = bridge.coverChoice
+    }
+}
+
 // MARK: - CueFlacPair
 
 struct CueFlacPair: Equatable {
@@ -68,16 +83,16 @@ enum AudioContent: Equatable {
 
 struct CandidateFiles: Equatable {
     var audio: AudioContent
-    var artwork: [FileInfo]
+    var artwork: [ArtworkFile]
     var documents: [FileInfo]
 
     init(bridge: BridgeCandidateFiles) {
         audio = AudioContent(bridge: bridge.audio)
-        artwork = bridge.artwork.map(FileInfo.init(bridge:))
+        artwork = bridge.artwork.map(ArtworkFile.init(bridge:))
         documents = bridge.documents.map(FileInfo.init(bridge:))
     }
 
-    init(audio: AudioContent, artwork: [FileInfo], documents: [FileInfo]) {
+    init(audio: AudioContent, artwork: [ArtworkFile], documents: [FileInfo]) {
         self.audio = audio
         self.artwork = artwork
         self.documents = documents

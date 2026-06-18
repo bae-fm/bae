@@ -8,11 +8,12 @@
 //! in bae-core.
 
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
+use crate::import::cover_art::{CoverArtArchiveClient, RemoteCover};
 use crate::import::types::MetadataSource;
 use crate::musicbrainz::{self, DiscIdRelease, ReleaseSearchParams, SearchRelease};
 use crate::retry::retry_with_backoff;
 use crate::util::format::compute_track_labels;
-use tracing::{debug, warn};
+use tracing::warn;
 
 /// A unified metadata search result from either MusicBrainz or Discogs.
 ///
@@ -33,7 +34,7 @@ pub struct MetadataResult {
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
-    pub cover_url: Option<String>,
+    pub cover_art: Option<RemoteCover>,
     pub source_group_id: Option<String>,
 }
 
@@ -70,23 +71,19 @@ pub struct ImportSearchReleaseDetail {
     pub barcode: Option<String>,
     pub track_count: u32,
     pub tracks: Vec<ReleaseTrack>,
-    pub cover_art: Vec<CoverArt>,
+    pub cover_art: Vec<RemoteCover>,
 }
 
 impl ImportSearchReleaseDetail {
-    /// The source's primary cover URL — the first entry, which MB and
-    /// Discogs both order front-image-first. This is what the confirm
-    /// pane shows selected before the user makes a manual pick. `None`
-    /// when the source surfaced no cover art.
-    pub fn default_cover_url(&self) -> Option<String> {
-        self.cover_art.first().map(|c| c.url.clone())
-    }
-
     /// Does the source's `track_count` disagree with the user's local
     /// track count? `None` (count not known yet) returns `false`: can't
     /// mismatch against an unknown.
     pub fn track_count_mismatch(&self, local_track_count: Option<u32>) -> bool {
         local_track_count.is_some_and(|local| self.track_count != local)
+    }
+
+    pub fn default_cover(&self) -> Option<&RemoteCover> {
+        self.cover_art.first()
     }
 }
 
@@ -106,13 +103,6 @@ pub struct ReleaseTrack {
     pub position_label: String,
 }
 
-/// A cover art option for a release.
-#[derive(Debug, Clone)]
-pub struct CoverArt {
-    pub url: String,
-    pub source: MetadataSource,
-}
-
 /// Disc ID lookup result.
 #[derive(Debug)]
 pub enum DiscIdResult {
@@ -121,40 +111,16 @@ pub enum DiscIdResult {
     MultipleMatches(Vec<MetadataResult>),
 }
 
-/// Check Cover Art Archive for cover art thumbnails.
-/// Does HEAD requests to CAA; returns redirect Location URLs (250px thumbnails).
-pub async fn check_cover_art(release_ids: &[String]) -> Vec<Option<String>> {
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .unwrap();
-
-    let futures: Vec<_> = release_ids
-        .iter()
-        .map(|id| {
-            let client = &client;
-            let url = format!("https://coverartarchive.org/release/{id}/front-250");
-            async move {
-                match client.head(&url).send().await {
-                    Ok(resp) if resp.status() == reqwest::StatusCode::TEMPORARY_REDIRECT => resp
-                        .headers()
-                        .get("location")
-                        .and_then(|v| v.to_str().ok())
-                        .map(|s| s.to_string()),
-                    Ok(resp) => {
-                        debug!("check_cover_art HEAD {url}: status {}", resp.status());
-                        None
-                    }
-                    Err(e) => {
-                        debug!("check_cover_art HEAD {url}: {e}");
-                        None
-                    }
-                }
-            }
-        })
-        .collect();
-
-    futures::future::join_all(futures).await
+async fn search_covers(
+    cover_art_archive: &CoverArtArchiveClient,
+    release_ids: &[String],
+) -> Vec<Option<RemoteCover>> {
+    futures::future::join_all(
+        release_ids
+            .iter()
+            .map(|release_id| cover_art_archive.fetch_release(release_id)),
+    )
+    .await
 }
 
 /// Convert a Discogs search result to a MetadataResult.
@@ -177,7 +143,7 @@ pub fn discogs_search_result_to_metadata(
     let year = r.year.as_ref().and_then(|y| y.parse::<i32>().ok());
     let format = r.format.as_ref().map(|f| f.join(", "));
     let label = r.label.as_ref().and_then(|l| l.first().cloned());
-    let cover_url = r.thumb.clone();
+    let cover_art = r.remote_cover();
     let source_group_id = r.master_id.map(|id| id.to_string());
     MetadataResult {
         source: MetadataSource::Discogs,
@@ -189,7 +155,7 @@ pub fn discogs_search_result_to_metadata(
         label,
         catalog_number: r.catno,
         country: r.country,
-        cover_url,
+        cover_art,
         source_group_id,
     }
 }
@@ -198,7 +164,7 @@ fn parse_year(date: Option<&str>) -> Option<i32> {
     date?.split('-').next()?.parse().ok()
 }
 
-fn disc_id_release_to_metadata(r: DiscIdRelease, cover_url: Option<String>) -> MetadataResult {
+fn disc_id_release_to_metadata(r: DiscIdRelease, cover_art: Option<RemoteCover>) -> MetadataResult {
     let (label, catalog_number) = r
         .label_info
         .first()
@@ -219,12 +185,12 @@ fn disc_id_release_to_metadata(r: DiscIdRelease, cover_url: Option<String>) -> M
         label,
         catalog_number,
         country: r.country,
-        cover_url,
+        cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
     }
 }
 
-fn search_release_to_metadata(r: SearchRelease, cover_url: Option<String>) -> MetadataResult {
+fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) -> MetadataResult {
     let (label, catalog_number) = r
         .label_info
         .first()
@@ -245,14 +211,29 @@ fn search_release_to_metadata(r: SearchRelease, cover_url: Option<String>) -> Me
         label,
         catalog_number,
         country: r.country,
-        cover_url,
+        cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
     }
+}
+
+async fn musicbrainz_releases_to_metadata(
+    cover_art_archive: &CoverArtArchiveClient,
+    releases: Vec<SearchRelease>,
+) -> Vec<MetadataResult> {
+    let release_ids: Vec<String> = releases.iter().map(|r| r.id.clone()).collect();
+    let covers = search_covers(cover_art_archive, &release_ids).await;
+
+    releases
+        .into_iter()
+        .zip(covers)
+        .map(|(r, cover_art)| search_release_to_metadata(r, cover_art))
+        .collect()
 }
 
 /// Search MusicBrainz for metadata matching given criteria.
 /// Includes cover art checks from the Cover Art Archive.
 pub async fn search_musicbrainz(
+    cover_art_archive: &CoverArtArchiveClient,
     artist: String,
     album: String,
     year: Option<String>,
@@ -271,14 +252,7 @@ pub async fn search_musicbrainz(
     .await
     .map_err(|e| format!("MusicBrainz search failed: {e}"))?;
 
-    let release_ids: Vec<String> = releases.iter().map(|r| r.id.clone()).collect();
-    let cover_urls = check_cover_art(&release_ids).await;
-
-    Ok(releases
-        .into_iter()
-        .zip(cover_urls)
-        .map(|(r, cover_url)| search_release_to_metadata(r, cover_url))
-        .collect())
+    Ok(musicbrainz_releases_to_metadata(cover_art_archive, releases).await)
 }
 
 /// Search Discogs for metadata matching given criteria.
@@ -305,6 +279,7 @@ pub async fn search_discogs(
 
 /// Search by catalog number on MusicBrainz.
 pub async fn search_mb_by_catalog_number(
+    cover_art_archive: &CoverArtArchiveClient,
     catalog_number: String,
 ) -> Result<Vec<MetadataResult>, String> {
     let params = ReleaseSearchParams {
@@ -317,14 +292,7 @@ pub async fn search_mb_by_catalog_number(
     .await
     .map_err(|e| format!("MusicBrainz search failed: {e}"))?;
 
-    let release_ids: Vec<String> = releases.iter().map(|r| r.id.clone()).collect();
-    let cover_urls = check_cover_art(&release_ids).await;
-
-    Ok(releases
-        .into_iter()
-        .zip(cover_urls)
-        .map(|(r, cover_url)| search_release_to_metadata(r, cover_url))
-        .collect())
+    Ok(musicbrainz_releases_to_metadata(cover_art_archive, releases).await)
 }
 
 /// Search by catalog number on Discogs.
@@ -344,7 +312,10 @@ pub async fn search_discogs_by_catalog_number(
 }
 
 /// Search by barcode on MusicBrainz.
-pub async fn search_mb_by_barcode(barcode: String) -> Result<Vec<MetadataResult>, String> {
+pub async fn search_mb_by_barcode(
+    cover_art_archive: &CoverArtArchiveClient,
+    barcode: String,
+) -> Result<Vec<MetadataResult>, String> {
     let params = ReleaseSearchParams {
         barcode: Some(barcode),
         ..Default::default()
@@ -355,14 +326,7 @@ pub async fn search_mb_by_barcode(barcode: String) -> Result<Vec<MetadataResult>
     .await
     .map_err(|e| format!("MusicBrainz search failed: {e}"))?;
 
-    let release_ids: Vec<String> = releases.iter().map(|r| r.id.clone()).collect();
-    let cover_urls = check_cover_art(&release_ids).await;
-
-    Ok(releases
-        .into_iter()
-        .zip(cover_urls)
-        .map(|(r, cover_url)| search_release_to_metadata(r, cover_url))
-        .collect())
+    Ok(musicbrainz_releases_to_metadata(cover_art_archive, releases).await)
 }
 
 /// Search by barcode on Discogs.
@@ -382,7 +346,10 @@ pub async fn search_discogs_by_barcode(
 }
 
 /// Lookup releases by MusicBrainz disc ID.
-pub async fn lookup_by_discid(discid: &str) -> Result<DiscIdResult, String> {
+pub async fn lookup_by_discid(
+    cover_art_archive: &CoverArtArchiveClient,
+    discid: &str,
+) -> Result<DiscIdResult, String> {
     let result = retry_with_backoff(3, "MusicBrainz DiscID lookup", || {
         musicbrainz::lookup_by_discid(discid)
     })
@@ -395,12 +362,12 @@ pub async fn lookup_by_discid(discid: &str) -> Result<DiscIdResult, String> {
             }
 
             let release_ids: Vec<String> = releases.iter().map(|r| r.id.clone()).collect();
-            let cover_urls = check_cover_art(&release_ids).await;
+            let covers = search_covers(cover_art_archive, &release_ids).await;
 
             let results: Vec<MetadataResult> = releases
                 .into_iter()
-                .zip(cover_urls)
-                .map(|(r, cover_url)| disc_id_release_to_metadata(r, cover_url))
+                .zip(covers)
+                .map(|(r, cover_art)| disc_id_release_to_metadata(r, cover_art))
                 .collect();
 
             if results.len() == 1 {
@@ -442,6 +409,7 @@ pub fn parse_duration_to_ms(duration: &str) -> Option<u64> {
 fn build_mb_detail(
     release_id: &str,
     mb_response: &crate::musicbrainz::MbReleaseResponse,
+    cover_art: Vec<RemoteCover>,
 ) -> ImportSearchReleaseDetail {
     let year = parse_year(mb_response.date.as_deref());
 
@@ -542,26 +510,6 @@ fn build_mb_detail(
         };
     }
 
-    let cover_url = format!(
-        "https://coverartarchive.org/release/{}/front-500",
-        release_id
-    );
-    let mut cover_art = vec![CoverArt {
-        url: cover_url,
-        source: MetadataSource::MusicBrainz,
-    }];
-
-    let release_group_id = mb_response.release_group.as_ref().map(|rg| rg.id.as_str());
-    if let Some(rg_id) = release_group_id {
-        cover_art.push(CoverArt {
-            url: format!(
-                "https://coverartarchive.org/release-group/{}/front-500",
-                rg_id
-            ),
-            source: MetadataSource::MusicBrainz,
-        });
-    }
-
     let artist = mb_response.artist_credit.first().map(|ac| ac.name.clone());
     let (label, catalog_number) = mb_response
         .label_info
@@ -596,9 +544,16 @@ fn build_mb_detail(
 /// Discogs cross-ref (the picker doesn't render any cross-source data) and
 /// no DB-shape mapping. Pairs with `commit_mb_release`, which composes the
 /// same `fetch_mb_response` with cross-ref enrichment and DB mapping.
-pub async fn prefetch_mb_release(release_id: &str) -> Result<ImportSearchReleaseDetail, String> {
+pub async fn prefetch_mb_release(
+    cover_art_archive: &CoverArtArchiveClient,
+    release_id: &str,
+) -> Result<ImportSearchReleaseDetail, String> {
     let (response, _, _) = crate::import::musicbrainz_mapper::fetch_mb_response(release_id).await?;
-    Ok(build_mb_detail(release_id, &response))
+    let release_group_id = response.release_group.as_ref().map(|rg| rg.id.as_str());
+    let cover_art = cover_art_archive
+        .fetch_candidates(Some(response.id.as_str()), release_group_id)
+        .await;
+    Ok(build_mb_detail(release_id, &response, cover_art))
 }
 
 /// Commit path for MusicBrainz: fetch + Discogs cross-ref + map to DB shape.
@@ -687,11 +642,8 @@ fn build_discogs_detail(release: &crate::discogs::DiscogsRelease) -> ImportSearc
         .collect();
 
     let mut cover_art = Vec::new();
-    if let Some(ref url) = release.cover_image {
-        cover_art.push(CoverArt {
-            url: url.clone(),
-            source: MetadataSource::Discogs,
-        });
+    if let Some(cover) = release.remote_cover() {
+        cover_art.push(cover);
     }
 
     let year = release.year.map(|y| y as i32);
@@ -768,6 +720,7 @@ pub async fn commit_discogs_release(
 mod tests {
     use super::*;
     use crate::discogs::client::DiscogsSearchResult;
+    use crate::musicbrainz::{MbArtistCredit, MbMedium, MbReleaseGroupRef, MbReleaseResponse};
 
     fn result_with_title(title: &str) -> DiscogsSearchResult {
         DiscogsSearchResult {
@@ -807,5 +760,60 @@ mod tests {
         let m = discogs_search_result_to_metadata(result_with_title(" - Album Title"));
         assert_eq!(m.artist, None);
         assert_eq!(m.title, "Album Title");
+    }
+
+    #[test]
+    fn discogs_search_result_carries_remote_cover_pair() {
+        let mut result = result_with_title("Artist Name - Album Title");
+        result.cover_image = Some("https://discogs.example/full.jpg".to_string());
+        result.thumb = Some("https://discogs.example/thumb.jpg".to_string());
+
+        let metadata = discogs_search_result_to_metadata(result);
+
+        assert_eq!(
+            metadata.cover_art,
+            Some(RemoteCover {
+                url: "https://discogs.example/full.jpg".to_string(),
+                thumbnail_url: "https://discogs.example/thumb.jpg".to_string(),
+                label: MetadataSource::Discogs.cover_source_label().to_string(),
+                source: MetadataSource::Discogs,
+            })
+        );
+    }
+
+    #[test]
+    fn mb_detail_uses_supplied_cover_art_archive_candidates() {
+        let response = MbReleaseResponse {
+            id: "mb-release-1".to_string(),
+            title: "Album Title".to_string(),
+            date: None,
+            country: None,
+            barcode: None,
+            artist_credit: vec![MbArtistCredit {
+                name: "Artist Name".to_string(),
+                artist: None,
+            }],
+            release_group: Some(MbReleaseGroupRef {
+                id: "mb-group-1".to_string(),
+                first_release_date: None,
+                relations: None,
+            }),
+            label_info: vec![],
+            media: vec![MbMedium {
+                format: Some("CD".to_string()),
+                tracks: vec![],
+            }],
+            relations: vec![],
+        };
+        let cover_art = vec![RemoteCover {
+            url: "https://caa.example/cover.jpg".to_string(),
+            thumbnail_url: "https://caa.example/thumb.jpg".to_string(),
+            label: MetadataSource::MusicBrainz.cover_source_label().to_string(),
+            source: MetadataSource::MusicBrainz,
+        }];
+
+        let detail = build_mb_detail("mb-release-1", &response, cover_art.clone());
+
+        assert_eq!(detail.cover_art, cover_art);
     }
 }

@@ -1,4 +1,6 @@
 use crate::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use crate::discogs::remote_cover_from_urls;
+use crate::import::cover_art::RemoteCover;
 use lru::LruCache;
 use reqwest::{Client, Error as ReqwestError};
 use serde::Deserialize;
@@ -123,6 +125,19 @@ pub struct DiscogsSearchResult {
     #[serde(rename = "type")]
     pub result_type: String,
 }
+
+impl DiscogsSearchResult {
+    /// Best available cover image from Discogs search result fields.
+    pub fn remote_cover(&self) -> Option<RemoteCover> {
+        remote_cover_from_urls(
+            self.cover_image.as_deref(),
+            self.thumb.as_deref(),
+            "search result",
+            self.id,
+        )
+    }
+}
+
 /// Artist credit in Discogs API responses
 #[derive(Debug, Deserialize, Clone)]
 struct ArtistCredit {
@@ -639,7 +654,63 @@ pub async fn fetch_discogs_xref(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::import::MetadataSource;
     use std::sync::{Arc, Mutex};
+
+    fn search_result_with_cover_fields(
+        cover_image: Option<&str>,
+        thumb: Option<&str>,
+    ) -> DiscogsSearchResult {
+        DiscogsSearchResult {
+            id: 1,
+            title: "Artist Name - Album Title".to_string(),
+            year: None,
+            genre: None,
+            style: None,
+            format: None,
+            country: None,
+            label: None,
+            catno: None,
+            barcode: None,
+            cover_image: cover_image.map(str::to_string),
+            thumb: thumb.map(str::to_string),
+            master_id: None,
+            result_type: "release".to_string(),
+        }
+    }
+
+    #[test]
+    fn search_result_remote_cover_uses_thumb_as_cover_when_cover_image_is_absent() {
+        let result =
+            search_result_with_cover_fields(None, Some("https://discogs.example/thumb.jpg"));
+
+        let cover = result.remote_cover().unwrap();
+
+        assert_eq!(cover.url, "https://discogs.example/thumb.jpg");
+        assert_eq!(cover.thumbnail_url, "https://discogs.example/thumb.jpg");
+        assert_eq!(cover.label, MetadataSource::Discogs.cover_source_label());
+        assert_eq!(cover.source, MetadataSource::Discogs);
+    }
+
+    #[test]
+    fn search_result_remote_cover_uses_cover_as_thumbnail_when_thumb_is_absent() {
+        let result =
+            search_result_with_cover_fields(Some("https://discogs.example/full.jpg"), None);
+
+        let cover = result.remote_cover().unwrap();
+
+        assert_eq!(cover.url, "https://discogs.example/full.jpg");
+        assert_eq!(cover.thumbnail_url, "https://discogs.example/full.jpg");
+        assert_eq!(cover.label, MetadataSource::Discogs.cover_source_label());
+        assert_eq!(cover.source, MetadataSource::Discogs);
+    }
+
+    #[test]
+    fn search_result_remote_cover_is_absent_without_cover_fields() {
+        let result = search_result_with_cover_fields(None, None);
+
+        assert!(result.remote_cover().is_none());
+    }
 
     #[test]
     fn observe_signals_only_on_rejection_or_success() {

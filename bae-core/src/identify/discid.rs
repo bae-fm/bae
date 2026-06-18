@@ -3,6 +3,7 @@
 //! module just orchestrates when to call it.
 
 use crate::db::LibraryStatus;
+use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{lookup_by_discid, DiscIdResult, MetadataResult};
 use std::path::PathBuf;
 
@@ -136,12 +137,13 @@ pub async fn resolve_release_artwork_paths(
 /// the same way as a barcode signal that produced no matches: settled
 /// with zero, ready for combine.
 pub async fn lookup_and_resolve(
+    cover_art_archive: &CoverArtArchiveClient,
     disc_id: &str,
     library_manager: &crate::library::LibraryManager,
 ) -> Result<(Vec<MetadataResult>, Vec<LibraryStatus>), String> {
     use crate::db::LibraryCheck;
 
-    let result = lookup_by_discid(disc_id)
+    let result = lookup_by_discid(cover_art_archive, disc_id)
         .await
         .map_err(|e| format!("MusicBrainz lookup failed: {e}"))?;
 

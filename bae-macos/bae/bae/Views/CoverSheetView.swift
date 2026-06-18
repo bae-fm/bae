@@ -57,7 +57,10 @@ struct CoverSheetView: View {
                             columns: [GridItem(.adaptive(minimum: 120))],
                             spacing: 12
                         ) {
-                            ForEach(remoteCovers, id: \.url) { cover in
+                            ForEach(
+                                remoteCovers,
+                                id: \.coverChoice.selection
+                            ) { cover in
                                 remoteCoverOption(cover)
                             }
                         }
@@ -143,7 +146,9 @@ struct CoverSheetView: View {
         Button(action: { onSelectRemote(cover) }) {
             VStack(spacing: 4) {
                 ImageView(
-                    source: .remote(url: cover.thumbnailUrl),
+                    source: ImageLoader.Source(
+                        bridge: cover.coverChoice.thumbnailSource
+                    ),
                     pointSize: 120
                 )
                 .frame(width: 120, height: 120)
@@ -157,6 +162,25 @@ struct CoverSheetView: View {
     }
 }
 
+private func previewRemoteCover(
+    url: String,
+    thumbnailUrl: String,
+    label: String
+) -> BridgeRemoteCover {
+    let selection = BridgeRemoteCoverSelection(
+        url: url,
+        source: .musicBrainz
+    )
+    return BridgeRemoteCover(
+        coverChoice: BridgeCoverChoice(
+            selection: .remoteCover(selection: selection),
+            previewSource: .remote(url: url),
+            thumbnailSource: .remote(url: thumbnailUrl)
+        ),
+        label: label
+    )
+}
+
 #Preview("Cover Sheet") {
     CoverSheetView(
         releaseImages: [
@@ -165,17 +189,15 @@ struct CoverSheetView: View {
         ],
         fetchRemoteCovers: {
             [
-                BridgeRemoteCover(
+                previewRemoteCover(
                     url: "https://example.com/cover1.jpg",
                     thumbnailUrl: "https://example.com/thumb1.jpg",
-                    label: "Front",
-                    source: .musicBrainz
+                    label: "Front"
                 ),
-                BridgeRemoteCover(
+                previewRemoteCover(
                     url: "https://example.com/cover2.jpg",
                     thumbnailUrl: "https://example.com/thumb2.jpg",
-                    label: "Back",
-                    source: .musicBrainz
+                    label: "Back"
                 ),
             ]
         },

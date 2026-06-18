@@ -197,9 +197,9 @@ enum ImportSearchFlow {
             // library-status banner, no track-count mismatch, no
             // Exact/Metadata choice).
             candidate.releaseDetailBridge = nil
-            // No source cover URL exists for Unknown; leave the local
+            // No source cover exists for Unknown; leave the local
             // artwork picker as the only cover affordance.
-            candidate.selectedCoverUrl = nil
+            candidate.selectedCover = nil
         }
 
         let task = Task { @MainActor in
@@ -280,7 +280,7 @@ enum ImportSearchFlow {
                     // Manual prefetch: the user just picked a different
                     // release, so any prior pick was for a now-stale cover
                     // set — replace it with the new release's default.
-                    candidate.selectedCoverUrl = bridgeDetail.defaultCoverUrl
+                    candidate.selectedCover = bridgeDetail.defaultCover
                     // Editor seed comes pre-shaped from bae-core (the
                     // Exact-vs-Approximate/Unknown pressing-field
                     // masking and per-track artist-override logic live
@@ -530,12 +530,12 @@ enum ImportSearchFlow {
         trackCountMismatch: Bool,
         expectedTrackCount: UInt32,
         libraryStatus: LibraryStatus?,
-        remoteCoverArts: [CoverArt],
+        remoteCoverArts: [BridgeRemoteCover],
         hasCoverOptions: Bool,
         storageManaged: Binding<Bool>,
         storagePinned: Binding<Bool>,
         importDisabled: Bool,
-        localArtwork: [FileInfo],
+        localArtwork: [ArtworkFile],
         uiStore: UiStore,
         onConfirmImport: @escaping () -> Void,
         onViewInLibrary: @escaping (String) -> Void,
@@ -543,7 +543,7 @@ enum ImportSearchFlow {
         @ViewBuilder actionExtra: @escaping () -> some View,
     ) -> some View {
         let candidate = importStore.candidate(forKey: key)
-        let selectedUrl = candidate?.selectedCoverUrl
+        let selectedCover = candidate?.selectedCover
         let importing = candidate.map(isImporting) ?? false
 
         if let candidate {
@@ -595,10 +595,10 @@ enum ImportSearchFlow {
                         CoverPickerView(
                             remoteCoverArts: remoteCoverArts,
                             localArtwork: localArtwork,
-                            selectedUrl: selectedUrl,
-                            onSelect: { url in
+                            selectedCover: selectedCover,
+                            onSelect: { selection in
                                 importStore.mutateCandidate(forKey: key) {
-                                    $0.selectedCoverUrl = url
+                                    $0.selectedCover = selection
                                 }
                                 uiStore.dismissModal()
                             },

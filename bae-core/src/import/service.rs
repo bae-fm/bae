@@ -543,6 +543,7 @@ impl ImportService {
     pub fn start(
         runtime_handle: tokio::runtime::Handle,
         library_manager: LibraryManager,
+        cover_art_archive: crate::import::cover_art::CoverArtArchiveClient,
     ) -> ImportServiceHandle {
         let (commands_tx, commands_rx) = mpsc::unbounded_channel();
         let (watcher_tx, watcher_rx) = mpsc::unbounded_channel();
@@ -600,6 +601,7 @@ impl ImportService {
             watcher_tx,
             event_tx,
             folder_registry,
+            cover_art_archive,
         )
     }
 

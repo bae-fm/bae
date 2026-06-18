@@ -8,6 +8,7 @@
 //! just iterates and renders.
 
 use crate::identify::GroupKey;
+use crate::import::cover_art::RemoteCover;
 use crate::import::search::MetadataResult;
 use crate::import::types::MetadataSource;
 
@@ -22,7 +23,7 @@ pub struct ReleaseGroup {
     pub title: String,
     pub artist: Option<String>,
     /// Representative cover for the card — the first pressing that surfaced one.
-    pub cover_url: Option<String>,
+    pub cover_art: Option<RemoteCover>,
     /// Human-readable source name ("MusicBrainz" / "Discogs").
     pub source_label: String,
     /// Editorial URL for the group on its source (release-group on
@@ -57,13 +58,13 @@ impl ReleaseGroup {
             .expect("release group built from at least one pressing");
         let title = first.title.clone();
         let artist = pressings.iter().find_map(|p| p.artist.clone());
-        let cover_url = pressings.iter().find_map(|p| p.cover_url.clone());
+        let cover_art = pressings.iter().find_map(|p| p.cover_art.clone());
         let meta_label = group_meta_label(&pressings);
         Self {
             id,
             title,
             artist,
-            cover_url,
+            cover_art,
             source_label: source.display_name().to_string(),
             group_url,
             meta_label,
@@ -142,7 +143,6 @@ fn group_meta_label(pressings: &[MetadataResult]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn result(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataResult {
         MetadataResult {
             source: MetadataSource::MusicBrainz,
@@ -154,8 +154,17 @@ mod tests {
             label: None,
             catalog_number: None,
             country: None,
-            cover_url: None,
+            cover_art: None,
             source_group_id: group_id.map(str::to_string),
+        }
+    }
+
+    fn cover() -> RemoteCover {
+        RemoteCover {
+            url: "https://caa.example/front.jpg".to_string(),
+            thumbnail_url: "https://caa.example/thumb.jpg".to_string(),
+            label: MetadataSource::MusicBrainz.cover_source_label().to_string(),
+            source: MetadataSource::MusicBrainz,
         }
     }
 
@@ -251,5 +260,16 @@ mod tests {
         );
         assert_eq!(rg.title, "Album Title");
         assert_eq!(rg.artist.as_deref(), Some("Artist Name"));
+    }
+
+    #[test]
+    fn representative_cover_preserves_remote_cover_pair() {
+        let cover = cover();
+        let mut first = result("rel-1", Some("g"), Some(1992));
+        first.cover_art = Some(cover.clone());
+
+        let groups = group_results(vec![first, result("rel-2", Some("g"), Some(1994))]);
+
+        assert_eq!(groups[0].cover_art, Some(cover));
     }
 }

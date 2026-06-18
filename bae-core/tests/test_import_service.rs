@@ -58,7 +58,11 @@ impl ImportFixture {
             None,
         );
 
-        let handle = ImportService::start(tokio::runtime::Handle::current(), library_manager);
+        let handle = ImportService::start(
+            tokio::runtime::Handle::current(),
+            library_manager,
+            bae_core::import::cover_art::CoverArtArchiveClient::new(),
+        );
 
         Self {
             db,

@@ -76,7 +76,11 @@ fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     library_manager: LibraryManager,
 ) -> bae_core::import::ImportServiceHandle {
-    bae_core::import::ImportService::start(runtime_handle.clone(), library_manager)
+    bae_core::import::ImportService::start(
+        runtime_handle.clone(),
+        library_manager,
+        bae_core::import::cover_art::CoverArtArchiveClient::new(),
+    )
 }
 /// Test helper to set up playback service with imported test tracks
 struct PlaybackTestFixture {

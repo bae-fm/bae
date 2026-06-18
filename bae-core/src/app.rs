@@ -225,13 +225,18 @@ fn bootstrap_inner(
     // library manager and the in-core player.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let app_services = {
-        let import_handle =
-            crate::import::ImportService::start(runtime.handle().clone(), library_manager.clone());
+        let cover_art_archive = crate::import::cover_art::CoverArtArchiveClient::new();
+        let import_handle = crate::import::ImportService::start(
+            runtime.handle().clone(),
+            library_manager.clone(),
+            cover_art_archive.clone(),
+        );
 
         let identify_handle = crate::identify::IdentifyService::start(
             library_manager.clone(),
             runtime.handle().clone(),
             import_handle.event_tx.clone(),
+            cover_art_archive,
         );
 
         let extraction_handle = crate::signals::ExtractionService::start(

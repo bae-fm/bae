@@ -8,7 +8,7 @@ struct ReleaseGroup: Equatable, Identifiable {
     let id: String
     let title: String
     let artist: String?
-    let coverImageSource: ImageLoader.Source?
+    let coverArt: BridgeRemoteCover?
     /// Human-readable source name ("MusicBrainz" / "Discogs"), pre-built by core.
     let sourceLabel: String
     /// Editorial URL for the group on its source. `nil` for an ungrouped result.
@@ -17,11 +17,17 @@ struct ReleaseGroup: Equatable, Identifiable {
     let metaLabel: String
     let pressings: [MetadataResult]
 
+    var coverImageSource: ImageLoader.Source? {
+        coverArt.map {
+            ImageLoader.Source(bridge: $0.coverChoice.thumbnailSource)
+        }
+    }
+
     init(bridge: BridgeReleaseGroup) {
         id = bridge.id
         title = bridge.title
         artist = bridge.artist
-        coverImageSource = bridge.coverUrl.map { .remote(url: $0) }
+        coverArt = bridge.coverArt
         sourceLabel = bridge.sourceLabel
         groupUrl = bridge.groupUrl.flatMap(URL.init(string:))
         metaLabel = bridge.metaLabel

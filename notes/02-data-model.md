@@ -175,7 +175,7 @@ library_images
 File location is deterministic from the id: `images/{prefix}/{subprefix}/{id}` (same hash-based layout as `storage/`). No extension on disk -- content type is in the DB. No `source_path` needed -- the path is derived.
 
 `source_url` values:
-- MusicBrainz: Cover Art Archive URL (e.g., `"https://coverartarchive.org/release/{mbid}/front-1200"`)
+- MusicBrainz: selected Cover Art Archive image URL
 - Discogs: image URL (e.g., `"https://i.discogs.com/..."`)
 - Local (selected from release files): `"release://{relative_path}"` (e.g., `"release://Artwork/front.jpg"`)
 

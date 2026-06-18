@@ -57,8 +57,11 @@ impl Fixture {
             EncryptionService::new_with_key(&[7u8; 32]),
         );
 
-        let handle =
-            bae_core::import::ImportService::start(tokio::runtime::Handle::current(), mgr.clone());
+        let handle = bae_core::import::ImportService::start(
+            tokio::runtime::Handle::current(),
+            mgr.clone(),
+            bae_core::import::cover_art::CoverArtArchiveClient::new(),
+        );
 
         Self {
             mgr,

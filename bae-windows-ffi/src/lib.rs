@@ -369,6 +369,15 @@ struct FfiRemoteCover {
     source: String,
 }
 
+fn remote_cover_to_ffi(cover: &bae_core::import::cover_art::RemoteCover) -> FfiRemoteCover {
+    FfiRemoteCover {
+        url: cover.url.clone(),
+        thumbnail_url: cover.thumbnail_url.clone(),
+        label: cover.label.clone(),
+        source: cover.source.as_str().to_string(),
+    }
+}
+
 /// A local image file in an import candidate's folder, offered as a cover
 /// choice in the import confirmation picker. `file_id` is the folder-relative
 /// path the import worker matches when this cover is selected (passed back as a
@@ -426,12 +435,7 @@ pub unsafe extern "C" fn bae_fetch_remote_covers(
     };
     let covers: Vec<FfiRemoteCover> = covers
         .into_iter()
-        .map(|cover| FfiRemoteCover {
-            url: cover.url,
-            thumbnail_url: cover.thumbnail_url,
-            label: cover.label,
-            source: cover.source.as_str().to_string(),
-        })
+        .map(|cover| remote_cover_to_ffi(&cover))
         .collect();
     json_cstring(&covers)
 }
@@ -2989,12 +2993,11 @@ pub unsafe extern "C" fn bae_search_releases(
                 .import()
                 .search_discogs(artist, album, None, None),
         ),
-        bae_core::import::MetadataSource::MusicBrainz => {
-            app.runtime
-                .block_on(bae_core::import::search::search_musicbrainz(
-                    artist, album, None, None,
-                ))
-        }
+        bae_core::import::MetadataSource::MusicBrainz => app.runtime.block_on(
+            app.services
+                .import()
+                .search_musicbrainz(artist, album, None, None),
+        ),
     };
     let results = match results {
         Ok(results) => results,
@@ -3236,18 +3239,8 @@ pub unsafe extern "C" fn bae_prefetch_candidate_edit(
         }
     };
 
-    let remote_covers: Vec<FfiRemoteCover> = detail
-        .cover_art
-        .iter()
-        .map(|cover| FfiRemoteCover {
-            url: cover.url.clone(),
-            // The prefetched detail carries one URL per cover; the picker scales
-            // it for the grid, so the full image doubles as its own thumbnail.
-            thumbnail_url: cover.url.clone(),
-            label: cover.source.display_name().to_string(),
-            source: cover.source.as_str().to_string(),
-        })
-        .collect();
+    let remote_covers: Vec<FfiRemoteCover> =
+        detail.cover_art.iter().map(remote_cover_to_ffi).collect();
 
     // Image files in the candidate's folder. The commit worker re-walks the
     // folder, so this scan is purely to populate the picker; a failure here just
@@ -3552,5 +3545,22 @@ mod tests {
             assert_eq!(json["track_id"], "trk-1");
             assert_eq!(json["album_id"], "alb-1");
         }
+    }
+
+    #[test]
+    fn remote_cover_ffi_preserves_thumbnail_url() {
+        let cover = bae_core::import::cover_art::RemoteCover {
+            url: "https://cover.example/full.jpg".to_string(),
+            thumbnail_url: "https://cover.example/thumb.jpg".to_string(),
+            label: "Cover Source".to_string(),
+            source: bae_core::import::MetadataSource::MusicBrainz,
+        };
+
+        let ffi = remote_cover_to_ffi(&cover);
+
+        assert_eq!(ffi.url, "https://cover.example/full.jpg");
+        assert_eq!(ffi.thumbnail_url, "https://cover.example/thumb.jpg");
+        assert_eq!(ffi.label, "Cover Source");
+        assert_eq!(ffi.source, "musicbrainz");
     }
 }

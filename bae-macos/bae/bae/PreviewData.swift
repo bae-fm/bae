@@ -902,6 +902,29 @@ enum PreviewData {
         )
     ]
 
+    private static func previewArtworkFile(
+        name: String,
+        size: UInt64,
+        sizeLabel: String,
+        localPath: String
+    ) -> BridgeArtworkFile {
+        BridgeArtworkFile(
+            file: BridgeFileInfo(
+                name: name,
+                size: size,
+                sizeLabel: sizeLabel,
+                dirPrefix: nil,
+                fileName: name,
+                localPath: localPath
+            ),
+            coverChoice: BridgeCoverChoice(
+                selection: .releaseImage(fileId: name),
+                previewSource: .local(path: localPath),
+                thumbnailSource: .local(path: localPath)
+            )
+        )
+    }
+
     static let bridgeCandidateFiles = BridgeCandidateFiles(
         audio: .cueFlacPairs(pairs: [
             BridgeCueFlacPair(
@@ -917,28 +940,22 @@ enum PreviewData {
             )
         ]),
         artwork: [
-            BridgeFileInfo(
+            previewArtworkFile(
                 name: "Front.png",
                 size: 2_500_000,
                 sizeLabel: "2 MB",
-                dirPrefix: nil,
-                fileName: "Front.png",
                 localPath: "/tmp/fake/Front.png"
             ),
-            BridgeFileInfo(
+            previewArtworkFile(
                 name: "Back.png",
                 size: 1_800_000,
                 sizeLabel: "2 MB",
-                dirPrefix: nil,
-                fileName: "Back.png",
                 localPath: "/tmp/fake/Back.png"
             ),
-            BridgeFileInfo(
+            previewArtworkFile(
                 name: "Matrix.png",
                 size: 900_000,
                 sizeLabel: "879 KB",
-                dirPrefix: nil,
-                fileName: "Matrix.png",
                 localPath: "/tmp/fake/Matrix.png"
             ),
         ],
@@ -992,7 +1009,7 @@ enum PreviewData {
             trackCountMismatch: false,
             tracks: tracks,
             coverArt: [],
-            defaultCoverUrl: nil,
+            defaultCover: nil,
         )
     }()
 
@@ -1032,12 +1049,10 @@ enum PreviewData {
                     }
             ),
             artwork: [
-                BridgeFileInfo(
+                previewArtworkFile(
                     name: "Front.png",
                     size: 2_500_000,
                     sizeLabel: "2 MB",
-                    dirPrefix: nil,
-                    fileName: "Front.png",
                     localPath: "/tmp/fake/Front.png"
                 )
             ],
@@ -1091,7 +1106,7 @@ enum PreviewData {
             id: "group-preview",
             title: "Album Title",
             artist: "Artist Name",
-            coverUrl: nil,
+            coverArt: nil,
             sourceLabel: "MusicBrainz",
             groupUrl: "https://musicbrainz.org/release-group/group-preview",
             metaLabel: "1988 \u{2013} 1996 \u{00b7} 2 pressings",
@@ -1119,7 +1134,7 @@ enum PreviewData {
                 id: "grp-1",
                 title: "Album Title One",
                 artist: "Artist Name",
-                coverUrl: nil,
+                coverArt: nil,
                 sourceLabel: "MusicBrainz",
                 groupUrl: "https://musicbrainz.org/release-group/grp-1",
                 metaLabel: "1996 \u{00b7} 2 pressings",
@@ -1150,7 +1165,7 @@ enum PreviewData {
                 id: "grp-2",
                 title: "Album Title One (Remaster)",
                 artist: "Artist Name",
-                coverUrl: nil,
+                coverArt: nil,
                 sourceLabel: "MusicBrainz",
                 groupUrl: "https://musicbrainz.org/release-group/grp-2",
                 metaLabel: "2005 \u{00b7} 1 pressing",

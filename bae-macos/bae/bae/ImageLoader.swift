@@ -10,6 +10,15 @@ enum ImageLoader {
         case local(path: String)
         case remote(url: String)
 
+        init(bridge: BridgeCoverImageSource) {
+            switch bridge {
+            case .local(let path):
+                self = .local(path: path)
+            case .remote(let url):
+                self = .remote(url: url)
+            }
+        }
+
         /// Human-readable description for failure logs.
         var description: String {
             switch self {

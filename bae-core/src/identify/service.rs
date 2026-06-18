@@ -6,6 +6,7 @@ use super::analyzer::{ArtworkAnalyzer, NoopAnalyzer};
 use super::barcode::{annotate_with_library_status, lookup_barcode};
 use super::discid::lookup_and_resolve;
 use super::state::{step, Effect, ExcludedSignal, IdentifyEvent, IdentifyState};
+use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::ImportEvent;
 use crate::library::LibraryManager;
 use std::collections::HashMap;
@@ -45,6 +46,7 @@ struct IdentifyServiceInner {
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
     event_tx: broadcast::Sender<ImportEvent>,
+    cover_art_archive: CoverArtArchiveClient,
     analyzer: Mutex<Arc<dyn ArtworkAnalyzer>>,
     cancel_tokens: Mutex<HashMap<String, CancellationToken>>,
     /// Per-candidate sender into the running driver's internal event channel.
@@ -62,12 +64,14 @@ impl IdentifyService {
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
         event_tx: broadcast::Sender<ImportEvent>,
+        cover_art_archive: CoverArtArchiveClient,
     ) -> IdentifyServiceHandle {
         IdentifyServiceHandle {
             inner: Arc::new(IdentifyServiceInner {
                 library_manager,
                 runtime_handle,
                 event_tx,
+                cover_art_archive,
                 analyzer: Mutex::new(Arc::new(NoopAnalyzer) as Arc<dyn ArtworkAnalyzer>),
                 cancel_tokens: Mutex::new(HashMap::new()),
                 inboxes: Mutex::new(HashMap::new()),
@@ -285,8 +289,10 @@ fn dispatch_effect(
             track_count,
         } => {
             let library_manager = inner.library_manager.clone();
+            let cover_art_archive = inner.cover_art_archive.clone();
             runtime.spawn(async move {
-                let outcome = lookup_and_resolve(&disc_id, &library_manager).await;
+                let outcome =
+                    lookup_and_resolve(&cover_art_archive, &disc_id, &library_manager).await;
                 if token.is_cancelled() {
                     return;
                 }
@@ -310,6 +316,7 @@ fn dispatch_effect(
 
         Effect::LookupBarcode { barcode } => {
             let library_manager = inner.library_manager.clone();
+            let cover_art_archive = inner.cover_art_archive.clone();
             runtime.spawn(async move {
                 let discogs = match library_manager.discogs_client() {
                     Ok(c) => c,
@@ -321,7 +328,7 @@ fn dispatch_effect(
                         return;
                     }
                 };
-                let lookup = lookup_barcode(&barcode, discogs.as_ref()).await;
+                let lookup = lookup_barcode(&cover_art_archive, &barcode, discogs.as_ref()).await;
                 if token.is_cancelled() {
                     return;
                 }

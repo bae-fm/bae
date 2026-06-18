@@ -38,7 +38,11 @@ fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     library_manager: LibraryManager,
 ) -> bae_core::import::ImportServiceHandle {
-    ImportService::start(runtime_handle.clone(), library_manager)
+    ImportService::start(
+        runtime_handle.clone(),
+        library_manager,
+        bae_core::import::cover_art::CoverArtArchiveClient::new(),
+    )
 }
 
 fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsRelease {

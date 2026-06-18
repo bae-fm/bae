@@ -358,14 +358,30 @@ struct ImportConfirmationView<
 // MARK: - CoverItem
 
 struct CoverItem: Identifiable, Equatable {
-    var id: String {
-        url
+    static func == (lhs: CoverItem, rhs: CoverItem) -> Bool {
+        lhs.id == rhs.id
     }
 
-    let url: String  // remote URL or "local:filename"
+    var id: BridgeCoverSelection { selection }
+    var selection: BridgeCoverSelection { coverChoice.selection }
+    var previewSource: ImageLoader.Source {
+        ImageLoader.Source(bridge: coverChoice.previewSource)
+    }
+
+    var thumbnailSource: ImageLoader.Source {
+        ImageLoader.Source(bridge: coverChoice.thumbnailSource)
+    }
+
+    let coverChoice: BridgeCoverChoice
     let label: String
-    let isLocal: Bool
-    let localPath: String?
+
+    init(
+        coverChoice: BridgeCoverChoice,
+        label: String
+    ) {
+        self.coverChoice = coverChoice
+        self.label = label
+    }
 }
 
 // MARK: - CoverPickerView
@@ -373,10 +389,10 @@ struct CoverItem: Identifiable, Equatable {
 /// A gallery-style picker for selecting cover art from remote and local sources.
 /// Presented as a sheet from the import confirmation view.
 struct CoverPickerView: View {
-    let remoteCoverArts: [CoverArt]
-    let localArtwork: [FileInfo]
-    let selectedUrl: String?
-    let onSelect: (String) -> Void
+    let remoteCoverArts: [BridgeRemoteCover]
+    let localArtwork: [ArtworkFile]
+    let selectedCover: BridgeCoverChoice?
+    let onSelect: (BridgeCoverChoice) -> Void
     let onDone: () -> Void
 
     @State
@@ -387,10 +403,8 @@ struct CoverPickerView: View {
         for cover in remoteCoverArts {
             result.append(
                 CoverItem(
-                    url: cover.url,
-                    label: cover.sourceLabel,
-                    isLocal: false,
-                    localPath: nil,
+                    coverChoice: cover.coverChoice,
+                    label: cover.label
                 )
             )
         }
@@ -399,20 +413,22 @@ struct CoverPickerView: View {
             // so it's always present on disk.
             result.append(
                 CoverItem(
-                    url: "local:\(file.name)",
-                    label: file.name,
-                    isLocal: true,
-                    localPath: file.localPath,
+                    coverChoice: file.coverChoice,
+                    label: file.name
                 )
             )
         }
         return result
     }
 
+    private var selectedItemId: BridgeCoverSelection? {
+        selectedCover?.selection
+    }
+
     private func rebuild() {
         cursor = Cursor(
             items: items,
-            preferring: cursor?.current.id ?? selectedUrl
+            preferring: cursor?.current.id ?? selectedItemId
         )
     }
 
@@ -480,10 +496,10 @@ struct CoverPickerView: View {
                     HStack {
                         Spacer()
                         Button("Use This Cover") {
-                            onSelect(cursor.current.url)
+                            onSelect(cursor.current.coverChoice)
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(cursor.current.url == selectedUrl)
+                        .disabled(cursor.current.id == selectedItemId)
                     }
                     .padding(.horizontal, 16)
                 }
@@ -517,45 +533,23 @@ struct CoverPickerView: View {
 
     @ViewBuilder
     private func coverPreview(for item: CoverItem) -> some View {
-        let source: ImageLoader.Source? =
-            item.isLocal
-            ? item.localPath.map { .local(path: $0) }
-            : .remote(url: item.url)
-        Group {
-            if let source {
-                ImageView(source: source, contentMode: .fit, pointSize: 600)
-            }
-            else {
-                Theme.placeholder
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .shadow(radius: 10)
+        ImageView(source: item.previewSource, contentMode: .fit, pointSize: 600)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .shadow(radius: 10)
     }
 
     @ViewBuilder
     private func pickerThumbnail(for item: CoverItem, isActive: Bool)
         -> some View
     {
-        let isSelected = item.url == selectedUrl
+        let isSelected = item.id == selectedItemId
 
         Button(action: { cursor?.select(id: item.id) }) {
             Group {
-                if item.isLocal, let localPath = item.localPath {
-                    ImageView(
-                        source: .local(path: localPath),
-                        pointSize: 56
-                    )
-                }
-                else if !item.isLocal {
-                    ImageView(
-                        source: .remote(url: item.url),
-                        pointSize: 56
-                    )
-                }
-                else {
-                    Theme.placeholder
-                }
+                ImageView(
+                    source: item.thumbnailSource,
+                    pointSize: 56
+                )
             }
             .frame(width: 56, height: 56)
             .clipShape(RoundedRectangle(cornerRadius: 6))

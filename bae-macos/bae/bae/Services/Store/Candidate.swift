@@ -125,7 +125,7 @@ struct Candidate: Equatable, Identifiable {
     var libraryStatuses: [String: LibraryStatus] = [:]
     var mode: CandidateMode = .identifying
     var error: String?
-    var selectedCoverUrl: String?
+    var selectedCover: BridgeCoverChoice?
     var search: CandidateSearchState = .init()
     /// Extracted signals (disc ID, barcodes, classified text), `nil` until the
     /// first extraction snapshot. The search UI surfaces these and feeds the

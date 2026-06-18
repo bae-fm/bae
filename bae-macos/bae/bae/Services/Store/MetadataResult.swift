@@ -46,18 +46,3 @@ struct MetadataResult: Equatable, Identifiable {
         country = bridge.country
     }
 }
-
-struct CoverArt: Equatable {
-    let url: String
-    /// Carried back to core when the user picks this cover (the commit path).
-    let source: MetadataSource
-    /// Pre-built source name from bae-core ("Cover Art Archive" / "Discogs"),
-    /// rendered as-is — the UI never switches on `source` for display.
-    let sourceLabel: String
-
-    init(bridge: BridgeCoverArt) {
-        url = bridge.url
-        source = MetadataSource(bridge: bridge.source)
-        sourceLabel = bridge.sourceLabel
-    }
-}

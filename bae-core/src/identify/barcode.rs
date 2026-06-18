@@ -5,6 +5,7 @@
 
 use crate::db::LibraryStatus;
 use crate::discogs::DiscogsClient;
+use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{search_discogs_by_barcode, search_mb_by_barcode, MetadataResult};
 
 /// Union search: MB first, then Discogs. Returns the merged results (MB
@@ -12,10 +13,12 @@ use crate::import::search::{search_discogs_by_barcode, search_mb_by_barcode, Met
 /// as `Err`; Discogs failures are logged and skipped so a provider outage
 /// doesn't break the phase.
 pub async fn lookup_barcode(
+    cover_art_archive: &CoverArtArchiveClient,
     barcode: &str,
     discogs_client: Option<&DiscogsClient>,
 ) -> Result<Vec<MetadataResult>, String> {
-    let mut combined: Vec<MetadataResult> = search_mb_by_barcode(barcode.to_string()).await?;
+    let mut combined: Vec<MetadataResult> =
+        search_mb_by_barcode(cover_art_archive, barcode.to_string()).await?;
 
     if let Some(client) = discogs_client {
         match search_discogs_by_barcode(client, barcode.to_string()).await {

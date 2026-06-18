@@ -1,4 +1,5 @@
 use crate::discogs::DiscogsClient;
+use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::folder_registry::{ImportFolderRegistry, WatchedFolder};
 use crate::import::folder_scanner::{FolderCandidate, InvalidCandidate};
 use crate::import::progress::ImportProgressHandle;
@@ -120,8 +121,8 @@ fn validation_from_validate_result(
 ///
 /// Holds no caches; the network-layer caches in
 /// `crate::musicbrainz`, `crate::discogs::client`, and
-/// `crate::import::cover_art` carry session-wide hits transparently for
-/// every caller. The handle is a thin orchestration layer: it dispatches
+/// the Cover Art Archive client carry session hits transparently for every
+/// caller. The handle is a thin orchestration layer: it dispatches
 /// fire-and-forget prefetches, builds `ImportCommand`s carrying just
 /// `MetadataRef`s, and forwards them to the worker.
 #[derive(Clone)]
@@ -136,6 +137,7 @@ pub struct ImportServiceHandle {
     /// The persistent watched-folder list. Mutated by `add_watched_folder` /
     /// `remove_watched_folder`, which persist it and broadcast the new list.
     pub folder_registry: Arc<Mutex<ImportFolderRegistry>>,
+    cover_art_archive: CoverArtArchiveClient,
 }
 
 #[derive(Debug, Clone)]
@@ -183,6 +185,7 @@ impl ImportServiceHandle {
         watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
         event_tx: broadcast::Sender<ImportEvent>,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
+        cover_art_archive: CoverArtArchiveClient,
     ) -> Self {
         let progress_handle =
             ImportProgressHandle::new(event_tx.subscribe(), runtime_handle.clone());
@@ -194,6 +197,7 @@ impl ImportServiceHandle {
             watcher_tx,
             event_tx,
             folder_registry,
+            cover_art_archive,
         }
     }
 
@@ -246,7 +250,7 @@ impl ImportServiceHandle {
                 source,
             } => match source {
                 MetadataSource::MusicBrainz => {
-                    super::search::search_musicbrainz(artist, album, None, None).await?
+                    self.search_musicbrainz(artist, album, None, None).await?
                 }
                 MetadataSource::Discogs => {
                     let client = self.discogs_client()?;
@@ -261,7 +265,11 @@ impl ImportServiceHandle {
                 source,
             } => match source {
                 MetadataSource::MusicBrainz => {
-                    super::search::search_mb_by_catalog_number(catalog_number).await?
+                    super::search::search_mb_by_catalog_number(
+                        &self.cover_art_archive,
+                        catalog_number,
+                    )
+                    .await?
                 }
                 MetadataSource::Discogs => {
                     let client = self.discogs_client()?;
@@ -273,7 +281,9 @@ impl ImportServiceHandle {
                 }
             },
             SearchQuery::Barcode { barcode, source } => match source {
-                MetadataSource::MusicBrainz => super::search::search_mb_by_barcode(barcode).await?,
+                MetadataSource::MusicBrainz => {
+                    super::search::search_mb_by_barcode(&self.cover_art_archive, barcode).await?
+                }
                 MetadataSource::Discogs => {
                     let client = self.discogs_client()?;
                     self.run_discogs_search(super::search::search_discogs_by_barcode(
@@ -331,6 +341,16 @@ impl ImportServiceHandle {
         .await
     }
 
+    pub async fn search_musicbrainz(
+        &self,
+        artist: String,
+        album: String,
+        year: Option<String>,
+        label: Option<String>,
+    ) -> Result<Vec<super::search::MetadataResult>, String> {
+        super::search::search_musicbrainz(&self.cover_art_archive, artist, album, year, label).await
+    }
+
     /// Fetch available remote cover art options for a release.
     /// Reads `release_identities` for the release and queries each
     /// source's cover endpoint:
@@ -348,8 +368,6 @@ impl ImportServiceHandle {
         &self,
         release_id: &str,
     ) -> Result<Vec<super::cover_art::RemoteCover>, String> {
-        use super::cover_art::RemoteCover;
-
         let identities = self
             .library_manager
             .get_release_identities(release_id)
@@ -361,33 +379,15 @@ impl ImportServiceHandle {
         for identity in &identities {
             match identity.source {
                 MetadataSource::MusicBrainz => {
-                    // Per-pressing CAA, when the identity is Exact.
-                    if let Some(rid) = &identity.source_release_id {
-                        if let Some(url) = super::cover_art::fetch_cover_art_from_archive(rid).await
-                        {
-                            covers.push(RemoteCover {
-                                url: url.clone(),
-                                thumbnail_url: url,
-                                label: "MusicBrainz".to_string(),
-                                source: MetadataSource::MusicBrainz,
-                            });
-                        }
-                    }
-                    // Album-level (release-group) CAA. Skip if duplicate
-                    // of the per-pressing URL.
-                    if let Some(rg_url) = super::cover_art::fetch_cover_art_from_release_group(
-                        &identity.source_group_id,
-                    )
-                    .await
+                    for cover in self
+                        .cover_art_archive
+                        .fetch_candidates(
+                            identity.source_release_id.as_deref(),
+                            Some(identity.source_group_id.as_str()),
+                        )
+                        .await
                     {
-                        if !covers.iter().any(|c| c.url == rg_url) {
-                            covers.push(RemoteCover {
-                                url: rg_url.clone(),
-                                thumbnail_url: rg_url,
-                                label: "MusicBrainz (Album)".to_string(),
-                                source: MetadataSource::MusicBrainz,
-                            });
-                        }
+                        super::cover_art::push_unique_cover(&mut covers, cover);
                     }
                 }
                 MetadataSource::Discogs => {
@@ -422,18 +422,8 @@ impl ImportServiceHandle {
                     };
                     match client.get_release(rid).await {
                         Ok((discogs_release, _raw_json)) => {
-                            if let Some(cover_url) = discogs_release
-                                .cover_image
-                                .or(discogs_release.thumb.clone())
-                            {
-                                let thumb =
-                                    discogs_release.thumb.unwrap_or_else(|| cover_url.clone());
-                                covers.push(RemoteCover {
-                                    url: cover_url,
-                                    thumbnail_url: thumb,
-                                    label: "Discogs".to_string(),
-                                    source: MetadataSource::Discogs,
-                                });
+                            if let Some(cover) = discogs_release.remote_cover() {
+                                covers.push(cover);
                             }
                         }
                         Err(ref e) => {
@@ -462,7 +452,9 @@ impl ImportServiceHandle {
         source: MetadataSource,
     ) -> Result<super::search::ImportSearchReleaseDetail, String> {
         match source {
-            MetadataSource::MusicBrainz => super::search::prefetch_mb_release(release_id).await,
+            MetadataSource::MusicBrainz => {
+                super::search::prefetch_mb_release(&self.cover_art_archive, release_id).await
+            }
             MetadataSource::Discogs => {
                 let client = self.discogs_client()?;
                 super::search::prefetch_discogs_release(&client, release_id).await

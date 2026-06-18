@@ -29,7 +29,7 @@ final class AppService: @unchecked Sendable, Observable {
 
     /// Import-flow session state — folder candidates and the preview audio
     /// state. Mixed-writer: reducer drives event-driven fields (scan, identify,
-    /// preview state); views drive user-set fields (mode, selectedCoverUrl).
+    /// preview state); views drive user-set fields (mode, selectedCover).
     let importStore: ImportStore
 
     /// Entity slices — the library cache. Keyed-by-id maps of the albums
