@@ -85,7 +85,7 @@ jobs:
     - name: Missing-environment check (swiftui-environment-audit)
       if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
       env:
-        AUDIT_VERSION: v0.2.0
+        AUDIT_VERSION: v0.3.0
       run: |
         set -euo pipefail
         archive="swiftui-environment-audit-${AUDIT_VERSION}-macos-arm64.tar.gz"
