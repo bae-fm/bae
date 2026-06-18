@@ -240,16 +240,19 @@ impl AudioDataReader for CloudReader {
             info!("CloudReader: source_size={source_size}");
 
             // One reader per track: the nonce header is fetched once and reused
-            // across every range read (a full-file stream issues many).
-            let reader = crate::storage::CloudBlobReader::new(
+            // across every range read (a full-file stream issues many). Every
+            // managed blob is master-key-scoped (see `BaeBlobPlan`).
+            let reader = crate::storage::BlobRangeReader::new(
                 cloud_home,
-                (*encryption_service).clone(),
+                &coven::sync::cloud_storage::CloudCipher::Encrypted((*encryption_service).clone()),
+                coven::blob::ResolvedScope::Master,
                 config.path.clone(),
                 source_size,
             );
 
             let result = fill_buffer_on_demand(buffer.clone(), wake, |src_off, len| {
-                reader.read(src_off, len)
+                let fut = reader.read(src_off, len);
+                async move { fut.await.map_err(|e| e.to_string()) }
             })
             .await;
 
@@ -643,7 +646,7 @@ mod tests {
     /// The playback decrypt path: a managed track whose audio lives only in the
     /// cloud, encrypted with the library master key, is read back through the
     /// `CloudReader` and recovered byte-for-byte. It exercises `CloudReader` ->
-    /// `CloudBlobReader` -> `EncryptionService::decrypt_range_with_offset`.
+    /// coven's `BlobRangeReader` -> `EncryptionService::decrypt_range_with_offset`.
     #[tokio::test]
     async fn cloud_reader_decrypts_managed_audio_with_master_key() {
         let master_key = [9u8; 32];
@@ -781,10 +784,8 @@ mod tests {
             "cloud range failure should emit playback error",
         )
         .await;
-        assert!(
-            error.contains("Cloud nonce-header read failed"),
-            "expected nonce-header failure, got: {error}",
-        );
+        // The failure on the nonce read (the first range read, asserted above)
+        // surfaces the provider's error body to the player.
         assert!(
             error.contains("checksum mismatch"),
             "expected provider body error, got: {error}",
