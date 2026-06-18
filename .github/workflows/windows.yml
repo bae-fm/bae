@@ -11,9 +11,13 @@ name: Windows build
 on:
   workflow_dispatch:
   push:
-    branches: [windows-native]
+    branches: [main, develop, windows-native]
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -78,10 +82,10 @@ jobs:
           C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
           echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+
       - name: Build the Windows FFI cdylib
-        # The FFI binds bae-core directly (not bae-bridge), so only it + bae-core
-        # are built here. bae-bridge's Windows-cleanliness is guarded on main's CI,
-        # not on this fast-iteration branch.
         run: cargo build -p bae-windows-ffi --target x86_64-pc-windows-msvc
 
       - name: Confirm the FFI DLL was produced
@@ -122,5 +126,7 @@ jobs:
           Copy-Item $dll $exe.DirectoryName -Force
           Write-Host "PASS: copied bae_windows_ffi.dll to $($exe.DirectoryName)"
 
-      - name: Clippy (bae-core, bae-windows-ffi)
-        run: cargo clippy -p bae-core -p bae-windows-ffi --target x86_64-pc-windows-msvc
+      - name: Clippy (bae-core, bae-windows-ffi, bae-bridge)
+        # bae-bridge is included here because the host clippy in ci.yml targets
+        # macOS — it doesn't catch cfg(target_os = "windows")-gated dead-code.
+        run: cargo clippy -p bae-core -p bae-windows-ffi -p bae-bridge --target x86_64-pc-windows-msvc -- -D warnings

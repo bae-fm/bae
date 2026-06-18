@@ -1,0 +1,96 @@
+name: iOS build
+
+# Debug CI gate: on every push/PR, cross-compiles bae-bridge for iOS,
+# builds the Xcode app (simulator), and runs format and clippy checks.
+# Mirrors what android.yml covers for Android. Release-specific steps
+# (versioning, archive, IPA packaging, GitHub Release) live in release-ios.yml.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    # Bottom-of-chain only, matching ci.yml: non-bottom chain PRs target their
+    # predecessor and get validated once the chain rebases onto main.
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    name: iOS
+    runs-on: macos-26
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Setup macOS environment
+      uses: ./.github/actions/setup-macos
+
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
+    - name: Check Rust formatting
+      run: cargo fmt --all -- --check
+
+    - name: Cache cross-built iOS FFmpeg
+      id: ffmpeg-cache
+      uses: actions/cache@v5
+      with:
+        path: third_party/ffmpeg-ios
+        # Keyed on the build recipe: rebuild only when the FFmpeg cross-build
+        # script changes (mirrors the Android FFmpeg cache).
+        key: ffmpeg-ios-${{ hashFiles('scripts/build-ffmpeg-ios.sh') }}
+
+    - name: Build iOS FFmpeg (on cache miss)
+      if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+      run: ./scripts/build-ffmpeg-ios.sh
+
+    - name: Clippy (iOS target)
+      # Run clippy against the iOS target so cfg(target_os = "ios")-gated
+      # dead-code warnings are caught. The host clippy in ci.yml targets macOS,
+      # where not(any(target_os = "ios", target_os = "android")) is true and those
+      # warnings don't fire. One target is enough; dead-code warnings are
+      # target-specific, not ABI-specific.
+      run: |
+        rustup target add aarch64-apple-ios 2>/dev/null || true
+        FFMPEG_PREFIX="$(pwd)/third_party/ffmpeg-ios/aarch64-apple-ios"
+        DEVICE_SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+        IPHONEOS_DEPLOYMENT_TARGET=16.0 \
+        FFMPEG_DIR="$FFMPEG_PREFIX" \
+        BINDGEN_EXTRA_CLANG_ARGS="--target=arm64-apple-ios16.0 -isysroot $DEVICE_SDK -I$FFMPEG_PREFIX/include" \
+        CARGO_TARGET_DIR="target-ios" \
+        cargo clippy --target aarch64-apple-ios -p bae-bridge -- -D warnings
+
+    - name: Install xcodegen
+      run: brew install xcodegen
+
+    - name: Build Rust bridge (iOS xcframework)
+      run: ./bae-bridge/build-ios.sh
+
+    - name: Generate Xcode project
+      working-directory: ./bae-ios/bae
+      run: xcodegen
+
+    - name: Build iOS app
+      id: build_ios
+      run: |
+        xcodebuild -project bae-ios/bae/bae.xcodeproj \
+          -scheme bae \
+          -configuration Debug \
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+          -sdk iphonesimulator \
+          build
+
+    - name: Check Swift formatting
+      if: ${{ !cancelled() }}
+      run: |
+        find bae-ios/bae/bae -name "*.swift" -not -name bae_bridge.swift -print0 \
+          | xargs -0 xcrun swift-format lint -s
