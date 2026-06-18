@@ -1212,6 +1212,9 @@ impl LibraryManager {
 
     /// The library's on-disk directory. The import layer reads/writes its
     /// sibling appdata files (e.g. the watched-folder registry) under it.
+    /// Only the desktop import modules call this, so it isn't compiled on
+    /// mobile (where it would otherwise be dead code).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn library_dir(&self) -> &LibraryDir {
         &self.library_dir
     }
