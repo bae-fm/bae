@@ -1,5 +1,19 @@
-import AppKit
-import SwiftUI
+import CoreGraphics
+import Foundation
+import ImageIO
+
+#if canImport(AppKit)
+    import AppKit
+
+    /// The platform's image type: `NSImage` on macOS, `UIImage` on iOS. Decode
+    /// is identical on both (ImageIO / CoreGraphics); only the final wrapper
+    /// differs.
+    typealias PlatformImage = NSImage
+#elseif canImport(UIKit)
+    import UIKit
+
+    typealias PlatformImage = UIImage
+#endif
 
 enum ImageLoader {
     enum Source: Equatable {
@@ -9,6 +23,10 @@ enum ImageLoader {
         /// `MediaPaths.fileSystemPath(of:)` with the version stripped.
         case local(path: String)
         case remote(url: String)
+        /// Image bytes already in memory — a cloud-only gallery image the
+        /// caller fetched and decrypted itself (iOS lightbox). Decoded at the
+        /// requested size without any further fetch.
+        case data(Data)
 
         init(bridge: BridgeCoverImageSource) {
             switch bridge {
@@ -26,6 +44,8 @@ enum ImageLoader {
                 return "image at path: \(path)"
             case .remote(let url):
                 return "remote image: \(url)"
+            case .data(let bytes):
+                return "in-memory image: \(bytes.count) bytes"
             }
         }
     }
@@ -33,8 +53,10 @@ enum ImageLoader {
     /// Decode strategy for `load`. `.fitTo` takes the IDCT thumbnail
     /// path, decoding at most `points × displayScale` pixels. `.native`
     /// decodes the source at its full pixel resolution, eagerly, so
-    /// the returned NSImage is ready to draw without main-thread
-    /// decode work.
+    /// the returned image is ready to draw without main-thread
+    /// decode work. The lightbox loads `.fitTo` for the screen-fit view
+    /// and upgrades to `.native` only when the user zooms in, so a huge
+    /// (e.g. 35 MB) JPEG never decodes at full resolution until needed.
     enum Size {
         case fitTo(points: CGFloat)
         case native
@@ -42,26 +64,34 @@ enum ImageLoader {
 
     struct DecodeError: Error {}
 
-    /// Loads an image for `source` at the given `size`. Local sources
-    /// read directly from disk; remote sources call `fetchRemoteBytes`
-    /// to pull the raw bytes (production: `MediaPaths.fetchCoverBytes`;
-    /// previews: the stub closure). The decode runs on a background
-    /// task and produces an NSImage backed by an already-decoded
-    /// CGImage. Throws `CancellationError` if the surrounding task is
-    /// cancelled, or `DecodeError` if the source can't be opened or
+    /// A `.remote` source was loaded without a `fetchRemoteBytes` closure.
+    /// Callers that only use `.local`/`.data` omit the closure; passing
+    /// `.remote` without one is a programming error, surfaced rather than
+    /// masked.
+    struct RemoteFetchUnavailable: Error {}
+
+    /// Loads an image for `source` at the given `size`. Local sources read
+    /// directly from disk; `.data` sources decode bytes already in memory;
+    /// remote sources call `fetchRemoteBytes` to pull the raw bytes
+    /// (production: `MediaPaths.fetchCoverBytes`; previews: the stub closure).
+    /// The decode runs on a background task and produces an image backed by an
+    /// already-decoded CGImage. Throws `CancellationError` if the surrounding
+    /// task is cancelled, or `DecodeError` if the source can't be opened or
     /// decoded.
     static func load(
         source: Source,
         size: Size,
         displayScale: CGFloat,
-        fetchRemoteBytes: @Sendable (_ url: String) async throws -> Data
-    ) async throws -> NSImage {
+        fetchRemoteBytes: @Sendable (_ url: String) async throws -> Data = {
+            _ in throw RemoteFetchUnavailable()
+        }
+    ) async throws -> PlatformImage {
         switch source {
         case .local(let identifier):
             // Open the bare file path, not the cache-busting identifier: the
             // `#v=<mtime>` suffix is the cache key, not part of the filename.
             let path = MediaPaths.fileSystemPath(of: identifier)
-            return try await decodeAsNSImage(displayScale: displayScale) {
+            return try await decodeAsPlatformImage(displayScale: displayScale) {
                 let url = URL(fileURLWithPath: path) as CFURL
                 guard let cgSource = CGImageSourceCreateWithURL(url, nil)
                 else {
@@ -75,22 +105,38 @@ enum ImageLoader {
             }
         case .remote(let url):
             let bytes = try await fetchRemoteBytes(url)
-            return try await decodeAsNSImage(displayScale: displayScale) {
-                guard
-                    let cgSource = CGImageSourceCreateWithData(
-                        bytes as CFData,
-                        nil
-                    )
-                else {
-                    return nil
-                }
-                return decodeCGImage(
-                    from: cgSource,
-                    size: size,
-                    displayScale: displayScale
-                )
-            }
+            return try await decodeData(
+                bytes: bytes,
+                size: size,
+                displayScale: displayScale
+            )
+        case .data(let bytes):
+            return try await decodeData(
+                bytes: bytes,
+                size: size,
+                displayScale: displayScale
+            )
         }
+    }
+}
+
+/// Decodes in-memory image `bytes` to a platform image at the requested size.
+/// Shared by the `.remote` (post-fetch) and `.data` branches of `load`.
+private func decodeData(
+    bytes: Data,
+    size: ImageLoader.Size,
+    displayScale: CGFloat
+) async throws -> PlatformImage {
+    try await decodeAsPlatformImage(displayScale: displayScale) {
+        guard let cgSource = CGImageSourceCreateWithData(bytes as CFData, nil)
+        else {
+            return nil
+        }
+        return decodeCGImage(
+            from: cgSource,
+            size: size,
+            displayScale: displayScale
+        )
     }
 }
 
@@ -130,27 +176,37 @@ private func decodeCGImage(
     }
 }
 
-/// Runs `decoder` on a background task, wraps the resulting CGImage in
-/// an NSImage with point-sized dimensions (pixel dims divided by
-/// `displayScale`), and propagates cancellation after the decode
-/// completes. Throws `ImageLoader.DecodeError` if the decoder returns
-/// nil.
-private func decodeAsNSImage(
+/// Runs `decoder` on a background task, wraps the resulting CGImage in a
+/// platform image with point-sized dimensions (pixel dims divided by
+/// `displayScale`), and propagates cancellation after the decode completes.
+/// Throws `ImageLoader.DecodeError` if the decoder returns nil.
+private func decodeAsPlatformImage(
     displayScale: CGFloat,
     decoder: @Sendable @escaping () -> CGImage?
-) async throws -> NSImage {
-    let loaded: NSImage? =
+) async throws -> PlatformImage {
+    let loaded: PlatformImage? =
         await Task.detached(priority: .userInitiated) {
             guard let cg = decoder() else {
                 return nil
             }
-            return NSImage(
-                cgImage: cg,
-                size: NSSize(
-                    width: CGFloat(cg.width) / displayScale,
-                    height: CGFloat(cg.height) / displayScale
+            #if canImport(AppKit)
+                return NSImage(
+                    cgImage: cg,
+                    size: NSSize(
+                        width: CGFloat(cg.width) / displayScale,
+                        height: CGFloat(cg.height) / displayScale
+                    )
                 )
-            )
+            #elseif canImport(UIKit)
+                // scale == displayScale makes the point size pixel/scale,
+                // matching the NSImage sizing above. Orientation is `.up`:
+                // the thumbnail decode already applied any EXIF transform.
+                return UIImage(
+                    cgImage: cg,
+                    scale: displayScale,
+                    orientation: .up
+                )
+            #endif
         }
         .value
     try Task.checkCancellation()

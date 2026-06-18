@@ -31,6 +31,9 @@ targets:
       # desktop-only ones behind `#if !os(iOS)`).
       - path: ../../bae-macos/bae/bae/Logger.swift
       - path: ../../bae-macos/bae/bae/Theme.swift
+      # AppKit/UIKit-bridged via a `PlatformImage` typealias behind
+      # `#if canImport`, so it compiles AppKit-free on iOS.
+      - path: ../../bae-macos/bae/bae/ImageLoader.swift
       - path: ../../bae-macos/bae/bae/BridgeSortField+CaseIterable.swift
       - path: ../../bae-macos/bae/bae/Services/PlaybackStore.swift
       - path: ../../bae-macos/bae/bae/Services/PlaybackPositionEvent.swift
