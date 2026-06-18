@@ -1,5 +1,5 @@
 [workspace]
-members = ["bae-bridge", "bae-core", "bae-windows-ffi"]
+members = ["bae-bridge", "bae-core", "bae-loc", "bae-windows-ffi"]
 resolver = "2"
 
 [workspace.dependencies]

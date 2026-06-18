@@ -1,0 +1,31 @@
+# bae localization catalog — the single source of truth for strings that
+# originate in shared Rust logic (`core.*`) and shared chrome opted in by the UI
+# (`ui.*`). Source language: English. Each `value` is an ICU MessageFormat 1
+# string; `args` declares each placeholder's type so `loc-gen check` can verify
+# the catalog (and, once message enums exist, cross-check them).
+
+[messages."core.import.validation.empty_album_title"]
+comment = "Import edit: the album title field is blank."
+value = "Album title is required"
+
+[messages."core.import.validation.no_album_artist"]
+comment = "Import edit: no album artist was entered."
+value = "Album must have at least one artist"
+
+[messages."core.import.validation.invalid_year"]
+comment = "Import edit: the year field is not a number."
+value = "Year must be a number"
+
+[messages."core.identify.barcode.looking_up"]
+comment = "Identify: which barcode is being looked up, of how many."
+args = { position = "Int", total = "Int" }
+value = "Looking up barcode {position} of {total}"
+
+[messages."core.outbox.pending_deletes"]
+comment = "Storage queue: number of cloud deletes still pending."
+args = { count = "Int" }
+value = "{count, plural, one {# pending delete} other {# pending deletes}}"
+
+[messages."ui.library.remove_from_device"]
+comment = "Settings: button that removes the library from this device."
+value = "remove this library from this device"
