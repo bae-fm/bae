@@ -161,6 +161,14 @@ jobs:
         brew install ktlint
         ktlint "bae-android/app/src/**/*.kt"
 
+    - name: Kotlin dead code check (detekt)
+      # detekt static analysis: unused code, unused imports, unused private
+      # members. --build-upon-default-config applies the standard Kotlin ruleset.
+      # Same scope as ktlint: hand-written sources only.
+      run: |
+        brew install detekt
+        detekt --input bae-android/app/src/main/java --build-upon-default-config
+
     - name: Decode signing keystore
       if: inputs.profile == 'release'
       env:

@@ -17,6 +17,11 @@
     <RootNamespace>Bae.Windows</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <!-- CS0168/CS0219: unused local variables (compiler warnings promoted to errors).
+         IDE0051/IDE0052 (unused private members) are enforced via .editorconfig
+         when EnforceCodeStyleInBuild=true is passed at build time. -->
+    <WarningsAsErrors>CS0168;CS0219</WarningsAsErrors>
 
     <!-- WinUI 3 in the Windows App SDK. -->
     <UseWinUI>true</UseWinUI>

@@ -103,6 +103,11 @@ jobs:
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
 
+      - name: Check C# formatting
+        # dotnet format uses .editorconfig rules. --verify-no-changes exits non-zero
+        # if any file would be reformatted, failing the build.
+        run: dotnet format bae-windows\bae-windows.csproj --verify-no-changes
+
       - name: Build the WinUI app (C# → P/Invoke → FFI DLL)
         # Unpackaged WinUI 3 (C#/.NET) app, x64, framework-dependent. Proves the
         # native UI stack compiles and links against the FFI: C# (WinUI) → P/Invoke
@@ -110,7 +115,10 @@ jobs:
         # the WinUI XAML markup compiler needs the full VS toolchain to resolve
         # project-local x:DataType types (dotnet build drops the LocalAssembly
         # parameter — WMC1509 — and fails type resolution). A non-zero exit fails.
-        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=x64
+        # EnforceCodeStyleInBuild=true makes IDE-level dead-code diagnostics
+        # (IDE0051 unused private members, IDE0052 unread private members) fire
+        # as build errors via .editorconfig severity settings.
+        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=x64 /p:EnforceCodeStyleInBuild=true
 
       - name: Stage the FFI DLL next to the WinUI build output
         shell: pwsh
