@@ -137,20 +137,30 @@ struct ImportSearchFormView: View {
     }
 }
 
-// MARK: - ImportSearchPane
+// MARK: - ImportSearchState
 
-struct ImportSearchPane: View {
-    /// Current identify-pipeline state from core.
+/// Everything `ImportSearchPane` renders from — the identify/results state and
+/// the surrounding flags. The editable form fields (search bindings) and the
+/// actions stay separate; this is the read-only display state.
+struct ImportSearchState {
     let identifyState: IdentifyState
     let showManualSearch: Bool
     let error: String?
     let searchGroups: [ReleaseGroup]
-    /// Release id of the pressing whose confirm pane is open, for row selection.
     let selectedReleaseId: String?
     let isSearching: Bool
     let hasSearched: Bool
     let isImporting: Bool
     let libraryStatuses: [String: LibraryStatus]
+    let discogsEnabled: Bool
+    let signals: Signals?
+    let signalsToolbar: SignalsToolbar
+}
+
+// MARK: - ImportSearchPane
+
+struct ImportSearchPane: View {
+    let state: ImportSearchState
     @Binding
     var activeTab: SearchTab
     @Binding
@@ -163,11 +173,6 @@ struct ImportSearchPane: View {
     var searchCatalog: String
     @Binding
     var searchBarcode: String
-    let discogsEnabled: Bool
-    let signals: Signals?
-    /// The interactive signals toolbar — the pre-shaped badge list. Empty
-    /// until the first identify transition; the toolbar is hidden until then.
-    let signalsToolbar: SignalsToolbar
     let onSearch: () -> Void
     let onOpenSettings: () -> Void
     let onSearchManually: () -> Void
@@ -197,7 +202,7 @@ struct ImportSearchPane: View {
     {
         guard
             case .found(let group, let statuses, _, _, let provenance) =
-                identifyState
+                state.identifyState
         else {
             return nil
         }
@@ -208,7 +213,7 @@ struct ImportSearchPane: View {
     /// "Identifying…" placeholder (the per-signal progress lives in the
     /// toolbar's spinning badges now).
     private var isTriangulating: Bool {
-        if case .triangulating = identifyState {
+        if case .triangulating = state.identifyState {
             return true
         }
         return false
@@ -218,13 +223,13 @@ struct ImportSearchPane: View {
     /// transition. Hidden until then (empty badge list) and in idle.
     @ViewBuilder
     private var toolbar: some View {
-        if !signalsToolbar.signals.isEmpty {
+        if !state.signalsToolbar.signals.isEmpty {
             SignalsToolbarView(
-                toolbar: signalsToolbar,
+                toolbar: state.signalsToolbar,
                 onToggle: onToggleSignal,
                 onRerun: onRerun,
                 onSearchManually: onSearchManually,
-                onAddAsUnknown: showManualSearch ? nil : onAddAsUnknown,
+                onAddAsUnknown: state.showManualSearch ? nil : onAddAsUnknown,
             )
         }
     }
@@ -243,7 +248,7 @@ struct ImportSearchPane: View {
             let discidSourceLabel,
             let matchedBarcode,
             _
-        ) = identifyState, !showManualSearch {
+        ) = state.identifyState, !state.showManualSearch {
             conflictView(
                 discidResults: discidResults,
                 discidLibraryStatuses: discidLibraryStatuses,
@@ -261,14 +266,14 @@ struct ImportSearchPane: View {
     @ViewBuilder
     private var normalBody: some View {
         let found = foundResult
-        let showingAutoMatches = found != nil && !showManualSearch
+        let showingAutoMatches = found != nil && !state.showManualSearch
 
         VStack(spacing: 0) {
             toolbar
 
             identifyBanner
 
-            if let error {
+            if let error = state.error {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
                     Text(error)
@@ -282,14 +287,14 @@ struct ImportSearchPane: View {
             if showingAutoMatches, let found {
                 ReleaseGroupListView(
                     groups: [found.group],
-                    isImporting: isImporting,
+                    isImporting: state.isImporting,
                     libraryStatuses: found.statuses,
                     provenance: found.provenance,
-                    selectedReleaseId: selectedReleaseId,
+                    selectedReleaseId: state.selectedReleaseId,
                     onSelect: onSelect,
                 )
             }
-            else if isTriangulating, !showManualSearch {
+            else if isTriangulating, !state.showManualSearch {
                 // The toolbar's spinning badges carry the per-signal progress;
                 // the body just notes the pipeline is still working.
                 ContentUnavailableView(
@@ -307,18 +312,18 @@ struct ImportSearchPane: View {
                     searchAlbum: $searchAlbum,
                     searchCatalog: $searchCatalog,
                     searchBarcode: $searchBarcode,
-                    discogsEnabled: discogsEnabled,
-                    signals: signals,
+                    discogsEnabled: state.discogsEnabled,
+                    signals: state.signals,
                     onSearch: onSearch,
                     onOpenSettings: onOpenSettings,
                 )
                 Divider()
 
-                if isSearching {
+                if state.isSearching {
                     ProgressView("Searching...")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                else if !hasSearched {
+                else if !state.hasSearched {
                     ContentUnavailableView(
                         "No results",
                         systemImage: "magnifyingglass",
@@ -328,7 +333,7 @@ struct ImportSearchPane: View {
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                else if searchGroups.isEmpty {
+                else if state.searchGroups.isEmpty {
                     ContentUnavailableView(
                         "No matches found",
                         systemImage: "magnifyingglass",
@@ -340,10 +345,10 @@ struct ImportSearchPane: View {
                 }
                 else {
                     ReleaseGroupListView(
-                        groups: searchGroups,
-                        isImporting: isImporting,
-                        libraryStatuses: libraryStatuses,
-                        selectedReleaseId: selectedReleaseId,
+                        groups: state.searchGroups,
+                        isImporting: state.isImporting,
+                        libraryStatuses: state.libraryStatuses,
+                        selectedReleaseId: state.selectedReleaseId,
                         onSelect: onSelect,
                     )
                 }
@@ -354,13 +359,13 @@ struct ImportSearchPane: View {
 
     @ViewBuilder
     private var identifyBanner: some View {
-        let showingAutoMatches = foundResult != nil && !showManualSearch
+        let showingAutoMatches = foundResult != nil && !state.showManualSearch
 
         // The toolbar above owns the global escapes (Search manually / Skip
         // identifying / Re-run), so the banner carries only the status copy
         // and banner-specific navigation (the source link, "View automatic
         // matches"). Error has no toolbar, so it keeps its own escape.
-        switch identifyState {
+        switch state.identifyState {
         case .triangulating:
             // The toolbar's spinning badges and the body placeholder cover
             // triangulation; the banner stays out of the way.
@@ -471,7 +476,7 @@ struct ImportSearchPane: View {
 
             conflictBannerLarge
 
-            if let error {
+            if let error = state.error {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
                     Text(error)
@@ -576,7 +581,7 @@ struct ImportSearchPane: View {
                 }
                 .buttonStyle(.link)
                 .font(.caption)
-                .disabled(isImporting)
+                .disabled(state.isImporting)
             }
             .padding(.top, 8)
             .padding(.bottom, 6)
@@ -587,9 +592,9 @@ struct ImportSearchPane: View {
                 ForEach(results, id: \.releaseId) { result in
                     ImportSearchResultRow(
                         result: result,
-                        isImporting: isImporting,
+                        isImporting: state.isImporting,
                         libraryStatus: libraryStatuses[result.releaseId],
-                        isSelected: result.releaseId == selectedReleaseId,
+                        isSelected: result.releaseId == state.selectedReleaseId,
                         onSelect: { onSelect(result) },
                     )
                     Rectangle().fill(.white.opacity(0.05)).frame(height: 1)
@@ -848,35 +853,18 @@ struct DiscogsKeyPopover: View {
         /// Preview builder — fixes the form bindings and action callbacks to inert
         /// defaults so a preview states only the result situation it exercises.
         static func preview(
-            identifyState: IdentifyState,
-            showManualSearch: Bool = false,
-            searchGroups: [ReleaseGroup] = [],
-            hasSearched: Bool = false,
-            discogsEnabled: Bool = true,
-            signals: Signals? = nil,
-            signalsToolbar: SignalsToolbar = SignalsToolbar(signals: []),
+            state: ImportSearchState,
             searchArtist: String = "",
             searchAlbum: String = "",
         ) -> ImportSearchPane {
             ImportSearchPane(
-                identifyState: identifyState,
-                showManualSearch: showManualSearch,
-                error: nil,
-                searchGroups: searchGroups,
-                selectedReleaseId: nil,
-                isSearching: false,
-                hasSearched: hasSearched,
-                isImporting: false,
-                libraryStatuses: [:],
+                state: state,
                 activeTab: .constant(.general),
                 activeSource: .constant(.musicBrainz),
                 searchArtist: .constant(searchArtist),
                 searchAlbum: .constant(searchAlbum),
                 searchCatalog: .constant(""),
                 searchBarcode: .constant(""),
-                discogsEnabled: discogsEnabled,
-                signals: signals,
-                signalsToolbar: signalsToolbar,
                 onSearch: {},
                 onOpenSettings: {},
                 onSearchManually: {},
@@ -891,72 +879,17 @@ struct DiscogsKeyPopover: View {
 #endif
 
 #Preview("Main Pane - Exact Matches") {
-    ImportSearchPane.preview(
-        identifyState: .found(
-            group: PreviewData.searchGroupExact,
-            libraryStatuses: [:],
-            trackCount: 0,
-            source: .discid,
-            provenance: PreviewData.searchProvenanceExact,
-        ),
-        signals: PreviewData.settledSignals,
-        signalsToolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
-                kind: .discId,
-                role: .identity,
-                value: "disc-hash",
-                origin: .discToc,
-                state: .found(count: 3),
-                excluded: false
-            ),
-            ToolbarSignal(
-                kind: .catalog,
-                role: .filter,
-                value: "WPCR-80001",
-                origin: .folderName,
-                state: .confirms(count: 1),
-                excluded: false
-            ),
-        ]),
-    )
-    .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
-    .environment(MediaPaths.stub)
-    .environment(UiStore())
+    ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+        .frame(width: 700, height: 600)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
+        .environment(MediaPaths.stub)
+        .environment(UiStore())
 }
 
 #Preview("Main Pane - Manual Search") {
     ImportSearchPane.preview(
-        identifyState: .found(
-            group: PreviewData.searchGroupsManual[0],
-            libraryStatuses: [:],
-            trackCount: 0,
-            source: .discid,
-            provenance: [:],
-        ),
-        showManualSearch: true,
-        searchGroups: PreviewData.searchGroupsManual,
-        hasSearched: true,
-        signals: PreviewData.settledSignals,
-        signalsToolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
-                kind: .discId,
-                role: .identity,
-                value: "disc-hash",
-                origin: .discToc,
-                state: .found(count: 2),
-                excluded: false
-            ),
-            ToolbarSignal(
-                kind: .catalog,
-                role: .filter,
-                value: "WPCR-80001",
-                origin: .folderName,
-                state: .confirms(count: 0),
-                excluded: false
-            ),
-        ]),
+        state: PreviewData.searchStateManual,
         searchArtist: "Artist Name",
         searchAlbum: "Album Title One",
     )
@@ -968,40 +901,12 @@ struct DiscogsKeyPopover: View {
 }
 
 #Preview("Main Pane - Conflict") {
-    ImportSearchPane.preview(
-        identifyState: .conflict(
-            discidResults: PreviewData.conflictDiscidResults,
-            discidLibraryStatuses: [:],
-            barcodeResults: PreviewData.conflictBarcodeResults,
-            barcodeLibraryStatuses: [:],
-            discidSourceLabel: "MusicBrainz",
-            matchedBarcode: "5051961234567",
-            trackCount: 11,
-        ),
-        signalsToolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
-                kind: .discId,
-                role: .identity,
-                value: "disc-hash",
-                origin: .discToc,
-                state: .found(count: 2),
-                excluded: false
-            ),
-            ToolbarSignal(
-                kind: .barcode,
-                role: .identity,
-                value: "5051961234567",
-                origin: .artwork,
-                state: .found(count: 3),
-                excluded: false
-            ),
-        ]),
-    )
-    .environment(UiStore())
-    .environment(MediaPaths.stub)
-    .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
+    ImportSearchPane.preview(state: PreviewData.searchStateConflict)
+        .environment(UiStore())
+        .environment(MediaPaths.stub)
+        .frame(width: 700, height: 600)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
 }
 
 #Preview("Source Picker - Discogs Disabled") {

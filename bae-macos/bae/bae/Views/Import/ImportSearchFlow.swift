@@ -375,15 +375,20 @@ enum ImportSearchFlow {
             }
 
         ImportSearchPane(
-            identifyState: candidate.identifyState,
-            showManualSearch: candidate.search.showManualSearch,
-            error: candidate.error,
-            searchGroups: tabResults.groups,
-            selectedReleaseId: selectedReleaseId,
-            isSearching: tabResults.isSearching,
-            hasSearched: tabResults.hasSearched,
-            isImporting: isImporting(candidate),
-            libraryStatuses: candidate.libraryStatuses,
+            state: ImportSearchState(
+                identifyState: candidate.identifyState,
+                showManualSearch: candidate.search.showManualSearch,
+                error: candidate.error,
+                searchGroups: tabResults.groups,
+                selectedReleaseId: selectedReleaseId,
+                isSearching: tabResults.isSearching,
+                hasSearched: tabResults.hasSearched,
+                isImporting: isImporting(candidate),
+                libraryStatuses: candidate.libraryStatuses,
+                discogsEnabled: configStore.config.discogsUsable,
+                signals: candidate.signals,
+                signalsToolbar: candidate.signalsToolbar,
+            ),
             activeTab: makeActiveTabBinding(
                 importStore: importStore,
                 key: key,
@@ -418,9 +423,6 @@ enum ImportSearchFlow {
                 candidate: candidate,
                 field: \.searchBarcode
             ),
-            discogsEnabled: configStore.config.discogsUsable,
-            signals: candidate.signals,
-            signalsToolbar: candidate.signalsToolbar,
             onSearch: {
                 dispatchSearch(
                     importer: importer,
