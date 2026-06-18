@@ -74,9 +74,9 @@ struct BaeApp: App {
             ?? Empty().eraseToAnyPublisher()
     }
 
-    /// WelcomeView constructed with the deep-link mode if the sidebar
-    /// requested one, else the default chooser. Bound to the same
-    /// callback for both paths.
+    /// WelcomeView constructed with the deep-link mode if a menu item
+    /// requested one (Restore from Code), else the default chooser. Bound
+    /// to the same callback for both paths.
     @ViewBuilder
     private var welcomeView: some View {
         if let mode = appDelegate.welcomeInitialMode {
@@ -90,10 +90,9 @@ struct BaeApp: App {
         }
     }
 
-    /// Detail-pane content while the shell is mounted. Switching
+    /// Main-window content once the first library has opened. Switching
     /// libraries flips `screen` to `.loading` briefly; we render a
-    /// ProgressView in the detail so the sidebar stays visible across
-    /// the swap.
+    /// ProgressView so the window shows progress across the swap.
     @ViewBuilder
     private var detailContent: some View {
         switch appDelegate.screen {
@@ -115,8 +114,8 @@ struct BaeApp: App {
                         id: libraryId,
                     )
                 },
-                // Cancelling a switch-to-locked-library returns to the library
-                // that's still open behind the shell.
+                // Cancelling a switch-to-locked-library returns to the
+                // library that's still open.
                 onCancel: { appDelegate.screen = .library },
             )
         case .library:
@@ -124,48 +123,69 @@ struct BaeApp: App {
         }
     }
 
-    /// Sidebar + detail, kept mounted for the lifetime of the app once
-    /// the first library opens. "+ Add..." in the sidebar presents
-    /// `WelcomeView` as a sheet rather than swapping screens.
-    @ViewBuilder
-    private var shellContent: some View {
-        NavigationSplitView(
-            columnVisibility: Binding(
-                get: { appDelegate.sidebarVisibility },
-                set: { appDelegate.sidebarVisibility = $0 }
-            )
-        ) {
-            LibrarySidebar(
-                onOpen: { appDelegate.openLibrary($0) },
-                onAddLibrary: { mode in
-                    appDelegate.welcomeInitialMode = mode
-                    appDelegate.showAddLibrarySheet = true
-                },
-                onRevealInFinder: { library in
-                    SystemActions.revealInFinder(path: library.path)
-                },
-                onCopyLibraryId: { id in
-                    SystemActions.copyToPasteboard(id)
-                },
-                librariesChanged: appDelegate.librariesChanged
-                    .eraseToAnyPublisher(),
-            )
-            .navigationSplitViewColumnWidth(
-                min: 180,
-                ideal: 220,
-                max: 320,
-            )
-        } detail: {
-            detailContent
-        }
-        .sheet(
-            isPresented: Binding(
-                get: { appDelegate.showAddLibrarySheet },
-                set: { appDelegate.showAddLibrarySheet = $0 }
-            )
-        ) {
-            welcomeView
-        }
+    /// Modal hosts attached to the main window: the welcome flow (New
+    /// Library / Restore from Code), the rename sheet, and the lock
+    /// confirmation. Each is driven by `AppDelegate` trigger state set from
+    /// the File menu and acts on the active library via `appService.sync`.
+    private func libraryModals<Content: View>(
+        _ content: Content
+    ) -> some View {
+        content
+            .sheet(
+                isPresented: Binding(
+                    get: { appDelegate.showAddLibrarySheet },
+                    set: { appDelegate.showAddLibrarySheet = $0 }
+                )
+            ) {
+                welcomeView
+            }
+            .sheet(
+                item: Binding(
+                    get: { appDelegate.renameLibrarySheet },
+                    set: { appDelegate.renameLibrarySheet = $0 }
+                )
+            ) { sheet in
+                RenameLibrarySheet(
+                    state: Binding(
+                        get: {
+                            appDelegate.renameLibrarySheet
+                                ?? RenameLibrarySheetState(
+                                    id: "",
+                                    newName: ""
+                                )
+                        },
+                        set: { appDelegate.renameLibrarySheet = $0 }
+                    ),
+                    onCancel: { appDelegate.renameLibrarySheet = nil },
+                    onCommit: { newName in
+                        appDelegate.renameLibrary(sheet.id, to: newName)
+                    },
+                )
+            }
+            .alert(
+                "Lock library?",
+                isPresented: Binding(
+                    get: { appDelegate.confirmLockLibrary },
+                    set: { appDelegate.confirmLockLibrary = $0 }
+                )
+            ) {
+                Button("Lock", role: .destructive) {
+                    appDelegate.lockActiveLibrary()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(lockConfirmMessage)
+            }
+    }
+
+    /// Confirmation body for locking the active library, naming it so the
+    /// user knows which one they're locking.
+    private var lockConfirmMessage: String {
+        let name =
+            appDelegate.appService?.configStore.config.libraryName
+            ?? "This library"
+        return
+            "\(name)'s encryption key will be removed from the keychain. This session keeps working; you'll need to re-enter the key on next launch."
     }
 
     /// Pre-shell content: shown before any library has been opened.
@@ -208,44 +228,31 @@ struct BaeApp: App {
 
     var body: some Scene {
         Window("bae", id: "main") {
-            Group {
-                if appDelegate.hasShell {
-                    // The split view must be the window's structural root for
-                    // its sidebar column to render on macOS; wrapping it in a
-                    // stack collapses it to detail-only.
-                    shellContent
-                }
-                else {
-                    // Bootstrap screens lay out as a vertical stack (the
-                    // loading case centers a spinner between two Spacers).
-                    VStack(spacing: 0) {
-                        bootstrapContent
+            libraryModals(
+                Group {
+                    if appDelegate.hasShell {
+                        detailContent
+                    }
+                    else {
+                        // Bootstrap screens lay out as a vertical stack (the
+                        // loading case centers a spinner between two Spacers).
+                        VStack(spacing: 0) {
+                            bootstrapContent
+                        }
                     }
                 }
-            }
-            .frame(minWidth: 900, minHeight: 600)
-            .background(Theme.background)
-            .preferredColorScheme(.dark)
-            .navigationTitle(windowTitle)
-            .overlay(alignment: .bottom) {
-                if let loadError = appDelegate.loadError {
-                    Text(loadError)
-                        .foregroundStyle(.red)
-                        .padding()
+                .frame(minWidth: 900, minHeight: 600)
+                .background(Theme.background)
+                .preferredColorScheme(.dark)
+                .navigationTitle(windowTitle)
+                .overlay(alignment: .bottom) {
+                    if let loadError = appDelegate.loadError {
+                        Text(loadError)
+                            .foregroundStyle(.red)
+                            .padding()
+                    }
                 }
-            }
-            .overlay(alignment: .top) {
-                if let libraries = appDelegate.quickSwitcher {
-                    LibraryQuickSwitcher(
-                        libraries: libraries,
-                        onPick: { lib in
-                            appDelegate.quickSwitcher = nil
-                            appDelegate.openLibrary(lib)
-                        },
-                        onCancel: { appDelegate.quickSwitcher = nil },
-                    )
-                }
-            }
+            )
             .environment(appDelegate.appService?.playbackStore)
             .environment(appDelegate.appService?.configStore)
             .environment(appDelegate.appService?.importStore)
@@ -333,8 +340,34 @@ struct BaeApp: App {
                     libraryStore: appService.libraryStore,
                     playbackStore: appService.playbackStore,
                     uiStore: appDelegate.uiStore,
-                    onCloseLibrary: { appDelegate.closeLibrary() },
-                    onSwitchLibrary: { appDelegate.openQuickSwitcher() }
+                    libraries: appDelegate.libraries,
+                    onNewLibrary: { mode in
+                        appDelegate.welcomeInitialMode = mode
+                        appDelegate.showAddLibrarySheet = true
+                    },
+                    onOpenLibrary: { appDelegate.openLibrary($0) },
+                    onSwitchOffset: { appDelegate.switchLibrary(byOffset: $0) },
+                    onRenameLibrary: {
+                        let cfg = appService.configStore.config
+                        appDelegate.renameLibrarySheet =
+                            RenameLibrarySheetState(
+                                id: cfg.libraryId,
+                                newName: cfg.libraryName
+                            )
+                    },
+                    onLockLibrary: { appDelegate.confirmLockLibrary = true },
+                    onSyncNow: { appService.sync.triggerSync() },
+                    onRevealLibrary: {
+                        SystemActions.revealInFinder(
+                            path: appService.configStore.config.libraryPath
+                        )
+                    },
+                    onCopyLibraryId: {
+                        SystemActions.copyToPasteboard(
+                            appService.configStore.config.libraryId
+                        )
+                    },
+                    onCloseLibrary: { appDelegate.closeLibrary() }
                 )
             }
         }
@@ -349,34 +382,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     var uiStore = UiStore()
     var screen: AppScreen = .loading
     var loadError: String?
-    /// When the sidebar's "+ Add..." menu deep-links into a specific
-    /// flow (Restore), this holds the requested initial mode for
-    /// the welcome view about to be presented. `nil` lands on the
-    /// default chooser.
+    /// When a menu item deep-links into a specific welcome flow (Restore
+    /// from Code), this holds the requested initial mode for the welcome
+    /// view about to be presented. `nil` lands on the default chooser.
     var welcomeInitialMode: WelcomeView.Mode?
-    /// True when the sidebar+detail shell should be the root. Becomes
-    /// true the first time any library is opened and stays true so
-    /// switches don't unmount and remount the sidebar.
+    /// True once the first library has opened; the main window content
+    /// replaces the bootstrap (loading / welcome / unlock) screens and stays
+    /// up across switches.
     var hasShell: Bool = false
-    /// Drives the welcome sheet shown from the sidebar's "+ Add..."
-    /// menu. Distinct from `.welcome` screen state, which only applies
-    /// before any library has been opened.
+    /// Drives the welcome sheet presented by the New Library / Restore from
+    /// Code menu items. Distinct from `.welcome` screen state, which only
+    /// applies before any library has been opened.
     var showAddLibrarySheet: Bool = false
-    /// Sidebar visibility, held here so SwiftUI's View > Show/Hide
-    /// Sidebar menu item binds to a stable target.
-    var sidebarVisibility: NavigationSplitViewVisibility = .automatic
-    /// Fires whenever the set of libraries known to bae may have changed —
-    /// after create / restore / switch — so the sidebar refetches
-    /// in place. A one-shot signal, not observable state.
-    @ObservationIgnored
-    let librariesChanged = PassthroughSubject<Void, Never>()
+    /// Every library discovered on this device, kept current so the File →
+    /// Open Library submenu (and its ⌘⇧1–9 switch shortcuts) always have the
+    /// list without a view having to load it.
+    var libraries: [BridgeLibrary] = []
+    /// Non-nil while the Rename Library sheet is open; carries the target
+    /// library id, the in-progress name, and any rename error.
+    var renameLibrarySheet: RenameLibrarySheetState?
+    /// Drives the Lock Library confirmation alert.
+    var confirmLockLibrary: Bool = false
     /// The in-flight library open, owned so a superseding open (a fast switch)
     /// can cancel it before it lands a stale library on `screen`/`appService`.
     @ObservationIgnored
     private var openTask: Task<Void, Never>?
-    /// When set, the quick-switcher overlay is shown. Populated by the
-    /// "Switch Library..." File-menu item.
-    var quickSwitcher: [BridgeLibrary]?
+    /// In-flight library-list reload, cancelled when a newer one supersedes it.
+    @ObservationIgnored
+    private var reloadTask: Task<Void, Never>?
+    /// In-flight rename / lock, cancelled on library close.
+    @ObservationIgnored
+    private var renameTask: Task<Void, Never>?
+    @ObservationIgnored
+    private var lockTask: Task<Void, Never>?
 
     private static var isPreview: Bool {
         ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
@@ -430,6 +468,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
         appService.appHandle.shutdown()
     }
 
+    func applicationDidBecomeActive(_: Notification) {
+        // Refresh the library list when bae returns to the foreground so the
+        // Open Library submenu reflects libraries created, renamed, or removed
+        // elsewhere while we were in the background. Only meaningful once a
+        // library is open — the menu that consumes the list exists only then.
+        guard !Self.isPreview, appService != nil else { return }
+        reloadLibraries()
+    }
+
     // MARK: - Library lifecycle
 
     private func loadInitialState() {
@@ -439,6 +486,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
         }
         do {
             let libraries = try discoverLibraries()
+            self.libraries = libraries
             if libraries.isEmpty {
                 screen = .welcome
                 return
@@ -497,7 +545,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
                 }
                 self.appService = service
                 self.screen = .library
-                self.librariesChanged.send()
+                self.reloadLibraries()
                 self.hasShell = true
                 self.showAddLibrarySheet = false
             }
@@ -527,35 +575,111 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     /// ends the core's UI-event subscription as the broadcast sender drops —
     /// and replaces `uiStore` so the next library opens with fresh navigation
     /// state. Flipping `hasShell` back to false routes the window from the
-    /// sidebar shell to the bootstrap `WelcomeView`.
+    /// main content back to the bootstrap `WelcomeView`.
     func closeLibrary() {
         guard let service = appService else { return }
         // Cancel any open still in flight so a parked `initApp` can't resume past
         // its post-await cancellation check and write `.library`/`appService`
         // back after the close.
         openTask?.cancel()
+        renameTask?.cancel()
+        lockTask?.cancel()
         service.appHandle.shutdown()
         appService = nil
         uiStore = UiStore()
         welcomeInitialMode = nil
-        quickSwitcher = nil
+        renameLibrarySheet = nil
+        confirmLockLibrary = false
         loadError = nil
         screen = .welcome
         hasShell = false
     }
 
-    /// Open the quick-switcher overlay populated with the current library
-    /// snapshot. No-op when the library shell isn't mounted (loading, welcome,
-    /// unlock) — there's nothing to switch to.
-    func openQuickSwitcher() {
-        guard case .library = screen else {
+    /// Reload the device's library list off the main actor and publish it for
+    /// the Open Library submenu. A newer reload cancels an in-flight one; on
+    /// failure we log and keep the last good list rather than blanking the menu.
+    func reloadLibraries() {
+        reloadTask?.cancel()
+        reloadTask = Task { @MainActor in
+            do {
+                libraries = try await DetachedWork.run {
+                    try discoverLibraries()
+                }
+            }
+            catch is CancellationError {
+                logger.debug("discoverLibraries cancelled")
+            }
+            catch {
+                logger.error(
+                    "Failed to list libraries: \(error.localizedDescription)"
+                )
+            }
+        }
+    }
+
+    /// Switch to the library `offset` positions from the active one in the
+    /// discovered list, wrapping around the ends. No-op with one (or no)
+    /// library or no active library.
+    func switchLibrary(byOffset offset: Int) {
+        guard libraries.count > 1,
+            let activeIdx = libraries.firstIndex(where: \.isActive)
+        else {
             return
         }
-        do {
-            quickSwitcher = try discoverLibraries()
+        let count = libraries.count
+        let next = ((activeIdx + offset) % count + count) % count
+        openLibrary(libraries[next])
+    }
+
+    /// Rename a library off the main actor, then refresh the list (and the
+    /// window title, which reads the active library's name). On failure the
+    /// error is written back into the open sheet; the sheet stays up so the
+    /// user can retry.
+    func renameLibrary(_ libraryId: String, to newName: String) {
+        guard let sync = appService?.sync else { return }
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        renameTask?.cancel()
+        renameTask = Task { @MainActor in
+            do {
+                try await DetachedWork.run {
+                    try sync.renameLibrary(libraryId, trimmed)
+                }
+                renameLibrarySheet = nil
+                reloadLibraries()
+            }
+            catch is CancellationError {
+                logger.debug("rename cancelled for \(libraryId)")
+            }
+            catch {
+                logger.error(
+                    "Failed to rename \(libraryId): \(error.localizedDescription)"
+                )
+                renameLibrarySheet?.error = error.localizedDescription
+            }
         }
-        catch {
-            loadError = error.localizedDescription
+    }
+
+    /// Lock the active library off the main actor: drop its encryption key from
+    /// the keychain. The current session keeps working; the key is needed again
+    /// on next launch. Errors surface through `loadError`.
+    func lockActiveLibrary() {
+        guard let sync = appService?.sync else { return }
+        lockTask?.cancel()
+        lockTask = Task { @MainActor in
+            do {
+                try await DetachedWork.run {
+                    try sync.lockActiveLibrary()
+                }
+            }
+            catch is CancellationError {
+                logger.debug("lock cancelled")
+            }
+            catch {
+                logger.error(
+                    "Failed to lock library: \(error.localizedDescription)"
+                )
+                loadError = error.localizedDescription
+            }
         }
     }
 }

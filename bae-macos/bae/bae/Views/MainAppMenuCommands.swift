@@ -42,12 +42,46 @@ struct CloseLibraryButton: View {
     }
 }
 
-struct SwitchLibraryButton: View {
-    let onSwitch: () -> Void
+/// The body of the File → Open Library submenu: one item per library, the
+/// active one marked with a leading checkmark. The first nine carry ⌘⇧1…⌘⇧9
+/// so libraries can be switched without opening the menu.
+struct OpenLibrarySubmenu: View {
+    let libraries: [BridgeLibrary]
+    let onOpen: (BridgeLibrary) -> Void
+
+    private static let shortcutKeys: [KeyEquivalent] = [
+        "1", "2", "3", "4", "5", "6", "7", "8", "9",
+    ]
 
     var body: some View {
-        Button("Switch Library...") {
-            onSwitch()
+        if libraries.isEmpty {
+            Button("No Libraries") {}
+                .disabled(true)
+        }
+        else {
+            ForEach(Array(libraries.enumerated()), id: \.element.id) {
+                idx,
+                lib in
+                let button = Button {
+                    onOpen(lib)
+                } label: {
+                    if lib.isActive {
+                        Label(lib.name, systemImage: "checkmark")
+                    }
+                    else {
+                        Text(lib.name)
+                    }
+                }
+                if idx < Self.shortcutKeys.count {
+                    button.keyboardShortcut(
+                        Self.shortcutKeys[idx],
+                        modifiers: [.command, .shift]
+                    )
+                }
+                else {
+                    button
+                }
+            }
         }
     }
 }
@@ -98,16 +132,51 @@ struct MainAppMenuCommands: Commands {
     let libraryStore: LibraryStore
     let playbackStore: PlaybackStore
     let uiStore: UiStore
+    /// Every library on this device, for the Open Library submenu. The active
+    /// one is marked; the rest are switch targets.
+    let libraries: [BridgeLibrary]
+    /// Present the welcome flow at the given mode (`nil` = the default chooser,
+    /// `.restore` = restore-from-code).
+    let onNewLibrary: (WelcomeView.Mode?) -> Void
+    let onOpenLibrary: (BridgeLibrary) -> Void
+    /// Switch to the library `offset` positions from the active one (wraps).
+    let onSwitchOffset: (Int) -> Void
+    let onRenameLibrary: () -> Void
+    let onLockLibrary: () -> Void
+    let onSyncNow: () -> Void
+    let onRevealLibrary: () -> Void
+    let onCopyLibraryId: () -> Void
     let onCloseLibrary: () -> Void
-    let onSwitchLibrary: () -> Void
     @FocusedValue(\.focusSearch)
     var focusSearch
 
     var body: some Commands {
         CommandGroup(after: .newItem) {
+            Button("New Library...") { onNewLibrary(nil) }
+                .keyboardShortcut("n", modifiers: [.command, .option])
+            Button("Restore from Code...") { onNewLibrary(.restore) }
+
+            Menu("Open Library") {
+                OpenLibrarySubmenu(
+                    libraries: libraries,
+                    onOpen: onOpenLibrary
+                )
+                Divider()
+                Button("Previous Library") { onSwitchOffset(-1) }
+                    .keyboardShortcut("[", modifiers: [.command, .shift])
+                Button("Next Library") { onSwitchOffset(1) }
+                    .keyboardShortcut("]", modifiers: [.command, .shift])
+            }
+
+            Divider()
             ImportFolderButton(importer: importer, uiStore: uiStore)
             Divider()
-            SwitchLibraryButton(onSwitch: onSwitchLibrary)
+            Button("Rename Library...") { onRenameLibrary() }
+            Button("Lock Library...") { onLockLibrary() }
+            Button("Sync Now") { onSyncNow() }
+            Button("Reveal Library in Finder") { onRevealLibrary() }
+            Button("Copy Library ID") { onCopyLibraryId() }
+            Divider()
             CloseLibraryButton(onClose: onCloseLibrary)
         }
 

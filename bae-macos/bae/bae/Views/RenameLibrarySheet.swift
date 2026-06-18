@@ -1,12 +1,22 @@
 import SwiftUI
 
+/// Identifies the library being renamed and carries the in-progress
+/// name plus any error the caller writes back after a failed rename.
+/// `id` is the library id, so the value doubles as the `.sheet(item:)`
+/// trigger.
+struct RenameLibrarySheetState: Identifiable {
+    let id: String
+    var newName: String
+    var error: String?
+}
+
 /// Small modal for renaming any local library (active or inactive).
 /// The caller owns task lifecycle — this view just edits a name and
 /// reports it back through `onCommit`. The `state` binding carries an
 /// error message that the caller writes after a failed bridge call.
 struct RenameLibrarySheet: View {
     @Binding
-    var state: LibrarySidebar.RenameSheetState
+    var state: RenameLibrarySheetState
     let onCancel: () -> Void
     let onCommit: (String) -> Void
 
