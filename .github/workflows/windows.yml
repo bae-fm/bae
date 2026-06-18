@@ -126,6 +126,11 @@ jobs:
           Copy-Item $dll $exe.DirectoryName -Force
           Write-Host "PASS: copied bae_windows_ffi.dll to $($exe.DirectoryName)"
 
+      - name: Run bae-windows-ffi unit tests
+        # The FFI layer has pure-logic unit tests (type conversions, event
+        # mapping) that don't require audio hardware — safe to run on CI.
+        run: cargo test -p bae-windows-ffi --target x86_64-pc-windows-msvc
+
       - name: Clippy (bae-core, bae-windows-ffi, bae-bridge)
         # bae-bridge is included here because the host clippy in ci.yml targets
         # macOS — it doesn't catch cfg(target_os = "windows")-gated dead-code.

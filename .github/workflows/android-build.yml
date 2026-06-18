@@ -61,6 +61,9 @@ jobs:
     - name: Setup Rust environment
       uses: ./.github/actions/setup-rust
 
+    - name: Check Rust formatting
+      run: cargo fmt --all -- --check
+
     - name: Resolve edition (cargo feature set + Gradle flavor)
       # build-android.sh reads BAE_BRIDGE_FEATURES to pick the bindings; the
       # Gradle flavor must match (full → OAuth bindings + src/full; baeium →
@@ -150,6 +153,13 @@ jobs:
       # logic — including the audio-focus resume policy. Needs the generated
       # bindings from the cross-compile step above to compile the test sources.
       run: cd bae-android && ./gradlew "test${GRADLE_FLAVOR}DebugUnitTest" --no-daemon
+
+    - name: Check Kotlin formatting
+      # ktlint on hand-written sources only. Generated bindings live under
+      # bae-bridge/kotlin-bindings-*, not bae-android/, so they're not touched.
+      run: |
+        brew install ktlint
+        ktlint "bae-android/app/src/**/*.kt"
 
     - name: Decode signing keystore
       if: inputs.profile == 'release'
