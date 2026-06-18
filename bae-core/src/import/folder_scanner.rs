@@ -2135,10 +2135,13 @@ FILE "02 - Track Two.flac" WAVE
         vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
     }
 
-    /// A plausible MKV file. Never validated by the scanner, but should not be
-    /// mistaken for audio.
-    fn fake_mkv() -> Vec<u8> {
-        vec![0x1A, 0x45, 0xDF, 0xA3, 0x00, 0x00, 0x00, 0x00]
+    /// A plausible AVI file. Never validated by the scanner, but should not be
+    /// mistaken for audio. RIFF header with an `AVI ` form type.
+    fn fake_avi() -> Vec<u8> {
+        let mut v = b"RIFF".to_vec();
+        v.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);
+        v.extend_from_slice(b"AVI ");
+        v
     }
 
     /// FLAC that passes the magic/STREAMINFO shape check but declares more
@@ -2297,7 +2300,7 @@ FILE "02 - Track Two.flac" WAVE
         /// types are silently ignored rather than mis-categorized.
         UnrecognizedFile(&'static str),
         // Non-music video. Scanner must not treat it as audio.
-        Mkv,
+        Avi,
         // Document sidecars — fall into `files.documents`.
         Log,
         M3u,
@@ -2365,7 +2368,7 @@ FILE "02 - Track Two.flac" WAVE
             FileKind::Png => fake_png(),
             FileKind::ZeroByteJpeg => Vec::new(),
             FileKind::UnrecognizedFile(_) => b"opaque contents".to_vec(),
-            FileKind::Mkv => fake_mkv(),
+            FileKind::Avi => fake_avi(),
             FileKind::Log => b"EAC log\n".to_vec(),
             FileKind::M3u => b"01.flac\n02.flac\n".to_vec(),
             FileKind::Md5 => b"abc  01.flac\n".to_vec(),
@@ -2558,7 +2561,7 @@ FILE "02 - Track Two.flac" WAVE
                     ext,
                 );
             }
-            FileKind::Mkv
+            FileKind::Avi
             | FileKind::Log
             | FileKind::M3u
             | FileKind::Md5
@@ -2724,10 +2727,10 @@ FILE "02 - Track Two.flac" WAVE
     }
 
     #[test]
-    fn test_write_mkv() {
+    fn test_write_avi() {
         let tmp = tempfile::tempdir().unwrap();
-        let path = write_one(tmp.path(), "S01E01.mkv", FileKind::Mkv);
-        // The scanner must not mistake MKV for audio.
+        let path = write_one(tmp.path(), "S01E01.avi", FileKind::Avi);
+        // The scanner must not mistake AVI for audio.
         assert!(!is_audio_file(&path));
     }
 
@@ -3298,8 +3301,8 @@ FILE "02 - Track Two.flac" WAVE
         });
         for i in 1..=3 {
             entries.push(FixtureEntry::File {
-                rel_path: format!("Video Series/Season 1/S01E{:02}.mkv", i),
-                kind: FileKind::Mkv,
+                rel_path: format!("Video Series/Season 1/S01E{:02}.avi", i),
+                kind: FileKind::Avi,
             });
         }
         entries.push(FixtureEntry::Expect {
@@ -3308,8 +3311,8 @@ FILE "02 - Track Two.flac" WAVE
         });
         for i in 1..=2 {
             entries.push(FixtureEntry::File {
-                rel_path: format!("Video Series/Season 2/S02E{:02}.mkv", i),
-                kind: FileKind::Mkv,
+                rel_path: format!("Video Series/Season 2/S02E{:02}.avi", i),
+                kind: FileKind::Avi,
             });
         }
 
@@ -3920,17 +3923,17 @@ FILE "02 - Track Two.flac" WAVE
         assert!(!is_disc_indicator_name("Sideshow"));
     }
 
-    /// L1.25 — Folder with only `.mkv` yields no candidates, no diagnostic.
+    /// L1.25 — Folder with only `.avi` yields no candidates, no diagnostic.
     #[test]
     fn non_audio_folder_emits_no_candidates() {
         let result = run_scenario(vec![
             FixtureEntry::File {
-                rel_path: "Show/S01E01.mkv".into(),
-                kind: FileKind::Mkv,
+                rel_path: "Show/S01E01.avi".into(),
+                kind: FileKind::Avi,
             },
             FixtureEntry::File {
-                rel_path: "Show/S01E02.mkv".into(),
-                kind: FileKind::Mkv,
+                rel_path: "Show/S01E02.avi".into(),
+                kind: FileKind::Avi,
             },
         ]);
         assert!(result.top_level_paths().is_empty());
@@ -4682,14 +4685,14 @@ FILE "02 - Track Two.flac" WAVE
         assert!(result.top_level_paths().is_empty());
     }
 
-    /// L3.7 — A folder with audio plus `.mkv` extras: audio candidate still
-    /// surfaces, `.mkv` is ignored.
+    /// L3.7 — A folder with audio plus `.avi` extras: audio candidate still
+    /// surfaces, `.avi` is ignored.
     #[test]
     fn folder_with_audio_and_video_mixed() {
         let mut entries = flat_audio("Album", 3, FileKind::Flac);
         entries.push(FixtureEntry::File {
-            rel_path: "Album/bonus.mkv".into(),
-            kind: FileKind::Mkv,
+            rel_path: "Album/bonus.avi".into(),
+            kind: FileKind::Avi,
         });
         let result = run_scenario(entries);
         assert_eq!(result.top_level_paths(), vec!["Album"]);
@@ -4698,12 +4701,12 @@ FILE "02 - Track Two.flac" WAVE
             .files
             .documents
             .iter()
-            .all(|d| !d.file_name.ends_with(".mkv")));
+            .all(|d| !d.file_name.ends_with(".avi")));
         assert!(c
             .files
             .artwork
             .iter()
-            .all(|a| !a.file_name.ends_with(".mkv")));
+            .all(|a| !a.file_name.ends_with(".avi")));
     }
 
     /// L3.8 — Deeply nested release under a chain of single-child wrappers
