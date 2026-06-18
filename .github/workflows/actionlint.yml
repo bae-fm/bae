@@ -1,0 +1,38 @@
+name: Actionlint
+
+# Lint the GitHub Actions workflows on any change to them. The release workflows
+# are workflow_dispatch-only (they sign and publish, so they can't run per-PR),
+# which means a syntax, job-graph, expression, or shell error in them would
+# otherwise only surface at an actual release. actionlint — with shellcheck over
+# the run: blocks — catches those here instead.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+  workflow_dispatch:
+
+jobs:
+  actionlint:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Run actionlint
+      # Pinned to the version run locally when these workflows were authored.
+      uses: docker://rhysd/actionlint:1.7.12
+      env:
+        # Keep shellcheck on for real shell bugs in run: blocks, but don't fail
+        # the gate on the style/info nits (SC2086 quoting, etc.) pervasive in the
+        # existing scripts — only error-severity shellcheck findings block.
+        SHELLCHECK_OPTS: --severity=error
+      with:
+        args: -color

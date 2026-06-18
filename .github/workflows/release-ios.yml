@@ -58,17 +58,16 @@ jobs:
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         echo "::notice::iOS release version $VERSION (build ${{ github.run_number }})"
 
-  release:
-    name: Build and Release iOS (${{ matrix.edition }})
+  build:
+    name: Build iOS (${{ matrix.edition }})
     runs-on: macos-26
     needs: calculate-version
     permissions:
-      contents: write
+      contents: read
     strategy:
       # Both editions from one source: full (bae, fm.bae.bae) and baeium (
-      # fm.bae.bae.baeium). Serialized — they share the ios-v* tag and release, so
-      # full runs first and creates them, baeium adds its .ipa.
-      max-parallel: 1
+      # fm.bae.bae.baeium). Each only uploads its .ipa as an artifact; the publish
+      # job creates the one ios-v* release from both, so they run in parallel.
       matrix:
         edition: [full, baeium]
 
@@ -184,6 +183,34 @@ jobs:
         rm -rf Payload
         echo "Built unsigned IPA: $IPA_NAME"
 
+    - name: Upload IPA artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.IPA_NAME }}
+        retention-days: 30
+
+  publish:
+    name: Publish release
+    needs: [calculate-version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout the built commit
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.commit || github.sha }}
+        fetch-depth: 0
+
+    - name: Download both editions' IPAs
+      uses: actions/download-artifact@v8
+      with:
+        # bae-iOS-unsigned + baeium-iOS-unsigned → bae-ios.ipa + baeium-ios.ipa.
+        pattern: '*-iOS-unsigned'
+        path: dist
+        merge-multiple: true
+
     - name: Create git tag
       run: |
         VERSION="${{ needs.calculate-version.outputs.version }}"
@@ -194,23 +221,19 @@ jobs:
           git push origin "ios-v$VERSION"
         fi
 
-    - name: Upload IPA artifact
-      uses: actions/upload-artifact@v7
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.IPA_NAME }}
-        retention-days: 30
-
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        # Both editions attach to the one ios-v* release.
+        # One immutable ios-v* release carrying both editions' unsigned .ipa files.
+        # Created once with both — an immutable release rejects a later append.
         tag_name: ios-v${{ needs.calculate-version.outputs.version }}
-        files: ${{ env.IPA_NAME }}
+        files: |
+          dist/bae-ios.ipa
+          dist/baeium-ios.ipa
         body: |
           iOS builds are **unsigned** .ipa files for sideloading — install with
           AltStore, Sideloadly, or Xcode (they re-sign with your own Apple ID, no
-          paid Developer account needed for the baeium baeium build). App Store
+          paid Developer account needed for the baeium build). App Store
           distribution is not yet set up.
         generate_release_notes: true
       env:
@@ -223,7 +246,7 @@ jobs:
     # immutable release, can't be reused, and an immutable release's assets can't
     # be replaced — so the site resolves the newest versioned release instead.
     name: Refresh website downloads
-    needs: [release]
+    needs: [publish]
     runs-on: ubuntu-latest
     permissions:
       actions: write
