@@ -1893,9 +1893,33 @@ pub fn shape_release_edit(
             edit: crate::types::release_user_edit_to_bridge(edit),
         },
         Err(e) => crate::types::BridgeShapeResult::Invalid {
-            message: e.to_string(),
+            reason: validation_reason_from_core(e),
         },
     }
+}
+
+/// Map bae-core's validation error to its bridge mirror. Kept here, not as a
+/// `From` in bae-core, so bae-core stays unaware of bridge types.
+#[cfg(feature = "desktop")]
+fn validation_reason_from_core(
+    e: bae_core::import::EditValidationError,
+) -> crate::types::BridgeValidationReason {
+    use crate::types::BridgeValidationReason as R;
+    use bae_core::import::EditValidationError as E;
+    match e {
+        E::EmptyAlbumTitle => R::EmptyAlbumTitle,
+        E::NoAlbumArtist => R::NoAlbumArtist,
+        E::InvalidYear => R::InvalidYear,
+    }
+}
+
+/// The localization key for a validation reason, resolved by the UI against the
+/// generated `Core` string table. One exported mapping keeps every platform's
+/// keys identical.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_validation_reason_key(reason: crate::types::BridgeValidationReason) -> String {
+    reason.loc_key().to_string()
 }
 
 /// Seed the editor's raw form from a wire edit — the inverse of

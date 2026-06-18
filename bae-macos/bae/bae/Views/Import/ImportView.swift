@@ -43,8 +43,10 @@ func commitImport(
     switch shapeReleaseEdit(raw: rawEdit) {
     case .valid(let edit):
         userEdit = edit
-    case .invalid(let message):
-        store.mutateCandidate(forKey: key) { $0.error = message }
+    case .invalid(let reason):
+        store.mutateCandidate(forKey: key) {
+            $0.error = reason.localizedMessage
+        }
         return
     }
     do {

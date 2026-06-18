@@ -36,6 +36,10 @@ tracing-oslog = "0.3"
 [target.'cfg(target_os = "android")'.dependencies]
 tracing-android = "0.2"
 
+[dev-dependencies]
+# The validation-reason ↔ catalog cross-check test loads the master catalog.
+bae-loc = { path = "../bae-loc" }
+
 [features]
 default = []
 # Enables the OAuth cloud-provider surface (sign-in + the desktop/host OAuth

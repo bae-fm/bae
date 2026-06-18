@@ -127,12 +127,12 @@ struct EditMetadataSheet: View {
         return nil
     }
 
-    /// The reason the form can't be saved, shaped by bae-core from its
-    /// `EditValidationError`, or `nil` when the form is savable. Shown below
-    /// the form so a disabled Save button always states why.
+    /// The localized reason the form can't be saved, or `nil` when the form is
+    /// savable. bae-core picks the reason; the UI localizes it. Shown below the
+    /// form so a disabled Save button always states why.
     private var validationMessage: String? {
-        if case .invalid(let message) = shapeReleaseEdit(raw: form) {
-            return message
+        if case .invalid(let reason) = shapeReleaseEdit(raw: form) {
+            return reason.localizedMessage
         }
         return nil
     }

@@ -1488,15 +1488,64 @@ pub struct BridgeRawTrackEdit {
     pub track_number: Option<i32>,
 }
 
-/// Outcome of shaping a raw edit form (`shape_release_edit`). `Valid`
-/// carries the savable wire edit; `Invalid` carries the display-ready reason
-/// the form can't be saved (rendered in bae-core from
-/// `EditValidationError`). The editor enables Save on `Valid` and shows the
-/// message on `Invalid` — it never builds the message itself.
+/// Why a release edit can't be saved. An FFI mirror of bae-core's
+/// `EditValidationError`; the UI renders each variant by resolving its
+/// localization key — see `bridge_validation_reason_key`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeValidationReason {
+    EmptyAlbumTitle,
+    NoAlbumArtist,
+    InvalidYear,
+}
+
+impl BridgeValidationReason {
+    /// The catalog key the UI resolves against the generated `Core` string
+    /// table — the single source of the variant→key mapping for every platform.
+    /// Only the desktop edit flow produces a validation reason, so the mapping
+    /// is compiled there (and under test for the cross-check).
+    #[cfg(any(feature = "desktop", test))]
+    pub(crate) fn loc_key(self) -> &'static str {
+        match self {
+            Self::EmptyAlbumTitle => "core.import.validation.empty_album_title",
+            Self::NoAlbumArtist => "core.import.validation.no_album_artist",
+            Self::InvalidYear => "core.import.validation.invalid_year",
+        }
+    }
+}
+
+/// Outcome of shaping a raw edit form (`shape_release_edit`). `Valid` carries
+/// the savable wire edit; `Invalid` carries the typed reason it can't be saved.
+/// The editor enables Save on `Valid` and renders the localized reason on
+/// `Invalid` — bae-core decides which reason, the UI localizes it.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeShapeResult {
     Valid { edit: BridgeReleaseUserEdit },
-    Invalid { message: String },
+    Invalid { reason: BridgeValidationReason },
+}
+
+#[cfg(test)]
+mod validation_reason_tests {
+    use super::BridgeValidationReason;
+
+    /// Every validation reason's localization key must exist in the master
+    /// catalog, so a renamed key or a dropped catalog entry fails the build
+    /// instead of rendering a raw key in the UI.
+    #[test]
+    fn keys_exist_in_catalog() {
+        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
+            .expect("catalog parses");
+        for reason in [
+            BridgeValidationReason::EmptyAlbumTitle,
+            BridgeValidationReason::NoAlbumArtist,
+            BridgeValidationReason::InvalidYear,
+        ] {
+            assert!(
+                cat.messages.contains_key(reason.loc_key()),
+                "catalog is missing key `{}`",
+                reason.loc_key()
+            );
+        }
+    }
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
