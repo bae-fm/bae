@@ -1714,7 +1714,7 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
             .into_iter()
             .map(crate::types::BridgeReleaseStorageAction::from_core)
             .collect(),
-        total_duration_label: rel.total_duration_label,
+        total_duration_ms: rel.total_duration_ms,
         tracks: rel.tracks.into_iter().map(convert_track).collect(),
         track_groups: rel
             .track_groups

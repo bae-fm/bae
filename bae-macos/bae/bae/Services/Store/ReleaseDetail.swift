@@ -14,7 +14,7 @@ struct ReleaseDetail: Identifiable {
     let summary: ReleaseSummary
     var displayName: String
     var compactMetadata: String
-    var totalDurationLabel: String
+    var totalDurationMs: Int64
     var tracks: [Track]
     var trackGroups: [TrackGroup]
     var files: [BridgeFile]
@@ -33,11 +33,21 @@ struct ReleaseDetail: Identifiable {
         summary.storageActions
     }
 
+    /// Total play time across all tracks, formatted for the current locale
+    /// (e.g. "39 min" / "3 hr 42 min"). Empty when the release has no duration.
+    var totalDurationText: String {
+        guard totalDurationMs > 0 else { return "" }
+        return Duration.milliseconds(totalDurationMs)
+            .formatted(
+                .units(allowed: [.hours, .minutes], width: .abbreviated)
+            )
+    }
+
     init(summary: ReleaseSummary, bridge: BridgeRelease) {
         self.summary = summary
         displayName = bridge.displayName
         compactMetadata = bridge.compactMetadata
-        totalDurationLabel = bridge.totalDurationLabel
+        totalDurationMs = bridge.totalDurationMs
         tracks = bridge.tracks.map(Track.init(from:))
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))
         files = bridge.files

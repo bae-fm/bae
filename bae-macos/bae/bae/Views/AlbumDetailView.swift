@@ -868,8 +868,8 @@ struct AlbumTrackListView: View {
                     )
                 }
             }
-            if !release.totalDurationLabel.isEmpty {
-                Text(release.totalDurationLabel)
+            if !release.totalDurationText.isEmpty {
+                Text(release.totalDurationText)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .padding(.top, 8)

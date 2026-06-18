@@ -234,8 +234,8 @@ pub struct ReleaseDetail {
     /// Pre-rendered pressing line joining year/format/label/catalog
     /// number/country with " · ". Empty when none are set.
     pub compact_metadata: String,
-    /// Pre-formatted total duration across all tracks, e.g. "39 min".
-    pub total_duration_label: String,
+    /// Total duration across all tracks, in milliseconds. The UI formats it.
+    pub total_duration_ms: i64,
     pub tracks: Vec<TrackDetail>,
     pub track_groups: Vec<TrackGroup>,
     pub files: Vec<FileDetail>,
