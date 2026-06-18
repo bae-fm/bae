@@ -41,54 +41,35 @@ struct ImportMainPane<RightPane: View>: View {
         onError: { _ in },
         previewState: .idle,
     ) {
-        ImportSearchPane(
-            identifyState: .triangulating(
-                discid: .lookingUp,
-                barcode: .skipped,
-            ),
-            showManualSearch: false,
-            error: nil,
-            searchGroups: [],
-            selectedReleaseId: nil,
-            isSearching: false,
-            hasSearched: false,
-            isImporting: false,
-            libraryStatuses: [:],
-            activeTab: .constant(.general),
-            activeSource: .constant(.musicBrainz),
-            searchArtist: .constant(""),
-            searchAlbum: .constant(""),
-            searchCatalog: .constant(""),
-            searchBarcode: .constant(""),
-            discogsEnabled: false,
-            signals: nil,
-            signalsToolbar: SignalsToolbar(signals: [
-                ToolbarSignal(
-                    kind: .discId,
-                    role: .identity,
-                    value: "disc-hash",
-                    origin: .discToc,
-                    state: .lookingUp,
-                    excluded: false
+        ImportResultPane(open: false, onClose: {}) {
+            ImportSearchPane.preview(
+                identifyState: .triangulating(
+                    discid: .lookingUp,
+                    barcode: .skipped,
                 ),
-                ToolbarSignal(
-                    kind: .barcode,
-                    role: .identity,
-                    value: nil,
-                    origin: .artwork,
-                    state: .skipped,
-                    excluded: false
-                ),
-            ]),
-            onSearch: {},
-            onOpenSettings: {},
-            onSearchManually: {},
-            onViewMatches: {},
-            onAddAsUnknown: {},
-            onToggleSignal: { _ in },
-            onRerun: {},
-            onSelect: { _ in },
-        )
+                discogsEnabled: false,
+                signalsToolbar: SignalsToolbar(signals: [
+                    ToolbarSignal(
+                        kind: .discId,
+                        role: .identity,
+                        value: "disc-hash",
+                        origin: .discToc,
+                        state: .lookingUp,
+                        excluded: false
+                    ),
+                    ToolbarSignal(
+                        kind: .barcode,
+                        role: .identity,
+                        value: nil,
+                        origin: .artwork,
+                        state: .skipped,
+                        excluded: false
+                    ),
+                ])
+            )
+        } pane: {
+            EmptyView()
+        }
     }
     .frame(width: 900, height: 600)
     .environment(MediaPaths.stub)
@@ -104,51 +85,32 @@ struct ImportMainPane<RightPane: View>: View {
         onError: { _ in },
         previewState: .idle,
     ) {
-        ImportSearchPane(
-            identifyState: .notFoundAnywhere,
-            showManualSearch: true,
-            error: nil,
-            searchGroups: [],
-            selectedReleaseId: nil,
-            isSearching: false,
-            hasSearched: false,
-            isImporting: false,
-            libraryStatuses: [:],
-            activeTab: .constant(.general),
-            activeSource: .constant(.musicBrainz),
-            searchArtist: .constant(""),
-            searchAlbum: .constant(""),
-            searchCatalog: .constant(""),
-            searchBarcode: .constant(""),
-            discogsEnabled: true,
-            signals: nil,
-            signalsToolbar: SignalsToolbar(signals: [
-                ToolbarSignal(
-                    kind: .discId,
-                    role: .identity,
-                    value: "disc-hash",
-                    origin: .discToc,
-                    state: .noMatch,
-                    excluded: false
-                ),
-                ToolbarSignal(
-                    kind: .barcode,
-                    role: .identity,
-                    value: "5051961234567",
-                    origin: .artwork,
-                    state: .noMatch,
-                    excluded: false
-                ),
-            ]),
-            onSearch: {},
-            onOpenSettings: {},
-            onSearchManually: {},
-            onViewMatches: {},
-            onAddAsUnknown: {},
-            onToggleSignal: { _ in },
-            onRerun: {},
-            onSelect: { _ in },
-        )
+        ImportResultPane(open: false, onClose: {}) {
+            ImportSearchPane.preview(
+                identifyState: .notFoundAnywhere,
+                showManualSearch: true,
+                signalsToolbar: SignalsToolbar(signals: [
+                    ToolbarSignal(
+                        kind: .discId,
+                        role: .identity,
+                        value: "disc-hash",
+                        origin: .discToc,
+                        state: .noMatch,
+                        excluded: false
+                    ),
+                    ToolbarSignal(
+                        kind: .barcode,
+                        role: .identity,
+                        value: "5051961234567",
+                        origin: .artwork,
+                        state: .noMatch,
+                        excluded: false
+                    ),
+                ])
+            )
+        } pane: {
+            EmptyView()
+        }
     }
     .frame(width: 900, height: 600)
     .environment(MediaPaths.stub)

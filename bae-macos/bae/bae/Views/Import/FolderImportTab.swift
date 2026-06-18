@@ -26,14 +26,6 @@ struct FolderImportTab: View {
     @AppStorage("importStoragePinned")
     private var storagePinned: Bool = true
 
-    /// Height of the docked confirm pane (drag-resizable); persists across
-    /// open/close so reopening restores the user's size.
-    @State
-    private var paneHeight: CGFloat = 384
-    /// Suppresses the open/close height animation while the user drags.
-    @State
-    private var paneDragging = false
-
     @State
     private var documentContent: (name: String, text: String)?
     @Environment(\.openSettings)
@@ -280,39 +272,19 @@ struct FolderImportTab: View {
     /// stay visible and scrollable; the pane slides up when a pressing is
     /// picked and is drag-resizable.
     private func resultPane(for candidate: Candidate) -> some View {
-        GeometryReader { geo in
-            let open = paneOpen(candidate)
-            let height =
-                open
-                ? ImportPaneLayout.clamp(
-                    paneHeight,
-                    available: geo.size.height
-                )
-                : 0
-            VStack(spacing: 0) {
+        let open = paneOpen(candidate)
+        return ImportResultPane(
+            open: open,
+            onClose: { closePane(candidate) },
+            top: {
                 searchAndResultsPane(
                     for: candidate,
                     selectedReleaseId: open
                         ? candidate.identityChoice?.releaseRef?.releaseId : nil
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                ImportResultBottomPane(
-                    height: $paneHeight,
-                    dragging: $paneDragging,
-                    available: geo.size.height,
-                    onClose: { closePane(candidate) },
-                ) {
-                    paneContent(for: candidate)
-                }
-                .frame(height: height)
-                .clipped()
-                .animation(
-                    paneDragging ? nil : .easeOut(duration: 0.28),
-                    value: height
-                )
-            }
-        }
+            },
+            pane: { paneContent(for: candidate) }
+        )
     }
 
     /// Pane body: a loading spinner while the source detail loads, the
