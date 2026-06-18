@@ -424,9 +424,11 @@ async fn download_cloud_file_chunked(
     on_progress: &(dyn Fn(u8) + Send + Sync),
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let source_size = file.file_size as u64;
-    let reader = crate::storage::CloudBlobReader::new(
+    // Every managed blob is master-key-scoped (see `BaeBlobPlan`).
+    let reader = crate::storage::BlobRangeReader::new(
         cloud_home,
-        encryption,
+        &coven::sync::cloud_storage::CloudCipher::Encrypted(encryption),
+        coven::blob::ResolvedScope::Master,
         storage_path(&file.id),
         source_size,
     );
@@ -462,7 +464,7 @@ async fn download_cloud_file_chunked(
 /// `.part` file at `part_path`, retrying each window. Returns once the last
 /// window is written; the caller verifies length and renames.
 async fn stream_windows_to_part(
-    reader: &crate::storage::CloudBlobReader,
+    reader: &crate::storage::BlobRangeReader,
     part_path: &std::path::Path,
     source_size: u64,
     on_progress: &(dyn Fn(u8) + Send + Sync),
