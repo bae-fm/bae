@@ -17,12 +17,6 @@ complexity:
   TooManyFunctions:
     active: false
 
-style:
-  # Color and dimension literals in theme files (BaeTheme.kt) don't need
-  # extraction to named constants — the literal IS the constant at that callsite.
-  MagicNumber:
-    active: false
-
 exceptions:
   # Kotlin coroutines surface arbitrary platform exceptions as `Exception`.
   # Catching the base type is the correct pattern when the caller cannot
@@ -46,6 +40,10 @@ naming:
     active: false
 
 style:
+  # Color and dimension literals in theme files (BaeTheme.kt) don't need
+  # extraction to named constants — the literal IS the constant at that callsite.
+  MagicNumber:
+    active: false
   # Having 3 return statements in a function is normal Kotlin control flow;
   # the default limit of 2 fires on straightforward when-expression patterns.
   ReturnCount:
