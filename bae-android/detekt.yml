@@ -27,10 +27,6 @@ exceptions:
   # state; logging every swallowed exception in UI code is unnecessary noise.
   SwallowedException:
     active: false
-  # Using throw IllegalStateException() is equivalent to error(); the choice
-  # is stylistic. Don't mandate one form over the other.
-  UseCheckOrError:
-    active: false
 
 naming:
   # Jetpack Compose @Composable functions use PascalCase by convention
@@ -52,4 +48,8 @@ style:
   # class + companion object to produce the correct JNI symbol names. Making
   # it an `object` would break the JNI ABI.
   UtilityClassWithPublicConstructor:
+    active: false
+  # Using throw IllegalStateException() is equivalent to error(); the choice
+  # is stylistic. Don't mandate one form over the other.
+  UseCheckOrError:
     active: false
