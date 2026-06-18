@@ -470,7 +470,7 @@ private class MenuItem: NSMenuItem {
 
         var body: some View {
             let list = AlbumList.preview(
-                albums: PreviewData.albumDetailAlbums,
+                albums: PreviewData.albums,
                 sort: sortCriteria,
                 store: store
             )

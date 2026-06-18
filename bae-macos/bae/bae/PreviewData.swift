@@ -5,208 +5,10 @@ import Foundation
 enum PreviewData {
     // MARK: - Albums
 
-    static let albums: [BridgeAlbum] = [
-        BridgeAlbum(
-            id: "a-01",
-            title: "Neon Frequencies",
-            year: 2023,
-            isCompilation: false,
-            artistNames: "The Midnight Signal",
-            releaseIds: ["r-01"],
-            primaryReleaseId: "r-01",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-02",
-            title: "Pacific Standard",
-            year: 2019,
-            isCompilation: false,
-            artistNames: "Glass Harbor",
-            releaseIds: ["r-02"],
-            primaryReleaseId: "r-02",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-03",
-            title: "Proof by Induction",
-            year: 2021,
-            isCompilation: false,
-            artistNames: "Velvet Mathematics",
-            releaseIds: ["r-03"],
-            primaryReleaseId: "r-03",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-04",
-            title: "Seconds",
-            year: 1974,
-            isCompilation: false,
-            artistNames: "The Borrowed Time",
-            releaseIds: ["r-04", "r-04b"],
-            primaryReleaseId: "r-04",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-05",
-            title: "Window Sill",
-            year: 2020,
-            isCompilation: false,
-            artistNames: "Apartment Garden",
-            releaseIds: ["r-05"],
-            primaryReleaseId: "r-05",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-06",
-            title: "Fuel Weight",
-            year: 2018,
-            isCompilation: false,
-            artistNames: "The Cold Equations",
-            releaseIds: ["r-06"],
-            primaryReleaseId: "r-06",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-07",
-            title: "Tomorrow's Forecast",
-            year: 2023,
-            isCompilation: false,
-            artistNames: "Newspaper Weather",
-            releaseIds: ["r-07"],
-            primaryReleaseId: "r-07",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-08",
-            title: "Alphabetical",
-            year: 2017,
-            isCompilation: false,
-            artistNames: "The Filing Cabinets",
-            releaseIds: ["r-08"],
-            primaryReleaseId: "r-08",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-09",
-            title: "Level 4",
-            year: 2021,
-            isCompilation: false,
-            artistNames: "Parking Structure",
-            releaseIds: ["r-09"],
-            primaryReleaseId: "r-09",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-10",
-            title: "Dial Tone",
-            year: 2019,
-            isCompilation: false,
-            artistNames: "The Last Payphone",
-            releaseIds: ["r-10"],
-            primaryReleaseId: "r-10",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-11",
-            title: "Set Theory",
-            year: 2019,
-            isCompilation: false,
-            artistNames: "Velvet Mathematics",
-            releaseIds: ["r-11"],
-            primaryReleaseId: "r-11",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-12",
-            title: "Interest",
-            year: 2020,
-            isCompilation: false,
-            artistNames: "The Borrowed Time",
-            releaseIds: ["r-12"],
-            primaryReleaseId: "r-12",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-13",
-            title: "Grow Light",
-            year: 2022,
-            isCompilation: false,
-            artistNames: "Apartment Garden",
-            releaseIds: ["r-13"],
-            primaryReleaseId: "r-13",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-14",
-            title: "Landlocked",
-            year: 2022,
-            isCompilation: false,
-            artistNames: "Glass Harbor",
-            releaseIds: ["r-14"],
-            primaryReleaseId: "r-14",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-15",
-            title: "Express",
-            year: 2023,
-            isCompilation: false,
-            artistNames: "The Checkout Lane",
-            releaseIds: ["r-15"],
-            primaryReleaseId: "r-15",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-16",
-            title: "Floors 1-12",
-            year: 2018,
-            isCompilation: false,
-            artistNames: "Stairwell Echo",
-            releaseIds: ["r-16"],
-            primaryReleaseId: "r-16",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-17",
-            title: "Your Number",
-            year: 2021,
-            isCompilation: false,
-            artistNames: "The Waiting Room",
-            releaseIds: ["r-17"],
-            primaryReleaseId: "r-17",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-18",
-            title: "Back Page",
-            year: 2021,
-            isCompilation: false,
-            artistNames: "Newspaper Weather",
-            releaseIds: ["r-18"],
-            primaryReleaseId: "r-18",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-19",
-            title: "Mission Control",
-            year: 2021,
-            isCompilation: false,
-            artistNames: "The Cold Equations",
-            releaseIds: ["r-19"],
-            primaryReleaseId: "r-19",
-            coverPath: nil
-        ),
-        BridgeAlbum(
-            id: "a-20",
-            title: "Collated",
-            year: 2020,
-            isCompilation: false,
-            artistNames: "Copy Machine",
-            releaseIds: ["r-20"],
-            primaryReleaseId: "r-20",
-            coverPath: nil
-        ),
-    ]
+    /// The grid list, derived from the detail payloads so the grid summaries and
+    /// the seeded `releaseDetails` agree on release ids. Ordered a-01..a-22,
+    /// matching `albumDetailList`.
+    static let albums: [BridgeAlbum] = albumDetailList.map(\.album)
 
     // MARK: - Queue
 
@@ -589,293 +391,296 @@ enum PreviewData {
         )
     }
 
-    static let albumDetails: [String: BridgeAlbumDetail] = {
-        let details = [
-            makeDetail(
-                id: "a-01",
-                title: "Neon Frequencies",
-                artist: "The Midnight Signal",
-                year: 2023,
-                tracks: [
-                    "Broadcast", "Static Dreams", "Frequency Drift",
-                    "Night Transmission",
-                    "Signal Lost", "Airwave", "Carrier Wave", "Sign Off",
-                ],
-                format: "Digital"
-            ),
-            makeDetail(
-                id: "a-02",
-                title: "Pacific Standard",
-                artist: "Glass Harbor",
-                year: 2019,
-                tracks: [
-                    "Coastal", "Tide Pool", "Harbor Lights", "Salt Air",
-                    "Driftwood", "Fog Horn",
-                    "Pier 17", "Last Ferry",
-                ],
-                format: "Vinyl"
-            ),
-            makeDetail(
-                id: "a-03",
-                title: "Proof by Induction",
-                artist: "Velvet Mathematics",
-                year: 2021,
-                tracks: [
-                    "Axiom", "Recursive", "Limit Theorem", "Derivative",
-                    "Integral", "Convergence",
-                    "QED",
-                ],
-                format: "CD"
-            ),
-            makeDetailMultiRelease(
-                id: "a-04",
-                title: "Seconds",
-                artist: "The Borrowed Time",
-                year: 1974,
-                releases: [
-                    (
-                        releaseName: "1974 Vinyl", year: 1974, format: "Vinyl",
-                        tracks: [
-                            "Tick", "Borrowed", "Overdue", "Extension",
-                            "Final Notice",
-                            "Grace Period",
-                        ], disc2: nil
-                    ),
-                    (
-                        releaseName: "1996 Reissue", year: 1996, format: "2xCD",
-                        tracks: [
-                            "Tick", "Borrowed", "Overdue", "Extension",
-                            "Final Notice",
-                            "Grace Period",
-                        ],
-                        disc2: [
-                            "Overtime", "Second Chance", "Borrowed (Demo)",
-                            "Final Notice (Live)",
-                        ]
-                    ),
-                ]
-            ),
-            makeDetail(
-                id: "a-05",
-                title: "Window Sill",
-                artist: "Apartment Garden",
-                year: 2020,
-                tracks: [
-                    "Basil", "Morning Light", "Terracotta", "Propagation",
-                    "Root Bound",
-                    "Water Day", "New Growth",
-                ],
-                format: "Digital"
-            ),
-            makeDetail(
-                id: "a-06",
-                title: "Fuel Weight",
-                artist: "The Cold Equations",
-                year: 2018,
-                tracks: [
-                    "Launch Window", "Trajectory", "Orbital Decay", "Reentry",
-                    "Terminal Velocity",
-                    "Escape", "Gravity Well",
-                ],
-                format: "Vinyl"
-            ),
-            makeDetail(
-                id: "a-07",
-                title: "Tomorrow's Forecast",
-                artist: "Newspaper Weather",
-                year: 2023,
-                tracks: [
-                    "Partly Cloudy", "High Pressure", "Cold Front",
-                    "Scattered Showers",
-                    "Clearing Skies", "Weekend Outlook",
-                ],
-                format: "Digital"
-            ),
-            makeDetail(
-                id: "a-08",
-                title: "Alphabetical",
-                artist: "The Filing Cabinets",
-                year: 2017,
-                tracks: [
-                    "A-D", "E-H", "I-L", "M-P", "Q-T", "U-Z", "Miscellaneous",
-                ],
-                format: "CD"
-            ),
-            makeDetail(
-                id: "a-09",
-                title: "Level 4",
-                artist: "Parking Structure",
-                year: 2021,
-                tracks: [
-                    "Entrance", "Spiral Up", "Compact Only", "Reserved",
-                    "Exit Ticket",
-                    "Night Rate",
-                ],
-                format: "Digital"
-            ),
-            makeDetail(
-                id: "a-10",
-                title: "Dial Tone",
-                artist: "The Last Payphone",
-                year: 2019,
-                tracks: [
-                    "Insert Coin", "Area Code", "Long Distance", "Collect Call",
-                    "Busy Signal",
-                    "Disconnected",
-                ],
-                format: "Cassette"
-            ),
-            makeDetail(
-                id: "a-11",
-                title: "Set Theory",
-                artist: "Velvet Mathematics",
-                year: 2019,
-                tracks: [
-                    "Union", "Intersection", "Complement", "Subset",
-                    "Empty Set", "Cardinality",
-                ],
-                format: "CD"
-            ),
-            makeDetail(
-                id: "a-12",
-                title: "Interest",
-                artist: "The Borrowed Time",
-                year: 2020,
-                tracks: [
-                    "Principal", "Compound", "Balloon Payment", "Amortization",
-                    "Default",
-                    "Refinance",
-                ],
-                format: "Digital"
-            ),
-            makeDetail(
-                id: "a-13",
-                title: "Grow Light",
-                artist: "Apartment Garden",
-                year: 2022,
-                tracks: [
-                    "Spectrum", "Photosynthesis", "Chlorophyll", "Dormancy",
-                    "Spring Bloom",
-                    "Perennial",
-                ],
-                format: "Vinyl"
-            ),
-            makeDetail(
-                id: "a-14",
-                title: "Landlocked",
-                artist: "Glass Harbor",
-                year: 2022,
-                tracks: [
-                    "Dry Dock", "Anchor", "Barnacles", "Rust", "Restoration",
-                    "Launch Day",
-                    "Open Water",
-                ],
-                format: "CD"
-            ),
-            makeDetail(
-                id: "a-15",
-                title: "Express",
-                artist: "The Checkout Lane",
-                year: 2023,
-                tracks: [
-                    "15 Items", "Price Check", "Coupon", "Self Scan",
-                    "Bagging Area", "Receipt",
-                ],
-                format: "Digital"
-            ),
-            makeDetail(
-                id: "a-16",
-                title: "Floors 1-12",
-                artist: "Stairwell Echo",
-                year: 2018,
-                tracks: [
-                    "Lobby", "Ascent", "Landing", "Fire Door", "Roof Access",
-                ],
-                format: "Vinyl"
-            ),
-            makeDetail(
-                id: "a-17",
-                title: "Your Number",
-                artist: "The Waiting Room",
-                year: 2021,
-                tracks: [
-                    "Take a Ticket", "Now Serving", "Please Wait",
-                    "Next Window", "Closed",
-                ],
-                format: "CD"
-            ),
-            makeDetail(
-                id: "a-18",
-                title: "Back Page",
-                artist: "Newspaper Weather",
-                year: 2021,
-                tracks: [
-                    "Classifieds", "Obituaries", "Comics", "Crossword",
-                    "Horoscope", "Editorial",
-                ],
-                format: "Digital"
-            ),
-            makeDetail(
-                id: "a-19",
-                title: "Mission Control",
-                artist: "The Cold Equations",
-                year: 2021,
-                tracks: [
-                    "Countdown", "Ignition", "Max Q", "MECO", "Orbit Achieved",
-                    "Houston",
-                ],
-                format: "CD"
-            ),
-            makeDetail(
-                id: "a-20",
-                title: "Collated",
-                artist: "Copy Machine",
-                year: 2020,
-                tracks: [
-                    "Warm Up", "Paper Jam", "Toner Low", "Duplex", "Staple",
-                    "Output Tray",
-                ],
-                format: "Digital"
-            ),
-            makeDetailTwoDisc(
-                id: "a-21",
-                title: "Double Feature",
-                artist: "The Midnight Signal",
-                year: 2024,
-                disc1: [
-                    "Opening Night", "Silver Screen", "Intermission",
-                    "Plot Twist",
-                    "Closing Credits",
-                ],
-                disc2: [
-                    "Deleted Scenes", "Alternate Ending", "Director's Cut",
-                    "Blooper Reel",
-                ],
-                format: "12\" Vinyl"
-            ),
-            makeDetailTwoDisc(
-                id: "a-22",
-                title: "Collected Works",
-                artist: "The Archivists",
-                year: 2019,
-                disc1: [
-                    "Preface", "Chapter One", "Chapter Two", "Interlude",
-                    "Chapter Three",
-                    "Epilogue", "Marginalia", "Footnotes", "Glossary",
-                    "Bibliography",
-                ],
-                disc2: [
-                    "Appendix A", "Appendix B", "Index", "Errata", "Colophon",
-                    "Addendum",
-                    "Corrigenda", "Afterword", "About the Author",
-                ],
-                format: "CD"
-            ),
-        ]
-        return Dictionary(
-            uniqueKeysWithValues: details.map { ($0.album.id, $0) }
-        )
-    }()
+    /// The ordered album payloads (a-01..a-22). The single source of truth:
+    /// `albums` is `albumDetailList.map(\.album)` and `albumDetails` is keyed by
+    /// `album.id`, so the grid summaries and the seeded `releaseDetails` always
+    /// agree on release ids.
+    static let albumDetailList: [BridgeAlbumDetail] = [
+        makeDetail(
+            id: "a-01",
+            title: "Neon Frequencies",
+            artist: "The Midnight Signal",
+            year: 2023,
+            tracks: [
+                "Broadcast", "Static Dreams", "Frequency Drift",
+                "Night Transmission",
+                "Signal Lost", "Airwave", "Carrier Wave", "Sign Off",
+            ],
+            format: "Digital"
+        ),
+        makeDetail(
+            id: "a-02",
+            title: "Pacific Standard",
+            artist: "Glass Harbor",
+            year: 2019,
+            tracks: [
+                "Coastal", "Tide Pool", "Harbor Lights", "Salt Air",
+                "Driftwood", "Fog Horn",
+                "Pier 17", "Last Ferry",
+            ],
+            format: "Vinyl"
+        ),
+        makeDetail(
+            id: "a-03",
+            title: "Proof by Induction",
+            artist: "Velvet Mathematics",
+            year: 2021,
+            tracks: [
+                "Axiom", "Recursive", "Limit Theorem", "Derivative",
+                "Integral", "Convergence",
+                "QED",
+            ],
+            format: "CD"
+        ),
+        makeDetailMultiRelease(
+            id: "a-04",
+            title: "Seconds",
+            artist: "The Borrowed Time",
+            year: 1974,
+            releases: [
+                (
+                    releaseName: "1974 Vinyl", year: 1974, format: "Vinyl",
+                    tracks: [
+                        "Tick", "Borrowed", "Overdue", "Extension",
+                        "Final Notice",
+                        "Grace Period",
+                    ], disc2: nil
+                ),
+                (
+                    releaseName: "1996 Reissue", year: 1996, format: "2xCD",
+                    tracks: [
+                        "Tick", "Borrowed", "Overdue", "Extension",
+                        "Final Notice",
+                        "Grace Period",
+                    ],
+                    disc2: [
+                        "Overtime", "Second Chance", "Borrowed (Demo)",
+                        "Final Notice (Live)",
+                    ]
+                ),
+            ]
+        ),
+        makeDetail(
+            id: "a-05",
+            title: "Window Sill",
+            artist: "Apartment Garden",
+            year: 2020,
+            tracks: [
+                "Basil", "Morning Light", "Terracotta", "Propagation",
+                "Root Bound",
+                "Water Day", "New Growth",
+            ],
+            format: "Digital"
+        ),
+        makeDetail(
+            id: "a-06",
+            title: "Fuel Weight",
+            artist: "The Cold Equations",
+            year: 2018,
+            tracks: [
+                "Launch Window", "Trajectory", "Orbital Decay", "Reentry",
+                "Terminal Velocity",
+                "Escape", "Gravity Well",
+            ],
+            format: "Vinyl"
+        ),
+        makeDetail(
+            id: "a-07",
+            title: "Tomorrow's Forecast",
+            artist: "Newspaper Weather",
+            year: 2023,
+            tracks: [
+                "Partly Cloudy", "High Pressure", "Cold Front",
+                "Scattered Showers",
+                "Clearing Skies", "Weekend Outlook",
+            ],
+            format: "Digital"
+        ),
+        makeDetail(
+            id: "a-08",
+            title: "Alphabetical",
+            artist: "The Filing Cabinets",
+            year: 2017,
+            tracks: [
+                "A-D", "E-H", "I-L", "M-P", "Q-T", "U-Z", "Miscellaneous",
+            ],
+            format: "CD"
+        ),
+        makeDetail(
+            id: "a-09",
+            title: "Level 4",
+            artist: "Parking Structure",
+            year: 2021,
+            tracks: [
+                "Entrance", "Spiral Up", "Compact Only", "Reserved",
+                "Exit Ticket",
+                "Night Rate",
+            ],
+            format: "Digital"
+        ),
+        makeDetail(
+            id: "a-10",
+            title: "Dial Tone",
+            artist: "The Last Payphone",
+            year: 2019,
+            tracks: [
+                "Insert Coin", "Area Code", "Long Distance", "Collect Call",
+                "Busy Signal",
+                "Disconnected",
+            ],
+            format: "Cassette"
+        ),
+        makeDetail(
+            id: "a-11",
+            title: "Set Theory",
+            artist: "Velvet Mathematics",
+            year: 2019,
+            tracks: [
+                "Union", "Intersection", "Complement", "Subset",
+                "Empty Set", "Cardinality",
+            ],
+            format: "CD"
+        ),
+        makeDetail(
+            id: "a-12",
+            title: "Interest",
+            artist: "The Borrowed Time",
+            year: 2020,
+            tracks: [
+                "Principal", "Compound", "Balloon Payment", "Amortization",
+                "Default",
+                "Refinance",
+            ],
+            format: "Digital"
+        ),
+        makeDetail(
+            id: "a-13",
+            title: "Grow Light",
+            artist: "Apartment Garden",
+            year: 2022,
+            tracks: [
+                "Spectrum", "Photosynthesis", "Chlorophyll", "Dormancy",
+                "Spring Bloom",
+                "Perennial",
+            ],
+            format: "Vinyl"
+        ),
+        makeDetail(
+            id: "a-14",
+            title: "Landlocked",
+            artist: "Glass Harbor",
+            year: 2022,
+            tracks: [
+                "Dry Dock", "Anchor", "Barnacles", "Rust", "Restoration",
+                "Launch Day",
+                "Open Water",
+            ],
+            format: "CD"
+        ),
+        makeDetail(
+            id: "a-15",
+            title: "Express",
+            artist: "The Checkout Lane",
+            year: 2023,
+            tracks: [
+                "15 Items", "Price Check", "Coupon", "Self Scan",
+                "Bagging Area", "Receipt",
+            ],
+            format: "Digital"
+        ),
+        makeDetail(
+            id: "a-16",
+            title: "Floors 1-12",
+            artist: "Stairwell Echo",
+            year: 2018,
+            tracks: [
+                "Lobby", "Ascent", "Landing", "Fire Door", "Roof Access",
+            ],
+            format: "Vinyl"
+        ),
+        makeDetail(
+            id: "a-17",
+            title: "Your Number",
+            artist: "The Waiting Room",
+            year: 2021,
+            tracks: [
+                "Take a Ticket", "Now Serving", "Please Wait",
+                "Next Window", "Closed",
+            ],
+            format: "CD"
+        ),
+        makeDetail(
+            id: "a-18",
+            title: "Back Page",
+            artist: "Newspaper Weather",
+            year: 2021,
+            tracks: [
+                "Classifieds", "Obituaries", "Comics", "Crossword",
+                "Horoscope", "Editorial",
+            ],
+            format: "Digital"
+        ),
+        makeDetail(
+            id: "a-19",
+            title: "Mission Control",
+            artist: "The Cold Equations",
+            year: 2021,
+            tracks: [
+                "Countdown", "Ignition", "Max Q", "MECO", "Orbit Achieved",
+                "Houston",
+            ],
+            format: "CD"
+        ),
+        makeDetail(
+            id: "a-20",
+            title: "Collated",
+            artist: "Copy Machine",
+            year: 2020,
+            tracks: [
+                "Warm Up", "Paper Jam", "Toner Low", "Duplex", "Staple",
+                "Output Tray",
+            ],
+            format: "Digital"
+        ),
+        makeDetailTwoDisc(
+            id: "a-21",
+            title: "Double Feature",
+            artist: "The Midnight Signal",
+            year: 2024,
+            disc1: [
+                "Opening Night", "Silver Screen", "Intermission",
+                "Plot Twist",
+                "Closing Credits",
+            ],
+            disc2: [
+                "Deleted Scenes", "Alternate Ending", "Director's Cut",
+                "Blooper Reel",
+            ],
+            format: "12\" Vinyl"
+        ),
+        makeDetailTwoDisc(
+            id: "a-22",
+            title: "Collected Works",
+            artist: "The Archivists",
+            year: 2019,
+            disc1: [
+                "Preface", "Chapter One", "Chapter Two", "Interlude",
+                "Chapter Three",
+                "Epilogue", "Marginalia", "Footnotes", "Glossary",
+                "Bibliography",
+            ],
+            disc2: [
+                "Appendix A", "Appendix B", "Index", "Errata", "Colophon",
+                "Addendum",
+                "Corrigenda", "Afterword", "About the Author",
+            ],
+            format: "CD"
+        ),
+    ]
+
+    static let albumDetails: [String: BridgeAlbumDetail] = Dictionary(
+        uniqueKeysWithValues: albumDetailList.map { ($0.album.id, $0) }
+    )
 
     // MARK: - Import
 

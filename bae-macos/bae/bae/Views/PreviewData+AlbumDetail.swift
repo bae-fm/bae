@@ -8,14 +8,6 @@
     // boilerplate shared by its previews into one builder.
 
     extension PreviewData {
-        /// Albums for the grid list, taken from the detail payloads so the
-        /// grid summaries and the seeded `releaseDetails` agree on release ids.
-        /// (`PreviewData.albums` carries different release ids than
-        /// `albumDetails`, so a grid built from it would look up release
-        /// details that the detail seed never populated.)
-        static let albumDetailAlbums: [BridgeAlbum] =
-            albumDetails.values.map(\.album)
-
         /// A `LibraryStore` seeded with every preview album's summary and its
         /// releases' fat details, via the same `handleAlbumAdded` reducer the
         /// app runs on an `AlbumAdded` event. `AlbumDetailView.body` finds
