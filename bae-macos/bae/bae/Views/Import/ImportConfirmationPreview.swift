@@ -50,4 +50,17 @@
             )
         }
     }
+
+    /// The stores every import preview reads, injected as one modifier:
+    /// MediaPaths + UiStore for the search/file panes, OutboxStore + ConfigStore
+    /// for the confirmation.
+    extension View {
+        func importPreviewEnvironment() -> some View {
+            self
+                .environment(MediaPaths.stub)
+                .environment(UiStore())
+                .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+                .environment(PreviewData.configStore)
+        }
+    }
 #endif
