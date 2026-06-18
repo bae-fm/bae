@@ -163,6 +163,9 @@ private struct ZoomableGalleryImage: View {
             )
         }
         catch is CancellationError {
+            logger.debug(
+                "gallery thumbnail load cancelled: \(source.description, privacy: .public)"
+            )
             return
         }
         catch {
@@ -181,11 +184,18 @@ private struct ZoomableGalleryImage: View {
                 size: .native,
                 displayScale: displayScale
             )
-            if !Task.isCancelled {
-                fullRes = loaded
+            guard !Task.isCancelled else {
+                logger.debug(
+                    "full-res gallery load cancelled after decode: \(source.description, privacy: .public)"
+                )
+                return
             }
+            fullRes = loaded
         }
         catch is CancellationError {
+            logger.debug(
+                "full-res gallery load cancelled: \(source.description, privacy: .public)"
+            )
             return
         }
         catch {

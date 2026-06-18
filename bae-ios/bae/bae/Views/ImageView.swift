@@ -48,6 +48,7 @@ struct ImageView: View {
             )
         }
         catch is CancellationError {
+            logger.debug("cover load cancelled: \(path, privacy: .public)")
             return
         }
         catch {
