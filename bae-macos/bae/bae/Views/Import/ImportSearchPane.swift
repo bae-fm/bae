@@ -180,6 +180,7 @@ struct ImportSearchPane: View {
     let onSearch: () -> Void
     let onOpenSettings: () -> Void
     let onSearchManually: () -> Void
+    /// Return from the manual-search form to the auto-identified matches.
     let onViewMatches: () -> Void
     /// Set when the candidate can seed from local files (folder imports always
     /// can). `nil` suppresses the "Add as Unknown" link.
@@ -309,6 +310,25 @@ struct ImportSearchPane: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             else {
+                // In manual search with an auto-identified match available,
+                // offer the way back to it — the toolbar's "Search manually"
+                // has no reciprocal otherwise.
+                if let found {
+                    Button {
+                        onViewMatches()
+                    } label: {
+                        Label(
+                            "View automatic matches "
+                                + "(\(found.group.pressings.count))",
+                            systemImage: "chevron.left",
+                        )
+                    }
+                    .buttonStyle(.link)
+                    .font(.callout)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 ImportSearchFormView(
                     activeTab: $activeTab,
                     activeSource: $activeSource,
@@ -363,54 +383,17 @@ struct ImportSearchPane: View {
 
     @ViewBuilder
     private var identifyBanner: some View {
-        let showingAutoMatches = foundResult != nil && !state.showManualSearch
-
         // The toolbar above owns the global escapes (Search manually / Skip
-        // identifying / Re-run), so the banner carries only the status copy
-        // and banner-specific navigation (the source link, "View automatic
-        // matches"). Error has no toolbar, so it keeps its own escape.
+        // identifying / Re-run), so the banner carries only the status copy for
+        // the states that need it. Error has no toolbar, so it keeps its own
+        // escape.
         switch state.identifyState {
-        case .triangulating:
-            // The toolbar's spinning badges and the body placeholder cover
-            // triangulation; the banner stays out of the way.
+        case .triangulating, .found, .idle:
+            // Triangulation is covered by the toolbar's spinning badges and the
+            // body placeholder; a found match speaks for itself through the
+            // toolbar signals and the release-group card below. Neither needs a
+            // banner.
             EmptyView()
-        case .found(let group, _, _, _, _):
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                foundBannerText(
-                    matchCount: group.pressings.count,
-                    group: group
-                )
-                .font(.callout)
-                if let url = group.groupUrl {
-                    Button {
-                        NSWorkspace.shared.open(url)
-                    } label: {
-                        Image(systemName: "arrow.up.right.square")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Open release group on \(group.sourceLabel)")
-                }
-                discIdInfoIcon
-                Spacer()
-                if !showingAutoMatches {
-                    Button(
-                        "View automatic matches (\(group.pressings.count))"
-                    ) {
-                        onViewMatches()
-                    }
-                    .buttonStyle(.link)
-                    .font(.callout)
-                }
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
-            }
         case .notFoundAnywhere:
             HStack(spacing: 8) {
                 Image(systemName: "info.circle.fill")
@@ -456,8 +439,6 @@ struct ImportSearchPane: View {
             .overlay(alignment: .bottom) {
                 Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
             }
-        case .idle:
-            EmptyView()
         }
     }
 
@@ -643,31 +624,6 @@ struct ImportSearchPane: View {
         case .disc: "Ignore DiscID"
         case .barcode: "Ignore Barcode"
         case .catalog: "Ignore Catalog"
-        }
-    }
-
-    /// Banner copy for `Found`. A single match is just "matched one
-    /// release"; multiple matches all share a group by construction
-    /// (combine returns Found only when results agree on a group), so
-    /// the banner can call that out directly. The match count and
-    /// source name carry weight against the surrounding secondary text.
-    private func foundBannerText(matchCount: Int, group: ReleaseGroup) -> Text {
-        let secondary = Color.secondary
-        switch matchCount {
-        case 1:
-            return Text("Automatically matched one release on ")
-                .foregroundStyle(secondary)
-                + Text(group.sourceLabel).fontWeight(.semibold)
-        default:
-            return Text("Matched ")
-                .foregroundStyle(secondary)
-                + Text("\(matchCount)").fontWeight(.semibold)
-                .monospacedDigit()
-                + Text(" pressings of one ")
-                .foregroundStyle(secondary)
-                + Text(group.sourceLabel).fontWeight(.semibold)
-                + Text(" release group")
-                .foregroundStyle(secondary)
         }
     }
 
