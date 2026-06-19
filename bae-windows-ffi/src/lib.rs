@@ -1034,6 +1034,19 @@ pub unsafe extern "C" fn bae_gallery(
 }
 
 /// The wire name for a storage action.
+fn format_bytes_ffi(bytes: i64) -> String {
+    let b = bytes.max(0) as f64;
+    if b < 1_000.0 {
+        format!("{} B", bytes.max(0))
+    } else if b < 1_000_000.0 {
+        format!("{:.1} KB", b / 1_000.0)
+    } else if b < 1_000_000_000.0 {
+        format!("{:.1} MB", b / 1_000_000.0)
+    } else {
+        format!("{:.1} GB", b / 1_000_000_000.0)
+    }
+}
+
 fn storage_action_name(action: &bae_core::album_detail::ReleaseStorageAction) -> &'static str {
     use bae_core::album_detail::ReleaseStorageAction;
     match action {
@@ -1101,7 +1114,7 @@ pub unsafe extern "C" fn bae_storage(handle: *const BaeHandle) -> *mut c_char {
                 album_title: summary.album_title,
                 artist: summary.artist_names,
                 format: summary.format,
-                size: summary.total_size_label,
+                size: format_bytes_ffi(summary.total_size),
                 file_count: summary.file_count,
                 state: match summary.storage_state {
                     ReleaseStorageState::Unmanaged => "Unmanaged",
@@ -1313,7 +1326,7 @@ fn outbox_snapshot_to_ffi(snapshot: &bae_core::library::OutboxSnapshot) -> FfiOu
                 cloud_key: op.cloud_key.clone(),
                 bytes_total: op.bytes_total,
                 bytes_done,
-                size_label: op.size_label.clone(),
+                size_label: format_bytes_ffi(op.bytes_total as i64),
                 attempt_count: op.attempt_count,
                 state: state.to_string(),
                 last_error,
@@ -1508,7 +1521,10 @@ pub unsafe extern "C" fn bae_album_detail(
                     track_id: track.id.clone(),
                     title: track.title.clone(),
                     position: track.position_label.clone(),
-                    duration: track.duration_label.clone(),
+                    duration: track
+                        .duration_ms
+                        .map(|ms| bae_core::util::format::format_minutes_seconds(ms as u64))
+                        .unwrap_or_default(),
                     artist: track.artist_names.clone(),
                 })
                 .collect(),
@@ -1833,7 +1849,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             artist_names,
             album_title,
             cover_image_id,
-            duration_label,
+            duration_ms,
             ..
         } => FfiEvent::PlaybackPlaying {
             track_id: track_id.clone(),
@@ -1842,7 +1858,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             artist: artist_names.clone(),
             album_title: album_title.clone(),
             cover_image_id: cover_image_id.clone(),
-            duration_label: duration_label.clone(),
+            duration_label: bae_core::util::format::format_minutes_seconds(*duration_ms),
         },
         UiBusEvent::PlaybackPaused {
             track_id,
@@ -1851,7 +1867,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             artist_names,
             album_title,
             cover_image_id,
-            duration_label,
+            duration_ms,
             ..
         } => FfiEvent::PlaybackPaused {
             track_id: track_id.clone(),
@@ -1860,15 +1876,15 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             artist: artist_names.clone(),
             album_title: album_title.clone(),
             cover_image_id: cover_image_id.clone(),
-            duration_label: duration_label.clone(),
+            duration_label: bae_core::util::format::format_minutes_seconds(*duration_ms),
         },
         UiBusEvent::PlaybackStopped => FfiEvent::PlaybackStopped,
         UiBusEvent::PlaybackLoading { .. } => FfiEvent::PlaybackLoading,
-        UiBusEvent::PreviewProgress { elapsed_label, .. } => FfiEvent::PreviewProgress {
-            elapsed: elapsed_label.clone(),
+        UiBusEvent::PreviewProgress { position_ms, .. } => FfiEvent::PreviewProgress {
+            elapsed: bae_core::util::format::format_minutes_seconds(*position_ms),
         },
-        UiBusEvent::PreviewPlaying { duration_label, .. } => FfiEvent::PreviewPlaying {
-            duration_label: duration_label.clone(),
+        UiBusEvent::PreviewPlaying { duration_ms, .. } => FfiEvent::PreviewPlaying {
+            duration_label: bae_core::util::format::format_minutes_seconds(*duration_ms),
         },
         UiBusEvent::PreviewIdle => FfiEvent::PreviewIdle,
         UiBusEvent::PlaybackError { message } => FfiEvent::PlaybackError {
@@ -1885,13 +1901,15 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
         UiBusEvent::SyncTimeChanged { time } => FfiEvent::SyncTimeChanged { sync_time: *time },
         UiBusEvent::PlaybackProgress {
             progress,
-            elapsed_label,
-            remaining_label,
+            position_ms,
+            duration_ms,
             ..
         } => FfiEvent::PlaybackProgress {
             progress: *progress,
-            elapsed: elapsed_label.clone(),
-            remaining: remaining_label.clone(),
+            elapsed: bae_core::util::format::format_minutes_seconds(*position_ms),
+            remaining: bae_core::util::format::format_minutes_seconds(
+                duration_ms.saturating_sub(*position_ms),
+            ),
         },
         UiBusEvent::AlbumAdded { .. }
         | UiBusEvent::AlbumUpdated { .. }
@@ -1910,7 +1928,10 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
                     track_id: item.track_id.clone(),
                     title: item.title.clone(),
                     artist: item.artist_names.clone(),
-                    duration: item.duration_label.clone(),
+                    duration: item
+                        .duration_ms
+                        .map(|ms| bae_core::util::format::format_minutes_seconds(ms as u64))
+                        .unwrap_or_default(),
                     album_title: item.album_title.clone(),
                     cover_image_id: item.cover_image_id.clone(),
                 })
