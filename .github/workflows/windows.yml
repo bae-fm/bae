@@ -109,13 +109,13 @@ jobs:
         # dotnet format uses .editorconfig rules. --verify-no-changes exits non-zero
         # if any file would be reformatted, failing the build.
         #
-        # Run whitespace and style only, not analyzers. IDE0051/IDE0052 dead-code
-        # diagnostics are caught by MSBuild with EnforceCodeStyleInBuild=true (below),
-        # which compiles XAML first — without XAML compilation, dotnet format
-        # analyzers incorrectly flags XAML-bound event handlers as unused.
-        run: |
-          dotnet format whitespace bae-windows\bae-windows.csproj --verify-no-changes
-          dotnet format style bae-windows\bae-windows.csproj --verify-no-changes
+        # Run whitespace only — style and analyzer formatters trigger IDE0051 false
+        # positives for XAML-bound event handlers (dotnet format analyzes C# in
+        # isolation, without the XAML compiler's generated partial classes that
+        # reference those methods). MSBuild with EnforceCodeStyleInBuild=true
+        # (below) enforces all style and dead-code rules after XAML compilation,
+        # where XAML references are visible.
+        run: dotnet format whitespace bae-windows\bae-windows.csproj --verify-no-changes
 
       - name: Build the WinUI app (C# → P/Invoke → FFI DLL)
         # Unpackaged WinUI 3 (C#/.NET) app, x64, framework-dependent. Proves the
