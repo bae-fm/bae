@@ -76,6 +76,17 @@ enum Theme {
     #endif
 }
 
+extension View {
+    /// The app window's base appearance: the dark background every screen sits
+    /// on, plus the pinned dark color scheme. Declared once here and applied at
+    /// the app root and in previews, so the two can't drift apart.
+    func windowBackground() -> some View {
+        self
+            .background(Theme.background)
+            .preferredColorScheme(.dark)
+    }
+}
+
 #Preview("Theme Test") {
     Text("Hello")
         .padding()

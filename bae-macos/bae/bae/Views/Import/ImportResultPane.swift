@@ -67,8 +67,6 @@ struct ImportResultPane<Top: View, Pane: View>: View {
         )
     }
     .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
     .importPreviewEnvironment()
 }
 
@@ -94,8 +92,6 @@ struct ImportResultPane<Top: View, Pane: View>: View {
         )
     }
     .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
     .importPreviewEnvironment()
 }
 
@@ -120,8 +116,6 @@ struct ImportResultPane<Top: View, Pane: View>: View {
         )
     }
     .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
     .importPreviewEnvironment()
 }
 
@@ -150,8 +144,6 @@ struct ImportResultPane<Top: View, Pane: View>: View {
         )
     }
     .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
     .importPreviewEnvironment()
 }
 
@@ -176,8 +168,6 @@ struct ImportResultPane<Top: View, Pane: View>: View {
         )
     }
     .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
     .importPreviewEnvironment()
 }
 
@@ -189,8 +179,6 @@ struct ImportResultPane<Top: View, Pane: View>: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
     .importPreviewEnvironment()
 }
 
@@ -201,8 +189,6 @@ struct ImportResultPane<Top: View, Pane: View>: View {
         EmptyView()
     }
     .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
     .importPreviewEnvironment()
 }
 
@@ -235,8 +221,6 @@ struct ImportResultPane<Top: View, Pane: View>: View {
         )
     }
     .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
     .importPreviewEnvironment()
 }
 
@@ -261,7 +245,5 @@ struct ImportResultPane<Top: View, Pane: View>: View {
         )
     }
     .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
     .importPreviewEnvironment()
 }

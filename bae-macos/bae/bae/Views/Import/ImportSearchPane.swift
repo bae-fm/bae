@@ -841,8 +841,6 @@ struct DiscogsKeyPopover: View {
 #Preview("Main Pane - Exact Matches") {
     ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
         .frame(width: 700, height: 600)
-        .background(Theme.background)
-        .preferredColorScheme(.dark)
         .importPreviewEnvironment()
 }
 
@@ -853,23 +851,19 @@ struct DiscogsKeyPopover: View {
         searchAlbum: "Album Title One",
     )
     .frame(width: 700, height: 600)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
     .importPreviewEnvironment()
 }
 
 #Preview("Main Pane - Conflict") {
     ImportSearchPane.preview(state: PreviewData.searchStateConflict)
         .frame(width: 700, height: 600)
-        .background(Theme.background)
-        .preferredColorScheme(.dark)
         .importPreviewEnvironment()
 }
 
 #Preview("Source Picker - Discogs Disabled") {
     SourcePickerPreview(hasKey: false)
         .frame(width: 500, height: 100)
-        .preferredColorScheme(.dark)
+        .windowBackground()
 }
 
 private struct SourcePickerPreview: View {

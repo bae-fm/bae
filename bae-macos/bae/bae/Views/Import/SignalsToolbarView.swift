@@ -570,8 +570,7 @@ private enum SignalBadgeStyle {
         onAddAsUnknown: {},
     )
     .frame(width: 720)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
+    .windowBackground()
 }
 
 #Preview("One settled, catalog confirms") {
@@ -616,8 +615,7 @@ private enum SignalBadgeStyle {
         onAddAsUnknown: {},
     )
     .frame(width: 720)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
+    .windowBackground()
 }
 
 #Preview("Barcode excluded") {
@@ -654,8 +652,7 @@ private enum SignalBadgeStyle {
         onAddAsUnknown: {},
     )
     .frame(width: 720)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
+    .windowBackground()
 }
 
 #Preview("Conflict — both matched") {
@@ -684,8 +681,7 @@ private enum SignalBadgeStyle {
         onAddAsUnknown: {},
     )
     .frame(width: 720)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
+    .windowBackground()
 }
 
 #Preview("Skipped — no signals") {
@@ -714,6 +710,5 @@ private enum SignalBadgeStyle {
         onAddAsUnknown: nil,
     )
     .frame(width: 720)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
+    .windowBackground()
 }

@@ -27,7 +27,6 @@ struct ReleaseGroupListView: View {
             }
             .padding(14)
         }
-        .background(Theme.background)
     }
 
     /// The group's pressing rows, indented under a hairline rule that ties them

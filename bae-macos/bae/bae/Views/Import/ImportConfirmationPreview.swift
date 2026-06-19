@@ -51,9 +51,10 @@
         }
     }
 
-    /// The stores every import preview reads, injected as one modifier:
-    /// MediaPaths + UiStore for the search/file panes, OutboxStore + ConfigStore
-    /// for the confirmation.
+    /// The stores every import preview reads plus the app's window background,
+    /// injected as one modifier: MediaPaths + UiStore for the search/file panes,
+    /// OutboxStore + ConfigStore for the confirmation, and `windowBackground()`
+    /// so the preview reproduces the shell the panes are transparent over.
     extension View {
         func importPreviewEnvironment() -> some View {
             self
@@ -61,6 +62,7 @@
                 .environment(UiStore())
                 .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
                 .environment(PreviewData.configStore)
+                .windowBackground()
         }
     }
 #endif

@@ -249,8 +249,7 @@ struct ImportSearchResultRow: View {
     }
     .padding()
     .frame(width: 520)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
+    .windowBackground()
     .environment(UiStore())
     .environment(MediaPaths.stub)
 }

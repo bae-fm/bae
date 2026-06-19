@@ -541,4 +541,5 @@ private struct InvalidCandidateRow: View {
     )
     .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
     .frame(width: 280, height: 500)
+    .windowBackground()
 }

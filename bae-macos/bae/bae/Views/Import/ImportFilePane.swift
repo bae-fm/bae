@@ -373,6 +373,7 @@ extension View {
         previewState: .idle,
     )
     .frame(width: 300, height: 500)
+    .windowBackground()
     .environment(MediaPaths.stub)
 }
 
@@ -389,6 +390,7 @@ extension View {
         ),
     )
     .frame(width: 300, height: 500)
+    .windowBackground()
     .environment(MediaPaths.stub)
 }
 

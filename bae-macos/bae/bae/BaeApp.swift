@@ -240,8 +240,7 @@ struct BaeApp: App {
                     }
                 }
                 .frame(minWidth: 900, minHeight: 600)
-                .background(Theme.background)
-                .preferredColorScheme(.dark)
+                .windowBackground()
                 .navigationTitle(windowTitle)
                 .overlay(alignment: .bottom) {
                     if let loadError = appDelegate.loadError {
