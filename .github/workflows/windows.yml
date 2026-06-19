@@ -36,10 +36,12 @@ jobs:
           targets: x86_64-pc-windows-msvc
           components: clippy
 
-      - name: Install sccache + LLVM (libclang for ffmpeg-sys bindgen)
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Set LIBCLANG_PATH (LLVM pre-installed on windows-latest)
         shell: pwsh
         run: |
-          choco install -y sccache llvm
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Fetch libdiscid (MusicBrainz Windows binary)
