@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -42,12 +43,13 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Size
-import java.io.File
+import fm.bae.app.R
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeGalleryItem
+import java.io.File
 
 private const val TAG = "bae.GalleryDialog"
 
@@ -96,7 +98,7 @@ fun GalleryDialog(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Close,
-                        contentDescription = "Close",
+                        contentDescription = stringResource(R.string.close),
                         tint = Color.White,
                     )
                 }
@@ -149,7 +151,8 @@ private fun ZoomableGalleryImage(
 
     val model =
         remember(data, cacheKey, fullRes) {
-            ImageRequest.Builder(context)
+            ImageRequest
+                .Builder(context)
                 .data(data)
                 .crossfade(true)
                 .apply {
@@ -171,8 +174,7 @@ private fun ZoomableGalleryImage(
                         // downsamples the source to fit, the cheap initial decode.
                         memoryCacheKey(cacheKey)
                     }
-                }
-                .build()
+                }.build()
         }
 
     AsyncImage(
@@ -216,8 +218,7 @@ private fun ZoomableGalleryImage(
                             }
                         }
                     }
-                }
-                .graphicsLayer {
+                }.graphicsLayer {
                     scaleX = scale
                     scaleY = scale
                     transformOrigin = origin
@@ -242,33 +243,40 @@ private fun RemoteGalleryImage(
         mutableStateOf<Result<ByteArray>?>(null)
     }
     LaunchedEffect(fileId) {
-        result = try {
-            Result.success(withContext(Dispatchers.IO) { loadImage(fileId) })
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to load gallery image $fileId", e)
-            Result.failure(e)
-        }
+        result =
+            try {
+                Result.success(withContext(Dispatchers.IO) { loadImage(fileId) })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load gallery image $fileId", e)
+                Result.failure(e)
+            }
     }
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val r = result
         when {
-            r == null -> CircularProgressIndicator(color = Color.White)
-            r.isSuccess ->
+            r == null -> {
+                CircularProgressIndicator(color = Color.White)
+            }
+
+            r.isSuccess -> {
                 ZoomableGalleryImage(
                     data = r.getOrThrow(),
                     cacheKey = fileId,
                     contentDescription = label,
                 )
+            }
+
             // The underlying failure is already logged above; the viewer shows a
             // fixed, user-facing message rather than a raw exception string.
-            else ->
+            else -> {
                 Text(
-                    text = "Couldn't load image",
+                    text = stringResource(R.string.gallery_load_failed),
                     color = Color.White,
                     modifier = Modifier.padding(24.dp),
                 )
+            }
         }
     }
 }

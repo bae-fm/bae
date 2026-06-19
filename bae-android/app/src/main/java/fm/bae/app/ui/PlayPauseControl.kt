@@ -11,8 +11,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import fm.bae.app.R
 
 /**
  * Play/pause toggle, replaced by a spinner while core is preparing or buffering
@@ -41,7 +43,7 @@ fun PlayPauseControl(
         IconButton(onClick = onToggle) {
             Icon(
                 imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                contentDescription = if (isPlaying) "Pause" else "Play",
+                contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
                 modifier = Modifier.size(iconSize),
             )
         }

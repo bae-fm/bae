@@ -112,6 +112,25 @@ cargo run --bin uniffi-bindgen generate \
     --out-dir "$BINDINGS_DIR/" \
     --no-format
 
+# Generate the localization string resources (Android). loc-gen emits the
+# English source `values/core_strings.xml` plus a `values-<locale>/` directory
+# per shipping locale (English-valued until translated) so each locale registers
+# as supported. The generated files are gitignored; emit into a staging dir,
+# drop any previously-generated core_strings.xml so a dropped locale can't
+# linger, then copy the fresh set into the app's res tree next to the
+# hand-authored values/strings.xml chrome.
+echo "Generating localization string resources (Android)..."
+RES_DIR=bae-android/app/src/main/res
+LOC_STAGING="$(mktemp -d)"
+trap 'rm -rf "$LOC_STAGING"' EXIT
+cargo run -q -p bae-loc --bin loc-gen -- emit --target android --out-dir "$LOC_STAGING"
+find "$RES_DIR" -name core_strings.xml -delete
+( cd "$LOC_STAGING" && find . -name core_strings.xml -print0 ) | while IFS= read -r -d '' rel; do
+    dest="$RES_DIR/${rel#./}"
+    mkdir -p "$(dirname "$dest")"
+    cp "$LOC_STAGING/${rel#./}" "$dest"
+done
+
 # Install the .so files. Wipe both managed ABI dirs first so a stale other-ABI
 # build can't ride along in the APK, then repopulate only the selected ABIs.
 echo "Installing .so files (stripped; debug symbols split out)..."

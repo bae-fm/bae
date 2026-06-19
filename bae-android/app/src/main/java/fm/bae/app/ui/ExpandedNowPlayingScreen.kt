@@ -38,12 +38,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.C
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 import uniffi.bae_bridge.BridgeRepeatMode
 
 /**
@@ -58,7 +60,10 @@ import uniffi.bae_bridge.BridgeRepeatMode
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpandedNowPlayingScreen(session: OpenLibrary, onDismiss: () -> Unit) {
+fun ExpandedNowPlayingScreen(
+    session: OpenLibrary,
+    onDismiss: () -> Unit,
+) {
     val player = session.playback
     val nowPlaying by player.nowPlaying.collectAsState()
     val isPlaying by player.isPlaying.collectAsState()
@@ -87,13 +92,14 @@ fun ExpandedNowPlayingScreen(session: OpenLibrary, onDismiss: () -> Unit) {
     ) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .safeDrawingPadding()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .safeDrawingPadding()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
             ) {
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.ExpandMore, contentDescription = "Collapse")
+                    Icon(Icons.Filled.ExpandMore, contentDescription = stringResource(R.string.collapse))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -169,7 +175,7 @@ fun ExpandedNowPlayingScreen(session: OpenLibrary, onDismiss: () -> Unit) {
                     IconButton(onClick = { player.seekToPreviousMediaItem() }) {
                         Icon(
                             Icons.Filled.SkipPrevious,
-                            contentDescription = "Previous track",
+                            contentDescription = stringResource(R.string.previous_track),
                             modifier = Modifier.size(36.dp),
                         )
                     }
@@ -186,7 +192,7 @@ fun ExpandedNowPlayingScreen(session: OpenLibrary, onDismiss: () -> Unit) {
                     IconButton(onClick = { player.seekToNextMediaItem() }) {
                         Icon(
                             Icons.Filled.SkipNext,
-                            contentDescription = "Next track",
+                            contentDescription = stringResource(R.string.next_track),
                             modifier = Modifier.size(36.dp),
                         )
                     }
@@ -205,22 +211,24 @@ fun ExpandedNowPlayingScreen(session: OpenLibrary, onDismiss: () -> Unit) {
                     // logic as the compact bar.
                     IconButton(onClick = { session.appHandle.cycleRepeatMode() }) {
                         Icon(
-                            imageVector = if (repeatMode == BridgeRepeatMode.TRACK) {
-                                Icons.Filled.RepeatOne
-                            } else {
-                                Icons.Filled.Repeat
-                            },
-                            contentDescription = "Repeat mode",
-                            tint = if (repeatMode == BridgeRepeatMode.NONE) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.primary
-                            },
+                            imageVector =
+                                if (repeatMode == BridgeRepeatMode.TRACK) {
+                                    Icons.Filled.RepeatOne
+                                } else {
+                                    Icons.Filled.Repeat
+                                },
+                            contentDescription = stringResource(R.string.repeat_mode),
+                            tint =
+                                if (repeatMode == BridgeRepeatMode.NONE) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
                         )
                     }
                     Spacer(modifier = Modifier.width(24.dp))
                     IconButton(onClick = { queueOpen = true }) {
-                        Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
+                        Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.queue))
                     }
                 }
 
@@ -239,12 +247,13 @@ fun ExpandedNowPlayingScreen(session: OpenLibrary, onDismiss: () -> Unit) {
                 ) {
                     IconButton(onClick = { session.appHandle.toggleMute() }) {
                         Icon(
-                            imageVector = if (isMuted) {
-                                Icons.AutoMirrored.Filled.VolumeOff
-                            } else {
-                                Icons.Filled.VolumeUp
-                            },
-                            contentDescription = if (isMuted) "Unmute" else "Mute",
+                            imageVector =
+                                if (isMuted) {
+                                    Icons.AutoMirrored.Filled.VolumeOff
+                                } else {
+                                    Icons.Filled.VolumeUp
+                                },
+                            contentDescription = stringResource(if (isMuted) R.string.unmute else R.string.mute),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }

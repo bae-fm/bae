@@ -27,9 +27,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 
 /**
  * Minimal per-device settings: the library's sync status, and a destructive
@@ -53,10 +55,10 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
                 Text(
-                    text = "Settings",
+                    text = stringResource(R.string.settings),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
@@ -68,14 +70,19 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "Sync",
+                text = stringResource(R.string.settings_sync),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(text = if (config.sync != null) "Cloud sync on" else "Local only")
+            Text(
+                text =
+                    stringResource(
+                        if (config.sync != null) R.string.settings_cloud_sync_on else R.string.settings_local_only,
+                    ),
+            )
             if (config.sync != null) {
                 Text(
-                    text = if (syncReady) "Synced" else "Syncing…",
+                    text = stringResource(if (syncReady) R.string.settings_synced else R.string.settings_syncing),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -85,15 +92,15 @@ fun SettingsScreen(
 
             Button(
                 onClick = { confirmLeave = true },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                ),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
             ) {
-                Text("Remove this library from this device")
+                Text(stringResource(R.string.settings_remove_library))
             }
             Text(
-                text = "Removes this library and its downloaded files from this device. " +
-                    "Your library in the cloud is untouched — you can re-pair this device later.",
+                text = stringResource(R.string.settings_remove_library_explanation),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -103,19 +110,19 @@ fun SettingsScreen(
     if (confirmLeave) {
         AlertDialog(
             onDismissRequest = { confirmLeave = false },
-            title = { Text("Remove this library from this device?") },
-            text = { Text("Your library in the cloud is untouched. You can re-pair this device later.") },
+            title = { Text(stringResource(R.string.settings_remove_library_confirm_title)) },
+            text = { Text(stringResource(R.string.settings_remove_library_confirm_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmLeave = false
                     onLeaveLibrary()
                 }) {
-                    Text("Remove")
+                    Text(stringResource(R.string.settings_remove))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { confirmLeave = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
