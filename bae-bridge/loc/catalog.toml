@@ -96,6 +96,21 @@ comment = "Identify: which barcode is being looked up, of how many."
 args = { position = "Int", total = "Int" }
 value = "Looking up barcode {position} of {total}"
 
+[messages."core.queue.uploading"]
+comment = "Storage queue: count currently uploading."
+args = { count = "Int" }
+value = "{count} uploading"
+
+[messages."core.queue.failed"]
+comment = "Storage queue: count that failed."
+args = { count = "Int" }
+value = "{count} failed"
+
+[messages."core.queue.queued"]
+comment = "Storage queue: count waiting to transfer."
+args = { count = "Int" }
+value = "{count} queued"
+
 [messages."core.outbox.pending_deletes"]
 comment = "Storage queue: number of cloud deletes still pending."
 args = { count = "Int" }

@@ -6692,7 +6692,6 @@ mod tests {
         assert_eq!(snap.uploads[0].bytes_total, 1000);
         assert_eq!(snap.uploads[0].state, UploadState::Queued);
         assert_eq!(snap.per_release.get(&release.id).map(|p| p.queued), Some(1));
-        assert_eq!(snap.summary, "1 queued");
 
         // In flight now: the in-memory map flips it to active, starting at zero
         // bytes done.
@@ -6742,7 +6741,6 @@ mod tests {
             UploadState::Failed { last_error } => assert_eq!(last_error, "boom"),
             other => panic!("expected Failed, got {other:?}"),
         }
-        assert_eq!(snap.summary, "1 failed");
 
         // Reset backoff clears the timestamp but keeps the failure record.
         manager.database.reset_cloud_outbox_backoff().await.unwrap();
@@ -6757,7 +6755,6 @@ mod tests {
         assert!(snap.uploads.is_empty());
         assert_eq!(snap.total.failed, 0);
         assert!(!snap.per_release.contains_key(&release.id));
-        assert_eq!(snap.summary, "");
     }
 
     /// The real `ReleaseUploadObserver` drives the snapshot's live byte count:

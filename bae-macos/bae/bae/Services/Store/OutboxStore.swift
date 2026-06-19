@@ -38,7 +38,6 @@ class OutboxStore {
             ),
             pendingDeletes: 0,
             paused: false,
-            summary: "",
             throughputBps: 0,
             throughputLabel: "",
             etaSeconds: nil,

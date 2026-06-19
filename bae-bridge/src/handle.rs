@@ -1320,7 +1320,6 @@ fn convert_outbox_snapshot(
         total: convert_upload_progress(snapshot.total),
         pending_deletes: snapshot.pending_deletes,
         paused: snapshot.paused,
-        summary: snapshot.summary,
         throughput_bps: snapshot.throughput_bps,
         throughput_label: snapshot.throughput_label,
         eta_seconds: snapshot.eta_seconds,
