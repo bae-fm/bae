@@ -31,4 +31,11 @@ class SeekSlider: NSSlider {
         isDragging = false
         onSeekComplete?(doubleValue)
     }
+
+    /// This slider's current value mapped to a position within `durationMs`,
+    /// clamped to the track. Drives the live seek-preview label during a drag;
+    /// the actual seek sends the raw ratio to core via `onSeekComplete`.
+    func positionMs(forDuration durationMs: UInt64) -> UInt64 {
+        UInt64(max(0, min(1, doubleValue)) * Double(durationMs))
+    }
 }

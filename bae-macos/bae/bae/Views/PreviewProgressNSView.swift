@@ -107,10 +107,8 @@ class PreviewProgressNSView: NSView {
         guard slider.isDragging, let durationMs, durationMs > 0 else {
             return
         }
-        elapsedField.stringValue = formatTimeAtRatio(
-            ratio: slider.doubleValue,
-            durationMs: durationMs
-        )
+        let positionMs = slider.positionMs(forDuration: durationMs)
+        elapsedField.stringValue = DurationClock.text(Int64(positionMs))
     }
 
     private func seekCompleted(_ value: Double) {

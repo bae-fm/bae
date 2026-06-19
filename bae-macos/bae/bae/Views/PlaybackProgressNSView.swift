@@ -122,16 +122,14 @@ class PlaybackProgressNSView: NSView {
     @objc
     private func sliderValueChanged(_: SeekSlider) {
         if slider.isDragging, let durationMs {
+            let positionMs = slider.positionMs(forDuration: durationMs)
             let label =
                 showRemainingTime
-                ? formatRemainingAtRatio(
-                    ratio: slider.doubleValue,
+                ? DurationClock.remaining(
+                    positionMs: positionMs,
                     durationMs: durationMs
                 )
-                : formatTimeAtRatio(
-                    ratio: slider.doubleValue,
-                    durationMs: durationMs
-                )
+                : DurationClock.text(Int64(positionMs))
             updateElapsedLabel(seekLabel: label)
         }
     }

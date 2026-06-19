@@ -1,7 +1,6 @@
 //! Pure formatters: `fn data → String` with no state, no I/O, no context.
 //!
-//! Examples: `format_minutes_seconds(ms) → "3:07"`,
-//! `compute_track_labels(format, side, …) → (String, String)`.
+//! Examples: `compute_track_labels(format, side, …) → (String, String)`.
 //!
 //! Zero dependencies on the database, the filesystem, or any struct
 //! definition outside this file. Tests are `#[cfg(test)]` at the bottom.
@@ -10,15 +9,6 @@
 //! display-ready types in `crate::album_detail`. Also called by any other
 //! module that needs the same deterministic formatting (e.g.
 //! `import/search.rs`).
-
-/// Format an unsigned millisecond duration as a bare "M:SS" clock label
-/// (e.g. "3:07", "14:59"). Seconds floor to the whole second.
-pub fn format_minutes_seconds(ms: u64) -> String {
-    let total_seconds = ms / 1000;
-    let minutes = total_seconds / 60;
-    let seconds = total_seconds % 60;
-    format!("{}:{:02}", minutes, seconds)
-}
 
 /// Format an ETA from progress, total size, and download rate.
 /// Returns empty string when ETA can't be computed (rate is zero or download complete).
@@ -128,15 +118,6 @@ pub fn group_tracks_by_side(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn minutes_seconds_basic() {
-        assert_eq!(format_minutes_seconds(0), "0:00");
-        assert_eq!(format_minutes_seconds(5_000), "0:05");
-        assert_eq!(format_minutes_seconds(63_000), "1:03");
-        assert_eq!(format_minutes_seconds(187_000), "3:07");
-        assert_eq!(format_minutes_seconds(899_000), "14:59");
-    }
 
     #[test]
     fn test_vinyl_labels() {
