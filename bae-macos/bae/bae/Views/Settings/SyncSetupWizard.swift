@@ -367,9 +367,12 @@ struct SyncSetupWizard: View {
         }
     #endif
 
-    // MARK: - Actions
+}
 
-    private func connectS3() {
+// MARK: - Actions
+
+extension SyncSetupWizard {
+    fileprivate func connectS3() {
         let data = BridgeSaveSyncConfig(
             bucket: bucket,
             region: region,
@@ -383,13 +386,13 @@ struct SyncSetupWizard: View {
     }
 
     #if BAE_OAUTH_PROVIDERS
-        private func connectOAuth(provider: BridgeCloudProvider) {
+        fileprivate func connectOAuth(provider: BridgeCloudProvider) {
             runConnect { try await onConnectOAuth(provider, storage) }
         }
     #endif
 
     #if BAE_CLOUDKIT
-        private func connectCloudKit() {
+        fileprivate func connectCloudKit() {
             runConnect { try await onConnectCloudKit(storage) }
         }
     #endif
@@ -398,7 +401,8 @@ struct SyncSetupWizard: View {
     /// cancel any in-flight attempt, run `operation`, finish the wizard on
     /// success, reset on cancellation (sheet dismissed or retried), surface
     /// the error otherwise.
-    private func runConnect(_ operation: @escaping () async throws -> Void) {
+    fileprivate func runConnect(_ operation: @escaping () async throws -> Void)
+    {
         connectTask?.cancel()
         isWorking = true
         error = nil
@@ -424,7 +428,7 @@ struct SyncSetupWizard: View {
     /// authorization specially; `CloudKitError` already carries a ready
     /// sentence in `msg`, but its `localizedDescription` is the reflected
     /// enum, so unwrap the case instead.
-    private func connectErrorMessage(_ error: Error) -> String {
+    fileprivate func connectErrorMessage(_ error: Error) -> String {
         if case BridgeError.Diagnostic(let category, let detail) = error,
             category == .config
         {

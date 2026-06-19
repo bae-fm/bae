@@ -226,7 +226,23 @@ struct LightboxView: View {
             .shadow(color: .black.opacity(0.5), radius: 20)
     }
 
-    private var thumbnailStrip: some View {
+    private func goPrevious() {
+        var next = cursor
+        next.goToPrevious()
+        onUpdate(next)
+    }
+
+    private func goNext() {
+        var next = cursor
+        next.goToNext()
+        onUpdate(next)
+    }
+}
+
+// MARK: - Overlay chrome
+
+extension LightboxView {
+    fileprivate var thumbnailStrip: some View {
         GeometryReader { geo in
             ScrollViewReader { scrollProxy in
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -257,7 +273,7 @@ struct LightboxView: View {
         .fadesWhenZoomed(at: magnification)
     }
 
-    private var labelView: some View {
+    fileprivate var labelView: some View {
         Text(cursor.current.label)
             .font(.callout)
             .foregroundStyle(.white.opacity(0.7))
@@ -266,7 +282,7 @@ struct LightboxView: View {
             .fadesWhenZoomed(at: magnification)
     }
 
-    private var cycleNavButtons: some View {
+    fileprivate var cycleNavButtons: some View {
         HStack {
             circleIconButton(
                 systemName: "chevron.left",
@@ -286,19 +302,7 @@ struct LightboxView: View {
         .fadesWhenZoomed(at: magnification)
     }
 
-    private func goPrevious() {
-        var next = cursor
-        next.goToPrevious()
-        onUpdate(next)
-    }
-
-    private func goNext() {
-        var next = cursor
-        next.goToNext()
-        onUpdate(next)
-    }
-
-    private var closeButtonOverlay: some View {
+    fileprivate var closeButtonOverlay: some View {
         VStack {
             HStack {
                 Spacer()
@@ -316,7 +320,7 @@ struct LightboxView: View {
         .fadesWhenZoomed(at: magnification)
     }
 
-    private func circleIconButton(
+    fileprivate func circleIconButton(
         systemName: String,
         diameter: CGFloat,
         iconFont: Font,
@@ -335,7 +339,7 @@ struct LightboxView: View {
         .buttonStyle(.plain)
     }
 
-    private var noImageView: some View {
+    fileprivate var noImageView: some View {
         VStack(spacing: 8) {
             Image(systemName: "photo")
                 .font(.largeTitle)
@@ -347,7 +351,7 @@ struct LightboxView: View {
         .allowsHitTesting(false)
     }
 
-    private var loadFailedView: some View {
+    fileprivate var loadFailedView: some View {
         VStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.largeTitle)
@@ -360,7 +364,7 @@ struct LightboxView: View {
     }
 
     @ViewBuilder
-    private func thumbnailView(for item: LightboxItem, isActive: Bool)
+    fileprivate func thumbnailView(for item: LightboxItem, isActive: Bool)
         -> some View
     {
         ImageView(localPath: item.path, pointSize: 56)

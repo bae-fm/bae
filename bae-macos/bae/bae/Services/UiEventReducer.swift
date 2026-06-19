@@ -3,24 +3,37 @@ import os.log
 
 private let logger = Logger.bae("UiEventReducer")
 
-/// Reduces BridgeUiEvents into the appropriate stores. High-frequency
-/// events go directly to NSViews via Combine subjects on AppService.
-/// Everything else lands on the store that owns the field.
-enum UiEventReducer {
-    @MainActor
-    static func reduce(
-        _ event: BridgeUiEvent,
-        playbackStore: PlaybackStore,
-        configStore: ConfigStore,
-        importStore: ImportStore,
-        libraryStore: LibraryStore,
-        appService: AppService,
-        uiStore: UiStore,
-        outboxStore: OutboxStore,
-        downloadStore: DownloadStore
-    ) {
+/// The stores and services a `UiEventReducer` writes, bundled so the reducer and
+/// its per-category helpers take one dependency rather than nine separate ones.
+@MainActor
+struct ReducerContext {
+    let playbackStore: PlaybackStore
+    let configStore: ConfigStore
+    let importStore: ImportStore
+    let libraryStore: LibraryStore
+    let appService: AppService
+    let uiStore: UiStore
+    let outboxStore: OutboxStore
+    let downloadStore: DownloadStore
+}
+
+/// The fields carried identically by the `playbackPlaying` and `playbackPaused`
+/// events, bundled so the two cases route to one `applyNowPlaying` helper that
+/// differs only by `isPlaying`.
+private struct NowPlayingFields {
+    let trackId: String
+    let trackTitle: String
+    let artistNames: String
+    let artistId: String
+    let albumId: String
+    let albumTitle: String
+    let coverImageId: String?
+    let durationMs: UInt64
+
+    /// Unpacks the shared fields from a `playbackPlaying` or `playbackPaused`
+    /// event (their payloads are identical); `nil` for any other variant.
+    init?(event: BridgeUiEvent) {
         switch event {
-        // ── Playback ───────────────────────────────────────────────────
         case .playbackPlaying(
             let trackId,
             let trackTitle,
@@ -30,53 +43,36 @@ enum UiEventReducer {
             let albumTitle,
             let coverImageId,
             let durationMs
-        ):
-            playbackStore.nowPlaying = .playing(
-                NowPlayingTrack(
-                    trackId: trackId,
-                    trackTitle: trackTitle,
-                    artistNames: artistNames,
-                    albumId: albumId,
-                    coverImageId: coverImageId,
-                    durationMs: durationMs,
-                )
-            )
-            let state = BridgePlaybackState.playing(
-                trackId: trackId,
-                trackTitle: trackTitle,
-                artistNames: artistNames,
-                artistId: artistId,
-                albumId: albumId,
-                albumTitle: albumTitle,
-                coverImageId: coverImageId,
-                durationMs: durationMs,
-            )
-            appService.mediaControlService.updateNowPlaying(
-                state: state,
-                appHandle: appService.appHandle
-            )
+        ),
+            .playbackPaused(
+                let trackId,
+                let trackTitle,
+                let artistNames,
+                let artistId,
+                let albumId,
+                let albumTitle,
+                let coverImageId,
+                let durationMs
+            ):
+            self.trackId = trackId
+            self.trackTitle = trackTitle
+            self.artistNames = artistNames
+            self.artistId = artistId
+            self.albumId = albumId
+            self.albumTitle = albumTitle
+            self.coverImageId = coverImageId
+            self.durationMs = durationMs
 
-        case .playbackPaused(
-            let trackId,
-            let trackTitle,
-            let artistNames,
-            let artistId,
-            let albumId,
-            let albumTitle,
-            let coverImageId,
-            let durationMs
-        ):
-            playbackStore.nowPlaying = .paused(
-                NowPlayingTrack(
-                    trackId: trackId,
-                    trackTitle: trackTitle,
-                    artistNames: artistNames,
-                    albumId: albumId,
-                    coverImageId: coverImageId,
-                    durationMs: durationMs,
-                )
-            )
-            let state = BridgePlaybackState.paused(
+        default:
+            return nil
+        }
+    }
+
+    /// The matching `BridgePlaybackState` for Control Center: `.playing` when
+    /// `isPlaying`, otherwise `.paused`. Both constructors take these fields.
+    func bridgeState(isPlaying: Bool) -> BridgePlaybackState {
+        isPlaying
+            ? .playing(
                 trackId: trackId,
                 trackTitle: trackTitle,
                 artistNames: artistNames,
@@ -84,53 +80,192 @@ enum UiEventReducer {
                 albumId: albumId,
                 albumTitle: albumTitle,
                 coverImageId: coverImageId,
-                durationMs: durationMs,
+                durationMs: durationMs
             )
-            appService.mediaControlService.updateNowPlaying(
-                state: state,
-                appHandle: appService.appHandle
+            : .paused(
+                trackId: trackId,
+                trackTitle: trackTitle,
+                artistNames: artistNames,
+                artistId: artistId,
+                albumId: albumId,
+                albumTitle: albumTitle,
+                coverImageId: coverImageId,
+                durationMs: durationMs
             )
+    }
+}
+
+/// Reduces BridgeUiEvents into the appropriate stores. High-frequency
+/// events go directly to NSViews via Combine subjects on AppService.
+/// Everything else lands on the store that owns the field.
+///
+/// `reduce` groups the variants by concern and routes each group to a helper;
+/// the helpers handle only the variants routed to them.
+enum UiEventReducer {
+    @MainActor
+    static func reduce(_ event: BridgeUiEvent, into context: ReducerContext) {
+        switch event {
+        case .playbackPlaying, .playbackPaused, .playbackLoading,
+            .playbackStopped, .playbackError, .playbackProgress,
+            .volumeChanged, .muteChanged, .repeatModeChanged,
+            .queueUpdated, .queueItemsAdded:
+            reducePlayback(event, into: context)
+
+        case .previewPlaying, .previewPaused, .previewIdle, .previewProgress:
+            reducePreview(event, into: context)
+
+        case .candidateIdentifyStateChanged, .candidateSignalsUpdated,
+            .candidateImportImporting, .candidateImportComplete,
+            .candidateImportError, .candidateSkipChanged:
+            reduceCandidate(event, into: context)
+
+        case .watchedFoldersChanged, .folderCandidateAdded, .invalidCandidate,
+            .scanCandidateRemoved, .scanFinished:
+            reduceScan(event, into: context)
+
+        case .albumAdded, .albumUpdated, .albumRemoved,
+            .releaseAdded, .releaseUpdated, .releaseRemoved,
+            .releaseTransferProgress, .releaseTransferEnded:
+            reduceLibrary(event, into: context)
+
+        case .configChanged, .syncError, .syncTimeChanged, .syncingChanged,
+            .outboxChanged, .downloadQueueChanged:
+            reduceSyncAndConfig(event, into: context)
+
+        case .error, .errorCleared:
+            reduceErrors(event, into: context)
+        }
+    }
+
+    // Each helper handles only the variants `reduce` routes to it; the trailing
+    // `default` is unreachable in practice and present only for switch
+    // exhaustiveness.
+
+    @MainActor
+    private static func reducePlayback(
+        _ event: BridgeUiEvent,
+        into context: ReducerContext
+    ) {
+        switch event {
+        case .playbackPlaying, .playbackPaused, .playbackLoading,
+            .playbackStopped:
+            reducePlaybackNowPlaying(event, into: context)
+
+        case .playbackError, .playbackProgress, .volumeChanged, .muteChanged,
+            .repeatModeChanged, .queueUpdated, .queueItemsAdded:
+            reducePlaybackStateAndControls(event, into: context)
+
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private static func reducePlaybackNowPlaying(
+        _ event: BridgeUiEvent,
+        into context: ReducerContext
+    ) {
+        switch event {
+        case .playbackPlaying:
+            if let fields = NowPlayingFields(event: event) {
+                applyNowPlaying(fields, isPlaying: true, into: context)
+            }
+
+        case .playbackPaused:
+            if let fields = NowPlayingFields(event: event) {
+                applyNowPlaying(fields, isPlaying: false, into: context)
+            }
 
         case .playbackLoading(let trackId, let track):
-            // Bare event (track == nil): enter loading, keep the prior track on
-            // screen, and clear the frozen position bar. Detailed event: swap to
-            // the resolved target so the bar updates while audio still loads.
-            if let track {
-                playbackStore.setLoadingTarget(
-                    trackId: trackId,
-                    target: NowPlayingTrack(
-                        trackId: trackId,
-                        trackTitle: track.trackTitle,
-                        artistNames: track.artistNames,
-                        albumId: track.albumId,
-                        coverImageId: track.coverImageId,
-                        durationMs: track.durationMs
-                    )
-                )
-            }
-            else {
-                playbackStore.beginLoading(trackId: trackId)
-                playbackStore.playbackPositionSubject.send(.reset)
-            }
-            appService.mediaControlService.updateNowPlaying(
-                state: .loading(trackId: trackId, track: track),
-                appHandle: appService.appHandle
-            )
+            applyLoading(trackId: trackId, track: track, into: context)
 
         case .playbackStopped:
+            let playbackStore = context.playbackStore
             playbackStore.nowPlaying = .stopped
             playbackStore.playbackPositionSubject.send(.reset)
-            appService.mediaControlService.updateNowPlaying(
+            context.appService.mediaControlService.updateNowPlaying(
                 state: .stopped,
-                appHandle: appService.appHandle
+                appHandle: context.appService.appHandle
             )
 
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private static func applyLoading(
+        trackId: String,
+        track: BridgeLoadingTrackInfo?,
+        into context: ReducerContext
+    ) {
+        let playbackStore = context.playbackStore
+        // Bare event (track == nil): enter loading, keep the prior track on
+        // screen, and clear the frozen position bar. Detailed event: swap to
+        // the resolved target so the bar updates while audio still loads.
+        if let track {
+            playbackStore.setLoadingTarget(
+                trackId: trackId,
+                target: NowPlayingTrack(
+                    trackId: trackId,
+                    trackTitle: track.trackTitle,
+                    artistNames: track.artistNames,
+                    albumId: track.albumId,
+                    coverImageId: track.coverImageId,
+                    durationMs: track.durationMs
+                )
+            )
+        }
+        else {
+            playbackStore.beginLoading(trackId: trackId)
+            playbackStore.playbackPositionSubject.send(.reset)
+        }
+        context.appService.mediaControlService.updateNowPlaying(
+            state: .loading(trackId: trackId, track: track),
+            appHandle: context.appService.appHandle
+        )
+    }
+
+    /// Set the now-playing track (playing vs paused) on the store and mirror the
+    /// matching `BridgePlaybackState` to Control Center. The store's
+    /// `NowPlayingTrack` and Control Center's `BridgePlaybackState` carry the
+    /// same fields; the latter also holds `artistId`/`albumTitle`, which
+    /// `NowPlayingTrack` doesn't.
+    @MainActor
+    private static func applyNowPlaying(
+        _ fields: NowPlayingFields,
+        isPlaying: Bool,
+        into context: ReducerContext
+    ) {
+        let track = NowPlayingTrack(
+            trackId: fields.trackId,
+            trackTitle: fields.trackTitle,
+            artistNames: fields.artistNames,
+            albumId: fields.albumId,
+            coverImageId: fields.coverImageId,
+            durationMs: fields.durationMs
+        )
+        context.playbackStore.nowPlaying =
+            isPlaying ? .playing(track) : .paused(track)
+        context.appService.mediaControlService.updateNowPlaying(
+            state: fields.bridgeState(isPlaying: isPlaying),
+            appHandle: context.appService.appHandle
+        )
+    }
+
+    @MainActor
+    private static func reducePlaybackStateAndControls(
+        _ event: BridgeUiEvent,
+        into context: ReducerContext
+    ) {
+        let playbackStore = context.playbackStore
+        switch event {
         case .playbackError(let reason):
             // A track couldn't be played (cloud-only not downloaded, decode
             // failure); core has already fallen back to stopped. Surface why —
             // the actionable cloud cases get their keyed line, everything else
             // the generic category line plus copyable detail.
-            uiStore.showError(DisplayError(reason))
+            context.uiStore.showError(DisplayError(reason))
 
         case .playbackProgress(
             let positionMs,
@@ -147,7 +282,7 @@ enum UiEventReducer {
                     )
                 )
             )
-            appService.mediaControlService.updatePosition(
+            context.appService.mediaControlService.updatePosition(
                 positionMs: positionMs,
                 durationMs: durationMs
             )
@@ -165,7 +300,7 @@ enum UiEventReducer {
             // The event carries display-ready items (core resolves them before
             // emitting), so map them straight through — no DB re-query here.
             playbackStore.queueItems = items.map(QueueItem.init(bridge:))
-            appService.mediaControlService.updateCommandAvailability(
+            context.appService.mediaControlService.updateCommandAvailability(
                 hasNext: hasNext,
                 hasPrevious: hasPrevious
             )
@@ -173,13 +308,26 @@ enum UiEventReducer {
         case .queueItemsAdded(let count):
             playbackStore.queueItemsAddedSubject.send(Int(count))
 
-        // ── Preview ────────────────────────────────────────────────────
+        default:
+            break
+        }
+    }
+}
+
+extension UiEventReducer {
+    @MainActor
+    private static func reducePreview(
+        _ event: BridgeUiEvent,
+        into context: ReducerContext
+    ) {
+        let importStore = context.importStore
+        switch event {
         case .previewPlaying(let path, let durationMs):
             importStore.previewState = .playing(
                 path: path,
                 durationMs: durationMs
             )
-            appService.mediaControlService.updateNowPlayingForPreview(
+            context.appService.mediaControlService.updateNowPlayingForPreview(
                 state: .playing(
                     path: path,
                     durationMs: durationMs
@@ -191,7 +339,7 @@ enum UiEventReducer {
                 path: path,
                 durationMs: durationMs
             )
-            appService.mediaControlService.updateNowPlayingForPreview(
+            context.appService.mediaControlService.updateNowPlayingForPreview(
                 state: .paused(
                     path: path,
                     durationMs: durationMs
@@ -201,7 +349,7 @@ enum UiEventReducer {
         case .previewIdle:
             importStore.previewState = .idle
             importStore.previewProgressSubject.send(.reset)
-            appService.mediaControlService.updateNowPlayingForPreview(
+            context.appService.mediaControlService.updateNowPlayingForPreview(
                 state: .idle
             )
 
@@ -212,11 +360,22 @@ enum UiEventReducer {
                     elapsed: DurationClock.text(Int64(positionMs))
                 )
             )
-            appService.mediaControlService.updatePreviewPosition(
+            context.appService.mediaControlService.updatePreviewPosition(
                 positionMs: positionMs
             )
 
-        // ── Candidate-scoped ───────────────────────────────────────────
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private static func reduceCandidate(
+        _ event: BridgeUiEvent,
+        into context: ReducerContext
+    ) {
+        let importStore = context.importStore
+        switch event {
         case .candidateIdentifyStateChanged(let key, let state, let toolbar):
             importStore.mutateCandidate(forKey: key) { candidate in
                 candidate.identifyState = IdentifyState(bridge: state)
@@ -253,7 +412,24 @@ enum UiEventReducer {
                 $0.importStatus = .error(error)
             }
 
-        // ── Scan ───────────────────────────────────────────────────────
+        case .candidateSkipChanged(let key, let skipped):
+            // The user skipped or unskipped the candidate; flip its flag so the
+            // import view re-tabs it New ↔ Skipped. In-place mutation keeps the
+            // candidate's identify/search/import state.
+            importStore.mutateCandidate(forKey: key) { $0.skipped = skipped }
+
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private static func reduceScan(
+        _ event: BridgeUiEvent,
+        into context: ReducerContext
+    ) {
+        let importStore = context.importStore
+        switch event {
         case .watchedFoldersChanged(let folders):
             // Pure assignment. Candidates of an unwatched folder aren't deleted
             // here — `candidateGroups` only surfaces candidates whose folder is
@@ -288,17 +464,22 @@ enum UiEventReducer {
             importStore.folderCandidates.removeValue(forKey: key)
             importStore.invalidCandidates.removeValue(forKey: key)
 
-        case .candidateSkipChanged(let key, let skipped):
-            // The user skipped or unskipped the candidate; flip its flag so the
-            // import view re-tabs it New ↔ Skipped. In-place mutation keeps the
-            // candidate's identify/search/import state.
-            importStore.mutateCandidate(forKey: key) { $0.skipped = skipped }
-
         case .scanFinished:
             // No state change needed — views react to candidate additions
             break
 
-        // ── Library ────────────────────────────────────────────────────
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private static func reduceLibrary(
+        _ event: BridgeUiEvent,
+        into context: ReducerContext
+    ) {
+        let libraryStore = context.libraryStore
+        switch event {
         case .albumAdded(let album):
             logger.info(
                 "reducer: albumAdded for album \(album.album.id, privacy: .public)"
@@ -319,11 +500,11 @@ enum UiEventReducer {
                 albumId: albumId,
                 releaseIds: releaseIds
             )
-            importStore.handleAlbumRemoved(
+            context.importStore.handleAlbumRemoved(
                 albumId: albumId,
                 releaseIds: releaseIds
             )
-            uiStore.clearSelectedRelease(inAlbum: albumId)
+            context.uiStore.clearSelectedRelease(inAlbum: albumId)
             libraryStore.libraryShapeSubject.send(
                 .albumRemoved(albumId: albumId)
             )
@@ -345,37 +526,30 @@ enum UiEventReducer {
                 releaseId: releaseId,
                 album: album
             )
-            importStore.handleReleaseRemoved(releaseId: releaseId)
-            uiStore.clearSelectedReleaseIfMatching(releaseId, inAlbum: albumId)
+            context.importStore.handleReleaseRemoved(releaseId: releaseId)
+            context.uiStore.clearSelectedReleaseIfMatching(
+                releaseId,
+                inAlbum: albumId
+            )
             libraryStore.libraryShapeSubject.send(
                 .releaseRemoved(albumId: albumId, releaseId: releaseId)
             )
 
-        case .configChanged(let config, let syncReady):
-            configStore.config = Config(bridge: config)
-            configStore.syncReady = syncReady
+        case .releaseTransferProgress, .releaseTransferEnded:
+            reduceReleaseTransfer(event, into: context)
 
-        case .syncError(let error):
-            // `nil` error clears the banner (sync recovered). Otherwise show the
-            // generic category line plus the opaque detail the error carries.
-            configStore.syncError = error.map { DisplayError($0) }
+        default:
+            break
+        }
+    }
 
-        case .syncTimeChanged(let time):
-            // `nil` time means no sync has completed yet — a real absence, so
-            // the Date stays nil. Otherwise core sends epoch milliseconds.
-            configStore.lastSyncTime = time.map {
-                Date(timeIntervalSince1970: TimeInterval($0) / 1000)
-            }
-
-        case .syncingChanged(let syncing):
-            configStore.syncing = syncing
-
-        case .outboxChanged(let snapshot):
-            outboxStore.snapshot = snapshot
-
-        case .downloadQueueChanged(let snapshot):
-            downloadStore.snapshot = snapshot
-
+    @MainActor
+    private static func reduceReleaseTransfer(
+        _ event: BridgeUiEvent,
+        into context: ReducerContext
+    ) {
+        let libraryStore = context.libraryStore
+        switch event {
         case .releaseTransferProgress(
             let releaseId,
             let action,
@@ -397,12 +571,62 @@ enum UiEventReducer {
         case .releaseTransferEnded(let releaseId):
             libraryStore.handleReleaseTransferEnded(releaseId: releaseId)
 
-        // ── Errors ─────────────────────────────────────────────────────
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private static func reduceSyncAndConfig(
+        _ event: BridgeUiEvent,
+        into context: ReducerContext
+    ) {
+        let configStore = context.configStore
+        switch event {
+        case .configChanged(let config, let syncReady):
+            configStore.config = Config(bridge: config)
+            configStore.syncReady = syncReady
+
+        case .syncError(let error):
+            // `nil` error clears the banner (sync recovered). Otherwise show the
+            // generic category line plus the opaque detail the error carries.
+            configStore.syncError = error.map { DisplayError($0) }
+
+        case .syncTimeChanged(let time):
+            // `nil` time means no sync has completed yet — a real absence, so
+            // the Date stays nil. Otherwise core sends epoch milliseconds.
+            configStore.lastSyncTime = time.map {
+                Date(timeIntervalSince1970: TimeInterval($0) / 1000)
+            }
+
+        case .syncingChanged(let syncing):
+            configStore.syncing = syncing
+
+        case .outboxChanged(let snapshot):
+            context.outboxStore.snapshot = snapshot
+
+        case .downloadQueueChanged(let snapshot):
+            context.downloadStore.snapshot = snapshot
+
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private static func reduceErrors(
+        _ event: BridgeUiEvent,
+        into context: ReducerContext
+    ) {
+        switch event {
         case .error(let error):
-            uiStore.showError(DisplayError(error))
+            context.uiStore.showError(DisplayError(error))
 
         case .errorCleared:
-            uiStore.clearError()
+            context.uiStore.clearError()
+
+        default:
+            break
         }
     }
 }

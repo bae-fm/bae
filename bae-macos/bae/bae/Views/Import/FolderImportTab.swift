@@ -54,42 +54,10 @@ struct FolderImportTab: View {
                 emptyState
             }
             else {
-                HSplitView {
-                    candidateList
-                        .frame(minWidth: 200, idealWidth: 250, maxWidth: 350)
-                    if let candidate = selectedCandidate {
-                        mainPane(for: candidate)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                    else {
-                        ContentUnavailableView(
-                            "Select a folder",
-                            systemImage: "folder",
-                            description: Text(
-                                "Choose a scanned folder to search for metadata"
-                            ),
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                splitContent
             }
 
-            // Document viewer overlay
-            if let doc = documentContent {
-                Color.black.opacity(0.5)
-                    .ignoresSafeArea()
-                    .onTapGesture { documentContent = nil }
-                DocumentViewerView(
-                    name: doc.name,
-                    text: doc.text,
-                    onClose: { documentContent = nil }
-                )
-                .frame(width: 750, height: 600)
-                .background(Theme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .shadow(radius: 20)
-            }
+            documentOverlay
         }
         .onChange(of: selectedKey) { _, _ in
             uiStore.lightbox = nil
@@ -335,20 +303,29 @@ struct FolderImportTab: View {
         }
     }
 
-    private func searchAndResultsPane(
+}
+
+// MARK: - Search, results, and confirm
+
+extension FolderImportTab {
+    fileprivate func searchAndResultsPane(
         for candidate: Candidate,
         selectedReleaseId: String?
     ) -> some View {
         ImportSearchFlow.buildSearchPane(
-            importer: importer,
-            library: library,
-            importStore: importStore,
-            configStore: configStore,
-            key: candidate.key,
-            candidate: candidate,
-            localTrackCount: candidate.trackCount,
+            services: ImportSearchFlow.ImportServices(
+                importer: importer,
+                library: library,
+                importStore: importStore,
+                configStore: configStore
+            ),
+            input: ImportSearchFlow.SearchPaneInput(
+                candidate: candidate,
+                key: candidate.key,
+                localTrackCount: candidate.trackCount,
+                selectedReleaseId: selectedReleaseId
+            ),
             openSettings: { openSettings() },
-            selectedReleaseId: selectedReleaseId,
             onAddAsUnknown: {
                 guard case .folder(let folderPath, _) = candidate.source else {
                     return
@@ -363,7 +340,7 @@ struct FolderImportTab: View {
         )
     }
 
-    private func confirmationView(for candidate: Candidate) -> some View {
+    fileprivate func confirmationView(for candidate: Candidate) -> some View {
         let key = candidate.key
         let detail = candidate.releaseDetail
         // For Unknown imports there's no source release detail —
@@ -387,24 +364,28 @@ struct FolderImportTab: View {
             return 0
         }()
         return ImportSearchFlow.buildConfirmationView(
-            importStore: importStore,
-            key: key,
-            trackCountMismatch: trackCountMismatch,
-            expectedTrackCount: expectedTrackCount,
-            libraryStatus: libraryStatus,
-            remoteCoverArts: remoteCoverArts,
-            hasCoverOptions: hasCoverOptions,
-            storageManaged: $storageManaged,
-            storagePinned: $storagePinned,
-            importDisabled: false,
-            localArtwork: candidate.files.artwork,
-            uiStore: uiStore,
-            onConfirmImport: {
-                commitConfirmedImport(candidate: candidate)
-            },
-            onViewInLibrary: { albumId in
-                uiStore.navigateToAlbum(albumId)
-            },
+            inputs: ImportSearchFlow.ConfirmationInputs(
+                importStore: importStore,
+                key: key,
+                uiStore: uiStore,
+                trackCountMismatch: trackCountMismatch,
+                expectedTrackCount: expectedTrackCount,
+                libraryStatus: libraryStatus,
+                remoteCoverArts: remoteCoverArts,
+                hasCoverOptions: hasCoverOptions,
+                storageManaged: $storageManaged,
+                storagePinned: $storagePinned,
+                importDisabled: false,
+                localArtwork: candidate.files.artwork
+            ),
+            callbacks: ImportSearchFlow.ConfirmationCallbacks(
+                onConfirmImport: {
+                    commitConfirmedImport(candidate: candidate)
+                },
+                onViewInLibrary: { albumId in
+                    uiStore.navigateToAlbum(albumId)
+                }
+            ),
             coverContent: {
                 folderCoverThumb(
                     source: candidate.selectedCover.map {
@@ -418,7 +399,7 @@ struct FolderImportTab: View {
 
     // MARK: - Folder-specific cover thumbnail (supports local artwork)
 
-    private func folderCoverThumb(source: ImageLoader.Source?)
+    fileprivate func folderCoverThumb(source: ImageLoader.Source?)
         -> some View
     {
         Group {
@@ -436,7 +417,7 @@ struct FolderImportTab: View {
         .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
-    private func commitConfirmedImport(candidate: Candidate) {
+    fileprivate func commitConfirmedImport(candidate: Candidate) {
         guard case .folder(let folderPath, _) = candidate.source else {
             return
         }
@@ -477,6 +458,51 @@ struct FolderImportTab: View {
                 identityChoice.bridge,
                 $0
             )
+        }
+    }
+}
+
+// MARK: - Body layout
+
+extension FolderImportTab {
+    @ViewBuilder
+    fileprivate var splitContent: some View {
+        HSplitView {
+            candidateList
+                .frame(minWidth: 200, idealWidth: 250, maxWidth: 350)
+            if let candidate = selectedCandidate {
+                mainPane(for: candidate)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            else {
+                ContentUnavailableView(
+                    "Select a folder",
+                    systemImage: "folder",
+                    description: Text(
+                        "Choose a scanned folder to search for metadata"
+                    ),
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    fileprivate var documentOverlay: some View {
+        if let doc = documentContent {
+            Color.black.opacity(0.5)
+                .ignoresSafeArea()
+                .onTapGesture { documentContent = nil }
+            DocumentViewerView(
+                name: doc.name,
+                text: doc.text,
+                onClose: { documentContent = nil }
+            )
+            .frame(width: 750, height: 600)
+            .background(Theme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .shadow(radius: 20)
         }
     }
 }

@@ -17,8 +17,10 @@ private func disableHostingViewSizingOptions(_ window: NSWindow) {
     }
     guard let imp = class_getMethodImplementation(type(of: contentView), sel)
     else { return }
-    typealias Fn = @convention(c) (AnyObject, Selector, Int) -> Void
-    unsafeBitCast(imp, to: Fn.self)(contentView, sel, 0)
+    typealias SetSizingOptionsFn =
+        @convention(c) (AnyObject, Selector, Int) ->
+        Void
+    unsafeBitCast(imp, to: SetSizingOptionsFn.self)(contentView, sel, 0)
 }
 
 /// Adjusts the position of the window's traffic light buttons (close/minimize/zoom).
