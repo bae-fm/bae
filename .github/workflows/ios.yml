@@ -69,8 +69,8 @@ jobs:
         CARGO_TARGET_DIR="target-ios" \
         cargo clippy --target aarch64-apple-ios -p bae-bridge -- -D warnings
 
-    - name: Install xcodegen and periphery
-      run: brew install xcodegen peripheryapp/periphery/periphery
+    - name: Install xcodegen, periphery, and swiftlint
+      run: brew install xcodegen peripheryapp/periphery/periphery swiftlint
 
     - name: Build Rust bridge (iOS xcframework)
       run: ./bae-bridge/build-ios.sh
@@ -87,6 +87,7 @@ jobs:
           -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
           -sdk iphonesimulator \
+          -arch arm64 \
           -derivedDataPath bae-ios/bae/.build/derivedData \
           build
 
@@ -95,6 +96,10 @@ jobs:
       run: |
         find bae-ios/bae/bae -name "*.swift" -not -name bae_bridge.swift -print0 \
           | xargs -0 xcrun swift-format lint -s
+
+    - name: Swift lint (swiftlint)
+      if: ${{ !cancelled() }}
+      run: swiftlint lint --strict --config .swiftlint.yml bae-ios/bae/bae
 
     - name: Dead code check (periphery)
       if: ${{ !cancelled() && steps.build_ios.conclusion == 'success' }}
