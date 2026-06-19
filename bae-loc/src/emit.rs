@@ -72,11 +72,40 @@ fn json_str(s: &str) -> serde_json::Value {
     serde_json::Value::String(s.to_string())
 }
 
-fn string_unit(value: &str) -> serde_json::Value {
-    serde_json::json!({ "stringUnit": { "state": "translated", "value": value } })
+/// The shipping locales beyond the English source. The generated catalog carries
+/// a slot for each — English value, marked `new` (needs translation) — so the app
+/// declares support and translators have a target; English shows at runtime until
+/// a locale is actually translated. (Source: en. RTL: ar, he. CJK: ja, zh-Hans.
+/// Slavic: uk/bg Cyrillic, pl/cs/hr Latin.)
+const TARGET_LOCALES: &[&str] = &[
+    "es", "fr", "de", "pt-BR", "ja", "zh-Hans", "ar", "he", "uk", "bg", "pl", "cs", "hr",
+];
+
+fn string_unit_state(value: &str, state: &str) -> serde_json::Value {
+    serde_json::json!({ "stringUnit": { "state": state, "value": value } })
 }
 
-/// Build the `.xcstrings` `localizations.<lang>` body for one message.
+fn string_unit(value: &str) -> serde_json::Value {
+    string_unit_state(value, "translated")
+}
+
+/// Build the per-locale `localizations` map: the English source at state
+/// `translated`, and every `TARGET_LOCALES` entry at state `new`, each rendered
+/// by `unit(state)`.
+fn per_locale(src_lang: &str, unit: impl Fn(&str) -> serde_json::Value) -> serde_json::Value {
+    let mut locs = serde_json::Map::new();
+    locs.insert(src_lang.to_string(), unit("translated"));
+    for loc in TARGET_LOCALES {
+        locs.insert((*loc).to_string(), unit("new"));
+    }
+    serde_json::Value::Object(locs)
+}
+
+/// Build the `.xcstrings` `localizations` body for one message: the English
+/// source (state `translated`) plus a slot for every `TARGET_LOCALES` entry
+/// carrying the English value at state `new` — so the app declares the locale
+/// and Xcode/translators see it as needing translation. English shows at runtime
+/// until a slot is actually translated.
 fn apple_localization(msg: &Message, src_lang: &str) -> Result<serde_json::Value, String> {
     let nodes = mf1::parse(&msg.value)?;
     let order = ordered_args(&nodes);
@@ -89,7 +118,9 @@ fn apple_localization(msg: &Message, src_lang: &str) -> Result<serde_json::Value
                 msg.value
             ));
         }
-        let mut variations = serde_json::Map::new();
+        // Render each category once; the per-locale slots reuse the rendered
+        // text (a translator-facing English starting point for that locale).
+        let mut rendered_cases: Vec<(String, String)> = Vec::new();
         for case in cases {
             let cat = match &case.selector {
                 PluralSelector::Category(c) => c.as_cldr(),
@@ -98,11 +129,16 @@ fn apple_localization(msg: &Message, src_lang: &str) -> Result<serde_json::Value
                 }
             };
             let rendered = apple_flat(&case.message, msg, &order, Some(arg))?;
-            variations.insert(cat.to_string(), string_unit(&rendered));
+            rendered_cases.push((cat.to_string(), rendered));
         }
-        return Ok(serde_json::json!({
-            src_lang: { "variations": { "plural": variations } }
-        }));
+        let plural_unit = |state: &str| -> serde_json::Value {
+            let variations: serde_json::Map<String, serde_json::Value> = rendered_cases
+                .iter()
+                .map(|(cat, r)| (cat.clone(), string_unit_state(r, state)))
+                .collect();
+            serde_json::json!({ "variations": { "plural": variations } })
+        };
+        return Ok(per_locale(src_lang, plural_unit));
     }
 
     if nodes.iter().any(|n| matches!(n, Node::Plural { .. })) {
@@ -113,7 +149,9 @@ fn apple_localization(msg: &Message, src_lang: &str) -> Result<serde_json::Value
     }
 
     let rendered = apple_flat(&nodes, msg, &order, None)?;
-    Ok(serde_json::json!({ src_lang: string_unit(&rendered) }))
+    Ok(per_locale(src_lang, |state| {
+        string_unit_state(&rendered, state)
+    }))
 }
 
 /// Emit the source-language `Core.xcstrings` for the whole catalog.
@@ -233,6 +271,12 @@ value = "Looking up barcode {position} of {total}"
         );
         assert!(json.contains("that release couldn't be found"), "{json}");
         assert!(json.contains("\"sourceLanguage\": \"en\""));
+        // Every shipping locale gets a slot; the non-source ones are `new`.
+        assert!(
+            json.contains("\"ar\"") && json.contains("\"zh-Hans\""),
+            "{json}"
+        );
+        assert!(json.contains("\"new\""), "{json}");
     }
 
     #[test]

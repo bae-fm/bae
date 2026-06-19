@@ -29,6 +29,11 @@ targets:
       path: bae/Info.plist
       properties:
         CFBundleDisplayName: bae
+        CFBundleDevelopmentRegion: en
+        # The shipping locales aren't listed here: the generated Core.xcstrings
+        # carries a slot per locale (single-sourced in bae-loc's TARGET_LOCALES),
+        # and xcstringstool's compiled per-language resources drive the bundle's
+        # known regions — so the set lives in exactly one place.
         SUFeedURL: https://raw.githubusercontent.com/bae-fm/bae/appcast/appcast.xml
         SUPublicEDKey: cYiouOrDxmQrHspLwOf/XpQOQOMt3isdYDs6xEDBGs8=
         SUEnableAutomaticChecks: true
