@@ -20,6 +20,7 @@ pub mod musicbrainz_mapper;
 mod progress;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod release_group;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod search;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod service;

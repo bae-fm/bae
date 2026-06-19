@@ -144,6 +144,18 @@ pub unsafe extern "C" fn bae_transfer_action_key(action: *const c_char) -> *mut 
     key_cstring(loc::transfer_action_key(&action))
 }
 
+fn format_track_position(pos: &bae_core::album_detail::TrackPosition) -> String {
+    use bae_core::album_detail::TrackPosition;
+    match pos {
+        TrackPosition::Sided {
+            side_letter,
+            number,
+        } => format!("{side_letter}{number}"),
+        TrackPosition::Disc { disc, number } => format!("{disc}-{number}"),
+        TrackPosition::Flat { number } => format!("{number}"),
+    }
+}
+
 /// Opaque app handle. Created by [`bae_init`], passed back to every call, freed
 /// with [`bae_handle_free`].
 pub struct BaeHandle(RunningApp);

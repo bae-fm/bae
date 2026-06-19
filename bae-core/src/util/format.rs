@@ -37,7 +37,7 @@ pub fn is_digital_format(format: Option<&str>) -> bool {
     matches!(detect_format(format), FormatKind::Digital)
 }
 
-/// Compute the structured [`TrackPosition`] for a track given the release
+/// Compute the structured [`crate::album_detail::TrackPosition`] for a track given the release
 /// format and side count. Picks the case (sided physical / multi-disc digital /
 /// flat) and fills its domain fields; the UI composes the position string and
 /// resolves the header word. `side` is 1-indexed.
@@ -82,7 +82,7 @@ fn track_side(position: &crate::album_detail::TrackPosition) -> crate::album_det
 }
 
 /// Group pre-sorted tracks by consecutive side. Two tracks share a group when
-/// their positions resolve to the same [`TrackSide`] (same side letter, same
+/// their positions resolve to the same [`crate::album_detail::TrackSide`] (same side letter, same
 /// disc, or both flat).
 pub fn group_tracks_by_side(
     tracks: &[crate::album_detail::TrackDetail],
