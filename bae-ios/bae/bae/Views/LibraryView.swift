@@ -13,8 +13,6 @@ struct LibraryView: View {
     private var libraryStore
     @Environment(Library.self)
     private var library
-    @Environment(MediaPaths.self)
-    private var mediaPaths
     @Environment(ConfigStore.self)
     private var configStore
     @Environment(Sync.self)
@@ -264,11 +262,6 @@ struct LibraryView: View {
 private struct AlbumGrid: View {
     let list: AlbumList
     let onSelect: (String) -> Void
-
-    @Environment(LibraryStore.self)
-    private var libraryStore
-    @Environment(MediaPaths.self)
-    private var mediaPaths
 
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 
