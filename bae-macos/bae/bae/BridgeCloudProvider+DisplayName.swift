@@ -46,6 +46,7 @@ func localizedCloudProviderName(provider: BridgeCloudProvider?) -> String {
         // passthrough name is correct. `provider` is non-nil here because nil
         // maps to the local-only key above, so force-unwrap surfaces a logic
         // error rather than rendering a blank label.
+        // swiftlint:disable:next force_unwrapping
         return provider!.displayName
     }
     return NSLocalizedString(key, tableName: "Core", bundle: .main, comment: "")
