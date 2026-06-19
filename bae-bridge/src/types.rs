@@ -353,8 +353,6 @@ pub struct BridgeFile {
     pub id: String,
     pub original_filename: String,
     pub file_size: i64,
-    /// Pre-formatted file size, e.g. "35 MB".
-    pub file_size_label: String,
     pub content_type: String,
     pub is_image: bool,
     /// Structured audio format; `None` for non-audio files. The UI composes the

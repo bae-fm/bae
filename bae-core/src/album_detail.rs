@@ -158,7 +158,6 @@ pub struct FileDetail {
     pub id: String,
     pub original_filename: String,
     pub file_size: i64,
-    pub file_size_label: String,
     pub is_image: bool,
     pub content_type: String,
     /// Structured audio format. `None` for non-audio files (images, cue sheets)
