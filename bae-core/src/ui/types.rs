@@ -1,3 +1,90 @@
+/// The kind of diagnostic failure. The UI shows one generic localized line per
+/// category; the paired `detail` is the underlying Rust error chain — logged and
+/// offered in a copyable disclosure, never translated. Mirrors
+/// `BridgeErrorCategory`; the bridge maps one to the other.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UiErrorCategory {
+    Database,
+    Config,
+    Internal,
+    Import,
+    Export,
+}
+
+/// What a `UiError::NotFound` was looking for, so the UI can localize "… not
+/// found". Mirrors `BridgeEntityKind`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UiEntityKind {
+    Library,
+    Album,
+    Release,
+    Track,
+    File,
+}
+
+/// A user-facing error carried on a UI event. The locale never crosses the
+/// bridge: this is a typed reason plus, for diagnostics, the opaque Rust error
+/// chain (`detail`) the UI logs and offers in a copyable disclosure but never
+/// translates. The bridge maps this to `BridgeError`, which the macOS renderer
+/// turns into a generic per-category line.
+#[derive(Debug, Clone)]
+pub enum UiError {
+    /// A specific entity was missing. Keyed; the UI localizes it.
+    NotFound { entity: UiEntityKind, id: String },
+    /// A diagnostic failure. The UI shows a generic per-category line; `detail`
+    /// is the opaque Rust error chain, never translated.
+    Diagnostic {
+        category: UiErrorCategory,
+        detail: String,
+    },
+}
+
+impl UiError {
+    /// A diagnostic error in the given category, with the underlying error's
+    /// `Display` text as the opaque, log-only detail.
+    pub fn diagnostic(category: UiErrorCategory, detail: impl std::fmt::Display) -> Self {
+        Self::Diagnostic {
+            category,
+            detail: detail.to_string(),
+        }
+    }
+    pub fn internal(detail: impl std::fmt::Display) -> Self {
+        Self::diagnostic(UiErrorCategory::Internal, detail)
+    }
+    pub fn import(detail: impl std::fmt::Display) -> Self {
+        Self::diagnostic(UiErrorCategory::Import, detail)
+    }
+}
+
+/// Why playback couldn't start or continue. The two cloud-only "not playable
+/// yet" cases are user-actionable and keyed; every in-core failure (decode,
+/// audio output, IO, missing file) is un-enumerable and routes to `Diagnostic`.
+#[derive(Debug, Clone)]
+pub enum PlaybackErrorReason {
+    /// A managed cloud-only track has no local copy and sync is disconnected —
+    /// the user reconnects cloud sync to play it. Actionable, keyed.
+    SyncDisconnected,
+    /// A managed track's cloud upload is still queued and its source file is
+    /// gone, so there's nothing to play yet — the user waits for the upload.
+    /// Actionable, keyed.
+    UploadPending,
+    /// Any other failure (decode, audio output, IO, DB, missing file). Carries
+    /// the underlying `UiError`; the UI renders its generic per-category line
+    /// plus the opaque, log-only detail.
+    Diagnostic { error: UiError },
+}
+
+impl PlaybackErrorReason {
+    /// An internal-category diagnostic reason carrying the given opaque,
+    /// log-only detail. For the in-core failure paths (decode, audio output,
+    /// IO) that have no user-actionable distinction.
+    pub fn internal(detail: impl std::fmt::Display) -> Self {
+        Self::Diagnostic {
+            error: UiError::internal(detail),
+        }
+    }
+}
+
 /// Top-level UI event. One enum for everything — every distinct state is a
 /// top-level variant with fields inlined, no sub-enums.
 /// High-frequency events (PlaybackProgress, PreviewProgress) go to NSViews on
@@ -7,10 +94,10 @@ pub enum UiBusEvent {
     // ── Playback ───────────────────────────────────────────────────
     PlaybackStopped,
     /// Playback couldn't start or continue — e.g. a cloud-only track that isn't
-    /// downloaded yet, or an in-core decode failure. Carries a user-facing
-    /// message; the UI surfaces it and playback falls back to stopped.
+    /// downloaded yet, or an in-core decode failure. Carries a typed reason the
+    /// UI renders for its locale; playback falls back to stopped.
     PlaybackError {
-        message: String,
+        reason: PlaybackErrorReason,
     },
     PlaybackLoading {
         track_id: String,
@@ -123,7 +210,7 @@ pub enum UiBusEvent {
     },
     CandidateImportError {
         key: String,
-        message: String,
+        error: UiError,
     },
 
     // ── Scan ───────────────────────────────────────────────────────
@@ -191,10 +278,11 @@ pub enum UiBusEvent {
         sync_ready: bool,
     },
     /// Sync loop's current error state. `None` means sync is healthy (clears a
-    /// prior failure). `Some` carries the latest error message for the UI to
-    /// show a reconnect banner.
+    /// prior failure). When set, it's a `UiError::Diagnostic` whose category
+    /// keys the generic line and whose detail is the opaque, log-only error
+    /// chain the UI offers in a copyable disclosure under the reconnect banner.
     SyncError {
-        message: Option<String>,
+        error: Option<UiError>,
     },
     /// Wall-clock time of the latest successful sync cycle, as Unix epoch
     /// milliseconds. `None` until the first cycle completes; updated whenever
@@ -236,7 +324,7 @@ pub enum UiBusEvent {
 
     // ── Errors ─────────────────────────────────────────────────────
     Error {
-        message: String,
+        error: UiError,
     },
     ErrorCleared,
 }

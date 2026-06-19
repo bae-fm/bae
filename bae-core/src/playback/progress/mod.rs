@@ -58,9 +58,10 @@ pub enum PlaybackProgress {
     MuteChanged {
         is_muted: bool,
     },
-    /// Playback error (e.g. storage offline)
+    /// Playback error (e.g. storage offline) — a typed reason the UI renders
+    /// for its locale.
     PlaybackError {
-        message: String,
+        reason: crate::ui::PlaybackErrorReason,
     },
 
     // -- Internal events --

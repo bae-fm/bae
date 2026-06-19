@@ -1473,10 +1473,10 @@ pub enum BridgeUiEvent {
     // ── Playback ───────────────────────────────────────────────────
     PlaybackStopped,
     /// Playback couldn't start or continue — e.g. a cloud-only track that isn't
-    /// downloaded yet, or an in-core decode failure. The UI surfaces `message`;
-    /// playback itself falls back to stopped.
+    /// downloaded yet, or an in-core decode failure. The UI renders `reason`
+    /// for its locale; playback itself falls back to stopped.
     PlaybackError {
-        message: String,
+        reason: BridgePlaybackErrorReason,
     },
     PlaybackLoading {
         track_id: String,
@@ -1584,7 +1584,7 @@ pub enum BridgeUiEvent {
     },
     CandidateImportError {
         key: String,
-        message: String,
+        error: BridgeError,
     },
 
     // ── Scan ───────────────────────────────────────────────────────
@@ -1648,9 +1648,12 @@ pub enum BridgeUiEvent {
         /// on the persisted-config mirror.
         sync_ready: bool,
     },
-    /// Sync loop's current error state. `None` clears a prior failure.
+    /// Sync loop's current error state. `None` clears a prior failure. When
+    /// set, it's a `BridgeError::Diagnostic` whose category keys the generic
+    /// line and whose detail is the opaque, log-only error chain offered in a
+    /// copyable disclosure.
     SyncError {
-        message: Option<String>,
+        error: Option<BridgeError>,
     },
     /// Wall-clock time of the latest successful sync cycle, as Unix epoch
     /// milliseconds. `None` until the first cycle completes.
@@ -1691,7 +1694,7 @@ pub enum BridgeUiEvent {
 
     // ── Errors ─────────────────────────────────────────────────────
     Error {
-        message: String,
+        error: BridgeError,
     },
     ErrorCleared,
 }
@@ -2348,7 +2351,7 @@ pub enum BridgeEntityKind {
     File,
 }
 
-#[derive(Debug, thiserror::Error, uniffi::Error)]
+#[derive(Debug, Clone, thiserror::Error, uniffi::Error)]
 pub enum BridgeError {
     /// The user cancelled — the UI shows nothing.
     #[error("cancelled")]
@@ -2397,6 +2400,117 @@ impl BridgeError {
     }
 }
 
+/// Why playback couldn't start or continue. The two cloud-only "not playable
+/// yet" cases are user-actionable and keyed (`bridge_playback_error_reason_key`);
+/// every in-core failure is un-enumerable and rides in `Diagnostic` — the UI
+/// renders it through the same `BridgeError` path (generic per-category line +
+/// copyable, log-only detail).
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgePlaybackErrorReason {
+    /// A managed cloud-only track isn't downloaded and sync is disconnected —
+    /// the user reconnects to play it.
+    SyncDisconnected,
+    /// A managed track's cloud upload is still queued — the user waits for it
+    /// to finish.
+    UploadPending,
+    /// Any other failure. Carries the underlying `BridgeError`; the UI renders
+    /// its generic per-category line plus the opaque, log-only detail.
+    Diagnostic { error: BridgeError },
+}
+
+/// Localization key for a `BridgeErrorCategory`'s generic user-facing line. The
+/// UI resolves this through its string catalog; `detail` is never translated.
+/// One source of these keys for every platform.
+#[uniffi::export]
+pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
+    match category {
+        BridgeErrorCategory::Database => "core.error.category.database",
+        BridgeErrorCategory::Config => "core.error.category.config",
+        BridgeErrorCategory::Internal => "core.error.category.internal",
+        BridgeErrorCategory::Import => "core.error.category.import",
+        BridgeErrorCategory::Export => "core.error.category.export",
+    }
+    .to_string()
+}
+
+/// Localization key for a `BridgeEntityKind`'s "… not found" line. One source
+/// of these keys for every platform.
+#[uniffi::export]
+pub fn bridge_entity_not_found_key(entity: BridgeEntityKind) -> String {
+    match entity {
+        BridgeEntityKind::Library => "core.error.not_found.library",
+        BridgeEntityKind::Album => "core.error.not_found.album",
+        BridgeEntityKind::Release => "core.error.not_found.release",
+        BridgeEntityKind::Track => "core.error.not_found.track",
+        BridgeEntityKind::File => "core.error.not_found.file",
+    }
+    .to_string()
+}
+
+/// Localization key for the actionable `BridgePlaybackErrorReason` variants, or
+/// `None` for `Diagnostic` (which the UI renders through the `BridgeError`
+/// category path instead). One source of these keys for every platform.
+#[uniffi::export]
+pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> Option<String> {
+    match reason {
+        BridgePlaybackErrorReason::SyncDisconnected => {
+            Some("core.playback.error.sync_disconnected".to_string())
+        }
+        BridgePlaybackErrorReason::UploadPending => {
+            Some("core.playback.error.upload_pending".to_string())
+        }
+        BridgePlaybackErrorReason::Diagnostic { .. } => None,
+    }
+}
+
+#[cfg(test)]
+mod error_key_tests {
+    use super::{BridgeEntityKind, BridgeErrorCategory, BridgePlaybackErrorReason};
+
+    /// Every category line, entity "not found" line, and actionable playback
+    /// reason the UI resolves must exist in the catalog.
+    #[test]
+    fn keys_exist_in_catalog() {
+        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
+            .expect("catalog parses");
+        for category in [
+            BridgeErrorCategory::Database,
+            BridgeErrorCategory::Config,
+            BridgeErrorCategory::Internal,
+            BridgeErrorCategory::Import,
+            BridgeErrorCategory::Export,
+        ] {
+            let key = super::bridge_error_category_key(category);
+            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
+        }
+        for entity in [
+            BridgeEntityKind::Library,
+            BridgeEntityKind::Album,
+            BridgeEntityKind::Release,
+            BridgeEntityKind::Track,
+            BridgeEntityKind::File,
+        ] {
+            let key = super::bridge_entity_not_found_key(entity);
+            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
+        }
+        for reason in [
+            BridgePlaybackErrorReason::SyncDisconnected,
+            BridgePlaybackErrorReason::UploadPending,
+        ] {
+            let key = super::bridge_playback_error_reason_key(&reason)
+                .expect("actionable reasons carry keys");
+            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
+        }
+        assert!(
+            super::bridge_playback_error_reason_key(&BridgePlaybackErrorReason::Diagnostic {
+                error: super::BridgeError::internal(""),
+            })
+            .is_none(),
+            "diagnostic reasons render through the BridgeError category path"
+        );
+    }
+}
+
 #[cfg(feature = "cloudkit")]
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum CloudKitError {
@@ -2409,6 +2523,57 @@ pub enum CloudKitError {
 // =========================================================================
 // Core <-> Bridge conversions
 // =========================================================================
+
+pub(crate) fn bridge_error_category(
+    category: bae_core::ui::UiErrorCategory,
+) -> BridgeErrorCategory {
+    use bae_core::ui::UiErrorCategory;
+    match category {
+        UiErrorCategory::Database => BridgeErrorCategory::Database,
+        UiErrorCategory::Config => BridgeErrorCategory::Config,
+        UiErrorCategory::Internal => BridgeErrorCategory::Internal,
+        UiErrorCategory::Import => BridgeErrorCategory::Import,
+        UiErrorCategory::Export => BridgeErrorCategory::Export,
+    }
+}
+
+fn bridge_entity_kind(entity: bae_core::ui::UiEntityKind) -> BridgeEntityKind {
+    use bae_core::ui::UiEntityKind;
+    match entity {
+        UiEntityKind::Library => BridgeEntityKind::Library,
+        UiEntityKind::Album => BridgeEntityKind::Album,
+        UiEntityKind::Release => BridgeEntityKind::Release,
+        UiEntityKind::Track => BridgeEntityKind::Track,
+        UiEntityKind::File => BridgeEntityKind::File,
+    }
+}
+
+pub(crate) fn bridge_error(error: bae_core::ui::UiError) -> BridgeError {
+    use bae_core::ui::UiError;
+    match error {
+        UiError::NotFound { entity, id } => BridgeError::NotFound {
+            entity: bridge_entity_kind(entity),
+            id,
+        },
+        UiError::Diagnostic { category, detail } => BridgeError::Diagnostic {
+            category: bridge_error_category(category),
+            detail,
+        },
+    }
+}
+
+pub(crate) fn bridge_playback_error_reason(
+    reason: bae_core::ui::PlaybackErrorReason,
+) -> BridgePlaybackErrorReason {
+    use bae_core::ui::PlaybackErrorReason;
+    match reason {
+        PlaybackErrorReason::SyncDisconnected => BridgePlaybackErrorReason::SyncDisconnected,
+        PlaybackErrorReason::UploadPending => BridgePlaybackErrorReason::UploadPending,
+        PlaybackErrorReason::Diagnostic { error } => BridgePlaybackErrorReason::Diagnostic {
+            error: bridge_error(error),
+        },
+    }
+}
 
 #[cfg(feature = "desktop")]
 pub(crate) fn bridge_storage_mode_to_core(

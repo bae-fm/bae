@@ -71,7 +71,12 @@ fn fail_audio_read(
         return;
     }
     error!("{}", log_message);
-    emit_progress(progress_tx, PlaybackProgress::PlaybackError { message });
+    emit_progress(
+        progress_tx,
+        PlaybackProgress::PlaybackError {
+            reason: crate::ui::PlaybackErrorReason::internal(message),
+        },
+    );
     buffer.cancel();
 }
 
@@ -621,9 +626,15 @@ mod tests {
         progress_rx: &mut tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
         context: &str,
     ) -> String {
+        use crate::ui::{PlaybackErrorReason, UiError};
         match progress_rx.recv().await.expect(context) {
-            PlaybackProgress::PlaybackError { message } => message,
-            other => panic!("expected playback error, got: {other:?}"),
+            PlaybackProgress::PlaybackError {
+                reason:
+                    PlaybackErrorReason::Diagnostic {
+                        error: UiError::Diagnostic { detail, .. },
+                    },
+            } => detail,
+            other => panic!("expected diagnostic playback error, got: {other:?}"),
         }
     }
 

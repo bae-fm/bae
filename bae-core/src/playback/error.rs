@@ -32,6 +32,18 @@ pub enum PlaybackError {
     UploadPending,
 }
 impl PlaybackError {
+    /// Project this domain error onto the UI-facing reason. The two cloud-only
+    /// "not playable yet" cases are user-actionable and keyed; every other mode
+    /// is un-enumerable for the UI and goes to the diagnostic arm with the error
+    /// chain as opaque, log-only detail.
+    pub fn into_ui_reason(self) -> crate::ui::PlaybackErrorReason {
+        use crate::ui::PlaybackErrorReason;
+        match self {
+            PlaybackError::SyncDisconnected => PlaybackErrorReason::SyncDisconnected,
+            PlaybackError::UploadPending => PlaybackErrorReason::UploadPending,
+            other => PlaybackErrorReason::internal(other),
+        }
+    }
     pub fn not_found(what: &'static str, id: impl Into<String>) -> Self {
         Self::NotFound(what, id.into())
     }

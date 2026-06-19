@@ -552,7 +552,9 @@ impl AppHandle {
         if let Err(e) = result {
             self.app_services
                 .library_manager()
-                .emit_error(format!("Delete failed: {e}"));
+                .emit_error(bae_core::ui::UiError::internal(format!(
+                    "Delete failed: {e}"
+                )));
         }
     }
 
@@ -1389,7 +1391,9 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
     match event {
         // ── Playback ───────────────────────────────────────────────
         UiBusEvent::PlaybackStopped => Some(BridgeUiEvent::PlaybackStopped),
-        UiBusEvent::PlaybackError { message } => Some(BridgeUiEvent::PlaybackError { message }),
+        UiBusEvent::PlaybackError { reason } => Some(BridgeUiEvent::PlaybackError {
+            reason: crate::types::bridge_playback_error_reason(reason),
+        }),
         UiBusEvent::PlaybackLoading { track_id, track } => Some(BridgeUiEvent::PlaybackLoading {
             track_id,
             track: track.map(|t| BridgeLoadingTrackInfo {
@@ -1527,8 +1531,11 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             release_id,
             album_id,
         }),
-        UiBusEvent::CandidateImportError { key, message } => {
-            Some(BridgeUiEvent::CandidateImportError { key, message })
+        UiBusEvent::CandidateImportError { key, error } => {
+            Some(BridgeUiEvent::CandidateImportError {
+                key,
+                error: crate::types::bridge_error(error),
+            })
         }
 
         // ── Scan ───────────────────────────────────────────────────
@@ -1609,7 +1616,9 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             config: build_bridge_config(&config),
             sync_ready,
         }),
-        UiBusEvent::SyncError { message } => Some(BridgeUiEvent::SyncError { message }),
+        UiBusEvent::SyncError { error } => Some(BridgeUiEvent::SyncError {
+            error: error.map(crate::types::bridge_error),
+        }),
         UiBusEvent::SyncTimeChanged { time } => Some(BridgeUiEvent::SyncTimeChanged { time }),
         UiBusEvent::SyncingChanged { syncing } => Some(BridgeUiEvent::SyncingChanged { syncing }),
         UiBusEvent::OutboxChanged { snapshot } => Some(BridgeUiEvent::OutboxChanged {
@@ -1638,7 +1647,9 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         }
 
         // ── Errors ─────────────────────────────────────────────────
-        UiBusEvent::Error { message } => Some(BridgeUiEvent::Error { message }),
+        UiBusEvent::Error { error } => Some(BridgeUiEvent::Error {
+            error: crate::types::bridge_error(error),
+        }),
         UiBusEvent::ErrorCleared => Some(BridgeUiEvent::ErrorCleared),
     }
 }

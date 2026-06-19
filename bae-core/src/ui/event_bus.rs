@@ -215,8 +215,8 @@ impl UiEventBus {
                             progress,
                         });
                     }
-                    PlaybackProgress::PlaybackError { message } => {
-                        bus.emit(UiBusEvent::PlaybackError { message });
+                    PlaybackProgress::PlaybackError { reason } => {
+                        bus.emit(UiBusEvent::PlaybackError { reason });
                     }
                     _ => {}
                 }
@@ -300,9 +300,13 @@ impl UiEventBus {
                                 })
                             }
                             ImportProgress::Failed { error, .. } => {
+                                // The import pipeline flattens every failure
+                                // (scan, metadata, encryption, DB) to a string;
+                                // the UI shows a generic Import line plus this as
+                                // copyable, log-only detail.
                                 Some(UiBusEvent::CandidateImportError {
                                     key: candidate_key.clone(),
-                                    message: error,
+                                    error: crate::ui::UiError::import(error),
                                 })
                             }
                         };
@@ -391,11 +395,11 @@ impl UiEventBus {
                     Ok(LibraryEvent::TracksDeleted { .. }) => {
                         // Handled by playback service directly, not the UI bus
                     }
-                    Ok(LibraryEvent::Error { message }) => {
-                        bus.emit(UiBusEvent::Error { message });
+                    Ok(LibraryEvent::Error { error }) => {
+                        bus.emit(UiBusEvent::Error { error });
                     }
-                    Ok(LibraryEvent::SyncError { message }) => {
-                        bus.emit(UiBusEvent::SyncError { message });
+                    Ok(LibraryEvent::SyncError { error }) => {
+                        bus.emit(UiBusEvent::SyncError { error });
                     }
                     Ok(LibraryEvent::SyncTimeChanged { time }) => {
                         bus.emit(UiBusEvent::SyncTimeChanged { time });

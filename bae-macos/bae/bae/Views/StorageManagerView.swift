@@ -97,19 +97,7 @@ struct StorageManagerView: View {
                 .frame(width: 420)
             }
         }
-        .alert(
-            "Error",
-            isPresented: Binding(
-                get: { uiStore.lastError != nil },
-                set: { if !$0 { uiStore.clearError() } },
-            )
-        ) {
-            Button("OK") { uiStore.clearError() }
-        } message: {
-            if let error = uiStore.lastError {
-                Text(error)
-            }
-        }
+        .errorAlert(uiStore)
         .task { rebuildList() }
         .onChange(of: filter) { _, _ in
             // Selection is scoped to the visible tab; switching tabs would
