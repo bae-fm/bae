@@ -8,7 +8,7 @@
     <!-- Background="Transparent" makes the whole window a hit-testable drop target,
          so a folder can be dropped over empty areas (e.g. the empty-library state),
          not just over the grid. -->
-    <Grid KeyDown="OnGlobalKeyDown" AllowDrop="True" DragOver="OnWindowDragOver" Drop="OnWindowDrop" Background="Transparent">
+    <Grid x:Name="RootGrid" KeyDown="OnGlobalKeyDown" AllowDrop="True" DragOver="OnWindowDragOver" Drop="OnWindowDrop" Background="Transparent">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Modifiers="Control" Key="F" Invoked="OnFocusSearchAccelerator" />
             <KeyboardAccelerator Modifiers="Control" Key="L" Invoked="OnGoToNowPlaying" />
@@ -25,6 +25,7 @@
             </Grid.ColumnDefinitions>
             <AutoSuggestBox
                 x:Name="SearchBox"
+                x:Uid="SearchBox"
                 Grid.Column="0"
                 PlaceholderText="search"
                 QueryIcon="Find"
@@ -33,8 +34,8 @@
                 <TextBlock x:Name="SyncIndicator" VerticalAlignment="Center"
                            Foreground="Gray" TextWrapping="NoWrap" />
                 <ComboBox x:Name="SortBox" SelectionChanged="OnSortChanged" VerticalAlignment="Center" />
-                <Button Content="libraries" Click="OnLibrariesClick" />
-                <Button Content="close" Click="OnCloseLibraryClick" ToolTipService.ToolTip="close library">
+                <Button x:Uid="LibrariesButton" Content="libraries" Click="OnLibrariesClick" />
+                <Button x:Uid="CloseLibraryButton" Content="close" Click="OnCloseLibraryClick" ToolTipService.ToolTip="close library">
                     <Button.KeyboardAccelerators>
                         <!-- Ctrl+Shift+W, not bare Ctrl+W: closing the library is destructive
                              (tears down to the welcome chooser), and bare Ctrl+W is the reflex
@@ -42,17 +43,17 @@
                         <KeyboardAccelerator Modifiers="Control,Shift" Key="W" />
                     </Button.KeyboardAccelerators>
                 </Button>
-                <Button Content="import" Click="OnImportClick">
+                <Button x:Uid="ImportButton" Content="import" Click="OnImportClick">
                     <Button.KeyboardAccelerators>
                         <KeyboardAccelerator Modifiers="Control" Key="I" />
                     </Button.KeyboardAccelerators>
                 </Button>
-                <Button Content="storage" Click="OnStorageClick">
+                <Button x:Uid="StorageButton" Content="storage" Click="OnStorageClick">
                     <Button.KeyboardAccelerators>
                         <KeyboardAccelerator Modifiers="Control" Key="Number0" />
                     </Button.KeyboardAccelerators>
                 </Button>
-                <Button Content="settings" Click="OnSettingsClick" />
+                <Button x:Uid="SettingsButton" Content="settings" Click="OnSettingsClick" />
             </StackPanel>
         </Grid>
         <GridView

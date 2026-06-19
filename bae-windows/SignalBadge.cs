@@ -26,11 +26,17 @@ public sealed class SignalBadge
 /// <summary>
 /// A badge's live lookup/match state — a tag plus the one payload each variant
 /// carries. Mirrors the FFI's <c>FfiSignalState</c>: <see cref="Count"/> is set
-/// for "found"/"confirms", null otherwise.
+/// for "found"/"confirms", <see cref="Failure"/> for "failed", both null
+/// otherwise. The locale never crosses the bridge, so the failed state carries
+/// the structured <see cref="LookupFailure"/>, not a prose message.
 /// </summary>
 public sealed class SignalBadgeState
 {
     /// <summary>"looking_up" / "found" / "no_match" / "skipped" / "failed" / "confirms".</summary>
     public string Kind { get; set; } = string.Empty;
     public uint? Count { get; set; }
+
+    /// <summary>The structured lookup failure for the "failed" state; null
+    /// otherwise. The badge resolves its localized line from this.</summary>
+    public LookupFailure? Failure { get; set; }
 }

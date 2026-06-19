@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -31,14 +32,17 @@ public sealed partial class MainWindow : Window
     private const uint PositionUpdateIntervalMs = 250;
     private const ulong FirstPageSize = 500;
 
-    private sealed record SortOption(string Label, string Field, bool Ascending);
+    // LabelKey is a chrome key resolved to the localized menu label at display
+    // time; Field is the locale-free sort identifier the FFI expects (never
+    // localized).
+    private sealed record SortOption(string LabelKey, string Field, bool Ascending);
 
     private static readonly SortOption[] SortOptions =
     {
-        new("newest", "date_added", false),
-        new("title", "title", true),
-        new("artist", "artist", true),
-        new("year", "year", true),
+        new("sort.newest", "date_added", false),
+        new("sort.title", "title", true),
+        new("sort.artist", "artist", true),
+        new("sort.year", "year", true),
     };
 
     private SortOption _sort = SortOptions[0];
@@ -124,9 +128,17 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Closed += OnClosed;
 
+        // Bind layout direction to the UI locale: ar/he (and any other RTL
+        // culture) lay out right-to-left. The whole tree inherits from the root
+        // grid, so this is the single place the app decides direction. macOS gets
+        // this from the system; on Windows the app sets it from the culture.
+        RootGrid.FlowDirection = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft
+            ? FlowDirection.RightToLeft
+            : FlowDirection.LeftToRight;
+
         foreach (var option in SortOptions)
         {
-            SortBox.Items.Add(option.Label);
+            SortBox.Items.Add(Loc.Chrome(option.LabelKey));
         }
         SortBox.SelectedIndex = 0;
 
@@ -160,7 +172,7 @@ public sealed partial class MainWindow : Window
         // order. Reload only when no search is active and the library is open.
         if (_handle != IntPtr.Zero && string.IsNullOrEmpty(SearchBox.Text))
         {
-            SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), "library is empty");
+            SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), Loc.Chrome("library.empty"));
         }
     }
 
@@ -172,7 +184,7 @@ public sealed partial class MainWindow : Window
         var id = NativeBae.CreateLibrary();
         if (id is null)
         {
-            reportError("couldn't create a library");
+            reportError(Loc.Chrome("library.create_failed"));
         }
 
         return id;
@@ -207,7 +219,7 @@ public sealed partial class MainWindow : Window
         _handle = NativeBae.Init(libraryId, PositionUpdateIntervalMs);
         if (_handle == IntPtr.Zero)
         {
-            StatusText.Text = "couldn't open the library";
+            StatusText.Text = Loc.Chrome("library.open_failed");
             return;
         }
 
@@ -227,7 +239,7 @@ public sealed partial class MainWindow : Window
         // above leaves the welcome in place rather than stranding the user.
         DismissWelcome();
 
-        SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), "library is empty");
+        SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), Loc.Chrome("library.empty"));
 
         _suppressVolume = true;
         NpVolume.Value = NativeBae.GetVolume(_handle);
@@ -258,7 +270,7 @@ public sealed partial class MainWindow : Window
     // open on a bad key; cancelling leaves the library locked.
     private async System.Threading.Tasks.Task ShowUnlock(string libraryId)
     {
-        var keyBox = new TextBox { PlaceholderText = "64-character hex key", Width = 360 };
+        var keyBox = new TextBox { PlaceholderText = Loc.Chrome("library.unlock.key_placeholder"), Width = 360 };
         var status = new TextBlock
         {
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
@@ -268,8 +280,7 @@ public sealed partial class MainWindow : Window
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(new TextBlock
         {
-            Text = "This library is encrypted and its key isn't on this device. "
-                + "Enter the 64-character hex key to unlock it.",
+            Text = Loc.Chrome("library.unlock.body"),
             TextWrapping = TextWrapping.Wrap,
         });
         content.Children.Add(keyBox);
@@ -277,10 +288,10 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "unlock library",
+            Title = Loc.Chrome("library.unlock.title"),
             Content = content,
-            PrimaryButtonText = "Unlock",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Loc.Chrome("library.unlock.confirm"),
+            CloseButtonText = Loc.Chrome("action.cancel"),
             XamlRoot = Content.XamlRoot,
         };
         dialog.PrimaryButtonClick += async (_, args) =>
@@ -305,7 +316,7 @@ public sealed partial class MainWindow : Window
         }
         else
         {
-            StatusText.Text = "library is locked";
+            StatusText.Text = Loc.Chrome("library.locked");
         }
     }
 
@@ -386,9 +397,9 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "libraries",
+            Title = Loc.Chrome("libraries.title"),
             Content = new ScrollViewer { Content = list, MaxHeight = 420 },
-            CloseButtonText = "Close",
+            CloseButtonText = Loc.Chrome("action.close"),
             XamlRoot = Content.XamlRoot,
         };
 
@@ -405,7 +416,9 @@ public sealed partial class MainWindow : Window
             // to itself but can still be renamed.
             var switchButton = new Button
             {
-                Content = isActive ? $"{library.Name}  ·  active" : library.Name,
+                Content = isActive
+                    ? Loc.Chrome("libraries.active", "name", library.Name)
+                    : library.Name,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 IsEnabled = !isActive,
             };
@@ -426,7 +439,7 @@ public sealed partial class MainWindow : Window
                 TextWrapping = TextWrapping.Wrap,
                 Visibility = Visibility.Collapsed,
             };
-            var saveName = new Button { Content = "save" };
+            var saveName = new Button { Content = Loc.Chrome("action.save") };
             var renameContent = new StackPanel { Spacing = 6 };
             renameContent.Children.Add(nameBox);
             renameContent.Children.Add(saveName);
@@ -448,13 +461,15 @@ public sealed partial class MainWindow : Window
                     return;
                 }
 
-                switchButton.Content = isActive ? $"{newName}  ·  active" : newName;
+                switchButton.Content = isActive
+                    ? Loc.Chrome("libraries.active", "name", newName)
+                    : newName;
                 // Keep the editor's value in sync so reopening it shows the saved
                 // name, not the stale snapshot it was seeded with.
                 nameBox.Text = newName;
                 renameFlyout.Hide();
             };
-            var renameButton = new Button { Content = "rename", Flyout = renameFlyout };
+            var renameButton = new Button { Content = Loc.Chrome("libraries.rename"), Flyout = renameFlyout };
             Grid.SetColumn(renameButton, 1);
             row.Children.Add(renameButton);
 
@@ -463,7 +478,7 @@ public sealed partial class MainWindow : Window
 
         var newButton = new Button
         {
-            Content = "new library",
+            Content = Loc.Chrome("libraries.new"),
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         newButton.Click += (_, _) =>
@@ -499,7 +514,9 @@ public sealed partial class MainWindow : Window
         DismissWelcome();
 
         var libraries = LoadLibraries();
-        StatusText.Text = libraries.Count > 0 ? "choose a library" : "no library yet";
+        StatusText.Text = libraries.Count > 0
+            ? Loc.Chrome("welcome.choose_library")
+            : Loc.Chrome("welcome.no_library");
 
         _welcome = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center };
 
@@ -507,7 +524,7 @@ public sealed partial class MainWindow : Window
         {
             _welcome.Children.Add(new TextBlock
             {
-                Text = "your libraries",
+                Text = Loc.Chrome("welcome.your_libraries"),
                 HorizontalAlignment = HorizontalAlignment.Center,
             });
             foreach (var library in libraries)
@@ -525,7 +542,7 @@ public sealed partial class MainWindow : Window
 
         var createButton = new Button
         {
-            Content = "create library",
+            Content = Loc.Chrome("welcome.create_library"),
             HorizontalAlignment = HorizontalAlignment.Center,
         };
         createButton.Click += (_, _) =>
@@ -539,10 +556,10 @@ public sealed partial class MainWindow : Window
             OpenLibrary(libraryId);
         };
 
-        var codeBox = new TextBox { PlaceholderText = "restore code", Width = 320 };
+        var codeBox = new TextBox { PlaceholderText = Loc.Chrome("restore.code_placeholder"), Width = 320 };
         var restoreButton = new Button
         {
-            Content = "restore from code",
+            Content = Loc.Chrome("restore.from_code"),
             HorizontalAlignment = HorizontalAlignment.Center,
         };
         restoreButton.Click += async (_, _) => await RestoreFromCode(codeBox.Text ?? string.Empty);
@@ -551,7 +568,7 @@ public sealed partial class MainWindow : Window
         // there's no restore code (the code can't carry secrets like S3 keys).
         var restoreCloudButton = new Button
         {
-            Content = "restore from cloud",
+            Content = Loc.Chrome("restore.from_cloud"),
             HorizontalAlignment = HorizontalAlignment.Center,
         };
         restoreCloudButton.Click += async (_, _) => await ShowRestoreFromCloud();
@@ -583,7 +600,7 @@ public sealed partial class MainWindow : Window
         var info = infoJson is null ? null : JsonSerializer.Deserialize<RestoreCodeInfo>(infoJson, JsonOptions);
         if (info is null)
         {
-            StatusText.Text = "invalid restore code";
+            StatusText.Text = Loc.Chrome("restore.invalid_code");
             return;
         }
 
@@ -599,32 +616,32 @@ public sealed partial class MainWindow : Window
             // supported set before reaching the (absent) sign-in call.
             if (!NativeBae.AvailableCloudProviders().Contains(info.Provider))
             {
-                StatusText.Text = $"this build doesn't support {ProviderDisplayName(info.Provider)} sync";
+                StatusText.Text = Loc.Chrome("cloud.unsupported_provider", "provider", ProviderDisplayName(info.Provider));
                 return;
             }
             if (!OAuthCreds.Available)
             {
                 StatusText.Text = OAuthCreds.RegistrationError
-                    ?? "cloud sign-in isn't configured on this build (no oauth-creds.json)";
+                    ?? Loc.Chrome("cloud.signin.not_configured");
                 return;
             }
-            StatusText.Text = $"signing in to {ProviderDisplayName(info.Provider)}…";
+            StatusText.Text = Loc.Chrome("cloud.signin.in_progress", "provider", ProviderDisplayName(info.Provider));
             var oauthJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.Provider));
             var oauth = oauthJson is null ? null : JsonSerializer.Deserialize<OAuthResult>(oauthJson, JsonOptions);
             if (oauth?.Token is null)
             {
-                StatusText.Text = oauth?.Error ?? "cloud sign-in failed";
+                StatusText.Text = oauth?.Error ?? Loc.Chrome("cloud.signin.failed");
                 return;
             }
             oauthTokenJson = oauth.Token;
         }
 
-        StatusText.Text = $"restoring {info.LibraryName}…";
+        StatusText.Text = Loc.Chrome("restore.in_progress_named", "name", info.LibraryName);
         var resultJson = await System.Threading.Tasks.Task.Run(() => NativeBae.RestoreFromCode(code, oauthTokenJson));
         var result = resultJson is null ? null : JsonSerializer.Deserialize<RestoreResult>(resultJson, JsonOptions);
         if (result?.LibraryId is null)
         {
-            StatusText.Text = result?.Error ?? "restore failed";
+            StatusText.Text = result?.Error ?? Loc.Chrome("restore.failed");
             return;
         }
 
@@ -640,17 +657,17 @@ public sealed partial class MainWindow : Window
     {
         var content = new StackPanel { Spacing = 8, MinWidth = 360 };
 
-        var libraryIdBox = new TextBox { Header = "library id" };
+        var libraryIdBox = new TextBox { Header = Loc.Chrome("restore.field.library_id") };
         // The encryption key unlocks the whole library — mask it, as macOS does.
-        var keyBox = new PasswordBox { Header = "encryption key (hex)" };
-        var nameBox = new TextBox { Header = "library name (optional)" };
+        var keyBox = new PasswordBox { Header = Loc.Chrome("restore.field.encryption_key") };
+        var nameBox = new TextBox { Header = Loc.Chrome("restore.field.library_name") };
         content.Children.Add(libraryIdBox);
         content.Children.Add(keyBox);
         content.Children.Add(nameBox);
 
         var providerPicker = new ComboBox
         {
-            Header = "cloud storage",
+            Header = Loc.Chrome("restore.field.cloud_storage"),
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         foreach (var wire in new[] { "s3" })
@@ -660,11 +677,11 @@ public sealed partial class MainWindow : Window
         content.Children.Add(providerPicker);
 
         // S3 fields, shown when S3 is selected.
-        var s3Bucket = new TextBox { Header = "S3 bucket", Visibility = Visibility.Collapsed };
-        var s3Region = new TextBox { Header = "region", Visibility = Visibility.Collapsed };
-        var s3Endpoint = new TextBox { Header = "endpoint (optional)", Visibility = Visibility.Collapsed };
-        var s3AccessKey = new PasswordBox { Header = "access key", Visibility = Visibility.Collapsed };
-        var s3SecretKey = new PasswordBox { Header = "secret key", Visibility = Visibility.Collapsed };
+        var s3Bucket = new TextBox { Header = Loc.Chrome("s3.field.bucket"), Visibility = Visibility.Collapsed };
+        var s3Region = new TextBox { Header = Loc.Chrome("s3.field.region"), Visibility = Visibility.Collapsed };
+        var s3Endpoint = new TextBox { Header = Loc.Chrome("s3.field.endpoint"), Visibility = Visibility.Collapsed };
+        var s3AccessKey = new PasswordBox { Header = Loc.Chrome("s3.field.access_key"), Visibility = Visibility.Collapsed };
+        var s3SecretKey = new PasswordBox { Header = Loc.Chrome("s3.field.secret_key"), Visibility = Visibility.Collapsed };
         content.Children.Add(s3Bucket);
         content.Children.Add(s3Region);
         content.Children.Add(s3Endpoint);
@@ -681,7 +698,7 @@ public sealed partial class MainWindow : Window
 
         var restoreButton = new Button
         {
-            Content = "restore",
+            Content = Loc.Chrome("restore.confirm"),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             IsEnabled = false,
         };
@@ -689,9 +706,9 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "restore from cloud",
+            Title = Loc.Chrome("restore.from_cloud_title"),
             Content = new ScrollViewer { Content = content, MaxHeight = 520 },
-            CloseButtonText = "Cancel",
+            CloseButtonText = Loc.Chrome("action.cancel"),
             XamlRoot = Content.XamlRoot,
         };
 
@@ -750,7 +767,7 @@ public sealed partial class MainWindow : Window
 
             restoreButton.IsEnabled = false;
             status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-            status.Text = "restoring…";
+            status.Text = Loc.Chrome("restore.in_progress");
             status.Visibility = Visibility.Visible;
 
             var libraryId = libraryIdBox.Text?.Trim() ?? string.Empty;
@@ -764,7 +781,7 @@ public sealed partial class MainWindow : Window
             if (result?.LibraryId is null)
             {
                 status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
-                status.Text = result?.Error ?? "restore failed";
+                status.Text = result?.Error ?? Loc.Chrome("restore.failed");
                 restoreButton.IsEnabled = true;
                 return;
             }
@@ -781,10 +798,10 @@ public sealed partial class MainWindow : Window
     // show the user. Unknown tags pass through unchanged.
     private static string ProviderDisplayName(string provider) => provider switch
     {
-        "google_drive" => "Google Drive",
-        "dropbox" => "Dropbox",
-        "onedrive" => "OneDrive",
-        "s3" => "S3",
+        "google_drive" => Loc.Chrome("cloud.provider.google_drive"),
+        "dropbox" => Loc.Chrome("cloud.provider.dropbox"),
+        "onedrive" => Loc.Chrome("cloud.provider.onedrive"),
+        "s3" => Loc.Chrome("cloud.provider.s3"),
         _ => provider,
     };
 
@@ -807,17 +824,17 @@ public sealed partial class MainWindow : Window
     {
         if (_syncErrorText is not null)
         {
-            SyncIndicator.Text = "sync error";
+            SyncIndicator.Text = Loc.Chrome("sync.error_title");
             SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
         }
         else if (_syncing)
         {
-            SyncIndicator.Text = "syncing…";
+            SyncIndicator.Text = Loc.Chrome("sync.syncing");
             SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
         }
         else if (_lastSyncTime is not null)
         {
-            SyncIndicator.Text = $"synced {_lastSyncTime}";
+            SyncIndicator.Text = Loc.Chrome("sync.synced", "time", _lastSyncTime);
             SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
         }
         else
@@ -876,8 +893,8 @@ public sealed partial class MainWindow : Window
                 {
                     NpProgress.Value = evt.Progress;
                 }
-                NpElapsed.Text = evt.Elapsed ?? "0:00";
-                NpRemaining.Text = evt.Remaining ?? "0:00";
+                NpElapsed.Text = evt.ElapsedLabel;
+                NpRemaining.Text = evt.RemainingLabel;
                 break;
             case "VolumeChanged":
                 _suppressVolume = true;
@@ -898,27 +915,30 @@ public sealed partial class MainWindow : Window
             case "SyncError":
                 // Sync uses its own banner so a general ErrorCleared can't dismiss a
                 // still-broken sync (and vice versa), matching the macOS slot split.
-                if (evt.Message is null)
+                // evt.Error is null when a prior failure cleared; otherwise it's the
+                // structured diagnostic whose generic line we render for the locale.
+                var syncLine = evt.Error?.LocalizedLine;
+                if (syncLine is null)
                 {
                     SyncBanner.IsOpen = false;
                 }
                 else
                 {
-                    var reconnect = new Button { Content = "Reconnect" };
+                    var reconnect = new Button { Content = Loc.Chrome("sync.reconnect") };
                     reconnect.Click += (_, _) => NativeBae.TriggerSync(_handle);
                     SyncBanner.Severity = InfoBarSeverity.Error;
-                    SyncBanner.Title = "sync error";
-                    SyncBanner.Message = evt.Message;
+                    SyncBanner.Title = Loc.Chrome("sync.error_title");
+                    SyncBanner.Message = syncLine;
                     SyncBanner.ActionButton = reconnect;
                     SyncBanner.IsOpen = true;
                 }
-                _syncErrorText = evt.Message;
+                _syncErrorText = syncLine;
                 UpdateSyncIndicator();
                 break;
             case "PreviewProgress":
                 if (_previewElapsed is not null)
                 {
-                    var elapsed = evt.Elapsed ?? string.Empty;
+                    var elapsed = evt.ElapsedLabel;
                     _previewElapsed.Text = _previewDurationLabel is null
                         ? elapsed
                         : $"{elapsed} / {_previewDurationLabel}";
@@ -946,15 +966,17 @@ public sealed partial class MainWindow : Window
                 break;
             case "PlaybackError":
                 Banner.Severity = InfoBarSeverity.Error;
-                Banner.Title = "playback error";
-                Banner.Message = evt.Message ?? "playback failed";
+                Banner.Title = Loc.Chrome("error.playback_title");
+                // The structured reason resolves its own localized line (the
+                // actionable cloud-only cases, or a diagnostic's generic line).
+                Banner.Message = evt.Reason?.LocalizedLine ?? Loc.Core("core.error.category.internal");
                 Banner.ActionButton = null;
                 Banner.IsOpen = true;
                 break;
             case "Error":
                 Banner.Severity = InfoBarSeverity.Error;
-                Banner.Title = "error";
-                Banner.Message = evt.Message ?? "something went wrong";
+                Banner.Title = Loc.Chrome("error.title");
+                Banner.Message = evt.Error?.LocalizedLine ?? Loc.Core("core.error.category.internal");
                 Banner.ActionButton = null;
                 Banner.IsOpen = true;
                 break;
@@ -974,7 +996,7 @@ public sealed partial class MainWindow : Window
             case "LibraryChanged":
                 if (string.IsNullOrEmpty(SearchBox.Text))
                 {
-                    SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), "library is empty");
+                    SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), Loc.Chrome("library.empty"));
                 }
                 _refreshStorageRows?.Invoke();
                 break;
@@ -1016,7 +1038,7 @@ public sealed partial class MainWindow : Window
             case "ScanFinished":
                 if (_scanStatus is not null)
                 {
-                    _scanStatus.Text = _candidates.Count == 0 ? "no releases found" : string.Empty;
+                    _scanStatus.Text = _candidates.Count == 0 ? Loc.Chrome("import.no_releases") : string.Empty;
                 }
                 break;
             case "CandidateIdentifyState":
@@ -1027,14 +1049,24 @@ public sealed partial class MainWindow : Window
                 }, DescribeIdentify(evt));
                 break;
             case "CandidateImportProgress":
+                // The percent is localized as a chrome message; the step (when
+                // known) resolves its localized verb from the catalog.
+                var stepLabel = evt.Step?.LocalizedLabel;
+                var importing = Loc.Chrome("import.progress.percent", "percent", evt.ProgressPercent);
                 UpdateCandidate(evt.Key, null,
-                    $"importing {evt.ProgressPercent}%{(string.IsNullOrEmpty(evt.Status) ? string.Empty : $" — {evt.Status}")}");
+                    string.IsNullOrEmpty(stepLabel) ? importing : $"{importing} — {stepLabel}");
                 break;
             case "CandidateImportComplete":
-                UpdateCandidate(evt.Key, null, "imported");
+                UpdateCandidate(evt.Key, null, Loc.Chrome("import.complete"));
                 break;
             case "CandidateImportError":
-                UpdateCandidate(evt.Key, null, evt.Message is null ? "import failed" : $"import failed: {evt.Message}");
+                // The structured diagnostic resolves its generic localized line;
+                // the failure word is chrome.
+                var failLine = evt.Error?.LocalizedLine;
+                UpdateCandidate(evt.Key, null,
+                    failLine is null
+                        ? Loc.Chrome("import.failed")
+                        : $"{Loc.Chrome("import.failed")}: {failLine}");
                 break;
         }
     }
@@ -1082,12 +1114,12 @@ public sealed partial class MainWindow : Window
 
     private static string DescribeIdentify(BaeEvent evt) => evt.Status switch
     {
-        "identifying" => "identifying…",
-        "found" => $"found ({evt.Matches?.Count ?? 0})",
-        "conflict" => "conflict",
-        "not_found" => "not found",
-        "manual" => "manual search only",
-        "error" => evt.Message ?? "error",
+        "identifying" => Loc.Chrome("identify.identifying"),
+        "found" => Loc.Chrome("identify.found", "count", evt.Matches?.Count ?? 0),
+        "conflict" => Loc.Chrome("identify.conflict"),
+        "not_found" => Loc.Chrome("identify.not_found"),
+        "manual" => Loc.Chrome("identify.manual"),
+        "error" => Loc.Chrome("identify.error"),
         _ => string.Empty,
     };
 
@@ -1106,7 +1138,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var scanButton = new Button { Content = "choose folder & scan" };
+        var scanButton = new Button { Content = Loc.Chrome("import.choose_folder") };
         var status = new TextBlock
         {
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
@@ -1172,7 +1204,7 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            status.Text = "scanning…";
+            status.Text = Loc.Chrome("import.scanning");
             status.Visibility = Visibility.Visible;
             var path = folder.Path;
             var error = await System.Threading.Tasks.Task.Run(() => NativeBae.ScanFolder(_handle, path, true));
@@ -1189,9 +1221,9 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "import",
+            Title = Loc.Chrome("import.title"),
             Content = content,
-            CloseButtonText = "Close",
+            CloseButtonText = Loc.Chrome("action.close"),
             XamlRoot = Content.XamlRoot,
         };
 
@@ -1211,7 +1243,7 @@ public sealed partial class MainWindow : Window
             // Null for some shell drags; the caption is just a cursor hint.
             if (e.DragUIOverride is not null)
             {
-                e.DragUIOverride.Caption = "scan & import";
+                e.DragUIOverride.Caption = Loc.Chrome("import.drop_caption");
             }
         }
         else
@@ -1245,7 +1277,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception)
         {
-            readError = "could not read the dropped item";
+            readError = Loc.Chrome("import.drop_read_failed");
         }
         finally
         {
@@ -1262,7 +1294,7 @@ public sealed partial class MainWindow : Window
 
         if (folderPath is null)
         {
-            ShowImportBanner("drop a folder to import");
+            ShowImportBanner(Loc.Chrome("import.drop_folder_only"));
             return;
         }
 
@@ -1284,7 +1316,7 @@ public sealed partial class MainWindow : Window
     private void ShowImportBanner(string message)
     {
         Banner.Severity = InfoBarSeverity.Error;
-        Banner.Title = "import error";
+        Banner.Title = Loc.Chrome("import.error_title");
         Banner.Message = message;
         Banner.ActionButton = null;
         Banner.IsOpen = true;
@@ -1332,7 +1364,7 @@ public sealed partial class MainWindow : Window
             Padding = new Thickness(8, 3, 8, 3),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        ToolTipService.SetToolTip(button, "re-run identification");
+        ToolTipService.SetToolTip(button, Loc.Chrome("import.rerun_identify"));
         button.Click += (_, _) =>
         {
             if (_handle != IntPtr.Zero)
@@ -1437,7 +1469,9 @@ public sealed partial class MainWindow : Window
         // Clicking toggles this signal's exclusion. Excluded badges stay clickable
         // (to re-include). The catalog kind names a specific candidate by its value;
         // disc_id / barcode are singletons (value ignored core-side).
-        ToolTipService.SetToolTip(badge, signal.Excluded ? "include signal" : "exclude signal");
+        ToolTipService.SetToolTip(
+            badge,
+            signal.Excluded ? Loc.Chrome("signal.include") : Loc.Chrome("signal.exclude"));
         badge.Click += (_, _) =>
         {
             if (_handle != IntPtr.Zero)
@@ -1494,25 +1528,33 @@ public sealed partial class MainWindow : Window
                     VerticalAlignment = VerticalAlignment.Center,
                 };
             case "failed":
-                return new TextBlock
+                var warning = new TextBlock
                 {
                     Text = "⚠",
                     FontSize = 12,
                     Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange),
                     VerticalAlignment = VerticalAlignment.Center,
                 };
+                // The structured lookup failure resolves its localized line for
+                // the hover tooltip; no prose crosses the bridge.
+                if (signal.State.Failure is { } failure)
+                {
+                    ToolTipService.SetToolTip(warning, failure.LocalizedLine);
+                }
+                return warning;
             default:
                 return new TextBlock { Text = string.Empty };
         }
     }
 
     // The badge's kind label. Mirrors the macOS SignalBadgeStyle.label(for:);
-    // the wire kind names come from the FFI's snake_case mapping.
+    // the wire kind names come from the FFI's snake_case mapping, resolved to a
+    // localized chrome label.
     private static string SignalKindLabel(string kind) => kind switch
     {
-        "disc_id" => "Disc ID",
-        "barcode" => "Barcode",
-        "catalog" => "Catalog",
+        "disc_id" => Loc.Chrome("signal.kind.disc_id"),
+        "barcode" => Loc.Chrome("signal.kind.barcode"),
+        "catalog" => Loc.Chrome("signal.kind.catalog"),
         _ => kind,
     };
 
@@ -1548,13 +1590,13 @@ public sealed partial class MainWindow : Window
         void RenderResults() => resultsList.ItemsSource = results.Select(result => result.Summary).ToList();
         RenderResults();
 
-        var artistBox = new TextBox { Header = "artist (manual search)" };
-        var albumBox = new TextBox { Header = "album", Text = candidate.Name };
-        var sourceBox = new ComboBox { Header = "source" };
+        var artistBox = new TextBox { Header = Loc.Chrome("import.field.artist_manual") };
+        var albumBox = new TextBox { Header = Loc.Chrome("search.field.album"), Text = candidate.Name };
+        var sourceBox = new ComboBox { Header = Loc.Chrome("search.field.source") };
         sourceBox.Items.Add("discogs");
         sourceBox.Items.Add("musicbrainz");
         sourceBox.SelectedIndex = 0;
-        var searchButton = new Button { Content = "search" };
+        var searchButton = new Button { Content = Loc.Chrome("action.search") };
 
         var status = new TextBlock
         {
@@ -1569,7 +1611,7 @@ public sealed partial class MainWindow : Window
         // Preview the candidate's audio before committing to an identity.
         if (candidate.AudioPaths.Count > 0)
         {
-            var preview = new Button { Content = "▶ preview" };
+            var preview = new Button { Content = "▶ " + Loc.Chrome("import.preview") };
             preview.Click += (_, _) => NativeBae.PreviewPlay(_handle, candidate.AudioPaths[0]);
             var pause = new Button { Content = "⏸" };
             pause.Click += (_, _) => NativeBae.PreviewTogglePause(_handle);
@@ -1595,10 +1637,10 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "import release",
+            Title = Loc.Chrome("import.release_title"),
             Content = new ScrollViewer { Content = content },
-            PrimaryButtonText = "Import",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Loc.Chrome("action.import"),
+            CloseButtonText = Loc.Chrome("action.cancel"),
             XamlRoot = Content.XamlRoot,
             IsPrimaryButtonEnabled = false,
         };
@@ -1615,7 +1657,7 @@ public sealed partial class MainWindow : Window
             var parsed = json is null ? null : JsonSerializer.Deserialize<List<Candidate>>(json, JsonOptions);
             if (parsed is null)
             {
-                status.Text = "search failed";
+                status.Text = Loc.Chrome("search.failed");
                 status.Visibility = Visibility.Visible;
                 return;
             }
@@ -1676,7 +1718,7 @@ public sealed partial class MainWindow : Window
         var dialog = new ContentDialog
         {
             Title = title,
-            CloseButtonText = "OK",
+            CloseButtonText = Loc.Chrome("action.ok"),
             XamlRoot = Content.XamlRoot,
         };
         if (message is not null)
@@ -1704,14 +1746,14 @@ public sealed partial class MainWindow : Window
         var prefetched = json is null ? null : JsonSerializer.Deserialize<PrefetchedEdit>(json, JsonOptions);
         if (prefetched is null)
         {
-            await ShowError("couldn't load the release to import");
+            await ShowError(Loc.Chrome("import.error.load_release"));
             return false;
         }
 
         var settingsJson = await System.Threading.Tasks.Task.Run(() => NativeBae.SettingsJson(_handle));
         if (settingsJson is null)
         {
-            await ShowError("couldn't load storage settings");
+            await ShowError(Loc.Chrome("import.error.load_storage_settings"));
             return false;
         }
         Settings settings;
@@ -1722,7 +1764,7 @@ public sealed partial class MainWindow : Window
         }
         catch (JsonException ex)
         {
-            await ShowError("couldn't read storage settings", ex.Message);
+            await ShowError(Loc.Chrome("import.error.read_storage_settings"), ex.Message);
             return false;
         }
         var form = new ReleaseEditForm(prefetched.Edit, 520);
@@ -1732,13 +1774,13 @@ public sealed partial class MainWindow : Window
         var selectedCoverJson = string.Empty;
         var storageManaged = new CheckBox
         {
-            Content = "Managed",
+            Content = Loc.Chrome("import.storage.managed"),
             IsChecked = true,
             VerticalAlignment = VerticalAlignment.Center,
         };
         var storagePinned = new CheckBox
         {
-            Content = "Keep local copy",
+            Content = Loc.Chrome("import.storage.keep_local"),
             IsChecked = true,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -1780,11 +1822,11 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "confirm import",
+            Title = Loc.Chrome("import.confirm_title"),
             Content = new ScrollViewer { Content = panel },
-            PrimaryButtonText = "Import",
-            SecondaryButtonText = "Back to Search",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Loc.Chrome("action.import"),
+            SecondaryButtonText = Loc.Chrome("import.back_to_search"),
+            CloseButtonText = Loc.Chrome("action.cancel"),
             XamlRoot = Content.XamlRoot,
         };
 
@@ -1864,12 +1906,12 @@ public sealed partial class MainWindow : Window
             Severity = InfoBarSeverity.Warning,
             IsOpen = true,
             IsClosable = false,
-            Message = "this release is already in your library",
+            Message = Loc.Chrome("import.already_in_library"),
         };
 
         if (!string.IsNullOrEmpty(status.AlbumId))
         {
-            var viewButton = new Button { Content = "view in library" };
+            var viewButton = new Button { Content = Loc.Chrome("import.view_in_library") };
             viewButton.Click += (_, _) => onViewInLibrary();
             banner.ActionButton = viewButton;
         }
@@ -1890,13 +1932,13 @@ public sealed partial class MainWindow : Window
         List<RemoteCover> remoteCovers, List<LocalArtwork> localArtwork, Action<string> onPick)
     {
         var section = new StackPanel { Spacing = 4 };
-        section.Children.Add(new TextBlock { Text = "Cover" });
+        section.Children.Add(new TextBlock { Text = Loc.Chrome("cover.section_title") });
 
         if (remoteCovers.Count == 0 && localArtwork.Count == 0)
         {
             section.Children.Add(new TextBlock
             {
-                Text = "No cover art available — the import uses its default cover.",
+                Text = Loc.Chrome("cover.none_available"),
                 Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
                 TextWrapping = TextWrapping.Wrap,
             });
@@ -1905,7 +1947,7 @@ public sealed partial class MainWindow : Window
 
         section.Children.Add(new TextBlock
         {
-            Text = "Pick a cover, or leave unselected to use the default.",
+            Text = Loc.Chrome("cover.pick_hint"),
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
             TextWrapping = TextWrapping.Wrap,
         });
@@ -2091,7 +2133,7 @@ public sealed partial class MainWindow : Window
             }
 
             var menu = new MenuFlyout();
-            var remove = new MenuFlyoutItem { Text = "Remove from queue" };
+            var remove = new MenuFlyoutItem { Text = Loc.Chrome("queue.remove_item") };
             remove.Click += (_, _) =>
             {
                 // Recompute: a reorder between the right-tap and the click could have
@@ -2108,7 +2150,7 @@ public sealed partial class MainWindow : Window
             menu.ShowAt(element, new FlyoutShowOptions { Position = args.GetPosition(element) });
         };
 
-        var clear = new Button { Content = "clear queue" };
+        var clear = new Button { Content = Loc.Chrome("queue.clear") };
         clear.Click += (_, _) => NativeBae.QueueClear(_handle);
 
         var content = new StackPanel { Spacing = 8 };
@@ -2117,9 +2159,9 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "queue",
+            Title = Loc.Chrome("queue.title"),
             Content = content,
-            CloseButtonText = "Close",
+            CloseButtonText = Loc.Chrome("action.close"),
             XamlRoot = Content.XamlRoot,
         };
         await dialog.ShowAsync();
@@ -2279,11 +2321,11 @@ public sealed partial class MainWindow : Window
         var query = args.QueryText?.Trim() ?? string.Empty;
         if (query.Length == 0)
         {
-            SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), "library is empty");
+            SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), Loc.Chrome("library.empty"));
         }
         else
         {
-            SetAlbums(NativeBae.SearchJson(_handle, query), "no matches");
+            SetAlbums(NativeBae.SearchJson(_handle, query), Loc.Chrome("search.no_matches"));
         }
     }
 
@@ -2293,7 +2335,7 @@ public sealed partial class MainWindow : Window
         Albums.Clear();
         if (json is null)
         {
-            StatusText.Text = "couldn't load the library";
+            StatusText.Text = Loc.Chrome("library.load_failed");
             return;
         }
 
@@ -2329,20 +2371,20 @@ public sealed partial class MainWindow : Window
         var json = NativeBae.AlbumDetailJson(_handle, albumId);
         if (json is null)
         {
-            StatusText.Text = "couldn't open this album";
+            StatusText.Text = Loc.Chrome("album.open_failed");
             return;
         }
 
         var detail = JsonSerializer.Deserialize<AlbumDetail>(json, JsonOptions);
         if (detail is null)
         {
-            StatusText.Text = "couldn't open this album";
+            StatusText.Text = Loc.Chrome("album.open_failed");
             return;
         }
 
         if (detail.Releases.Count == 0)
         {
-            StatusText.Text = "couldn't open this album";
+            StatusText.Text = Loc.Chrome("album.open_failed");
             return;
         }
 
@@ -2369,9 +2411,9 @@ public sealed partial class MainWindow : Window
             Text = detail.Artist,
             VerticalAlignment = VerticalAlignment.Center,
         });
-        var shuffleButton = new Button { Content = "shuffle" };
-        var editButton = new Button { Content = "edit" };
-        var reidentifyButton = new Button { Content = "re-identify" };
+        var shuffleButton = new Button { Content = Loc.Chrome("album.shuffle") };
+        var editButton = new Button { Content = Loc.Chrome("album.edit") };
+        var reidentifyButton = new Button { Content = Loc.Chrome("album.reidentify") };
         header.Children.Add(shuffleButton);
         header.Children.Add(editButton);
         header.Children.Add(reidentifyButton);
@@ -2380,7 +2422,7 @@ public sealed partial class MainWindow : Window
         var deleteRequested = false;
         var moreButton = new Button { Content = "⋯" };
         var moreMenu = new MenuFlyout();
-        var playNextItem = new MenuFlyoutItem { Text = "Play Next" };
+        var playNextItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.play_next") };
         playNextItem.Click += (_, _) =>
         {
             if (!string.IsNullOrEmpty(selectedRelease.ReleaseId))
@@ -2388,7 +2430,7 @@ public sealed partial class MainWindow : Window
                 NativeBae.AddReleaseNext(_handle, selectedRelease.ReleaseId);
             }
         };
-        var addQueueItem = new MenuFlyoutItem { Text = "Add to Queue" };
+        var addQueueItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.add_to_queue") };
         addQueueItem.Click += (_, _) =>
         {
             if (!string.IsNullOrEmpty(selectedRelease.ReleaseId))
@@ -2398,14 +2440,14 @@ public sealed partial class MainWindow : Window
         };
         // Set the selected release as the album's primary (canonical) one — only
         // meaningful when the album has more than one release.
-        var setPrimaryItem = new MenuFlyoutItem { Text = "Set as primary release" };
+        var setPrimaryItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.set_primary") };
         setPrimaryItem.Click += (_, _) =>
         {
             var error = NativeBae.SetPrimaryRelease(_handle, detail.Id, selectedRelease.ReleaseId);
-            StatusText.Text = error ?? "set as primary release";
+            StatusText.Text = error ?? Loc.Chrome("menu.set_primary_done");
         };
-        var changeCoverItem = new MenuFlyoutItem { Text = "Change cover…" };
-        var deleteItem = new MenuFlyoutItem { Text = "Delete…" };
+        var changeCoverItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.change_cover") };
+        var deleteItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.delete") };
         moreMenu.Items.Add(playNextItem);
         moreMenu.Items.Add(addQueueItem);
         if (detail.Releases.Count > 1)
@@ -2478,13 +2520,13 @@ public sealed partial class MainWindow : Window
             }
 
             var menu = new MenuFlyout();
-            var play = new MenuFlyoutItem { Text = "Play" };
+            var play = new MenuFlyoutItem { Text = Loc.Chrome("menu.play") };
             play.Click += (_, _) => PlayFromTrack(track);
-            var playNextTrack = new MenuFlyoutItem { Text = "Play Next" };
+            var playNextTrack = new MenuFlyoutItem { Text = Loc.Chrome("menu.play_next") };
             playNextTrack.Click += (_, _) => QueueTrack(track, next: true);
-            var addQueueTrack = new MenuFlyoutItem { Text = "Add to Queue" };
+            var addQueueTrack = new MenuFlyoutItem { Text = Loc.Chrome("menu.add_to_queue") };
             addQueueTrack.Click += (_, _) => QueueTrack(track, next: false);
-            var exportTrack = new MenuFlyoutItem { Text = "Export…" };
+            var exportTrack = new MenuFlyoutItem { Text = Loc.Chrome("menu.export") };
             exportTrack.Click += async (_, _) =>
             {
                 exportStatus.Visibility = Visibility.Collapsed;
@@ -2493,8 +2535,8 @@ public sealed partial class MainWindow : Window
                     picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
                 // The chosen file type decides the export format; its extension
                 // round-trips back to the format string the FFI expects.
-                picker.FileTypeChoices.Add("FLAC (lossless)", new List<string> { ".flac" });
-                picker.FileTypeChoices.Add("MP3 (320 kbps)", new List<string> { ".mp3" });
+                picker.FileTypeChoices.Add(Loc.Chrome("track.export.flac"), new List<string> { ".flac" });
+                picker.FileTypeChoices.Add(Loc.Chrome("track.export.mp3"), new List<string> { ".mp3" });
                 var invalid = System.IO.Path.GetInvalidFileNameChars();
                 var suggested = new string(track.Title.Select(c => invalid.Contains(c) ? '-' : c).ToArray());
                 picker.SuggestedFileName = string.IsNullOrWhiteSpace(suggested) ? "track" : suggested;
@@ -2529,7 +2571,7 @@ public sealed partial class MainWindow : Window
         {
             var releasePicker = new ComboBox
             {
-                Header = "Release",
+                Header = Loc.Chrome("album.release_picker"),
                 ItemsSource = detail.Releases,
                 SelectedItem = selectedRelease,
             };
@@ -2550,9 +2592,9 @@ public sealed partial class MainWindow : Window
         {
             Title = detail.Title,
             Content = content,
-            PrimaryButtonText = "Play",
-            SecondaryButtonText = "Gallery",
-            CloseButtonText = "Close",
+            PrimaryButtonText = Loc.Chrome("action.play"),
+            SecondaryButtonText = Loc.Chrome("album.gallery"),
+            CloseButtonText = Loc.Chrome("action.close"),
             XamlRoot = Content.XamlRoot,
         };
 
@@ -2677,10 +2719,10 @@ public sealed partial class MainWindow : Window
 
         var confirm = new ContentDialog
         {
-            Title = "delete release?",
-            Content = "This removes the release from the library.",
-            PrimaryButtonText = "Delete",
-            CloseButtonText = "Cancel",
+            Title = Loc.Chrome("album.delete.title"),
+            Content = Loc.Chrome("album.delete.body"),
+            PrimaryButtonText = Loc.Chrome("action.delete"),
+            CloseButtonText = Loc.Chrome("action.cancel"),
             XamlRoot = Content.XamlRoot,
         };
         if (await confirm.ShowAsync() != ContentDialogResult.Primary)
@@ -2692,7 +2734,7 @@ public sealed partial class MainWindow : Window
         var error = await System.Threading.Tasks.Task.Run(() => NativeBae.DeleteRelease(_handle, releaseId));
         if (error is not null)
         {
-            await ShowError("couldn't delete", error);
+            await ShowError(Loc.Chrome("album.delete.failed"), error);
         }
     }
 
@@ -2707,7 +2749,7 @@ public sealed partial class MainWindow : Window
         var seeded = json is null ? null : JsonSerializer.Deserialize<ReleaseEdit>(json, JsonOptions);
         if (seeded is null)
         {
-            await ShowError("couldn't load the metadata editor");
+            await ShowError(Loc.Chrome("album.edit.load_failed"));
             return;
         }
 
@@ -2715,11 +2757,11 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "edit metadata",
+            Title = Loc.Chrome("album.edit.title"),
             Content = new ScrollViewer { Content = form.Panel },
-            PrimaryButtonText = "Save",
-            SecondaryButtonText = "Reset to Source",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Loc.Chrome("action.save"),
+            SecondaryButtonText = Loc.Chrome("album.edit.reset"),
+            CloseButtonText = Loc.Chrome("action.cancel"),
             XamlRoot = Content.XamlRoot,
         };
 
@@ -2754,7 +2796,7 @@ public sealed partial class MainWindow : Window
                     : JsonSerializer.Deserialize<ReleaseEdit>(resetJson, JsonOptions);
                 if (fresh is null)
                 {
-                    form.ErrorText.Text = "couldn't reset to source";
+                    form.ErrorText.Text = Loc.Chrome("album.edit.reset_failed");
                     form.ErrorText.Visibility = Visibility.Visible;
                     return;
                 }
@@ -2778,13 +2820,13 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var artistBox = new TextBox { Header = "artist", Text = seedArtist };
-        var albumBox = new TextBox { Header = "album", Text = seedAlbum };
-        var sourceBox = new ComboBox { Header = "source" };
+        var artistBox = new TextBox { Header = Loc.Chrome("search.field.artist"), Text = seedArtist };
+        var albumBox = new TextBox { Header = Loc.Chrome("search.field.album"), Text = seedAlbum };
+        var sourceBox = new ComboBox { Header = Loc.Chrome("search.field.source") };
         sourceBox.Items.Add("discogs");
         sourceBox.Items.Add("musicbrainz");
         sourceBox.SelectedIndex = 0;
-        var searchButton = new Button { Content = "search" };
+        var searchButton = new Button { Content = Loc.Chrome("action.search") };
 
         var resultsList = new ListView
         {
@@ -2808,10 +2850,10 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "re-identify",
+            Title = Loc.Chrome("album.reidentify.title"),
             Content = new ScrollViewer { Content = form },
-            PrimaryButtonText = "Re-identify",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Loc.Chrome("album.reidentify.confirm"),
+            CloseButtonText = Loc.Chrome("action.cancel"),
             XamlRoot = Content.XamlRoot,
             IsPrimaryButtonEnabled = false,
         };
@@ -2833,14 +2875,14 @@ public sealed partial class MainWindow : Window
             var parsed = json is null ? null : JsonSerializer.Deserialize<List<Candidate>>(json, JsonOptions);
             if (parsed is null)
             {
-                status.Text = "search failed";
+                status.Text = Loc.Chrome("search.failed");
                 status.Visibility = Visibility.Visible;
                 return;
             }
 
             candidates = parsed;
             resultsList.ItemsSource = candidates.Select(candidate => candidate.Summary).ToList();
-            status.Text = "no matches";
+            status.Text = Loc.Chrome("search.no_matches");
             status.Visibility = candidates.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             dialog.IsPrimaryButtonEnabled = false;
         };
@@ -2881,14 +2923,14 @@ public sealed partial class MainWindow : Window
         var json = NativeBae.GalleryJson(_handle, releaseId);
         if (json is null)
         {
-            StatusText.Text = "couldn't load the gallery";
+            StatusText.Text = Loc.Chrome("gallery.load_failed");
             return;
         }
 
         var images = JsonSerializer.Deserialize<List<GalleryImage>>(json, JsonOptions);
         if (images is null)
         {
-            StatusText.Text = "couldn't read the gallery";
+            StatusText.Text = Loc.Chrome("gallery.read_failed");
             return;
         }
 
@@ -2928,9 +2970,9 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "gallery",
+            Title = Loc.Chrome("gallery.title"),
             Content = content,
-            CloseButtonText = "Close",
+            CloseButtonText = Loc.Chrome("action.close"),
             XamlRoot = Content.XamlRoot,
         };
         await dialog.ShowAsync();
@@ -2953,7 +2995,7 @@ public sealed partial class MainWindow : Window
         var imagesJson = NativeBae.GetReleaseImagesJson(_handle, releaseId);
         if (imagesJson is null)
         {
-            StatusText.Text = "couldn't load this release's images";
+            StatusText.Text = Loc.Chrome("cover.images_load_failed");
             return;
         }
 
@@ -2974,9 +3016,9 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "change cover",
+            Title = Loc.Chrome("cover.change_title"),
             Content = new ScrollViewer { Content = content, MaxHeight = 520 },
-            CloseButtonText = "Close",
+            CloseButtonText = Loc.Chrome("action.close"),
             XamlRoot = Content.XamlRoot,
         };
 
@@ -3008,7 +3050,7 @@ public sealed partial class MainWindow : Window
 
         if (releaseImages.Count > 0)
         {
-            content.Children.Add(new TextBlock { Text = "Release files" });
+            content.Children.Add(new TextBlock { Text = Loc.Chrome("cover.release_files") });
             var fileGrid = new VariableSizedWrapGrid
             {
                 Orientation = Orientation.Horizontal,
@@ -3026,14 +3068,14 @@ public sealed partial class MainWindow : Window
             content.Children.Add(fileGrid);
         }
 
-        content.Children.Add(new TextBlock { Text = "Remote sources" });
+        content.Children.Add(new TextBlock { Text = Loc.Chrome("cover.remote_sources") });
         var loading = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 8,
         };
         loading.Children.Add(new ProgressRing { IsActive = true, Width = 20, Height = 20 });
-        loading.Children.Add(new TextBlock { Text = "fetching covers…" });
+        loading.Children.Add(new TextBlock { Text = Loc.Chrome("cover.fetching") });
         content.Children.Add(loading);
 
         var remoteGrid = new VariableSizedWrapGrid
@@ -3054,7 +3096,7 @@ public sealed partial class MainWindow : Window
             loading.Visibility = Visibility.Collapsed;
             if (coversJson is null)
             {
-                statusText.Text = "couldn't fetch remote covers";
+                statusText.Text = Loc.Chrome("cover.fetch_failed");
                 statusText.Visibility = Visibility.Visible;
                 return;
             }
@@ -3065,7 +3107,7 @@ public sealed partial class MainWindow : Window
                     ?? new List<RemoteCover>();
                 if (covers.Count == 0)
                 {
-                    remoteGrid.Children.Add(new TextBlock { Text = "No remote covers found" });
+                    remoteGrid.Children.Add(new TextBlock { Text = Loc.Chrome("cover.none_remote") });
                     return;
                 }
 
@@ -3081,7 +3123,7 @@ public sealed partial class MainWindow : Window
             {
                 // Fire-and-forget: a malformed cover URL or unexpected payload must
                 // surface here, not as an unobserved task exception.
-                statusText.Text = $"couldn't show remote covers: {ex.Message}";
+                statusText.Text = Loc.Chrome("cover.show_failed", "detail", ex.Message);
                 statusText.Visibility = Visibility.Visible;
             }
         }
@@ -3124,7 +3166,7 @@ public sealed partial class MainWindow : Window
             var json = NativeBae.StorageJson(_handle);
             if (json is null)
             {
-                storageStatus.Text = "couldn't load storage";
+                storageStatus.Text = Loc.Chrome("storage.load_failed");
                 storageStatus.Visibility = Visibility.Visible;
                 return;
             }
@@ -3132,7 +3174,7 @@ public sealed partial class MainWindow : Window
             var rows = JsonSerializer.Deserialize<List<StorageRow>>(json, JsonOptions);
             if (rows is null)
             {
-                storageStatus.Text = "couldn't read storage";
+                storageStatus.Text = Loc.Chrome("storage.read_failed");
                 storageStatus.Visibility = Visibility.Visible;
                 return;
             }
@@ -3229,7 +3271,7 @@ public sealed partial class MainWindow : Window
             var json = await System.Threading.Tasks.Task.Run(() => NativeBae.OutboxSnapshotJson(_handle));
             if (json is null)
             {
-                storageStatus.Text = "couldn't load the outbox";
+                storageStatus.Text = Loc.Chrome("outbox.load_failed");
                 storageStatus.Visibility = Visibility.Visible;
                 return;
             }
@@ -3237,7 +3279,7 @@ public sealed partial class MainWindow : Window
             var snapshot = JsonSerializer.Deserialize<OutboxSnapshot>(json, JsonOptions);
             if (snapshot is null)
             {
-                storageStatus.Text = "couldn't read the outbox";
+                storageStatus.Text = Loc.Chrome("outbox.read_failed");
                 storageStatus.Visibility = Visibility.Visible;
                 return;
             }
@@ -3255,7 +3297,7 @@ public sealed partial class MainWindow : Window
                 Text = snapshot.Summary,
                 VerticalAlignment = VerticalAlignment.Center,
             });
-            var retry = new Button { Content = "retry now" };
+            var retry = new Button { Content = Loc.Chrome("outbox.retry_now") };
             retry.Click += async (_, _) =>
             {
                 storageStatus.Visibility = Visibility.Collapsed;
@@ -3275,7 +3317,7 @@ public sealed partial class MainWindow : Window
             // Pause/resume the upload pipeline. Paused leaves items queued but stops
             // the sync cycle from draining them.
             var paused = snapshot.Paused;
-            var pause = new Button { Content = paused ? "resume" : "pause" };
+            var pause = new Button { Content = paused ? Loc.Chrome("outbox.resume") : Loc.Chrome("outbox.pause") };
             pause.Click += async (_, _) =>
             {
                 pause.IsEnabled = false;
@@ -3348,7 +3390,7 @@ public sealed partial class MainWindow : Window
                 Grid.SetColumn(labelColumn, 0);
                 itemGrid.Children.Add(labelColumn);
 
-                var cancel = new Button { Content = "cancel" };
+                var cancel = new Button { Content = Loc.Chrome("outbox.cancel_item") };
                 cancel.Click += async (_, _) =>
                 {
                     storageStatus.Visibility = Visibility.Collapsed;
@@ -3388,9 +3430,9 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "storage",
+            Title = Loc.Chrome("storage.title"),
             Content = new ScrollViewer { Content = content, MaxHeight = 480 },
-            CloseButtonText = "Close",
+            CloseButtonText = Loc.Chrome("action.close"),
             XamlRoot = Content.XamlRoot,
         };
         // Refresh both the outbox panel and the storage rows live while the dialog
@@ -3426,10 +3468,10 @@ public sealed partial class MainWindow : Window
     // "Storage…" sheet / context menu wording.
     private static string StorageActionLabel(string action) => action switch
     {
-        "manage" => "Move into library",
-        "unmanage" => "Move out of library…",
-        "pin" => "Pin for offline",
-        "unpin" => "Remove local copy",
+        "manage" => Loc.Chrome("storage.action.manage"),
+        "unmanage" => Loc.Chrome("storage.action.unmanage"),
+        "pin" => Loc.Chrome("storage.action.pin"),
+        "unpin" => Loc.Chrome("storage.action.unpin"),
         _ => action,
     };
 
@@ -3508,7 +3550,7 @@ public sealed partial class MainWindow : Window
         var cancelIds = await UploadOpIdsForReleases(releaseIds);
         if (cancelIds.Count > 0)
         {
-            var cancel = new MenuFlyoutItem { Text = "Cancel upload" };
+            var cancel = new MenuFlyoutItem { Text = Loc.Chrome("storage.cancel_upload") };
             cancel.Click += async (_, _) =>
             {
                 foreach (var id in cancelIds)
@@ -3654,10 +3696,10 @@ public sealed partial class MainWindow : Window
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
             Visibility = Visibility.Collapsed,
         };
-        var tokenBox = new TextBox { PlaceholderText = "Discogs API token" };
-        var save = new Button { Content = "save token" };
-        var recheck = new Button { Content = "re-check" };
-        var remove = new Button { Content = "remove token" };
+        var tokenBox = new TextBox { PlaceholderText = Loc.Chrome("settings.discogs.token_placeholder") };
+        var save = new Button { Content = Loc.Chrome("settings.discogs.save") };
+        var recheck = new Button { Content = Loc.Chrome("settings.discogs.recheck") };
+        var remove = new Button { Content = Loc.Chrome("settings.discogs.remove") };
         var discogsBusy = false;
 
         void ShowDiscogsError(string message)
@@ -3700,7 +3742,7 @@ public sealed partial class MainWindow : Window
 
             discogsBusy = true;
             ClearDiscogsError();
-            status.Text = "Validating…";
+            status.Text = Loc.Chrome("settings.discogs.validating");
             var outcome = await System.Threading.Tasks.Task.Run(
                 () => NativeBae.SaveDiscogsToken(_handle, token));
             discogsBusy = false;
@@ -3715,11 +3757,11 @@ public sealed partial class MainWindow : Window
                     // Nothing stored, so no ConfigChanged fires — keep the draft and
                     // surface the rejection.
                     status.Text = string.Empty;
-                    ShowDiscogsError("Discogs rejected this key — check it and save again.");
+                    ShowDiscogsError(Loc.Chrome("settings.discogs.rejected"));
                     break;
                 default:
                     status.Text = string.Empty;
-                    ShowDiscogsError("couldn't save the key — something went wrong.");
+                    ShowDiscogsError(Loc.Chrome("settings.discogs.save_failed"));
                     break;
             }
         };
@@ -3732,7 +3774,7 @@ public sealed partial class MainWindow : Window
 
             discogsBusy = true;
             ClearDiscogsError();
-            status.Text = "Validating…";
+            status.Text = Loc.Chrome("settings.discogs.validating");
             var error = await System.Threading.Tasks.Task.Run(
                 () => NativeBae.RevalidateDiscogsToken(_handle));
             discogsBusy = false;
@@ -3769,7 +3811,7 @@ public sealed partial class MainWindow : Window
         // Two-step disconnect: the first click surfaces the data-loss warning (when
         // releases live only in the cloud) inline and arms; the second confirms.
         // A nested ContentDialog can't open over the settings dialog.
-        var disconnect = new Button { Content = "disconnect" };
+        var disconnect = new Button { Content = Loc.Chrome("settings.sync.disconnect") };
         var disconnectArmed = false;
         disconnect.Click += async (_, _) =>
         {
@@ -3778,7 +3820,7 @@ public sealed partial class MainWindow : Window
                 var warning = await System.Threading.Tasks.Task.Run(() => NativeBae.DisconnectWarning(_handle));
                 if (warning is not null)
                 {
-                    syncStatus.Text = $"{warning} click disconnect again to confirm.";
+                    syncStatus.Text = Loc.Chrome("settings.sync.disconnect_confirm", "warning", warning);
                     disconnectArmed = true;
                     return;
                 }
@@ -3795,7 +3837,7 @@ public sealed partial class MainWindow : Window
                 _refreshSettings?.Invoke();
             }
         };
-        var syncNow = new Button { Content = "sync now" };
+        var syncNow = new Button { Content = Loc.Chrome("settings.sync.now") };
         syncNow.Click += (_, _) => NativeBae.TriggerSync(_handle);
         var syncButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         syncButtons.Children.Add(disconnect);
@@ -3804,9 +3846,9 @@ public sealed partial class MainWindow : Window
         // Opaque (encrypted) vs browsable (stored in the clear), applied to
         // whichever provider is connected below. Defaults to the secure choice.
         // Not access control — the bucket's own credentials gate it either way.
-        var storagePicker = new ComboBox { Header = "storage", SelectedIndex = 0 };
-        storagePicker.Items.Add(new ComboBoxItem { Content = "opaque — end-to-end encrypted", Tag = "opaque" });
-        storagePicker.Items.Add(new ComboBoxItem { Content = "browsable — stored unencrypted", Tag = "browsable" });
+        var storagePicker = new ComboBox { Header = Loc.Chrome("settings.storage.mode"), SelectedIndex = 0 };
+        storagePicker.Items.Add(new ComboBoxItem { Content = Loc.Chrome("settings.storage.opaque"), Tag = "opaque" });
+        storagePicker.Items.Add(new ComboBoxItem { Content = Loc.Chrome("settings.storage.browsable"), Tag = "browsable" });
         string SelectedStorage() =>
             (storagePicker.SelectedItem as ComboBoxItem)?.Tag as string ?? "opaque";
 
@@ -3820,10 +3862,10 @@ public sealed partial class MainWindow : Window
                 if (!OAuthCreds.Available)
                 {
                     syncStatus.Text = OAuthCreds.RegistrationError
-                        ?? "cloud sign-in isn't configured on this build (no oauth-creds.json)";
+                        ?? Loc.Chrome("cloud.signin.not_configured");
                     return;
                 }
-                syncStatus.Text = $"signing in to {label}…";
+                syncStatus.Text = Loc.Chrome("cloud.signin.in_progress", "provider", label);
                 var storage = SelectedStorage();
                 var error = await System.Threading.Tasks.Task.Run(() => NativeBae.SignInCloud(_handle, provider, storage));
                 if (error is not null)
@@ -3844,22 +3886,17 @@ public sealed partial class MainWindow : Window
         // missing symbol, independent of whether oauth-creds.json is present.
         var available = NativeBae.AvailableCloudProviders();
         var oauthButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        foreach (var (label, wire) in new[]
-                 {
-                     ("google drive", "google_drive"),
-                     ("dropbox", "dropbox"),
-                     ("onedrive", "onedrive"),
-                 })
+        foreach (var wire in new[] { "google_drive", "dropbox", "onedrive" })
         {
             if (available.Contains(wire))
             {
-                oauthButtons.Children.Add(CloudButton(label, wire));
+                oauthButtons.Children.Add(CloudButton(ProviderDisplayName(wire), wire));
             }
         }
 
         var content = new StackPanel { Spacing = 8, MinWidth = 360 };
-        var libraryLabel = new TextBlock { Text = $"Library: {s.LibraryName}" };
-        var discogsLabel = new TextBlock { Text = "Discogs token" };
+        var libraryLabel = new TextBlock { Text = Loc.Chrome("settings.library_label", "name", s.LibraryName) };
+        var discogsLabel = new TextBlock { Text = Loc.Chrome("settings.discogs.label") };
         content.Children.Add(libraryLabel);
         content.Children.Add(discogsLabel);
         content.Children.Add(tokenBox);
@@ -3868,16 +3905,16 @@ public sealed partial class MainWindow : Window
         content.Children.Add(errorText);
         RenderDiscogs(s);
         // S3-compatible provider form. The core probes the bucket before saving.
-        var s3Bucket = new TextBox { Header = "S3 bucket" };
-        var s3Region = new TextBox { Header = "region" };
-        var s3Endpoint = new TextBox { Header = "endpoint (optional)" };
-        var s3KeyPrefix = new TextBox { Header = "key prefix (optional)" };
-        var s3AccessKey = new TextBox { Header = "access key" };
-        var s3SecretKey = new PasswordBox { Header = "secret key" };
-        var connectS3 = new Button { Content = "connect S3" };
+        var s3Bucket = new TextBox { Header = Loc.Chrome("s3.field.bucket") };
+        var s3Region = new TextBox { Header = Loc.Chrome("s3.field.region") };
+        var s3Endpoint = new TextBox { Header = Loc.Chrome("s3.field.endpoint") };
+        var s3KeyPrefix = new TextBox { Header = Loc.Chrome("s3.field.key_prefix") };
+        var s3AccessKey = new TextBox { Header = Loc.Chrome("s3.field.access_key") };
+        var s3SecretKey = new PasswordBox { Header = Loc.Chrome("s3.field.secret_key") };
+        var connectS3 = new Button { Content = Loc.Chrome("settings.s3.connect") };
         connectS3.Click += async (_, _) =>
         {
-            syncStatus.Text = "connecting to S3…";
+            syncStatus.Text = Loc.Chrome("settings.s3.connecting");
             var storage = SelectedStorage();
             var error = await System.Threading.Tasks.Task.Run(() => NativeBae.SaveSyncConfig(
                 _handle,
@@ -3915,15 +3952,15 @@ public sealed partial class MainWindow : Window
         // Restore code: enter it on another device to restore this library.
         var restoreCode = new TextBox
         {
-            Header = "restore code (enter on another device)",
+            Header = Loc.Chrome("settings.restore_code.label"),
             IsReadOnly = true,
             TextWrapping = TextWrapping.Wrap,
             Visibility = Visibility.Collapsed,
         };
-        var showRestoreCode = new Button { Content = "show restore code" };
+        var showRestoreCode = new Button { Content = Loc.Chrome("settings.restore_code.show") };
         showRestoreCode.Click += (_, _) =>
         {
-            restoreCode.Text = NativeBae.GenerateRestoreCode(_handle) ?? "(unavailable — is sync connected?)";
+            restoreCode.Text = NativeBae.GenerateRestoreCode(_handle) ?? Loc.Chrome("settings.restore_code.unavailable");
             restoreCode.Visibility = Visibility.Visible;
         };
         content.Children.Add(showRestoreCode);
@@ -3932,14 +3969,14 @@ public sealed partial class MainWindow : Window
         // Lock this library: forget its encryption key on this device. Sync stops
         // and the library reopens to the unlock prompt; local files stay.
         var lockRequested = false;
-        var lockButton = new Button { Content = "lock library" };
+        var lockButton = new Button { Content = Loc.Chrome("settings.lock_library") };
         content.Children.Add(lockButton);
 
         var dialog = new ContentDialog
         {
-            Title = "settings",
+            Title = Loc.Chrome("settings.title"),
             Content = new ScrollViewer { Content = content },
-            CloseButtonText = "Close",
+            CloseButtonText = Loc.Chrome("action.close"),
             XamlRoot = Content.XamlRoot,
         };
         lockButton.Click += (_, _) =>
@@ -3966,7 +4003,7 @@ public sealed partial class MainWindow : Window
             }
 
             syncStatus.Text = fresh.SyncStatusText;
-            libraryLabel.Text = $"Library: {fresh.LibraryName}";
+            libraryLabel.Text = Loc.Chrome("settings.library_label", "name", fresh.LibraryName);
             RenderDiscogs(fresh);
         };
 

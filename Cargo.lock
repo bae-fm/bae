@@ -786,6 +786,7 @@ name = "bae-windows-ffi"
 version = "0.1.0"
 dependencies = [
  "bae-core",
+ "bae-loc",
  "serde",
  "serde_json",
  "tokio",

@@ -1,28 +1,15 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Bae.Windows;
 
 /// <summary>
 /// The cloud outbox snapshot, deserialized from the FFI's
-/// <c>bae_outbox_snapshot</c> JSON: a one-line summary band plus the queued upload
-/// and delete operations.
+/// <c>bae_outbox_snapshot</c> JSON. The locale never crosses the bridge: counts,
+/// throughput, ETA, and byte totals are raw, composed into localized lines here.
 /// </summary>
 public sealed class OutboxSnapshot
 {
-    /// <summary>One-line queue summary, e.g. "2 uploading · 1 failed · 3 queued";
-    /// empty when the queue is idle so the UI can hide it.</summary>
-    public string Summary
-    {
-        get
-        {
-            var parts = new System.Collections.Generic.List<string>();
-            if (Total.Active > 0) parts.Add($"{Total.Active} uploading");
-            if (Total.Failed > 0) parts.Add($"{Total.Failed} failed");
-            if (Total.Queued > 0) parts.Add($"{Total.Queued} queued");
-            if (Deletes.Count > 0) parts.Add($"{Deletes.Count} pending delete{(Deletes.Count == 1 ? "" : "s")}");
-            return string.Join(" · ", parts);
-        }
-    }
     public List<UploadOp> Uploads { get; set; } = new();
     public List<DeleteOp> Deletes { get; set; } = new();
 
@@ -39,37 +26,55 @@ public sealed class OutboxSnapshot
     /// <summary>Aggregate byte progress; the master bar reads its done/total.</summary>
     public UploadProgress Total { get; set; } = new();
 
-    /// <summary>Formatted throughput, e.g. "5.2 MB/s"; empty when idle.</summary>
-    public string ThroughputLabel =>
-        ThroughputBps > 0 ? FormatBytes(ThroughputBps) + "/s" : string.Empty;
-
-    /// <summary>Formatted ETA, e.g. "2m 14s remaining"; empty when not computable.</summary>
-    public string EtaLabel
+    /// <summary>One-line queue summary, e.g. "2 uploading · 1 failed · 3 queued";
+    /// empty when the queue is idle so the UI can hide it. Each part is a
+    /// localized count message from the shared catalog.</summary>
+    [JsonIgnore]
+    public string Summary
     {
         get
         {
-            if (!EtaSeconds.HasValue) return string.Empty;
-            var secs = EtaSeconds.Value;
-            if (secs < 60) return $"{secs}s remaining";
-            var mins = secs / 60;
-            var rem = secs % 60;
-            return rem > 0 ? $"{mins}m {rem}s remaining" : $"{mins}m remaining";
+            var parts = new List<string>();
+            if (Total.Active > 0) parts.Add(Loc.Core("core.queue.uploading", "count", Total.Active));
+            if (Total.Failed > 0) parts.Add(Loc.Core("core.queue.failed", "count", Total.Failed));
+            if (Total.Queued > 0) parts.Add(Loc.Core("core.queue.queued", "count", Total.Queued));
+            if (Deletes.Count > 0)
+                parts.Add(Loc.Core("core.outbox.pending_deletes", "count", Deletes.Count));
+            return string.Join(" · ", parts);
         }
     }
 
-    /// <summary>Formatted aggregate progress, e.g. "1.2 GB of 14.4 GB"; empty when
-    /// there is nothing to upload.</summary>
-    public string BytesLabel =>
-        Total.BytesTotal > 0
-            ? $"{FormatBytes(Total.BytesDone)} of {FormatBytes(Total.BytesTotal)}"
+    /// <summary>Formatted throughput, e.g. "5.2 MB/s"; empty when idle. The rate
+    /// is a locale-formatted byte count substituted into the shared message.</summary>
+    [JsonIgnore]
+    public string ThroughputLabel =>
+        ThroughputBps > 0 ? Loc.Core("core.outbox.throughput", "rate", Loc.Bytes(ThroughputBps)) : string.Empty;
+
+    /// <summary>Formatted ETA, e.g. "2m 14s remaining"; empty when not computable.
+    /// The duration is locale-formatted and substituted into the shared message.</summary>
+    [JsonIgnore]
+    public string EtaLabel =>
+        EtaSeconds is { } secs
+            ? Loc.Core("core.outbox.eta", "duration", Loc.Duration(secs * 1000))
             : string.Empty;
 
-    private static string FormatBytes(long bytes)
+    /// <summary>Formatted aggregate progress, e.g. "1.2 GB of 14.4 GB"; empty when
+    /// there is nothing to upload. Both byte counts are locale-formatted and
+    /// substituted into the shared message.</summary>
+    [JsonIgnore]
+    public string BytesLabel
     {
-        if (bytes < 1_000) return $"{bytes} B";
-        if (bytes < 1_000_000) return $"{bytes / 1_000.0:F1} KB";
-        if (bytes < 1_000_000_000) return $"{bytes / 1_000_000.0:F1} MB";
-        return $"{bytes / 1_000_000_000.0:F1} GB";
+        get
+        {
+            if (Total.BytesTotal <= 0) return string.Empty;
+            return Loc.Core(
+                "core.outbox.bytes_progress",
+                new Dictionary<string, object?>
+                {
+                    ["done"] = Loc.Bytes(Total.BytesDone),
+                    ["total"] = Loc.Bytes(Total.BytesTotal),
+                });
+        }
     }
 }
 
@@ -96,34 +101,41 @@ public sealed class UploadOp
     /// orphaned file.</summary>
     public string? Title { get; set; }
     public string CloudKey { get; set; } = string.Empty;
-
-    /// <summary>Pre-formatted size, e.g. "12.4 MB".</summary>
-    public string SizeLabel { get; set; } = string.Empty;
     public long AttemptCount { get; set; }
 
     /// <summary>Bytes of this file that have reached the cloud so far; advances
     /// mid-upload while <see cref="State"/> is "active".</summary>
     public long BytesDone { get; set; }
 
-    /// <summary>Total bytes for this file (the encrypted payload size).</summary>
+    /// <summary>Total bytes for this file (the encrypted payload size); formatted
+    /// for the locale by <see cref="SizeLabel"/>.</summary>
     public long BytesTotal { get; set; }
 
     /// <summary>"queued", "active", or "failed".</summary>
     public string State { get; set; } = string.Empty;
 
-    /// <summary>The last failure message when <see cref="State"/> is "failed".</summary>
+    /// <summary>The last failure message when <see cref="State"/> is "failed".
+    /// This is an opaque, log-only diagnostic string from the cloud layer (an
+    /// exception's text), shown verbatim in a copyable disclosure — never
+    /// translated, like a diagnostic error's detail.</summary>
     public string? LastError { get; set; }
+
+    /// <summary>The total size formatted for the locale, e.g. "12.4 MB".</summary>
+    [JsonIgnore]
+    public string SizeLabel => Loc.Bytes(BytesTotal);
 
     /// <summary>True while this upload is in flight — drives the per-file mini
     /// progress bar.</summary>
+    [JsonIgnore]
     public bool IsActive => State == "active";
 
     /// <summary>Byte progress as a 0...1 fraction for the active-row mini bar.</summary>
+    [JsonIgnore]
     public double Fraction => BytesTotal > 0 ? (double)BytesDone / BytesTotal : 0;
 
-    /// <summary>The list row: title-or-key, state, size, and attempt count. An
-    /// active upload shows its live byte fraction (e.g. "45% · 31.5 of 70 MB")
-    /// instead of the bare "active".</summary>
+    /// <summary>The list row: title-or-key, localized state, size, and attempt
+    /// count. An active upload shows its live byte fraction.</summary>
+    [JsonIgnore]
     public string Label
     {
         get
@@ -132,21 +144,24 @@ public sealed class UploadOp
             string detail;
             if (State == "failed" && !string.IsNullOrEmpty(LastError))
             {
-                detail = $"failed: {LastError}";
+                // The failure word is chrome; LastError is the opaque detail.
+                detail = $"{Loc.Chrome("outbox.upload.failed")}: {LastError}";
             }
             else if (IsActive && BytesTotal > 0)
             {
-                detail = $"uploading · {(int)(Fraction * 100)}%";
+                detail = Loc.Chrome(
+                    "outbox.upload.active_percent",
+                    "percent", (int)(Fraction * 100));
             }
             else
             {
-                detail = State;
+                detail = Loc.Chrome($"outbox.upload.state.{State}");
             }
-            var size = string.IsNullOrEmpty(SizeLabel) ? string.Empty : $" · {SizeLabel}";
+            var size = BytesTotal > 0 ? $" · {SizeLabel}" : string.Empty;
             var attempts = AttemptCount > 0
-                ? $" · {AttemptCount} attempt{(AttemptCount == 1 ? "" : "s")}"
+                ? $" · {Loc.Chrome("outbox.upload.attempts", "count", AttemptCount)}"
                 : string.Empty;
-            return $"{name} — upload · {detail}{size}{attempts}";
+            return $"{name} — {Loc.Chrome("outbox.upload.kind")} · {detail}{size}{attempts}";
         }
     }
 }
@@ -157,6 +172,7 @@ public sealed class DeleteOp
     public long Id { get; set; }
     public string CloudKey { get; set; } = string.Empty;
 
-    /// <summary>The list row: the cloud key being deleted.</summary>
-    public string Label => $"{CloudKey} — delete";
+    /// <summary>The list row: the cloud key being deleted, with a localized kind.</summary>
+    [JsonIgnore]
+    public string Label => $"{CloudKey} — {Loc.Chrome("outbox.delete.kind")}";
 }

@@ -275,6 +275,37 @@ pub fn windows_resw(cat: &Catalog) -> String {
     out
 }
 
+/// The shipping locales in build/BCP-47 form: the English source plus every
+/// `TARGET_LOCALES` entry. Windows resources are per-language directories (unlike
+/// Apple's single multi-locale `.xcstrings`), so the catalog fans out to one
+/// `Core.resw` per locale.
+fn windows_locales(src_lang: &str) -> Vec<String> {
+    let mut locales = vec![format!("{src_lang}-US")];
+    locales.extend(TARGET_LOCALES.iter().map(|l| (*l).to_string()));
+    locales
+}
+
+/// Emit one `<locale>/Core.resw` per shipping locale: `(relative path, contents)`
+/// pairs the caller writes under the project's `Strings` directory. Every locale
+/// carries the **English** value — the source locale because it's the source, the
+/// others as the untranslated starting point (English shows at runtime until a
+/// locale's `Core.resw` is actually translated). This declares locale support
+/// (the per-language directories are what make the app multilingual) without
+/// inventing translations. Mirrors the Apple emitter, which carries the same
+/// per-locale slots inside one file.
+pub fn windows_resw_all(cat: &Catalog, src_lang: &str) -> Vec<(std::path::PathBuf, String)> {
+    let contents = windows_resw(cat);
+    windows_locales(src_lang)
+        .into_iter()
+        .map(|locale| {
+            (
+                std::path::PathBuf::from(locale).join("Core.resw"),
+                contents.clone(),
+            )
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -372,6 +403,35 @@ value = "Looking up barcode {position} of {total}"
             resw.contains("Looking up barcode {position} of {total}"),
             "{resw}"
         );
+    }
+
+    #[test]
+    fn windows_fans_out_to_every_shipping_locale() {
+        let c = cat(r#"
+[messages."core.error.not_found.release"]
+value = "that release couldn't be found"
+"#);
+        let files = windows_resw_all(&c, "en");
+        // One Core.resw per shipping locale: en-US source + every TARGET_LOCALES.
+        assert_eq!(files.len(), TARGET_LOCALES.len() + 1);
+        let paths: Vec<String> = files
+            .iter()
+            .map(|(p, _)| p.to_string_lossy().replace('\\', "/"))
+            .collect();
+        assert!(paths.contains(&"en-US/Core.resw".to_string()), "{paths:?}");
+        assert!(paths.contains(&"ar/Core.resw".to_string()), "{paths:?}");
+        assert!(
+            paths.contains(&"zh-Hans/Core.resw".to_string()),
+            "{paths:?}"
+        );
+        // Every locale carries the English source (others untranslated until a
+        // translator fills them) — no invented translations.
+        for (_, contents) in &files {
+            assert!(
+                contents.contains("that release couldn't be found"),
+                "{contents}"
+            );
+        }
     }
 
     #[test]

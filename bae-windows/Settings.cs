@@ -1,4 +1,6 @@
-﻿namespace Bae.Windows;
+﻿using System.Text.Json.Serialization;
+
+namespace Bae.Windows;
 
 /// <summary>App settings from the FFI's <c>bae_settings</c> JSON.</summary>
 public sealed class Settings
@@ -21,10 +23,60 @@ public sealed class Settings
     public bool SyncReady { get; set; }
     public bool HasCloudHome => SyncProvider is not null;
 
+    /// <summary>
+    /// The connected provider's display name. The locale never crosses the
+    /// bridge: the FFI maps the wire tag to a catalog key (S3 → "S3-compatible",
+    /// local-only → "Local only") or null for the brand-name providers the UI
+    /// passes through verbatim (Google Drive, Dropbox, OneDrive, iCloud). Mirrors
+    /// macOS's <c>localizedCloudProviderName</c>.
+    /// </summary>
+    [JsonIgnore]
+    public string ProviderLabel
+    {
+        get
+        {
+            var key = NativeBae.CloudProviderLabelKey(SyncProvider);
+            if (key is not null)
+            {
+                return Loc.Core(key);
+            }
+            // No key → a brand name the UI shows verbatim; map the wire tag to
+            // its proper-noun chrome label.
+            return SyncProvider switch
+            {
+                "google_drive" => Loc.Chrome("cloud.provider.google_drive"),
+                "dropbox" => Loc.Chrome("cloud.provider.dropbox"),
+                "onedrive" => Loc.Chrome("cloud.provider.onedrive"),
+                "cloudkit" => Loc.Chrome("cloud.provider.icloud"),
+                _ => SyncProvider ?? string.Empty,
+            };
+        }
+    }
+
     /// <summary>One-line sync state for the settings header.</summary>
-    public string SyncStatusText => SyncProvider is null
-        ? "Sync: not connected"
-        : $"Sync: {SyncProvider}{(string.IsNullOrEmpty(SyncAccount) ? string.Empty : $" ({SyncAccount})")} — {(SyncReady ? "ready" : "initializing")}";
+    [JsonIgnore]
+    public string SyncStatusText
+    {
+        get
+        {
+            if (SyncProvider is null)
+            {
+                return Loc.Chrome("settings.sync.not_connected");
+            }
+            var account = string.IsNullOrEmpty(SyncAccount) ? string.Empty : $" ({SyncAccount})";
+            var state = SyncReady
+                ? Loc.Chrome("settings.sync.ready")
+                : Loc.Chrome("settings.sync.initializing");
+            return Loc.Chrome(
+                "settings.sync.status",
+                new System.Collections.Generic.Dictionary<string, object?>
+                {
+                    ["provider"] = ProviderLabel,
+                    ["account"] = account,
+                    ["state"] = state,
+                });
+        }
+    }
 
     /// <summary>
     /// The persisted Discogs key is usable (stored and not rejected) — the
@@ -45,10 +97,11 @@ public sealed class Settings
     /// A rejected key stores nothing (so it isn't configured) and a missing key
     /// shows the editable input, so neither needs a label here.
     /// </summary>
+    [JsonIgnore]
     public string DiscogsStatusText => DiscogsStatus switch
     {
-        "valid" => "connected",
-        "unvalidated" => "saved — couldn't validate yet (offline). will retry.",
+        "valid" => Loc.Chrome("settings.discogs.connected"),
+        "unvalidated" => Loc.Chrome("settings.discogs.unvalidated"),
         _ => string.Empty,
     };
 }
