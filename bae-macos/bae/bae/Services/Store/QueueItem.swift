@@ -3,7 +3,7 @@ import Foundation
 struct QueueItem: Identifiable, Equatable {
     let trackId: String
     let title: String
-    let durationLabel: String
+    let durationMs: Int64?
     let albumTitle: String
     let coverImageId: String?
 
@@ -11,10 +11,12 @@ struct QueueItem: Identifiable, Equatable {
         trackId
     }
 
+    var durationLabel: String { DurationClock.text(durationMs) }
+
     init(bridge: BridgeQueueItem) {
         trackId = bridge.trackId
         title = bridge.title
-        durationLabel = bridge.durationLabel
+        durationMs = bridge.durationMs
         albumTitle = bridge.albumTitle
         coverImageId = bridge.coverImageId
     }

@@ -6,7 +6,6 @@ struct PreviewOverlay: View {
     let path: String
     let isPlaying: Bool
     let durationMs: UInt64
-    let durationLabel: String
 
     var body: some View {
         ModalOverlay(
@@ -43,7 +42,6 @@ struct PreviewOverlay: View {
                         .buttonStyle(.plain)
                         PreviewProgressRepresentable(
                             durationMs: durationMs,
-                            durationLabel: durationLabel,
                             onSeek: { previewAudio.previewSeekByRatio($0) },
                         )
                         .frame(height: 20)

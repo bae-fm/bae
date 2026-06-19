@@ -98,7 +98,6 @@ impl UiEventBus {
                             crate::playback::PlaybackState::Playing {
                                 track_info,
                                 duration_ms,
-                                duration_label,
                             } => UiBusEvent::PlaybackPlaying {
                                 track_id: track_info.track_id.clone(),
                                 track_title: track_info.track_title.clone(),
@@ -108,12 +107,10 @@ impl UiEventBus {
                                 album_title: track_info.album_title.clone(),
                                 cover_image_id: track_info.cover_image_id.clone(),
                                 duration_ms: *duration_ms,
-                                duration_label: duration_label.clone(),
                             },
                             crate::playback::PlaybackState::Paused {
                                 track_info,
                                 duration_ms,
-                                duration_label,
                             } => UiBusEvent::PlaybackPaused {
                                 track_id: track_info.track_id.clone(),
                                 track_title: track_info.track_title.clone(),
@@ -123,7 +120,6 @@ impl UiEventBus {
                                 album_title: track_info.album_title.clone(),
                                 cover_image_id: track_info.cover_image_id.clone(),
                                 duration_ms: *duration_ms,
-                                duration_label: duration_label.clone(),
                             },
                         };
                         bus.emit(bus_event);
@@ -132,32 +128,24 @@ impl UiEventBus {
                         position_ms,
                         duration_ms,
                         progress,
-                        elapsed_label,
-                        remaining_label,
                         ..
                     } => {
                         bus.emit(UiBusEvent::PlaybackProgress {
                             position_ms,
                             duration_ms,
                             progress,
-                            elapsed_label,
-                            remaining_label,
                         });
                     }
                     PlaybackProgress::Seeked {
                         position_ms,
                         duration_ms,
                         progress,
-                        elapsed_label,
-                        remaining_label,
                         ..
                     } => {
                         bus.emit(UiBusEvent::PlaybackProgress {
                             position_ms,
                             duration_ms,
                             progress,
-                            elapsed_label,
-                            remaining_label,
                         });
                     }
                     PlaybackProgress::QueueUpdated {
@@ -204,20 +192,16 @@ impl UiEventBus {
                             crate::playback::PreviewState::Playing {
                                 path,
                                 duration_ms,
-                                duration_label,
                             } => UiBusEvent::PreviewPlaying {
                                 path: path.clone(),
                                 duration_ms: *duration_ms,
-                                duration_label: duration_label.clone(),
                             },
                             crate::playback::PreviewState::Paused {
                                 path,
                                 duration_ms,
-                                duration_label,
                             } => UiBusEvent::PreviewPaused {
                                 path: path.clone(),
                                 duration_ms: *duration_ms,
-                                duration_label: duration_label.clone(),
                             },
                         };
                         bus.emit(bus_event);
@@ -225,12 +209,10 @@ impl UiEventBus {
                     PlaybackProgress::PreviewPositionUpdate {
                         position_ms,
                         progress,
-                        elapsed_label,
                     } => {
                         bus.emit(UiBusEvent::PreviewProgress {
                             position_ms,
                             progress,
-                            elapsed_label,
                         });
                     }
                     PlaybackProgress::PlaybackError { message } => {

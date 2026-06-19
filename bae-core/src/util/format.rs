@@ -1,6 +1,6 @@
 //! Pure formatters: `fn data → String` with no state, no I/O, no context.
 //!
-//! Examples: `format_duration_label(ms) → "3:07"`,
+//! Examples: `format_minutes_seconds(ms) → "3:07"`,
 //! `compute_track_labels(format, side, …) → (String, String)`.
 //!
 //! Zero dependencies on the database, the filesystem, or any struct
@@ -11,12 +11,6 @@
 //! module that needs the same deterministic formatting (e.g.
 //! `import/search.rs`).
 
-/// Format a duration in milliseconds as "M:SS" (e.g., "3:07", "14:59").
-/// Returns an empty string for None or negative values.
-pub fn format_duration_label(ms: Option<i64>) -> String {
-    format_duration_label_unsigned(ms.filter(|&m| m >= 0).map(|m| m as u64))
-}
-
 /// Format an unsigned millisecond duration as a bare "M:SS" clock label
 /// (e.g. "3:07", "14:59"). Seconds floor to the whole second.
 pub fn format_minutes_seconds(ms: u64) -> String {
@@ -24,14 +18,6 @@ pub fn format_minutes_seconds(ms: u64) -> String {
     let minutes = total_seconds / 60;
     let seconds = total_seconds % 60;
     format!("{}:{:02}", minutes, seconds)
-}
-
-/// Format a duration in milliseconds (unsigned) as "M:SS".
-pub fn format_duration_label_unsigned(ms: Option<u64>) -> String {
-    match ms {
-        Some(ms) => format_minutes_seconds(ms),
-        None => String::new(),
-    }
 }
 
 /// Format an ETA from progress, total size, and download rate.
@@ -144,28 +130,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn duration_label_basic() {
-        assert_eq!(format_duration_label(Some(0)), "0:00");
-        assert_eq!(format_duration_label(Some(5_000)), "0:05");
-        assert_eq!(format_duration_label(Some(63_000)), "1:03");
-        assert_eq!(format_duration_label(Some(187_000)), "3:07");
-        assert_eq!(format_duration_label(Some(899_000)), "14:59");
-    }
-
-    #[test]
-    fn duration_label_none() {
-        assert_eq!(format_duration_label(None), "");
-    }
-
-    #[test]
-    fn duration_label_negative() {
-        assert_eq!(format_duration_label(Some(-100)), "");
-    }
-
-    #[test]
-    fn duration_label_unsigned() {
-        assert_eq!(format_duration_label_unsigned(Some(187_000)), "3:07");
-        assert_eq!(format_duration_label_unsigned(None), "");
+    fn minutes_seconds_basic() {
+        assert_eq!(format_minutes_seconds(0), "0:00");
+        assert_eq!(format_minutes_seconds(5_000), "0:05");
+        assert_eq!(format_minutes_seconds(63_000), "1:03");
+        assert_eq!(format_minutes_seconds(187_000), "3:07");
+        assert_eq!(format_minutes_seconds(899_000), "14:59");
     }
 
     #[test]

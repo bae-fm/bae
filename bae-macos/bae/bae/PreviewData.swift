@@ -18,7 +18,6 @@ enum PreviewData {
             title: "Static Dreams",
             artistNames: "The Midnight Signal",
             durationMs: 210_000,
-            durationLabel: "3:30",
             albumTitle: "Neon Frequencies",
             coverImageId: nil
         ),
@@ -27,7 +26,6 @@ enum PreviewData {
             title: "Frequency Drift",
             artistNames: "The Midnight Signal",
             durationMs: 240_000,
-            durationLabel: "4:00",
             albumTitle: "Neon Frequencies",
             coverImageId: nil
         ),
@@ -36,7 +34,6 @@ enum PreviewData {
             title: "Tide Pool",
             artistNames: "Glass Harbor",
             durationMs: 198_000,
-            durationLabel: "3:18",
             albumTitle: "Pacific Standard",
             coverImageId: nil
         ),
@@ -45,7 +42,6 @@ enum PreviewData {
             title: "Harbor Lights",
             artistNames: "Glass Harbor",
             durationMs: 225_000,
-            durationLabel: "3:45",
             albumTitle: "Pacific Standard",
             coverImageId: nil
         ),
@@ -54,7 +50,6 @@ enum PreviewData {
             title: "Axiom",
             artistNames: "Velvet Mathematics",
             durationMs: 187_000,
-            durationLabel: "3:07",
             albumTitle: "Proof by Induction",
             coverImageId: nil
         ),
@@ -100,7 +95,6 @@ enum PreviewData {
                     id: "t-03",
                     title: "Tide Pool",
                     durationMs: 198_000,
-                    durationLabel: "3:18",
                     albumId: "a-02",
                     albumTitle: "Pacific Standard",
                     artistName: "Glass Harbor"
@@ -109,7 +103,6 @@ enum PreviewData {
                     id: "t-05",
                     title: "Axiom",
                     durationMs: 187_000,
-                    durationLabel: "3:07",
                     albumId: "a-03",
                     albumTitle: "Proof by Induction",
                     artistName: "Velvet Mathematics"
@@ -167,11 +160,6 @@ enum PreviewData {
         names.enumerated()
             .map { index, name in
                 let durationMs = Int64((170 + (index * 37) % 170) * 1000)
-                let totalSeconds = durationMs / 1000
-                let minutes = totalSeconds / 60
-                let seconds = totalSeconds % 60
-                let durationLabel =
-                    "\(minutes):\(String(format: "%02d", seconds))"
                 let posLabel =
                     positionPrefix.isEmpty
                     ? "\(index + 1)" : "\(positionPrefix)\(index + 1)"
@@ -181,7 +169,6 @@ enum PreviewData {
                     side: side,
                     trackNumber: Int32(index + 1),
                     durationMs: durationMs,
-                    durationLabel: durationLabel,
                     artistNames: artist,
                     sideLabel: sideLabel,
                     positionLabel: posLabel,
@@ -855,16 +842,10 @@ enum PreviewData {
         let tracks: [BridgeReleaseTrack] = (1...9)
             .map { i in
                 let ms = UInt64(180_000 + i * 15000)
-                let totalSeconds = ms / 1000
-                let minutes = totalSeconds / 60
-                let seconds = totalSeconds % 60
-                let durationLabel =
-                    "\(minutes):\(String(format: "%02d", seconds))"
                 return BridgeReleaseTrack(
                     title: "Track Title \(i)",
                     artist: i == 5 ? "Featured Artist" : nil,
                     durationMs: ms,
-                    durationLabel: durationLabel,
                     position: "\(i)",
                     side: 1,
                     sideLabel: "",

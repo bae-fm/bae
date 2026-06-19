@@ -76,8 +76,6 @@ fn log_streaming_decode_failure(context: &str, error: StreamingDecodeError) -> O
 #[derive(Debug, Clone)]
 pub struct PositionDisplay {
     pub progress: f64,
-    pub elapsed_label: String,
-    pub remaining_label: String,
 }
 
 /// Track metadata resolved once at prepare time, cached for the duration of playback.
@@ -102,7 +100,6 @@ pub struct PlaybackTrackInfo {
 pub struct LoadingTrack {
     pub track_info: PlaybackTrackInfo,
     pub duration_ms: u64,
-    pub duration_label: String,
 }
 
 /// Playback commands sent to the service
@@ -205,12 +202,10 @@ pub enum PlaybackState {
     Playing {
         track_info: PlaybackTrackInfo,
         duration_ms: u64,
-        duration_label: String,
     },
     Paused {
         track_info: PlaybackTrackInfo,
         duration_ms: u64,
-        duration_label: String,
     },
     Loading {
         track_id: String,
@@ -393,16 +388,13 @@ impl PlaybackHandle {
     }
 }
 
-/// The pregap-adjusted total duration (ms + formatted label) a prepared track
-/// reports to the UI — the same value `Playing`/`Paused`/`Loading` all carry.
-fn pregap_adjusted_duration(prepared: &PlaybackPreparedTrack) -> (u64, String) {
+/// The pregap-adjusted total duration (ms) a prepared track reports to the UI
+/// — the same value `Playing`/`Paused`/`Loading` all carry.
+fn pregap_adjusted_duration(prepared: &PlaybackPreparedTrack) -> u64 {
     let raw_dur = prepared.duration.as_millis() as u64;
-    let pregap_ms = prepared.pregap_ms;
-    let (_, adjusted_dur) = crate::playback::format::adjust_for_pregap(0, raw_dur, pregap_ms);
-    (
-        adjusted_dur,
-        crate::playback::format::format_duration(raw_dur, pregap_ms),
-    )
+    let (_, adjusted_dur) =
+        crate::playback::format::adjust_for_pregap(0, raw_dur, prepared.pregap_ms);
+    adjusted_dur
 }
 
 impl PlaybackPreparedTrack {
@@ -776,16 +768,8 @@ impl PlaybackService {
             crate::playback::format::adjust_for_pregap(position_ms, raw_dur_ms, pregap_ms);
         let progress =
             crate::playback::format::compute_progress(position_ms, raw_dur_ms, pregap_ms);
-        let elapsed_label =
-            crate::playback::format::format_elapsed(position_ms, raw_dur_ms, pregap_ms);
-        let remaining_label =
-            crate::playback::format::format_remaining(position_ms, raw_dur_ms, pregap_ms);
 
-        *self.last_position_display.lock().unwrap() = Some(PositionDisplay {
-            progress,
-            elapsed_label: elapsed_label.clone(),
-            remaining_label: remaining_label.clone(),
-        });
+        *self.last_position_display.lock().unwrap() = Some(PositionDisplay { progress });
 
         emit_progress(
             &self.progress_tx,
@@ -794,8 +778,6 @@ impl PlaybackService {
                 duration_ms: adjusted_dur_ms,
                 track_id,
                 progress,
-                elapsed_label,
-                remaining_label,
             },
         );
     }
@@ -803,33 +785,30 @@ impl PlaybackService {
     /// The fields the Playing and Paused states share, read from the current
     /// prepared track. Position data is excluded — it flows through
     /// PositionUpdate/Seeked events.
-    fn current_state_fields(&self) -> (PlaybackTrackInfo, u64, String) {
+    fn current_state_fields(&self) -> (PlaybackTrackInfo, u64) {
         let track_info = self
             .current_track_info
             .clone()
             .expect("no current_track_info");
         let prepared = self.current_prepared.as_ref().expect("no current_prepared");
-        let (duration_ms, duration_label) = pregap_adjusted_duration(prepared);
-        (track_info, duration_ms, duration_label)
+        (track_info, pregap_adjusted_duration(prepared))
     }
 
     /// Build a Playing state from the current prepared track and track info.
     fn make_playing_state(&self) -> PlaybackState {
-        let (track_info, duration_ms, duration_label) = self.current_state_fields();
+        let (track_info, duration_ms) = self.current_state_fields();
         PlaybackState::Playing {
             track_info,
             duration_ms,
-            duration_label,
         }
     }
 
     /// Build a Paused state from the current prepared track and track info.
     fn make_paused_state(&self) -> PlaybackState {
-        let (track_info, duration_ms, duration_label) = self.current_state_fields();
+        let (track_info, duration_ms) = self.current_state_fields();
         PlaybackState::Paused {
             track_info,
             duration_ms,
-            duration_label,
         }
     }
 
@@ -1029,12 +1008,8 @@ impl PlaybackService {
                         *current_position_shared.lock().unwrap() = Some(actual_pos);
                         let raw_pos_ms = actual_pos.as_millis() as u64;
                         let progress = crate::playback::format::compute_progress(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
-                        let elapsed_label = crate::playback::format::format_elapsed(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
-                        let remaining_label = crate::playback::format::format_remaining(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
                         *last_position_display.lock().unwrap() = Some(PositionDisplay {
                             progress,
-                            elapsed_label: elapsed_label.clone(),
-                            remaining_label: remaining_label.clone(),
                         });
                         let (adjusted_pos_ms, adjusted_dur_ms) =
                             crate::playback::format::adjust_for_pregap(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
@@ -1045,8 +1020,6 @@ impl PlaybackService {
                                 duration_ms: adjusted_dur_ms,
                                 track_id: fmt.track_id.clone(),
                                 progress,
-                                elapsed_label,
-                                remaining_label,
                             },
                         );
                     }
@@ -1976,7 +1949,7 @@ impl PlaybackService {
         // Metadata is resolved now: re-emit Loading carrying the target track's
         // info so the bar switches from the prior track to the target while the
         // first audio bytes are still downloading.
-        let (loading_duration_ms, loading_duration_label) = pregap_adjusted_duration(&prepared);
+        let loading_duration_ms = pregap_adjusted_duration(&prepared);
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::StateChanged {
@@ -1985,7 +1958,6 @@ impl PlaybackService {
                     resolved: Some(LoadingTrack {
                         track_info: prepared.track_info.clone(),
                         duration_ms: loading_duration_ms,
-                        duration_label: loading_duration_label,
                     }),
                 },
             },
@@ -2538,13 +2510,11 @@ impl PlaybackService {
             PreviewState::Paused {
                 path: path.clone(),
                 duration_ms: dur_ms,
-                duration_label: crate::playback::format::format_time(dur_ms),
             }
         } else {
             PreviewState::Playing {
                 path: path.clone(),
                 duration_ms: dur_ms,
-                duration_label: crate::playback::format::format_time(dur_ms),
             }
         };
 
@@ -2572,7 +2542,6 @@ impl PlaybackService {
                             PlaybackProgress::PreviewPositionUpdate {
                                 position_ms: actual_pos_ms,
                                 progress: crate::playback::format::compute_progress(actual_pos_ms, fmt.duration_ms, fmt.pregap_ms),
-                                elapsed_label: crate::playback::format::format_elapsed(actual_pos_ms, fmt.duration_ms, fmt.pregap_ms),
                             },
                         );
                     }
@@ -2741,7 +2710,6 @@ impl PlaybackService {
         };
 
         let dur_ms = self.preview_duration.as_millis() as u64;
-        let duration_label = crate::playback::format::format_time(dur_ms);
         match preview_output.get_state() {
             crate::playback::audio_output::AudioState::Playing => {
                 preview_output.set_state(crate::playback::audio_output::AudioState::Paused);
@@ -2759,7 +2727,6 @@ impl PlaybackService {
                     PlaybackProgress::PreviewStateChanged(PreviewState::Paused {
                         path,
                         duration_ms: dur_ms,
-                        duration_label,
                     }),
                 );
             }
@@ -2771,7 +2738,6 @@ impl PlaybackService {
                     PlaybackProgress::PreviewStateChanged(PreviewState::Playing {
                         path,
                         duration_ms: dur_ms,
-                        duration_label,
                     }),
                 );
             }
@@ -2850,7 +2816,6 @@ impl PlaybackService {
                 PlaybackProgress::PreviewPositionUpdate {
                     position_ms: pos_ms,
                     progress: crate::playback::format::compute_progress(pos_ms, dur_ms, None),
-                    elapsed_label: crate::playback::format::format_elapsed(pos_ms, dur_ms, None),
                 },
             );
         }
@@ -2980,7 +2945,7 @@ impl PlaybackService {
             "Seek: position {:?}, seek_to {}",
             position, decode.target_sample
         );
-        let (loading_duration_ms, loading_duration_label) = pregap_adjusted_duration(prepared);
+        let loading_duration_ms = pregap_adjusted_duration(prepared);
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::StateChanged {
@@ -2989,7 +2954,6 @@ impl PlaybackService {
                     resolved: Some(LoadingTrack {
                         track_info: prepared.track_info.clone(),
                         duration_ms: loading_duration_ms,
-                        duration_label: loading_duration_label,
                     }),
                 },
             },

@@ -112,8 +112,7 @@ final class MediaControlService: @unchecked Sendable {
             _,
             let albumTitle,
             let coverImageId,
-            let durationMs,
-            _
+            let durationMs
         ):
             setNowPlaying(
                 trackTitle: trackTitle,
@@ -134,8 +133,7 @@ final class MediaControlService: @unchecked Sendable {
             _,
             let albumTitle,
             let coverImageId,
-            let durationMs,
-            _
+            let durationMs
         ):
             setNowPlaying(
                 trackTitle: trackTitle,
@@ -198,7 +196,7 @@ final class MediaControlService: @unchecked Sendable {
         let infoCenter = MPNowPlayingInfoCenter.default()
 
         switch state {
-        case .playing(let path, let durationMs, _):
+        case .playing(let path, let durationMs):
             setPreviewNowPlaying(
                 path: path,
                 durationMs: durationMs,
@@ -206,7 +204,7 @@ final class MediaControlService: @unchecked Sendable {
                 on: infoCenter
             )
 
-        case .paused(let path, let durationMs, _):
+        case .paused(let path, let durationMs):
             setPreviewNowPlaying(
                 path: path,
                 durationMs: durationMs,

@@ -332,8 +332,6 @@ pub struct BridgeTrack {
     pub side: i32,
     pub track_number: Option<i32>,
     pub duration_ms: Option<i64>,
-    /// Pre-formatted duration, e.g. "3:07". Empty if duration is None.
-    pub duration_label: String,
     /// Effective comma-joined artist names for display (the track's own
     /// artists when it has per-track artist rows, otherwise the album
     /// artists). Always populated.
@@ -505,7 +503,6 @@ pub struct BridgeLoadingTrackInfo {
     pub album_title: String,
     pub cover_image_id: Option<String>,
     pub duration_ms: u64,
-    pub duration_label: String,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -526,7 +523,6 @@ pub enum BridgePlaybackState {
         album_title: String,
         cover_image_id: Option<String>,
         duration_ms: u64,
-        duration_label: String,
     },
     Paused {
         track_id: String,
@@ -537,23 +533,14 @@ pub enum BridgePlaybackState {
         album_title: String,
         cover_image_id: Option<String>,
         duration_ms: u64,
-        duration_label: String,
     },
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePreviewState {
     Idle,
-    Playing {
-        path: String,
-        duration_ms: u64,
-        duration_label: String,
-    },
-    Paused {
-        path: String,
-        duration_ms: u64,
-        duration_label: String,
-    },
+    Playing { path: String, duration_ms: u64 },
+    Paused { path: String, duration_ms: u64 },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -1323,7 +1310,6 @@ pub enum BridgeUiEvent {
         album_title: String,
         cover_image_id: Option<String>,
         duration_ms: u64,
-        duration_label: String,
     },
     PlaybackPaused {
         track_id: String,
@@ -1334,7 +1320,6 @@ pub enum BridgeUiEvent {
         album_title: String,
         cover_image_id: Option<String>,
         duration_ms: u64,
-        duration_label: String,
     },
     /// Position update — goes to NSView. Carries both regular ticks from the
     /// position listener and one-off updates emitted after a seek completes.
@@ -1344,8 +1329,6 @@ pub enum BridgeUiEvent {
         /// update reads it from the event instead of the now-playing slice.
         duration_ms: u64,
         progress: f64,
-        elapsed_label: String,
-        remaining_label: String,
     },
     VolumeChanged {
         volume: f32,
@@ -1372,18 +1355,15 @@ pub enum BridgeUiEvent {
     PreviewPlaying {
         path: String,
         duration_ms: u64,
-        duration_label: String,
     },
     PreviewPaused {
         path: String,
         duration_ms: u64,
-        duration_label: String,
     },
     /// High-frequency tick — goes to NSView, not store.
     PreviewProgress {
         position_ms: u64,
         progress: f64,
-        elapsed_label: String,
     },
 
     // ── Candidate-scoped (key inlined) ─────────────────────────────
@@ -1709,8 +1689,6 @@ pub struct BridgeReleaseTrack {
     pub title: String,
     pub artist: Option<String>,
     pub duration_ms: Option<u64>,
-    /// Pre-formatted duration, e.g. "3:07". Empty if duration is None.
-    pub duration_label: String,
     pub position: String,
     pub side: u32,
     /// Human-readable side label: "Side A", "Disc 2", or empty for single-side digital
@@ -1934,8 +1912,6 @@ pub struct BridgeTrackSearchResult {
     pub id: String,
     pub title: String,
     pub duration_ms: Option<i64>,
-    /// Pre-formatted duration, e.g. "3:07". Empty if duration is None.
-    pub duration_label: String,
     pub album_id: String,
     pub album_title: String,
     pub artist_name: String,
@@ -1999,8 +1975,6 @@ pub struct BridgeQueueItem {
     pub title: String,
     pub artist_names: String,
     pub duration_ms: Option<i64>,
-    /// Pre-formatted duration, e.g. "3:07". Empty if duration is None.
-    pub duration_label: String,
     pub album_title: String,
     pub cover_image_id: Option<String>,
 }
@@ -2468,7 +2442,6 @@ pub(crate) fn release_detail_to_bridge(
             .map(|t| BridgeReleaseTrack {
                 title: t.title,
                 artist: t.artist,
-                duration_label: t.duration_label,
                 duration_ms: t.duration_ms,
                 position: t.position,
                 side: t.side,
@@ -2530,7 +2503,6 @@ pub(crate) fn release_detail_from_bridge(
                 title: t.title,
                 artist: t.artist,
                 duration_ms: t.duration_ms,
-                duration_label: t.duration_label,
                 position: t.position,
                 side: t.side,
                 side_label: t.side_label,

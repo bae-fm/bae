@@ -69,8 +69,7 @@ struct MainAppView: View {
                 PreviewOverlay(
                     path: preview.path,
                     isPlaying: preview.isPlaying,
-                    durationMs: preview.durationMs,
-                    durationLabel: preview.durationLabel
+                    durationMs: preview.durationMs
                 )
             }
 
