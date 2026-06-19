@@ -189,6 +189,24 @@ mod transfer_action_tests {
     }
 }
 
+#[cfg(test)]
+mod queue_summary_tests {
+    /// The queue-summary keys the UI composes from must exist in the catalog.
+    #[test]
+    fn keys_exist_in_catalog() {
+        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
+            .expect("catalog parses");
+        for key in [
+            "core.queue.uploading",
+            "core.queue.failed",
+            "core.queue.queued",
+            "core.outbox.pending_deletes",
+        ] {
+            assert!(cat.messages.contains_key(key), "catalog missing `{key}`");
+        }
+    }
+}
+
 /// Slim per-release summary: the projection list views render one row
 /// per release (storage manager, release pickers, etc.). The fat
 /// sibling is `BridgeRelease` — composition at the resolver layer in
@@ -1584,7 +1602,6 @@ pub struct BridgeOutboxSnapshot {
     /// True when the user has paused the upload pipeline. Drives the
     /// pause/resume toggle and suppresses throughput/ETA in the UI.
     pub paused: bool,
-    pub summary: String,
     /// Rolling-window upload throughput in bytes per second.
     pub throughput_bps: u64,
     /// Pre-formatted throughput label, e.g. `"5.2 MB/s"`. Empty when idle.

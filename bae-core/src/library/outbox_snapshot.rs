@@ -113,9 +113,6 @@ pub struct OutboxSnapshot {
     /// pause/resume toggle in the Storage Manager's bottom panel and
     /// suppresses the throughput display.
     pub paused: bool,
-    /// Pre-formatted one-line summary, e.g. `"2 uploading · 1 failed · 3 queued"`.
-    /// Empty when the queue is idle so the UI can hide the band.
-    pub summary: String,
     /// Rolling-window upload throughput in bytes per second. Zero when the
     /// queue is idle or has been idle long enough for the window to drain.
     pub throughput_bps: u64,
@@ -215,7 +212,6 @@ pub(crate) async fn build_outbox_snapshot(
     }
 
     let pending_deletes = deletes.len() as u32;
-    let summary = format_summary(&total, pending_deletes);
 
     // When paused, hide throughput/ETA — uploads aren't flowing so the rolling
     // window decays toward zero anyway, and rendering "2.3 MB/s" beside a
@@ -250,7 +246,6 @@ pub(crate) async fn build_outbox_snapshot(
         total,
         pending_deletes,
         paused,
-        summary,
         throughput_bps,
         throughput_label,
         eta_seconds,
@@ -278,30 +273,6 @@ fn format_eta_label(eta_seconds: Option<u64>) -> String {
     format!("{hours}h {mins}m remaining")
 }
 
-/// One-line summary, e.g. `"2 uploading · 1 failed · 3 queued"`. Empty when the
-/// queue is idle so the UI can hide the band.
-fn format_summary(total: &UploadProgress, pending_deletes: u32) -> String {
-    let mut parts = Vec::new();
-    if total.active > 0 {
-        parts.push(format!("{} uploading", total.active));
-    }
-    if total.failed > 0 {
-        parts.push(format!("{} failed", total.failed));
-    }
-    if total.queued > 0 {
-        parts.push(format!("{} queued", total.queued));
-    }
-    if pending_deletes > 0 {
-        let noun = if pending_deletes == 1 {
-            "delete"
-        } else {
-            "deletes"
-        };
-        parts.push(format!("{pending_deletes} pending {noun}"));
-    }
-    parts.join(" · ")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,21 +285,6 @@ mod tests {
             bytes_done: 0,
             bytes_total: 0,
         }
-    }
-
-    #[test]
-    fn summary_is_empty_when_idle() {
-        assert_eq!(format_summary(&progress(0, 0, 0), 0), "");
-    }
-
-    #[test]
-    fn summary_lists_active_states_only() {
-        assert_eq!(
-            format_summary(&progress(3, 2, 1), 0),
-            "2 uploading · 1 failed · 3 queued"
-        );
-        assert_eq!(format_summary(&progress(0, 0, 0), 1), "1 pending delete");
-        assert_eq!(format_summary(&progress(0, 0, 0), 2), "2 pending deletes");
     }
 
     #[test]
