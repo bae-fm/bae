@@ -252,7 +252,10 @@ struct OnboardingView: View {
         }
     }
 
-    private func cancelLink() {
+}
+
+extension OnboardingView {
+    func cancelLink() {
         linkFlow?.cancel()
         linkFlow = nil
     }
@@ -261,7 +264,7 @@ struct OnboardingView: View {
     /// CloudKit driver before restore when the library syncs through CloudKit,
     /// and restore. A restore code points at the owner's own private CloudKit
     /// zone — every device is the one owner.
-    private func link(code: String) {
+    func link(code: String) {
         error = nil
         cancelLink()
         let flow = LinkFlow { flow in
@@ -271,75 +274,98 @@ struct OnboardingView: View {
                         linkFlow = nil
                     }
                 }
-                do {
-                    let info = try decodeRestoreCode(code: code)
-
-                    // A provider that needs OAuth (e.g. Google Drive): run the
-                    // system auth session to obtain a token before restoring.
-                    // CloudKit and S3 need none and restore with a nil token. A baeium
-                    // (S3-only) build can't sign in to OAuth providers at all, so a
-                    // library that needs it can't be linked here.
-                    var oauthTokenJson: String? = nil
-                    if info.needsOauth {
-                        #if BAE_OAUTH_PROVIDERS
-                        if let oauthLinkingError {
-                            error = oauthLinkingError
-                            return
-                        }
-                        guard let linking = oauthLinking else {
-                            error = String(
-                                localized:
-                                    "This library needs cloud sign-in, which isn't configured on this build."
-                            )
-                            return
-                        }
-                        guard let presentationAnchor else {
-                            throw OAuthLinkingError.noPresentationAnchor
-                        }
-                        oauthTokenJson = try await linking.authorize(
-                            provider: info.cloudProvider,
-                            presentationAnchor: presentationAnchor
-                        )
-                        #else
-                        error = String(
-                            localized:
-                                "This library syncs through a cloud provider this build doesn't support."
-                        )
-                        return
-                        #endif
-                    }
-
-                    let tokenJson = oauthTokenJson
-                    let bridgeOperation = try restoreFromCodeOperation(
-                        code: code,
-                        oauthTokenJson: tokenJson
-                    )
-                    flow.bridgeOperation = bridgeOperation
-                    let libraryInfo = try await withTaskCancellationHandler {
-                        try Task.checkCancellation()
-                        return
-                            try await Task.detached {
-                                try bridgeOperation.restore()
-                            }
-                            .value
-                    } onCancel: {
-                        bridgeOperation.cancel()
-                    }
-                    try Task.checkCancellation()
-                    onLinked(libraryInfo)
-                }
-                catch {
-                    if isLinkCancellation(error) {
-                        logger.debug("link flow cancelled")
-                    }
-                    else {
-                        self.error = error.localizedDescription
-                    }
-                }
+                await performLink(code: code, flow: flow)
             }
         }
         linkFlow = flow
         flow.start()
+    }
+
+    /// The link work, off the `LinkFlow`'s task: decode, obtain a cloud token
+    /// when the provider needs one, then restore. Sets `error` and returns on a
+    /// handled failure; logs and ignores cancellation.
+    private func performLink(code: String, flow: LinkFlow) async {
+        do {
+            let info = try decodeRestoreCode(code: code)
+            let tokenJson: String?
+            if info.needsOauth {
+                guard let token = try await oauthToken(for: info) else {
+                    return
+                }
+                tokenJson = token
+            }
+            else {
+                tokenJson = nil
+            }
+            try await restore(code: code, tokenJson: tokenJson, flow: flow)
+        }
+        catch {
+            if isLinkCancellation(error) {
+                logger.debug("link flow cancelled")
+            }
+            else {
+                self.error = error.localizedDescription
+            }
+        }
+    }
+
+    /// The cloud token for a library that needs OAuth, or `nil` after setting
+    /// `error` when this build / config can't satisfy it. Only called when
+    /// `info.needsOauth`: a provider like Google Drive runs the system auth
+    /// session; CloudKit and S3 need none.
+    private func oauthToken(for info: BridgeRestoreCodeInfo) async throws -> String? {
+        #if BAE_OAUTH_PROVIDERS
+        if let oauthLinkingError {
+            error = oauthLinkingError
+            return nil
+        }
+        guard let linking = oauthLinking else {
+            error = String(
+                localized:
+                    "This library needs cloud sign-in, which isn't configured on this build."
+            )
+            return nil
+        }
+        guard let presentationAnchor else {
+            throw OAuthLinkingError.noPresentationAnchor
+        }
+        return try await linking.authorize(
+            provider: info.cloudProvider,
+            presentationAnchor: presentationAnchor
+        )
+        #else
+        // A baeium (S3-only) build can't sign in to OAuth providers at all, so a
+        // library that needs one can't be linked here.
+        error = String(
+            localized:
+                "This library syncs through a cloud provider this build doesn't support."
+        )
+        return nil
+        #endif
+    }
+
+    private func restore(
+        code: String,
+        tokenJson: String?,
+        flow: LinkFlow
+    ) async throws {
+        let bridgeOperation = try restoreFromCodeOperation(
+            code: code,
+            oauthTokenJson: tokenJson
+        )
+        flow.bridgeOperation = bridgeOperation
+        let libraryInfo = try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            return
+                try await Task.detached {
+                    try bridgeOperation.restore()
+                }
+                .value
+        } onCancel: {
+            bridgeOperation.cancel()
+        }
+        try Task.checkCancellation()
+        onLinked(libraryInfo)
     }
 
     private func isLinkCancellation(_ error: Error) -> Bool {

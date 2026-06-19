@@ -1,24 +1,37 @@
+# SwiftLint enforces CODE QUALITY; swift-format owns LAYOUT. The two tools split
+# the same way ktlint (format) and detekt (quality) split on Android. swift-format
+# is the formatter of record — its `.swift-format` config is enforced in CI via
+# `swift-format lint -s` — so every pure-layout SwiftLint rule (brace placement,
+# else/catch position, line wrapping, trailing commas, whitespace) is disabled
+# here. Enabling them makes two tools rewrite the same bytes in opposite
+# directions; layout questions are settled by swift-format alone.
 disabled_rules:
-  - todo                               # tracked in issues, not linter
-  - trailing_whitespace                # swift-format handles this
-  - statement_position                 # swift-format puts else on its own line
-  - trailing_comma                     # trailing commas in multiline collections are idiomatic
-  - opening_brace                      # swift-format controls brace placement
-  - closure_parameter_position         # swift-format controls this
-  - multiple_closures_with_trailing_closure  # style preference
-  - identifier_name                    # single-letter loop vars (i, s, n) are idiomatic
-  - file_length                        # preview/fixture files are long by nature
-  - type_body_length                   # not a code quality signal
-  - function_body_length               # not a code quality signal
-  - line_length                        # swift-format controls this
-  - implicit_optional_initialization   # explicitly initializing to nil is clear
-  - function_parameter_count           # preview helpers legitimately have many params
-  - large_tuple                        # style preference
-  - cyclomatic_complexity              # not a code quality signal at our scale
-  - type_name                          # swift-format handles naming
+  # Layout — swift-format owns these (see above).
+  - statement_position                 # swift-format positions else/catch
+  - opening_brace                      # swift-format positions braces
+  - closure_parameter_position         # swift-format positions closure params
+  - line_length                        # swift-format wraps long lines
+  - trailing_whitespace                # swift-format strips trailing whitespace
+  - trailing_comma                     # swift-format manages multiline commas
+  # Style/idiom — heuristics that fight SwiftUI idioms or our conventions rather
+  # than measure real complexity. The structural rules (function/type body length,
+  # cyclomatic complexity, parameter count) carry the code-quality load instead.
+  - todo                                       # tracked in issues, not the linter
+  - multiple_closures_with_trailing_closure    # SwiftUI's Button(action:){}label:{} etc.
+  - identifier_name                            # length heuristic; flags idiomatic id/loop vars/fixtures
+  - large_tuple                                # small ad-hoc tuples are fine; extract a type by judgment
+  - implicit_optional_initialization           # explicit `= nil` is a deliberate clarity choice
+  - file_length                                # type_body_length catches oversized types; long view
+                                               # files (many small subviews) and preview fixtures are fine
 
 opt_in_rules:
   - force_unwrapping                   # flag optional force-unwraps (expr!)
+
+# Match Android's detekt LongMethod threshold (60) so one function-size standard
+# holds across both platforms. SwiftLint's default warning is 50, which under
+# --strict would hold Swift to a stricter bar than the Kotlin it mirrors.
+function_body_length:
+  warning: 60
 
 excluded:
   - bae-macos/bae/bae/bae_bridge.swift

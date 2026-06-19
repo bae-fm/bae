@@ -148,10 +148,10 @@ final class AppSessionHolder {
                 // so the stale open can't clobber the current one; `handle` drops
                 // here, freeing the core it just built.
                 try Task.checkCancellation()
-                guard let h = handle else { return }
-                let config = h.getConfig()
+                guard let liveHandle = handle else { return }
+                let config = liveHandle.getConfig()
 
-                if config.encryptionKeyStored, !h.hasEncryptionKey() {
+                if config.encryptionKeyStored, !liveHandle.hasEncryptionKey() {
                     handle = nil
                     let lockedLibrary = LockedLibrary(
                         library: library,
@@ -161,7 +161,7 @@ final class AppSessionHolder {
                     return
                 }
 
-                let openHandle = h
+                let openHandle = liveHandle
                 let service = AppService(appHandle: openHandle, config: config)
                 service.wireUp()
                 if openHandle.isSyncReady() {
