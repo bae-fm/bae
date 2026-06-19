@@ -23,7 +23,7 @@ enum DiscidProgress: Equatable {
     case lookingUp
     case done(nResults: UInt32)
     case skipped
-    case failed(message: String)
+    case failed(failure: LookupFailure)
 
     init(bridge: BridgeDiscidProgress) {
         switch bridge {
@@ -31,7 +31,8 @@ enum DiscidProgress: Equatable {
         case .lookingUp: self = .lookingUp
         case .done(let n): self = .done(nResults: n)
         case .skipped: self = .skipped
-        case .failed(let m): self = .failed(message: m)
+        case .failed(let failure):
+            self = .failed(failure: LookupFailure(bridge: failure))
         }
     }
 }

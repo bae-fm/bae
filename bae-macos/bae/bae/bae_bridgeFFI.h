@@ -967,6 +967,11 @@ RustBuffer uniffi_bae_bridge_fn_func_bridge_import_phase_key(RustBuffer phase, R
 RustBuffer uniffi_bae_bridge_fn_func_bridge_invalid_reason_key(RustBuffer reason, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_FN_FUNC_BRIDGE_LOOKUP_FAILURE_KEY
+#define UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_FN_FUNC_BRIDGE_LOOKUP_FAILURE_KEY
+RustBuffer uniffi_bae_bridge_fn_func_bridge_lookup_failure_key(RustBuffer failure, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_FN_FUNC_BRIDGE_PREPARE_STEP_KEY
 #define UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_FN_FUNC_BRIDGE_PREPARE_STEP_KEY
 RustBuffer uniffi_bae_bridge_fn_func_bridge_prepare_step_key(RustBuffer step, RustCallStatus *_Nonnull out_status
@@ -1400,6 +1405,12 @@ uint16_t uniffi_bae_bridge_checksum_func_bridge_import_phase_key(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_CHECKSUM_FUNC_BRIDGE_INVALID_REASON_KEY
 #define UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_CHECKSUM_FUNC_BRIDGE_INVALID_REASON_KEY
 uint16_t uniffi_bae_bridge_checksum_func_bridge_invalid_reason_key(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_CHECKSUM_FUNC_BRIDGE_LOOKUP_FAILURE_KEY
+#define UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_CHECKSUM_FUNC_BRIDGE_LOOKUP_FAILURE_KEY
+uint16_t uniffi_bae_bridge_checksum_func_bridge_lookup_failure_key(void
     
 );
 #endif

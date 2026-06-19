@@ -5,6 +5,7 @@
 use crate::db::LibraryStatus;
 use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{lookup_by_discid, DiscIdResult, MetadataResult};
+use crate::signals::LookupFailure;
 use std::path::PathBuf;
 
 /// Compute disc ID and track count for a release already in the library.
@@ -140,12 +141,12 @@ pub async fn lookup_and_resolve(
     cover_art_archive: &CoverArtArchiveClient,
     disc_id: &str,
     library_manager: &crate::library::LibraryManager,
-) -> Result<(Vec<MetadataResult>, Vec<LibraryStatus>), String> {
+) -> Result<(Vec<MetadataResult>, Vec<LibraryStatus>), LookupFailure> {
     use crate::db::LibraryCheck;
 
-    let result = lookup_by_discid(cover_art_archive, disc_id)
-        .await
-        .map_err(|e| format!("MusicBrainz lookup failed: {e}"))?;
+    // The MB lookup carries its own typed failure (Network / Provider /
+    // Timeout) — pass it through structured.
+    let result = lookup_by_discid(cover_art_archive, disc_id).await?;
 
     let matches: Vec<MetadataResult> = match result {
         DiscIdResult::NoMatches => return Ok((Vec::new(), Vec::new())),
@@ -153,11 +154,15 @@ pub async fn lookup_and_resolve(
         DiscIdResult::MultipleMatches(matches) => matches,
     };
 
+    // The in-library check is a local DB read — its failure is opaque
+    // diagnostic detail, not a provider verdict.
     let checks: Vec<LibraryCheck> = matches.iter().map(LibraryCheck::from).collect();
     let library_statuses = library_manager
         .check_releases_in_library(&checks)
         .await
-        .map_err(|e| format!("Failed to check library status: {e}"))?;
+        .map_err(|e| LookupFailure::Diagnostic {
+            detail: format!("Failed to check library status: {e}"),
+        })?;
     Ok((matches, library_statuses))
 }
 

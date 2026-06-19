@@ -20,12 +20,14 @@
 
 pub mod barcode;
 pub mod disc_id;
+pub mod failure;
 pub mod origin;
 pub mod service;
 pub mod text;
 
 pub use barcode::BarcodeSignal;
 pub use disc_id::DiscIdSignal;
+pub use failure::LookupFailure;
 pub use origin::{SignalOrigin, SourcedValue};
 pub use service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
 pub use text::TextSignal;

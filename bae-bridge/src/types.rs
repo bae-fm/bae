@@ -1100,6 +1100,89 @@ pub enum BridgeSignalRole {
     Filter,
 }
 
+/// Why a metadata lookup failed. Mirrors `bae_core::signals::LookupFailure`.
+/// The locale never crosses the bridge: the UI resolves a localized line per
+/// variant (`bridge_lookup_failure_key`) and renders `Provider`'s status as
+/// the message argument. `Diagnostic` carries opaque, log-only detail — never
+/// translated, never shown as primary copy.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeLookupFailure {
+    /// Transport/connection failure — no HTTP response.
+    Network,
+    /// An HTTP error response from the metadata provider, with its status
+    /// code when one was observed.
+    Provider { status: Option<u16> },
+    /// The request timed out before a response arrived.
+    Timeout,
+    /// A local error (DB load, "not found", a compute task panic). `detail`
+    /// is the opaque error chain — log-only, never translated.
+    Diagnostic { detail: String },
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn lookup_failure_to_bridge(f: bae_core::signals::LookupFailure) -> BridgeLookupFailure {
+    use bae_core::signals::LookupFailure;
+    match f {
+        LookupFailure::Network => BridgeLookupFailure::Network,
+        LookupFailure::Provider { status } => BridgeLookupFailure::Provider { status },
+        LookupFailure::Timeout => BridgeLookupFailure::Timeout,
+        LookupFailure::Diagnostic { detail } => BridgeLookupFailure::Diagnostic { detail },
+    }
+}
+
+/// Localization key for a lookup failure's user-facing line, or `None` for
+/// `Diagnostic` (which has no translated copy — the UI shows a generic line
+/// plus the opaque `detail`). `Provider` resolves to one of two keys: the
+/// status-bearing line when a code was observed, or a no-status fallback when
+/// not — so the UI never has to decide which message a missing status takes.
+/// One source of these keys for every platform; the UI resolves the key
+/// through its string catalog.
+#[uniffi::export]
+pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> Option<String> {
+    match failure {
+        BridgeLookupFailure::Network => Some("core.lookup.failure.network".to_string()),
+        BridgeLookupFailure::Provider { status: Some(_) } => {
+            Some("core.lookup.failure.provider".to_string())
+        }
+        BridgeLookupFailure::Provider { status: None } => {
+            Some("core.lookup.failure.provider_unknown".to_string())
+        }
+        BridgeLookupFailure::Timeout => Some("core.lookup.failure.timeout".to_string()),
+        BridgeLookupFailure::Diagnostic { .. } => None,
+    }
+}
+
+#[cfg(test)]
+mod lookup_failure_tests {
+    use super::BridgeLookupFailure;
+
+    /// The keys the UI resolves (Network, Provider, Timeout) must exist in the
+    /// catalog; `Diagnostic` has no key (the UI renders a generic line plus
+    /// the opaque detail).
+    #[test]
+    fn keys_exist_in_catalog() {
+        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
+            .expect("catalog parses");
+        for failure in [
+            BridgeLookupFailure::Network,
+            BridgeLookupFailure::Provider { status: Some(503) },
+            BridgeLookupFailure::Provider { status: None },
+            BridgeLookupFailure::Timeout,
+        ] {
+            let key = super::bridge_lookup_failure_key(failure)
+                .expect("Network/Provider/Timeout carry keys");
+            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
+        }
+        assert!(
+            super::bridge_lookup_failure_key(BridgeLookupFailure::Diagnostic {
+                detail: "x".to_string()
+            })
+            .is_none(),
+            "Diagnostic has no catalog key"
+        );
+    }
+}
+
 /// The live lookup/match state of one toolbar badge. Mirrors
 /// `bae_core::identify::SignalState`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -1108,7 +1191,7 @@ pub enum BridgeSignalState {
     Found { count: u32 },
     NoMatch,
     Skipped,
-    Failed { message: String },
+    Failed { failure: BridgeLookupFailure },
     Confirms { count: u32 },
 }
 
@@ -1139,7 +1222,9 @@ fn signal_state_to_bridge(s: bae_core::identify::SignalState) -> BridgeSignalSta
         SignalState::Found { count } => BridgeSignalState::Found { count },
         SignalState::NoMatch => BridgeSignalState::NoMatch,
         SignalState::Skipped => BridgeSignalState::Skipped,
-        SignalState::Failed { message } => BridgeSignalState::Failed { message },
+        SignalState::Failed { failure } => BridgeSignalState::Failed {
+            failure: lookup_failure_to_bridge(failure),
+        },
         SignalState::Confirms { count } => BridgeSignalState::Confirms { count },
     }
 }
@@ -1185,7 +1270,7 @@ pub enum BridgeDiscidProgress {
     /// No disc-ID artifacts (LOG/CUE) available for this candidate.
     Skipped,
     Failed {
-        message: String,
+        failure: BridgeLookupFailure,
     },
 }
 
@@ -1234,9 +1319,17 @@ pub struct BridgeReleaseGroup {
 /// The disc-ID signal. Mirrors `bae_core::signals::DiscIdSignal`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeDiscIdSignal {
-    Computed { disc_id: String, track_count: u32 },
-    Absent { track_count: u32 },
-    Failed { message: String, track_count: u32 },
+    Computed {
+        disc_id: String,
+        track_count: u32,
+    },
+    Absent {
+        track_count: u32,
+    },
+    Failed {
+        failure: BridgeLookupFailure,
+        track_count: u32,
+    },
 }
 
 /// The barcode signal — the UPC/EAN code payloads with their origins. Mirrors
@@ -2624,7 +2717,9 @@ fn discid_progress_to_bridge(p: bae_core::identify::DiscidProgress) -> BridgeDis
             n_results: results.len() as u32,
         },
         DiscidProgress::Skipped { .. } => BridgeDiscidProgress::Skipped,
-        DiscidProgress::Failed { message } => BridgeDiscidProgress::Failed { message },
+        DiscidProgress::Failed { failure } => BridgeDiscidProgress::Failed {
+            failure: lookup_failure_to_bridge(failure),
+        },
     }
 }
 
@@ -2685,10 +2780,10 @@ pub(crate) fn signals_to_bridge(s: bae_core::signals::Signals) -> BridgeSignals 
         },
         DiscIdSignal::Absent { track_count } => BridgeDiscIdSignal::Absent { track_count },
         DiscIdSignal::Failed {
-            message,
+            failure,
             track_count,
         } => BridgeDiscIdSignal::Failed {
-            message,
+            failure: lookup_failure_to_bridge(failure),
             track_count,
         },
     };

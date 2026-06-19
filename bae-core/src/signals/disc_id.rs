@@ -1,6 +1,8 @@
 //! The disc-ID signal: a MusicBrainz disc ID derived from a candidate's
 //! LOG/CUE artifacts, or supplied directly for a physical CD.
 
+use super::LookupFailure;
+
 /// The disc-ID signal extracted from a candidate's files.
 ///
 /// Derived once during the extraction pass (or supplied for a CD). The
@@ -14,8 +16,13 @@ pub enum DiscIdSignal {
     Computed { disc_id: String, track_count: u32 },
     /// No LOG/CUE artifact to derive a disc ID from.
     Absent { track_count: u32 },
-    /// Derivation failed (e.g. the folder scan left a CUE unparsed).
-    Failed { message: String, track_count: u32 },
+    /// Derivation failed (re-identify resolution: DB load, "release not
+    /// found", a disc-ID compute task panic) — always a local error, hence
+    /// `LookupFailure::Diagnostic` in practice.
+    Failed {
+        failure: LookupFailure,
+        track_count: u32,
+    },
 }
 
 impl DiscIdSignal {

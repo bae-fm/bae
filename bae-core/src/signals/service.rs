@@ -283,8 +283,8 @@ async fn run_extraction(
                     track_count,
                 },
                 Ok((None, track_count)) => DiscIdSignal::Absent { track_count },
-                Err(message) => DiscIdSignal::Failed {
-                    message,
+                Err(detail) => DiscIdSignal::Failed {
+                    failure: crate::signals::LookupFailure::Diagnostic { detail },
                     track_count: 0,
                 },
             };

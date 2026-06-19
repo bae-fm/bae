@@ -16,7 +16,9 @@ use super::combine::{
 use super::toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};
 use crate::db::LibraryStatus;
 use crate::import::search::MetadataResult;
-use crate::signals::{BarcodeSignal, DiscIdSignal, SignalOrigin, Signals, SourcedValue};
+use crate::signals::{
+    BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue,
+};
 use std::collections::HashSet;
 
 /// Per-signal progress for disc-ID. The UI reads this to render
@@ -40,7 +42,7 @@ pub enum DiscidProgress {
         track_count: u32,
     },
     Failed {
-        message: String,
+        failure: LookupFailure,
     },
 }
 
@@ -438,8 +440,8 @@ fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
         DiscidProgress::Computing | DiscidProgress::LookingUp => SignalState::LookingUp,
         DiscidProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
         DiscidProgress::Skipped { .. } => SignalState::Skipped,
-        DiscidProgress::Failed { message } => SignalState::Failed {
-            message: message.clone(),
+        DiscidProgress::Failed { failure } => SignalState::Failed {
+            failure: failure.clone(),
         },
     }
 }
@@ -461,8 +463,8 @@ fn settled_identity_state(
 ) -> SignalState {
     match disc_id {
         DiscIdSignal::Absent { .. } => SignalState::Skipped,
-        DiscIdSignal::Failed { message, .. } => SignalState::Failed {
-            message: message.clone(),
+        DiscIdSignal::Failed { failure, .. } => SignalState::Failed {
+            failure: failure.clone(),
         },
         DiscIdSignal::Computed { .. } => found_or_no_match(results.len() as u32),
     }
@@ -517,7 +519,7 @@ pub enum IdentifyEvent {
         track_count: u32,
     },
     DiscidLookupFailed {
-        message: String,
+        failure: LookupFailure,
     },
 
     // ── Barcode lookup completion ───────────────────────────────────
@@ -618,9 +620,9 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 barcode,
                 context,
             },
-            IdentifyEvent::DiscidLookupFailed { message },
+            IdentifyEvent::DiscidLookupFailed { failure },
         ) => settle_if_ready(IdentifyState::Triangulating {
-            discid: DiscidProgress::Failed { message },
+            discid: DiscidProgress::Failed { failure },
             barcode,
             context,
         }),
@@ -807,9 +809,9 @@ fn apply_signals(
                 track_count: *track_count,
             }
         }
-        (DiscidProgress::Computing, DiscIdSignal::Failed { message, .. }) => {
+        (DiscidProgress::Computing, DiscIdSignal::Failed { failure, .. }) => {
             DiscidProgress::Failed {
-                message: message.clone(),
+                failure: failure.clone(),
             }
         }
         // Already past Computing — the disc-ID lookup is in flight or settled.
@@ -972,8 +974,8 @@ fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
         DiscIdSignal::Absent { track_count } => DiscidProgress::Skipped {
             track_count: *track_count,
         },
-        DiscIdSignal::Failed { message, .. } => DiscidProgress::Failed {
-            message: message.clone(),
+        DiscIdSignal::Failed { failure, .. } => DiscidProgress::Failed {
+            failure: failure.clone(),
         },
     };
 
@@ -1922,7 +1924,7 @@ mod tests {
         let (state, _) = step(
             state,
             IdentifyEvent::DiscidLookupFailed {
-                message: "network error".to_string(),
+                failure: LookupFailure::Provider { status: Some(503) },
             },
         );
         let disc = state
@@ -1933,7 +1935,7 @@ mod tests {
         assert_eq!(
             disc.state,
             SignalState::Failed {
-                message: "network error".to_string()
+                failure: LookupFailure::Provider { status: Some(503) }
             }
         );
     }

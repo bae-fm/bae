@@ -510,8 +510,8 @@ private enum SignalBadgeStyle {
         case .skipped:
             return signal.kind == .discId
                 ? "No disc layout" : "No source to scan"
-        case .failed(let message):
-            return message
+        case .failed(let failure):
+            return failure.badgeLine
         case .confirms(let count):
             return count > 0
                 ? "Matches this pressing"

@@ -347,12 +347,52 @@ pub struct ExternalUrls {
     pub discogs_release_url: Option<String>,
 }
 
+/// A MusicBrainz lookup failure, keeping the wire-level distinction the
+/// caller needs to localize: a transport failure that produced no HTTP
+/// response, a timeout, or an HTTP error *response* carrying a status. The
+/// status is preserved at the point of construction — flattening it into a
+/// formatted string here would destroy it for every consumer.
+///
+/// `Other` carries local/internal failures (URL construction, JSON parsing,
+/// reading the body) — diagnostic detail, never a provider verdict.
 #[derive(Debug, Error)]
 pub enum MusicBrainzError {
-    #[error("MusicBrainz API error: {0}")]
-    Api(String),
+    /// No release matched the DiscID (404 or an empty result set).
     #[error("No release found for DISCID: {0}")]
     NotFound(String),
+    /// The request never reached a response — connection refused, DNS
+    /// failure, a dropped body. Carries the underlying error for logging.
+    #[error("MusicBrainz network error: {0}")]
+    Network(String),
+    /// The request timed out before a response arrived.
+    #[error("MusicBrainz request timed out")]
+    Timeout,
+    /// MusicBrainz returned an HTTP error response. `status` is the HTTP
+    /// status code when one was observed (`None` when reqwest classified
+    /// a send error as carrying a status we couldn't read).
+    #[error("MusicBrainz returned an error response (status {status:?})")]
+    Provider { status: Option<u16> },
+    /// A local/internal failure (URL construction, JSON parsing, body read).
+    #[error("MusicBrainz API error: {0}")]
+    Other(String),
+}
+
+impl MusicBrainzError {
+    /// Classify a `reqwest::Error` from a `.send()` / body read into the
+    /// wire-level failure it represents. A timeout is distinct; an error
+    /// carrying an HTTP status is a `Provider` response; everything else
+    /// (connection, DNS, dropped body) is a transport `Network` failure.
+    fn from_reqwest(e: reqwest::Error) -> Self {
+        if e.is_timeout() {
+            MusicBrainzError::Timeout
+        } else if let Some(status) = e.status() {
+            MusicBrainzError::Provider {
+                status: Some(status.as_u16()),
+            }
+        } else {
+            MusicBrainzError::Network(e.to_string())
+        }
+    }
 }
 
 // ============================================================================
@@ -365,10 +405,10 @@ pub async fn lookup_by_discid(
 ) -> Result<(Vec<DiscIdRelease>, ExternalUrls), MusicBrainzError> {
     info!("MusicBrainz: Looking up DiscID '{}'", discid);
     let base_url = reqwest::Url::parse("https://musicbrainz.org/ws/2/discid/")
-        .map_err(|e| MusicBrainzError::Api(format!("Failed to parse base URL: {}", e)))?;
+        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse base URL: {}", e)))?;
     let url = base_url
         .join(discid)
-        .map_err(|e| MusicBrainzError::Api(format!("Failed to construct DiscID URL: {}", e)))?;
+        .map_err(|e| MusicBrainzError::Other(format!("Failed to construct DiscID URL: {}", e)))?;
     let mut url_with_params = url.clone();
     url_with_params.set_query(Some(
         "inc=recordings+artist-credits+release-groups+url-rels+labels",
@@ -382,7 +422,7 @@ pub async fn lookup_by_discid(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("HTTP request failed: {}", e)))?;
+        .map_err(MusicBrainzError::from_reqwest)?;
 
     if !response.status().is_success() {
         let status = response.status();
@@ -399,16 +439,15 @@ pub async fn lookup_by_discid(
         if status == 404 {
             return Err(MusicBrainzError::NotFound(discid.to_string()));
         }
-        return Err(MusicBrainzError::Api(format!(
-            "MusicBrainz API returned status {}: {}",
-            status, error_text
-        )));
+        return Err(MusicBrainzError::Provider {
+            status: Some(status.as_u16()),
+        });
     }
 
     let disc_response: DiscIdResponse = response
         .json()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("Failed to parse JSON: {}", e)))?;
+        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
     let mut external_urls = ExternalUrls {
         discogs_master_url: None,
@@ -457,19 +496,18 @@ async fn fetch_release_group_with_relations(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("HTTP request failed: {}", e)))?;
+        .map_err(MusicBrainzError::from_reqwest)?;
 
     if !response.status().is_success() {
-        return Err(MusicBrainzError::Api(format!(
-            "MusicBrainz API returned status: {}",
-            response.status()
-        )));
+        return Err(MusicBrainzError::Provider {
+            status: Some(response.status().as_u16()),
+        });
     }
 
     response
         .json()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("Failed to parse JSON: {}", e)))
+        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))
 }
 
 /// Lookup a specific release by MusicBrainz release ID.
@@ -505,25 +543,24 @@ pub async fn lookup_release_by_id(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("HTTP request failed: {}", e)))?;
+        .map_err(MusicBrainzError::from_reqwest)?;
 
     if !response.status().is_success() {
         if response.status() == 404 {
             return Err(MusicBrainzError::NotFound(release_id.to_string()));
         }
-        return Err(MusicBrainzError::Api(format!(
-            "MusicBrainz API returned status: {}",
-            response.status()
-        )));
+        return Err(MusicBrainzError::Provider {
+            status: Some(response.status().as_u16()),
+        });
     }
 
     let raw_json = response
         .text()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("Failed to read response body: {}", e)))?;
+        .map_err(|e| MusicBrainzError::Other(format!("Failed to read response body: {}", e)))?;
 
     let mb_response: MbReleaseResponse = serde_json::from_str(&raw_json)
-        .map_err(|e| MusicBrainzError::Api(format!("Failed to parse JSON: {}", e)))?;
+        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
     #[cfg(debug_assertions)]
     {
@@ -621,19 +658,18 @@ pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, 
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("HTTP request failed: {}", e)))?;
+        .map_err(MusicBrainzError::from_reqwest)?;
 
     if !response.status().is_success() {
-        return Err(MusicBrainzError::Api(format!(
-            "MusicBrainz API returned status: {}",
-            response.status()
-        )));
+        return Err(MusicBrainzError::Provider {
+            status: Some(response.status().as_u16()),
+        });
     }
 
     let raw_json = response
         .text()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("Failed to read response body: {}", e)))?;
+        .map_err(|e| MusicBrainzError::Other(format!("Failed to read response body: {}", e)))?;
 
     release_group_json_cache()
         .lock()
@@ -678,7 +714,7 @@ pub async fn lookup_release_id_by_discogs_url(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("HTTP request failed: {}", e)))?;
+        .map_err(MusicBrainzError::from_reqwest)?;
 
     if response.status() == 404 {
         discogs_url_lookup_cache()
@@ -689,16 +725,15 @@ pub async fn lookup_release_id_by_discogs_url(
     }
 
     if !response.status().is_success() {
-        return Err(MusicBrainzError::Api(format!(
-            "MusicBrainz API returned status: {}",
-            response.status()
-        )));
+        return Err(MusicBrainzError::Provider {
+            status: Some(response.status().as_u16()),
+        });
     }
 
     let lookup: UrlLookupResponse = response
         .json()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("Failed to parse JSON: {}", e)))?;
+        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
     // Find the first relation that has a release with an ID
     let release_id = lookup
@@ -868,7 +903,7 @@ pub async fn search_releases_with_params(
     params: &ReleaseSearchParams,
 ) -> Result<Vec<SearchRelease>, MusicBrainzError> {
     if !params.has_any_field() {
-        return Err(MusicBrainzError::Api(
+        return Err(MusicBrainzError::Other(
             "At least one search field must be provided".to_string(),
         ));
     }
@@ -896,7 +931,7 @@ pub async fn search_releases_with_params(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("HTTP request failed: {}", e)))?;
+        .map_err(MusicBrainzError::from_reqwest)?;
 
     if !response.status().is_success() {
         let status = response.status();
@@ -913,16 +948,15 @@ pub async fn search_releases_with_params(
         if status == 404 {
             return Ok(Vec::new());
         }
-        return Err(MusicBrainzError::Api(format!(
-            "MusicBrainz API returned status {}: {}",
-            status, error_text
-        )));
+        return Err(MusicBrainzError::Provider {
+            status: Some(status.as_u16()),
+        });
     }
 
     let search_response: SearchResponse = response
         .json()
         .await
-        .map_err(|e| MusicBrainzError::Api(format!("Failed to parse JSON: {}", e)))?;
+        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
     #[cfg(debug_assertions)]
     {
@@ -941,7 +975,7 @@ pub async fn search_releases_with_params(
 
     if let Some(ref error_msg) = search_response.error {
         warn!("MusicBrainz API returned error: {}", error_msg);
-        return Err(MusicBrainzError::Api(format!(
+        return Err(MusicBrainzError::Other(format!(
             "MusicBrainz error: {}",
             error_msg
         )));
