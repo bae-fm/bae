@@ -379,11 +379,22 @@ enum UiEventReducer {
         case .downloadQueueChanged(let snapshot):
             downloadStore.snapshot = snapshot
 
-        case .releaseTransferProgress(let releaseId, let percent, let label):
+        case .releaseTransferProgress(
+            let releaseId,
+            let action,
+            let fileNo,
+            let total,
+            let percent
+        ):
             libraryStore.handleReleaseTransferProgress(
                 releaseId: releaseId,
                 percent: percent,
-                label: label
+                label: transferProgressLabel(
+                    action: action,
+                    fileNo: fileNo,
+                    total: total,
+                    percent: percent
+                )
             )
 
         case .releaseTransferEnded(let releaseId):

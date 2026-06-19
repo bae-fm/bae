@@ -151,6 +151,42 @@ impl BridgeReleaseStorageAction {
             ReleaseStorageAction::Unmanage => Self::Unmanage,
         }
     }
+
+    fn transfer_loc_key(self) -> &'static str {
+        match self {
+            Self::Pin => "core.transfer.action.pin",
+            Self::Unpin => "core.transfer.action.unpin",
+            Self::Manage => "core.transfer.action.manage",
+            Self::Unmanage => "core.transfer.action.unmanage",
+        }
+    }
+}
+
+/// Localization key for a transfer's present-continuous progress verb
+/// ("Pinning for offline"). The UI resolves it against the `Core` table.
+#[uniffi::export]
+pub fn bridge_transfer_action_key(action: BridgeReleaseStorageAction) -> String {
+    action.transfer_loc_key().to_string()
+}
+
+#[cfg(test)]
+mod transfer_action_tests {
+    use super::BridgeReleaseStorageAction as A;
+
+    /// Every transfer verb key (and the file-count message) must exist.
+    #[test]
+    fn keys_exist_in_catalog() {
+        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
+            .expect("catalog parses");
+        for action in [A::Pin, A::Unpin, A::Manage, A::Unmanage] {
+            assert!(
+                cat.messages.contains_key(action.transfer_loc_key()),
+                "catalog missing `{}`",
+                action.transfer_loc_key()
+            );
+        }
+        assert!(cat.messages.contains_key("core.transfer.files"));
+    }
 }
 
 /// Slim per-release summary: the projection list views render one row
@@ -1395,13 +1431,16 @@ pub enum BridgeUiEvent {
     OutboxChanged {
         snapshot: BridgeOutboxSnapshot,
     },
-    /// A pin/unpin/manage/unmanage transition advanced. `percent` is the
-    /// overall release progress; `label` is a ready-to-render line. The UI
-    /// shows a determinate bar on the release row until `ReleaseTransferEnded`.
+    /// A pin/unpin/manage/unmanage transition advanced. `percent` is the overall
+    /// release progress; `file_no`/`total` are present once per-file progress is
+    /// known (absent at the start). The UI composes the localized line and shows
+    /// a determinate bar on the release row until `ReleaseTransferEnded`.
     ReleaseTransferProgress {
         release_id: String,
+        action: BridgeReleaseStorageAction,
+        file_no: Option<u32>,
+        total: Option<u32>,
         percent: u8,
-        label: String,
     },
     /// A transition finished (success or failure) — the UI clears its transfer
     /// indicator. Failure text still arrives via the thrown error.
