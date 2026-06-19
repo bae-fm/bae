@@ -1282,10 +1282,7 @@ struct FfiOutboxSnapshot {
     pending_deletes: u32,
     paused: bool,
     throughput_bps: u64,
-    throughput_label: String,
     eta_seconds: Option<u64>,
-    eta_label: String,
-    bytes_label: String,
 }
 
 fn upload_progress_to_ffi(p: &bae_core::library::UploadProgress) -> FfiUploadProgress {
@@ -1344,10 +1341,7 @@ fn outbox_snapshot_to_ffi(snapshot: &bae_core::library::OutboxSnapshot) -> FfiOu
         pending_deletes: snapshot.pending_deletes,
         paused: snapshot.paused,
         throughput_bps: snapshot.throughput_bps,
-        throughput_label: snapshot.throughput_label.clone(),
         eta_seconds: snapshot.eta_seconds,
-        eta_label: snapshot.eta_label.clone(),
-        bytes_label: snapshot.bytes_label.clone(),
     }
 }
 

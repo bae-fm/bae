@@ -30,18 +30,47 @@ public sealed class OutboxSnapshot
     /// pause/resume toggle and dims the progress bar.</summary>
     public bool Paused { get; set; }
 
-    /// <summary>Pre-formatted throughput, e.g. "5.2 MB/s"; empty when idle.</summary>
-    public string ThroughputLabel { get; set; } = string.Empty;
+    /// <summary>Rolling-window throughput in bytes per second; 0 when idle or paused.</summary>
+    public long ThroughputBps { get; set; }
 
-    /// <summary>Pre-formatted ETA, e.g. "7s remaining"; empty when not computable.</summary>
-    public string EtaLabel { get; set; } = string.Empty;
-
-    /// <summary>Pre-formatted aggregate progress, e.g. "1.2 GB of 14.4 GB"; empty
-    /// when there's nothing to upload.</summary>
-    public string BytesLabel { get; set; } = string.Empty;
+    /// <summary>Estimated seconds remaining at the current rate; null when not computable.</summary>
+    public long? EtaSeconds { get; set; }
 
     /// <summary>Aggregate byte progress; the master bar reads its done/total.</summary>
     public UploadProgress Total { get; set; } = new();
+
+    /// <summary>Formatted throughput, e.g. "5.2 MB/s"; empty when idle.</summary>
+    public string ThroughputLabel =>
+        ThroughputBps > 0 ? FormatBytes(ThroughputBps) + "/s" : string.Empty;
+
+    /// <summary>Formatted ETA, e.g. "2m 14s remaining"; empty when not computable.</summary>
+    public string EtaLabel
+    {
+        get
+        {
+            if (!EtaSeconds.HasValue) return string.Empty;
+            var secs = EtaSeconds.Value;
+            if (secs < 60) return $"{secs}s remaining";
+            var mins = secs / 60;
+            var rem = secs % 60;
+            return rem > 0 ? $"{mins}m {rem}s remaining" : $"{mins}m remaining";
+        }
+    }
+
+    /// <summary>Formatted aggregate progress, e.g. "1.2 GB of 14.4 GB"; empty when
+    /// there is nothing to upload.</summary>
+    public string BytesLabel =>
+        Total.BytesTotal > 0
+            ? $"{FormatBytes(Total.BytesDone)} of {FormatBytes(Total.BytesTotal)}"
+            : string.Empty;
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1_000) return $"{bytes} B";
+        if (bytes < 1_000_000) return $"{bytes / 1_000.0:F1} KB";
+        if (bytes < 1_000_000_000) return $"{bytes / 1_000_000.0:F1} MB";
+        return $"{bytes / 1_000_000_000.0:F1} GB";
+    }
 }
 
 /// <summary>Aggregate upload progress across the queue.</summary>
