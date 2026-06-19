@@ -197,10 +197,12 @@ enum UiEventReducer {
             mediaControlService.clearNowPlaying()
             mediaControlService.endPlaybackSession()
 
-        case .playbackError(let message):
+        case .playbackError(let reason):
             // A track couldn't be played (cloud-only not downloaded, decode
-            // failure); core has already fallen back to stopped. Surface why.
-            configStore.showError(message)
+            // failure); core has already fallen back to stopped. Surface why —
+            // the actionable cloud cases render their keyed line, everything
+            // else the generic category line, resolved for the device locale.
+            configStore.showError(DisplayError(reason))
 
         case .playbackProgress(
             let positionMs,
@@ -243,12 +245,15 @@ enum UiEventReducer {
             configStore.config = Config(bridge: config)
             configStore.syncReady = syncReady
 
-        case .syncError(let message):
-            configStore.syncError = message
+        case .syncError(let error):
+            // `nil` clears the banner (sync recovered). Otherwise render the
+            // generic category line for the locale; the opaque detail rides
+            // along on the `DisplayError` for a copyable disclosure.
+            configStore.syncError = error.map { DisplayError($0) }
 
         // ── Errors ─────────────────────────────────────────────────────
-        case .error(let message):
-            configStore.showError(message)
+        case .error(let error):
+            configStore.showError(DisplayError(error))
 
         case .errorCleared:
             configStore.clearError()

@@ -30,7 +30,7 @@ class QRScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsD
         let session = AVCaptureSession()
 
         guard let device = AVCaptureDevice.default(for: .video) else {
-            onError?("Camera not available")
+            onError?(String(localized: "Camera not available"))
             return
         }
 
@@ -39,19 +39,24 @@ class QRScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsD
             input = try AVCaptureDeviceInput(device: device)
         }
         catch {
-            onError?("Could not create camera input: \(error.localizedDescription)")
+            onError?(
+                String(
+                    localized:
+                        "Could not create camera input: \(error.localizedDescription)"
+                )
+            )
             return
         }
 
         guard session.canAddInput(input) else {
-            onError?("Could not add camera input to session")
+            onError?(String(localized: "Could not add camera input to session"))
             return
         }
         session.addInput(input)
 
         let output = AVCaptureMetadataOutput()
         guard session.canAddOutput(output) else {
-            onError?("Could not add metadata output to session")
+            onError?(String(localized: "Could not add metadata output to session"))
             return
         }
         session.addOutput(output)

@@ -60,9 +60,13 @@ struct LibraryView: View {
                     sortMenu
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Text(configStore.syncReady ? "synced" : "syncing\u{2026}")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(
+                        configStore.syncReady
+                            ? String(localized: "synced")
+                            : String(localized: "syncing\u{2026}")
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -103,8 +107,10 @@ struct LibraryView: View {
         // An app error is a one-shot notification with nothing to retry, so the
         // user dismisses it. A sync error is live state — it clears itself when
         // sync recovers — so it offers Retry instead of a (misleading) dismiss.
-        if let message = configStore.lastError {
-            errorBanner(message: message) {
+        // Both arrive as a typed `DisplayError`; the banner shows its localized
+        // line (the opaque diagnostic detail isn't surfaced in the mobile UI).
+        if let error = configStore.lastError {
+            errorBanner(message: error.line) {
                 Button {
                     configStore.clearError()
                 } label: {
@@ -115,8 +121,8 @@ struct LibraryView: View {
                 .accessibilityLabel("Dismiss")
             }
         }
-        else if let message = configStore.syncError {
-            errorBanner(message: message) {
+        else if let error = configStore.syncError {
+            errorBanner(message: error.line) {
                 Button("Retry") { sync.triggerSync() }
                     .font(.caption.bold())
                     .foregroundStyle(Color.white)
@@ -184,7 +190,9 @@ struct LibraryView: View {
                     sortDirection == .ascending ? .descending : .ascending
             } label: {
                 Label(
-                    sortDirection == .ascending ? "Ascending" : "Descending",
+                    sortDirection == .ascending
+                        ? String(localized: "Ascending")
+                        : String(localized: "Descending"),
                     systemImage: sortDirection == .ascending
                         ? "arrow.up" : "arrow.down"
                 )
@@ -358,7 +366,10 @@ private struct AlbumCard: View {
         .accessibilityLabel(
             summary.artistNames.isEmpty
                 ? summary.title
-                : "\(summary.title) by \(summary.artistNames)"
+                : String(
+                    localized: "\(summary.title) by \(summary.artistNames)",
+                    comment: "Album card VoiceOver label: title by artist"
+                )
         )
     }
 }

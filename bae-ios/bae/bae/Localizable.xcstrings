@@ -1,0 +1,7223 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ by %@": {
+      "comment": "Album card VoiceOver label: title by artist",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ by %2$@"
+          }
+        }
+      }
+    },
+    "%@ — %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "Add to Queue": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to Queue"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add to Queue"
+          }
+        }
+      }
+    },
+    "Albums": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Albums"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Albums"
+          }
+        }
+      }
+    },
+    "Ascending": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ascending"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ascending"
+          }
+        }
+      }
+    },
+    "Authorization finished without a code.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Authorization finished without a code."
+          }
+        }
+      }
+    },
+    "Camera access is denied. Enable it in Settings to scan QR codes.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera access is denied. Enable it in Settings to scan QR codes."
+          }
+        }
+      }
+    },
+    "Camera not available": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera not available"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera not available"
+          }
+        }
+      }
+    },
+    "Camera permission is required to scan QR codes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Camera permission is required to scan QR codes"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "Clear": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Clear"
+          }
+        }
+      }
+    },
+    "Cloud sign-in isn't configured on this build (no oauth-creds.json).": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+          }
+        }
+      }
+    },
+    "Cloud sync": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloud sync"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cloud sync"
+          }
+        }
+      }
+    },
+    "Collapse": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collapse"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Collapse"
+          }
+        }
+      }
+    },
+    "Connect": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connect"
+          }
+        }
+      }
+    },
+    "Connecting to your library": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecting to your library"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Connecting to your library"
+          }
+        }
+      }
+    },
+    "Could not add camera input to session": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add camera input to session"
+          }
+        }
+      }
+    },
+    "Could not add metadata output to session": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not add metadata output to session"
+          }
+        }
+      }
+    },
+    "Could not create camera input: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Could not create camera input: %@"
+          }
+        }
+      }
+    },
+    "Couldn't present cloud sign-in from the current window.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't present cloud sign-in from the current window."
+          }
+        }
+      }
+    },
+    "Couldn't read oauth-creds.json: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't read oauth-creds.json: %@"
+          }
+        }
+      }
+    },
+    "Descending": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descending"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Descending"
+          }
+        }
+      }
+    },
+    "Disconnected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnected"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disconnected"
+          }
+        }
+      }
+    },
+    "Dismiss": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Dismiss"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "Encryption key (64 hex characters)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Encryption key (64 hex characters)"
+          }
+        }
+      }
+    },
+    "Expand now playing": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expand now playing"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Expand now playing"
+          }
+        }
+      }
+    },
+    "Hello": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hello"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Hello"
+          }
+        }
+      }
+    },
+    "Key fingerprint: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Key fingerprint: %@"
+          }
+        }
+      }
+    },
+    "Library": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Library"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library"
+          }
+        }
+      }
+    },
+    "Library Locked": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Library Locked"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Library Locked"
+          }
+        }
+      }
+    },
+    "Loading": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Loading"
+          }
+        }
+      }
+    },
+    "Local only": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local only"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Local only"
+          }
+        }
+      }
+    },
+    "Mute": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mute"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Mute"
+          }
+        }
+      }
+    },
+    "Next track": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next track"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Next track"
+          }
+        }
+      }
+    },
+    "No albums yet. Syncing from the cloud…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No albums yet. Syncing from the cloud…"
+          }
+        }
+      }
+    },
+    "No results for “%@”": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No results for “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No results for “%@”"
+          }
+        }
+      }
+    },
+    "Nothing up next": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing up next"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Nothing up next"
+          }
+        }
+      }
+    },
+    "Now Playing": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Now Playing"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Now Playing"
+          }
+        }
+      }
+    },
+    "On": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "On"
+          }
+        }
+      }
+    },
+    "Paste code": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste code"
+          }
+        }
+      }
+    },
+    "Paste the code from bae desktop → Settings → Library → Connect another device.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste the code from bae desktop → Settings → Library → Connect another device."
+          }
+        }
+      }
+    },
+    "Paste your restore code": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste your restore code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Paste your restore code"
+          }
+        }
+      }
+    },
+    "Pause": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause"
+          }
+        }
+      }
+    },
+    "Play": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play"
+          }
+        }
+      }
+    },
+    "Play Next": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play Next"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Play Next"
+          }
+        }
+      }
+    },
+    "Previous track": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous track"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Previous track"
+          }
+        }
+      }
+    },
+    "Queue": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Queue"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue"
+          }
+        }
+      }
+    },
+    "Queue is empty": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Queue is empty"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Queue is empty"
+          }
+        }
+      }
+    },
+    "Reconnect": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnect"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconnect"
+          }
+        }
+      }
+    },
+    "Release": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Release"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove"
+          }
+        }
+      }
+    },
+    "Remove this library from this device": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove this library from this device"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device"
+          }
+        }
+      }
+    },
+    "Remove this library from this device?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Remove this library from this device?"
+          }
+        }
+      }
+    },
+    "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
+          }
+        }
+      }
+    },
+    "Repeat mode": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repeat mode"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeat mode"
+          }
+        }
+      }
+    },
+    "Retry": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retry"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Retry"
+          }
+        }
+      }
+    },
+    "Scan QR": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan QR"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan QR"
+          }
+        }
+      }
+    },
+    "Scan a QR or paste a code from your library to get started": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Scan a QR or paste a code from your library to get started"
+          }
+        }
+      }
+    },
+    "Search albums and tracks": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search albums and tracks"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Search albums and tracks"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Settings"
+          }
+        }
+      }
+    },
+    "Shuffle": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shuffle"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Shuffle"
+          }
+        }
+      }
+    },
+    "Status": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        }
+      }
+    },
+    "Sync": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sync"
+          }
+        }
+      }
+    },
+    "Synced": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synced"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Synced"
+          }
+        }
+      }
+    },
+    "Syncing…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Syncing…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Syncing…"
+          }
+        }
+      }
+    },
+    "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock."
+          }
+        }
+      }
+    },
+    "The provider returned an invalid authorization URL.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The provider returned an invalid authorization URL."
+          }
+        }
+      }
+    },
+    "This library needs cloud sign-in, which isn't configured on this build.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "This library needs cloud sign-in, which isn't configured on this build."
+          }
+        }
+      }
+    },
+    "Tracks": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracks"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tracks"
+          }
+        }
+      }
+    },
+    "Unlock": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unlock"
+          }
+        }
+      }
+    },
+    "Unmute": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unmute"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Unmute"
+          }
+        }
+      }
+    },
+    "Up Next": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up Next"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Up Next"
+          }
+        }
+      }
+    },
+    "Volume": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Volume"
+          }
+        }
+      }
+    },
+    "Your library in the cloud is untouched.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your library in the cloud is untouched."
+          }
+        }
+      }
+    },
+    "bae": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae"
+          }
+        }
+      }
+    },
+    "bae is restoring the library on this device.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "bae is restoring the library on this device."
+          }
+        }
+      }
+    },
+    "oauth-creds.json does not contain any provider credentials.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json does not contain any provider credentials."
+          }
+        }
+      }
+    },
+    "oauth-creds.json is malformed: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is malformed: %@"
+          }
+        }
+      }
+    },
+    "oauth-creds.json is missing client_id or redirect_uri for %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "oauth-creds.json is missing client_id or redirect_uri for %@."
+          }
+        }
+      }
+    },
+    "synced": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "synced"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "synced"
+          }
+        }
+      }
+    },
+    "syncing…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "syncing…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "syncing…"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

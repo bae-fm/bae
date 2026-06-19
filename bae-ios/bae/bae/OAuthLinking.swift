@@ -19,21 +19,29 @@ enum OAuthLinkingError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notConfigured:
-            "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+            String(
+                localized:
+                    "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
+            )
         case .badAuthUrl:
-            "The provider returned an invalid authorization URL."
+            String(localized: "The provider returned an invalid authorization URL.")
         case .noCode:
-            "Authorization finished without a code."
+            String(localized: "Authorization finished without a code.")
         case .unreadableConfig(let message):
-            "Couldn't read oauth-creds.json: \(message)"
+            String(localized: "Couldn't read oauth-creds.json: \(message)")
         case .malformedConfig(let message):
-            "oauth-creds.json is malformed: \(message)"
+            String(localized: "oauth-creds.json is malformed: \(message)")
         case .incompleteProviderConfig(let provider):
-            "oauth-creds.json is missing client_id or redirect_uri for \(provider)."
+            String(
+                localized:
+                    "oauth-creds.json is missing client_id or redirect_uri for \(provider)."
+            )
         case .emptyConfig:
-            "oauth-creds.json does not contain any provider credentials."
+            String(
+                localized: "oauth-creds.json does not contain any provider credentials."
+            )
         case .noPresentationAnchor:
-            "Couldn't present cloud sign-in from the current window."
+            String(localized: "Couldn't present cloud sign-in from the current window.")
         }
     }
 }

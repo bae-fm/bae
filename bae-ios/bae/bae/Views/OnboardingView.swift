@@ -152,7 +152,7 @@ struct OnboardingView: View {
         .padding(32)
     }
 
-    private func secondaryText(_ text: String) -> some View {
+    private func secondaryText(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(.body)
             .foregroundStyle(.secondary)
@@ -237,13 +237,18 @@ struct OnboardingView: View {
                         showScanner = true
                     }
                     else {
-                        error = "Camera permission is required to scan QR codes"
+                        error = String(
+                            localized:
+                                "Camera permission is required to scan QR codes"
+                        )
                     }
                 }
             }
         default:
-            error =
-                "Camera access is denied. Enable it in Settings to scan QR codes."
+            error = String(
+                localized:
+                    "Camera access is denied. Enable it in Settings to scan QR codes."
+            )
         }
     }
 
@@ -282,8 +287,10 @@ struct OnboardingView: View {
                             return
                         }
                         guard let linking = oauthLinking else {
-                            error =
-                                "This library needs cloud sign-in, which isn't configured on this build."
+                            error = String(
+                                localized:
+                                    "This library needs cloud sign-in, which isn't configured on this build."
+                            )
                             return
                         }
                         guard let presentationAnchor else {
@@ -294,8 +301,10 @@ struct OnboardingView: View {
                             presentationAnchor: presentationAnchor
                         )
                         #else
-                        error =
-                            "This library syncs through a cloud provider this build doesn't support."
+                        error = String(
+                            localized:
+                                "This library syncs through a cloud provider this build doesn't support."
+                        )
                         return
                         #endif
                     }
