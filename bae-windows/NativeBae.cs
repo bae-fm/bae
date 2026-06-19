@@ -60,6 +60,81 @@ internal static class NativeBae
     internal static bool SupportsOAuthProviders() =>
         AvailableCloudProviders().Any(provider => provider is not "s3");
 
+    // ── Catalog-key selection ────────────────────────────────────────────────
+    //
+    // The enum→key mapping macOS gets free from uniffi's bridge_*_key() functions
+    // is hand-mirrored in bae-windows-ffi (src/loc.rs) and exported as these
+    // entry points, so the key strings have one source (Rust), not a duplicate in
+    // C#. Each returns the core.* catalog key for the value, or null when the
+    // value has no key (the caller falls back to a passthrough / generic line).
+    // The C# resolves the returned key through Loc.Core.
+
+    [DllImport(Dll, EntryPoint = "bae_cloud_provider_label_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr CloudProviderLabelKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string? provider);
+
+    /// <summary>The catalog key for a cloud provider's display name, or null for
+    /// the brand-name providers the UI passes through verbatim. <paramref name="provider"/>
+    /// is the wire tag ("s3"/"google_drive"/…) or null/"" for local-only.</summary>
+    internal static string? CloudProviderLabelKey(string? provider) =>
+        CopyAndFree(CloudProviderLabelKeyPtr(provider));
+
+    [DllImport(Dll, EntryPoint = "bae_audio_channels_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr AudioChannelsKeyPtr(long channels);
+
+    /// <summary>The catalog key for a channel count's word ("mono"/"stereo"), or
+    /// null for counts the UI renders as "{n}ch".</summary>
+    internal static string? AudioChannelsKey(long channels) =>
+        CopyAndFree(AudioChannelsKeyPtr(channels));
+
+    [DllImport(Dll, EntryPoint = "bae_error_category_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ErrorCategoryKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string category);
+
+    /// <summary>The catalog key for a diagnostic error category's generic line
+    /// (the wire tag an FfiError carries), or null for an unknown tag.</summary>
+    internal static string? ErrorCategoryKey(string category) =>
+        CopyAndFree(ErrorCategoryKeyPtr(category));
+
+    [DllImport(Dll, EntryPoint = "bae_entity_not_found_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr EntityNotFoundKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string entity);
+
+    /// <summary>The catalog key for a missing entity's "… not found" line (the
+    /// wire tag an FfiError carries), or null for an unknown tag.</summary>
+    internal static string? EntityNotFoundKey(string entity) =>
+        CopyAndFree(EntityNotFoundKeyPtr(entity));
+
+    [DllImport(Dll, EntryPoint = "bae_playback_error_reason_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr PlaybackErrorReasonKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string kind);
+
+    /// <summary>The catalog key for an actionable playback-error reason (the wire
+    /// tag the reason carries), or null for the "diagnostic" reason (rendered
+    /// through the error-category path) and unknown tags.</summary>
+    internal static string? PlaybackErrorReasonKey(string kind) =>
+        CopyAndFree(PlaybackErrorReasonKeyPtr(kind));
+
+    [DllImport(Dll, EntryPoint = "bae_prepare_step_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr PrepareStepKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string step);
+
+    /// <summary>The catalog key for an import prepare-step wire tag, or null for
+    /// an unknown tag.</summary>
+    internal static string? PrepareStepKey(string step) =>
+        CopyAndFree(PrepareStepKeyPtr(step));
+
+    [DllImport(Dll, EntryPoint = "bae_import_phase_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ImportPhaseKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string phase);
+
+    /// <summary>The catalog key for an import-phase wire tag, or null for an
+    /// unknown tag.</summary>
+    internal static string? ImportPhaseKey(string phase) =>
+        CopyAndFree(ImportPhaseKeyPtr(phase));
+
+    [DllImport(Dll, EntryPoint = "bae_transfer_action_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr TransferActionKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string action);
+
+    /// <summary>The catalog key for a transfer action's progress verb (a wire tag
+    /// from a storage row's actions), or null for an unknown tag.</summary>
+    internal static string? TransferActionKey(string action) =>
+        CopyAndFree(TransferActionKeyPtr(action));
+
     /// <summary>Discovered libraries as JSON, or null. Copies and frees.</summary>
     [DllImport(Dll, EntryPoint = "bae_libraries", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr LibrariesPtr();

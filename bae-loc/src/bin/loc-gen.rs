@@ -100,9 +100,8 @@ fn emit_target(args: &Args, catalog: &Catalog) -> Result<(), String> {
     let target = args.target.as_deref().ok_or("emit needs --target")?;
     let out_dir = args.out_dir.as_ref().ok_or("emit needs --out-dir")?;
 
-    // Each target emits one or more `(relative path, contents)` files. Apple
-    // and Windows carry every locale inside one file; Android needs a separate
-    // resource directory per locale, so it emits a file set.
+    // Apple packs every locale into one xcstrings; Android and Windows each
+    // emit a per-locale resource set (a directory per shipping locale).
     let files: Vec<(PathBuf, String)> = match target {
         "apple" => single_file(
             "Core.xcstrings",
@@ -112,10 +111,7 @@ fn emit_target(args: &Args, catalog: &Catalog) -> Result<(), String> {
             .into_iter()
             .map(|(rel, contents)| (PathBuf::from(rel), contents))
             .collect(),
-        "windows" => single_file(
-            format!("{SOURCE_LANGUAGE}-US/Core.resw"),
-            emit::windows_resw(catalog),
-        ),
+        "windows" => emit::windows_resw_all(catalog, SOURCE_LANGUAGE),
         other => {
             return Err(format!(
                 "unknown --target `{other}` (apple|android|windows)"

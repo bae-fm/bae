@@ -42,6 +42,65 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260508005" />
+    <!--
+      ICU MessageFormat 1 runtime. The localization catalog stores each message
+      as a verbatim MF1 string (plural / select / named args); this parses it at
+      runtime for the current locale — the analog of macOS's String Catalog
+      variations. Loc.cs wraps it.
+    -->
+    <PackageReference Include="MessageFormat" Version="7.0.0" />
+  </ItemGroup>
+
+  <!--
+    Generated localization resources.
+
+    The bridge-originated strings (core.*) and shared chrome (ui.*) live in the
+    master catalog (bae-bridge/loc/catalog.toml); loc-gen emits them as
+    Strings/en-US/Core.resw. The 13 non-source locales each get a Strings/<lang>/
+    directory with the English source marked for translation (untranslated until
+    a translator fills them); English shows at runtime until then. Bare app chrome
+    (titles, buttons) lives in the committed Strings/<lang>/Resources.resw.
+
+    Every Strings/<lang>/*.resw compiles into the per-language resource map. The
+    PRIResource item is how the WinUI/MSBuild resource pipeline picks them up; the
+    GenerateResourcesPri target below then compiles the lot into resources.pri for
+    the unpackaged app.
+  -->
+  <ItemGroup>
+    <PRIResource Include="Strings\**\*.resw" />
+  </ItemGroup>
+
+  <!--
+    Generate Strings/en-US/Core.resw from the master catalog before the build, so
+    a catalog edit reaches the app without a manual step. Mirrors the macOS build
+    (bae-bridge/build-macos.sh runs `loc-gen emit --target apple`). loc-gen writes
+    <out-dir>/en-US/Core.resw, so the out-dir is the Strings folder. Runs from the
+    repo root (two levels up from this project) where the default catalog path
+    (bae-bridge/loc/catalog.toml) resolves.
+  -->
+  <Target Name="GenerateCoreResw" BeforeTargets="BeforeBuild">
+    <Exec
+      Command="cargo run -q -p bae-loc --bin loc-gen -- emit --target windows --out-dir &quot;$(MSBuildProjectDirectory)\Strings&quot;"
+      WorkingDirectory="$(MSBuildProjectDirectory)\.." />
+  </Target>
+
+  <!--
+    Unpackaged apps don't get a resources.pri built automatically. Compile every
+    Strings/<lang>/*.resw into one resources.pri next to the exe so ResourceLoader
+    resolves keys at runtime. makepri ships in the Windows SDK; priconfig.xml is
+    the committed config (stock makepri default with the MSIX <packaging> section
+    removed). Runs after build so the generated Core.resw is present.
+  -->
+  <Target Name="GenerateResourcesPri" AfterTargets="Build">
+    <Exec
+      Command="makepri new /pr &quot;$(MSBuildProjectDirectory)&quot; /cf &quot;$(MSBuildProjectDirectory)\priconfig.xml&quot; /of &quot;$(OutDir)resources.pri&quot; /o"
+      ContinueOnError="false" />
+  </Target>
+
+  <!-- The committed resw + priconfig participate in the build but aren't compiled
+       as C#; mark them so they don't fall into the default C# globs. -->
+  <ItemGroup>
+    <None Include="priconfig.xml" />
   </ItemGroup>
 
   <!--

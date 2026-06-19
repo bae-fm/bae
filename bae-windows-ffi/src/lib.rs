@@ -16,9 +16,131 @@ use bae_core::db::{AlbumSortCriterion, AlbumSortField, SortDirection};
 use bae_core::ui::UiBusEvent;
 use serde::{Deserialize, Serialize};
 
-fn format_minutes_seconds(ms: u64) -> String {
-    let total_seconds = ms / 1000;
-    format!("{}:{:02}", total_seconds / 60, total_seconds % 60)
+mod loc;
+
+/// Allocate an owned C string for a catalog key result, or null when the value
+/// has no key (the C# falls back to a passthrough / generic line). The result
+/// is freed with [`bae_string_free`], like every other string this library
+/// returns.
+fn key_cstring(key: Option<&str>) -> *mut c_char {
+    match key {
+        // Catalog keys are static `core.…` identifiers with no interior NUL, so
+        // `CString::new` can't fail here; `expect` surfaces a catalog bug rather
+        // than masking it as the null "no key" result the `None` arm returns.
+        Some(key) => CString::new(key)
+            .expect("catalog key has no interior NUL byte")
+            .into_raw(),
+        None => std::ptr::null_mut(),
+    }
+}
+
+/// Catalog key for a cloud provider's display name, or null for the brand-name
+/// providers the UI passes through verbatim. `provider` is the wire tag
+/// ("s3"/"google_drive"/…) or null for local-only. Mirrors macOS's uniffi
+/// `bridge_cloud_provider_label_key`. Free with [`bae_string_free`].
+///
+/// # Safety
+/// `provider` must be null or a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_cloud_provider_label_key(provider: *const c_char) -> *mut c_char {
+    let provider = cstr(provider);
+    key_cstring(loc::cloud_provider_label_key(provider.as_deref()))
+}
+
+/// Catalog key for a channel count's word ("mono"/"stereo"), or null for counts
+/// the C# renders as "{n}ch". Mirrors `bridge_audio_channels_key`. Free with
+/// [`bae_string_free`].
+#[no_mangle]
+pub extern "C" fn bae_audio_channels_key(channels: i64) -> *mut c_char {
+    key_cstring(loc::audio_channels_key(channels))
+}
+
+/// Catalog key for a diagnostic error category's generic line, or null for an
+/// unknown tag. `category` is the wire tag carried by an `FfiError`
+/// (`{"kind":"diagnostic","category":…}`). Mirrors `bridge_error_category_key`.
+/// Free with [`bae_string_free`].
+///
+/// # Safety
+/// `category` must be null or a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_error_category_key(category: *const c_char) -> *mut c_char {
+    let Some(category) = cstr(category) else {
+        return std::ptr::null_mut();
+    };
+    key_cstring(loc::error_category_key(&category))
+}
+
+/// Catalog key for a missing entity's "… not found" line, or null for an
+/// unknown tag. `entity` is the wire tag carried by an `FfiError`
+/// (`{"kind":"not_found","entity":…}`). Mirrors `bridge_entity_not_found_key`.
+/// Free with [`bae_string_free`].
+///
+/// # Safety
+/// `entity` must be null or a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_entity_not_found_key(entity: *const c_char) -> *mut c_char {
+    let Some(entity) = cstr(entity) else {
+        return std::ptr::null_mut();
+    };
+    key_cstring(loc::entity_not_found_key(&entity))
+}
+
+/// Catalog key for an actionable playback-error reason, or null for the
+/// `diagnostic` reason (which renders through the error-category path) and
+/// unknown tags. `kind` is the wire tag carried by an `FfiPlaybackErrorReason`.
+/// Mirrors `bridge_playback_error_reason_key`. Free with [`bae_string_free`].
+///
+/// # Safety
+/// `kind` must be null or a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_playback_error_reason_key(kind: *const c_char) -> *mut c_char {
+    let Some(kind) = cstr(kind) else {
+        return std::ptr::null_mut();
+    };
+    key_cstring(loc::playback_error_reason_key(&kind))
+}
+
+/// Catalog key for an import prepare-step wire tag (`FfiImportStep.Preparing`),
+/// or null for an unknown tag. Mirrors `bridge_prepare_step_key`. Free with
+/// [`bae_string_free`].
+///
+/// # Safety
+/// `step` must be null or a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_prepare_step_key(step: *const c_char) -> *mut c_char {
+    let Some(step) = cstr(step) else {
+        return std::ptr::null_mut();
+    };
+    key_cstring(loc::prepare_step_key(&step))
+}
+
+/// Catalog key for an import-phase wire tag (`FfiImportStep.Running`), or null
+/// for an unknown tag. Mirrors `bridge_import_phase_key`. Free with
+/// [`bae_string_free`].
+///
+/// # Safety
+/// `phase` must be null or a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_import_phase_key(phase: *const c_char) -> *mut c_char {
+    let Some(phase) = cstr(phase) else {
+        return std::ptr::null_mut();
+    };
+    key_cstring(loc::import_phase_key(&phase))
+}
+
+/// Catalog key for a transfer action's present-continuous progress verb, or
+/// null for an unknown tag. `action` is a wire tag from `FfiStorageRow.actions`
+/// ("pin"/"unpin"/"manage"/"unmanage"). Mirrors `bridge_transfer_action_key`.
+/// Free with [`bae_string_free`].
+///
+/// # Safety
+/// `action` must be null or a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_transfer_action_key(action: *const c_char) -> *mut c_char {
+    let Some(action) = cstr(action) else {
+        return std::ptr::null_mut();
+    };
+    key_cstring(loc::transfer_action_key(&action))
 }
 
 /// Opaque app handle. Created by [`bae_init`], passed back to every call, freed
@@ -1039,19 +1161,6 @@ pub unsafe extern "C" fn bae_gallery(
 }
 
 /// The wire name for a storage action.
-fn format_bytes_ffi(bytes: i64) -> String {
-    let b = bytes.max(0) as f64;
-    if b < 1_000.0 {
-        format!("{} B", bytes.max(0))
-    } else if b < 1_000_000.0 {
-        format!("{:.1} KB", b / 1_000.0)
-    } else if b < 1_000_000_000.0 {
-        format!("{:.1} MB", b / 1_000_000.0)
-    } else {
-        format!("{:.1} GB", b / 1_000_000_000.0)
-    }
-}
-
 fn storage_action_name(action: &bae_core::album_detail::ReleaseStorageAction) -> &'static str {
     use bae_core::album_detail::ReleaseStorageAction;
     match action {
@@ -1069,16 +1178,26 @@ struct FfiStorageRow {
     album_title: String,
     artist: String,
     format: Option<String>,
-    /// Pre-formatted total size, e.g. "412 MB".
-    size: String,
+    /// Raw total size in bytes; the C# formats it for the locale.
+    total_size: i64,
     file_count: i64,
-    /// "Unmanaged", "Pinned", or "Cloud-only".
-    state: String,
+    /// Storage state wire tag: "unmanaged" / "pinned" / "cloud_only". The C#
+    /// resolves a localized label per tag.
+    state: &'static str,
     /// The storage transitions this release allows right now, gated on cloud
     /// home by the core. The in-flight-uploads gate lives in the UI: it reads
     /// `OutboxSnapshot.per_release[release_id]` and suppresses these actions
     /// when the release has uploads in flight.
     actions: Vec<String>,
+}
+
+/// Wire tag for a release's storage state. The C# resolves a localized label.
+fn storage_state_tag(state: ReleaseStorageState) -> &'static str {
+    match state {
+        ReleaseStorageState::Unmanaged => "unmanaged",
+        ReleaseStorageState::Pinned => "pinned",
+        ReleaseStorageState::CloudOnly => "cloud_only",
+    }
 }
 
 /// Every release's storage summary as a JSON array, or null on error. Free the
@@ -1119,14 +1238,9 @@ pub unsafe extern "C" fn bae_storage(handle: *const BaeHandle) -> *mut c_char {
                 album_title: summary.album_title,
                 artist: summary.artist_names,
                 format: summary.format,
-                size: format_bytes_ffi(summary.total_size),
+                total_size: summary.total_size,
                 file_count: summary.file_count,
-                state: match summary.storage_state {
-                    ReleaseStorageState::Unmanaged => "Unmanaged",
-                    ReleaseStorageState::Pinned => "Pinned",
-                    ReleaseStorageState::CloudOnly => "Cloud-only",
-                }
-                .to_string(),
+                state: storage_state_tag(summary.storage_state),
                 actions,
             }
         })
@@ -1262,13 +1376,16 @@ struct FfiUploadOp {
     /// Owning release id; null for an orphaned file.
     release_id: Option<String>,
     cloud_key: String,
+    /// Total bytes for this file; the C# formats it for the locale.
     bytes_total: u64,
     bytes_done: u64,
-    size_label: String,
     attempt_count: i64,
     /// "queued", "active", or "failed".
     state: String,
-    /// The last failure message when `state` is "failed".
+    /// The last failure message when `state` is "failed". This is an opaque,
+    /// log-only diagnostic string from the cloud layer (an exception's text),
+    /// not a localized line — the C# shows it verbatim in a copyable disclosure,
+    /// like macOS's `BridgeError::Diagnostic` detail.
     last_error: Option<String>,
 }
 
@@ -1290,7 +1407,8 @@ struct FfiUploadProgress {
 }
 
 /// The cloud outbox snapshot: per-item lists, per-release counts, overall
-/// totals, a pre-formatted summary band, throughput, and ETA.
+/// totals, raw throughput, and raw ETA. The C# composes the localized summary
+/// band and formats throughput/ETA/bytes for the locale.
 #[derive(Serialize)]
 struct FfiOutboxSnapshot {
     uploads: Vec<FfiUploadOp>,
@@ -1331,7 +1449,6 @@ fn outbox_snapshot_to_ffi(snapshot: &bae_core::library::OutboxSnapshot) -> FfiOu
                 cloud_key: op.cloud_key.clone(),
                 bytes_total: op.bytes_total,
                 bytes_done,
-                size_label: format_bytes_ffi(op.bytes_total as i64),
                 attempt_count: op.attempt_count,
                 state: state.to_string(),
                 last_error,
@@ -1451,11 +1568,26 @@ struct FfiTrack {
     /// The track's id, used to play from this track or queue it individually.
     track_id: String,
     title: String,
-    /// Human-readable position, e.g. "A1", "1", "1-2".
-    position: String,
-    /// Pre-formatted duration, e.g. "3:07"; empty if unknown.
-    duration: String,
+    /// Structured position; the C# composes "A1"/"2-3"/"5" from the case and
+    /// formats nothing locale-specific.
+    position: loc::FfiTrackPosition,
+    /// Raw track length in milliseconds, or null when unknown. The C# formats
+    /// it for the locale (e.g. "3:07").
+    duration_ms: Option<i64>,
     artist: String,
+}
+
+/// One file in a release, mirroring `BridgeFile`. `audio_format` is `None` for
+/// non-audio files; for audio files the C# composes the one-line descriptor
+/// ("FLAC · 44.1 kHz · 16-bit · stereo") from its structured parts.
+#[derive(Serialize)]
+struct FfiFile {
+    id: String,
+    original_filename: String,
+    file_size: i64,
+    content_type: String,
+    is_image: bool,
+    audio_format: Option<loc::FfiAudioFormat>,
 }
 
 /// One release in an album's detail. The picker lists these by `display_name`;
@@ -1466,6 +1598,9 @@ struct FfiRelease {
     /// Human-readable picker label, e.g. "2009 · CD" or "Release 2".
     display_name: String,
     tracks: Vec<FfiTrack>,
+    /// The release's files (audio + images), each with its structured audio
+    /// format where applicable. Mirrors `BridgeRelease.files`.
+    files: Vec<FfiFile>,
 }
 
 /// An album's detail: header fields plus every release with its tracks. The UI
@@ -1525,12 +1660,24 @@ pub unsafe extern "C" fn bae_album_detail(
                 .map(|track| FfiTrack {
                     track_id: track.id.clone(),
                     title: track.title.clone(),
-                    position: track.position_label.clone(),
-                    duration: track
-                        .duration_ms
-                        .map(|ms| format_minutes_seconds(ms as u64))
-                        .unwrap_or_default(),
+                    position: loc::FfiTrackPosition::from_core(&track.position),
+                    duration_ms: track.duration_ms,
                     artist: track.artist_names.clone(),
+                })
+                .collect(),
+            files: release
+                .files
+                .iter()
+                .map(|file| FfiFile {
+                    id: file.id.clone(),
+                    original_filename: file.original_filename.clone(),
+                    file_size: file.file_size,
+                    content_type: file.content_type.clone(),
+                    is_image: file.is_image,
+                    audio_format: file
+                        .audio_format
+                        .as_ref()
+                        .map(loc::FfiAudioFormat::from_core),
                 })
                 .collect(),
         })
@@ -1552,7 +1699,8 @@ struct FfiQueueItem {
     track_id: String,
     title: String,
     artist: String,
-    duration: String,
+    /// Raw track length in milliseconds, or null when unknown. The C# formats it.
+    duration_ms: Option<i64>,
     album_title: String,
     cover_image_id: Option<String>,
 }
@@ -1579,13 +1727,15 @@ struct FfiSignal {
 
 /// A badge's live lookup/match state, flattened to a tag plus the one payload
 /// each variant carries. Mirrors `bae_core::identify::SignalState`: `count` is
-/// set for `found`/`confirms`, `message` for `failed`, both `None` otherwise.
+/// set for `found`/`confirms`, `failure` for `failed`, both `None` otherwise.
+/// `failure` is the structured lookup failure (no prose) — the C# resolves a
+/// localized line per variant and renders `provider`'s status as the argument.
 #[derive(Serialize)]
 struct FfiSignalState {
     /// `looking_up` / `found` / `no_match` / `skipped` / `failed` / `confirms`.
     kind: &'static str,
     count: Option<u32>,
-    message: Option<String>,
+    failure: Option<loc::FfiLookupFailure>,
 }
 
 /// A UI event pushed to the native app, as JSON `{type, ...}`. Only the events
@@ -1600,7 +1750,8 @@ enum FfiEvent {
         artist: String,
         album_title: String,
         cover_image_id: Option<String>,
-        duration_label: String,
+        /// Raw track length in milliseconds; the C# formats it.
+        duration_ms: u64,
     },
     PlaybackPaused {
         track_id: String,
@@ -1609,13 +1760,17 @@ enum FfiEvent {
         artist: String,
         album_title: String,
         cover_image_id: Option<String>,
-        duration_label: String,
+        /// Raw track length in milliseconds; the C# formats it.
+        duration_ms: u64,
     },
     PlaybackStopped,
     PlaybackProgress {
         progress: f64,
-        elapsed: String,
-        remaining: String,
+        /// Raw elapsed position in milliseconds; the C# formats it.
+        position_ms: u64,
+        /// Raw track length in milliseconds; the C# formats the remaining time
+        /// (`duration_ms - position_ms`) for the locale.
+        duration_ms: u64,
     },
     /// The library changed (album/release add/update/remove) — reload views.
     LibraryChanged,
@@ -1641,8 +1796,11 @@ enum FfiEvent {
         mode: String,
     },
     /// A sync-loop error, or `null` message when a prior error cleared.
+    /// Sync-loop error state, or `null` when a prior error cleared. When set,
+    /// the structured diagnostic the C# renders as a generic per-category line
+    /// plus the opaque, log-only `detail`.
     SyncError {
-        message: Option<String>,
+        error: Option<loc::FfiError>,
     },
     /// The sync pipeline started or stopped a pass — drives the toolbar indicator.
     SyncingChanged {
@@ -1653,27 +1811,29 @@ enum FfiEvent {
     SyncTimeChanged {
         sync_time: Option<i64>,
     },
-    /// Playback failed for the current track.
+    /// Playback failed for the current track. `reason` is the structured,
+    /// locale-free reason: the actionable cloud-only cases the C# keys, and a
+    /// `diagnostic` that renders through the error-category path.
     PlaybackError {
-        message: String,
+        reason: loc::FfiPlaybackErrorReason,
     },
     /// A general operation error (scan or library) with no event of its
-    /// own — surfaced in the error banner.
+    /// own — surfaced in the error banner. `error` is the structured diagnostic.
     Error {
-        message: String,
+        error: loc::FfiError,
     },
     /// A prior general error cleared — close the banner.
     ErrorCleared,
     /// The next track is loading (keep the prior now-playing visible).
     PlaybackLoading,
-    /// Import-preview playback position; `elapsed` is the formatted position label.
+    /// Import-preview playback position. Raw elapsed milliseconds; the C# formats it.
     PreviewProgress {
-        elapsed: String,
+        position_ms: u64,
     },
-    /// Import-preview playback started or resumed; `duration_label` is the
-    /// track's total length, shown next to the elapsed position.
+    /// Import-preview playback started or resumed. Raw track length in
+    /// milliseconds, shown (formatted) next to the elapsed position.
     PreviewPlaying {
-        duration_label: String,
+        duration_ms: u64,
     },
     /// Import-preview playback stopped/ended — clear its position display.
     PreviewIdle,
@@ -1711,11 +1871,13 @@ enum FfiEvent {
         /// transition; the app replaces the candidate's badge row wholesale.
         signals: Vec<FfiSignal>,
     },
-    /// Import progress for a candidate.
+    /// Import progress for a candidate. `step` is the structured, locale-free
+    /// step (or `null` before the first step is known); the C# resolves its
+    /// localized verb from the step's catalog key.
     CandidateImportProgress {
         key: String,
         progress_percent: u32,
-        status: Option<String>,
+        step: Option<loc::FfiImportStep>,
     },
     /// A candidate's import finished; the album is in the library.
     CandidateImportComplete {
@@ -1726,10 +1888,11 @@ enum FfiEvent {
         release_id: String,
         album_id: String,
     },
-    /// A candidate's import failed.
+    /// A candidate's import failed. `error` is the structured diagnostic the C#
+    /// renders as a generic per-category line plus the opaque, log-only detail.
     CandidateImportError {
         key: String,
-        message: String,
+        error: loc::FfiError,
     },
 }
 
@@ -1778,32 +1941,32 @@ fn toolbar_signal_to_ffi(signal: &bae_core::identify::ToolbarSignal) -> FfiSigna
         SignalState::LookingUp => FfiSignalState {
             kind: "looking_up",
             count: None,
-            message: None,
+            failure: None,
         },
         SignalState::Found { count } => FfiSignalState {
             kind: "found",
             count: Some(*count),
-            message: None,
+            failure: None,
         },
         SignalState::NoMatch => FfiSignalState {
             kind: "no_match",
             count: None,
-            message: None,
+            failure: None,
         },
         SignalState::Skipped => FfiSignalState {
             kind: "skipped",
             count: None,
-            message: None,
+            failure: None,
         },
-        SignalState::Failed { message } => FfiSignalState {
+        SignalState::Failed { failure } => FfiSignalState {
             kind: "failed",
             count: None,
-            message: Some(message.clone()),
+            failure: Some(loc::FfiLookupFailure::from_core(failure)),
         },
         SignalState::Confirms { count } => FfiSignalState {
             kind: "confirms",
             count: Some(*count),
-            message: None,
+            failure: None,
         },
     };
 
@@ -1863,7 +2026,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             artist: artist_names.clone(),
             album_title: album_title.clone(),
             cover_image_id: cover_image_id.clone(),
-            duration_label: format_minutes_seconds(*duration_ms),
+            duration_ms: *duration_ms,
         },
         UiBusEvent::PlaybackPaused {
             track_id,
@@ -1881,26 +2044,26 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             artist: artist_names.clone(),
             album_title: album_title.clone(),
             cover_image_id: cover_image_id.clone(),
-            duration_label: format_minutes_seconds(*duration_ms),
+            duration_ms: *duration_ms,
         },
         UiBusEvent::PlaybackStopped => FfiEvent::PlaybackStopped,
         UiBusEvent::PlaybackLoading { .. } => FfiEvent::PlaybackLoading,
         UiBusEvent::PreviewProgress { position_ms, .. } => FfiEvent::PreviewProgress {
-            elapsed: format_minutes_seconds(*position_ms),
+            position_ms: *position_ms,
         },
         UiBusEvent::PreviewPlaying { duration_ms, .. } => FfiEvent::PreviewPlaying {
-            duration_label: format_minutes_seconds(*duration_ms),
+            duration_ms: *duration_ms,
         },
         UiBusEvent::PreviewIdle => FfiEvent::PreviewIdle,
-        UiBusEvent::PlaybackError { message } => FfiEvent::PlaybackError {
-            message: message.clone(),
+        UiBusEvent::PlaybackError { reason } => FfiEvent::PlaybackError {
+            reason: loc::FfiPlaybackErrorReason::from_core(reason),
         },
-        UiBusEvent::Error { message } => FfiEvent::Error {
-            message: message.clone(),
+        UiBusEvent::Error { error } => FfiEvent::Error {
+            error: loc::FfiError::from_core(error),
         },
         UiBusEvent::ErrorCleared => FfiEvent::ErrorCleared,
-        UiBusEvent::SyncError { message } => FfiEvent::SyncError {
-            message: message.clone(),
+        UiBusEvent::SyncError { error } => FfiEvent::SyncError {
+            error: error.as_ref().map(loc::FfiError::from_core),
         },
         UiBusEvent::SyncingChanged { syncing } => FfiEvent::SyncingChanged { syncing: *syncing },
         UiBusEvent::SyncTimeChanged { time } => FfiEvent::SyncTimeChanged { sync_time: *time },
@@ -1911,8 +2074,8 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             ..
         } => FfiEvent::PlaybackProgress {
             progress: *progress,
-            elapsed: format_minutes_seconds(*position_ms),
-            remaining: format_minutes_seconds(duration_ms.saturating_sub(*position_ms)),
+            position_ms: *position_ms,
+            duration_ms: *duration_ms,
         },
         UiBusEvent::AlbumAdded { .. }
         | UiBusEvent::AlbumUpdated { .. }
@@ -1931,10 +2094,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
                     track_id: item.track_id.clone(),
                     title: item.title.clone(),
                     artist: item.artist_names.clone(),
-                    duration: item
-                        .duration_ms
-                        .map(|ms| format_minutes_seconds(ms as u64))
-                        .unwrap_or_default(),
+                    duration_ms: item.duration_ms,
                     album_title: item.album_title.clone(),
                     cover_image_id: item.cover_image_id.clone(),
                 })
@@ -1981,28 +2141,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
         } => FfiEvent::CandidateImportProgress {
             key: key.clone(),
             progress_percent: *progress_percent,
-            status: step.as_ref().map(|s| {
-                use bae_core::import::{ImportPhase, ImportStep, PrepareStep};
-                match s {
-                    ImportStep::Preparing(PrepareStep::ParsingMetadata) => {
-                        "Parsing metadata".to_string()
-                    }
-                    ImportStep::Preparing(PrepareStep::WritingCoverArt) => {
-                        "Writing cover art".to_string()
-                    }
-                    ImportStep::Preparing(PrepareStep::DiscoveringFiles) => {
-                        "Discovering files".to_string()
-                    }
-                    ImportStep::Preparing(PrepareStep::ValidatingTracks) => {
-                        "Validating tracks".to_string()
-                    }
-                    ImportStep::Preparing(PrepareStep::SavingToDatabase) => {
-                        "Saving to database".to_string()
-                    }
-                    ImportStep::Running(ImportPhase::Acquire) => "Acquiring".to_string(),
-                    ImportStep::Running(ImportPhase::Store) => "Storing".to_string(),
-                }
-            }),
+            step: step.as_ref().map(loc::FfiImportStep::from_core),
         },
         UiBusEvent::CandidateImportComplete {
             key,
@@ -2013,9 +2152,9 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             release_id: release_id.clone(),
             album_id: album_id.clone(),
         },
-        UiBusEvent::CandidateImportError { key, message } => FfiEvent::CandidateImportError {
+        UiBusEvent::CandidateImportError { key, error } => FfiEvent::CandidateImportError {
             key: key.clone(),
-            message: message.clone(),
+            error: loc::FfiError::from_core(error),
         },
         UiBusEvent::QueueItemsAdded { count } => FfiEvent::QueueItemsAdded { count: *count },
         _ => return None,
