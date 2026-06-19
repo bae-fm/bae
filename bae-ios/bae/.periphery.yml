@@ -1,0 +1,8 @@
+project: bae.xcodeproj
+schemes:
+  - bae
+targets:
+  - bae
+index_exclude:
+  - bae/bae_bridge.swift
+disable_update_check: true

@@ -163,11 +163,14 @@ jobs:
 
     - name: Kotlin dead code check (detekt)
       # detekt static analysis: unused code, unused imports, unused private
-      # members. --build-upon-default-config applies the standard Kotlin ruleset.
+      # members. --build-upon-default-config applies the standard Kotlin ruleset;
+      # bae-android/detekt.yml relaxes the opinionated rules the codebase doesn't
+      # adopt (and allows Compose's PascalCase @Composable function names).
       # Same scope as ktlint: hand-written sources only.
       run: |
         brew install detekt
-        detekt --input bae-android/app/src/main/java --build-upon-default-config
+        detekt --input bae-android/app/src/main/java \
+          --config bae-android/detekt.yml --build-upon-default-config
 
     - name: Decode signing keystore
       if: inputs.profile == 'release'
