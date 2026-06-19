@@ -32,6 +32,15 @@
     <WindowsPackageType>None</WindowsPackageType>
 
     <!--
+      The localization .resw are included explicitly (the Strings/**/*.resw
+      PRIResource group below). Turn off the SDK's default PRIResource
+      auto-include so the same files aren't added twice (NETSDK1022). The
+      unpackaged app's resources.pri is compiled by the makepri target below,
+      not the SDK's packaged-app PRI pipeline.
+    -->
+    <EnableDefaultPriItems>false</EnableDefaultPriItems>
+
+    <!--
       x64 only. Platforms drives the MSBuild configuration; RuntimeIdentifiers uses
       the portable RID form (win-x64, not win10-x64) required by .NET 8 to avoid
       NETSDK1083 "version-specific runtime identifier" errors.
