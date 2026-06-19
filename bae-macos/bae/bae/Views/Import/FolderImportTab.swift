@@ -473,7 +473,7 @@ struct FolderImportTab: View {
         FolderImportTab(
             initialSelection: PreviewData.folderCandidates.first?.key
         )
-        .frame(width: 1100, height: 700)
+        .frame(width: 1400, height: 800)
         .importPreviewEnvironment()
         .environment(Library.stub)
         .environment(PreviewAudio.stub)

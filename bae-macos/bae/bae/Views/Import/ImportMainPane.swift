@@ -119,6 +119,6 @@ struct ImportMainPane<RightPane: View>: View {
             )
         }
     }
-    .frame(width: 900, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }

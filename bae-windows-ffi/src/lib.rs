@@ -1963,12 +1963,32 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
         UiBusEvent::CandidateImportImporting {
             key,
             progress_percent,
-            status_text,
-            ..
+            step,
         } => FfiEvent::CandidateImportProgress {
             key: key.clone(),
             progress_percent: *progress_percent,
-            status: status_text.clone(),
+            status: step.as_ref().map(|s| {
+                use bae_core::import::{ImportPhase, ImportStep, PrepareStep};
+                match s {
+                    ImportStep::Preparing(PrepareStep::ParsingMetadata) => {
+                        "Parsing metadata".to_string()
+                    }
+                    ImportStep::Preparing(PrepareStep::WritingCoverArt) => {
+                        "Writing cover art".to_string()
+                    }
+                    ImportStep::Preparing(PrepareStep::DiscoveringFiles) => {
+                        "Discovering files".to_string()
+                    }
+                    ImportStep::Preparing(PrepareStep::ValidatingTracks) => {
+                        "Validating tracks".to_string()
+                    }
+                    ImportStep::Preparing(PrepareStep::SavingToDatabase) => {
+                        "Saving to database".to_string()
+                    }
+                    ImportStep::Running(ImportPhase::Acquire) => "Acquiring".to_string(),
+                    ImportStep::Running(ImportPhase::Store) => "Storing".to_string(),
+                }
+            }),
         },
         UiBusEvent::CandidateImportComplete {
             key,

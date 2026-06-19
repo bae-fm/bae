@@ -524,6 +524,7 @@ impl BridgeInvalidReason {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn invalid_reason_to_bridge(r: bae_core::import::InvalidReason) -> BridgeInvalidReason {
     use bae_core::import::InvalidReason as R;
     match r {
@@ -2143,6 +2144,7 @@ impl BridgeError {
     pub(crate) fn import(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Import, detail)
     }
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn export(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Export, detail)
     }
@@ -2676,6 +2678,7 @@ fn results_and_status_map(
     (matches, statuses)
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn scanned_file_to_bridge(f: bae_core::import::folder_scanner::ScannedFile) -> BridgeFileInfo {
     BridgeFileInfo {
         name: f.relative_path,
@@ -2687,6 +2690,7 @@ fn scanned_file_to_bridge(f: bae_core::import::folder_scanner::ScannedFile) -> B
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn scanned_artwork_to_bridge(
     f: bae_core::import::folder_scanner::ScannedFile,
 ) -> BridgeArtworkFile {
@@ -2702,6 +2706,7 @@ fn scanned_artwork_to_bridge(
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn categorized_files_to_bridge(
     files: bae_core::import::folder_scanner::CategorizedFiles,
 ) -> BridgeCandidateFiles {
