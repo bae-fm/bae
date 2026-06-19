@@ -85,38 +85,38 @@ fn string_unit_state(value: &str, state: &str) -> serde_json::Value {
     serde_json::json!({ "stringUnit": { "state": state, "value": value } })
 }
 
-/// Build the per-locale `localizations` map: the English source at state
-/// `translated`, and every `TARGET_LOCALES` entry at state `new`, each rendered
-/// by `unit(state)`.
-fn per_locale(src_lang: &str, unit: impl Fn(&str) -> serde_json::Value) -> serde_json::Value {
-    let mut locs = serde_json::Map::new();
-    locs.insert(src_lang.to_string(), unit("translated"));
-    for loc in TARGET_LOCALES {
-        locs.insert((*loc).to_string(), unit("new"));
+/// The MF1 value and translation state to emit for `msg` in `locale`. The source
+/// language, and any locale with an explicit `translations` entry, are
+/// `translated`; a locale with no entry falls back to the English source at
+/// state `new` (the app still declares the locale; English shows until the slot
+/// is filled in).
+fn localized<'a>(msg: &'a Message, locale: &str, src_lang: &str) -> (&'a str, &'static str) {
+    if locale == src_lang {
+        (msg.value.as_str(), "translated")
+    } else if let Some(t) = msg.translations.get(locale) {
+        (t.as_str(), "translated")
+    } else {
+        (msg.value.as_str(), "new")
     }
-    serde_json::Value::Object(locs)
 }
 
-/// Build the `.xcstrings` `localizations` body for one message: the English
-/// source (state `translated`) plus a slot for every `TARGET_LOCALES` entry
-/// carrying the English value at state `new` — so the app declares the locale
-/// and Xcode/translators see it as needing translation. English shows at runtime
-/// until a slot is actually translated.
-fn apple_localization(msg: &Message, src_lang: &str) -> Result<serde_json::Value, String> {
-    let nodes = mf1::parse(&msg.value)?;
+/// Render one locale's MF1 `value` for `msg` into an `.xcstrings` unit: a
+/// `variations.plural` for a whole-message plural, otherwise a flat
+/// `stringUnit`. Each locale's value is parsed independently, so a translation
+/// may carry that locale's own plural categories (one/few/many/other) where the
+/// English source has only one/other.
+fn apple_unit(msg: &Message, value: &str, state: &str) -> Result<serde_json::Value, String> {
+    let nodes = mf1::parse(value)?;
     let order = ordered_args(&nodes);
 
     // Whole-message plural -> variations.plural. Other plural shapes are errors.
     if let [Node::Plural { arg, cases }] = nodes.as_slice() {
         if msg.args.len() != 1 || !msg.args.contains_key(arg) {
             return Err(format!(
-                "plural message `{}` must take exactly its count arg `{arg}`",
-                msg.value
+                "plural message `{value}` must take exactly its count arg `{arg}`"
             ));
         }
-        // Render each category once; the per-locale slots reuse the rendered
-        // text (a translator-facing English starting point for that locale).
-        let mut rendered_cases: Vec<(String, String)> = Vec::new();
+        let mut variations = serde_json::Map::new();
         for case in cases {
             let cat = match &case.selector {
                 PluralSelector::Category(c) => c.as_cldr(),
@@ -125,29 +125,36 @@ fn apple_localization(msg: &Message, src_lang: &str) -> Result<serde_json::Value
                 }
             };
             let rendered = apple_flat(&case.message, msg, &order, Some(arg))?;
-            rendered_cases.push((cat.to_string(), rendered));
+            variations.insert(cat.to_string(), string_unit_state(&rendered, state));
         }
-        let plural_unit = |state: &str| -> serde_json::Value {
-            let variations: serde_json::Map<String, serde_json::Value> = rendered_cases
-                .iter()
-                .map(|(cat, r)| (cat.clone(), string_unit_state(r, state)))
-                .collect();
-            serde_json::json!({ "variations": { "plural": variations } })
-        };
-        return Ok(per_locale(src_lang, plural_unit));
+        return Ok(serde_json::json!({ "variations": { "plural": variations } }));
     }
 
     if nodes.iter().any(|n| matches!(n, Node::Plural { .. })) {
         return Err(format!(
-            "message `{}` embeds a plural mid-text; Apple needs a substitution, not yet supported",
-            msg.value
+            "message `{value}` embeds a plural mid-text; Apple needs a substitution, not yet supported"
         ));
     }
 
     let rendered = apple_flat(&nodes, msg, &order, None)?;
-    Ok(per_locale(src_lang, |state| {
-        string_unit_state(&rendered, state)
-    }))
+    Ok(string_unit_state(&rendered, state))
+}
+
+/// Build the `.xcstrings` `localizations` body for one message: the English
+/// source (state `translated`) plus every `TARGET_LOCALES` entry — its
+/// translation at state `translated`, or the English source at `new` where that
+/// locale isn't translated yet.
+fn apple_localization(msg: &Message, src_lang: &str) -> Result<serde_json::Value, String> {
+    let mut locs = serde_json::Map::new();
+    locs.insert(
+        src_lang.to_string(),
+        apple_unit(msg, &msg.value, "translated")?,
+    );
+    for loc in TARGET_LOCALES {
+        let (value, state) = localized(msg, loc, src_lang);
+        locs.insert((*loc).to_string(), apple_unit(msg, value, state)?);
+    }
+    Ok(serde_json::Value::Object(locs))
 }
 
 /// Emit the source-language `Core.xcstrings` for the whole catalog.
@@ -194,15 +201,18 @@ fn android_escape(s: &str) -> String {
     out
 }
 
-/// Emit `core_strings.xml`. Every message is a plain `<string>`; the MF1 value
-/// is stored verbatim (escaped) for `android.icu.text.MessageFormat`.
-pub fn android_strings_xml(cat: &Catalog) -> String {
+/// Emit `core_strings.xml` for one `locale`. Every message is a plain
+/// `<string>`; the MF1 value for that locale — its translation, or the English
+/// source where untranslated — is stored verbatim (escaped) for
+/// `android.icu.text.MessageFormat`.
+pub fn android_strings_xml(cat: &Catalog, locale: &str, src_lang: &str) -> String {
     let mut out = String::from("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<resources>\n");
     for (id, msg) in &cat.messages {
+        let (value, _state) = localized(msg, locale, src_lang);
         out.push_str(&format!(
             "    <string name=\"{}\">{}</string>\n",
             sanitize_android_id(id),
-            android_escape(&msg.value),
+            android_escape(value),
         ));
     }
     out.push_str("</resources>\n");
@@ -224,20 +234,21 @@ fn android_values_dir(locale: &str) -> String {
 
 /// Emit the full Android resource set: the English source under `values/`, plus
 /// one `values-<qualifier>/core_strings.xml` per `TARGET_LOCALES` entry carrying
-/// the same English values. Android resolves resources per directory, so a
-/// locale the app should "support" must have its own directory — without it the
-/// locale falls back to `values/` and never registers as supported (so its
-/// plural rules and right-to-left layout selection don't apply). The per-locale
-/// files are English until a locale is actually translated, mirroring how the
-/// Apple emitter writes an English-valued slot for every locale into the one
-/// `Core.xcstrings`. Returns `(relative path, file contents)` pairs.
-pub fn android_resource_files(cat: &Catalog) -> Vec<(String, String)> {
-    let body = android_strings_xml(cat);
-    let mut files = vec![("values/core_strings.xml".to_string(), body.clone())];
+/// that locale's translations (English where a message isn't translated yet).
+/// Android resolves resources per directory, so a locale the app should
+/// "support" must have its own directory — without it the locale falls back to
+/// `values/` and never registers as supported (so its plural rules and
+/// right-to-left layout selection don't apply). Returns `(relative path, file
+/// contents)` pairs.
+pub fn android_resource_files(cat: &Catalog, src_lang: &str) -> Vec<(String, String)> {
+    let mut files = vec![(
+        "values/core_strings.xml".to_string(),
+        android_strings_xml(cat, src_lang, src_lang),
+    )];
     for loc in TARGET_LOCALES {
         files.push((
             format!("{}/core_strings.xml", android_values_dir(loc)),
-            body.clone(),
+            android_strings_xml(cat, loc, src_lang),
         ));
     }
     files
@@ -256,19 +267,22 @@ fn xml_escape(s: &str) -> String {
     out
 }
 
-/// Emit `Core.resw`. The dotted id is the resource name; the MF1 value is stored
-/// verbatim (XML-escaped) for the `MessageFormat` NuGet at runtime.
-pub fn windows_resw(cat: &Catalog) -> String {
+/// Emit `Core.resw` for one `locale`. The dotted id is the resource name; the
+/// MF1 value for that locale — its translation, or the English source where
+/// untranslated — is stored verbatim (XML-escaped) for the `MessageFormat` NuGet
+/// at runtime.
+pub fn windows_resw(cat: &Catalog, locale: &str, src_lang: &str) -> String {
     let mut out = String::from(
         "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<root>\n  \
          <resheader name=\"resmimetype\"><value>text/microsoft-resx</value></resheader>\n  \
          <resheader name=\"version\"><value>2.0</value></resheader>\n",
     );
     for (id, msg) in &cat.messages {
+        let (value, _state) = localized(msg, locale, src_lang);
         out.push_str(&format!(
             "  <data name=\"{}\" xml:space=\"preserve\"><value>{}</value></data>\n",
             xml_escape(id),
-            xml_escape(&msg.value),
+            xml_escape(value),
         ));
     }
     out.push_str("</root>\n");
@@ -286,22 +300,25 @@ fn windows_locales(src_lang: &str) -> Vec<String> {
 }
 
 /// Emit one `<locale>/Core.resw` per shipping locale: `(relative path, contents)`
-/// pairs the caller writes under the project's `Strings` directory. Every locale
-/// carries the **English** value — the source locale because it's the source, the
-/// others as the untranslated starting point (English shows at runtime until a
-/// locale's `Core.resw` is actually translated). This declares locale support
-/// (the per-language directories are what make the app multilingual) without
-/// inventing translations. Mirrors the Apple emitter, which carries the same
-/// per-locale slots inside one file.
+/// pairs the caller writes under the project's `Strings` directory. Each locale's
+/// file carries that locale's translations, falling back to the English source
+/// for any message not yet translated. The per-language directories are what make
+/// the app multilingual. Mirrors the Apple emitter, which carries the same
+/// per-locale values inside one file.
 pub fn windows_resw_all(cat: &Catalog, src_lang: &str) -> Vec<(std::path::PathBuf, String)> {
-    let contents = windows_resw(cat);
+    let src_dir = format!("{src_lang}-US");
     windows_locales(src_lang)
         .into_iter()
-        .map(|locale| {
-            (
-                std::path::PathBuf::from(locale).join("Core.resw"),
-                contents.clone(),
-            )
+        .map(|dir| {
+            // The source directory ("en-US") looks up the source language; every
+            // other directory's name is the catalog locale code itself.
+            let lookup = if dir == src_dir {
+                src_lang
+            } else {
+                dir.as_str()
+            };
+            let contents = windows_resw(cat, lookup, src_lang);
+            (std::path::PathBuf::from(&dir).join("Core.resw"), contents)
         })
         .collect()
 }
@@ -373,7 +390,7 @@ value = "{count, plural, one {# pending delete} other {# pending deletes}}"
 [messages."core.error.not_found.release"]
 value = "that release couldn't be found"
 "#);
-        let xml = android_strings_xml(&c);
+        let xml = android_strings_xml(&c, "en", "en");
         assert!(
             xml.contains("name=\"core_outbox_pending_deletes\""),
             "{xml}"
@@ -394,7 +411,7 @@ value = "that release couldn't be found"
 args = { position = "Int", total = "Int" }
 value = "Looking up barcode {position} of {total}"
 "#);
-        let resw = windows_resw(&c);
+        let resw = windows_resw(&c, "en", "en");
         assert!(
             resw.contains("name=\"core.identify.barcode.looking_up\""),
             "{resw}"
@@ -454,7 +471,7 @@ value = "that release couldn't be found"
 [messages."core.audio.channels.mono"]
 value = "mono"
 "#);
-        let files = android_resource_files(&c);
+        let files = android_resource_files(&c, "en");
         // One source `values/` file plus one per target locale.
         assert_eq!(files.len(), 1 + TARGET_LOCALES.len());
         let paths: Vec<&str> = files.iter().map(|(p, _)| p.as_str()).collect();
@@ -464,7 +481,53 @@ value = "mono"
             "{paths:?}"
         );
         assert!(paths.contains(&"values-ar/core_strings.xml"), "{paths:?}");
-        // Every file carries the same (English) body until a locale is translated.
+        // No translations in this catalog, so every locale falls back to English.
         assert!(files.iter().all(|(_, body)| body.contains("mono")));
+    }
+
+    #[test]
+    fn translations_emit_per_locale_with_locale_plural_categories() {
+        // A plain message translated into one locale, and a plural translated
+        // into a locale with more CLDR categories than English (Polish:
+        // one/few/many/other).
+        let c = cat(r#"
+[messages."core.error.not_found.release"]
+value = "that release couldn't be found"
+translations = { es = "no se encontró ese lanzamiento" }
+
+[messages."core.outbox.pending_deletes"]
+args = { count = "Int" }
+value = "{count, plural, one {# pending delete} other {# pending deletes}}"
+translations = { pl = "{count, plural, one {# usunięcie oczekuje} few {# usunięcia oczekują} many {# usunięć oczekuje} other {# usunięcia oczekuje}}" }
+"#);
+
+        // Apple: the Spanish slot carries the translation; the Polish plural
+        // expands to all four of its categories.
+        let json = apple_xcstrings(&c, "en").unwrap();
+        assert!(json.contains("no se encontró ese lanzamiento"), "{json}");
+        assert!(json.contains("%lld usunięcia oczekują"), "{json}");
+        assert!(json.contains("%lld usunięć oczekuje"), "{json}");
+
+        // Android: the Spanish file carries the translation verbatim; an
+        // untranslated locale (de) keeps the English source.
+        let files = android_resource_files(&c, "en");
+        let es = files
+            .iter()
+            .find(|(p, _)| p == "values-es/core_strings.xml")
+            .unwrap();
+        assert!(es.1.contains("no se encontró ese lanzamiento"), "{}", es.1);
+        let de = files
+            .iter()
+            .find(|(p, _)| p == "values-de/core_strings.xml")
+            .unwrap();
+        assert!(de.1.contains("that release couldn"), "{}", de.1);
+
+        // Windows: the Polish Core.resw carries the four-category MF1 verbatim.
+        let resw = windows_resw_all(&c, "en");
+        let pl = resw
+            .iter()
+            .find(|(p, _)| p.to_string_lossy().replace('\\', "/") == "pl/Core.resw")
+            .unwrap();
+        assert!(pl.1.contains("many {# usunięć oczekuje}"), "{}", pl.1);
     }
 }
