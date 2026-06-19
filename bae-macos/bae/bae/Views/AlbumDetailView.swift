@@ -1093,7 +1093,7 @@ struct ManageReleaseSheet: View {
                     }
                 }
                 TableColumn("Size", value: \.fileSize) { file in
-                    Text(file.fileSizeLabel)
+                    Text(file.fileSizeText)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }

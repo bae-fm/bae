@@ -1674,7 +1674,6 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
         id: f.id,
         original_filename: f.original_filename,
         file_size: f.file_size,
-        file_size_label: f.file_size_label,
         is_image: f.is_image,
         content_type: f.content_type,
         audio_format: f.audio_format.map(crate::types::audio_format_to_bridge),

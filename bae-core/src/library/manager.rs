@@ -3450,7 +3450,6 @@ pub(crate) fn resolve_release(
                 }
             };
             FileDetail {
-                file_size_label: crate::util::format::format_bytes_signed(f.file_size),
                 is_image: f.content_type.is_image(),
                 content_type: f.content_type.to_string(),
                 audio_format,

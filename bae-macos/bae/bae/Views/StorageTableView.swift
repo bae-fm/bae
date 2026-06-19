@@ -1000,7 +1000,7 @@ private struct StorageFileCell: View {
                         .foregroundStyle(.secondary)
                 }
             case .size:
-                Text(file.fileSizeLabel)
+                Text(file.fileSizeText)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
