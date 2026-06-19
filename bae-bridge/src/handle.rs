@@ -1287,7 +1287,6 @@ fn convert_outbox_snapshot(
                 cloud_key: op.cloud_key,
                 bytes_total: op.bytes_total,
                 bytes_done,
-                size_label: op.size_label,
                 created_at: op.created_at,
                 attempt_count: op.attempt_count,
                 state,
@@ -1356,7 +1355,7 @@ fn convert_download_snapshot(
                 release_id: op.release_id,
                 title: op.title,
                 file_count: op.file_count,
-                size_label: op.size_label,
+                total_size: op.total_size,
                 created_at: op.created_at,
                 state,
                 percent,
@@ -1730,7 +1729,6 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
             .collect(),
         file_count: summary.file_count,
         total_size: summary.total_size,
-        total_size_label: summary.total_size_label,
         cover_path: summary.cover_path,
     }
 }
@@ -1755,7 +1753,6 @@ fn convert_release_summary(s: bae_core::album_detail::ReleaseSummary) -> BridgeR
             .collect(),
         file_count: s.file_count,
         total_size: s.total_size,
-        total_size_label: s.total_size_label,
         cover_path: s.cover_path,
     }
 }

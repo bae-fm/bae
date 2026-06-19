@@ -37,8 +37,8 @@ pub struct DownloadOp {
     /// Album title for display.
     pub title: String,
     pub file_count: i64,
-    /// Pre-formatted total size, e.g. `"350 MB"`.
-    pub size_label: String,
+    /// Total size in bytes across the release's files. The UI formats it.
+    pub total_size: i64,
     /// Enqueue time as Unix epoch milliseconds, for the "queued 2m ago"
     /// relative label the UI renders.
     pub created_at: i64,
@@ -98,7 +98,7 @@ mod tests {
             release_id: release_id.to_string(),
             title: "Test Album".to_string(),
             file_count: 3,
-            size_label: "350 MB".to_string(),
+            total_size: 350_000_000,
             created_at: 0,
             state,
         }

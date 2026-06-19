@@ -243,7 +243,7 @@ mod tests {
             release_id: release_id.to_string(),
             title: "Test Album".to_string(),
             file_count: 3,
-            size_label: "350 MB".to_string(),
+            total_size: 350_000_000,
             created_at: 0,
             state: DownloadState::Queued,
         }

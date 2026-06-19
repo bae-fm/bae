@@ -931,7 +931,7 @@ private struct StorageReleaseCell: View {
                     .monospacedDigit()
                     .frame(maxWidth: .infinity, alignment: .trailing)
             case .size:
-                Text(release.totalSizeLabel)
+                Text(release.totalSizeText)
                     .monospacedDigit()
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }

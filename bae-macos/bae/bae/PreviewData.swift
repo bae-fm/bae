@@ -234,7 +234,6 @@ enum PreviewData {
                     totalDurationMs: 2_340_000,
                     fileCount: 0,
                     totalSize: 0,
-                    totalSizeLabel: "0 bytes",
                     coverPath: nil,
                 )
             ],
@@ -300,7 +299,6 @@ enum PreviewData {
                     totalDurationMs: 2_340_000,
                     fileCount: 0,
                     totalSize: 0,
-                    totalSizeLabel: "0 bytes",
                     coverPath: nil,
                 )
             ],
@@ -368,7 +366,6 @@ enum PreviewData {
                     totalDurationMs: 2_340_000,
                     fileCount: 0,
                     totalSize: 0,
-                    totalSizeLabel: "0 bytes",
                     coverPath: nil,
                 )
             }
@@ -794,14 +791,12 @@ enum PreviewData {
     private static func previewArtworkFile(
         name: String,
         size: UInt64,
-        sizeLabel: String,
         localPath: String
     ) -> BridgeArtworkFile {
         BridgeArtworkFile(
             file: BridgeFileInfo(
                 name: name,
                 size: size,
-                sizeLabel: sizeLabel,
                 dirPrefix: nil,
                 fileName: name,
                 localPath: localPath
@@ -819,12 +814,10 @@ enum PreviewData {
             BridgeCueFlacPair(
                 cueName: "Album Title.cue",
                 cueSize: 1200,
-                cueSizeLabel: "1 KB",
                 cueLocalPath: "/tmp/fake/Album Title.cue",
                 flacName: "Album Title.flac",
                 flacLocalPath: "/tmp/fake/Album Title.flac",
                 totalSize: 340_000_000,
-                totalSizeLabel: "324 MB",
                 trackCount: 9,
             )
         ]),
@@ -832,19 +825,16 @@ enum PreviewData {
             previewArtworkFile(
                 name: "Front.png",
                 size: 2_500_000,
-                sizeLabel: "2 MB",
                 localPath: "/tmp/fake/Front.png"
             ),
             previewArtworkFile(
                 name: "Back.png",
                 size: 1_800_000,
-                sizeLabel: "2 MB",
                 localPath: "/tmp/fake/Back.png"
             ),
             previewArtworkFile(
                 name: "Matrix.png",
                 size: 900_000,
-                sizeLabel: "879 KB",
                 localPath: "/tmp/fake/Matrix.png"
             ),
         ],
@@ -852,7 +842,6 @@ enum PreviewData {
             BridgeFileInfo(
                 name: "info.log",
                 size: 6000,
-                sizeLabel: "6 KB",
                 dirPrefix: nil,
                 fileName: "info.log",
                 localPath: "/tmp/fake/info.log"
@@ -963,7 +952,6 @@ enum PreviewData {
                         BridgeFileInfo(
                             name: "Track \(i).flac",
                             size: UInt64(35_000_000 + i * 2_000_000),
-                            sizeLabel: "\(33 + i * 2) MB",
                             dirPrefix: nil,
                             fileName: "Track \(i).flac",
                             localPath: "/tmp/fake/Track \(i).flac",
@@ -974,7 +962,6 @@ enum PreviewData {
                 previewArtworkFile(
                     name: "Front.png",
                     size: 2_500_000,
-                    sizeLabel: "2 MB",
                     localPath: "/tmp/fake/Front.png"
                 )
             ],
@@ -982,7 +969,6 @@ enum PreviewData {
                 BridgeFileInfo(
                     name: "info.log",
                     size: 6000,
-                    sizeLabel: "6 KB",
                     dirPrefix: nil,
                     fileName: "info.log",
                     localPath: "/tmp/fake/info.log"
@@ -990,7 +976,6 @@ enum PreviewData {
                 BridgeFileInfo(
                     name: "notes.txt",
                     size: 1200,
-                    sizeLabel: "1 KB",
                     dirPrefix: nil,
                     fileName: "notes.txt",
                     localPath: "/tmp/fake/notes.txt"

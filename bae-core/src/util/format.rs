@@ -1,7 +1,6 @@
 //! Pure formatters: `fn data → String` with no state, no I/O, no context.
 //!
 //! Examples: `format_duration_label(ms) → "3:07"`,
-//! `format_bytes_signed(i64) → "350 MB"`,
 //! `compute_track_labels(format, side, …) → (String, String)`.
 //!
 //! Zero dependencies on the database, the filesystem, or any struct
@@ -35,23 +34,6 @@ pub fn format_duration_label_unsigned(ms: Option<u64>) -> String {
     }
 }
 
-/// Format a byte count as a human-readable string.
-/// "0 B", "512 B", "42 KB", "350 MB", "1.2 GB".
-pub fn format_bytes(bytes: u64) -> String {
-    let kb = bytes as f64 / 1024.0;
-    if kb < 1.0 {
-        return format!("{} B", bytes);
-    }
-    let mb = kb / 1024.0;
-    if mb < 1.0 {
-        return format!("{:.0} KB", kb);
-    }
-    if mb >= 1024.0 {
-        return format!("{:.1} GB", mb / 1024.0);
-    }
-    format!("{:.0} MB", mb)
-}
-
 /// Format an ETA from progress, total size, and download rate.
 /// Returns empty string when ETA can't be computed (rate is zero or download complete).
 pub fn format_eta(progress: f64, total_bytes: u64, bytes_per_sec: u64) -> String {
@@ -71,15 +53,6 @@ pub fn format_eta(progress: f64, total_bytes: u64, bytes_per_sec: u64) -> String
     let hours = minutes / 60;
     let mins = minutes % 60;
     format!("{}h {}m remaining", hours, mins)
-}
-
-/// Format a byte count (signed i64) as a human-readable string.
-/// Used for database fields that store sizes as i64.
-pub fn format_bytes_signed(bytes: i64) -> String {
-    if bytes < 0 {
-        return String::new();
-    }
-    format_bytes(bytes as u64)
 }
 
 /// Convert a 1-indexed side number to a letter (1=A, 2=B, ..., 26=Z).
@@ -193,43 +166,6 @@ mod tests {
     fn duration_label_unsigned() {
         assert_eq!(format_duration_label_unsigned(Some(187_000)), "3:07");
         assert_eq!(format_duration_label_unsigned(None), "");
-    }
-
-    #[test]
-    fn bytes_zero() {
-        assert_eq!(format_bytes(0), "0 B");
-    }
-
-    #[test]
-    fn bytes_small() {
-        assert_eq!(format_bytes(512), "512 B");
-        assert_eq!(format_bytes(1023), "1023 B");
-    }
-
-    #[test]
-    fn bytes_kilobytes() {
-        assert_eq!(format_bytes(1024), "1 KB");
-        assert_eq!(format_bytes(6000), "6 KB");
-        assert_eq!(format_bytes(1200), "1 KB");
-    }
-
-    #[test]
-    fn bytes_megabytes() {
-        assert_eq!(format_bytes(2_500_000), "2 MB");
-        assert_eq!(format_bytes(35_000_000), "33 MB");
-        assert_eq!(format_bytes(350_000_000), "334 MB");
-    }
-
-    #[test]
-    fn bytes_gigabytes() {
-        assert_eq!(format_bytes(1_200_000_000), "1.1 GB");
-        assert_eq!(format_bytes(5_368_709_120), "5.0 GB");
-    }
-
-    #[test]
-    fn bytes_signed() {
-        assert_eq!(format_bytes_signed(35_000_000), "33 MB");
-        assert_eq!(format_bytes_signed(-1), "");
     }
 
     #[test]

@@ -192,7 +192,7 @@ struct ImportFilePane: View {
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                             Spacer()
-                            Text(pair.totalSizeLabel)
+                            Text(pair.totalSizeText)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .padding(.leading, 8)
@@ -222,7 +222,7 @@ struct ImportFilePane: View {
                         }
                         .buttonStyle(.plain)
                         Spacer()
-                        Text(pair.cueSizeLabel)
+                        Text(pair.cueSizeText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.leading, 8)
@@ -286,7 +286,7 @@ struct ImportFilePane: View {
                         .truncationMode(.middle)
                 }
                 Spacer()
-                Text(file.sizeLabel)
+                Text(file.sizeText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.leading, 8)

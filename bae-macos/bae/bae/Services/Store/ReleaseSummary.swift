@@ -42,7 +42,6 @@ final class ReleaseSummary: Identifiable {
     var storageActions: [BridgeReleaseStorageAction]
     var fileCount: Int64
     var totalSize: Int64
-    var totalSizeLabel: String
     /// Cache-bustable identifier for this release's own cover
     /// (`<path>#v=<mtime>`), or `nil` when none is cached. Keyed on the release
     /// id so each release renders its own art; `ImageView` strips the `#v=…`
@@ -55,6 +54,12 @@ final class ReleaseSummary: Identifiable {
     /// mid-transfer must not clear the in-flight indicator).
     var transfer: TransferState? = nil
 
+    /// Total release size formatted for the current locale, e.g. "350 MB".
+    /// bae-core emits the raw byte count; the UI formats it.
+    var totalSizeText: String {
+        totalSize.formatted(.byteCount(style: .file))
+    }
+
     init(from bridge: BridgeReleaseSummary) {
         id = bridge.id
         albumId = bridge.albumId
@@ -63,7 +68,6 @@ final class ReleaseSummary: Identifiable {
         storageActions = bridge.storageActions
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
-        totalSizeLabel = bridge.totalSizeLabel
         coverPath = bridge.coverPath
     }
 
@@ -78,7 +82,6 @@ final class ReleaseSummary: Identifiable {
         storageActions = bridge.storageActions
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
-        totalSizeLabel = bridge.totalSizeLabel
         coverPath = bridge.coverPath
     }
 
@@ -100,9 +103,6 @@ final class ReleaseSummary: Identifiable {
         if totalSize != bridge.totalSize {
             totalSize = bridge.totalSize
         }
-        if totalSizeLabel != bridge.totalSizeLabel {
-            totalSizeLabel = bridge.totalSizeLabel
-        }
         if coverPath != bridge.coverPath {
             coverPath = bridge.coverPath
         }
@@ -123,9 +123,6 @@ final class ReleaseSummary: Identifiable {
         }
         if totalSize != bridge.totalSize {
             totalSize = bridge.totalSize
-        }
-        if totalSizeLabel != bridge.totalSizeLabel {
-            totalSizeLabel = bridge.totalSizeLabel
         }
         if coverPath != bridge.coverPath {
             coverPath = bridge.coverPath

@@ -265,7 +265,7 @@ private struct DownloadRow: View {
             Text(op.title)
                 .lineLimit(1)
 
-            Text("\(op.fileCount) files · \(op.sizeLabel)")
+            Text("\(op.fileCount) files · \(op.totalSizeText)")
                 .font(.caption)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -523,7 +523,7 @@ private struct OutboxUploadRow: View {
             Text(op.title ?? op.cloudKey)
                 .lineLimit(1)
 
-            Text(op.sizeLabel)
+            Text(op.sizeText)
                 .font(.caption)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)

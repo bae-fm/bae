@@ -208,8 +208,6 @@ pub struct ReleaseSummary {
     pub storage_actions: Vec<ReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,
-    /// Pre-formatted total size, e.g. "350 MB".
-    pub total_size_label: String,
     /// Cache-bustable identifier for this release's own cover
     /// (`<path>#v=<mtime>`), or `None` when no cover is cached on disk. Keyed on
     /// the release id — covers are stored per release — so two releases of one
@@ -317,8 +315,7 @@ pub struct AlbumSummary {
 /// Resolved per-release storage summary for the Storage Manager view.
 /// Produced by `LibraryManager` from `DbReleaseStorageSummary`: derives
 /// `storage_state` from `releases.managed` and this device's
-/// `release_local_copy` row, and formats `total_size_label` via
-/// `crate::util::format::format_bytes_signed`.
+/// `release_local_copy` row. The UI formats `total_size` for the locale.
 #[derive(Debug, Clone)]
 pub struct ReleaseStorageSummary {
     pub release_id: String,
@@ -339,7 +336,6 @@ pub struct ReleaseStorageSummary {
     pub storage_actions: Vec<ReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,
-    pub total_size_label: String,
 }
 
 /// One row on the Storage Manager view: a release paired with its parent

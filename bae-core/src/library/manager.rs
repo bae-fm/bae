@@ -131,7 +131,7 @@ fn resolve_queue_item(raw: DbQueueItem) -> QueueItem {
 
 /// Produces a resolved `ReleaseStorageSummary` from a raw
 /// `DbReleaseStorageSummary`: derives `storage_state` from `managed` + this
-/// device's `release_local_copy` row and formats `total_size_label`. The raw
+/// device's `release_local_copy` row. The raw
 /// `primary_release_id` comes from SQL's `COALESCE(a.primary_release_id,
 /// <first release id>)` and is non-null by construction: every album has at
 /// least one release (enforced by `delete_release`).
@@ -155,7 +155,6 @@ fn resolve_release_storage_summary(
             .expect("album has at least one release"),
         file_count: raw.file_count,
         total_size: raw.total_size,
-        total_size_label: crate::util::format::format_bytes_signed(raw.total_size),
     }
 }
 
@@ -192,8 +191,7 @@ fn resolve_album_summary(
 }
 
 /// Resolve a raw release-summary aggregate: derives `storage_state` from
-/// `managed` + this device's `release_local_copy` row and formats
-/// `total_size_label` via `crate::util::format::format_bytes_signed`.
+/// `managed` + this device's `release_local_copy` row.
 /// `has_cloud_home` is read once by the caller and passed down (DI) so
 /// `storage_actions` reflects whether managed storage exists at all.
 /// `resolve_cover` maps the release's own id to its cover identifier.
@@ -218,8 +216,8 @@ fn resolve_release_summary(
 /// Single source of truth for `ReleaseSummary` construction. Both
 /// `resolve_release_summary` (from a SQL-aggregated `DbReleaseSummary`
 /// row) and `resolve_release` (from the fat `DbReleaseDetail` with its
-/// own `files` vec) route through here so the `total_size_label`
-/// formatting and the `storage_actions` derivation stay in one place.
+/// own `files` vec) route through here so the `storage_actions`
+/// derivation stays in one place.
 /// `cover_path` is the release's own cover identifier, resolved by the
 /// caller (which holds the cover existence/version logic).
 fn build_release_summary(
@@ -243,7 +241,6 @@ fn build_release_summary(
         ),
         file_count,
         total_size,
-        total_size_label: crate::util::format::format_bytes_signed(total_size),
         cover_path,
     }
 }
@@ -4484,7 +4481,7 @@ impl LibraryManager {
 
     /// Enqueue releases to pin for offline. Skips ids already in the queue (any
     /// state) or already pinned; for each new one, resolves its title /
-    /// file_count / size_label from its storage summary so the Downloads pane
+    /// file_count / total_size from its storage summary so the Downloads pane
     /// can render the row without a re-query. Spawns the single worker on the
     /// first enqueue, then wakes it. Emits a fresh `DownloadQueueChanged`.
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) {
@@ -4516,7 +4513,7 @@ impl LibraryManager {
                 release_id: release_id.clone(),
                 title: summary.album_title,
                 file_count: summary.file_count,
-                size_label: summary.total_size_label,
+                total_size: summary.total_size,
                 created_at: enqueued_at,
                 state: crate::library::DownloadState::Queued,
             };
