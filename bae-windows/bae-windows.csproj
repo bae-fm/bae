@@ -47,6 +47,10 @@
     -->
     <Platforms>x64</Platforms>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <!-- microsoft.windows.sdk.buildtools.msix ≥ 1.7.20250829.1 auto-includes
+         *.resw files as PRIResource, duplicating our explicit glob below.
+         Disable the default to keep our explicit <PRIResource> in control. -->
+    <EnableDefaultPriItems>false</EnableDefaultPriItems>
   </PropertyGroup>
 
   <ItemGroup>
