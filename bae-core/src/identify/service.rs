@@ -307,8 +307,8 @@ fn dispatch_effect(
                             },
                         );
                     }
-                    Err(message) => {
-                        emit_step(&event_tx, IdentifyEvent::DiscidLookupFailed { message });
+                    Err(failure) => {
+                        emit_step(&event_tx, IdentifyEvent::DiscidLookupFailed { failure });
                     }
                 }
             });

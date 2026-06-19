@@ -8,7 +8,7 @@
 //! Built by [`crate::identify::IdentifyState::toolbar`] and broadcast alongside
 //! each identify-state transition.
 
-use crate::signals::SignalOrigin;
+use crate::signals::{LookupFailure, SignalOrigin};
 
 /// Which kind of signal a badge represents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,8 +40,10 @@ pub enum SignalState {
     /// The signal had no source to run (no disc layout, no artwork) — it never
     /// produced a value to look up.
     Skipped,
-    /// An identity lookup failed.
-    Failed { message: String },
+    /// An identity lookup failed. Carries the typed reason; the UI resolves a
+    /// localized line per variant (and shows the opaque detail for
+    /// `Diagnostic`).
+    Failed { failure: LookupFailure },
     /// A catalog filter confirms `count` of the matched releases (their catno
     /// equals this candidate). `count == 0` renders as muted noise; `> 0`
     /// pinpoints the pressing with an accent check.

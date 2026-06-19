@@ -12,6 +12,7 @@ use crate::import::cover_art::{CoverArtArchiveClient, RemoteCover};
 use crate::import::types::MetadataSource;
 use crate::musicbrainz::{self, DiscIdRelease, ReleaseSearchParams, SearchRelease};
 use crate::retry::retry_with_backoff;
+use crate::signals::LookupFailure;
 use tracing::warn;
 
 /// A unified metadata search result from either MusicBrainz or Discogs.
@@ -341,11 +342,28 @@ pub async fn search_discogs_by_barcode(
         .collect())
 }
 
+/// Map a MusicBrainz wire failure to the typed `LookupFailure` the identify
+/// pipeline carries. The wire-level variants pass through structured (the HTTP
+/// status is preserved); a local/internal MB error becomes opaque `Diagnostic`
+/// detail. `NotFound` never reaches here — callers map it to "no matches"
+/// before this is called.
+fn mb_error_to_lookup_failure(e: musicbrainz::MusicBrainzError) -> LookupFailure {
+    use musicbrainz::MusicBrainzError;
+    match e {
+        MusicBrainzError::Network(_) => LookupFailure::Network,
+        MusicBrainzError::Timeout => LookupFailure::Timeout,
+        MusicBrainzError::Provider { status } => LookupFailure::Provider { status },
+        MusicBrainzError::NotFound(_) | MusicBrainzError::Other(_) => LookupFailure::Diagnostic {
+            detail: e.to_string(),
+        },
+    }
+}
+
 /// Lookup releases by MusicBrainz disc ID.
 pub async fn lookup_by_discid(
     cover_art_archive: &CoverArtArchiveClient,
     discid: &str,
-) -> Result<DiscIdResult, String> {
+) -> Result<DiscIdResult, LookupFailure> {
     let result = retry_with_backoff(3, "MusicBrainz DiscID lookup", || {
         musicbrainz::lookup_by_discid(discid)
     })
@@ -375,7 +393,7 @@ pub async fn lookup_by_discid(
             }
         }
         Err(musicbrainz::MusicBrainzError::NotFound(_)) => Ok(DiscIdResult::NoMatches),
-        Err(e) => Err(format!("DiscID lookup failed: {e}")),
+        Err(e) => Err(mb_error_to_lookup_failure(e)),
     }
 }
 

@@ -119,6 +119,27 @@ comment = "Identify: which barcode is being looked up, of how many."
 args = { position = "Int", total = "Int" }
 value = "Looking up barcode {position} of {total}"
 
+[messages."core.lookup.failure.network"]
+comment = "Metadata lookup failed: couldn't reach the provider (no network response)."
+value = "Couldn't reach the metadata provider"
+
+[messages."core.lookup.failure.provider"]
+comment = "Metadata lookup failed: the provider returned an HTTP error response ({status} is the HTTP status code)."
+args = { status = "Int" }
+value = "The metadata provider returned an error ({status})"
+
+[messages."core.lookup.failure.provider_unknown"]
+comment = "Metadata lookup failed: the provider returned an error with no status code to show. No-status fallback for core.lookup.failure.provider."
+value = "The metadata provider returned an error"
+
+[messages."core.lookup.failure.timeout"]
+comment = "Metadata lookup failed: the request to the provider timed out."
+value = "The metadata provider timed out"
+
+[messages."core.lookup.failure.diagnostic"]
+comment = "Metadata lookup failed for a local reason (the typed variant carries no translated copy). Generic line shown alongside the opaque, log-only detail."
+value = "Couldn't look this up"
+
 [messages."core.queue.uploading"]
 comment = "Storage queue: count currently uploading."
 args = { count = "Int" }
