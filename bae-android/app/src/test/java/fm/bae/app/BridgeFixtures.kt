@@ -46,7 +46,6 @@ object BridgeFixtures {
         label = null,
         catalogNumber = null,
         country = null,
-        compactMetadata = "",
         storageState = BridgeReleaseStorageState.UNMANAGED,
         storageActions = emptyList(),
         tracks = trackGroups.flatMap { it.tracks },
@@ -54,10 +53,9 @@ object BridgeFixtures {
         files = emptyList(),
         imageFiles = emptyList(),
         galleryItems = galleryItems,
-        totalDurationLabel = "",
+        totalDurationMs = 0,
         fileCount = 0,
         totalSize = 0,
-        totalSizeLabel = "",
         coverPath = null,
     )
 

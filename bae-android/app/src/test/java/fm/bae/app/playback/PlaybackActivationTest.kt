@@ -48,7 +48,6 @@ class PlaybackActivationTest {
         albumTitle = "Album Title",
         coverImageId = null,
         durationMs = 210_000uL,
-        durationLabel = "3:30",
     )
 
     @Test

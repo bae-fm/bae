@@ -110,7 +110,6 @@ class UiEventReducerTest {
             albumTitle = "Album Title",
             coverImageId = null,
             durationMs = 1uL,
-            durationLabel = "0:01",
         )
 
         // The player needs the resolved metadata to project a current track during
