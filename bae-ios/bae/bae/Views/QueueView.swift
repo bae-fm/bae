@@ -73,7 +73,8 @@ struct QueueView: View {
             Section {
                 Text(
                     playbackStore.nowPlaying.track == nil
-                        ? "Queue is empty" : "Nothing up next"
+                        ? String(localized: "Queue is empty")
+                        : String(localized: "Nothing up next")
                 )
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .center)

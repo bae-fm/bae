@@ -46,12 +46,17 @@ struct SettingsView: View {
                 Section("Sync") {
                     LabeledContent(
                         "Cloud sync",
-                        value: configStore.config.sync != nil ? "On" : "Local only"
+                        value: configStore.config.sync != nil
+                            ? String(localized: "On")
+                            : String(localized: "Local only")
                     )
                     if configStore.config.sync != nil {
                         if let syncError = configStore.syncError {
-                            LabeledContent("Status", value: "Disconnected")
-                            Text(syncError)
+                            LabeledContent(
+                                "Status",
+                                value: String(localized: "Disconnected")
+                            )
+                            Text(syncError.line)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Button("Reconnect") { sync.triggerSync() }
@@ -60,7 +65,8 @@ struct SettingsView: View {
                             LabeledContent(
                                 "Status",
                                 value: configStore.syncReady
-                                    ? "Synced" : "Syncing\u{2026}"
+                                    ? String(localized: "Synced")
+                                    : String(localized: "Syncing\u{2026}")
                             )
                         }
                     }

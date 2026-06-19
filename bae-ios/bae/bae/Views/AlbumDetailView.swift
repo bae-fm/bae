@@ -183,7 +183,8 @@ struct AlbumDetailView: View {
             HStack(spacing: 8) {
                 ForEach(summary.releaseIds, id: \.self) { id in
                     let label =
-                        libraryStore.releaseDetails[id]?.displayName ?? "Release"
+                        libraryStore.releaseDetails[id]?.displayName
+                        ?? String(localized: "Release")
                     Button {
                         selectedReleaseId = id
                         Task {
@@ -248,8 +249,8 @@ private struct TrackList: View {
                 groupIndex,
                 group in
                 let groupOffset = offsets[groupIndex]
-                if !group.sideLabel.isEmpty {
-                    Text(group.sideLabel)
+                if !group.sideHeaderText.isEmpty {
+                    Text(group.sideHeaderText)
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                         .padding(.top, 12)
@@ -310,7 +311,7 @@ private struct TrackRow: View {
                 // Both stay in the layout tree, toggled by opacity, so swapping
                 // the current row in/out never re-measures the stack.
                 ZStack(alignment: .leading) {
-                    Text(track.positionLabel.isEmpty ? "-" : track.positionLabel)
+                    Text(track.positionText.isEmpty ? "-" : track.positionText)
                         .font(.callout.monospacedDigit())
                         .foregroundStyle(.secondary)
                         .opacity(isCurrent ? 0 : 1)

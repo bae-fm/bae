@@ -23,7 +23,10 @@ pub mod oauth;
 pub mod playback;
 pub mod queue;
 pub mod retry;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+// The signal-extraction machinery (OCR, disc-ID compute) is desktop-only and
+// gated submodule-by-submodule inside `signals`. The module itself stays
+// available on every target for the pure `LookupFailure` type, which the shared
+// metadata-search path (`import::search`) maps provider errors into.
 pub mod signals;
 pub mod storage;
 pub mod sync;

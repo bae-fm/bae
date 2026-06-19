@@ -147,7 +147,10 @@ struct ExpandedNowPlayingView: View {
                 )
                 .foregroundStyle(.secondary)
             }
-            .accessibilityLabel(playbackStore.isMuted ? "Unmute" : "Mute")
+            .accessibilityLabel(
+                playbackStore.isMuted
+                    ? String(localized: "Unmute") : String(localized: "Mute")
+            )
             Slider(
                 value: Binding(
                     get: { dragVolume ?? playbackStore.volume },

@@ -18,23 +18,40 @@
 //! barcodes, narrowing by catalog number); the search UI surfaces the found
 //! signals. Both read the same value.
 
-pub mod barcode;
-pub mod disc_id;
+// `failure` is a pure typed enum with no platform dependencies — it stays
+// available everywhere so the shared metadata-search path can map provider
+// errors into it. The rest is the desktop-only extraction machinery (artwork
+// OCR, disc-ID compute), gated off mobile alongside the import pipeline that
+// drives it.
 pub mod failure;
+pub use failure::LookupFailure;
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod barcode;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod disc_id;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod origin;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod service;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod text;
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use barcode::BarcodeSignal;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use disc_id::DiscIdSignal;
-pub use failure::LookupFailure;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use origin::{SignalOrigin, SourcedValue};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use text::TextSignal;
 
 /// The identifying signals extracted from one candidate's files. Produced by
 /// the extraction pass as a stream of snapshots (signals settle as scanning
 /// and OCR progress) and consumed by the identify pipeline and the search UI.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Signals {
     pub disc_id: DiscIdSignal,

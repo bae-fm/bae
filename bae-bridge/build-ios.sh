@@ -120,6 +120,13 @@ cargo run --bin uniffi-bindgen generate \
     --language swift \
     --out-dir bae-bridge/swift-bindings/
 
+# Generate the Apple localization String Catalog (the `core.*` bridge message
+# keys, 14 locale slots). Staged into the shared dir both Apple builds read; the
+# iOS preBuildScript copies it into bae-ios/bae/bae/Core.xcstrings copy-if-newer,
+# mirroring build-macos.sh.
+echo "Generating localization String Catalog (Apple)..."
+cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-bridge/loc/generated/apple
+
 # Copy the iOS-flavored bindings into the iOS app source tree. The shared
 # `bae-bridge/swift-bindings/` dir is scratch that both this script and
 # build-macos.sh regenerate (with different cargo features — iOS omits the
