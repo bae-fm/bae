@@ -121,6 +121,21 @@ comment = "Storage queue: count waiting to transfer."
 args = { count = "Int" }
 value = "{count} queued"
 
+[messages."core.outbox.bytes_progress"]
+comment = "Storage queue: aggregate bytes uploaded of the total ({done}/{total} are pre-formatted byte counts)."
+args = { done = "Str", total = "Str" }
+value = "{done} of {total}"
+
+[messages."core.outbox.throughput"]
+comment = "Storage queue: upload speed ({rate} is a pre-formatted byte count, e.g. '5.2 MB')."
+args = { rate = "Str" }
+value = "{rate}/s"
+
+[messages."core.outbox.eta"]
+comment = "Storage queue: estimated time remaining ({duration} is a pre-formatted duration)."
+args = { duration = "Str" }
+value = "{duration} remaining"
+
 [messages."core.outbox.pending_deletes"]
 comment = "Storage queue: number of cloud deletes still pending."
 args = { count = "Int" }

@@ -114,20 +114,12 @@ pub struct OutboxSnapshot {
     /// suppresses the throughput display.
     pub paused: bool,
     /// Rolling-window upload throughput in bytes per second. Zero when the
-    /// queue is idle or has been idle long enough for the window to drain.
+    /// queue is idle or has been idle long enough for the window to drain. The
+    /// UI formats it as a localized rate; aggregate bytes come from `total`.
     pub throughput_bps: u64,
-    /// Pre-formatted throughput label, e.g. `"5.2 MB/s"`. Empty when
-    /// `throughput_bps` is zero.
-    pub throughput_label: String,
-    /// Estimated seconds remaining at the current rate. `None` when
-    /// throughput is zero or no bytes remain.
+    /// Estimated seconds remaining at the current rate. `None` when throughput
+    /// is zero or no bytes remain. The UI formats it.
     pub eta_seconds: Option<u64>,
-    /// Pre-formatted ETA label, e.g. `"7s remaining"` / `"2m 14s remaining"`.
-    /// Empty when ETA isn't computable.
-    pub eta_label: String,
-    /// Pre-formatted aggregate progress label, e.g. `"1.2 GB of 14.4 GB"`.
-    /// Empty when there's nothing to upload.
-    pub bytes_label: String,
 }
 
 /// Build the snapshot from the outbox rows, the in-flight upload map (file_id →
@@ -221,24 +213,12 @@ pub(crate) async fn build_outbox_snapshot(
     } else {
         throughput.bytes_per_sec()
     };
-    let throughput_label = crate::util::format::format_speed(throughput_bps);
     let bytes_remaining = total.bytes_total.saturating_sub(total.bytes_done);
     let eta_seconds = if paused || throughput_bps == 0 || bytes_remaining == 0 {
         None
     } else {
         Some(bytes_remaining / throughput_bps)
     };
-    let eta_label = format_eta_label(eta_seconds);
-    let bytes_label = if total.bytes_total == 0 {
-        String::new()
-    } else {
-        format!(
-            "{} of {}",
-            crate::util::format::format_bytes(total.bytes_done),
-            crate::util::format::format_bytes(total.bytes_total),
-        )
-    };
-
     Ok(OutboxSnapshot {
         uploads,
         deletes,
@@ -247,30 +227,8 @@ pub(crate) async fn build_outbox_snapshot(
         pending_deletes,
         paused,
         throughput_bps,
-        throughput_label,
         eta_seconds,
-        eta_label,
-        bytes_label,
     })
-}
-
-/// Pre-format an ETA as `"7s remaining"` / `"2m 14s remaining"` /
-/// `"1h 5m remaining"`. Empty when `None`.
-fn format_eta_label(eta_seconds: Option<u64>) -> String {
-    let Some(seconds) = eta_seconds else {
-        return String::new();
-    };
-    if seconds < 60 {
-        return format!("{seconds}s remaining");
-    }
-    let minutes = seconds / 60;
-    let secs = seconds % 60;
-    if minutes < 60 {
-        return format!("{minutes}m {secs}s remaining");
-    }
-    let hours = minutes / 60;
-    let mins = minutes % 60;
-    format!("{hours}h {mins}m remaining")
 }
 
 #[cfg(test)]

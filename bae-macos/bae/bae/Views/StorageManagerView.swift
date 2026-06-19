@@ -485,20 +485,20 @@ private struct OutboxMasterProgress: View {
                 // active otherwise.
                 .opacity(snapshot.paused ? 0.4 : 1)
             HStack(spacing: 8) {
-                Text(snapshot.bytesLabel)
+                Text(snapshot.bytesProgressText)
                     .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
-                if !snapshot.throughputLabel.isEmpty {
+                if !snapshot.throughputText.isEmpty {
                     Text("·").foregroundStyle(.tertiary)
-                    Text(snapshot.throughputLabel)
+                    Text(snapshot.throughputText)
                         .font(.caption)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
-                if !snapshot.etaLabel.isEmpty {
+                if !snapshot.etaText.isEmpty {
                     Text("·").foregroundStyle(.tertiary)
-                    Text(snapshot.etaLabel)
+                    Text(snapshot.etaText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -202,6 +202,9 @@ mod queue_summary_tests {
             "core.queue.failed",
             "core.queue.queued",
             "core.outbox.pending_deletes",
+            "core.outbox.bytes_progress",
+            "core.outbox.throughput",
+            "core.outbox.eta",
         ] {
             assert!(cat.messages.contains_key(key), "catalog missing `{key}`");
         }
@@ -1615,17 +1618,10 @@ pub struct BridgeOutboxSnapshot {
     /// True when the user has paused the upload pipeline. Drives the
     /// pause/resume toggle and suppresses throughput/ETA in the UI.
     pub paused: bool,
-    /// Rolling-window upload throughput in bytes per second.
+    /// Rolling-window upload throughput in bytes per second. The UI formats it.
     pub throughput_bps: u64,
-    /// Pre-formatted throughput label, e.g. `"5.2 MB/s"`. Empty when idle.
-    pub throughput_label: String,
-    /// Estimated seconds remaining at the current rate.
+    /// Estimated seconds remaining at the current rate. The UI formats it.
     pub eta_seconds: Option<u64>,
-    /// Pre-formatted ETA, e.g. `"2m 14s remaining"`. Empty when not computable.
-    pub eta_label: String,
-    /// Pre-formatted bytes-done/total label, e.g. `"1.2 GB of 14.4 GB"`.
-    /// Empty when there's nothing to upload.
-    pub bytes_label: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
