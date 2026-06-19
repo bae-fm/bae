@@ -299,7 +299,12 @@ private struct TrackRow: View {
         // Tapping the current track toggles play/pause; any other track plays
         // the release from there.
         Button {
-            if isCurrent { playback.togglePlayPause() } else { onPlay() }
+            if isCurrent {
+                playback.togglePlayPause()
+            }
+            else {
+                onPlay()
+            }
         } label: {
             HStack(spacing: 12) {
                 // Both stay in the layout tree, toggled by opacity, so swapping

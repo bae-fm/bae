@@ -37,7 +37,8 @@ class QRScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsD
         let input: AVCaptureDeviceInput
         do {
             input = try AVCaptureDeviceInput(device: device)
-        } catch {
+        }
+        catch {
             onError?("Could not create camera input: \(error.localizedDescription)")
             return
         }
@@ -64,9 +65,10 @@ class QRScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsD
 
         captureSession = session
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            session.startRunning()
-        }
+        DispatchQueue.global(qos: .userInitiated)
+            .async {
+                session.startRunning()
+            }
     }
 
     override func viewDidLayoutSubviews() {

@@ -28,7 +28,9 @@ struct SearchResultsView: View {
                     if !results.albums.isEmpty {
                         Section("Albums") {
                             ForEach(results.albums) { album in
-                                Button { onSelect(album.id) } label: {
+                                Button {
+                                    onSelect(album.id)
+                                } label: {
                                     AlbumResultRow(
                                         album: album,
                                         coverPath: mediaPaths.imagePathIfExists(
@@ -43,7 +45,9 @@ struct SearchResultsView: View {
                     if !results.tracks.isEmpty {
                         Section("Tracks") {
                             ForEach(results.tracks) { track in
-                                Button { onSelect(track.albumId) } label: {
+                                Button {
+                                    onSelect(track.albumId)
+                                } label: {
                                     TrackResultRow(track: track)
                                 }
                                 .buttonStyle(.plain)

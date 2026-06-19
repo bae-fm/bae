@@ -82,7 +82,7 @@ final class AppSessionHolder {
 
     /// Re-open the locked library after UnlockView has stored the key.
     func retryUnlock() {
-        guard case let .unlock(lockedLibrary) = screen else {
+        guard case .unlock(let lockedLibrary) = screen else {
             preconditionFailure("retryUnlock called while screen is \(screen)")
         }
         openLibrary(lockedLibrary.library)
@@ -135,12 +135,14 @@ final class AppSessionHolder {
                 // only strong reference is the teardown — ARC runs the Rust
                 // destructor, freeing the tokio runtime + DB before an unlock
                 // retry spins a second `initApp` on the same library.
-                var handle: AppHandle? = try await Task.detached {
-                    try initApp(
-                        libraryId: library.id,
-                        positionUpdateIntervalMs: positionUpdateIntervalMs
-                    )
-                }.value
+                var handle: AppHandle? =
+                    try await Task.detached {
+                        try initApp(
+                            libraryId: library.id,
+                            positionUpdateIntervalMs: positionUpdateIntervalMs
+                        )
+                    }
+                    .value
                 // A newer openLibrary may have superseded us while initApp ran
                 // (cancelling this task). Bail before touching screen/appService
                 // so the stale open can't clobber the current one; `handle` drops

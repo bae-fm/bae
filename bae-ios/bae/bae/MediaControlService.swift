@@ -109,10 +109,11 @@ final class MediaControlService: @unchecked Sendable {
             return
         }
         do {
-            try AVAudioSession.sharedInstance().setActive(
-                false,
-                options: .notifyOthersOnDeactivation
-            )
+            try AVAudioSession.sharedInstance()
+                .setActive(
+                    false,
+                    options: .notifyOthersOnDeactivation
+                )
             sessionActivated = false
         }
         catch {
@@ -185,8 +186,8 @@ final class MediaControlService: @unchecked Sendable {
             activateSession()
             let shouldResume =
                 (info[AVAudioSessionInterruptionOptionKey] as? UInt)
-                    .map(AVAudioSession.InterruptionOptions.init(rawValue:))?
-                    .contains(.shouldResume) ?? false
+                .map(AVAudioSession.InterruptionOptions.init(rawValue:))?
+                .contains(.shouldResume) ?? false
             if pausedForInterruption, shouldResume {
                 playback?.resume()
             }
@@ -343,9 +344,11 @@ final class MediaControlService: @unchecked Sendable {
         }
         // Strip the `#v=<mtime>` cache-busting suffix before opening the file.
         let path = MediaPaths.fileSystemPath(of: identifier)
-        let image: UIImage? = await Task.detached(priority: .userInitiated) {
-            UIImage(contentsOfFile: path)
-        }.value
+        let image: UIImage? =
+            await Task.detached(priority: .userInitiated) {
+                UIImage(contentsOfFile: path)
+            }
+            .value
         guard !Task.isCancelled, let image else {
             return
         }
