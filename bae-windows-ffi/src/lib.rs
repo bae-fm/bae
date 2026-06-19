@@ -16,6 +16,11 @@ use bae_core::db::{AlbumSortCriterion, AlbumSortField, SortDirection};
 use bae_core::ui::UiBusEvent;
 use serde::{Deserialize, Serialize};
 
+fn format_minutes_seconds(ms: u64) -> String {
+    let total_seconds = ms / 1000;
+    format!("{}:{:02}", total_seconds / 60, total_seconds % 60)
+}
+
 /// Opaque app handle. Created by [`bae_init`], passed back to every call, freed
 /// with [`bae_handle_free`].
 pub struct BaeHandle(RunningApp);
@@ -1523,7 +1528,7 @@ pub unsafe extern "C" fn bae_album_detail(
                     position: track.position_label.clone(),
                     duration: track
                         .duration_ms
-                        .map(|ms| bae_core::util::format::format_minutes_seconds(ms as u64))
+                        .map(|ms| format_minutes_seconds(ms as u64))
                         .unwrap_or_default(),
                     artist: track.artist_names.clone(),
                 })
@@ -1858,7 +1863,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             artist: artist_names.clone(),
             album_title: album_title.clone(),
             cover_image_id: cover_image_id.clone(),
-            duration_label: bae_core::util::format::format_minutes_seconds(*duration_ms),
+            duration_label: format_minutes_seconds(*duration_ms),
         },
         UiBusEvent::PlaybackPaused {
             track_id,
@@ -1876,15 +1881,15 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             artist: artist_names.clone(),
             album_title: album_title.clone(),
             cover_image_id: cover_image_id.clone(),
-            duration_label: bae_core::util::format::format_minutes_seconds(*duration_ms),
+            duration_label: format_minutes_seconds(*duration_ms),
         },
         UiBusEvent::PlaybackStopped => FfiEvent::PlaybackStopped,
         UiBusEvent::PlaybackLoading { .. } => FfiEvent::PlaybackLoading,
         UiBusEvent::PreviewProgress { position_ms, .. } => FfiEvent::PreviewProgress {
-            elapsed: bae_core::util::format::format_minutes_seconds(*position_ms),
+            elapsed: format_minutes_seconds(*position_ms),
         },
         UiBusEvent::PreviewPlaying { duration_ms, .. } => FfiEvent::PreviewPlaying {
-            duration_label: bae_core::util::format::format_minutes_seconds(*duration_ms),
+            duration_label: format_minutes_seconds(*duration_ms),
         },
         UiBusEvent::PreviewIdle => FfiEvent::PreviewIdle,
         UiBusEvent::PlaybackError { message } => FfiEvent::PlaybackError {
@@ -1906,10 +1911,8 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             ..
         } => FfiEvent::PlaybackProgress {
             progress: *progress,
-            elapsed: bae_core::util::format::format_minutes_seconds(*position_ms),
-            remaining: bae_core::util::format::format_minutes_seconds(
-                duration_ms.saturating_sub(*position_ms),
-            ),
+            elapsed: format_minutes_seconds(*position_ms),
+            remaining: format_minutes_seconds(duration_ms.saturating_sub(*position_ms)),
         },
         UiBusEvent::AlbumAdded { .. }
         | UiBusEvent::AlbumUpdated { .. }
@@ -1930,7 +1933,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
                     artist: item.artist_names.clone(),
                     duration: item
                         .duration_ms
-                        .map(|ms| bae_core::util::format::format_minutes_seconds(ms as u64))
+                        .map(|ms| format_minutes_seconds(ms as u64))
                         .unwrap_or_default(),
                     album_title: item.album_title.clone(),
                     cover_image_id: item.cover_image_id.clone(),

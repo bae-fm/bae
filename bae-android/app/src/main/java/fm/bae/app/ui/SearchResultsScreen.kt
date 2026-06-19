@@ -1,6 +1,7 @@
 package fm.bae.app.ui
 
 import androidx.compose.foundation.clickable
+import fm.bae.app.formatDurationMs
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -208,10 +209,11 @@ private fun TrackResultRow(
                 maxLines = 1,
             )
         }
-        if (track.durationLabel.isNotEmpty()) {
+        val durationLabel = formatDurationMs(track.durationMs)
+        if (durationLabel.isNotEmpty()) {
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = track.durationLabel,
+                text = durationLabel,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -67,8 +67,6 @@ object UiEventReducer {
                     positionMs = event.positionMs.toLong(),
                     durationMs = event.durationMs.toLong(),
                     progress = event.progress,
-                    elapsedLabel = event.elapsedLabel,
-                    remainingLabel = event.remainingLabel,
                 )
             is BridgeUiEvent.RepeatModeChanged -> player.onRepeatModeChanged(event.mode)
             is BridgeUiEvent.QueueUpdated ->

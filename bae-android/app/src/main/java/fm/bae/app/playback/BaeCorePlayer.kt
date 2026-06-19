@@ -1,5 +1,8 @@
 package fm.bae.app.playback
 
+import fm.bae.app.formatDurationMs
+import fm.bae.app.formatRemainingMs
+
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -91,8 +94,6 @@ interface PlaybackEventSink {
         positionMs: Long,
         durationMs: Long,
         progress: Double,
-        elapsedLabel: String,
-        remainingLabel: String,
     )
     fun onRepeatModeChanged(mode: BridgeRepeatMode)
     fun onQueueUpdated(items: List<BridgeQueueItem>, hasNext: Boolean, hasPrevious: Boolean)
@@ -474,14 +475,12 @@ class BaeCorePlayer(
         positionMs: Long,
         durationMs: Long,
         progress: Double,
-        elapsedLabel: String,
-        remainingLabel: String,
     ) {
         anchorPositionMs = positionMs
         this.durationMs = durationOrUnset(durationMs)
         this.progress = progress
-        this.elapsedLabel = elapsedLabel
-        this.remainingLabel = remainingLabel
+        this.elapsedLabel = formatDurationMs(positionMs)
+        this.remainingLabel = formatRemainingMs(positionMs, durationMs)
         publish()
     }
 
@@ -557,7 +556,7 @@ class BaeCorePlayer(
             title = title,
             artist = artistNames,
             albumTitle = albumTitle,
-            durationLabel = durationLabel,
+            durationLabel = formatDurationMs(durationMs),
             coverPath = coverImageId?.let { library.imagePathIfExists(it) },
         )
 

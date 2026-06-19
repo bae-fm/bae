@@ -41,8 +41,6 @@ class UiEventReducerTest {
             positionMs: Long,
             durationMs: Long,
             progress: Double,
-            elapsedLabel: String,
-            remainingLabel: String,
         ) {}
         override fun onRepeatModeChanged(mode: BridgeRepeatMode) {}
         override fun onQueueUpdated(items: List<BridgeQueueItem>, hasNext: Boolean, hasPrevious: Boolean) {}

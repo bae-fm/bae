@@ -1,6 +1,7 @@
 package fm.bae.app.ui
 
 import android.util.Log
+import fm.bae.app.formatDurationMs
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -305,10 +306,14 @@ private fun AlbumDetailContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    if (selectedRelease != null && selectedRelease.compactMetadata.isNotEmpty()) {
+                    val compactMeta = selectedRelease?.let {
+                        listOfNotNull(it.year?.toString(), it.format, it.label, it.catalogNumber, it.country)
+                            .joinToString(" · ")
+                    }.orEmpty()
+                    if (selectedRelease != null && compactMeta.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = selectedRelease.compactMetadata,
+                            text = compactMeta,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -398,7 +403,7 @@ private fun AlbumDetailContent(
                         positionLabel = track.positionLabel,
                         title = track.title,
                         artistNames = if (isCompilation) track.artistNames else null,
-                        durationLabel = track.durationLabel,
+                        durationLabel = formatDurationMs(track.durationMs),
                         isCurrent = isCurrent,
                         isPlaying = isPlaying,
                         // Tapping the current track toggles play/pause; any other
@@ -417,10 +422,11 @@ private fun AlbumDetailContent(
                 runningIndex += group.tracks.size
             }
 
-            if (selectedRelease.totalDurationLabel.isNotEmpty()) {
+            val totalDurationLabel = formatDurationMs(selectedRelease.totalDurationMs)
+            if (totalDurationLabel.isNotEmpty()) {
                 item {
                     Text(
-                        text = selectedRelease.totalDurationLabel,
+                        text = totalDurationLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp),
