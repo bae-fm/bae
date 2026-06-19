@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Jeffijoe.MessageFormat;
 using Microsoft.Windows.ApplicationModel.Resources;
 
