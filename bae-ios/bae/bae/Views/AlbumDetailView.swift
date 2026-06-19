@@ -267,8 +267,8 @@ private struct TrackList: View {
                     )
                 }
             }
-            if !detail.totalDurationLabel.isEmpty {
-                Text(detail.totalDurationLabel)
+            if !detail.totalDurationText.isEmpty {
+                Text(detail.totalDurationText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.top, 12)
