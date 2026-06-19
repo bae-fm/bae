@@ -107,7 +107,7 @@ fn emit_target(args: &Args, catalog: &Catalog) -> Result<(), String> {
             "Core.xcstrings",
             emit::apple_xcstrings(catalog, SOURCE_LANGUAGE)?,
         ),
-        "android" => emit::android_resource_files(catalog)
+        "android" => emit::android_resource_files(catalog, SOURCE_LANGUAGE)
             .into_iter()
             .map(|(rel, contents)| (PathBuf::from(rel), contents))
             .collect(),

@@ -8,27 +8,117 @@
 comment = "Import edit: the album title field is blank."
 value = "Album title is required"
 
+[messages."core.import.validation.empty_album_title".translations]
+es = "El título del álbum es obligatorio"
+fr = "Le titre de l'album est obligatoire"
+de = "Albumtitel ist erforderlich"
+pt-BR = "O título do álbum é obrigatório"
+ja = "アルバムタイトルは必須です"
+zh-Hans = "必须填写专辑标题"
+ar = "عنوان الألبوم مطلوب"
+he = "יש להזין כותרת אלבום"
+uk = "Потрібна назва альбому"
+bg = "Необходимо е заглавие на албума"
+pl = "Tytuł albumu jest wymagany"
+cs = "Název alba je povinný"
+hr = "Naslov albuma je obavezan"
+
 [messages."core.import.validation.no_album_artist"]
 comment = "Import edit: no album artist was entered."
 value = "Album must have at least one artist"
 
+[messages."core.import.validation.no_album_artist".translations]
+es = "El álbum debe tener al menos un artista"
+fr = "L'album doit avoir au moins un artiste"
+de = "Das Album muss mindestens einen Interpreten haben"
+pt-BR = "O álbum precisa ter pelo menos um artista"
+ja = "アルバムには少なくとも1人のアーティストが必要です"
+zh-Hans = "专辑必须至少有一位艺术家"
+ar = "يجب أن يحتوي الألبوم على فنان واحد على الأقل"
+he = "לאלבום חייב להיות לפחות אמן אחד"
+uk = "Альбом повинен мати принаймні одного виконавця"
+bg = "Албумът трябва да има поне един изпълнител"
+pl = "Album musi mieć co najmniej jednego wykonawcę"
+cs = "Album musí mít alespoň jednoho interpreta"
+hr = "Album mora imati barem jednog izvođača"
+
 [messages."core.import.validation.invalid_year"]
 comment = "Import edit: the year field is not a number."
 value = "Year must be a number"
+
+[messages."core.import.validation.invalid_year".translations]
+es = "El año debe ser un número"
+fr = "L'année doit être un nombre"
+de = "Das Jahr muss eine Zahl sein"
+pt-BR = "O ano deve ser um número"
+ja = "年は数字で入力してください"
+zh-Hans = "年份必须为数字"
+ar = "يجب أن تكون السنة رقمًا"
+he = "השנה חייבת להיות מספר"
+uk = "Рік має бути числом"
+bg = "Годината трябва да е число"
+pl = "Rok musi być liczbą"
+cs = "Rok musí být číslo"
+hr = "Godina mora biti broj"
 
 [messages."core.import.invalid.corrupt_audio"]
 comment = "Import scan: a folder's audio file is corrupt or zero-byte ({path} is the file path)."
 args = { path = "Str" }
 value = "corrupt or zero-byte audio file: {path}"
 
+[messages."core.import.invalid.corrupt_audio".translations]
+es = "archivo de audio dañado o de cero bytes: {path}"
+fr = "fichier audio corrompu ou vide : {path}"
+de = "beschädigte oder leere Audiodatei: {path}"
+pt-BR = "arquivo de áudio corrompido ou vazio: {path}"
+ja = "破損または0バイトのオーディオファイル：{path}"
+zh-Hans = "损坏或零字节的音频文件：{path}"
+ar = "ملف صوتي تالف أو فارغ: {path}"
+he = "קובץ שמע פגום או ריק: {path}"
+uk = "пошкоджений або порожній аудіофайл: {path}"
+bg = "повреден или празен аудиофайл: {path}"
+pl = "uszkodzony lub pusty plik dźwiękowy: {path}"
+cs = "poškozený nebo prázdný zvukový soubor: {path}"
+hr = "oštećena ili prazna zvučna datoteka: {path}"
+
 [messages."core.import.invalid.corrupt_image"]
 comment = "Import scan: a folder's image is corrupt or zero-byte ({path} is the file path)."
 args = { path = "Str" }
 value = "corrupt or zero-byte image: {path}"
 
+[messages."core.import.invalid.corrupt_image".translations]
+es = "imagen dañada o de cero bytes: {path}"
+fr = "image corrompue ou vide : {path}"
+de = "beschädigtes oder leeres Bild: {path}"
+pt-BR = "imagem corrompida ou vazia: {path}"
+ja = "破損または0バイトの画像：{path}"
+zh-Hans = "损坏或零字节的图片：{path}"
+ar = "صورة تالفة أو فارغة: {path}"
+he = "תמונה פגומה או ריקה: {path}"
+uk = "пошкоджене або порожнє зображення: {path}"
+bg = "повредено или празно изображение: {path}"
+pl = "uszkodzony lub pusty obraz: {path}"
+cs = "poškozený nebo prázdný obrázek: {path}"
+hr = "oštećena ili prazna slika: {path}"
+
 [messages."core.import.invalid.cue_missing_audio"]
 comment = "Import scan: a CUE sheet references an audio file that isn't present."
 value = "CUE references a missing audio file"
+
+[messages."core.import.invalid.cue_missing_audio".translations]
+es = "el CUE hace referencia a un archivo de audio que falta"
+fr = "le CUE référence un fichier audio manquant"
+de = "Das CUE verweist auf eine fehlende Audiodatei"
+pt-BR = "o CUE faz referência a um arquivo de áudio ausente"
+ja = "CUEシートが存在しないオーディオファイルを参照しています"
+zh-Hans = "CUE 引用了缺失的音频文件"
+ar = "يشير ملف CUE إلى ملف صوتي مفقود"
+he = "גיליון CUE מפנה לקובץ שמע חסר"
+uk = "CUE посилається на відсутній аудіофайл"
+bg = "CUE препраща към липсващ аудиофайл"
+pl = "CUE odwołuje się do brakującego pliku dźwiękowego"
+cs = "CUE odkazuje na chybějící zvukový soubor"
+hr = "CUE upućuje na nedostajuću zvučnu datoteku"
 
 [messages."core.import.invalid.no_valid_audio"]
 comment = "Import scan: the folder has no usable audio files."
@@ -37,202 +127,910 @@ value = "no valid audio files"
 # Generic per-category error lines. The UI shows one of these for a diagnostic
 # failure; the underlying Rust error chain travels separately as opaque,
 # log-only `detail` (a copyable disclosure), never translated.
+
+[messages."core.import.invalid.no_valid_audio".translations]
+es = "no hay archivos de audio válidos"
+fr = "aucun fichier audio valide"
+de = "keine gültigen Audiodateien"
+pt-BR = "nenhum arquivo de áudio válido"
+ja = "有効なオーディオファイルがありません"
+zh-Hans = "没有有效的音频文件"
+ar = "لا توجد ملفات صوتية صالحة"
+he = "אין קובצי שמע תקינים"
+uk = "немає придатних аудіофайлів"
+bg = "няма валидни аудиофайлове"
+pl = "brak prawidłowych plików dźwiękowych"
+cs = "žádné platné zvukové soubory"
+hr = "nema valjanih zvučnih datoteka"
+
 [messages."core.error.category.database"]
 comment = "Generic error line: a database operation failed."
 value = "Something went wrong reading your library."
+
+[messages."core.error.category.database".translations]
+es = "Algo salió mal al leer tu biblioteca."
+fr = "Une erreur s'est produite lors de la lecture de votre bibliothèque."
+de = "Beim Lesen deiner Bibliothek ist etwas schiefgelaufen."
+pt-BR = "Algo deu errado ao ler sua biblioteca."
+ja = "ライブラリの読み込み中に問題が発生しました。"
+zh-Hans = "读取媒体库时出现问题。"
+ar = "حدث خطأ أثناء قراءة مكتبتك."
+he = "משהו השתבש בקריאת הספרייה שלך."
+uk = "Під час читання вашої бібліотеки сталася помилка."
+bg = "Възникна проблем при четенето на вашата библиотека."
+pl = "Coś poszło nie tak podczas odczytu biblioteki."
+cs = "Při čtení vaší knihovny došlo k chybě."
+hr = "Nešto je pošlo po zlu pri čitanju vaše biblioteke."
 
 [messages."core.error.category.config"]
 comment = "Generic error line: a configuration or settings operation failed."
 value = "Something went wrong with your settings."
 
+[messages."core.error.category.config".translations]
+es = "Algo salió mal con tu configuración."
+fr = "Une erreur s'est produite avec vos paramètres."
+de = "Mit deinen Einstellungen ist etwas schiefgelaufen."
+pt-BR = "Algo deu errado com suas configurações."
+ja = "設定の処理中に問題が発生しました。"
+zh-Hans = "处理设置时出现问题。"
+ar = "حدث خطأ في إعداداتك."
+he = "משהו השתבש בהגדרות שלך."
+uk = "Із вашими налаштуваннями сталася помилка."
+bg = "Възникна проблем с вашите настройки."
+pl = "Coś poszło nie tak z ustawieniami."
+cs = "S vaším nastavením došlo k chybě."
+hr = "Nešto je pošlo po zlu s vašim postavkama."
+
 [messages."core.error.category.internal"]
 comment = "Generic error line: an unexpected internal failure."
 value = "Something went wrong."
 
+[messages."core.error.category.internal".translations]
+es = "Algo salió mal."
+fr = "Une erreur s'est produite."
+de = "Etwas ist schiefgelaufen."
+pt-BR = "Algo deu errado."
+ja = "問題が発生しました。"
+zh-Hans = "出现了问题。"
+ar = "حدث خطأ ما."
+he = "משהו השתבש."
+uk = "Сталася помилка."
+bg = "Възникна проблем."
+pl = "Coś poszło nie tak."
+cs = "Došlo k chybě."
+hr = "Nešto je pošlo po zlu."
+
 [messages."core.error.category.import"]
 comment = "Generic error line: importing a release failed."
 value = "The import couldn't be completed."
+
+[messages."core.error.category.import".translations]
+es = "No se pudo completar la importación."
+fr = "L'importation n'a pas pu être effectuée."
+de = "Der Import konnte nicht abgeschlossen werden."
+pt-BR = "Não foi possível concluir a importação."
+ja = "インポートを完了できませんでした。"
+zh-Hans = "无法完成导入。"
+ar = "تعذّر إكمال الاستيراد."
+he = "לא ניתן היה להשלים את הייבוא."
+uk = "Не вдалося завершити імпорт."
+bg = "Импортирането не можа да бъде завършено."
+pl = "Nie udało się ukończyć importu."
+cs = "Import se nepodařilo dokončit."
+hr = "Uvoz nije bilo moguće dovršiti."
 
 [messages."core.error.category.export"]
 comment = "Generic error line: exporting failed."
 value = "The export couldn't be completed."
 
 # "… not found" lines, keyed by the missing entity.
+
+[messages."core.error.category.export".translations]
+es = "No se pudo completar la exportación."
+fr = "L'exportation n'a pas pu être effectuée."
+de = "Der Export konnte nicht abgeschlossen werden."
+pt-BR = "Não foi possível concluir a exportação."
+ja = "エクスポートを完了できませんでした。"
+zh-Hans = "无法完成导出。"
+ar = "تعذّر إكمال التصدير."
+he = "לא ניתן היה להשלים את הייצוא."
+uk = "Не вдалося завершити експорт."
+bg = "Експортирането не можа да бъде завършено."
+pl = "Nie udało się ukończyć eksportu."
+cs = "Export se nepodařilo dokončit."
+hr = "Izvoz nije bilo moguće dovršiti."
+
 [messages."core.error.not_found.library"]
 comment = "Error line: the requested library no longer exists."
 value = "That library could not be found."
+
+[messages."core.error.not_found.library".translations]
+es = "No se pudo encontrar esa biblioteca."
+fr = "Cette bibliothèque est introuvable."
+de = "Diese Bibliothek wurde nicht gefunden."
+pt-BR = "Não foi possível encontrar essa biblioteca."
+ja = "そのライブラリが見つかりませんでした。"
+zh-Hans = "找不到该媒体库。"
+ar = "تعذّر العثور على تلك المكتبة."
+he = "לא ניתן היה למצוא את הספרייה הזו."
+uk = "Цю бібліотеку не вдалося знайти."
+bg = "Тази библиотека не може да бъде намерена."
+pl = "Nie znaleziono tej biblioteki."
+cs = "Tuto knihovnu se nepodařilo najít."
+hr = "Tu biblioteku nije moguće pronaći."
 
 [messages."core.error.not_found.album"]
 comment = "Error line: the requested album no longer exists."
 value = "That album could not be found."
 
+[messages."core.error.not_found.album".translations]
+es = "No se pudo encontrar ese álbum."
+fr = "Cet album est introuvable."
+de = "Dieses Album wurde nicht gefunden."
+pt-BR = "Não foi possível encontrar esse álbum."
+ja = "そのアルバムが見つかりませんでした。"
+zh-Hans = "找不到该专辑。"
+ar = "تعذّر العثور على ذلك الألبوم."
+he = "לא ניתן היה למצוא את האלבום הזה."
+uk = "Цей альбом не вдалося знайти."
+bg = "Този албум не може да бъде намерен."
+pl = "Nie znaleziono tego albumu."
+cs = "Toto album se nepodařilo najít."
+hr = "Taj album nije moguće pronaći."
+
 [messages."core.error.not_found.release"]
 comment = "Error line: the requested release no longer exists."
 value = "That release could not be found."
 
+[messages."core.error.not_found.release".translations]
+es = "No se pudo encontrar esa edición."
+fr = "Cette édition est introuvable."
+de = "Diese Veröffentlichung wurde nicht gefunden."
+pt-BR = "Não foi possível encontrar essa edição."
+ja = "そのリリースが見つかりませんでした。"
+zh-Hans = "找不到该发行版。"
+ar = "تعذّر العثور على ذلك الإصدار."
+he = "לא ניתן היה למצוא את ההוצאה הזו."
+uk = "Це видання не вдалося знайти."
+bg = "Това издание не може да бъде намерено."
+pl = "Nie znaleziono tego wydania."
+cs = "Toto vydání se nepodařilo najít."
+hr = "To izdanje nije moguće pronaći."
+
 [messages."core.error.not_found.track"]
 comment = "Error line: the requested track no longer exists."
 value = "That track could not be found."
+
+[messages."core.error.not_found.track".translations]
+es = "No se pudo encontrar esa pista."
+fr = "Cette piste est introuvable."
+de = "Dieser Titel wurde nicht gefunden."
+pt-BR = "Não foi possível encontrar essa faixa."
+ja = "そのトラックが見つかりませんでした。"
+zh-Hans = "找不到该曲目。"
+ar = "تعذّر العثور على ذلك المقطع."
+he = "לא ניתן היה למצוא את הרצועה הזו."
+uk = "Цю доріжку не вдалося знайти."
+bg = "Този запис не може да бъде намерен."
+pl = "Nie znaleziono tej ścieżki."
+cs = "Tuto skladbu se nepodařilo najít."
+hr = "Tu pjesmu nije moguće pronaći."
 
 [messages."core.error.not_found.file"]
 comment = "Error line: the requested file no longer exists."
 value = "That file could not be found."
 
 # Actionable playback failures: the user can do something to fix these.
+
+[messages."core.error.not_found.file".translations]
+es = "No se pudo encontrar ese archivo."
+fr = "Ce fichier est introuvable."
+de = "Diese Datei wurde nicht gefunden."
+pt-BR = "Não foi possível encontrar esse arquivo."
+ja = "そのファイルが見つかりませんでした。"
+zh-Hans = "找不到该文件。"
+ar = "تعذّر العثور على ذلك الملف."
+he = "לא ניתן היה למצוא את הקובץ הזה."
+uk = "Цей файл не вдалося знайти."
+bg = "Този файл не може да бъде намерен."
+pl = "Nie znaleziono tego pliku."
+cs = "Tento soubor se nepodařilo najít."
+hr = "Tu datoteku nije moguće pronaći."
+
 [messages."core.playback.error.sync_disconnected"]
 comment = "Playback error: a cloud-only track isn't downloaded and sync is offline."
 value = "Reconnect to play this release — it isn't downloaded to this device yet."
+
+[messages."core.playback.error.sync_disconnected".translations]
+es = "Vuelve a conectarte para reproducir esta edición: aún no se ha descargado en este dispositivo."
+fr = "Reconnectez-vous pour lire cette édition — elle n'est pas encore téléchargée sur cet appareil."
+de = "Stelle die Verbindung wieder her, um diese Veröffentlichung abzuspielen — sie ist noch nicht auf dieses Gerät heruntergeladen."
+pt-BR = "Reconecte-se para reproduzir esta edição — ela ainda não foi baixada neste dispositivo."
+ja = "このリリースを再生するには再接続してください。まだこのデバイスにダウンロードされていません。"
+zh-Hans = "请重新连接以播放此发行版——它尚未下载到此设备。"
+ar = "أعد الاتصال لتشغيل هذا الإصدار — لم يُنزَّل إلى هذا الجهاز بعد."
+he = "התחבר מחדש כדי לנגן את ההוצאה הזו — היא עדיין לא הורדה למכשיר הזה."
+uk = "Підключіться знову, щоб відтворити це видання — воно ще не завантажене на цей пристрій."
+bg = "Свържете се отново, за да възпроизведете това издание — то още не е изтеглено на това устройство."
+pl = "Połącz się ponownie, aby odtworzyć to wydanie — nie zostało jeszcze pobrane na to urządzenie."
+cs = "Pro přehrání tohoto vydání se znovu připojte — ještě není staženo do tohoto zařízení."
+hr = "Ponovno se povežite za reprodukciju ovog izdanja — još nije preuzeto na ovaj uređaj."
 
 [messages."core.playback.error.upload_pending"]
 comment = "Playback error: a track's cloud upload is still queued."
 value = "This release is still uploading — try again when it finishes."
 
+[messages."core.playback.error.upload_pending".translations]
+es = "Esta edición todavía se está subiendo: inténtalo de nuevo cuando termine."
+fr = "Cette édition est encore en cours d'envoi — réessayez une fois terminé."
+de = "Diese Veröffentlichung wird noch hochgeladen — versuche es erneut, wenn sie fertig ist."
+pt-BR = "Esta edição ainda está sendo enviada — tente novamente quando terminar."
+ja = "このリリースはまだアップロード中です。完了してからもう一度お試しください。"
+zh-Hans = "此发行版仍在上传中——完成后请重试。"
+ar = "لا يزال هذا الإصدار قيد الرفع — أعد المحاولة عند انتهائه."
+he = "ההוצאה הזו עדיין מועלית — נסה שוב כשהיא תסתיים."
+uk = "Це видання ще вивантажується — спробуйте знову, коли завершиться."
+bg = "Това издание още се качва — опитайте отново, когато приключи."
+pl = "To wydanie jest jeszcze przesyłane — spróbuj ponownie po zakończeniu."
+cs = "Toto vydání se ještě nahrává — zkuste to znovu po dokončení."
+hr = "Ovo izdanje se još učitava — pokušajte ponovno kad završi."
+
 [messages."core.import.prepare.parsing_metadata"]
 comment = "Import progress: preparing — parsing metadata."
 value = "Parsing metadata..."
+
+[messages."core.import.prepare.parsing_metadata".translations]
+es = "Analizando metadatos..."
+fr = "Analyse des métadonnées..."
+de = "Metadaten werden analysiert..."
+pt-BR = "Analisando metadados..."
+ja = "メタデータを解析中…"
+zh-Hans = "正在解析元数据…"
+ar = "جارٍ تحليل البيانات الوصفية..."
+he = "מנתח מטא-נתונים..."
+uk = "Розбір метаданих..."
+bg = "Анализиране на метаданните..."
+pl = "Analizowanie metadanych..."
+cs = "Zpracování metadat..."
+hr = "Obrada metapodataka..."
 
 [messages."core.import.prepare.writing_cover_art"]
 comment = "Import progress: preparing — writing cover art."
 value = "Writing cover art..."
 
+[messages."core.import.prepare.writing_cover_art".translations]
+es = "Escribiendo la portada..."
+fr = "Écriture de la pochette..."
+de = "Cover wird geschrieben..."
+pt-BR = "Gravando a capa..."
+ja = "カバーアートを書き込み中…"
+zh-Hans = "正在写入封面…"
+ar = "جارٍ كتابة صورة الغلاف..."
+he = "כותב את עטיפת האלבום..."
+uk = "Запис обкладинки..."
+bg = "Записване на обложката..."
+pl = "Zapisywanie okładki..."
+cs = "Zápis obalu..."
+hr = "Zapisivanje omota..."
+
 [messages."core.import.prepare.discovering_files"]
 comment = "Import progress: preparing — discovering files."
 value = "Discovering files..."
+
+[messages."core.import.prepare.discovering_files".translations]
+es = "Descubriendo archivos..."
+fr = "Recherche des fichiers..."
+de = "Dateien werden gesucht..."
+pt-BR = "Localizando arquivos..."
+ja = "ファイルを検出中…"
+zh-Hans = "正在查找文件…"
+ar = "جارٍ اكتشاف الملفات..."
+he = "מאתר קבצים..."
+uk = "Пошук файлів..."
+bg = "Откриване на файлове..."
+pl = "Wyszukiwanie plików..."
+cs = "Vyhledávání souborů..."
+hr = "Pronalaženje datoteka..."
 
 [messages."core.import.prepare.validating_tracks"]
 comment = "Import progress: preparing — validating tracks."
 value = "Validating tracks..."
 
+[messages."core.import.prepare.validating_tracks".translations]
+es = "Validando pistas..."
+fr = "Validation des pistes..."
+de = "Titel werden validiert..."
+pt-BR = "Validando faixas..."
+ja = "トラックを検証中…"
+zh-Hans = "正在验证曲目…"
+ar = "جارٍ التحقق من المقاطع..."
+he = "מאמת רצועות..."
+uk = "Перевірка доріжок..."
+bg = "Проверка на записите..."
+pl = "Sprawdzanie ścieżek..."
+cs = "Ověřování skladeb..."
+hr = "Provjera pjesama..."
+
 [messages."core.import.prepare.saving_to_database"]
 comment = "Import progress: preparing — saving to the database."
 value = "Saving to database..."
+
+[messages."core.import.prepare.saving_to_database".translations]
+es = "Guardando en la base de datos..."
+fr = "Enregistrement dans la base de données..."
+de = "Wird in der Datenbank gespeichert..."
+pt-BR = "Salvando no banco de dados..."
+ja = "データベースに保存中…"
+zh-Hans = "正在保存到数据库…"
+ar = "جارٍ الحفظ في قاعدة البيانات..."
+he = "שומר במסד הנתונים..."
+uk = "Збереження до бази даних..."
+bg = "Запазване в базата данни..."
+pl = "Zapisywanie do bazy danych..."
+cs = "Ukládání do databáze..."
+hr = "Spremanje u bazu podataka..."
 
 [messages."core.import.phase.acquire"]
 comment = "Import progress: downloading or ripping the files."
 value = "Downloading..."
 
+[messages."core.import.phase.acquire".translations]
+es = "Descargando..."
+fr = "Téléchargement..."
+de = "Wird heruntergeladen..."
+pt-BR = "Baixando..."
+ja = "ダウンロード中…"
+zh-Hans = "正在下载…"
+ar = "جارٍ التنزيل..."
+he = "מוריד..."
+uk = "Завантаження..."
+bg = "Изтегляне..."
+pl = "Pobieranie..."
+cs = "Stahování..."
+hr = "Preuzimanje..."
+
 [messages."core.import.phase.store"]
 comment = "Import progress: encrypting and storing the files."
 value = "Storing files..."
+
+[messages."core.import.phase.store".translations]
+es = "Almacenando archivos..."
+fr = "Stockage des fichiers..."
+de = "Dateien werden gespeichert..."
+pt-BR = "Armazenando arquivos..."
+ja = "ファイルを保存中…"
+zh-Hans = "正在存储文件…"
+ar = "جارٍ تخزين الملفات..."
+he = "מאחסן קבצים..."
+uk = "Збереження файлів..."
+bg = "Съхраняване на файловете..."
+pl = "Zapisywanie plików..."
+cs = "Ukládání souborů..."
+hr = "Spremanje datoteka..."
 
 [messages."core.import.pressings"]
 comment = "Release-group card: number of pressings grouped under it."
 args = { count = "Int" }
 value = "{count, plural, one {# pressing} other {# pressings}}"
 
+[messages."core.import.pressings".translations]
+es = "{count, plural, one {# prensaje} other {# prensajes}}"
+fr = "{count, plural, one {# pressage} other {# pressages}}"
+de = "{count, plural, one {# Pressung} other {# Pressungen}}"
+pt-BR = "{count, plural, one {# prensagem} other {# prensagens}}"
+ja = "{count, plural, other {#件のプレス}}"
+zh-Hans = "{count, plural, other {# 个压盘}}"
+ar = "{count, plural, zero {لا توجد نُسخ مطبوعة} one {نسخة مطبوعة واحدة} two {نسختان مطبوعتان} few {# نُسخ مطبوعة} many {# نسخة مطبوعة} other {# نسخة مطبوعة}}"
+he = "{count, plural, one {הדפסה אחת} two {שתי הדפסות} many {# הדפסות} other {# הדפסות}}"
+uk = "{count, plural, one {# тираж} few {# тиражі} many {# тиражів} other {# тиражу}}"
+bg = "{count, plural, one {# тираж} other {# тиража}}"
+pl = "{count, plural, one {# tłoczenie} few {# tłoczenia} many {# tłoczeń} other {# tłoczenia}}"
+cs = "{count, plural, one {# lisování} few {# lisování} many {# lisování} other {# lisování}}"
+hr = "{count, plural, one {# tlačenje} few {# tlačenja} other {# tlačenja}}"
+
 [messages."core.audio.channels.mono"]
 comment = "Audio format: single-channel audio."
 value = "mono"
 
+[messages."core.audio.channels.mono".translations]
+es = "mono"
+fr = "mono"
+de = "Mono"
+pt-BR = "mono"
+ja = "モノラル"
+zh-Hans = "单声道"
+ar = "أحادي"
+he = "מונו"
+uk = "моно"
+bg = "моно"
+pl = "mono"
+cs = "mono"
+hr = "mono"
+
 [messages."core.audio.channels.stereo"]
 comment = "Audio format: two-channel audio."
 value = "stereo"
+
+[messages."core.audio.channels.stereo".translations]
+es = "estéreo"
+fr = "stéréo"
+de = "Stereo"
+pt-BR = "estéreo"
+ja = "ステレオ"
+zh-Hans = "立体声"
+ar = "استريو"
+he = "סטריאו"
+uk = "стерео"
+bg = "стерео"
+pl = "stereo"
+cs = "stereo"
+hr = "stereo"
 
 [messages."core.track.side"]
 comment = "Track grouping: header for a physical side, e.g. 'Side A' ({letter} is the side letter A/B/C… computed by core)."
 args = { letter = "Str" }
 value = "Side {letter}"
 
+[messages."core.track.side".translations]
+es = "Cara {letter}"
+fr = "Face {letter}"
+de = "Seite {letter}"
+pt-BR = "Lado {letter}"
+ja = "サイド{letter}"
+zh-Hans = "{letter}面"
+ar = "الوجه {letter}"
+he = "צד {letter}"
+uk = "Сторона {letter}"
+bg = "Страна {letter}"
+pl = "Strona {letter}"
+cs = "Strana {letter}"
+hr = "Strana {letter}"
+
 [messages."core.track.disc"]
 comment = "Track grouping: header for a disc in a multi-disc release, e.g. 'Disc 2' ({disc} is the disc number computed by core)."
 args = { disc = "Int" }
 value = "Disc {disc}"
 
+[messages."core.track.disc".translations]
+es = "Disco {disc}"
+fr = "Disque {disc}"
+de = "CD {disc}"
+pt-BR = "Disco {disc}"
+ja = "ディスク{disc}"
+zh-Hans = "碟 {disc}"
+ar = "القرص {disc}"
+he = "דיסק {disc}"
+uk = "Диск {disc}"
+bg = "Диск {disc}"
+pl = "Płyta {disc}"
+cs = "Disk {disc}"
+hr = "Disk {disc}"
+
 [messages."core.cloud.s3_compatible"]
 comment = "Cloud provider: any S3-compatible storage."
 value = "S3-compatible"
+
+[messages."core.cloud.s3_compatible".translations]
+es = "Compatible con S3"
+fr = "Compatible S3"
+de = "S3-kompatibel"
+pt-BR = "Compatível com S3"
+ja = "S3互換"
+zh-Hans = "S3 兼容"
+ar = "متوافق مع S3"
+he = "תואם S3"
+uk = "Сумісне з S3"
+bg = "Съвместимо с S3"
+pl = "Zgodne z S3"
+cs = "Kompatibilní s S3"
+hr = "Kompatibilno s S3"
 
 [messages."core.cloud.local_only"]
 comment = "Cloud provider: the library syncs nowhere (local only)."
 value = "Local only"
 
+[messages."core.cloud.local_only".translations]
+es = "Solo local"
+fr = "Local uniquement"
+de = "Nur lokal"
+pt-BR = "Apenas local"
+ja = "ローカルのみ"
+zh-Hans = "仅本地"
+ar = "محلي فقط"
+he = "מקומי בלבד"
+uk = "Лише локально"
+bg = "Само локално"
+pl = "Tylko lokalnie"
+cs = "Pouze místně"
+hr = "Samo lokalno"
+
 [messages."core.transfer.action.pin"]
 comment = "Storage transfer: present-continuous verb while pinning a release for offline."
 value = "Pinning for offline"
+
+[messages."core.transfer.action.pin".translations]
+es = "Fijando para uso sin conexión"
+fr = "Épinglage pour utilisation hors ligne"
+de = "Wird für die Offline-Nutzung angeheftet"
+pt-BR = "Fixando para uso offline"
+ja = "オフライン用に固定中"
+zh-Hans = "正在固定以供离线使用"
+ar = "جارٍ التثبيت للوضع دون اتصال"
+he = "מצמיד לשימוש לא מקוון"
+uk = "Закріплення для офлайн"
+bg = "Закачане за офлайн"
+pl = "Przypinanie do trybu offline"
+cs = "Připínání pro offline"
+hr = "Prikvačivanje za izvanmrežni rad"
 
 [messages."core.transfer.action.unpin"]
 comment = "Storage transfer: present-continuous verb while removing a release's local copy."
 value = "Removing local copy"
 
+[messages."core.transfer.action.unpin".translations]
+es = "Eliminando la copia local"
+fr = "Suppression de la copie locale"
+de = "Lokale Kopie wird entfernt"
+pt-BR = "Removendo a cópia local"
+ja = "ローカルコピーを削除中"
+zh-Hans = "正在删除本地副本"
+ar = "جارٍ إزالة النسخة المحلية"
+he = "מסיר עותק מקומי"
+uk = "Видалення локальної копії"
+bg = "Премахване на локалното копие"
+pl = "Usuwanie kopii lokalnej"
+cs = "Odstraňování místní kopie"
+hr = "Uklanjanje lokalne kopije"
+
 [messages."core.transfer.action.manage"]
 comment = "Storage transfer: present-continuous verb while moving a release into the library."
 value = "Moving into library"
 
+[messages."core.transfer.action.manage".translations]
+es = "Moviendo a la biblioteca"
+fr = "Déplacement vers la bibliothèque"
+de = "Wird in die Bibliothek verschoben"
+pt-BR = "Movendo para a biblioteca"
+ja = "ライブラリに移動中"
+zh-Hans = "正在移入媒体库"
+ar = "جارٍ النقل إلى المكتبة"
+he = "מעביר אל הספרייה"
+uk = "Переміщення до бібліотеки"
+bg = "Преместване в библиотеката"
+pl = "Przenoszenie do biblioteki"
+cs = "Přesouvání do knihovny"
+hr = "Premještanje u biblioteku"
+
 [messages."core.transfer.action.unmanage"]
 comment = "Storage transfer: present-continuous verb while moving a release out of the library."
 value = "Moving out of library"
+
+[messages."core.transfer.action.unmanage".translations]
+es = "Sacando de la biblioteca"
+fr = "Retrait de la bibliothèque"
+de = "Wird aus der Bibliothek verschoben"
+pt-BR = "Removendo da biblioteca"
+ja = "ライブラリから移動中"
+zh-Hans = "正在移出媒体库"
+ar = "جارٍ النقل خارج المكتبة"
+he = "מעביר אל מחוץ לספרייה"
+uk = "Переміщення з бібліотеки"
+bg = "Преместване извън библиотеката"
+pl = "Przenoszenie poza bibliotekę"
+cs = "Přesouvání z knihovny"
+hr = "Premještanje izvan biblioteke"
 
 [messages."core.transfer.files"]
 comment = "Storage transfer: which file of how many is being processed."
 args = { file_no = "Int", total = "Int" }
 value = "{file_no} of {total} files"
 
+[messages."core.transfer.files".translations]
+es = "{file_no} de {total} archivos"
+fr = "{file_no} sur {total} fichiers"
+de = "{file_no} von {total} Dateien"
+pt-BR = "{file_no} de {total} arquivos"
+ja = "{total}個中{file_no}個目のファイル"
+zh-Hans = "第 {file_no} 个文件，共 {total} 个"
+ar = "{file_no} من {total} ملفات"
+he = "{file_no} מתוך {total} קבצים"
+uk = "{file_no} з {total} файлів"
+bg = "{file_no} от {total} файла"
+pl = "{file_no} z {total} plików"
+cs = "{file_no} z {total} souborů"
+hr = "{file_no} od {total} datoteka"
+
 [messages."core.identify.barcode.looking_up"]
 comment = "Identify: which barcode is being looked up, of how many."
 args = { position = "Int", total = "Int" }
 value = "Looking up barcode {position} of {total}"
 
+[messages."core.identify.barcode.looking_up".translations]
+es = "Buscando el código de barras {position} de {total}"
+fr = "Recherche du code-barres {position} sur {total}"
+de = "Strichcode {position} von {total} wird gesucht"
+pt-BR = "Buscando o código de barras {position} de {total}"
+ja = "バーコードを照会中（{total}件中{position}件目）"
+zh-Hans = "正在查询条形码 {position}/{total}"
+ar = "جارٍ البحث عن الرمز الشريطي {position} من {total}"
+he = "מחפש ברקוד {position} מתוך {total}"
+uk = "Пошук штрихкоду {position} з {total}"
+bg = "Търсене на баркод {position} от {total}"
+pl = "Wyszukiwanie kodu kreskowego {position} z {total}"
+cs = "Vyhledávání čárového kódu {position} z {total}"
+hr = "Traženje crtičnog koda {position} od {total}"
+
 [messages."core.lookup.failure.network"]
 comment = "Metadata lookup failed: couldn't reach the provider (no network response)."
 value = "Couldn't reach the metadata provider"
+
+[messages."core.lookup.failure.network".translations]
+es = "No se pudo conectar con el proveedor de metadatos"
+fr = "Impossible de joindre le fournisseur de métadonnées"
+de = "Der Metadatenanbieter konnte nicht erreicht werden"
+pt-BR = "Não foi possível acessar o provedor de metadados"
+ja = "メタデータプロバイダに接続できませんでした"
+zh-Hans = "无法连接到元数据提供方"
+ar = "تعذّر الوصول إلى مزوّد البيانات الوصفية"
+he = "לא ניתן היה להגיע לספק המטא-נתונים"
+uk = "Не вдалося з'єднатися з постачальником метаданих"
+bg = "Не може да се достигне доставчикът на метаданни"
+pl = "Nie można połączyć się z dostawcą metadanych"
+cs = "Nepodařilo se spojit s poskytovatelem metadat"
+hr = "Nije moguće doći do pružatelja metapodataka"
 
 [messages."core.lookup.failure.provider"]
 comment = "Metadata lookup failed: the provider returned an HTTP error response ({status} is the HTTP status code)."
 args = { status = "Int" }
 value = "The metadata provider returned an error ({status})"
 
+[messages."core.lookup.failure.provider".translations]
+es = "El proveedor de metadatos devolvió un error ({status})"
+fr = "Le fournisseur de métadonnées a renvoyé une erreur ({status})"
+de = "Der Metadatenanbieter hat einen Fehler zurückgegeben ({status})"
+pt-BR = "O provedor de metadados retornou um erro ({status})"
+ja = "メタデータプロバイダがエラーを返しました（{status}）"
+zh-Hans = "元数据提供方返回了错误（{status}）"
+ar = "أعاد مزوّد البيانات الوصفية خطأً ({status})"
+he = "ספק המטא-נתונים החזיר שגיאה ({status})"
+uk = "Постачальник метаданих повернув помилку ({status})"
+bg = "Доставчикът на метаданни върна грешка ({status})"
+pl = "Dostawca metadanych zwrócił błąd ({status})"
+cs = "Poskytovatel metadat vrátil chybu ({status})"
+hr = "Pružatelj metapodataka vratio je pogrešku ({status})"
+
 [messages."core.lookup.failure.provider_unknown"]
 comment = "Metadata lookup failed: the provider returned an error with no status code to show. No-status fallback for core.lookup.failure.provider."
 value = "The metadata provider returned an error"
+
+[messages."core.lookup.failure.provider_unknown".translations]
+es = "El proveedor de metadatos devolvió un error"
+fr = "Le fournisseur de métadonnées a renvoyé une erreur"
+de = "Der Metadatenanbieter hat einen Fehler zurückgegeben"
+pt-BR = "O provedor de metadados retornou um erro"
+ja = "メタデータプロバイダがエラーを返しました"
+zh-Hans = "元数据提供方返回了错误"
+ar = "أعاد مزوّد البيانات الوصفية خطأً"
+he = "ספק המטא-נתונים החזיר שגיאה"
+uk = "Постачальник метаданих повернув помилку"
+bg = "Доставчикът на метаданни върна грешка"
+pl = "Dostawca metadanych zwrócił błąd"
+cs = "Poskytovatel metadat vrátil chybu"
+hr = "Pružatelj metapodataka vratio je pogrešku"
 
 [messages."core.lookup.failure.timeout"]
 comment = "Metadata lookup failed: the request to the provider timed out."
 value = "The metadata provider timed out"
 
+[messages."core.lookup.failure.timeout".translations]
+es = "El proveedor de metadatos agotó el tiempo de espera"
+fr = "Le fournisseur de métadonnées a expiré"
+de = "Beim Metadatenanbieter ist eine Zeitüberschreitung aufgetreten"
+pt-BR = "O provedor de metadados excedeu o tempo limite"
+ja = "メタデータプロバイダがタイムアウトしました"
+zh-Hans = "元数据提供方请求超时"
+ar = "انتهت مهلة مزوّد البيانات الوصفية"
+he = "תם הזמן הקצוב לספק המטא-נתונים"
+uk = "Час очікування постачальника метаданих вичерпано"
+bg = "Времето за изчакване на доставчика на метаданни изтече"
+pl = "Upłynął limit czasu dostawcy metadanych"
+cs = "Vypršel časový limit poskytovatele metadat"
+hr = "Isteklo je vrijeme čekanja pružatelja metapodataka"
+
 [messages."core.lookup.failure.diagnostic"]
 comment = "Metadata lookup failed for a local reason (the typed variant carries no translated copy). Generic line shown alongside the opaque, log-only detail."
 value = "Couldn't look this up"
+
+[messages."core.lookup.failure.diagnostic".translations]
+es = "No se pudo buscar esto"
+fr = "Impossible d'effectuer cette recherche"
+de = "Dies konnte nicht nachgeschlagen werden"
+pt-BR = "Não foi possível fazer essa busca"
+ja = "照会できませんでした"
+zh-Hans = "无法查询此项"
+ar = "تعذّر البحث عن هذا"
+he = "לא ניתן היה לחפש את זה"
+uk = "Не вдалося це знайти"
+bg = "Това не може да бъде намерено"
+pl = "Nie udało się tego wyszukać"
+cs = "Toto se nepodařilo vyhledat"
+hr = "Ovo nije moguće pronaći"
 
 [messages."core.queue.uploading"]
 comment = "Storage queue: count currently uploading."
 args = { count = "Int" }
 value = "{count} uploading"
 
+[messages."core.queue.uploading".translations]
+es = "{count} subiéndose"
+fr = "{count} en cours d'envoi"
+de = "{count} werden hochgeladen"
+pt-BR = "{count} enviando"
+ja = "{count}件アップロード中"
+zh-Hans = "{count} 个正在上传"
+ar = "{count} قيد الرفع"
+he = "{count} מעלה"
+uk = "{count} вивантажується"
+bg = "{count} се качват"
+pl = "{count} przesyłanych"
+cs = "{count} se nahrává"
+hr = "{count} se učitava"
+
 [messages."core.queue.downloading"]
 comment = "Storage queue: count currently downloading."
 args = { count = "Int" }
 value = "{count} downloading"
+
+[messages."core.queue.downloading".translations]
+es = "{count} descargándose"
+fr = "{count} en cours de téléchargement"
+de = "{count} werden heruntergeladen"
+pt-BR = "{count} baixando"
+ja = "{count}件ダウンロード中"
+zh-Hans = "{count} 个正在下载"
+ar = "{count} قيد التنزيل"
+he = "{count} מוריד"
+uk = "{count} завантажується"
+bg = "{count} се изтеглят"
+pl = "{count} pobieranych"
+cs = "{count} se stahuje"
+hr = "{count} se preuzima"
 
 [messages."core.queue.failed"]
 comment = "Storage queue: count that failed."
 args = { count = "Int" }
 value = "{count} failed"
 
+[messages."core.queue.failed".translations]
+es = "{count} con errores"
+fr = "{count} en échec"
+de = "{count} fehlgeschlagen"
+pt-BR = "{count} com falha"
+ja = "{count}件失敗"
+zh-Hans = "{count} 个失败"
+ar = "{count} فشل"
+he = "{count} נכשלו"
+uk = "{count} не вдалося"
+bg = "{count} с грешка"
+pl = "{count} nieudanych"
+cs = "{count} selhalo"
+hr = "{count} neuspjelo"
+
 [messages."core.queue.queued"]
 comment = "Storage queue: count waiting to transfer."
 args = { count = "Int" }
 value = "{count} queued"
+
+[messages."core.queue.queued".translations]
+es = "{count} en cola"
+fr = "{count} en file d'attente"
+de = "{count} in der Warteschlange"
+pt-BR = "{count} na fila"
+ja = "{count}件待機中"
+zh-Hans = "{count} 个排队中"
+ar = "{count} في قائمة الانتظار"
+he = "{count} בתור"
+uk = "{count} у черзі"
+bg = "{count} в опашката"
+pl = "{count} w kolejce"
+cs = "{count} ve frontě"
+hr = "{count} u redu"
 
 [messages."core.outbox.bytes_progress"]
 comment = "Storage queue: aggregate bytes uploaded of the total ({done}/{total} are pre-formatted byte counts)."
 args = { done = "Str", total = "Str" }
 value = "{done} of {total}"
 
+[messages."core.outbox.bytes_progress".translations]
+es = "{done} de {total}"
+fr = "{done} sur {total}"
+de = "{done} von {total}"
+pt-BR = "{done} de {total}"
+ja = "{total}中{done}"
+zh-Hans = "{done}/{total}"
+ar = "{done} من {total}"
+he = "{done} מתוך {total}"
+uk = "{done} з {total}"
+bg = "{done} от {total}"
+pl = "{done} z {total}"
+cs = "{done} z {total}"
+hr = "{done} od {total}"
+
 [messages."core.outbox.throughput"]
 comment = "Storage queue: upload speed ({rate} is a pre-formatted byte count, e.g. '5.2 MB')."
 args = { rate = "Str" }
 value = "{rate}/s"
+
+[messages."core.outbox.throughput".translations]
+es = "{rate}/s"
+fr = "{rate}/s"
+de = "{rate}/s"
+pt-BR = "{rate}/s"
+ja = "{rate}/秒"
+zh-Hans = "{rate}/秒"
+ar = "{rate}/ث"
+he = "{rate}/ש'"
+uk = "{rate}/с"
+bg = "{rate}/с"
+pl = "{rate}/s"
+cs = "{rate}/s"
+hr = "{rate}/s"
 
 [messages."core.outbox.eta"]
 comment = "Storage queue: estimated time remaining ({duration} is a pre-formatted duration)."
 args = { duration = "Str" }
 value = "{duration} remaining"
 
+[messages."core.outbox.eta".translations]
+es = "{duration} restantes"
+fr = "{duration} restant"
+de = "noch {duration}"
+pt-BR = "{duration} restantes"
+ja = "残り{duration}"
+zh-Hans = "剩余 {duration}"
+ar = "{duration} متبقية"
+he = "נותרו {duration}"
+uk = "залишилось {duration}"
+bg = "остават {duration}"
+pl = "pozostało {duration}"
+cs = "zbývá {duration}"
+hr = "preostalo {duration}"
+
 [messages."core.outbox.pending_deletes"]
 comment = "Storage queue: number of cloud deletes still pending."
 args = { count = "Int" }
 value = "{count, plural, one {# pending delete} other {# pending deletes}}"
 
+[messages."core.outbox.pending_deletes".translations]
+es = "{count, plural, one {# eliminación pendiente} other {# eliminaciones pendientes}}"
+fr = "{count, plural, one {# suppression en attente} other {# suppressions en attente}}"
+de = "{count, plural, one {# ausstehende Löschung} other {# ausstehende Löschungen}}"
+pt-BR = "{count, plural, one {# exclusão pendente} other {# exclusões pendentes}}"
+ja = "{count, plural, other {#件の保留中の削除}}"
+zh-Hans = "{count, plural, other {# 个待删除}}"
+ar = "{count, plural, zero {لا توجد عمليات حذف معلّقة} one {عملية حذف معلّقة واحدة} two {عمليتا حذف معلّقتان} few {# عمليات حذف معلّقة} many {# عملية حذف معلّقة} other {# عملية حذف معلّقة}}"
+he = "{count, plural, one {מחיקה אחת ממתינה} two {שתי מחיקות ממתינות} many {# מחיקות ממתינות} other {# מחיקות ממתינות}}"
+uk = "{count, plural, one {# видалення в очікуванні} few {# видалення в очікуванні} many {# видалень в очікуванні} other {# видалення в очікуванні}}"
+bg = "{count, plural, one {# чакащо изтриване} other {# чакащи изтривания}}"
+pl = "{count, plural, one {# oczekujące usunięcie} few {# oczekujące usunięcia} many {# oczekujących usunięć} other {# oczekującego usunięcia}}"
+cs = "{count, plural, one {# čekající smazání} few {# čekající smazání} many {# čekajícího smazání} other {# čekajících smazání}}"
+hr = "{count, plural, one {# brisanje na čekanju} few {# brisanja na čekanju} other {# brisanja na čekanju}}"
+
 [messages."ui.library.remove_from_device"]
 comment = "Settings: button that removes the library from this device."
 value = "remove this library from this device"
+
+[messages."ui.library.remove_from_device".translations]
+es = "quitar esta biblioteca de este dispositivo"
+fr = "supprimer cette bibliothèque de cet appareil"
+de = "diese Bibliothek von diesem Gerät entfernen"
+pt-BR = "remover esta biblioteca deste dispositivo"
+ja = "このライブラリをこのデバイスから削除"
+zh-Hans = "从此设备移除此媒体库"
+ar = "إزالة هذه المكتبة من هذا الجهاز"
+he = "הסר את הספרייה הזו מהמכשיר הזה"
+uk = "вилучити цю бібліотеку з цього пристрою"
+bg = "премахни тази библиотека от това устройство"
+pl = "usuń tę bibliotekę z tego urządzenia"
+cs = "odebrat tuto knihovnu z tohoto zařízení"
+hr = "ukloni ovu biblioteku s ovog uređaja"

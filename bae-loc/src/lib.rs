@@ -39,6 +39,13 @@ pub struct Message {
     pub args: BTreeMap<String, ArgType>,
     /// The ICU MessageFormat 1 source (English).
     pub value: String,
+    /// Per-locale translations of `value`, keyed by catalog locale code (`es`,
+    /// `pt-BR`, `zh-Hans`, …). Each is a full ICU MessageFormat 1 string in that
+    /// locale — a plural carries the locale's own CLDR categories (Polish
+    /// one/few/many/other, Arabic's six), not English's one/other. A locale with
+    /// no entry falls back to the English `value`, emitted at state `new`.
+    #[serde(default)]
+    pub translations: BTreeMap<String, String>,
 }
 
 /// The argument types the catalog distinguishes. `Int` covers the Rust integer
