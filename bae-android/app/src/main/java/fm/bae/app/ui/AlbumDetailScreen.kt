@@ -51,8 +51,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import fm.bae.app.formatDurationMs
 import fm.bae.app.OpenLibrary
+import fm.bae.app.formatDurationMs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
