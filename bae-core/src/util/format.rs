@@ -52,15 +52,6 @@ pub fn format_bytes(bytes: u64) -> String {
     format!("{:.0} MB", mb)
 }
 
-/// Format a download speed in bytes/sec as a human-readable string (e.g. "2.3 MB/s").
-/// Returns empty string when rate is zero.
-pub fn format_speed(bytes_per_sec: u64) -> String {
-    if bytes_per_sec == 0 {
-        return String::new();
-    }
-    format!("{}/s", format_bytes(bytes_per_sec))
-}
-
 /// Format an ETA from progress, total size, and download rate.
 /// Returns empty string when ETA can't be computed (rate is zero or download complete).
 pub fn format_eta(progress: f64, total_bytes: u64, bytes_per_sec: u64) -> String {

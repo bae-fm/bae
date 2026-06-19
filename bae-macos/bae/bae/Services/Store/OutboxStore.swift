@@ -39,10 +39,7 @@ class OutboxStore {
             pendingDeletes: 0,
             paused: false,
             throughputBps: 0,
-            throughputLabel: "",
             etaSeconds: nil,
-            etaLabel: "",
-            bytesLabel: "",
         )
     }
 }

@@ -1321,10 +1321,7 @@ fn convert_outbox_snapshot(
         pending_deletes: snapshot.pending_deletes,
         paused: snapshot.paused,
         throughput_bps: snapshot.throughput_bps,
-        throughput_label: snapshot.throughput_label,
         eta_seconds: snapshot.eta_seconds,
-        eta_label: snapshot.eta_label,
-        bytes_label: snapshot.bytes_label,
     }
 }
 
