@@ -10,27 +10,6 @@
 //! module that needs the same deterministic formatting (e.g.
 //! `import/search.rs`).
 
-/// Format an ETA from progress, total size, and download rate.
-/// Returns empty string when ETA can't be computed (rate is zero or download complete).
-pub fn format_eta(progress: f64, total_bytes: u64, bytes_per_sec: u64) -> String {
-    if bytes_per_sec == 0 || progress >= 1.0 {
-        return String::new();
-    }
-    let remaining = (total_bytes as f64 * (1.0 - progress)) as u64;
-    let seconds = remaining / bytes_per_sec;
-    if seconds < 60 {
-        return format!("{}s remaining", seconds);
-    }
-    let minutes = seconds / 60;
-    let secs = seconds % 60;
-    if minutes < 60 {
-        return format!("{}m {}s remaining", minutes, secs);
-    }
-    let hours = minutes / 60;
-    let mins = minutes % 60;
-    format!("{}h {}m remaining", hours, mins)
-}
-
 /// Convert a 1-indexed side number to a letter (1=A, 2=B, ..., 26=Z).
 fn side_letter(side: i32) -> char {
     (b'A' + (side - 1) as u8) as char
