@@ -6868,7 +6868,6 @@ mod tests {
             snap.downloads[0].state,
             crate::library::DownloadState::Queued
         );
-        assert_eq!(snap.summary, "1 queued");
         assert!(snap.paused);
 
         // Re-enqueuing the same release is a no-op: still one entry.
@@ -6879,7 +6878,6 @@ mod tests {
         manager.cancel_download(&release_id);
         let snap = manager.download_snapshot();
         assert!(snap.downloads.is_empty());
-        assert_eq!(snap.summary, "");
     }
 
     /// An already-pinned release is skipped at enqueue rather than re-downloaded.
@@ -6929,7 +6927,7 @@ mod tests {
         })
         .await;
         assert!(failed, "the pin should land Failed without a cloud home");
-        assert_eq!(manager.download_snapshot().summary, "1 failed");
+        assert_eq!(manager.download_snapshot().total.failed, 1);
 
         // Retry flips it back to Queued; with no cloud home it'll fail again,
         // but the immediate post-retry state is Queued (or already re-failed).

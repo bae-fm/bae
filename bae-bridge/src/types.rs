@@ -198,6 +198,7 @@ mod queue_summary_tests {
             .expect("catalog parses");
         for key in [
             "core.queue.uploading",
+            "core.queue.downloading",
             "core.queue.failed",
             "core.queue.queued",
             "core.outbox.pending_deletes",
@@ -1584,7 +1585,6 @@ pub struct BridgeDownloadSnapshot {
     /// True when the user paused the download queue. Drives the pause/resume
     /// toggle in the Downloads pane.
     pub paused: bool,
-    pub summary: String,
 }
 
 /// The cloud-outbox processing snapshot the Storage Manager renders. The
