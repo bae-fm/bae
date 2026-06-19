@@ -3556,7 +3556,6 @@ mod tests {
             album_title: "Album Title".to_string(),
             cover_image_id: None,
             duration_ms: 1_000,
-            duration_label: "0:01".to_string(),
         };
         let paused = UiBusEvent::PlaybackPaused {
             track_id: "trk-1".to_string(),
@@ -3567,7 +3566,6 @@ mod tests {
             album_title: "Album Title".to_string(),
             cover_image_id: None,
             duration_ms: 1_000,
-            duration_label: "0:01".to_string(),
         };
 
         for event in [playing, paused] {
