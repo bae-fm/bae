@@ -52,9 +52,6 @@ pub struct UploadOp {
     pub title: Option<String>,
     pub cloud_key: String,
     pub bytes_total: u64,
-    /// Pre-formatted file size, e.g. `"70 MB"`. The UI renders this beside
-    /// the title so users see how much is being shipped.
-    pub size_label: String,
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
     pub attempt_count: i64,
@@ -178,7 +175,6 @@ pub(crate) async fn build_outbox_snapshot(
                     }
                 }
 
-                let size_label = crate::util::format::format_bytes(bytes_total);
                 uploads.push(UploadOp {
                     id: row.id,
                     file_id: row.file_id,
@@ -186,7 +182,6 @@ pub(crate) async fn build_outbox_snapshot(
                     title: row.title,
                     cloud_key: row.cloud_key,
                     bytes_total,
-                    size_label,
                     created_at: row.created_at,
                     attempt_count: row.attempt_count,
                     state,

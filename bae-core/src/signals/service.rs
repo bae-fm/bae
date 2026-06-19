@@ -1644,7 +1644,6 @@ FILE \"audio.wav\" WAVE\n  \
             audio_file: flac.clone(),
             cue_sheet: None,
             total_size: 5_000_100,
-            total_size_label: "5 MB".to_string(),
         };
         let categorized = CategorizedFiles {
             audio: AudioContent::CueFlacPairs {

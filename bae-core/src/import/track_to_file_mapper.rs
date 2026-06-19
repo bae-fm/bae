@@ -680,7 +680,6 @@ mod tests {
                     audio_file: scanned("/album/Album.flac"),
                     cue_sheet: None,
                     total_size: 2048,
-                    total_size_label: "2 KB".to_string(),
                 }],
                 format_label: "CUE+FLAC".to_string(),
             },

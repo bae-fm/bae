@@ -241,8 +241,6 @@ pub struct BridgeReleaseSummary {
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,
-    /// Pre-formatted total size, e.g. "350 MB".
-    pub total_size_label: String,
     /// Cache-bustable identifier for this release's own cover
     /// (`<path>#v=<mtime>`), or `None` when no cover is cached. Keyed on the
     /// release id so each release renders its own art; the image loader strips
@@ -279,8 +277,6 @@ pub struct BridgeRelease {
     pub total_duration_ms: i64,
     pub file_count: i64,
     pub total_size: i64,
-    /// Pre-formatted total size, e.g. "350 MB".
-    pub total_size_label: String,
     /// Cache-bustable identifier for this release's own cover
     /// (`<path>#v=<mtime>`), or `None` when no cover is cached. Mirrors
     /// `BridgeReleaseSummary.cover_path` so a summary rebuilt from this fat
@@ -724,8 +720,6 @@ impl BridgeWatchedFolder {
 pub struct BridgeFileInfo {
     pub name: String,
     pub size: u64,
-    /// Pre-formatted size, e.g. "35 MB".
-    pub size_label: String,
     /// Directory prefix for display, e.g. "Artwork/". `None` when the file
     /// sits at the candidate-folder root.
     pub dir_prefix: Option<String>,
@@ -745,16 +739,12 @@ pub struct BridgeArtworkFile {
 pub struct BridgeCueFlacPair {
     pub cue_name: String,
     pub cue_size: u64,
-    /// Pre-formatted CUE file size, e.g. "1 KB".
-    pub cue_size_label: String,
     /// Absolute filesystem path of the CUE file on disk.
     pub cue_local_path: String,
     pub flac_name: String,
     /// Absolute filesystem path of the audio file on disk.
     pub flac_local_path: String,
     pub total_size: u64,
-    /// Pre-formatted total size, e.g. "340 MB".
-    pub total_size_label: String,
     /// `None` when the CUE hasn't been parsed yet.
     pub track_count: Option<u32>,
 }
@@ -1564,8 +1554,6 @@ pub struct BridgeUploadOp {
     pub cloud_key: String,
     pub bytes_total: u64,
     pub bytes_done: u64,
-    /// Pre-formatted file size, e.g. `"70 MB"`.
-    pub size_label: String,
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
     pub attempt_count: i64,
@@ -1615,8 +1603,8 @@ pub struct BridgeDownloadOp {
     /// Album title for display.
     pub title: String,
     pub file_count: i64,
-    /// Pre-formatted total size, e.g. `"350 MB"`.
-    pub size_label: String,
+    /// Total size in bytes across the release's files. The UI formats it.
+    pub total_size: i64,
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
     pub state: BridgeDownloadState,
@@ -2788,7 +2776,6 @@ fn results_and_status_map(
 fn scanned_file_to_bridge(f: bae_core::import::folder_scanner::ScannedFile) -> BridgeFileInfo {
     BridgeFileInfo {
         name: f.relative_path,
-        size_label: f.size_label,
         size: f.size,
         dir_prefix: f.dir_prefix,
         file_name: f.file_name,
@@ -2824,12 +2811,10 @@ pub(crate) fn categorized_files_to_bridge(
                 .into_iter()
                 .map(|p| BridgeCueFlacPair {
                     cue_name: p.cue_file.relative_path,
-                    cue_size_label: p.cue_file.size_label,
                     cue_size: p.cue_file.size,
                     cue_local_path: p.cue_file.path.to_string_lossy().to_string(),
                     flac_name: p.audio_file.relative_path,
                     flac_local_path: p.audio_file.path.to_string_lossy().to_string(),
-                    total_size_label: p.total_size_label,
                     total_size: p.total_size,
                     track_count: p.cue_sheet.as_ref().map(|s| s.tracks.len() as u32),
                 })

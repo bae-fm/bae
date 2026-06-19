@@ -43,8 +43,6 @@ pub struct ScannedFile {
     pub relative_path: String,
     /// File size in bytes
     pub size: u64,
-    /// Pre-formatted file size, e.g. "35 MB".
-    pub size_label: String,
     /// Directory prefix of relative_path (e.g. "Disc 1/"). `None` when the
     /// file is at the candidate-folder root.
     pub dir_prefix: Option<String>,
@@ -54,7 +52,6 @@ pub struct ScannedFile {
 
 impl ScannedFile {
     pub fn new(path: PathBuf, relative_path: String, size: u64) -> Self {
-        let size_label = crate::util::format::format_bytes(size);
         let (dir_prefix, file_name) = match relative_path.rfind('/') {
             Some(idx) => (
                 Some(relative_path[..=idx].to_string()),
@@ -66,7 +63,6 @@ impl ScannedFile {
             path,
             relative_path,
             size,
-            size_label,
             dir_prefix,
             file_name,
         }
@@ -87,8 +83,6 @@ pub struct ScannedCueFlacPair {
     pub cue_sheet: Option<crate::cue_flac::CueSheet>,
     /// Combined size of CUE + audio file.
     pub total_size: u64,
-    /// Pre-formatted combined size.
-    pub total_size_label: String,
 }
 
 /// The audio content type of a release - mutually exclusive
@@ -865,7 +859,6 @@ fn categorize_files_from_tree(
                 audio_file,
                 cue_sheet,
                 total_size,
-                total_size_label: crate::util::format::format_bytes(total_size),
             });
         }
 

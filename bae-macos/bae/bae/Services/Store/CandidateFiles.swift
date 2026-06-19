@@ -5,7 +5,8 @@ import Foundation
 struct FileInfo: Equatable {
     /// Relative path within the candidate root, e.g. "Disc 1/track.flac".
     let name: String
-    let sizeLabel: String
+    /// File size in bytes. bae-core emits the raw count; the UI formats it.
+    let size: UInt64
     /// Directory portion of `name` with trailing slash. `nil` when the file
     /// sits at the candidate-folder root.
     let dirPrefix: String?
@@ -14,9 +15,14 @@ struct FileInfo: Equatable {
     /// Absolute filesystem path of the file on disk.
     let localPath: String
 
+    /// File size formatted for the current locale, e.g. "35 MB".
+    var sizeText: String {
+        Int64(size).formatted(.byteCount(style: .file))
+    }
+
     init(bridge: BridgeFileInfo) {
         name = bridge.name
-        sizeLabel = bridge.sizeLabel
+        size = bridge.size
         dirPrefix = bridge.dirPrefix
         fileName = bridge.fileName
         localPath = bridge.localPath
@@ -42,23 +48,35 @@ struct ArtworkFile: Equatable {
 
 struct CueFlacPair: Equatable {
     let cueName: String
-    let cueSizeLabel: String
+    /// CUE file size in bytes. The UI formats it.
+    let cueSize: UInt64
     /// Absolute filesystem path of the CUE file on disk.
     let cueLocalPath: String
     let flacName: String
     /// Absolute filesystem path of the audio file on disk.
     let flacLocalPath: String
-    let totalSizeLabel: String
+    /// Combined CUE + audio size in bytes. The UI formats it.
+    let totalSize: UInt64
     /// `nil` when the CUE hasn't been parsed yet.
     let trackCount: UInt32?
 
+    /// CUE file size formatted for the current locale, e.g. "1 KB".
+    var cueSizeText: String {
+        Int64(cueSize).formatted(.byteCount(style: .file))
+    }
+
+    /// Combined size formatted for the current locale, e.g. "340 MB".
+    var totalSizeText: String {
+        Int64(totalSize).formatted(.byteCount(style: .file))
+    }
+
     init(bridge: BridgeCueFlacPair) {
         cueName = bridge.cueName
-        cueSizeLabel = bridge.cueSizeLabel
+        cueSize = bridge.cueSize
         cueLocalPath = bridge.cueLocalPath
         flacName = bridge.flacName
         flacLocalPath = bridge.flacLocalPath
-        totalSizeLabel = bridge.totalSizeLabel
+        totalSize = bridge.totalSize
         trackCount = bridge.trackCount
     }
 }
