@@ -75,6 +75,16 @@ value = "mono"
 comment = "Audio format: two-channel audio."
 value = "stereo"
 
+[messages."core.track.side"]
+comment = "Track grouping: header for a physical side, e.g. 'Side A' ({letter} is the side letter A/B/C… computed by core)."
+args = { letter = "Str" }
+value = "Side {letter}"
+
+[messages."core.track.disc"]
+comment = "Track grouping: header for a disc in a multi-disc release, e.g. 'Disc 2' ({disc} is the disc number computed by core)."
+args = { disc = "Int" }
+value = "Disc {disc}"
+
 [messages."core.cloud.s3_compatible"]
 comment = "Cloud provider: any S3-compatible storage."
 value = "S3-compatible"

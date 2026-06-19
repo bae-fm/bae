@@ -3327,7 +3327,7 @@ pub(crate) fn resolve_release(
             } else {
                 join_artist_names(&entry.artists)
             };
-            let (side_label, position_label) = crate::util::format::compute_track_labels(
+            let position = crate::util::format::compute_track_position(
                 release.pressing.format.as_deref(),
                 entry.track.side,
                 entry.track.track_number,
@@ -3340,8 +3340,7 @@ pub(crate) fn resolve_release(
                 track_number: entry.track.track_number,
                 duration_ms: entry.track.duration_ms,
                 artist_names,
-                side_label,
-                position_label,
+                position,
             }
         })
         .collect();

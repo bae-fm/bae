@@ -972,6 +972,11 @@ RustBuffer uniffi_bae_bridge_fn_func_bridge_invalid_reason_key(RustBuffer reason
 RustBuffer uniffi_bae_bridge_fn_func_bridge_prepare_step_key(RustBuffer step, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_FN_FUNC_BRIDGE_TRACK_HEADER_KEY
+#define UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_FN_FUNC_BRIDGE_TRACK_HEADER_KEY
+RustBuffer uniffi_bae_bridge_fn_func_bridge_track_header_key(RustBuffer side, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_FN_FUNC_BRIDGE_TRANSFER_ACTION_KEY
 #define UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_FN_FUNC_BRIDGE_TRANSFER_ACTION_KEY
 RustBuffer uniffi_bae_bridge_fn_func_bridge_transfer_action_key(RustBuffer action, RustCallStatus *_Nonnull out_status
@@ -1401,6 +1406,12 @@ uint16_t uniffi_bae_bridge_checksum_func_bridge_invalid_reason_key(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_CHECKSUM_FUNC_BRIDGE_PREPARE_STEP_KEY
 #define UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_CHECKSUM_FUNC_BRIDGE_PREPARE_STEP_KEY
 uint16_t uniffi_bae_bridge_checksum_func_bridge_prepare_step_key(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_CHECKSUM_FUNC_BRIDGE_TRACK_HEADER_KEY
+#define UNIFFI_FFIDEF_UNIFFI_BAE_BRIDGE_CHECKSUM_FUNC_BRIDGE_TRACK_HEADER_KEY
+uint16_t uniffi_bae_bridge_checksum_func_bridge_track_header_key(void
     
 );
 #endif

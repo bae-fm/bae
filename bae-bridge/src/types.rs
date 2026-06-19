@@ -319,9 +319,65 @@ impl BridgeIdentityChoice {
     }
 }
 
+/// Structured track position. The case carries the domain decision (sided
+/// physical medium / multi-disc digital / flat single-disc); the UI composes
+/// the position string ("A1", "2-3", "5") mechanically from the fields and
+/// resolves the "Side"/"Disc" header word from `bridge_track_*` catalog keys.
+/// No prose crosses the bridge — only the side letter, disc/track numbers, and
+/// the case.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeTrackPosition {
+    /// Vinyl/cassette: header "Side {side_letter}", position "{side_letter}{number}".
+    Sided { side_letter: String, number: i32 },
+    /// Multi-disc digital: header "Disc {disc}", position "{disc}-{number}".
+    Disc { disc: i32, number: i32 },
+    /// Single-disc digital: position "{number}", no header.
+    Flat { number: i32 },
+}
+
+impl BridgeTrackPosition {
+    pub(crate) fn from_core(p: bae_core::album_detail::TrackPosition) -> Self {
+        use bae_core::album_detail::TrackPosition;
+        match p {
+            TrackPosition::Sided {
+                side_letter,
+                number,
+            } => Self::Sided {
+                side_letter,
+                number,
+            },
+            TrackPosition::Disc { disc, number } => Self::Disc { disc, number },
+            TrackPosition::Flat { number } => Self::Flat { number },
+        }
+    }
+}
+
+/// A track group's side discriminant — the header the UI renders ("Side A" /
+/// "Disc 2"). `Flat` means no header (single-disc digital). Distinct from
+/// `BridgeTrackPosition` because a header carries no per-track number.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeTrackSide {
+    Sided { side_letter: String },
+    Disc { disc: i32 },
+    Flat,
+}
+
+impl BridgeTrackSide {
+    pub(crate) fn from_core(s: bae_core::album_detail::TrackSide) -> Self {
+        use bae_core::album_detail::TrackSide;
+        match s {
+            TrackSide::Sided { side_letter } => Self::Sided { side_letter },
+            TrackSide::Disc { disc } => Self::Disc { disc },
+            TrackSide::Flat => Self::Flat,
+        }
+    }
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTrackGroup {
-    pub side_label: String,
+    /// The group's side discriminant; the UI renders the "Side A" / "Disc 2"
+    /// header from it (`Flat` means no header).
+    pub side: BridgeTrackSide,
     pub tracks: Vec<BridgeTrack>,
 }
 
@@ -336,10 +392,46 @@ pub struct BridgeTrack {
     /// artists when it has per-track artist rows, otherwise the album
     /// artists). Always populated.
     pub artist_names: String,
-    /// Human-readable side label: "Side A", "Disc 2", or empty for single-side digital
-    pub side_label: String,
-    /// Human-readable track position: "A1", "1", "1-2", etc.
-    pub position_label: String,
+    /// Structured position: the UI composes "A1"/"2-3"/"5" from the case.
+    pub position: BridgeTrackPosition,
+}
+
+/// Localization key for a track group's header word, given its side, or `None`
+/// for `Flat` (single-disc digital has no header). The UI resolves the key and
+/// substitutes the side letter / disc number the side carries.
+#[uniffi::export]
+pub fn bridge_track_header_key(side: BridgeTrackSide) -> Option<String> {
+    match side {
+        BridgeTrackSide::Sided { .. } => Some("core.track.side".to_string()),
+        BridgeTrackSide::Disc { .. } => Some("core.track.disc".to_string()),
+        BridgeTrackSide::Flat => None,
+    }
+}
+
+#[cfg(test)]
+mod track_position_tests {
+    use super::BridgeTrackSide;
+
+    /// The header keys the UI resolves (Side, Disc) must exist; the flat case
+    /// has no header word, so no key.
+    #[test]
+    fn keys_exist() {
+        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
+            .expect("catalog parses");
+        for side in [
+            BridgeTrackSide::Sided {
+                side_letter: "A".to_string(),
+            },
+            BridgeTrackSide::Disc { disc: 2 },
+        ] {
+            let key = super::bridge_track_header_key(side).expect("Sided and Disc carry keys");
+            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
+        }
+        assert!(
+            super::bridge_track_header_key(BridgeTrackSide::Flat).is_none(),
+            "flat single-disc has no header word, no key"
+        );
+    }
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -1689,12 +1781,10 @@ pub struct BridgeReleaseTrack {
     pub title: String,
     pub artist: Option<String>,
     pub duration_ms: Option<u64>,
+    /// Raw position string as the metadata source reports it ("A1", "1",
+    /// "1-2", or arbitrary prose). Shown verbatim in the import preview.
     pub position: String,
     pub side: u32,
-    /// Human-readable side label: "Side A", "Disc 2", or empty for single-side digital
-    pub side_label: String,
-    /// Human-readable track position: "A1", "1", "1-2", etc.
-    pub position_label: String,
 }
 
 /// Mirror of `bae_core::import::ReleaseUserEdit` — a normalized, validated
@@ -2445,8 +2535,6 @@ pub(crate) fn release_detail_to_bridge(
                 duration_ms: t.duration_ms,
                 position: t.position,
                 side: t.side,
-                side_label: t.side_label,
-                position_label: t.position_label,
             })
             .collect(),
         cover_art,
@@ -2505,8 +2593,6 @@ pub(crate) fn release_detail_from_bridge(
                 duration_ms: t.duration_ms,
                 position: t.position,
                 side: t.side,
-                side_label: t.side_label,
-                position_label: t.position_label,
             })
             .collect(),
         cover_art: d

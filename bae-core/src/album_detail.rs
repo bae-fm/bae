@@ -29,9 +29,12 @@
 //! UI side can intern the summary portion into the "summaries" slice and the
 //! detail portion into the "details" slice from a single event payload.
 //!
-//! Tracks carry pre-formatted `side_label` / `position_label`. A *side* is a
-//! contiguous playback unit (one CD disc, one vinyl face, one cassette face);
-//! label formatting depends on the release's physical format.
+//! Tracks carry a structured [`TrackPosition`] instead of pre-formatted prose.
+//! A *side* is a contiguous playback unit (one CD disc, one vinyl face, one
+//! cassette face); which case applies depends on the release's physical format.
+//! The side letter (A/B/C…) and the disc-vs-side decision are domain logic and
+//! stay here; only the words "Side"/"Disc" are the UI's, resolved from catalog
+//! keys.
 
 use crate::db::{DbAlbum, DbReleaseLocalCopy};
 
@@ -123,7 +126,34 @@ pub fn available_storage_actions(
     }
 }
 
-/// Track with resolved artist names and display labels.
+/// Where a track sits in its release, in structured form. The case carries the
+/// domain decision (sided physical medium vs. multi-disc digital vs. flat
+/// single-disc digital); the UI composes the position string ("A1", "2-3", "5")
+/// mechanically from the fields and resolves the "Side"/"Disc" header word from
+/// a catalog key. No prose lives here.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TrackPosition {
+    /// Vinyl/cassette: header "Side A", position "A1". `side_letter` is the
+    /// letter for the face (A/B/C…); `number` is the within-side track number.
+    Sided { side_letter: String, number: i32 },
+    /// Multi-disc digital (CD etc.): header "Disc 2", position "2-3".
+    Disc { disc: i32, number: i32 },
+    /// Single-disc digital: position "5", no header.
+    Flat { number: i32 },
+}
+
+/// A track group's side discriminant — what the UI renders as the "Side A" /
+/// "Disc 2" header. `Flat` is single-disc digital: one group, no header.
+/// Separate from [`TrackPosition`] because a header carries no per-track number
+/// (every track on a side shares one `TrackSide`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TrackSide {
+    Sided { side_letter: String },
+    Disc { disc: i32 },
+    Flat,
+}
+
+/// Track with resolved artist names and a structured display position.
 #[derive(Debug, Clone)]
 pub struct TrackDetail {
     pub id: String,
@@ -136,17 +166,16 @@ pub struct TrackDetail {
     /// populated so UI consumers can render a row label without joining
     /// artist data themselves.
     pub artist_names: String,
-    /// Human-readable side label: "Side A", "Disc 2", or empty for single-side digital.
-    pub side_label: String,
-    /// Human-readable track position: "A1", "1", "1-2", etc.
-    pub position_label: String,
+    /// Structured position: the UI composes "A1"/"2-3"/"5" from the case.
+    pub position: TrackPosition,
 }
 
-/// A group of tracks sharing the same side (e.g., "Side A", "Disc 2").
-/// For single-side releases, there's one group with an empty label.
+/// A group of tracks sharing the same side. `side` is the group's discriminant
+/// (the UI renders the "Side A" / "Disc 2" header from it; `Flat` means no
+/// header). For single-side releases, there's one `Flat` group.
 #[derive(Debug, Clone)]
 pub struct TrackGroup {
-    pub side_label: String,
+    pub side: TrackSide,
     pub tracks: Vec<TrackDetail>,
 }
 
