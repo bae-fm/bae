@@ -70,6 +70,27 @@ value = "mono"
 comment = "Audio format: two-channel audio."
 value = "stereo"
 
+[messages."core.transfer.action.pin"]
+comment = "Storage transfer: present-continuous verb while pinning a release for offline."
+value = "Pinning for offline"
+
+[messages."core.transfer.action.unpin"]
+comment = "Storage transfer: present-continuous verb while removing a release's local copy."
+value = "Removing local copy"
+
+[messages."core.transfer.action.manage"]
+comment = "Storage transfer: present-continuous verb while moving a release into the library."
+value = "Moving into library"
+
+[messages."core.transfer.action.unmanage"]
+comment = "Storage transfer: present-continuous verb while moving a release out of the library."
+value = "Moving out of library"
+
+[messages."core.transfer.files"]
+comment = "Storage transfer: which file of how many is being processed."
+args = { file_no = "Int", total = "Int" }
+value = "{file_no} of {total} files"
+
 [messages."core.identify.barcode.looking_up"]
 comment = "Identify: which barcode is being looked up, of how many."
 args = { position = "Int", total = "Int" }

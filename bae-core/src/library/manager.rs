@@ -821,33 +821,6 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
     }
 }
 
-/// Present-continuous action phrase for a storage transition — the leading part
-/// of a progress `label` ("Pinning for offline").
-fn transfer_action(action: ReleaseStorageAction) -> &'static str {
-    match action {
-        ReleaseStorageAction::Pin => "Pinning for offline",
-        ReleaseStorageAction::Unpin => "Removing local copy",
-        ReleaseStorageAction::Manage => "Moving into library",
-        ReleaseStorageAction::Unmanage => "Moving out of library",
-    }
-}
-
-/// The ready-to-render progress line for a transfer at file `file_no` of
-/// `total`, e.g. "Pinning for offline — 3 of 12 files · 42%". `file_no` is
-/// 1-based. Core owns the whole string — including the percent — so the UI
-/// renders it verbatim and never reassembles it from parts.
-fn transfer_label(
-    action: ReleaseStorageAction,
-    file_no: usize,
-    total: usize,
-    percent: u8,
-) -> String {
-    format!(
-        "{} — {file_no} of {total} files · {percent}%",
-        transfer_action(action)
-    )
-}
-
 /// Emits `ReleaseTransferEnded` on drop unless defused. `drive_transfer` holds
 /// one so an aborted transfer future (its bridge wrapper is dropped mid-flight)
 /// still clears the UI's transfer indicator; the normal exit defuses it after
@@ -954,8 +927,10 @@ pub enum LibraryEvent {
     /// the matching `ReleaseTransferEnded` arrives.
     ReleaseTransferProgress {
         release_id: String,
+        action: ReleaseStorageAction,
+        file_no: Option<u32>,
+        total: Option<u32>,
         percent: u8,
-        label: String,
     },
     /// A transition finished (success OR failure) — the UI clears its transfer
     /// indicator. On failure the user-facing reason still arrives via the
@@ -4768,11 +4743,13 @@ impl LibraryManager {
             armed: true,
         };
 
-        let emit_progress = |percent: u8, label: String| {
+        let emit_progress = |percent: u8, file_no: Option<u32>, total: Option<u32>| {
             self.emit(LibraryEvent::ReleaseTransferProgress {
                 release_id: release_id.to_string(),
+                action,
+                file_no,
+                total,
                 percent,
-                label,
             });
         };
 
@@ -4788,7 +4765,7 @@ impl LibraryManager {
                     // The first file count isn't known to be > 1 yet, and a bare
                     // "X of N" with file 1 reads as redundant; show the action
                     // alone until the first FileProgress reports real position.
-                    emit_progress(0, transfer_action(action).to_string());
+                    emit_progress(0, None, None);
                 }
                 TransferProgress::FileProgress {
                     file_index,
@@ -4804,7 +4781,8 @@ impl LibraryManager {
                     on_overall(overall);
                     emit_progress(
                         overall,
-                        transfer_label(action, file_index + 1, total_files, overall),
+                        Some(file_index as u32 + 1),
+                        Some(total_files as u32),
                     );
                 }
                 TransferProgress::Complete { .. } => break Ok(()),

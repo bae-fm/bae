@@ -426,13 +426,17 @@ impl UiEventBus {
                     }
                     Ok(LibraryEvent::ReleaseTransferProgress {
                         release_id,
+                        action,
+                        file_no,
+                        total,
                         percent,
-                        label,
                     }) => {
                         bus.emit(UiBusEvent::ReleaseTransferProgress {
                             release_id,
+                            action,
+                            file_no,
+                            total,
                             percent,
-                            label,
                         });
                     }
                     Ok(LibraryEvent::ReleaseTransferEnded { release_id }) => {

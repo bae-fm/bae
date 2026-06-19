@@ -225,8 +225,10 @@ pub enum UiBusEvent {
     /// shows a determinate bar on the release row until `ReleaseTransferEnded`.
     ReleaseTransferProgress {
         release_id: String,
+        action: crate::album_detail::ReleaseStorageAction,
+        file_no: Option<u32>,
+        total: Option<u32>,
         percent: u8,
-        label: String,
     },
     /// A transition finished (success or failure) — the UI clears its transfer
     /// indicator. Failure text still arrives via the thrown error.

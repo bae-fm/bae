@@ -1648,12 +1648,16 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         }),
         UiBusEvent::ReleaseTransferProgress {
             release_id,
+            action,
+            file_no,
+            total,
             percent,
-            label,
         } => Some(BridgeUiEvent::ReleaseTransferProgress {
             release_id,
+            action: crate::types::BridgeReleaseStorageAction::from_core(action),
+            file_no,
+            total,
             percent,
-            label,
         }),
         UiBusEvent::ReleaseTransferEnded { release_id } => {
             Some(BridgeUiEvent::ReleaseTransferEnded { release_id })
