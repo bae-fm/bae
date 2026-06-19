@@ -154,15 +154,13 @@ enum PreviewData {
         _ names: [String],
         artist: String,
         side: Int32 = 1,
-        sideLabel: String = "",
-        positionPrefix: String = "",
+        position: (Int) -> BridgeTrackPosition = {
+            .flat(number: Int32($0 + 1))
+        },
     ) -> [BridgeTrack] {
         names.enumerated()
             .map { index, name in
                 let durationMs = Int64((170 + (index * 37) % 170) * 1000)
-                let posLabel =
-                    positionPrefix.isEmpty
-                    ? "\(index + 1)" : "\(positionPrefix)\(index + 1)"
                 return BridgeTrack(
                     id: "t-d\(side)-\(index + 1)",
                     title: name,
@@ -170,10 +168,38 @@ enum PreviewData {
                     trackNumber: Int32(index + 1),
                     durationMs: durationMs,
                     artistNames: artist,
-                    sideLabel: sideLabel,
-                    positionLabel: posLabel,
+                    position: position(index),
                 )
             }
+    }
+
+    /// A two-part release's tracks plus the matching per-side groups, so the
+    /// preview renders real "Side A" / "Disc 2" headers. Vinyl sides get
+    /// `.sided` with the letter supplied (A/B); digital gets `.disc` (1/2).
+    private static func twoSide(
+        artist: String,
+        isVinyl: Bool,
+        disc1: [String],
+        disc2: [String],
+    ) -> (tracks: [BridgeTrack], groups: [BridgeTrackGroup]) {
+        func side(
+            _ sideNumber: Int32,
+            letter: String,
+            names: [String],
+        ) -> (tracks: [BridgeTrack], group: BridgeTrackGroup) {
+            let tracks = makeTracks(names, artist: artist, side: sideNumber) {
+                index in
+                isVinyl
+                    ? .sided(sideLetter: letter, number: Int32(index + 1))
+                    : .disc(disc: sideNumber, number: Int32(index + 1))
+            }
+            let groupSide: BridgeTrackSide =
+                isVinyl ? .sided(sideLetter: letter) : .disc(disc: sideNumber)
+            return (tracks, BridgeTrackGroup(side: groupSide, tracks: tracks))
+        }
+        let (tracks1, group1) = side(1, letter: "A", names: disc1)
+        let (tracks2, group2) = side(2, letter: "B", names: disc2)
+        return (tracks1 + tracks2, [group1, group2])
     }
 
     private static func makeDetail(
@@ -211,7 +237,7 @@ enum PreviewData {
                     tracks: makeTracks(tracks, artist: artist),
                     trackGroups: [
                         BridgeTrackGroup(
-                            sideLabel: "",
+                            side: .flat,
                             tracks: makeTracks(tracks, artist: artist)
                         )
                     ],
@@ -237,21 +263,12 @@ enum PreviewData {
         format: String,
     ) -> BridgeAlbumDetail {
         let isVinyl = format.contains("Vinyl") || format.contains("Cassette")
-        let allTracks =
-            makeTracks(
-                disc1,
-                artist: artist,
-                side: 1,
-                sideLabel: isVinyl ? "Side A" : "Disc 1",
-                positionPrefix: isVinyl ? "A" : "",
-            )
-            + makeTracks(
-                disc2,
-                artist: artist,
-                side: 2,
-                sideLabel: isVinyl ? "Side B" : "Disc 2",
-                positionPrefix: isVinyl ? "B" : "",
-            )
+        let sides = twoSide(
+            artist: artist,
+            isVinyl: isVinyl,
+            disc1: disc1,
+            disc2: disc2,
+        )
         return BridgeAlbumDetail(
             album: BridgeAlbum(
                 id: id,
@@ -276,10 +293,8 @@ enum PreviewData {
                     country: "US",
                     storageState: .unmanaged,
                     storageActions: [],
-                    tracks: allTracks,
-                    trackGroups: [
-                        BridgeTrackGroup(sideLabel: "", tracks: allTracks)
-                    ],
+                    tracks: sides.tracks,
+                    trackGroups: sides.groups,
                     files: [],
                     imageFiles: [],
                     galleryItems: [],
@@ -311,26 +326,27 @@ enum PreviewData {
                 let isVinyl =
                     rel.format.contains("Vinyl")
                     || rel.format.contains("Cassette")
-                let allTracks: [BridgeTrack] =
-                    if let disc2 = rel.disc2 {
-                        makeTracks(
-                            rel.tracks,
-                            artist: artist,
-                            side: 1,
-                            sideLabel: isVinyl ? "Side A" : "Disc 1",
-                            positionPrefix: isVinyl ? "A" : "",
+                let allTracks: [BridgeTrack]
+                let groups: [BridgeTrackGroup]
+                if let disc2 = rel.disc2 {
+                    let sides = twoSide(
+                        artist: artist,
+                        isVinyl: isVinyl,
+                        disc1: rel.tracks,
+                        disc2: disc2,
+                    )
+                    allTracks = sides.tracks
+                    groups = sides.groups
+                }
+                else {
+                    allTracks = makeTracks(rel.tracks, artist: artist)
+                    groups = [
+                        BridgeTrackGroup(
+                            side: .flat,
+                            tracks: allTracks
                         )
-                            + makeTracks(
-                                disc2,
-                                artist: artist,
-                                side: 2,
-                                sideLabel: isVinyl ? "Side B" : "Disc 2",
-                                positionPrefix: isVinyl ? "B" : "",
-                            )
-                    }
-                    else {
-                        makeTracks(rel.tracks, artist: artist)
-                    }
+                    ]
+                }
                 return BridgeRelease(
                     id: releaseIds[index],
                     albumId: id,
@@ -344,9 +360,7 @@ enum PreviewData {
                     storageState: .unmanaged,
                     storageActions: [],
                     tracks: allTracks,
-                    trackGroups: [
-                        BridgeTrackGroup(sideLabel: "", tracks: allTracks)
-                    ],
+                    trackGroups: groups,
                     files: [],
                     imageFiles: [],
                     galleryItems: [],
@@ -848,8 +862,6 @@ enum PreviewData {
                     durationMs: ms,
                     position: "\(i)",
                     side: 1,
-                    sideLabel: "",
-                    positionLabel: "\(i)",
                 )
             }
         return BridgeReleaseDetail(

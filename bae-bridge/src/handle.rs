@@ -1664,8 +1664,7 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
         track_number: t.track_number,
         duration_ms: t.duration_ms,
         artist_names: t.artist_names,
-        side_label: t.side_label,
-        position_label: t.position_label,
+        position: crate::types::BridgeTrackPosition::from_core(t.position),
     };
     let summary = rel.summary;
     BridgeRelease {
@@ -1690,7 +1689,7 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
             .track_groups
             .into_iter()
             .map(|g| BridgeTrackGroup {
-                side_label: g.side_label,
+                side: crate::types::BridgeTrackSide::from_core(g.side),
                 tracks: g.tracks.into_iter().map(convert_track).collect(),
             })
             .collect(),

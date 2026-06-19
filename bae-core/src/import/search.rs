@@ -12,7 +12,6 @@ use crate::import::cover_art::{CoverArtArchiveClient, RemoteCover};
 use crate::import::types::MetadataSource;
 use crate::musicbrainz::{self, DiscIdRelease, ReleaseSearchParams, SearchRelease};
 use crate::retry::retry_with_backoff;
-use crate::util::format::compute_track_labels;
 use tracing::warn;
 
 /// A unified metadata search result from either MusicBrainz or Discogs.
@@ -93,12 +92,11 @@ pub struct ReleaseTrack {
     pub title: String,
     pub artist: Option<String>,
     pub duration_ms: Option<u64>,
+    /// Raw position string as the metadata source reports it ("A1", "1",
+    /// "1-2", or arbitrary prose like "Bonus"). The import preview shows it
+    /// verbatim; it is not the structured library-display position.
     pub position: String,
     pub side: u32,
-    /// Human-readable side label: "Side A", "Disc 2", or empty for single-side digital
-    pub side_label: String,
-    /// Human-readable track position: "A1", "1", "1-2", etc.
-    pub position_label: String,
 }
 
 /// Disc ID lookup result.
@@ -476,8 +474,6 @@ fn build_mb_detail(
                     .clone()
                     .unwrap_or_else(|| t.position.map(|p| p.to_string()).unwrap_or_default()),
                 side,
-                side_label: String::new(),
-                position_label: String::new(),
             });
         }
 
@@ -488,25 +484,7 @@ fn build_mb_detail(
         };
     }
 
-    let has_multiple_sides = tracks
-        .iter()
-        .map(|t| t.side)
-        .collect::<std::collections::HashSet<_>>()
-        .len()
-        > 1;
     let format = mb_response.media.first().and_then(|m| m.format.clone());
-    let format_str = format.as_deref();
-    for track in &mut tracks {
-        let (side_label, position_label) =
-            compute_track_labels(format_str, track.side as i32, None, has_multiple_sides);
-        track.side_label = side_label;
-        track.position_label = if track.position.is_empty() {
-            position_label
-        } else {
-            track.position.clone()
-        };
-    }
-
     let artist = mb_response.artist_credit.first().map(|ac| ac.name.clone());
     let (label, catalog_number) = mb_response
         .label_info
@@ -601,12 +579,6 @@ fn build_discogs_detail(release: &crate::discogs::DiscogsRelease) -> ImportSearc
     } else {
         Some(release.format.join(", "))
     };
-    let has_multiple_sides = processed
-        .iter()
-        .map(|pt| pt.side)
-        .collect::<std::collections::HashSet<_>>()
-        .len()
-        > 1;
 
     let tracks: Vec<ReleaseTrack> = processed
         .iter()
@@ -614,13 +586,6 @@ fn build_discogs_detail(release: &crate::discogs::DiscogsRelease) -> ImportSearc
             let source_track = release.tracklist.iter().find(|t| {
                 pt.original_positions.iter().any(|p| p == &t.position) && t.type_ != "heading"
             });
-
-            let (side_label, position_label) = compute_track_labels(
-                format_string.as_deref(),
-                pt.side,
-                Some(pt.track_number),
-                has_multiple_sides,
-            );
 
             let duration_ms = source_track
                 .and_then(|t| t.duration.as_ref())
@@ -631,8 +596,6 @@ fn build_discogs_detail(release: &crate::discogs::DiscogsRelease) -> ImportSearc
                 duration_ms,
                 position: pt.position.clone(),
                 side: pt.side as u32,
-                side_label,
-                position_label,
             }
         })
         .collect();

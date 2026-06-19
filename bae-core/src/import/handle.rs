@@ -1838,8 +1838,6 @@ mod tests {
             duration_ms: None,
             position: position.to_string(),
             side,
-            side_label: String::new(),
-            position_label: position.to_string(),
         }
     }
 

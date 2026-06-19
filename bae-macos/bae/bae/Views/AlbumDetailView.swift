@@ -842,8 +842,8 @@ struct AlbumTrackListView: View {
                 groupIndex,
                 group in
                 let globalOffset = offsets[groupIndex]
-                if !group.sideLabel.isEmpty {
-                    Text(group.sideLabel)
+                if !group.sideHeaderText.isEmpty {
+                    Text(group.sideHeaderText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.top, groupIndex == 0 ? 0 : 16)
@@ -1024,11 +1024,11 @@ private struct TrackRowView: View {
     }
 
     private var trackNumberLabel: some View {
-        if track.positionLabel.isEmpty {
+        if track.positionText.isEmpty {
             Text("-")
         }
         else {
-            Text(track.positionLabel)
+            Text(track.positionText)
         }
     }
 }
