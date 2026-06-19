@@ -32,6 +32,20 @@ fi
 # at ~/dev/agent-instructions/projects/bae.md.
 ln -sf "$HOME/dev/agent-instructions/projects/bae.md" CLAUDE.md
 
+# Share the machine's prebuilt cross-compiled FFmpeg from the main checkout. The
+# per-target static libs under third_party/ (ffmpeg-ios, ffmpeg-android, and the
+# ffmpeg-src tree they build from) are expensive to compile from source and don't
+# come along when git creates a worktree (they're gitignored), so an iOS or
+# Android bridge build here would otherwise re-run the whole FFmpeg cross-compile.
+# Symlink the main checkout's directory so every worktree shares one build; the
+# whole path is gitignored, so the symlink stays out of `git status`.
+main_checkout="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+if [ "$main_checkout" != "$worktree_root" ] \
+    && [ -d "$main_checkout/third_party" ] && [ ! -e third_party ]; then
+    ln -s "$main_checkout/third_party" third_party
+    echo "Linked third_party -> $main_checkout/third_party"
+fi
+
 # Build the Rust bridge before generating and building the Xcode project, in the
 # same order the pre-commit hook uses. build-macos.sh produces both
 # BaeBridgeFFI.xcframework and the generated Swift bindings, and both must exist
