@@ -1,10 +1,12 @@
 package fm.bae.app.ui
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -74,110 +77,40 @@ import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
 
+private const val TAG = "bae.LibraryScreen"
 private const val PAGE_SIZE = 60
+private const val GRID_PREFETCH_AHEAD = 12
+private const val PULL_REFRESH_SETTLE_MS = 900L
 
-/** The display-label resource for a sort field, shown in the library sort menu. */
-private fun BridgeSortField.labelRes(): Int =
-    when (this) {
-        BridgeSortField.TITLE -> R.string.sort_title
-        BridgeSortField.ARTIST -> R.string.sort_artist
-        BridgeSortField.YEAR -> R.string.sort_year
-        BridgeSortField.DATE_ADDED -> R.string.sort_date_added
-    }
+private class PageError(
+    val message: String,
+    val onRetry: () -> Unit,
+)
 
 /**
- * Library browse. A top bar (wordmark + search/sort/settings) over an album
- * grid paginated from the database, navigation into an album's detail, and a
- * persistent now-playing bar once playback starts. Search is tap-to-open: the
- * search icon swaps the top bar for a focused query field. A thin indeterminate
- * bar shows under the top bar only while a sync cycle is mid-flight. The grid
- * re-queries whenever the library shape changes (sync streams albums in over
- * time).
+ * Loads and accumulates the album grid one page at a time. Owns the loaded
+ * albums, their display order, and resolved cover paths, plus the two loads:
+ * the first page, and each next page as the grid scrolls near its end. Backed
+ * by snapshot state so reads in composition recompose on change.
  */
-private const val TAG = "bae.LibraryScreen"
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun LibraryScreen(
-    session: OpenLibrary,
-    onLeaveLibrary: () -> Unit,
+private class LibraryPage(
+    private val session: OpenLibrary,
+    private val sortCriterion: BridgeSortCriterion,
+    private val appContext: Context,
+    private val onRetry: () -> Unit,
 ) {
-    var selectedAlbumId by remember { mutableStateOf<String?>(null) }
-    var showSettings by remember { mutableStateOf(false) }
-    // Declared before the detail early-return so the active query (and whether
-    // the search bar is open) survive a round-trip into an album's detail and
-    // back.
-    var searchQuery by remember { mutableStateOf("") }
-    var searchOpen by remember { mutableStateOf(false) }
-    // Survives the detail round-trip (declared before the early return). Changing
-    // it resets the paged accumulator below, which keys on it.
-    var sortCriterion by remember {
-        mutableStateOf(
-            BridgeSortCriterion(BridgeSortField.DATE_ADDED, BridgeSortDirection.DESCENDING),
-        )
-    }
+    val albums = mutableStateMapOf<String, BridgeAlbum>()
+    val order = mutableStateListOf<String>()
+    val coverPaths = mutableStateMapOf<String, String>()
+    var totalCount by mutableStateOf(0)
+        private set
+    var loading by mutableStateOf(true)
+        private set
+    var error by mutableStateOf<PageError?>(null)
+        private set
+    private var loadedOffset = 0
 
-    val selected = selectedAlbumId
-    if (selected != null) {
-        AlbumDetailScreen(
-            session = session,
-            albumId = selected,
-            onBack = { selectedAlbumId = null },
-        )
-        return
-    }
-
-    if (showSettings) {
-        SettingsScreen(
-            session = session,
-            onBack = { showSettings = false },
-            onLeaveLibrary = onLeaveLibrary,
-        )
-        return
-    }
-
-    val generation by session.libraryStore.generation.collectAsState()
-    val syncing by session.configStore.syncing.collectAsState()
-    val syncError by session.configStore.syncError.collectAsState()
-    val appError by session.configStore.error.collectAsState()
-    // For error fallbacks set inside LaunchedEffects (stringResource needs a
-    // composition; the load runs off it).
-    val appContext = LocalContext.current
-
-    // Bumped by a Retry after a failed load; included in the accumulator keys
-    // below so a retry resets everything and reloads from the first page. Reset
-    // to 0 whenever the generation or sort changes (those reload on their own).
-    var retryToken by remember(generation, sortCriterion) { mutableStateOf(0) }
-    // Single source of truth for the grid's rows: an id-keyed, insertion-ordered
-    // accumulator. The DATE_ADDED-descending sort head-inserts as sync streams
-    // albums in, so offset paging re-fetches albums already seen; keying by id
-    // dedupes them so the grid never renders two cards with the same id. The
-    // accumulator (and the count/offset) reset together on a generation bump or
-    // a retry, keyed on all three so the reset and append paths share one owner
-    // and can't race.
-    val albums = remember(generation, sortCriterion, retryToken) { mutableStateMapOf<String, BridgeAlbum>() }
-    val order = remember(generation, sortCriterion, retryToken) { mutableStateListOf<String>() }
-    // Album id -> absolute cover path, resolved from the primary release's cover
-    // file on disk. Resolved off-main as each page loads (see `resolveCovers`),
-    // so every paged card carries its cover — not just albums whose detail a
-    // live sync event happened to intern this session. Absent when the cover
-    // file isn't on disk yet; a later generation bump re-resolves it.
-    val coverPaths = remember(generation, sortCriterion, retryToken) { mutableStateMapOf<String, String>() }
-    var totalCount by remember(generation, sortCriterion, retryToken) { mutableStateOf(0) }
-    var loadedOffset by remember(generation, sortCriterion, retryToken) { mutableStateOf(0) }
-    var loading by remember(generation, sortCriterion, retryToken) { mutableStateOf(true) }
-    // Set when a page read throws. Drives the in-grid error+retry when the first
-    // page failed (nothing loaded) and the top banner when an append failed over
-    // already-loaded albums. Cleared by a generation/sort change or a retry.
-    var loadError by remember(generation, sortCriterion, retryToken) { mutableStateOf<String?>(null) }
-
-    val gridState = rememberLazyGridState()
-    // Pull-to-refresh shows the indicator briefly to acknowledge the manual
-    // sync kick; results stream back in via album events (sync runs on its own).
-    var refreshing by remember { mutableStateOf(false) }
-    val refreshScope = rememberCoroutineScope()
-
-    fun ingest(
+    private fun ingest(
         page: List<BridgeAlbum>,
         covers: Map<String, String>,
     ) {
@@ -188,17 +121,21 @@ fun LibraryScreen(
         coverPaths.putAll(covers)
     }
 
-    // Load the first page when the library shape changes (the accumulator was
-    // just reset by the generation-keyed `remember`s above).
-    LaunchedEffect(generation, sortCriterion, retryToken) {
+    private fun resolveCovers(page: List<BridgeAlbum>): Map<String, String> =
+        page
+            .mapNotNull { album ->
+                session.library.imagePathIfExists(album.primaryReleaseId)?.let { album.id to it }
+            }.toMap()
+
+    suspend fun loadFirst() {
         loading = true
-        loadError = null
+        error = null
         try {
             val (count, page, covers) =
                 withContext(Dispatchers.IO) {
                     val c = session.library.albumCount().toInt()
                     val p = session.library.albumPage(listOf(sortCriterion), 0u, PAGE_SIZE.toULong())
-                    Triple(c, p, resolveCovers(session, p))
+                    Triple(c, p, resolveCovers(p))
                 }
             totalCount = count
             ingest(page, covers)
@@ -207,41 +144,107 @@ fun LibraryScreen(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load first album page", e)
-            loadError = e.message ?: appContext.getString(R.string.library_load_failed)
+            error = PageError(e.message ?: appContext.getString(R.string.library_load_failed), onRetry)
         } finally {
             loading = false
         }
     }
 
-    // Append the next page as the user nears the end.
+    suspend fun loadMore() {
+        if (order.size >= totalCount) return
+        val offset = loadedOffset
+        try {
+            val (more, moreCovers) =
+                withContext(Dispatchers.IO) {
+                    val p = session.library.albumPage(listOf(sortCriterion), offset.toULong(), PAGE_SIZE.toULong())
+                    p to resolveCovers(p)
+                }
+            ingest(more, moreCovers)
+            loadedOffset = offset + PAGE_SIZE
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load album page at offset $offset", e)
+            error = PageError(e.message ?: appContext.getString(R.string.library_load_more_failed), onRetry)
+        }
+    }
+}
+
+@Composable
+private fun rememberLibraryPage(
+    session: OpenLibrary,
+    generation: Long,
+    sortCriterion: BridgeSortCriterion,
+    appContext: Context,
+    gridState: LazyGridState,
+): LibraryPage {
+    var retryToken by remember(generation, sortCriterion) { mutableStateOf(0) }
+    val page =
+        remember(generation, sortCriterion, retryToken) {
+            LibraryPage(session, sortCriterion, appContext) { retryToken++ }
+        }
+    LaunchedEffect(page) { page.loadFirst() }
     val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisible =
                 gridState.layoutInfo.visibleItemsInfo
                     .lastOrNull()
                     ?.index ?: 0
-            order.size < totalCount && lastVisible >= order.size - 12
+            page.order.size < page.totalCount && lastVisible >= page.order.size - GRID_PREFETCH_AHEAD
         }
     }
-    LaunchedEffect(shouldLoadMore, totalCount, generation, sortCriterion) {
-        if (shouldLoadMore && order.size < totalCount) {
-            val offset = loadedOffset
-            try {
-                val (more, moreCovers) =
-                    withContext(Dispatchers.IO) {
-                        val p = session.library.albumPage(listOf(sortCriterion), offset.toULong(), PAGE_SIZE.toULong())
-                        p to resolveCovers(session, p)
-                    }
-                ingest(more, moreCovers)
-                loadedOffset = offset + PAGE_SIZE
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to load album page at offset $offset", e)
-                loadError = e.message ?: appContext.getString(R.string.library_load_more_failed)
-            }
+    LaunchedEffect(shouldLoadMore, page.totalCount, page) {
+        if (shouldLoadMore) page.loadMore()
+    }
+    return page
+}
+
+@Composable
+fun LibraryScreen(
+    session: OpenLibrary,
+    onLeaveLibrary: () -> Unit,
+) {
+    var selectedAlbumId by remember { mutableStateOf<String?>(null) }
+    var showSettings by remember { mutableStateOf(false) }
+    val selected = selectedAlbumId
+    when {
+        selected != null -> {
+            AlbumDetailScreen(session = session, albumId = selected, onBack = { selectedAlbumId = null })
+        }
+
+        showSettings -> {
+            SettingsScreen(session = session, onBack = { showSettings = false }, onLeaveLibrary = onLeaveLibrary)
+        }
+
+        else -> {
+            LibraryBrowser(
+                session = session,
+                onSelectAlbum = { selectedAlbumId = it },
+                onSettings = { showSettings = true },
+            )
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LibraryBrowser(
+    session: OpenLibrary,
+    onSelectAlbum: (String) -> Unit,
+    onSettings: () -> Unit,
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var searchOpen by remember { mutableStateOf(false) }
+    var sortCriterion by remember {
+        mutableStateOf(BridgeSortCriterion(BridgeSortField.DATE_ADDED, BridgeSortDirection.DESCENDING))
+    }
+    val generation by session.libraryStore.generation.collectAsState()
+    val syncing by session.configStore.syncing.collectAsState()
+    val syncError by session.configStore.syncError.collectAsState()
+    val appError by session.configStore.error.collectAsState()
+    val appContext = LocalContext.current
+    val gridState = rememberLazyGridState()
+    val page = rememberLibraryPage(session, generation, sortCriterion, appContext, gridState)
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (searchOpen) {
@@ -258,112 +261,117 @@ fun LibraryScreen(
                 onOpenSearch = { searchOpen = true },
                 sortCriterion = sortCriterion,
                 onSortChange = { sortCriterion = it },
-                onSettings = { showSettings = true },
+                onSettings = onSettings,
             )
         }
-
-        SyncIndicatorBar(syncing = syncing)
-
-        // A failed append (over already-loaded albums) surfaces in this banner
-        // with a Retry; a first-page failure shows in-grid below instead.
-        val appendError = if (order.isNotEmpty()) loadError else null
-        val banner = appendError ?: appError ?: syncError
-        if (banner != null) {
-            ErrorBanner(
-                message = banner,
-                // Retry the recoverable paths: a failed append reloads from the
-                // first page; a sync error re-kicks sync. An app error isn't.
-                onRetry =
-                    when {
-                        appendError != null -> {
-                            { retryToken++ }
-                        }
-
-                        appError == null && syncError != null -> {
-                            { session.appHandle.triggerSync() }
-                        }
-
-                        else -> {
-                            null
-                        }
-                    },
+        if (syncing) {
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surface,
             )
         }
-
+        LibraryErrorBanner(page = page, appError = appError, syncError = syncError, session = session)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (searchQuery.isNotBlank()) {
-                SearchResultsScreen(
-                    session = session,
-                    query = searchQuery,
-                    onSelectAlbum = { selectedAlbumId = it },
-                )
+                SearchResultsScreen(session = session, query = searchQuery, onSelectAlbum = onSelectAlbum)
             } else {
-                PullToRefreshBox(
-                    isRefreshing = refreshing,
-                    onRefresh = {
-                        session.appHandle.triggerSync()
-                        refreshScope.launch {
-                            refreshing = true
-                            delay(900)
-                            refreshing = false
-                        }
-                    },
+                LibraryGridContent(
+                    session = session,
+                    page = page,
+                    gridState = gridState,
+                    onSelectAlbum = onSelectAlbum,
+                )
+            }
+        }
+        NowPlayingBar(session = session)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LibraryGridContent(
+    session: OpenLibrary,
+    page: LibraryPage,
+    gridState: LazyGridState,
+    onSelectAlbum: (String) -> Unit,
+) {
+    var refreshing by remember { mutableStateOf(false) }
+    val refreshScope = rememberCoroutineScope()
+    val onRefresh: () -> Unit = {
+        session.appHandle.triggerSync()
+        refreshScope.launch {
+            refreshing = true
+            delay(PULL_REFRESH_SETTLE_MS)
+            refreshing = false
+        }
+    }
+    val pageError = page.error
+    PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
+        when {
+            pageError != null && page.order.isEmpty() -> {
+                Column(
+                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(text = pageError.message, color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = pageError.onRetry) { Text(stringResource(R.string.retry)) }
+                }
+            }
+
+            page.loading && page.order.isEmpty() -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
+
+            page.totalCount == 0 -> {
+                Text(
+                    text = stringResource(R.string.library_empty_syncing),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                )
+            }
+
+            else -> {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 150.dp),
+                    state = gridState,
+                    contentPadding = PaddingValues(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    when {
-                        loadError != null && order.isEmpty() -> {
-                            Column(
-                                modifier = Modifier.align(Alignment.Center).padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                Text(
-                                    text = loadError ?: "",
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                                TextButton(onClick = { retryToken++ }) { Text(stringResource(R.string.retry)) }
-                            }
-                        }
-
-                        loading && order.isEmpty() -> {
-                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                        }
-
-                        totalCount == 0 -> {
-                            Text(
-                                text = stringResource(R.string.library_empty_syncing),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.align(Alignment.Center).padding(32.dp),
-                            )
-                        }
-
-                        else -> {
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(minSize = 150.dp),
-                                state = gridState,
-                                contentPadding =
-                                    androidx.compose.foundation.layout
-                                        .PaddingValues(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.fillMaxSize(),
-                            ) {
-                                items(order, key = { it }) { albumId ->
-                                    val album = albums[albumId] ?: return@items
-                                    AlbumGridCard(
-                                        album = album,
-                                        coverPath = coverPaths[albumId],
-                                        onClick = { selectedAlbumId = albumId },
-                                    )
-                                }
-                            }
-                        }
+                    items(page.order, key = { it }) { albumId ->
+                        val album = page.albums[albumId] ?: return@items
+                        AlbumGridCard(
+                            album = album,
+                            coverPath = page.coverPaths[albumId],
+                            onClick = { onSelectAlbum(albumId) },
+                        )
                     }
                 }
             }
         }
-
-        NowPlayingBar(session = session)
     }
+}
+
+@Composable
+private fun LibraryErrorBanner(
+    page: LibraryPage,
+    appError: String?,
+    syncError: String?,
+    session: OpenLibrary,
+) {
+    val appendError = if (page.order.isNotEmpty()) page.error else null
+    val banner = appendError?.message ?: appError ?: syncError ?: return
+    ErrorBanner(
+        message = banner,
+        onRetry =
+            when {
+                appendError != null -> appendError.onRetry
+                appError == null && syncError != null -> ({ session.appHandle.triggerSync() })
+                else -> null
+            },
+    )
 }
 
 @Composable
@@ -391,11 +399,6 @@ private fun LibraryTopBar(
     }
 }
 
-/**
- * Top bar in search mode: a back affordance that closes search, a focused query
- * field (autofocused on open), and a clear button once there's a query. Swapped
- * in for [LibraryTopBar] while the search field is open.
- */
 @Composable
 private fun LibrarySearchBar(
     query: String,
@@ -440,23 +443,6 @@ private fun LibrarySearchBar(
     }
 }
 
-/**
- * Sync shows only when it's happening: a thin indeterminate bar while a sync
- * cycle is mid-flight, gone otherwise. Driven by the real `SyncingChanged`
- * signal (see [fm.bae.app.data.ConfigStore.syncing]); pull-to-refresh kicks a
- * cycle, which surfaces here.
- */
-@Composable
-private fun SyncIndicatorBar(syncing: Boolean) {
-    if (syncing) {
-        LinearProgressIndicator(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surface,
-        )
-    }
-}
-
 private val SORT_FIELDS =
     listOf(
         BridgeSortField.TITLE,
@@ -470,6 +456,13 @@ private fun SortMenu(
     criterion: BridgeSortCriterion,
     onChange: (BridgeSortCriterion) -> Unit,
 ) {
+    fun BridgeSortField.labelRes(): Int =
+        when (this) {
+            BridgeSortField.TITLE -> R.string.sort_title
+            BridgeSortField.ARTIST -> R.string.sort_artist
+            BridgeSortField.YEAR -> R.string.sort_year
+            BridgeSortField.DATE_ADDED -> R.string.sort_date_added
+        }
     var expanded by remember { mutableStateOf(false) }
     val ascending = criterion.direction == BridgeSortDirection.ASCENDING
     Box {
@@ -485,8 +478,6 @@ private fun SortMenu(
                         expanded = false
                     },
                     leadingIcon = {
-                        // Keep the slot in the tree always; toggle the checkmark
-                        // via alpha so rows don't shift between fields.
                         Icon(
                             imageVector = Icons.Filled.Check,
                             contentDescription = null,
@@ -497,27 +488,17 @@ private fun SortMenu(
             }
             HorizontalDivider()
             DropdownMenuItem(
-                text = { Text(stringResource(if (ascending) R.string.sort_ascending else R.string.sort_descending)) },
+                text = {
+                    Text(stringResource(if (ascending) R.string.sort_ascending else R.string.sort_descending))
+                },
                 onClick = {
-                    val toggled =
-                        if (ascending) {
-                            BridgeSortDirection.DESCENDING
-                        } else {
-                            BridgeSortDirection.ASCENDING
-                        }
+                    val toggled = if (ascending) BridgeSortDirection.DESCENDING else BridgeSortDirection.ASCENDING
                     onChange(BridgeSortCriterion(criterion.field, toggled))
                     expanded = false
                 },
                 leadingIcon = {
-                    Icon(
-                        imageVector =
-                            if (ascending) {
-                                Icons.Filled.ArrowUpward
-                            } else {
-                                Icons.Filled.ArrowDownward
-                            },
-                        contentDescription = null,
-                    )
+                    val icon = if (ascending) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward
+                    Icon(imageVector = icon, contentDescription = null)
                 },
             )
         }
@@ -546,22 +527,6 @@ private fun ErrorBanner(
         }
     }
 }
-
-/**
- * Resolve each album's grid cover to the primary release's cover file on disk.
- * Mirrors the desktop grid, which resolves covers by release id through this
- * same bridge call rather than loading each album's full detail. Albums whose
- * cover file isn't on disk yet are absent from the map (card shows a
- * placeholder until a later page load / generation bump resolves it).
- */
-private fun resolveCovers(
-    session: OpenLibrary,
-    page: List<BridgeAlbum>,
-): Map<String, String> =
-    page
-        .mapNotNull { album ->
-            session.library.imagePathIfExists(album.primaryReleaseId)?.let { album.id to it }
-        }.toMap()
 
 @Composable
 private fun AlbumGridCard(

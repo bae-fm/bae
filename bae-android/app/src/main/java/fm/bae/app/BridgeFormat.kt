@@ -8,6 +8,8 @@ import uniffi.bae_bridge.bridgeAudioChannelsKey
 import uniffi.bae_bridge.bridgeTrackHeaderKey
 import java.text.NumberFormat
 
+private const val HZ_PER_KHZ = 1000.0
+
 // Locale rendering of the structured `Bridge*` shapes bae-core emits. The core
 // owns the structure (the position case, the side discriminant, the audio
 // parts); these compose and format them for the current locale, resolving any
@@ -70,7 +72,7 @@ fun BridgeAudioFormat.text(context: Context): String {
 }
 
 private fun BridgeAudioFormat.sampleRateText(context: Context): String {
-    val khz = sampleRateHz / 1000.0
+    val khz = sampleRateHz / HZ_PER_KHZ
     val nf =
         NumberFormat.getNumberInstance(context.currentLocale()).apply {
             maximumFractionDigits = 1

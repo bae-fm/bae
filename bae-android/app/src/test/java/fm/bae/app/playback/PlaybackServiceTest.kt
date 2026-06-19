@@ -22,6 +22,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.UiEventCallback
 
@@ -62,7 +63,18 @@ class PlaybackServiceTest {
         // service can stop and restart (a fresh session over the same player) or
         // be killed by the system. Had onDestroy released the player, projecting a
         // new event would throw "Player is released".
-        session.playback.onPlaying("t1", "Track Title", "Artist Name", "Album Title", null, 200_000L)
+        session.playback.onPlaying(
+            BridgeUiEvent.PlaybackPlaying(
+                "t1",
+                "Track Title",
+                "Artist Name",
+                "artist-1",
+                "album-1",
+                "Album Title",
+                null,
+                200_000uL,
+            ),
+        )
         shadowOf(looper).idle()
         assertEquals(Player.STATE_READY, session.playback.playbackState)
     }
@@ -89,7 +101,6 @@ class PlaybackServiceTest {
         return OpenLibrary(
             libraryId = "lib-1",
             appHandle = handle,
-            library = library,
             libraryStore = LibraryStore(),
             configStore = ConfigStore(BridgeFixtures.config(), initialSyncReady = false),
             playback =

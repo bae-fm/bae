@@ -12,6 +12,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeUiEvent
 
 /**
  * The MediaSession playlist projection (BaeCorePlayer.orderedMetas). The
@@ -69,12 +70,16 @@ class NowPlayingProjectionTest {
         val coverPath = "/tmp/release-cover.jpg#v=2"
         val player = player(imagePaths = mapOf("cover-1" to coverPath))
         player.onPlaying(
-            trackId = "cur",
-            trackTitle = "Title cur",
-            artistNames = "Artist Name",
-            albumTitle = "Album Title",
-            coverImageId = "cover-1",
-            durationMs = 185_000L,
+            BridgeUiEvent.PlaybackPlaying(
+                trackId = "cur",
+                trackTitle = "Title cur",
+                artistNames = "Artist Name",
+                artistId = "artist-1",
+                albumId = "album-1",
+                albumTitle = "Album Title",
+                coverImageId = "cover-1",
+                durationMs = 185_000uL,
+            ),
         )
 
         val window = player.currentTimeline.getWindow(0, Timeline.Window())

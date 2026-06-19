@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import uniffi.bae_bridge.BridgeConfig
 
 /**
  * Minimal per-device settings: the library's sync status, and a destructive
@@ -49,62 +50,12 @@ fun SettingsScreen(
     var confirmLeave by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                }
-                Text(
-                    text = stringResource(R.string.settings),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.settings_sync),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text =
-                    stringResource(
-                        if (config.sync != null) R.string.settings_cloud_sync_on else R.string.settings_local_only,
-                    ),
-            )
-            if (config.sync != null) {
-                Text(
-                    text = stringResource(if (syncReady) R.string.settings_synced else R.string.settings_syncing),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = { confirmLeave = true },
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                    ),
-            ) {
-                Text(stringResource(R.string.settings_remove_library))
-            }
-            Text(
-                text = stringResource(R.string.settings_remove_library_explanation),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SettingsTopBar(onBack = onBack)
+        SettingsConfigSection(
+            config = config,
+            syncReady = syncReady,
+            onRequestLeave = { confirmLeave = true },
+        )
     }
 
     if (confirmLeave) {
@@ -121,10 +72,65 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmLeave = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
+                TextButton(onClick = { confirmLeave = false }) { Text(stringResource(R.string.cancel)) }
             },
+        )
+    }
+}
+
+@Composable
+private fun SettingsTopBar(onBack: () -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+            }
+            Text(
+                text = stringResource(R.string.settings),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsConfigSection(
+    config: BridgeConfig,
+    syncReady: Boolean,
+    onRequestLeave: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.settings_sync),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(stringResource(if (config.sync != null) R.string.settings_cloud_sync_on else R.string.settings_local_only))
+        if (config.sync != null) {
+            Text(
+                text = stringResource(if (syncReady) R.string.settings_synced else R.string.settings_syncing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onRequestLeave,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+        ) {
+            Text(stringResource(R.string.settings_remove_library))
+        }
+        Text(
+            text = stringResource(R.string.settings_remove_library_explanation),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

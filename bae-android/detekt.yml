@@ -1,31 +1,11 @@
 # Overlay on top of detekt's built-in defaults (--build-upon-default-config).
 # Only deviations from the defaults are listed here.
 
-complexity:
-  # Jetpack Compose screens are typically one large @Composable function. 60-line
-  # and complexity-15 limits are not meaningful for this style of UI code.
-  LongMethod:
-    active: false
-  CyclomaticComplexMethod:
-    active: false
-  # @Composable functions pass all their data as parameters; Kotlin data classes
-  # and interface implementations are naturally parameter-heavy. The default
-  # threshold of 6 fires on almost every screen and callback in the codebase.
-  LongParameterList:
-    active: false
-  # BaeCorePlayer implements a media session which requires many methods.
-  TooManyFunctions:
-    active: false
-
 exceptions:
   # Kotlin coroutines surface arbitrary platform exceptions as `Exception`.
   # Catching the base type is the correct pattern when the caller cannot
   # enumerate all possible subtypes from a heterogeneous async call stack.
   TooGenericExceptionCaught:
-    active: false
-  # UI error handlers deliberately catch and convert exceptions to display
-  # state; logging every swallowed exception in UI code is unnecessary noise.
-  SwallowedException:
     active: false
 
 naming:
@@ -34,22 +14,20 @@ naming:
   # FunctionNaming doesn't understand the Compose annotation.
   FunctionNaming:
     active: false
+  # Compose files commonly contain both a parameter data class and the
+  # composable that uses it. detekt counts only class declarations (not
+  # @Composable functions) as top-level declarations, so every such file
+  # falsely fires this rule.
+  MatchingDeclarationName:
+    active: false
 
 style:
-  # Color and dimension literals in theme files (BaeTheme.kt) don't need
-  # extraction to named constants — the literal IS the constant at that callsite.
   MagicNumber:
-    active: false
-  # Having 3 return statements in a function is normal Kotlin control flow;
-  # the default limit of 2 fires on straightforward when-expression patterns.
-  ReturnCount:
-    active: false
-  # Keyring.kt is the JNI bootstrap for the native keyring library; it uses
-  # class + companion object to produce the correct JNI symbol names. Making
-  # it an `object` would break the JNI ABI.
+    # Property declarations are the naming point for constants: `val Foo = Color(0xFF…)`
+    # names the value. Inline literals in expressions are still flagged.
+    ignorePropertyDeclaration: true
   UtilityClassWithPublicConstructor:
-    active: false
-  # Using throw IllegalStateException() is equivalent to error(); the choice
-  # is stylistic. Don't mandate one form over the other.
-  UseCheckOrError:
+    # Keyring.kt is the JNI bootstrap for the native keyring library; it uses
+    # class + companion object to produce the correct JNI symbol names. Making
+    # it an `object` would break the JNI ABI.
     active: false

@@ -17,6 +17,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
+import uniffi.bae_bridge.BridgeUiEvent
 
 /**
  * When playback activates, the player must project a non-empty timeline in
@@ -80,7 +81,18 @@ class PlaybackActivationTest {
 
         // A track is playing, then the next begins loading before its metadata
         // resolves (the bare loading event carries no track).
-        player.onPlaying("t1", "First Title", "Artist Name", "Album Title", null, 200_000L)
+        player.onPlaying(
+            BridgeUiEvent.PlaybackPlaying(
+                "t1",
+                "First Title",
+                "Artist Name",
+                "artist-1",
+                "album-1",
+                "Album Title",
+                null,
+                200_000uL,
+            ),
+        )
         player.onLoading("t2", null)
         shadowOf(Looper.getMainLooper()).idle()
 
@@ -125,7 +137,18 @@ class PlaybackActivationTest {
         val context = RuntimeEnvironment.getApplication()
         val player = player(context, foreground = true)
 
-        player.onPlaying("t1", "Track Title", "Artist Name", "Album Title", null, 200_000L)
+        player.onPlaying(
+            BridgeUiEvent.PlaybackPlaying(
+                "t1",
+                "Track Title",
+                "Artist Name",
+                "artist-1",
+                "album-1",
+                "Album Title",
+                null,
+                200_000uL,
+            ),
+        )
         shadowOf(Looper.getMainLooper()).idle()
 
         val started = shadowOf(context).nextStartedService
@@ -141,7 +164,18 @@ class PlaybackActivationTest {
         // lock-screen control) must not start the service — Android forbids a
         // service start from the background. The service started when playback
         // began on screen keeps the audio alive.
-        player.onPlaying("t1", "Track Title", "Artist Name", "Album Title", null, 200_000L)
+        player.onPlaying(
+            BridgeUiEvent.PlaybackPlaying(
+                "t1",
+                "Track Title",
+                "Artist Name",
+                "artist-1",
+                "album-1",
+                "Album Title",
+                null,
+                200_000uL,
+            ),
+        )
         shadowOf(Looper.getMainLooper()).idle()
 
         assertNull(shadowOf(context).nextStartedService)

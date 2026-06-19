@@ -6,6 +6,8 @@ import android.text.format.DateUtils
 import android.text.format.Formatter
 import java.util.Locale
 
+private const val MS_PER_SECOND = 1000L
+
 // Renders bae's shared `core.*` catalog strings for the current locale.
 //
 // The locale never crosses the bridge: bae-core / bae-bridge emit raw numbers,
@@ -50,9 +52,8 @@ fun Context.currentLocale(): Locale = resources.configuration.locales[0]
  * [DateUtils.formatElapsedTime] renders "M:SS" / "H:MM:SS" using locale digits.
  */
 fun formatDurationMs(ms: Long?): String {
-    val msVal = ms ?: return ""
-    if (msVal < 0) return ""
-    return DateUtils.formatElapsedTime(msVal / 1000)
+    val msVal = ms?.takeIf { it >= 0 } ?: return ""
+    return DateUtils.formatElapsedTime(msVal / MS_PER_SECOND)
 }
 
 /** Format the time remaining as "-M:SS", clamped at zero. */

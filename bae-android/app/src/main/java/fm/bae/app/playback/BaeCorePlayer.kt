@@ -33,6 +33,7 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgeQueueItem
 import uniffi.bae_bridge.BridgeRepeatMode
+import uniffi.bae_bridge.BridgeUiEvent
 
 /** Now-playing snapshot the [fm.bae.app.ui.NowPlayingBar] renders. */
 data class NowPlaying(
@@ -76,23 +77,9 @@ interface PlaybackEventSink {
         track: BridgeLoadingTrackInfo?,
     )
 
-    fun onPlaying(
-        trackId: String,
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        coverImageId: String?,
-        durationMs: Long,
-    )
+    fun onPlaying(event: BridgeUiEvent.PlaybackPlaying)
 
-    fun onPaused(
-        trackId: String,
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        coverImageId: String?,
-        durationMs: Long,
-    )
+    fun onPaused(event: BridgeUiEvent.PlaybackPaused)
 
     fun onStopped()
 
@@ -134,7 +121,13 @@ private const val TAG = "bae.BaeCorePlayer"
  * Audio focus and becoming-noisy aren't handled by a custom [SimpleBasePlayer],
  * so this requests focus when playback starts and pauses core on focus loss /
  * unplug — the pause reflects back as a `PlaybackPaused` event.
+ *
+ * Implements [SimpleBasePlayer] (6 abstract methods) plus the bridge's
+ * PlaybackEventSink (9 methods) on top of audio focus, state projection, and
+ * transport forwarding; the function count is the interface contract, so
+ * `TooManyFunctions` is suppressed rather than split into helper classes.
  */
+@Suppress("TooManyFunctions")
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class BaeCorePlayer(
     applicationLooper: Looper,
@@ -220,9 +213,10 @@ class BaeCorePlayer(
             durationMs: Long,
         ): Long {
             if (meta.trackId != playingTrackId) return C.TIME_UNSET
-            if (durationMs != C.TIME_UNSET) return durationMs
-            Log.w(TAG, "itemDurationMs missing duration for current track ${meta.trackId}")
-            return C.TIME_UNSET
+            if (durationMs == C.TIME_UNSET) {
+                Log.w(TAG, "itemDurationMs missing duration for current track ${meta.trackId}")
+            }
+            return durationMs
         }
 
         private fun mediaItemData(
@@ -418,17 +412,13 @@ class BaeCorePlayer(
         activate(Transport.BUFFERING, current)
     }
 
-    override fun onPlaying(
-        trackId: String,
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        coverImageId: String?,
-        durationMs: Long,
-    ) {
+    override fun onPlaying(event: BridgeUiEvent.PlaybackPlaying) {
         activate(
             Transport.READY,
-            Current(meta(trackId, trackTitle, artistNames, albumTitle, coverImageId), durationOrUnset(durationMs)),
+            Current(
+                meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImageId),
+                durationOrUnset(event.durationMs.toLong()),
+            ),
         )
     }
 
@@ -467,19 +457,12 @@ class BaeCorePlayer(
     /** Bridge durations are 0 when unknown; map that to Media3's [C.TIME_UNSET]. */
     private fun durationOrUnset(durationMs: Long): Long = if (durationMs > 0L) durationMs else C.TIME_UNSET
 
-    override fun onPaused(
-        trackId: String,
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        coverImageId: String?,
-        durationMs: Long,
-    ) {
+    override fun onPaused(event: BridgeUiEvent.PlaybackPaused) {
         transport = Transport.READY
         playWhenReady = false
-        playingTrackId = trackId
-        currentMeta = meta(trackId, trackTitle, artistNames, albumTitle, coverImageId)
-        this.durationMs = durationOrUnset(durationMs)
+        playingTrackId = event.trackId
+        currentMeta = meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImageId)
+        this.durationMs = durationOrUnset(event.durationMs.toLong())
         publish()
     }
 

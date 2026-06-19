@@ -16,6 +16,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 
+/** Size parameters for [PlayPauseControl]. Compact bar and expanded player use different sizes. */
+data class PlayPauseControlSizes(
+    val iconSize: Dp,
+    val spinnerSize: Dp,
+    val spinnerStroke: Dp,
+)
+
 /**
  * Play/pause toggle, replaced by a spinner while core is preparing or buffering
  * the track (initial load, or a seek to a position not yet downloaded). Shared
@@ -27,16 +34,14 @@ import fm.bae.app.R
 fun PlayPauseControl(
     isPlaying: Boolean,
     isLoading: Boolean,
-    iconSize: Dp,
-    spinnerSize: Dp,
-    spinnerStroke: Dp,
+    sizes: PlayPauseControlSizes,
     onToggle: () -> Unit,
 ) {
     if (isLoading) {
         Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(
-                modifier = Modifier.size(spinnerSize),
-                strokeWidth = spinnerStroke,
+                modifier = Modifier.size(sizes.spinnerSize),
+                strokeWidth = sizes.spinnerStroke,
             )
         }
     } else {
@@ -44,7 +49,7 @@ fun PlayPauseControl(
             Icon(
                 imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
-                modifier = Modifier.size(iconSize),
+                modifier = Modifier.size(sizes.iconSize),
             )
         }
     }
