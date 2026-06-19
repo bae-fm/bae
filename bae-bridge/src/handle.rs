@@ -1372,7 +1372,6 @@ fn convert_download_snapshot(
         downloads,
         total: convert_download_progress(snapshot.total),
         paused: snapshot.paused,
-        summary: snapshot.summary,
     }
 }
 

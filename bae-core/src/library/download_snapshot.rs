@@ -67,14 +67,11 @@ pub struct DownloadSnapshot {
     /// True when the user paused the download queue. Drives the pane's
     /// pause/resume toggle; the worker waits while set.
     pub paused: bool,
-    /// Pre-formatted one-line summary, e.g. `"1 downloading · 2 queued"`.
-    /// Empty when the queue is idle so the UI can hide the band.
-    pub summary: String,
 }
 
 /// Build the snapshot from the queue's ordered list of downloads and the
 /// user-driven pause flag. Pure over its inputs: counts roll up from each
-/// release's state and `summary` is pre-formatted so the UI renders it verbatim.
+/// release's state.
 pub fn build_download_snapshot(downloads: &[DownloadOp], paused: bool) -> DownloadSnapshot {
     let mut total = DownloadProgress::default();
     for op in downloads {
@@ -85,30 +82,11 @@ pub fn build_download_snapshot(downloads: &[DownloadOp], paused: bool) -> Downlo
         }
     }
 
-    let summary = format_summary(&total);
-
     DownloadSnapshot {
         downloads: downloads.to_vec(),
         total,
         paused,
-        summary,
     }
-}
-
-/// One-line summary, e.g. `"1 downloading · 2 queued"` / `"1 failed"`. Empty
-/// when the queue is idle so the UI can hide the band.
-fn format_summary(total: &DownloadProgress) -> String {
-    let mut parts = Vec::new();
-    if total.active > 0 {
-        parts.push(format!("{} downloading", total.active));
-    }
-    if total.failed > 0 {
-        parts.push(format!("{} failed", total.failed));
-    }
-    if total.queued > 0 {
-        parts.push(format!("{} queued", total.queued));
-    }
-    parts.join(" · ")
 }
 
 #[cfg(test)]
@@ -124,24 +102,6 @@ mod tests {
             created_at: 0,
             state,
         }
-    }
-
-    #[test]
-    fn summary_is_empty_when_idle() {
-        assert_eq!(format_summary(&DownloadProgress::default()), "");
-        assert_eq!(build_download_snapshot(&[], false).summary, "");
-    }
-
-    #[test]
-    fn summary_lists_active_states_in_order() {
-        assert_eq!(
-            format_summary(&DownloadProgress {
-                queued: 2,
-                active: 1,
-                failed: 1,
-            }),
-            "1 downloading · 1 failed · 2 queued"
-        );
     }
 
     #[test]
@@ -161,7 +121,6 @@ mod tests {
         assert_eq!(snap.total.active, 1);
         assert_eq!(snap.total.queued, 1);
         assert_eq!(snap.total.failed, 1);
-        assert_eq!(snap.summary, "1 downloading · 1 failed · 1 queued");
 
         // Order preserved for the pane.
         assert_eq!(snap.downloads.len(), 3);

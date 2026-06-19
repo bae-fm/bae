@@ -41,3 +41,17 @@ extension BridgeOutboxSnapshot {
         return parts.joined(separator: " · ")
     }
 }
+
+extension BridgeDownloadSnapshot {
+    var summaryText: String {
+        var parts: [String] = []
+        for (key, count) in [
+            ("core.queue.downloading", total.active),
+            ("core.queue.failed", total.failed),
+            ("core.queue.queued", total.queued),
+        ] where count > 0 {
+            parts.append(QueueSummary.countLabel(key, count))
+        }
+        return parts.joined(separator: " · ")
+    }
+}

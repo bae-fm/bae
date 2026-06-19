@@ -230,8 +230,8 @@ private struct DownloadsSection: View {
                     .font(.callout)
                     .foregroundStyle(.orange)
             }
-            else if !snapshot.summary.isEmpty {
-                Text(snapshot.summary)
+            else if !snapshot.summaryText.isEmpty {
+                Text(snapshot.summaryText)
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

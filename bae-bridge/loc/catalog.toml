@@ -101,6 +101,11 @@ comment = "Storage queue: count currently uploading."
 args = { count = "Int" }
 value = "{count} uploading"
 
+[messages."core.queue.downloading"]
+comment = "Storage queue: count currently downloading."
+args = { count = "Int" }
+value = "{count} downloading"
+
 [messages."core.queue.failed"]
 comment = "Storage queue: count that failed."
 args = { count = "Int" }
