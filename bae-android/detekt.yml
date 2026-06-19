@@ -1,0 +1,30 @@
+# Detekt config for the Android app, applied on top of detekt's defaults
+# (CI: `detekt --config bae-android/detekt.yml --build-upon-default-config`).
+# The codebase predates these opinionated default rules and follows a lighter
+# house style, so the rules it doesn't adopt are disabled, and Jetpack Compose's
+# PascalCase @Composable / @Preview function names are allowed (FunctionNaming
+# otherwise flags every Composable).
+complexity:
+  LongMethod:
+    active: false
+  LongParameterList:
+    active: false
+  CyclomaticComplexMethod:
+    active: false
+  TooManyFunctions:
+    active: false
+exceptions:
+  TooGenericExceptionCaught:
+    active: false
+  SwallowedException:
+    active: false
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable', 'Preview']
+style:
+  MagicNumber:
+    active: false
+  ReturnCount:
+    active: false
+  UtilityClassWithPublicConstructor:
+    active: false
