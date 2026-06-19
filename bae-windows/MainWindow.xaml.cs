@@ -2412,8 +2412,8 @@ public sealed partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
         });
         var shuffleButton = new Button { Content = Loc.Chrome("album.shuffle") };
-        var editButton = new Button { Content = Loc.Chrome("album.edit") };
-        var reidentifyButton = new Button { Content = Loc.Chrome("album.reidentify") };
+        var editButton = new Button { Content = Loc.Chrome("album.edit.label") };
+        var reidentifyButton = new Button { Content = Loc.Chrome("album.reidentify.label") };
         header.Children.Add(shuffleButton);
         header.Children.Add(editButton);
         header.Children.Add(reidentifyButton);
