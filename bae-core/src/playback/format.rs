@@ -5,35 +5,6 @@ pub fn format_time(ms: u64) -> String {
     format_minutes_seconds(ms)
 }
 
-/// Format an elapsed time label, accounting for pregap.
-/// During pregap (position < pregap_ms), shows "-0:02" style countdown.
-///
-/// `duration_ms` clamps position so elapsed never exceeds the duration label.
-/// The decoder position can overshoot the declared track duration slightly
-/// because a file's metadata duration can round differently than its actual
-/// sample count. Clamping here keeps the displayed elapsed time from exceeding
-/// the label.
-pub fn format_elapsed(position_ms: u64, duration_ms: u64, pregap_ms: Option<i64>) -> String {
-    let position_ms = position_ms.min(duration_ms);
-    let offset = pregap_ms.unwrap_or(0).max(0) as u64;
-    if position_ms < offset {
-        // Ceil remaining seconds so -0:01 shows until the exact pregap boundary.
-        let remaining = offset - position_ms;
-        let total_seconds = remaining.div_ceil(1000);
-        let minutes = total_seconds / 60;
-        let seconds = total_seconds % 60;
-        format!("-{}:{:02}", minutes, seconds)
-    } else {
-        format_time(position_ms - offset)
-    }
-}
-
-/// Format a duration label, subtracting pregap.
-pub fn format_duration(duration_ms: u64, pregap_ms: Option<i64>) -> String {
-    let offset = pregap_ms.unwrap_or(0).max(0) as u64;
-    format_time(duration_ms.saturating_sub(offset))
-}
-
 /// Format remaining time as "-M:SS".
 /// During pregap, remaining includes the pregap countdown plus the full track.
 pub fn format_remaining(position_ms: u64, duration_ms: u64, pregap_ms: Option<i64>) -> String {
@@ -106,71 +77,6 @@ mod tests {
         for (ms, expected) in cases {
             assert_eq!(format_time(ms), expected, "ms: {ms}");
         }
-    }
-
-    // -- format_elapsed --
-    //
-    // During a CUE/FLAC pregap the decoder is already playing audio (the gap
-    // between INDEX 00 and INDEX 01) but the track hasn't "started" yet.
-    // The elapsed display counts down with a minus sign, like a CD player:
-    //   -0:02, -0:01, then 0:00 at the track boundary, 0:01, 0:02, ...
-    //
-    // The countdown uses ceiling so that -0:01 holds until the exact pregap
-    // boundary. This gives every displayed value ~1 second of real time.
-
-    #[test]
-    fn format_elapsed_no_pregap() {
-        assert_eq!(format_elapsed(0, 240_000, None), "0:00");
-        assert_eq!(format_elapsed(63_000, 240_000, None), "1:03");
-    }
-
-    #[test]
-    fn format_elapsed_pregap_countdown_uses_ceiling() {
-        // 2-second pregap. Countdown ceils remaining time to whole seconds.
-        let pregap = Some(2000);
-        assert_eq!(format_elapsed(0, 12_000, pregap), "-0:02"); // 2000ms left -> 2s
-        assert_eq!(format_elapsed(500, 12_000, pregap), "-0:02"); // 1500ms left -> ceil -> 2s
-        assert_eq!(format_elapsed(999, 12_000, pregap), "-0:02"); // 1001ms left -> ceil -> 2s
-        assert_eq!(format_elapsed(1000, 12_000, pregap), "-0:01"); // 1000ms left -> ceil -> 1s
-        assert_eq!(format_elapsed(1001, 12_000, pregap), "-0:01"); // 999ms left -> ceil -> 1s
-        assert_eq!(format_elapsed(1999, 12_000, pregap), "-0:01"); // 1ms left -> ceil -> 1s
-    }
-
-    #[test]
-    fn format_elapsed_counts_up_after_pregap() {
-        let pregap = Some(2000);
-        assert_eq!(format_elapsed(2000, 12_000, pregap), "0:00"); // exactly at boundary
-        assert_eq!(format_elapsed(3000, 12_000, pregap), "0:01");
-        assert_eq!(format_elapsed(5000, 12_000, pregap), "0:03");
-    }
-
-    #[test]
-    fn format_elapsed_clamps_to_duration() {
-        // Decoder position can overshoot declared duration (see doc comment).
-        // Elapsed must never exceed the duration label.
-        assert_eq!(format_elapsed(241_000, 240_000, None), "4:00");
-        assert_eq!(format_elapsed(12_100, 12_000, Some(2000)), "0:10");
-    }
-
-    #[test]
-    fn format_elapsed_negative_pregap_treated_as_zero() {
-        // Negative pregap_ms is invalid; treat as no pregap.
-        assert_eq!(format_elapsed(500, 60_000, Some(-100)), "0:00");
-    }
-
-    // -- format_duration --
-    //
-    // Duration excludes pregap so the user sees actual track length.
-
-    #[test]
-    fn format_duration_no_pregap() {
-        assert_eq!(format_duration(240_000, None), "4:00");
-    }
-
-    #[test]
-    fn format_duration_subtracts_pregap() {
-        // 4:02 total with 2-second pregap -> 4:00 track duration.
-        assert_eq!(format_duration(242_000, Some(2000)), "4:00");
     }
 
     // -- compute_progress --

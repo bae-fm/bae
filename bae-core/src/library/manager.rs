@@ -115,14 +115,12 @@ pub(crate) async fn playback_info_from_track_release(
     })
 }
 
-/// Produces a resolved `QueueItem` from a raw `DbQueueItem` by formatting
-/// the duration label.
+/// Produces a resolved `QueueItem` from a raw `DbQueueItem`.
 fn resolve_queue_item(raw: DbQueueItem) -> QueueItem {
     QueueItem {
         track_id: raw.track_id,
         title: raw.title,
         artist_names: raw.artist_names,
-        duration_label: crate::util::format::format_duration_label(raw.duration_ms),
         duration_ms: raw.duration_ms,
         album_title: raw.album_title,
         cover_image_id: raw.cover_image_id,
@@ -332,12 +330,11 @@ fn resolve_album_search_result(raw: DbAlbumSearchResult) -> AlbumSearchResult {
     }
 }
 
-/// Resolve a raw track search result by formatting the duration label.
+/// Resolve a raw track search result into its display-ready shape.
 fn resolve_track_search_result(raw: DbTrackSearchResult) -> TrackSearchResult {
     TrackSearchResult {
         id: raw.id,
         title: raw.title,
-        duration_label: crate::util::format::format_duration_label(raw.duration_ms),
         duration_ms: raw.duration_ms,
         album_id: raw.album_id,
         album_title: raw.album_title,
@@ -3337,7 +3334,6 @@ pub(crate) fn resolve_release(
                 has_multiple_sides,
             );
             TrackDetail {
-                duration_label: crate::util::format::format_duration_label(entry.track.duration_ms),
                 id: entry.track.id,
                 title: entry.track.title,
                 side: entry.track.side,

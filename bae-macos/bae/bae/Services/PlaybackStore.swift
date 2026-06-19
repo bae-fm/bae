@@ -98,7 +98,6 @@ struct NowPlayingTrack {
     let albumId: String
     let coverImageId: String?
     let durationMs: UInt64
-    let durationLabel: String
 }
 
 enum NowPlaying {

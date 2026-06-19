@@ -245,7 +245,6 @@ impl AppHandle {
                     id: t.id,
                     title: t.title,
                     duration_ms: t.duration_ms,
-                    duration_label: t.duration_label,
                     album_id: t.album_id,
                     album_title: t.album_title,
                     artist_name: t.artist_name,
@@ -1400,7 +1399,6 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
                 album_title: t.track_info.album_title,
                 cover_image_id: t.track_info.cover_image_id,
                 duration_ms: t.duration_ms,
-                duration_label: t.duration_label,
             }),
         }),
         UiBusEvent::PlaybackPlaying {
@@ -1412,7 +1410,6 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             album_title,
             cover_image_id,
             duration_ms,
-            duration_label,
         } => Some(BridgeUiEvent::PlaybackPlaying {
             track_id,
             track_title,
@@ -1422,7 +1419,6 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             album_title,
             cover_image_id,
             duration_ms,
-            duration_label,
         }),
         UiBusEvent::PlaybackPaused {
             track_id,
@@ -1433,7 +1429,6 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             album_title,
             cover_image_id,
             duration_ms,
-            duration_label,
         } => Some(BridgeUiEvent::PlaybackPaused {
             track_id,
             track_title,
@@ -1443,20 +1438,15 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             album_title,
             cover_image_id,
             duration_ms,
-            duration_label,
         }),
         UiBusEvent::PlaybackProgress {
             position_ms,
             duration_ms,
             progress,
-            elapsed_label,
-            remaining_label,
         } => Some(BridgeUiEvent::PlaybackProgress {
             position_ms,
             duration_ms,
             progress,
-            elapsed_label,
-            remaining_label,
         }),
         UiBusEvent::VolumeChanged { volume } => Some(BridgeUiEvent::VolumeChanged { volume }),
         UiBusEvent::MuteChanged { is_muted } => Some(BridgeUiEvent::MuteChanged { is_muted }),
@@ -1475,7 +1465,6 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
                     title: i.title,
                     artist_names: i.artist_names,
                     duration_ms: i.duration_ms,
-                    duration_label: i.duration_label,
                     album_title: i.album_title,
                     cover_image_id: i.cover_image_id,
                 })
@@ -1487,32 +1476,18 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
 
         // ── Preview ────────────────────────────────────────────────
         UiBusEvent::PreviewIdle => Some(BridgeUiEvent::PreviewIdle),
-        UiBusEvent::PreviewPlaying {
-            path,
-            duration_ms,
-            duration_label,
-        } => Some(BridgeUiEvent::PreviewPlaying {
-            path,
-            duration_ms,
-            duration_label,
-        }),
-        UiBusEvent::PreviewPaused {
-            path,
-            duration_ms,
-            duration_label,
-        } => Some(BridgeUiEvent::PreviewPaused {
-            path,
-            duration_ms,
-            duration_label,
-        }),
+        UiBusEvent::PreviewPlaying { path, duration_ms } => {
+            Some(BridgeUiEvent::PreviewPlaying { path, duration_ms })
+        }
+        UiBusEvent::PreviewPaused { path, duration_ms } => {
+            Some(BridgeUiEvent::PreviewPaused { path, duration_ms })
+        }
         UiBusEvent::PreviewProgress {
             position_ms,
             progress,
-            elapsed_label,
         } => Some(BridgeUiEvent::PreviewProgress {
             position_ms,
             progress,
-            elapsed_label,
         }),
 
         // ── Candidate-scoped ───────────────────────────────────────
@@ -1688,7 +1663,6 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
         side: t.side,
         track_number: t.track_number,
         duration_ms: t.duration_ms,
-        duration_label: t.duration_label,
         artist_names: t.artist_names,
         side_label: t.side_label,
         position_label: t.position_label,

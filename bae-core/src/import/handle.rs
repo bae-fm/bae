@@ -1836,7 +1836,6 @@ mod tests {
             title: title.to_string(),
             artist: artist.map(str::to_string),
             duration_ms: None,
-            duration_label: String::new(),
             position: position.to_string(),
             side,
             side_label: String::new(),

@@ -15,16 +15,8 @@ use tracing::warn;
 #[derive(Debug, Clone)]
 pub enum PreviewState {
     Idle,
-    Playing {
-        path: String,
-        duration_ms: u64,
-        duration_label: String,
-    },
-    Paused {
-        path: String,
-        duration_ms: u64,
-        duration_label: String,
-    },
+    Playing { path: String, duration_ms: u64 },
+    Paused { path: String, duration_ms: u64 },
 }
 
 /// Progress updates during playback.
@@ -44,8 +36,6 @@ pub enum PlaybackProgress {
         duration_ms: u64,
         track_id: String,
         progress: f64,
-        elapsed_label: String,
-        remaining_label: String,
     },
     /// Queue was updated — contains current queue state
     QueueUpdated {
@@ -91,8 +81,6 @@ pub enum PlaybackProgress {
         duration_ms: u64,
         track_id: String,
         progress: f64,
-        elapsed_label: String,
-        remaining_label: String,
     },
     /// Internal: seek skipped because position difference was < 100ms.
     SeekSkipped {
@@ -111,7 +99,6 @@ pub enum PlaybackProgress {
     PreviewPositionUpdate {
         position_ms: u64,
         progress: f64,
-        elapsed_label: String,
     },
 }
 

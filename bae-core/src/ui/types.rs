@@ -30,7 +30,6 @@ pub enum UiBusEvent {
         album_title: String,
         cover_image_id: Option<String>,
         duration_ms: u64,
-        duration_label: String,
     },
     PlaybackPaused {
         track_id: String,
@@ -41,7 +40,6 @@ pub enum UiBusEvent {
         album_title: String,
         cover_image_id: Option<String>,
         duration_ms: u64,
-        duration_label: String,
     },
     /// Position update — goes to NSView. Carries both regular ticks from the
     /// position listener and one-off updates emitted after a seek completes.
@@ -51,8 +49,6 @@ pub enum UiBusEvent {
         /// update reads it from the event instead of the now-playing slice.
         duration_ms: u64,
         progress: f64,
-        elapsed_label: String,
-        remaining_label: String,
     },
     VolumeChanged {
         volume: f32,
@@ -81,18 +77,15 @@ pub enum UiBusEvent {
     PreviewPlaying {
         path: String,
         duration_ms: u64,
-        duration_label: String,
     },
     PreviewPaused {
         path: String,
         duration_ms: u64,
-        duration_label: String,
     },
     /// High-frequency tick — goes to NSView, not store.
     PreviewProgress {
         position_ms: u64,
         progress: f64,
-        elapsed_label: String,
     },
 
     // ── Candidate-scoped (key inlined) ─────────────────────────────

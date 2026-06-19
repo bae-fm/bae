@@ -93,8 +93,6 @@ pub struct ReleaseTrack {
     pub title: String,
     pub artist: Option<String>,
     pub duration_ms: Option<u64>,
-    /// Pre-formatted duration, e.g. "3:07".
-    pub duration_label: String,
     pub position: String,
     pub side: u32,
     /// Human-readable side label: "Side A", "Disc 2", or empty for single-side digital
@@ -473,7 +471,6 @@ fn build_mb_detail(
                     .unwrap_or_default(),
                 artist: t.artist_credit.first().map(|ac| ac.name.clone()),
                 duration_ms: t.length,
-                duration_label: crate::util::format::format_duration_label_unsigned(t.length),
                 position: t
                     .number
                     .clone()
@@ -632,7 +629,6 @@ fn build_discogs_detail(release: &crate::discogs::DiscogsRelease) -> ImportSearc
                 title: pt.title.clone(),
                 artist: source_track.and_then(|t| t.artists.first().map(|a| a.name.clone())),
                 duration_ms,
-                duration_label: crate::util::format::format_duration_label_unsigned(duration_ms),
                 position: pt.position.clone(),
                 side: pt.side as u32,
                 side_label,

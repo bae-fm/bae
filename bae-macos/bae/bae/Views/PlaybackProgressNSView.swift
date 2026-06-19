@@ -95,9 +95,9 @@ class PlaybackProgressNSView: NSView {
         }
     }
 
-    func setDuration(_ label: String, durationMs: UInt64) {
+    func setDuration(durationMs: UInt64) {
         self.durationMs = durationMs
-        durationField.stringValue = label
+        durationField.stringValue = DurationClock.text(Int64(durationMs))
     }
 
     func clearDuration() {
@@ -162,7 +162,6 @@ extension EnvironmentValues {
 struct PlaybackProgressRepresentable: NSViewRepresentable {
     @Environment(\.playbackPositionPublisher)
     private var positionPublisher
-    let durationLabel: String?
     let durationMs: UInt64?
     let onSeek: (Double) -> Void
 
@@ -184,8 +183,8 @@ struct PlaybackProgressRepresentable: NSViewRepresentable {
     }
 
     private func applyDuration(to view: PlaybackProgressNSView) {
-        if let durationLabel, let durationMs {
-            view.setDuration(durationLabel, durationMs: durationMs)
+        if let durationMs {
+            view.setDuration(durationMs: durationMs)
         }
         else {
             view.clearDuration()

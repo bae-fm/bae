@@ -123,7 +123,7 @@ pub fn available_storage_actions(
     }
 }
 
-/// Track with resolved artist names and pre-formatted display labels.
+/// Track with resolved artist names and display labels.
 #[derive(Debug, Clone)]
 pub struct TrackDetail {
     pub id: String,
@@ -131,8 +131,6 @@ pub struct TrackDetail {
     pub side: i32,
     pub track_number: Option<i32>,
     pub duration_ms: Option<i64>,
-    /// Pre-formatted duration, e.g. "3:07". Empty if duration unknown.
-    pub duration_label: String,
     /// Effective artist names for display — the track's own artists when it
     /// has per-track artist rows, otherwise the album artists. Always
     /// populated so UI consumers can render a row label without joining
@@ -415,14 +413,12 @@ pub struct AlbumSearchResult {
     pub artist_name: String,
 }
 
-/// Resolved track search result. Produced from `DbTrackSearchResult` by
-/// formatting the duration label via `crate::util::format::format_duration_label`.
+/// Resolved track search result, produced from `DbTrackSearchResult`.
 #[derive(Debug, Clone)]
 pub struct TrackSearchResult {
     pub id: String,
     pub title: String,
     pub duration_ms: Option<i64>,
-    pub duration_label: String,
     pub album_id: String,
     pub album_title: String,
     pub artist_name: String,

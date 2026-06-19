@@ -14,8 +14,8 @@ struct ImportFilePane: View {
     private var previewingPath: String? {
         switch previewState {
         case .idle: nil
-        case .playing(let path, _, _): path
-        case .paused(let path, _, _): path
+        case .playing(let path, _): path
+        case .paused(let path, _): path
         }
     }
 
@@ -385,8 +385,7 @@ extension View {
         onError: { _ in },
         previewState: .playing(
             path: "/tmp/fake/Track 3.flac",
-            durationMs: 195_000,
-            durationLabel: "3:15"
+            durationMs: 195_000
         ),
     )
     .frame(width: 300, height: 500)

@@ -39,7 +39,6 @@ struct NowPlayingBarContainer: View {
             coverPath: coverPath,
             isPlaying: np.isPlaying,
             isLoading: np.loadingTrackId != nil,
-            durationLabel: track?.durationLabel,
             durationMs: track?.durationMs,
             volume: playbackStore.volume,
             isMuted: playbackStore.isMuted,
@@ -101,7 +100,6 @@ struct NowPlayingBar: View {
     let coverPath: String?
     let isPlaying: Bool
     let isLoading: Bool
-    let durationLabel: String?
     let durationMs: UInt64?
     let volume: Float
     let isMuted: Bool
@@ -231,7 +229,6 @@ struct NowPlayingBar: View {
 
     private var progressBar: some View {
         PlaybackProgressRepresentable(
-            durationLabel: durationLabel,
             durationMs: durationMs,
             onSeek: onSeek,
         )
@@ -378,7 +375,7 @@ struct NowPlayingBar: View {
 
 /// Preview host that provides the state bindings NowPlayingBar needs.
 /// The playback position publisher defaults to `Empty()` — the NSView
-/// renders from the static `durationLabel` / `durationMs` props.
+/// renders the duration clock from the static `durationMs` prop.
 private struct NowPlayingBarPreview: View {
     let trackTitle: String?
     let artistNames: String?
@@ -402,7 +399,6 @@ private struct NowPlayingBarPreview: View {
             coverPath: nil,
             isPlaying: isPlaying,
             isLoading: isLoading,
-            durationLabel: "3:42",
             durationMs: 222_000,
             volume: volume,
             isMuted: isMuted,

@@ -31,15 +31,17 @@ struct AlbumSearchResult: Equatable, Identifiable {
 struct TrackSearchResult: Equatable, Identifiable {
     let id: String
     let title: String
-    let durationLabel: String
+    let durationMs: Int64?
     let albumId: String
     let albumTitle: String
     let artistName: String
 
+    var durationLabel: String { DurationClock.text(durationMs) }
+
     init(bridge: BridgeTrackSearchResult) {
         id = bridge.id
         title = bridge.title
-        durationLabel = bridge.durationLabel
+        durationMs = bridge.durationMs
         albumId = bridge.albumId
         albumTitle = bridge.albumTitle
         artistName = bridge.artistName

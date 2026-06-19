@@ -87,9 +87,9 @@ class PreviewProgressNSView: NSView {
         }
     }
 
-    func setDuration(_ label: String, durationMs: UInt64) {
+    func setDuration(durationMs: UInt64) {
         self.durationMs = durationMs
-        durationField.stringValue = label
+        durationField.stringValue = DurationClock.text(Int64(durationMs))
     }
 
     func reset() {
@@ -134,7 +134,6 @@ struct PreviewProgressRepresentable: NSViewRepresentable {
     @Environment(\.previewProgressPublisher)
     private var publisher
     let durationMs: UInt64
-    let durationLabel: String
     let onSeek: (Double) -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -144,14 +143,14 @@ struct PreviewProgressRepresentable: NSViewRepresentable {
     func makeNSView(context: Context) -> PreviewProgressNSView {
         let view = PreviewProgressNSView()
         view.onSeek = onSeek
-        view.setDuration(durationLabel, durationMs: durationMs)
+        view.setDuration(durationMs: durationMs)
         context.coordinator.subscribe(to: publisher, view: view)
         return view
     }
 
     func updateNSView(_ view: PreviewProgressNSView, context _: Context) {
         view.onSeek = onSeek
-        view.setDuration(durationLabel, durationMs: durationMs)
+        view.setDuration(durationMs: durationMs)
     }
 
     class Coordinator {

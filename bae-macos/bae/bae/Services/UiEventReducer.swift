@@ -29,8 +29,7 @@ enum UiEventReducer {
             let albumId,
             let albumTitle,
             let coverImageId,
-            let durationMs,
-            let durationLabel
+            let durationMs
         ):
             playbackStore.nowPlaying = .playing(
                 NowPlayingTrack(
@@ -40,7 +39,6 @@ enum UiEventReducer {
                     albumId: albumId,
                     coverImageId: coverImageId,
                     durationMs: durationMs,
-                    durationLabel: durationLabel,
                 )
             )
             let state = BridgePlaybackState.playing(
@@ -52,7 +50,6 @@ enum UiEventReducer {
                 albumTitle: albumTitle,
                 coverImageId: coverImageId,
                 durationMs: durationMs,
-                durationLabel: durationLabel,
             )
             appService.mediaControlService.updateNowPlaying(
                 state: state,
@@ -67,8 +64,7 @@ enum UiEventReducer {
             let albumId,
             let albumTitle,
             let coverImageId,
-            let durationMs,
-            let durationLabel
+            let durationMs
         ):
             playbackStore.nowPlaying = .paused(
                 NowPlayingTrack(
@@ -78,7 +74,6 @@ enum UiEventReducer {
                     albumId: albumId,
                     coverImageId: coverImageId,
                     durationMs: durationMs,
-                    durationLabel: durationLabel,
                 )
             )
             let state = BridgePlaybackState.paused(
@@ -90,7 +85,6 @@ enum UiEventReducer {
                 albumTitle: albumTitle,
                 coverImageId: coverImageId,
                 durationMs: durationMs,
-                durationLabel: durationLabel,
             )
             appService.mediaControlService.updateNowPlaying(
                 state: state,
@@ -110,8 +104,7 @@ enum UiEventReducer {
                         artistNames: track.artistNames,
                         albumId: track.albumId,
                         coverImageId: track.coverImageId,
-                        durationMs: track.durationMs,
-                        durationLabel: track.durationLabel
+                        durationMs: track.durationMs
                     )
                 )
             }
@@ -140,15 +133,16 @@ enum UiEventReducer {
         case .playbackProgress(
             let positionMs,
             let durationMs,
-            let progress,
-            let elapsedLabel,
-            let remainingLabel
+            let progress
         ):
             playbackStore.playbackPositionSubject.send(
                 .position(
                     progress: progress,
-                    elapsed: elapsedLabel,
-                    remaining: remainingLabel
+                    elapsed: DurationClock.text(Int64(positionMs)),
+                    remaining: DurationClock.remaining(
+                        positionMs: positionMs,
+                        durationMs: durationMs
+                    )
                 )
             )
             appService.mediaControlService.updatePosition(
@@ -178,31 +172,27 @@ enum UiEventReducer {
             playbackStore.queueItemsAddedSubject.send(Int(count))
 
         // ── Preview ────────────────────────────────────────────────────
-        case .previewPlaying(let path, let durationMs, let durationLabel):
+        case .previewPlaying(let path, let durationMs):
             importStore.previewState = .playing(
                 path: path,
-                durationMs: durationMs,
-                durationLabel: durationLabel
+                durationMs: durationMs
             )
             appService.mediaControlService.updateNowPlayingForPreview(
                 state: .playing(
                     path: path,
-                    durationMs: durationMs,
-                    durationLabel: durationLabel
+                    durationMs: durationMs
                 )
             )
 
-        case .previewPaused(let path, let durationMs, let durationLabel):
+        case .previewPaused(let path, let durationMs):
             importStore.previewState = .paused(
                 path: path,
-                durationMs: durationMs,
-                durationLabel: durationLabel
+                durationMs: durationMs
             )
             appService.mediaControlService.updateNowPlayingForPreview(
                 state: .paused(
                     path: path,
-                    durationMs: durationMs,
-                    durationLabel: durationLabel
+                    durationMs: durationMs
                 )
             )
 
@@ -213,9 +203,12 @@ enum UiEventReducer {
                 state: .idle
             )
 
-        case .previewProgress(let positionMs, let progress, let elapsedLabel):
+        case .previewProgress(let positionMs, let progress):
             importStore.previewProgressSubject.send(
-                .position(progress: progress, elapsed: elapsedLabel)
+                .position(
+                    progress: progress,
+                    elapsed: DurationClock.text(Int64(positionMs))
+                )
             )
             appService.mediaControlService.updatePreviewPosition(
                 positionMs: positionMs
