@@ -125,10 +125,12 @@ enum UiEventReducer {
                 appHandle: appService.appHandle
             )
 
-        case .playbackError(let message):
+        case .playbackError(let reason):
             // A track couldn't be played (cloud-only not downloaded, decode
-            // failure); core has already fallen back to stopped. Surface why.
-            uiStore.showError(message)
+            // failure); core has already fallen back to stopped. Surface why —
+            // the actionable cloud cases get their keyed line, everything else
+            // the generic category line plus copyable detail.
+            uiStore.showError(DisplayError(reason))
 
         case .playbackProgress(
             let positionMs,
@@ -246,9 +248,9 @@ enum UiEventReducer {
                 )
             }
 
-        case .candidateImportError(let key, let message):
+        case .candidateImportError(let key, let error):
             importStore.mutateCandidate(forKey: key) {
-                $0.importStatus = .error(message: message)
+                $0.importStatus = .error(error)
             }
 
         // ── Scan ───────────────────────────────────────────────────────
@@ -353,8 +355,10 @@ enum UiEventReducer {
             configStore.config = Config(bridge: config)
             configStore.syncReady = syncReady
 
-        case .syncError(let message):
-            configStore.syncError = message
+        case .syncError(let error):
+            // `nil` error clears the banner (sync recovered). Otherwise show the
+            // generic category line plus the opaque detail the error carries.
+            configStore.syncError = error.map { DisplayError($0) }
 
         case .syncTimeChanged(let time):
             // `nil` time means no sync has completed yet — a real absence, so
@@ -394,8 +398,8 @@ enum UiEventReducer {
             libraryStore.handleReleaseTransferEnded(releaseId: releaseId)
 
         // ── Errors ─────────────────────────────────────────────────────
-        case .error(let message):
-            uiStore.showError(message)
+        case .error(let error):
+            uiStore.showError(DisplayError(error))
 
         case .errorCleared:
             uiStore.clearError()

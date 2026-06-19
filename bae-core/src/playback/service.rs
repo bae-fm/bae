@@ -1096,7 +1096,9 @@ impl PlaybackService {
                             emit_progress(
                                 &error_tx,
                                 PlaybackProgress::PlaybackError {
-                                    message: format!("Playback decode failed: {message}"),
+                                    reason: crate::ui::PlaybackErrorReason::internal(format!(
+                                        "Playback decode failed: {message}"
+                                    )),
                                 },
                             );
                         }
@@ -1938,7 +1940,7 @@ impl PlaybackService {
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PlaybackError {
-                        message: format!("Couldn't play the track: {e}"),
+                        reason: e.into_ui_reason(),
                     },
                 );
                 self.stop().await;
@@ -1996,7 +1998,9 @@ impl PlaybackService {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PlaybackError {
-                    message: "Couldn't start audio output for the track.".to_string(),
+                    reason: crate::ui::PlaybackErrorReason::internal(
+                        "Couldn't start audio output for the track.",
+                    ),
                 },
             );
             self.stop().await;
@@ -2979,7 +2983,9 @@ impl PlaybackService {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PlaybackError {
-                    message: "Couldn't restart audio output after the seek.".to_string(),
+                    reason: crate::ui::PlaybackErrorReason::internal(
+                        "Couldn't restart audio output after the seek.",
+                    ),
                 },
             );
             self.stop().await;

@@ -13,8 +13,8 @@ class ConfigStore {
     var syncReady: Bool
     /// Sync loop's latest error, or nil when sync is healthy. Set/cleared by
     /// the reducer from the `syncError` UI event. The Library settings tab
-    /// surfaces this as a reconnect banner.
-    var syncError: String?
+    /// surfaces this as a reconnect banner (generic line + copyable detail).
+    var syncError: DisplayError?
     /// Wall-clock time of the most recent successful sync cycle, or nil before
     /// the first cycle completes. The reducer parses the RFC 3339 string from
     /// the `syncTimeChanged` UI event into a `Date` here, so the sidebar reads a

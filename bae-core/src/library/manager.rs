@@ -889,13 +889,15 @@ pub enum LibraryEvent {
         track_ids: Vec<String>,
     },
     Error {
-        message: String,
+        error: crate::ui::UiError,
     },
     /// Sync loop's latest error state. `None` clears a prior failure (sync
     /// recovered). Emitted on transitions so the UI banner appears and
-    /// disappears in step with sync health.
+    /// disappears in step with sync health. When set, it's a
+    /// `UiError::Diagnostic` whose category keys the generic line and whose
+    /// detail is the opaque, log-only error chain.
     SyncError {
-        message: Option<String>,
+        error: Option<crate::ui::UiError>,
     },
     /// Wall-clock time the last sync cycle completed successfully, as Unix
     /// epoch milliseconds. Emitted on transitions so the sidebar's "Last
@@ -1219,8 +1221,11 @@ impl LibraryManager {
                         }
                         if status.error != last_error {
                             last_error = status.error.clone();
+                            // Coven hands back an opaque error string (connectivity,
+                            // auth, storage); the UI shows a generic line plus this
+                            // as copyable, log-only detail. `None` clears the banner.
                             lm.emit(LibraryEvent::SyncError {
-                                message: status.error,
+                                error: status.error.map(crate::ui::UiError::internal),
                             });
                         }
                         if status.syncing != last_syncing {
@@ -1511,9 +1516,9 @@ impl LibraryManager {
         }
     }
 
-    /// Emit a general error to the UI through the event bus
-    pub fn emit_error(&self, message: String) {
-        self.emit(LibraryEvent::Error { message });
+    /// Emit a general error to the UI through the event bus.
+    pub fn emit_error(&self, error: crate::ui::UiError) {
+        self.emit(LibraryEvent::Error { error });
     }
 
     // =========================================================================

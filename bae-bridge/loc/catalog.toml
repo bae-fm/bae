@@ -34,6 +34,59 @@ value = "CUE references a missing audio file"
 comment = "Import scan: the folder has no usable audio files."
 value = "no valid audio files"
 
+# Generic per-category error lines. The UI shows one of these for a diagnostic
+# failure; the underlying Rust error chain travels separately as opaque,
+# log-only `detail` (a copyable disclosure), never translated.
+[messages."core.error.category.database"]
+comment = "Generic error line: a database operation failed."
+value = "Something went wrong reading your library."
+
+[messages."core.error.category.config"]
+comment = "Generic error line: a configuration or settings operation failed."
+value = "Something went wrong with your settings."
+
+[messages."core.error.category.internal"]
+comment = "Generic error line: an unexpected internal failure."
+value = "Something went wrong."
+
+[messages."core.error.category.import"]
+comment = "Generic error line: importing a release failed."
+value = "The import couldn't be completed."
+
+[messages."core.error.category.export"]
+comment = "Generic error line: exporting failed."
+value = "The export couldn't be completed."
+
+# "… not found" lines, keyed by the missing entity.
+[messages."core.error.not_found.library"]
+comment = "Error line: the requested library no longer exists."
+value = "That library could not be found."
+
+[messages."core.error.not_found.album"]
+comment = "Error line: the requested album no longer exists."
+value = "That album could not be found."
+
+[messages."core.error.not_found.release"]
+comment = "Error line: the requested release no longer exists."
+value = "That release could not be found."
+
+[messages."core.error.not_found.track"]
+comment = "Error line: the requested track no longer exists."
+value = "That track could not be found."
+
+[messages."core.error.not_found.file"]
+comment = "Error line: the requested file no longer exists."
+value = "That file could not be found."
+
+# Actionable playback failures: the user can do something to fix these.
+[messages."core.playback.error.sync_disconnected"]
+comment = "Playback error: a cloud-only track isn't downloaded and sync is offline."
+value = "Reconnect to play this release — it isn't downloaded to this device yet."
+
+[messages."core.playback.error.upload_pending"]
+comment = "Playback error: a track's cloud upload is still queued."
+value = "This release is still uploading — try again when it finishes."
+
 [messages."core.import.prepare.parsing_metadata"]
 comment = "Import progress: preparing — parsing metadata."
 value = "Parsing metadata..."

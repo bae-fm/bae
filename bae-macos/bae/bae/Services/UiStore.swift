@@ -47,7 +47,7 @@ class UiStore: @unchecked Sendable {
 
     // ── Errors ──────────────────────────────────────────────────────────
 
-    var lastError: String?
+    var lastError: DisplayError?
 
     // ── Search ─────────────────────────────────────────────────────────
 
@@ -119,8 +119,15 @@ class UiStore: @unchecked Sendable {
 
     // MARK: - Error methods
 
+    /// Surface a UI-originated error — prose the UI already localized (a failed
+    /// drop, a caught Swift error). Core errors crossing the bridge use the
+    /// typed overload.
     func showError(_ message: String) {
-        lastError = message
+        lastError = DisplayError(line: message)
+    }
+
+    func showError(_ error: DisplayError) {
+        lastError = error
     }
 
     func clearError() {

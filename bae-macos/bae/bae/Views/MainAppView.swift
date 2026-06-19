@@ -107,19 +107,7 @@ struct MainAppView: View {
                 }
             }
         }
-        .alert(
-            "Error",
-            isPresented: Binding(
-                get: { uiStore.lastError != nil },
-                set: { if !$0 { uiStore.clearError() } },
-            )
-        ) {
-            Button("OK") { uiStore.clearError() }
-        } message: {
-            if let error = uiStore.lastError {
-                Text(error)
-            }
-        }
+        .errorAlert(uiStore)
         .toolbar(.hidden)
         .ignoresSafeArea(.all, edges: .top)
         .modifier(TrafficLightOffset(xOffset: 6, yOffset: 7))

@@ -18,10 +18,11 @@ struct SyncErrorBanner: View {
                         .font(.callout)
                         .bold()
                 }
-                Text(syncError)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
+                ErrorDetailDisclosure(
+                    error: syncError,
+                    tint: .secondary,
+                    showIcon: false
+                )
                 Button("Reconnect") {
                     onReconnect()
                 }

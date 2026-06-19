@@ -204,17 +204,11 @@ struct ImportConfirmationView<
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
 
-                if case .error(let message) = importStatus {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                        Text(message)
-                            .font(.callout)
-                            .foregroundStyle(.red)
-                    }
-                    .padding(10)
-                    .background(Color.red.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                if case .error(let bridgeError) = importStatus {
+                    ErrorDetailDisclosure(error: DisplayError(bridgeError))
+                        .padding(10)
+                        .background(Color.red.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
 
                 if let error {
