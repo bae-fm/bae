@@ -156,6 +156,23 @@ fn format_track_position(pos: &bae_core::album_detail::TrackPosition) -> String 
     }
 }
 
+fn format_ui_error(error: &bae_core::ui::UiError) -> String {
+    use bae_core::ui::UiError;
+    match error {
+        UiError::NotFound { entity, id } => format!("{entity:?} not found: {id}"),
+        UiError::Diagnostic { detail, .. } => detail.clone(),
+    }
+}
+
+fn format_playback_error_reason(reason: &bae_core::ui::PlaybackErrorReason) -> String {
+    use bae_core::ui::PlaybackErrorReason;
+    match reason {
+        PlaybackErrorReason::SyncDisconnected => "sync disconnected".to_string(),
+        PlaybackErrorReason::UploadPending => "upload pending".to_string(),
+        PlaybackErrorReason::Diagnostic { error } => format_ui_error(error),
+    }
+}
+
 /// Opaque app handle. Created by [`bae_init`], passed back to every call, freed
 /// with [`bae_handle_free`].
 pub struct BaeHandle(RunningApp);
