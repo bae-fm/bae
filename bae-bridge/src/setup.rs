@@ -50,7 +50,7 @@ fn local_library(
             .expect("library path is UTF-8 by construction")
             .to_string(),
         name,
-        cloud_provider_label: bae_core::config::cloud_provider_label(cloud_provider),
+        cloud_provider: cloud_provider.map(bridge_cloud_provider),
         is_active,
     }
 }
@@ -86,9 +86,11 @@ use tracing::info;
 use bae_core::config::Config;
 use bae_core::library::{CancellationToken, RestoreFromCodeError};
 
+#[cfg(feature = "oauth-providers")]
+use crate::types::bridge_cloud_provider_to_core;
 use crate::types::{
-    bridge_cloud_provider, bridge_cloud_provider_to_core, BridgeCloudProvider, BridgeError,
-    BridgeLibrary, BridgeRestoreCodeInfo, BridgeRestoreSource,
+    bridge_cloud_provider, BridgeCloudProvider, BridgeError, BridgeLibrary, BridgeRestoreCodeInfo,
+    BridgeRestoreSource,
 };
 
 #[cfg(feature = "cloudkit")]
@@ -179,15 +181,6 @@ pub fn set_ca_cert_dir(dirs: String) {
 #[uniffi::export]
 pub fn init_keyring() {
     bae_core::config::init_keyring();
-}
-
-/// Short display label for a cloud provider ("S3-compatible", "iCloud", …).
-/// The restore and onboarding flows hold a bare provider (not a full library),
-/// so they call this to render its name. `BridgeLibrary.cloud_provider_label`
-/// covers the library-row case. Both delegate to the one mapping in bae-core.
-#[uniffi::export]
-pub fn cloud_provider_label(provider: BridgeCloudProvider) -> String {
-    bae_core::config::cloud_provider_label(Some(&bridge_cloud_provider_to_core(provider)))
 }
 
 /// Discover local libraries in ~/.bae/libraries/, returning each as a
@@ -331,7 +324,6 @@ pub fn decode_restore_code(code: String) -> Result<BridgeRestoreCodeInfo, Bridge
     Ok(BridgeRestoreCodeInfo {
         library_id: info.library_id,
         library_name: info.library_name,
-        cloud_provider_label: bae_core::config::cloud_provider_label(Some(&info.cloud_provider)),
         cloud_provider: bridge_cloud_provider(&info.cloud_provider),
         needs_oauth: info.needs_oauth,
     })

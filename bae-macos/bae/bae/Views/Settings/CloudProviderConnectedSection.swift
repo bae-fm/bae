@@ -7,7 +7,7 @@ struct CloudProviderConnectedSection: View {
     var body: some View {
         Group {
             LabeledContent("Provider") {
-                Text(config.cloudProviderLabel)
+                Text(config.provider.displayName)
             }
             if let account = config.cloudAccountDisplay {
                 LabeledContent("Account") {
@@ -63,7 +63,6 @@ struct CloudProviderConnectedSection: View {
                         region: "us-east-1",
                         endpoint: "https://s3.example.com"
                     ),
-                    cloudProviderLabel: cloudProviderLabel(provider: .s3),
                     cloudAccountDisplay: "s3://my-bucket"
                 ),
                 onDisconnect: {},

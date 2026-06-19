@@ -75,6 +75,14 @@ value = "mono"
 comment = "Audio format: two-channel audio."
 value = "stereo"
 
+[messages."core.cloud.s3_compatible"]
+comment = "Cloud provider: any S3-compatible storage."
+value = "S3-compatible"
+
+[messages."core.cloud.local_only"]
+comment = "Cloud provider: the library syncs nowhere (local only)."
+value = "Local only"
+
 [messages."core.transfer.action.pin"]
 comment = "Storage transfer: present-continuous verb while pinning a release for offline."
 value = "Pinning for offline"

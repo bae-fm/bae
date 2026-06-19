@@ -162,7 +162,7 @@ struct SyncSetupWizard: View {
         case .selectProvider:
             "Set Up Sync"
         case .configure(let provider):
-            cloudProviderLabel(provider: provider)
+            provider.displayName
         }
     }
 
@@ -315,7 +315,7 @@ struct SyncSetupWizard: View {
             Section {
                 VStack(spacing: 12) {
                     Text(
-                        "Opens your browser to authorize bae with \(cloudProviderLabel(provider: provider))."
+                        "Opens your browser to authorize bae with \(provider.displayName)."
                     )
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -326,7 +326,7 @@ struct SyncSetupWizard: View {
                         Button(
                             isWorking
                                 ? "Connecting..."
-                                : "Connect \(cloudProviderLabel(provider: provider))"
+                                : "Connect \(provider.displayName)"
                         ) {
                             connectOAuth(provider: provider)
                         }
