@@ -20,14 +20,14 @@
   <data name="album.delete.body" xml:space="preserve"><value>This removes the release from the library.</value></data>
   <data name="album.delete.failed" xml:space="preserve"><value>couldn't delete</value></data>
   <data name="album.delete.title" xml:space="preserve"><value>delete release?</value></data>
-  <data name="album.edit" xml:space="preserve"><value>edit</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>edit</value></data>
   <data name="album.edit.load_failed" xml:space="preserve"><value>couldn't load the metadata editor</value></data>
   <data name="album.edit.reset" xml:space="preserve"><value>Reset to Source</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>couldn't reset to source</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>edit metadata</value></data>
   <data name="album.gallery" xml:space="preserve"><value>Gallery</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>couldn't open this album</value></data>
-  <data name="album.reidentify" xml:space="preserve"><value>re-identify</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>re-identify</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>Re-identify</value></data>
   <data name="album.reidentify.title" xml:space="preserve"><value>re-identify</value></data>
   <data name="album.release_picker" xml:space="preserve"><value>Release</value></data>
