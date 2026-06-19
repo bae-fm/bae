@@ -85,10 +85,6 @@ fn string_unit_state(value: &str, state: &str) -> serde_json::Value {
     serde_json::json!({ "stringUnit": { "state": state, "value": value } })
 }
 
-fn string_unit(value: &str) -> serde_json::Value {
-    string_unit_state(value, "translated")
-}
-
 /// Build the per-locale `localizations` map: the English source at state
 /// `translated`, and every `TARGET_LOCALES` entry at state `new`, each rendered
 /// by `unit(state)`.
@@ -211,6 +207,40 @@ pub fn android_strings_xml(cat: &Catalog) -> String {
     }
     out.push_str("</resources>\n");
     out
+}
+
+/// Map a catalog locale code to the Android resource-qualifier directory that
+/// carries it. A bare language is `values-<lang>`; a code with a region or
+/// script subtag needs the BCP-47 `b+` form (`values-b+pt+BR`,
+/// `values-b+zh+Hans`) — the legacy `values-pt-rBR` form can't express a script
+/// like `Hans`, so use `b+` uniformly for any multi-subtag code.
+fn android_values_dir(locale: &str) -> String {
+    if let Some((lang, rest)) = locale.split_once('-') {
+        format!("values-b+{lang}+{rest}")
+    } else {
+        format!("values-{locale}")
+    }
+}
+
+/// Emit the full Android resource set: the English source under `values/`, plus
+/// one `values-<qualifier>/core_strings.xml` per `TARGET_LOCALES` entry carrying
+/// the same English values. Android resolves resources per directory, so a
+/// locale the app should "support" must have its own directory — without it the
+/// locale falls back to `values/` and never registers as supported (so its
+/// plural rules and right-to-left layout selection don't apply). The per-locale
+/// files are English until a locale is actually translated, mirroring how the
+/// Apple emitter writes an English-valued slot for every locale into the one
+/// `Core.xcstrings`. Returns `(relative path, file contents)` pairs.
+pub fn android_resource_files(cat: &Catalog) -> Vec<(String, String)> {
+    let body = android_strings_xml(cat);
+    let mut files = vec![("values/core_strings.xml".to_string(), body.clone())];
+    for loc in TARGET_LOCALES {
+        files.push((
+            format!("{}/core_strings.xml", android_values_dir(loc)),
+            body.clone(),
+        ));
+    }
+    files
 }
 
 fn xml_escape(s: &str) -> String {
@@ -347,5 +377,34 @@ value = "Looking up barcode {position} of {total}"
     #[test]
     fn android_id_sanitization() {
         assert_eq!(sanitize_android_id("core.a.b-c"), "core_a_b_c");
+    }
+
+    #[test]
+    fn android_values_dir_qualifiers() {
+        // Bare language: plain qualifier.
+        assert_eq!(android_values_dir("es"), "values-es");
+        // Region / script subtags need the BCP-47 `b+` form.
+        assert_eq!(android_values_dir("pt-BR"), "values-b+pt+BR");
+        assert_eq!(android_values_dir("zh-Hans"), "values-b+zh+Hans");
+    }
+
+    #[test]
+    fn android_resource_files_cover_source_and_target_locales() {
+        let c = cat(r#"
+[messages."core.audio.channels.mono"]
+value = "mono"
+"#);
+        let files = android_resource_files(&c);
+        // One source `values/` file plus one per target locale.
+        assert_eq!(files.len(), 1 + TARGET_LOCALES.len());
+        let paths: Vec<&str> = files.iter().map(|(p, _)| p.as_str()).collect();
+        assert!(paths.contains(&"values/core_strings.xml"), "{paths:?}");
+        assert!(
+            paths.contains(&"values-b+zh+Hans/core_strings.xml"),
+            "{paths:?}"
+        );
+        assert!(paths.contains(&"values-ar/core_strings.xml"), "{paths:?}");
+        // Every file carries the same (English) body until a locale is translated.
+        assert!(files.iter().all(|(_, body)| body.contains("mono")));
     }
 }

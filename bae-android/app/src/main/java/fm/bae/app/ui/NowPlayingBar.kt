@@ -1,8 +1,6 @@
 package fm.bae.app.ui
 
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,17 +24,21 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 import uniffi.bae_bridge.BridgeRepeatMode
 
 /**
@@ -82,18 +84,20 @@ fun NowPlayingBar(session: OpenLibrary) {
                 // The cover + title/artist region is one tap target that expands
                 // the full-screen player; the transport buttons below stay outside
                 // it so their taps don't expand.
+                val nowPlayingDescription =
+                    stringResource(R.string.now_playing_track_by_artist, track.title, track.artist)
                 Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { expanded = true }
-                        // Announce the whole region as one TalkBack element named
-                        // for the track (the cover stays decorative; its info is
-                        // in the title/artist text), instead of an unnamed button
-                        // plus loose text fragments.
-                        .semantics(mergeDescendants = true) {
-                            contentDescription =
-                                "Now playing, ${track.title} by ${track.artist}"
-                        },
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .clickable { expanded = true }
+                            // Announce the whole region as one TalkBack element named
+                            // for the track (the cover stays decorative; its info is
+                            // in the title/artist text), instead of an unnamed button
+                            // plus loose text fragments.
+                            .semantics(mergeDescendants = true) {
+                                contentDescription = nowPlayingDescription
+                            },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     CoverImage(
@@ -122,7 +126,7 @@ fun NowPlayingBar(session: OpenLibrary) {
                     }
                 }
                 IconButton(onClick = { player.seekToPreviousMediaItem() }) {
-                    Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous track")
+                    Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.previous_track))
                 }
                 PlayPauseControl(
                     isPlaying = isPlaying,
@@ -133,27 +137,29 @@ fun NowPlayingBar(session: OpenLibrary) {
                     onToggle = { player.togglePlayPause() },
                 )
                 IconButton(onClick = { player.seekToNextMediaItem() }) {
-                    Icon(Icons.Filled.SkipNext, contentDescription = "Next track")
+                    Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.next_track))
                 }
                 IconButton(onClick = { queueOpen = true }) {
-                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
+                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.queue))
                 }
                 // cycle_repeat_mode is non-throwing; core emits RepeatModeChanged
                 // which updates the repeatMode flow above. NONE is dimmed; ALBUM
                 // and TRACK are accented (TRACK uses the repeat-one glyph).
                 IconButton(onClick = { session.appHandle.cycleRepeatMode() }) {
                     Icon(
-                        imageVector = if (repeatMode == BridgeRepeatMode.TRACK) {
-                            Icons.Filled.RepeatOne
-                        } else {
-                            Icons.Filled.Repeat
-                        },
-                        contentDescription = "Repeat mode",
-                        tint = if (repeatMode == BridgeRepeatMode.NONE) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
+                        imageVector =
+                            if (repeatMode == BridgeRepeatMode.TRACK) {
+                                Icons.Filled.RepeatOne
+                            } else {
+                                Icons.Filled.Repeat
+                            },
+                        contentDescription = stringResource(R.string.repeat_mode),
+                        tint =
+                            if (repeatMode == BridgeRepeatMode.NONE) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            },
                     )
                 }
             }

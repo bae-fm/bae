@@ -1,7 +1,7 @@
 //! `loc-gen` — validate the master catalog and emit native resource files.
 //!
-//!   loc-gen check  [--catalog <path>]
-//!   loc-gen emit   --target {apple|android|windows} --out-dir <dir> [--catalog <path>]
+//!   loc-gen check  \[--catalog PATH\]
+//!   loc-gen emit   --target {apple|android|windows} --out-dir DIR \[--catalog PATH\]
 //!
 //! `--catalog` defaults to `bae-bridge/loc/catalog.toml` (relative to the
 //! working directory, i.e. the repo root the build scripts run from).
@@ -90,21 +90,30 @@ fn run() -> Result<(), String> {
     }
 }
 
+/// Wrap a single emitted file as the one-element set the caller iterates. Apple
+/// and Windows pack every locale into one file; Android emits a per-locale set.
+fn single_file(path: impl Into<PathBuf>, contents: String) -> Vec<(PathBuf, String)> {
+    vec![(path.into(), contents)]
+}
+
 fn emit_target(args: &Args, catalog: &Catalog) -> Result<(), String> {
     let target = args.target.as_deref().ok_or("emit needs --target")?;
     let out_dir = args.out_dir.as_ref().ok_or("emit needs --out-dir")?;
 
-    let (relative, contents) = match target {
-        "apple" => (
-            PathBuf::from("Core.xcstrings"),
+    // Each target emits one or more `(relative path, contents)` files. Apple
+    // and Windows carry every locale inside one file; Android needs a separate
+    // resource directory per locale, so it emits a file set.
+    let files: Vec<(PathBuf, String)> = match target {
+        "apple" => single_file(
+            "Core.xcstrings",
             emit::apple_xcstrings(catalog, SOURCE_LANGUAGE)?,
         ),
-        "android" => (
-            PathBuf::from("values/core_strings.xml"),
-            emit::android_strings_xml(catalog),
-        ),
-        "windows" => (
-            PathBuf::from(format!("{SOURCE_LANGUAGE}-US/Core.resw")),
+        "android" => emit::android_resource_files(catalog)
+            .into_iter()
+            .map(|(rel, contents)| (PathBuf::from(rel), contents))
+            .collect(),
+        "windows" => single_file(
+            format!("{SOURCE_LANGUAGE}-US/Core.resw"),
             emit::windows_resw(catalog),
         ),
         other => {
@@ -114,9 +123,11 @@ fn emit_target(args: &Args, catalog: &Catalog) -> Result<(), String> {
         }
     };
 
-    let path = out_dir.join(relative);
-    write_file(&path, &contents)?;
-    println!("loc-gen: wrote {}", path.display());
+    for (relative, contents) in &files {
+        let path = out_dir.join(relative);
+        write_file(&path, contents)?;
+        println!("loc-gen: wrote {}", path.display());
+    }
     Ok(())
 }
 

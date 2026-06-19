@@ -7,18 +7,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.ui.res.painterResource
-import fm.bae.app.OAuthLinker
-import fm.bae.app.R
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -38,6 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,21 +44,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeLibrary
+import fm.bae.app.OAuthLinker
+import fm.bae.app.R
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.RestoreFromCodeOperation
 import uniffi.bae_bridge.decodeRestoreCode
 import uniffi.bae_bridge.restoreFromCodeOperation
 
 private const val TAG = "bae.OnboardingScreen"
 
-private class LinkFlow(val job: Job) {
+private class LinkFlow(
+    val job: Job,
+) {
     var restoreOperation: RestoreFromCodeOperation? = null
 
     fun cancel() {
@@ -93,56 +96,62 @@ fun OnboardingScreen(
         error = null
         cancelCurrentLink()
         lateinit var flow: LinkFlow
-        val launched = scope.launch(start = CoroutineStart.LAZY) {
-            try {
-                val info = decodeRestoreCode(code)
-                val oauthTokenJson = if (info.needsOauth) {
-                    if (oauthLinkingError != null) {
-                        throw IllegalStateException(oauthLinkingError)
-                    }
-                    val linking = oauthLinking
-                        ?: throw IllegalStateException(
-                            "This library needs cloud sign-in, which isn't configured on this build.",
+        val launched =
+            scope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    val info = decodeRestoreCode(code)
+                    val oauthTokenJson =
+                        if (info.needsOauth) {
+                            if (oauthLinkingError != null) {
+                                throw IllegalStateException(oauthLinkingError)
+                            }
+                            val linking =
+                                oauthLinking
+                                    ?: throw IllegalStateException(
+                                        context.getString(R.string.onboarding_oauth_unconfigured),
+                                    )
+                            linking.authorize(context, info.cloudProvider)
+                        } else {
+                            null
+                        }
+                    val operation =
+                        restoreFromCodeOperation(
+                            code = code,
+                            oauthTokenJson = oauthTokenJson,
                         )
-                    linking.authorize(context, info.cloudProvider)
-                } else {
-                    null
-                }
-                val operation = restoreFromCodeOperation(
-                    code = code,
-                    oauthTokenJson = oauthTokenJson,
-                )
-                flow.restoreOperation = operation
-                val libraryInfo = withContext(Dispatchers.IO) {
-                    operation.restore()
-                }
-                onLinked(libraryInfo)
-            } catch (e: BridgeException.Cancelled) {
-                Log.d(TAG, "link flow cancelled by bridge")
-            } catch (e: CancellationException) {
-                Log.d(TAG, "link flow coroutine cancelled")
-            } catch (e: Exception) {
-                error = e.toString()
-            } finally {
-                if (linkFlow === flow) {
-                    linkFlow = null
+                    flow.restoreOperation = operation
+                    val libraryInfo =
+                        withContext(Dispatchers.IO) {
+                            operation.restore()
+                        }
+                    onLinked(libraryInfo)
+                } catch (e: BridgeException.Cancelled) {
+                    Log.d(TAG, "link flow cancelled by bridge")
+                } catch (e: CancellationException) {
+                    Log.d(TAG, "link flow coroutine cancelled")
+                } catch (e: Exception) {
+                    error = e.toString()
+                } finally {
+                    if (linkFlow === flow) {
+                        linkFlow = null
+                    }
                 }
             }
-        }
         flow = LinkFlow(launched)
         linkFlow = flow
         launched.start()
     }
 
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            showScanner = true
-        } else {
-            error = "Camera permission is required to scan QR codes"
+    val cameraPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { granted ->
+            if (granted) {
+                showScanner = true
+            } else {
+                error = context.getString(R.string.onboarding_camera_permission_required)
+            }
         }
-    }
 
     if (showScanner) {
         QRScannerScreen(
@@ -150,7 +159,7 @@ fun OnboardingScreen(
                 showScanner = false
                 link(code)
             },
-            onDismiss = { showScanner = false }
+            onDismiss = { showScanner = false },
         )
     } else if (linkFlow != null) {
         LinkingScreen(onCancel = ::cancelCurrentLink)
@@ -160,7 +169,7 @@ fun OnboardingScreen(
 
             Image(
                 painter = painterResource(R.drawable.sheep_icon),
-                contentDescription = "bae icon",
+                contentDescription = stringResource(R.string.onboarding_icon_description),
                 modifier = Modifier.size(120.dp),
             )
 
@@ -175,7 +184,7 @@ fun OnboardingScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Scan a QR or paste a code from your library to get started",
+                text = stringResource(R.string.onboarding_tagline),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -188,9 +197,11 @@ fun OnboardingScreen(
             Button(
                 onClick = {
                     error = null
-                    val hasPerm = ContextCompat.checkSelfPermission(
-                        context, Manifest.permission.CAMERA
-                    ) == PackageManager.PERMISSION_GRANTED
+                    val hasPerm =
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.CAMERA,
+                        ) == PackageManager.PERMISSION_GRANTED
                     if (hasPerm) {
                         showScanner = true
                     } else {
@@ -199,7 +210,7 @@ fun OnboardingScreen(
                 },
                 modifier = buttonWidth,
             ) {
-                Text("Scan QR")
+                Text(stringResource(R.string.onboarding_scan_qr))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -212,7 +223,7 @@ fun OnboardingScreen(
                 },
                 modifier = buttonWidth,
             ) {
-                Text("Paste Code")
+                Text(stringResource(R.string.onboarding_paste_code))
             }
 
             if (error != null) {
@@ -230,11 +241,11 @@ fun OnboardingScreen(
         if (showPasteDialog) {
             AlertDialog(
                 onDismissRequest = { showPasteDialog = false },
-                title = { Text("Paste Code") },
+                title = { Text(stringResource(R.string.onboarding_paste_code)) },
                 text = {
                     Column {
                         Text(
-                            text = "Paste the code from bae desktop → Settings → Library → Connect another device.",
+                            text = stringResource(R.string.onboarding_paste_code_instructions),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -242,15 +253,17 @@ fun OnboardingScreen(
                         OutlinedTextField(
                             value = pasteInput,
                             onValueChange = { pasteInput = it },
-                            placeholder = { Text("Paste your restore code") },
+                            placeholder = { Text(stringResource(R.string.onboarding_restore_code_placeholder)) },
                             modifier = Modifier.fillMaxWidth(),
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                fontFamily = FontFamily.Monospace,
-                            ),
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Ascii,
-                                autoCorrectEnabled = false,
-                            ),
+                            textStyle =
+                                MaterialTheme.typography.bodyMedium.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                ),
+                            keyboardOptions =
+                                KeyboardOptions(
+                                    keyboardType = KeyboardType.Ascii,
+                                    autoCorrectEnabled = false,
+                                ),
                             singleLine = false,
                             maxLines = 3,
                         )
@@ -265,12 +278,12 @@ fun OnboardingScreen(
                         },
                         enabled = pasteInput.trim().isNotEmpty(),
                     ) {
-                        Text("Connect")
+                        Text(stringResource(R.string.onboarding_connect))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showPasteDialog = false }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                 },
             )
@@ -284,20 +297,20 @@ private fun LinkingScreen(onCancel: () -> Unit) {
         CircularProgressIndicator()
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Connecting to your library",
+            text = stringResource(R.string.onboarding_connecting_title),
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "bae is restoring the library on this device.",
+            text = stringResource(R.string.onboarding_connecting_body),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(24.dp))
         OutlinedButton(onClick = onCancel) {
-            Text("Cancel")
+            Text(stringResource(R.string.cancel))
         }
     }
 }
@@ -305,9 +318,10 @@ private fun LinkingScreen(onCancel: () -> Unit) {
 @Composable
 private fun OnboardingContainer(content: @Composable ColumnScope.() -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         content = content,

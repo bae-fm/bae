@@ -31,9 +31,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.QueueItem
 import sh.calvin.reorderable.ReorderableItem
@@ -45,7 +47,10 @@ private const val TAG = "bae.QueueScreen"
  *  ids that may repeat (the same track can be enqueued twice), so the track id
  *  alone is not a unique key; the occurrence index disambiguates duplicates and
  *  keeps the key stable for a given entry across re-hydrations and drags. */
-private data class KeyedQueueItem(val key: String, val item: QueueItem)
+private data class KeyedQueueItem(
+    val key: String,
+    val item: QueueItem,
+)
 
 private fun keyed(queue: List<QueueItem>): List<KeyedQueueItem> {
     val counts = HashMap<String, Int>()
@@ -69,7 +74,10 @@ private fun keyed(queue: List<QueueItem>): List<KeyedQueueItem> {
  * exact index `removeFromQueue`/`skipToQueueIndex` expect.
  */
 @Composable
-fun QueueScreen(session: OpenLibrary, onDismiss: () -> Unit) {
+fun QueueScreen(
+    session: OpenLibrary,
+    onDismiss: () -> Unit,
+) {
     val queue by session.playback.queue.collectAsState()
     val nowPlaying by session.playback.nowPlaying.collectAsState()
 
@@ -78,23 +86,24 @@ fun QueueScreen(session: OpenLibrary, onDismiss: () -> Unit) {
     // authoritative flow, but NOT while a drag is in progress — re-seeding mid-
     // drag would clobber the optimistic move and snap the row back.
     val order = remember { mutableStateListOf<KeyedQueueItem>() }
-    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
-        // Map the dragged/target keys back to positions in `order` (offset-free:
-        // the non-row header items never match a row key).
-        val fromPos = order.indexOfFirst { it.key == from.key }
-        val toPos = order.indexOfFirst { it.key == to.key }
-        if (fromPos < 0 || toPos < 0) return@rememberReorderableLazyListState
-        order.add(toPos, order.removeAt(fromPos))
-        // Core's reorder treats `to` as a gap index: a forward move inserts at
-        // `to - 1`, so pass `toPos + 1` to land the item where the drag dropped
-        // it. A backward move maps straight through.
-        val coreTo = if (toPos > fromPos) toPos + 1 else toPos
-        try {
-            session.appHandle.reorderQueue(fromPos.toUInt(), coreTo.toUInt())
-        } catch (e: Exception) {
-            Log.e(TAG, "reorderQueue $fromPos -> $coreTo failed", e)
+    val reorderState =
+        rememberReorderableLazyListState(listState) { from, to ->
+            // Map the dragged/target keys back to positions in `order` (offset-free:
+            // the non-row header items never match a row key).
+            val fromPos = order.indexOfFirst { it.key == from.key }
+            val toPos = order.indexOfFirst { it.key == to.key }
+            if (fromPos < 0 || toPos < 0) return@rememberReorderableLazyListState
+            order.add(toPos, order.removeAt(fromPos))
+            // Core's reorder treats `to` as a gap index: a forward move inserts at
+            // `to - 1`, so pass `toPos + 1` to land the item where the drag dropped
+            // it. A backward move maps straight through.
+            val coreTo = if (toPos > fromPos) toPos + 1 else toPos
+            try {
+                session.appHandle.reorderQueue(fromPos.toUInt(), coreTo.toUInt())
+            } catch (e: Exception) {
+                Log.e(TAG, "reorderQueue $fromPos -> $coreTo failed", e)
+            }
         }
-    }
 
     LaunchedEffect(queue, reorderState.isAnyItemDragging) {
         if (!reorderState.isAnyItemDragging) {
@@ -110,13 +119,14 @@ fun QueueScreen(session: OpenLibrary, onDismiss: () -> Unit) {
     ) {
         item(key = "header") {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Queue",
+                    text = stringResource(R.string.queue),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
@@ -131,14 +141,14 @@ fun QueueScreen(session: OpenLibrary, onDismiss: () -> Unit) {
                     },
                     enabled = order.isNotEmpty(),
                 ) {
-                    Text("Clear")
+                    Text(stringResource(R.string.queue_clear))
                 }
             }
         }
 
         nowPlaying?.let { np ->
             item(key = "nowplaying") {
-                SectionLabel("Now Playing")
+                SectionLabel(stringResource(R.string.queue_section_now_playing))
                 NowPlayingRow(np)
             }
         }
@@ -146,15 +156,19 @@ fun QueueScreen(session: OpenLibrary, onDismiss: () -> Unit) {
         if (order.isEmpty()) {
             item(key = "empty") {
                 Text(
-                    text = if (nowPlaying != null) "Nothing up next" else "Queue is empty",
+                    text =
+                        stringResource(
+                            if (nowPlaying != null) R.string.queue_nothing_up_next else R.string.queue_empty,
+                        ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
                 )
             }
         } else {
-            item(key = "uphdr") { SectionLabel("Up Next") }
+            item(key = "uphdr") { SectionLabel(stringResource(R.string.queue_section_up_next)) }
             itemsIndexed(order, key = { _, k -> k.key }) { index, k ->
                 ReorderableItem(reorderState, key = k.key) { isDragging ->
                     Surface(
@@ -194,18 +208,20 @@ private fun SectionLabel(text: String) {
         style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
     )
 }
 
 @Composable
 private fun NowPlayingRow(np: NowPlaying) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
@@ -241,10 +257,11 @@ private fun QueueRow(
     onRemove: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
@@ -262,8 +279,12 @@ private fun QueueRow(
                 maxLines = 1,
             )
             Text(
-                text = if (item.albumTitle.isEmpty()) item.artist
-                else "${item.artist} — ${item.albumTitle}",
+                text =
+                    if (item.albumTitle.isEmpty()) {
+                        item.artist
+                    } else {
+                        "${item.artist} — ${item.albumTitle}"
+                    },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -275,23 +296,23 @@ private fun QueueRow(
             text = item.durationLabel,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .padding(horizontal = 8.dp)
-                .alpha(if (item.durationLabel.isEmpty()) 0f else 1f),
+            modifier =
+                Modifier
+                    .padding(horizontal = 8.dp)
+                    .alpha(if (item.durationLabel.isEmpty()) 0f else 1f),
         )
         IconButton(onClick = onRemove) {
             Icon(
                 imageVector = Icons.Filled.Close,
-                contentDescription = "Remove from queue",
+                contentDescription = stringResource(R.string.queue_remove),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Icon(
             imageVector = Icons.Filled.DragHandle,
-            contentDescription = "Drag to reorder",
+            contentDescription = stringResource(R.string.queue_drag_to_reorder),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = dragHandleModifier.size(24.dp),
         )
     }
 }
-

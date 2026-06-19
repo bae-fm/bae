@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Hand-authored chrome strings for the Android UI (English source). Shared
+  `core.*` strings that originate in bae-core live in the generated
+  core_strings.xml (loc-gen); these are the app's own labels, buttons, and
+  accessibility descriptions. Proper nouns (the "bae" wordmark), log lines, and
+  identifiers stay as literals in code and are not listed here.
+
+  The 13 non-English shipping locales declare support via the generated
+  values-<locale>/core_strings.xml directories; these chrome strings are not yet
+  translated, so a non-English locale falls back to this English source until a
+  translation is added.
+-->
+<resources>
+    <!-- Common -->
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="retry">Retry</string>
+    <string name="close">Close</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+
+    <!-- Library -->
+    <string name="search">Search</string>
+    <string name="settings">Settings</string>
+    <string name="close_search">Close search</string>
+    <string name="clear_search">Clear search</string>
+    <string name="search_placeholder">Search albums and tracks</string>
+    <string name="sort">Sort</string>
+    <string name="sort_title">Title</string>
+    <string name="sort_artist">Artist</string>
+    <string name="sort_year">Year</string>
+    <string name="sort_date_added">Date Added</string>
+    <string name="sort_ascending">Ascending</string>
+    <string name="sort_descending">Descending</string>
+    <string name="library_empty_syncing">No albums yet. Syncing from the cloud…</string>
+    <string name="library_load_failed">Couldn\'t load your library.</string>
+    <string name="library_load_more_failed">Couldn\'t load more albums.</string>
+
+    <!-- Album detail -->
+    <string name="album_load_failed">Couldn\'t load this album.</string>
+    <string name="shuffle">Shuffle</string>
+    <string name="play_next">Play Next</string>
+    <string name="add_to_queue">Add to Queue</string>
+    <string name="track_options">Track options</string>
+    <string name="now_playing">Now playing</string>
+    <string name="paused">Paused</string>
+
+    <!-- Now playing / transport -->
+    <string name="previous_track">Previous track</string>
+    <string name="next_track">Next track</string>
+    <string name="queue">Queue</string>
+    <string name="repeat_mode">Repeat mode</string>
+    <string name="collapse">Collapse</string>
+    <string name="mute">Mute</string>
+    <string name="unmute">Unmute</string>
+    <!-- %1$s = track title, %2$s = artist -->
+    <string name="now_playing_track_by_artist">Now playing, %1$s by %2$s</string>
+
+    <!-- Queue -->
+    <string name="queue_clear">Clear</string>
+    <string name="queue_section_now_playing">Now Playing</string>
+    <string name="queue_section_up_next">Up Next</string>
+    <string name="queue_nothing_up_next">Nothing up next</string>
+    <string name="queue_empty">Queue is empty</string>
+    <string name="queue_remove">Remove from queue</string>
+    <string name="queue_drag_to_reorder">Drag to reorder</string>
+
+    <!-- Search results -->
+    <string name="search_failed">Search failed</string>
+    <!-- %1$s = the query the user typed -->
+    <string name="search_no_results">No results for “%1$s”</string>
+    <string name="search_section_albums">Albums</string>
+    <string name="search_section_tracks">Tracks</string>
+
+    <!-- Gallery -->
+    <string name="gallery_load_failed">Couldn\'t load image</string>
+
+    <!-- Settings -->
+    <string name="settings_sync">Sync</string>
+    <string name="settings_cloud_sync_on">Cloud sync on</string>
+    <string name="settings_local_only">Local only</string>
+    <string name="settings_synced">Synced</string>
+    <string name="settings_syncing">Syncing…</string>
+    <string name="settings_remove_library">Remove this library from this device</string>
+    <string name="settings_remove_library_explanation">Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later.</string>
+    <string name="settings_remove_library_confirm_title">Remove this library from this device?</string>
+    <string name="settings_remove_library_confirm_body">Your library in the cloud is untouched. You can re-pair this device later.</string>
+    <string name="settings_remove">Remove</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_tagline">Scan a QR or paste a code from your library to get started</string>
+    <string name="onboarding_icon_description">bae icon</string>
+    <string name="onboarding_scan_qr">Scan QR</string>
+    <string name="onboarding_paste_code">Paste Code</string>
+    <string name="onboarding_camera_permission_required">Camera permission is required to scan QR codes</string>
+    <string name="onboarding_paste_code_instructions">Paste the code from bae desktop → Settings → Library → Connect another device.</string>
+    <string name="onboarding_restore_code_placeholder">Paste your restore code</string>
+    <string name="onboarding_connect">Connect</string>
+    <string name="onboarding_connecting_title">Connecting to your library</string>
+    <string name="onboarding_connecting_body">bae is restoring the library on this device.</string>
+    <string name="onboarding_oauth_unconfigured">This library needs cloud sign-in, which isn\'t configured on this build.</string>
+
+    <!-- QR scanner -->
+    <string name="qr_scanner_instructions">Show the QR code from bae desktop → Settings → Library → Connect another device</string>
+
+    <!-- Unlock -->
+    <string name="unlock_title">Library Locked</string>
+    <!-- %1$s = key fingerprint hex -->
+    <string name="unlock_key_fingerprint">Key fingerprint: %1$s</string>
+    <string name="unlock_explanation">The encryption key for this library is not in the keyring. Enter the 64-character hex key to unlock.</string>
+    <string name="unlock_key_label">Encryption key (64 hex characters)</string>
+    <string name="unlock_failed">Failed to unlock</string>
+    <string name="unlock_action">Unlock</string>
+</resources>

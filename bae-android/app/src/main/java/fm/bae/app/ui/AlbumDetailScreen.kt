@@ -48,11 +48,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 import fm.bae.app.formatDurationMs
+import fm.bae.app.positionText
+import fm.bae.app.sideHeaderText
+import fm.bae.app.text
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -86,6 +92,9 @@ fun AlbumDetailScreen(
     // Set when the seed read throws, so the spinner gives way to an error+retry
     // instead of spinning forever. Cleared on album change or retry.
     var loadError by remember(albumId) { mutableStateOf<String?>(null) }
+    // For the fallback error string, which is built off the composition (inside
+    // a LaunchedEffect) where stringResource isn't available.
+    val appContext = LocalContext.current
 
     LaunchedEffect(albumId, retryToken) {
         loadError = null
@@ -97,7 +106,7 @@ fun AlbumDetailScreen(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load album detail $albumId", e)
-                loadError = e.message ?: "Couldn't load this album."
+                loadError = e.message ?: appContext.getString(R.string.album_load_failed)
             }
         }
     }
@@ -106,11 +115,12 @@ fun AlbumDetailScreen(
     LaunchedEffect(detail) {
         if (selectedReleaseId == null && detail != null) {
             val primary = detail.album.primaryReleaseId
-            selectedReleaseId = if (detail.releases.any { it.id == primary }) {
-                primary
-            } else {
-                detail.releases.firstOrNull()?.id
-            }
+            selectedReleaseId =
+                if (detail.releases.any { it.id == primary }) {
+                    primary
+                } else {
+                    detail.releases.firstOrNull()?.id
+                }
         }
     }
 
@@ -121,7 +131,7 @@ fun AlbumDetailScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
                 Text(text = "bae", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
@@ -139,7 +149,7 @@ fun AlbumDetailScreen(
                             text = loadError ?: "",
                             color = MaterialTheme.colorScheme.error,
                         )
-                        TextButton(onClick = { retryToken++ }) { Text("Retry") }
+                        TextButton(onClick = { retryToken++ }) { Text(stringResource(R.string.retry)) }
                     }
                 } else {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -240,6 +250,7 @@ private fun AlbumDetailContent(
 ) {
     val album = detail.album
     val isCompilation = album.isCompilation
+    val context = LocalContext.current
 
     var showGallery by remember { mutableStateOf(false) }
     val galleryRelease = selectedRelease
@@ -259,10 +270,11 @@ private fun AlbumDetailContent(
         item {
             Row(verticalAlignment = Alignment.Top) {
                 Box(
-                    modifier = Modifier
-                        .size(140.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable(enabled = galleryItems.isNotEmpty()) { showGallery = true },
+                    modifier =
+                        Modifier
+                            .size(140.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable(enabled = galleryItems.isNotEmpty()) { showGallery = true },
                     contentAlignment = Alignment.Center,
                 ) {
                     if (coverPath != null) {
@@ -306,6 +318,16 @@ private fun AlbumDetailContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    // The release's audio format (e.g. "FLAC · 44.1 kHz · 16-bit
+                    // · stereo"), composed for the locale from the structured
+                    // format core attaches to each audio file. Releases are
+                    // single-format in practice, so the first audio file's
+                    // format represents the release.
+                    val audioFormat =
+                        selectedRelease
+                            ?.files
+                            ?.firstNotNullOfOrNull { it.audioFormat }
+                            ?.text(context)
                     val compactMeta =
                         if (selectedRelease != null) {
                             listOfNotNull(
@@ -314,6 +336,7 @@ private fun AlbumDetailContent(
                                 selectedRelease.label,
                                 selectedRelease.catalogNumber,
                                 selectedRelease.country,
+                                audioFormat,
                             ).joinToString(" · ")
                         } else {
                             ""
@@ -354,7 +377,7 @@ private fun AlbumDetailContent(
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Play")
+                        Text(stringResource(R.string.play))
                     }
                     OutlinedButton(onClick = onShuffleRelease) {
                         Icon(
@@ -363,7 +386,7 @@ private fun AlbumDetailContent(
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Shuffle")
+                        Text(stringResource(R.string.shuffle))
                     }
                 }
             }
@@ -376,7 +399,7 @@ private fun AlbumDetailContent(
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Play Next")
+                        Text(stringResource(R.string.play_next))
                     }
                     OutlinedButton(onClick = onAddReleaseToQueue) {
                         Icon(
@@ -385,7 +408,7 @@ private fun AlbumDetailContent(
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add to Queue")
+                        Text(stringResource(R.string.add_to_queue))
                     }
                 }
             }
@@ -394,10 +417,11 @@ private fun AlbumDetailContent(
             // ordered list the player builds from the same flattening.
             var runningIndex = 0
             selectedRelease.trackGroups.forEach { group ->
-                if (group.sideLabel.isNotEmpty()) {
+                val sideHeader = group.side.sideHeaderText(context)
+                if (sideHeader.isNotEmpty()) {
                     item {
                         Text(
-                            text = group.sideLabel,
+                            text = sideHeader,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp),
@@ -408,7 +432,7 @@ private fun AlbumDetailContent(
                 itemsIndexed(group.tracks, key = { _, t -> t.id }) { localIndex, track ->
                     val isCurrent = track.id == currentTrackId
                     TrackRow(
-                        positionLabel = track.positionLabel,
+                        positionLabel = track.position.positionText(context),
                         title = track.title,
                         artistNames = if (isCompilation) track.artistNames else null,
                         durationLabel = formatDurationMs(track.durationMs),
@@ -459,21 +483,28 @@ private fun TrackRow(
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isCurrent) {
             Box(modifier = Modifier.width(40.dp), contentAlignment = Alignment.CenterStart) {
                 Icon(
-                    imageVector = if (isPlaying) {
-                        Icons.AutoMirrored.Filled.VolumeUp
-                    } else {
-                        Icons.Filled.PlayArrow
-                    },
-                    contentDescription = if (isPlaying) "Now playing" else "Paused",
+                    imageVector =
+                        if (isPlaying) {
+                            Icons.AutoMirrored.Filled.VolumeUp
+                        } else {
+                            Icons.Filled.PlayArrow
+                        },
+                    contentDescription =
+                        if (isPlaying) {
+                            stringResource(R.string.now_playing)
+                        } else {
+                            stringResource(R.string.paused)
+                        },
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -489,11 +520,12 @@ private fun TrackRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (isCurrent) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+                color =
+                    if (isCurrent) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
                 maxLines = 1,
             )
             if (artistNames != null) {
@@ -516,7 +548,7 @@ private fun TrackRow(
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(
                     imageVector = Icons.Filled.MoreVert,
-                    contentDescription = "Track options",
+                    contentDescription = stringResource(R.string.track_options),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -525,14 +557,14 @@ private fun TrackRow(
                 onDismissRequest = { menuExpanded = false },
             ) {
                 DropdownMenuItem(
-                    text = { Text("Play Next") },
+                    text = { Text(stringResource(R.string.play_next)) },
                     onClick = {
                         menuExpanded = false
                         onPlayNext()
                     },
                 )
                 DropdownMenuItem(
-                    text = { Text("Add to Queue") },
+                    text = { Text(stringResource(R.string.add_to_queue)) },
                     onClick = {
                         menuExpanded = false
                         onAddToQueue()

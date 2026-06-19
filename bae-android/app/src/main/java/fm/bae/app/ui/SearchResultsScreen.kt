@@ -23,9 +23,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 import fm.bae.app.formatDurationMs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +57,7 @@ fun SearchResultsScreen(
     var coverPaths by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    val appContext = LocalContext.current
 
     // Re-keyed on query: a new keystroke cancels the in-flight debounce + search
     // (the suspend bridge call included), so only the latest query's results
@@ -67,12 +71,15 @@ fun SearchResultsScreen(
             val res = session.library.search(query)
             // imagePathIfExists is a blocking FS read; resolve the album
             // thumbnails off-main (the search call itself is already suspend).
-            val covers = withContext(Dispatchers.IO) {
-                res.albums.mapNotNull { album ->
-                    session.library.imagePathIfExists(album.primaryReleaseId)
-                        ?.let { album.id to it }
-                }.toMap()
-            }
+            val covers =
+                withContext(Dispatchers.IO) {
+                    res.albums
+                        .mapNotNull { album ->
+                            session.library
+                                .imagePathIfExists(album.primaryReleaseId)
+                                ?.let { album.id to it }
+                        }.toMap()
+                }
             results = res
             coverPaths = covers
         } catch (e: CancellationException) {
@@ -82,7 +89,7 @@ fun SearchResultsScreen(
         } catch (e: Exception) {
             // searchLibrary is a fallible bridge call. Surface a transient
             // DB/search failure instead of letting it crash the composition.
-            error = e.message ?: "Search failed"
+            error = e.message ?: appContext.getString(R.string.search_failed)
         } finally {
             loading = false
         }
@@ -92,27 +99,30 @@ fun SearchResultsScreen(
     val currentError = error
     Box(modifier = Modifier.fillMaxSize()) {
         when {
-            currentError != null ->
+            currentError != null -> {
                 Text(
                     text = currentError,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center).padding(32.dp),
                 )
+            }
 
-            loading && current == null ->
+            loading && current == null -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
 
-            current != null && current.albums.isEmpty() && current.tracks.isEmpty() ->
+            current != null && current.albums.isEmpty() && current.tracks.isEmpty() -> {
                 Text(
-                    text = "No results for “$query”",
+                    text = stringResource(R.string.search_no_results, query),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center).padding(32.dp),
                 )
+            }
 
-            current != null ->
+            current != null -> {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     if (current.albums.isNotEmpty()) {
-                        item { SectionHeader("Albums") }
+                        item { SectionHeader(stringResource(R.string.search_section_albums)) }
                         items(current.albums, key = { "album:${it.id}" }) { album ->
                             AlbumResultRow(
                                 album = album,
@@ -122,7 +132,7 @@ fun SearchResultsScreen(
                         }
                     }
                     if (current.tracks.isNotEmpty()) {
-                        item { SectionHeader("Tracks") }
+                        item { SectionHeader(stringResource(R.string.search_section_tracks)) }
                         items(current.tracks, key = { "track:${it.id}" }) { track ->
                             TrackResultRow(
                                 track = track,
@@ -131,6 +141,7 @@ fun SearchResultsScreen(
                         }
                     }
                 }
+            }
         }
     }
 }
@@ -153,10 +164,11 @@ private fun AlbumResultRow(
     onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
@@ -190,10 +202,11 @@ private fun TrackResultRow(
     onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -220,4 +233,3 @@ private fun TrackResultRow(
         }
     }
 }
-
