@@ -66,7 +66,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
             storagePinned: $storagePinned
         )
     }
-    .frame(width: 700, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 
@@ -91,7 +91,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
             expectedTrackCount: 11
         )
     }
-    .frame(width: 700, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 
@@ -115,7 +115,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
             metadataOnly: true
         )
     }
-    .frame(width: 700, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 
@@ -143,7 +143,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
             importing: true
         )
     }
-    .frame(width: 700, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 
@@ -167,7 +167,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
             error: "Couldn't start import: invalid metadata."
         )
     }
-    .frame(width: 700, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 
@@ -178,7 +178,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
         ProgressView("Loading release details...")
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    .frame(width: 700, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 
@@ -188,7 +188,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     } pane: {
         EmptyView()
     }
-    .frame(width: 700, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 
@@ -220,7 +220,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
             )
         )
     }
-    .frame(width: 700, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 
@@ -244,6 +244,6 @@ struct ImportResultPane<Top: View, Pane: View>: View {
             hasCoverOptions: true
         )
     }
-    .frame(width: 700, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }

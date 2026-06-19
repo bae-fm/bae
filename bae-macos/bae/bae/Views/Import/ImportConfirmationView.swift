@@ -618,7 +618,7 @@ struct CoverPickerView: View {
         },
         actionExtra: EmptyView.init,
     )
-    .frame(width: 700, height: 600)
+    .frame(width: 1212, height: 982)
     .windowBackground()
     .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
     .environment(

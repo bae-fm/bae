@@ -49,7 +49,7 @@ struct ImportMainPane<RightPane: View>: View {
             EmptyView()
         }
     }
-    .frame(width: 900, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 
@@ -68,7 +68,7 @@ struct ImportMainPane<RightPane: View>: View {
             EmptyView()
         }
     }
-    .frame(width: 900, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 
@@ -87,7 +87,7 @@ struct ImportMainPane<RightPane: View>: View {
             EmptyView()
         }
     }
-    .frame(width: 900, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 

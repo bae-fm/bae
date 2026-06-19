@@ -840,7 +840,7 @@ struct DiscogsKeyPopover: View {
 
 #Preview("Main Pane - Exact Matches") {
     ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-        .frame(width: 700, height: 600)
+        .frame(width: 1212, height: 982)
         .importPreviewEnvironment()
 }
 
@@ -850,13 +850,13 @@ struct DiscogsKeyPopover: View {
         searchArtist: "Artist Name",
         searchAlbum: "Album Title One",
     )
-    .frame(width: 700, height: 600)
+    .frame(width: 1212, height: 982)
     .importPreviewEnvironment()
 }
 
 #Preview("Main Pane - Conflict") {
     ImportSearchPane.preview(state: PreviewData.searchStateConflict)
-        .frame(width: 700, height: 600)
+        .frame(width: 1212, height: 982)
         .importPreviewEnvironment()
 }
 
