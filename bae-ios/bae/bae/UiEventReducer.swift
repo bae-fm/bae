@@ -114,8 +114,7 @@ enum UiEventReducer {
             let albumId,
             let albumTitle,
             let coverImageId,
-            let durationMs,
-            let durationLabel
+            let durationMs
         ):
             playbackStore.nowPlaying = .playing(
                 NowPlayingTrack(
@@ -124,8 +123,7 @@ enum UiEventReducer {
                     artistNames: artistNames,
                     albumId: albumId,
                     coverImageId: coverImageId,
-                    durationMs: durationMs,
-                    durationLabel: durationLabel
+                    durationMs: durationMs
                 )
             )
             mediaControlService.beginPlaybackSession()
@@ -147,8 +145,7 @@ enum UiEventReducer {
             let albumId,
             let albumTitle,
             let coverImageId,
-            let durationMs,
-            let durationLabel
+            let durationMs
         ):
             playbackStore.nowPlaying = .paused(
                 NowPlayingTrack(
@@ -157,8 +154,7 @@ enum UiEventReducer {
                     artistNames: artistNames,
                     albumId: albumId,
                     coverImageId: coverImageId,
-                    durationMs: durationMs,
-                    durationLabel: durationLabel
+                    durationMs: durationMs
                 )
             )
             mediaControlService.updateNowPlaying(
@@ -185,8 +181,7 @@ enum UiEventReducer {
                         artistNames: track.artistNames,
                         albumId: track.albumId,
                         coverImageId: track.coverImageId,
-                        durationMs: track.durationMs,
-                        durationLabel: track.durationLabel
+                        durationMs: track.durationMs
                     )
                 )
             }
@@ -210,15 +205,16 @@ enum UiEventReducer {
         case .playbackProgress(
             let positionMs,
             let durationMs,
-            let progress,
-            let elapsedLabel,
-            let remainingLabel
+            let progress
         ):
             playbackStore.playbackPositionSubject.send(
                 .position(
                     progress: progress,
-                    elapsed: elapsedLabel,
-                    remaining: remainingLabel
+                    elapsed: DurationClock.text(Int64(positionMs)),
+                    remaining: DurationClock.remaining(
+                        positionMs: positionMs,
+                        durationMs: durationMs
+                    )
                 )
             )
             mediaControlService.updatePosition(

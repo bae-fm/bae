@@ -35,6 +35,7 @@ targets:
       # `#if canImport`, so it compiles AppKit-free on iOS.
       - path: ../../bae-macos/bae/bae/ImageLoader.swift
       - path: ../../bae-macos/bae/bae/BridgeSortField+CaseIterable.swift
+      - path: ../../bae-macos/bae/bae/DurationClock.swift
       - path: ../../bae-macos/bae/bae/Services/PlaybackStore.swift
       - path: ../../bae-macos/bae/bae/Services/PlaybackPositionEvent.swift
       - path: ../../bae-macos/bae/bae/Services/ConfigStore.swift
