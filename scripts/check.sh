@@ -277,7 +277,7 @@ fi
 section "Workflows"
 
 if command -v actionlint &>/dev/null; then
-  check "actionlint" actionlint
+  check "actionlint" env SHELLCHECK_OPTS="--severity=error" actionlint
 else
   skip "actionlint" "not installed — brew install actionlint"
 fi
