@@ -62,6 +62,11 @@ value = "Downloading..."
 comment = "Import progress: encrypting and storing the files."
 value = "Storing files..."
 
+[messages."core.import.pressings"]
+comment = "Release-group card: number of pressings grouped under it."
+args = { count = "Int" }
+value = "{count, plural, one {# pressing} other {# pressings}}"
+
 [messages."core.audio.channels.mono"]
 comment = "Audio format: single-channel audio."
 value = "mono"

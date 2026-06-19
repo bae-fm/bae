@@ -1031,7 +1031,8 @@ enum PreviewData {
             coverArt: nil,
             sourceLabel: "MusicBrainz",
             groupUrl: "https://musicbrainz.org/release-group/group-preview",
-            metaLabel: "1988 \u{2013} 1996 \u{00b7} 2 pressings",
+            yearMin: 1988,
+            yearMax: 1996,
             pressings: exactPressings,
         )
     )
@@ -1059,7 +1060,8 @@ enum PreviewData {
                 coverArt: nil,
                 sourceLabel: "MusicBrainz",
                 groupUrl: "https://musicbrainz.org/release-group/grp-1",
-                metaLabel: "1996 \u{00b7} 2 pressings",
+                yearMin: 1996,
+                yearMax: 1996,
                 pressings: [
                     BridgeMetadataResult(
                         source: .musicBrainz,
@@ -1090,7 +1092,8 @@ enum PreviewData {
                 coverArt: nil,
                 sourceLabel: "MusicBrainz",
                 groupUrl: "https://musicbrainz.org/release-group/grp-2",
-                metaLabel: "2005 \u{00b7} 1 pressing",
+                yearMin: 2005,
+                yearMax: 2005,
                 pressings: [
                     BridgeMetadataResult(
                         source: .musicBrainz,

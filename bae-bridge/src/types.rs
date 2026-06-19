@@ -208,6 +208,17 @@ mod queue_summary_tests {
     }
 }
 
+#[cfg(test)]
+mod release_group_tests {
+    /// The pressing-count plural key the release-group card composes from.
+    #[test]
+    fn pressings_key_exists() {
+        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
+            .expect("catalog parses");
+        assert!(cat.messages.contains_key("core.import.pressings"));
+    }
+}
+
 /// Slim per-release summary: the projection list views render one row
 /// per release (storage manager, release pickers, etc.). The fat
 /// sibling is `BridgeRelease` — composition at the resolver layer in
@@ -1096,8 +1107,10 @@ pub struct BridgeReleaseGroup {
     /// Editorial URL for the group on its source (release-group on
     /// MusicBrainz, master on Discogs). `None` for an ungrouped result.
     pub group_url: Option<String>,
-    /// Pre-formatted year span + pressing count, e.g. "1992 – 2012 · 4 pressings".
-    pub meta_label: String,
+    /// Earliest and latest pressing year for the UI's "1992 – 2012" span; both
+    /// `None` when no pressing carries a year. Pressing count is `pressings.len()`.
+    pub year_min: Option<i32>,
+    pub year_max: Option<i32>,
     pub pressings: Vec<BridgeMetadataResult>,
 }
 
@@ -2566,7 +2579,8 @@ pub(crate) fn release_group_to_bridge(
         cover_art: g.cover_art.map(remote_cover_data_to_bridge),
         source_label: g.source_label,
         group_url: g.group_url,
-        meta_label: g.meta_label,
+        year_min: g.year_min,
+        year_max: g.year_max,
         pressings: g
             .pressings
             .into_iter()

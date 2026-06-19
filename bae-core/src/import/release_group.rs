@@ -30,8 +30,11 @@ pub struct ReleaseGroup {
     /// MusicBrainz, master on Discogs). `None` for an ungrouped result, which
     /// has no group page to open.
     pub group_url: Option<String>,
-    /// Pre-formatted year span + pressing count, e.g. "1992 – 2012 · 4 pressings".
-    pub meta_label: String,
+    /// Earliest and latest pressing year, for the UI's "1992 – 2012" span. Both
+    /// `None` when no pressing carries a year. The UI pluralizes the pressing
+    /// count from `pressings.len()`.
+    pub year_min: Option<i32>,
+    pub year_max: Option<i32>,
     pub pressings: Vec<MetadataResult>,
 }
 
@@ -59,7 +62,9 @@ impl ReleaseGroup {
         let title = first.title.clone();
         let artist = pressings.iter().find_map(|p| p.artist.clone());
         let cover_art = pressings.iter().find_map(|p| p.cover_art.clone());
-        let meta_label = group_meta_label(&pressings);
+        let years: Vec<i32> = pressings.iter().filter_map(|p| p.year).collect();
+        let year_min = years.iter().min().copied();
+        let year_max = years.iter().max().copied();
         Self {
             id,
             title,
@@ -67,7 +72,8 @@ impl ReleaseGroup {
             cover_art,
             source_label: source.display_name().to_string(),
             group_url,
-            meta_label,
+            year_min,
+            year_max,
             pressings,
         }
     }
@@ -118,26 +124,6 @@ pub fn group_results(results: Vec<MetadataResult>) -> Vec<ReleaseGroup> {
             }
         })
         .collect()
-}
-
-/// "1992 – 2012 · 4 pressings" — the year span across the pressings plus the
-/// pressing count. The span collapses to a single year when the pressings
-/// don't differ, and drops out entirely when none carries a year.
-fn group_meta_label(pressings: &[MetadataResult]) -> String {
-    let years: Vec<i32> = pressings.iter().filter_map(|p| p.year).collect();
-    let count = pressings.len();
-    let count_label = if count == 1 {
-        "1 pressing".to_string()
-    } else {
-        format!("{count} pressings")
-    };
-    match (years.iter().min(), years.iter().max()) {
-        (Some(&min), Some(&max)) if min != max => {
-            format!("{min} \u{2013} {max} \u{00b7} {count_label}")
-        }
-        (Some(&y), Some(_)) => format!("{y} \u{00b7} {count_label}"),
-        _ => count_label,
-    }
 }
 
 #[cfg(test)]
@@ -204,7 +190,8 @@ mod tests {
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].id, "rel-1");
         assert_eq!(groups[0].group_url, None);
-        assert_eq!(groups[0].meta_label, "1999 \u{00b7} 1 pressing");
+        assert_eq!(groups[0].year_min, Some(1999));
+        assert_eq!(groups[0].year_max, Some(1999));
     }
 
     #[test]
@@ -217,31 +204,32 @@ mod tests {
     }
 
     #[test]
-    fn meta_label_spans_distinct_years() {
+    fn year_span_uses_min_and_max() {
         let groups = group_results(vec![
             result("rel-1", Some("g"), Some(1992)),
             result("rel-2", Some("g"), Some(2006)),
             result("rel-3", Some("g"), Some(2012)),
         ]);
-        assert_eq!(
-            groups[0].meta_label,
-            "1992 \u{2013} 2012 \u{00b7} 3 pressings"
-        );
+        assert_eq!(groups[0].year_min, Some(1992));
+        assert_eq!(groups[0].year_max, Some(2012));
+        assert_eq!(groups[0].pressings.len(), 3);
     }
 
     #[test]
-    fn meta_label_collapses_equal_years() {
+    fn year_span_collapses_when_equal() {
         let groups = group_results(vec![
             result("rel-1", Some("g"), Some(1994)),
             result("rel-2", Some("g"), Some(1994)),
         ]);
-        assert_eq!(groups[0].meta_label, "1994 \u{00b7} 2 pressings");
+        assert_eq!(groups[0].year_min, Some(1994));
+        assert_eq!(groups[0].year_max, Some(1994));
     }
 
     #[test]
-    fn meta_label_drops_year_when_none_present() {
+    fn year_span_is_none_when_no_year() {
         let groups = group_results(vec![result("rel-1", Some("g"), None)]);
-        assert_eq!(groups[0].meta_label, "1 pressing");
+        assert_eq!(groups[0].year_min, None);
+        assert_eq!(groups[0].year_max, None);
     }
 
     #[test]
