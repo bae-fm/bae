@@ -44,18 +44,18 @@ struct EditMetadataForm: View {
 
     private var albumGroup: some View {
         groupCard(
-            title: "Album",
+            title: String(localized: "Album"),
             rows: [
                 FieldRow(
-                    label: "Title",
-                    placeholder: "Album title",
+                    label: String(localized: "Title"),
+                    placeholder: String(localized: "Album title"),
                     text: $form.albumTitle,
                     width: .long,
                 ),
                 FieldRow(
-                    label: "Artist",
-                    hint: "comma-separated",
-                    placeholder: "Album artist",
+                    label: String(localized: "Artist"),
+                    hint: String(localized: "comma-separated"),
+                    placeholder: String(localized: "Album artist"),
                     text: $form.albumArtistText,
                     width: .long,
                 ),
@@ -67,42 +67,42 @@ struct EditMetadataForm: View {
 
     private var pressingGroup: some View {
         groupCard(
-            title: "Release pressing",
+            title: String(localized: "Release pressing"),
             rows: [
                 FieldRow(
-                    label: "Year",
-                    placeholder: "Year",
+                    label: String(localized: "Year"),
+                    placeholder: String(localized: "Year"),
                     text: $form.pressing.year,
                     width: .short,
                     monospaced: true,
                 ),
                 FieldRow(
-                    label: "Format",
-                    placeholder: "Format",
+                    label: String(localized: "Format"),
+                    placeholder: String(localized: "Format"),
                     text: $form.pressing.format,
                     width: .short,
                 ),
                 FieldRow(
-                    label: "Label",
-                    placeholder: "Label",
+                    label: String(localized: "Label"),
+                    placeholder: String(localized: "Label"),
                     text: $form.pressing.label,
                     width: .long,
                 ),
                 FieldRow(
-                    label: "Catalog number",
-                    placeholder: "Catalog number",
+                    label: String(localized: "Catalog number"),
+                    placeholder: String(localized: "Catalog number"),
                     text: $form.pressing.catalogNumber,
                     width: .medium,
                 ),
                 FieldRow(
-                    label: "Country",
-                    placeholder: "Country",
+                    label: String(localized: "Country"),
+                    placeholder: String(localized: "Country"),
                     text: $form.pressing.country,
                     width: .short,
                 ),
                 FieldRow(
-                    label: "Barcode",
-                    placeholder: "Barcode",
+                    label: String(localized: "Barcode"),
+                    placeholder: String(localized: "Barcode"),
                     text: $form.pressing.barcode,
                     width: .medium,
                     monospaced: true,
@@ -115,7 +115,10 @@ struct EditMetadataForm: View {
 
     private var tracksGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionHeader(title: "Tracks", trailing: trackCountLabel)
+            sectionHeader(
+                title: String(localized: "Tracks"),
+                trailing: trackCountLabel
+            )
             VStack(spacing: 0) {
                 trackHeaderRow
                 if form.tracks.isEmpty {
@@ -148,25 +151,25 @@ struct EditMetadataForm: View {
     }
 
     private var trackCountLabel: String {
-        form.tracks.count == 1 ? "1 track" : "\(form.tracks.count) tracks"
+        String(localized: "\(form.tracks.count) tracks")
     }
 
     private var trackHeaderRow: some View {
         HStack(spacing: 10) {
-            eyebrow("#")
+            eyebrow(Text(verbatim: "#"))
                 .frame(width: trackOrdinalWidth)
-            eyebrow("Title")
+            eyebrow(Text("Title"))
                 .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 4) {
-                eyebrow("Artist")
+                eyebrow(Text("Artist"))
                 Text("· blank = album artist")
                     .font(.system(size: 10))
                     .foregroundStyle(.quaternary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            eyebrow("Disc")
+            eyebrow(Text("Disc"))
                 .frame(width: trackNumberWidth)
-            eyebrow("Track")
+            eyebrow(Text("Track"))
                 .frame(width: trackNumberWidth)
         }
         .padding(.horizontal, 14)
@@ -185,13 +188,13 @@ struct EditMetadataForm: View {
         isLast: Bool,
     ) -> some View {
         HStack(spacing: 10) {
-            Text("\(index + 1)")
+            Text(verbatim: (index + 1).formatted())
                 .font(.system(size: 12))
                 .monospacedDigit()
                 .foregroundStyle(.tertiary)
                 .frame(width: trackOrdinalWidth)
             MetadataField(
-                placeholder: "Title",
+                placeholder: String(localized: "Title"),
                 text: track.title,
                 boxed: false,
             )
@@ -226,7 +229,8 @@ struct EditMetadataForm: View {
     /// Empty track-artist fields inherit the album artist; surfacing it as
     /// the placeholder shows what a blank row will resolve to.
     private var trackArtistPlaceholder: String {
-        form.albumArtistText.isEmpty ? "Artist" : form.albumArtistText
+        form.albumArtistText.isEmpty
+            ? String(localized: "Artist") : form.albumArtistText
     }
 
     private let trackOrdinalWidth: CGFloat = 34
@@ -291,7 +295,7 @@ struct EditMetadataForm: View {
         trailing: String?
     ) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            eyebrow(title, size: 11)
+            eyebrow(Text(verbatim: title), size: 11)
             Spacer()
             if let trailing {
                 Text(trailing)
@@ -305,8 +309,8 @@ struct EditMetadataForm: View {
 
     /// Section headers render at 11pt; the denser track-table column
     /// headers pass `size: 10`.
-    private func eyebrow(_ text: String, size: CGFloat = 10) -> some View {
-        Text(text)
+    private func eyebrow(_ text: Text, size: CGFloat = 10) -> some View {
+        text
             .font(.system(size: size, weight: .bold))
             .textCase(.uppercase)
             .tracking(1)

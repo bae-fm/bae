@@ -160,7 +160,9 @@ struct EditMetadataSheet: View {
             }
             catch {
                 saving = false
-                errorMessage = "Save failed: \(error.localizedDescription)"
+                errorMessage = String(
+                    localized: "Save failed: \(error.localizedDescription)"
+                )
             }
         }
     }
@@ -183,7 +185,9 @@ struct EditMetadataSheet: View {
             }
             catch {
                 resetting = false
-                errorMessage = "Reset failed: \(error.localizedDescription)"
+                errorMessage = String(
+                    localized: "Reset failed: \(error.localizedDescription)"
+                )
             }
         }
     }

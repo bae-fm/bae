@@ -499,7 +499,7 @@ struct AlbumDetailView: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = "Move Here"
+        panel.prompt = String(localized: "Move Here")
 
         guard panel.runModal() == .OK, let url = panel.url else {
             return
@@ -522,7 +522,10 @@ struct AlbumDetailView: View {
             catch {
                 await MainActor.run {
                     uiStore.showError(
-                        "Failed to set primary release: \(error.localizedDescription)"
+                        String(
+                            localized:
+                                "Failed to set primary release: \(error.localizedDescription)"
+                        )
                     )
                 }
             }
@@ -531,7 +534,7 @@ struct AlbumDetailView: View {
 
     private func exportTrack(trackId: String, tracks: [Track]) {
         guard let track = tracks.first(where: { $0.id == trackId }) else {
-            uiStore.showError("Track not found for export")
+            uiStore.showError(String(localized: "Track not found for export"))
             return
         }
         let trackTitle = track.title
@@ -557,7 +560,10 @@ struct AlbumDetailView: View {
             frame: NSRect(x: 0, y: 0, width: 200, height: 24),
             pullsDown: false
         )
-        formatPopup.addItems(withTitles: ["FLAC (Lossless)", "MP3 (320 kbps)"])
+        formatPopup.addItems(withTitles: [
+            String(localized: "FLAC (Lossless)"),
+            String(localized: "MP3 (320 kbps)"),
+        ])
         formatPopup.selectItem(
             at: UserDefaults.standard.integer(forKey: "exportFormat")
         )
@@ -567,7 +573,7 @@ struct AlbumDetailView: View {
         let accessoryContainer = NSView(
             frame: NSRect(x: 0, y: 0, width: 250, height: 34)
         )
-        let label = NSTextField(labelWithString: "Format:")
+        let label = NSTextField(labelWithString: String(localized: "Format:"))
         label.frame = NSRect(x: 0, y: 7, width: 50, height: 20)
         formatPopup.frame = NSRect(x: 54, y: 5, width: 190, height: 24)
         accessoryContainer.addSubview(label)
@@ -665,7 +671,7 @@ struct AlbumExpansionContent: View {
                         Text(summary.artistNames)
                             .foregroundStyle(.secondary)
                         if let year = summary.year {
-                            Text("\u{00B7}")
+                            Text(verbatim: "\u{00B7}")
                                 .foregroundStyle(.tertiary)
                             Text(String(year))
                                 .foregroundStyle(.tertiary)
@@ -789,7 +795,7 @@ struct AlbumExpansionContent: View {
                 .map { index, ref in
                     NativeSegmentedControl.Segment(
                         label: libraryStore.releaseDetails[ref.id]?.displayName
-                            ?? "Release \(index + 1)",
+                            ?? String(localized: "Release \(index + 1)"),
                         systemImage: releaseContainsCurrentTrack(id: ref.id)
                             ? "speaker.fill" : nil,
                     )
@@ -1025,7 +1031,7 @@ private struct TrackRowView: View {
 
     private var trackNumberLabel: some View {
         if track.positionText.isEmpty {
-            Text("-")
+            Text(verbatim: "-")
         }
         else {
             Text(track.positionText)
@@ -1143,7 +1149,10 @@ private struct StorageStatusBand: View {
             else if let progress = uploadProgress {
                 progressBar(
                     value: progress.fraction,
-                    label: "Uploading (\(progress.pending) remaining)…"
+                    label: String(
+                        localized:
+                            "Uploading (\(Int(progress.pending)) remaining)…"
+                    )
                 )
             }
             else {
@@ -1370,7 +1379,10 @@ extension View {
     /// Presents an OK-dismissible alert bound to an optional error message,
     /// clearing it on dismiss. Collapses the repeated "alert over a `String?`
     /// @State error" pattern.
-    fileprivate func errorAlert(_ title: String, message: Binding<String?>)
+    fileprivate func errorAlert(
+        _ title: LocalizedStringKey,
+        message: Binding<String?>
+    )
         -> some View
     {
         alert(

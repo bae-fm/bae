@@ -109,7 +109,7 @@ struct ImportSearchResultRow: View {
             if result.format != nil
                 && (result.catalogNumber != nil || result.country != nil)
             {
-                Text("·")
+                Text(verbatim: "·")
                     .font(.caption2)
                     .foregroundStyle(.quaternary)
             }
@@ -151,7 +151,11 @@ struct ImportSearchResultRow: View {
         }
     }
 
-    private func signalBadge(_ label: String, icon: String, on: Bool)
+    private func signalBadge(
+        _ label: LocalizedStringKey,
+        icon: String,
+        on: Bool
+    )
         -> some View
     {
         HStack(spacing: 3) {

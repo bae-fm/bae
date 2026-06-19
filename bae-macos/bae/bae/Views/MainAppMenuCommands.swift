@@ -12,8 +12,10 @@ struct ImportFolderButton: View {
             panel.canChooseDirectories = true
             panel.canChooseFiles = false
             panel.allowsMultipleSelection = false
-            panel.message = "Select a folder to watch for music to import"
-            panel.prompt = "Add"
+            panel.message = String(
+                localized: "Select a folder to watch for music to import"
+            )
+            panel.prompt = String(localized: "Add")
             guard panel.runModal() == .OK, let url = panel.url else {
                 return
             }
@@ -23,7 +25,10 @@ struct ImportFolderButton: View {
             }
             catch {
                 uiStore.showError(
-                    "Couldn't add folder: \(error.localizedDescription)"
+                    String(
+                        localized:
+                            "Couldn't add folder: \(error.localizedDescription)"
+                    )
                 )
             }
         }

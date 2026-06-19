@@ -42,7 +42,7 @@ struct ImportAsToggle: View {
     }
 
     private func segment(
-        _ title: String,
+        _ title: LocalizedStringKey,
         selected: Bool,
         action: @escaping () -> Void
     ) -> some View {

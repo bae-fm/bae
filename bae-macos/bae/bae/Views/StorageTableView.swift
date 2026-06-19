@@ -59,26 +59,46 @@ private enum StorageTableColumn: String, CaseIterable {
         switch self {
         case .album:
             Spec(
-                title: "Album",
+                title: String(localized: "Album"),
                 width: 280,
                 minWidth: 160,
                 sortField: .albumTitle
             )
         case .artist:
             Spec(
-                title: "Artist",
+                title: String(localized: "Artist"),
                 width: 200,
                 minWidth: 100,
                 sortField: .artistNames
             )
         case .format:
-            Spec(title: "Format", width: 80, minWidth: 60, sortField: .format)
+            Spec(
+                title: String(localized: "Format"),
+                width: 80,
+                minWidth: 60,
+                sortField: .format
+            )
         case .storage:
-            Spec(title: "Storage", width: 140, minWidth: 100, sortField: nil)
+            Spec(
+                title: String(localized: "Storage"),
+                width: 140,
+                minWidth: 100,
+                sortField: nil
+            )
         case .files:
-            Spec(title: "Files", width: 60, minWidth: 44, sortField: .fileCount)
+            Spec(
+                title: String(localized: "Files"),
+                width: 60,
+                minWidth: 44,
+                sortField: .fileCount
+            )
         case .size:
-            Spec(title: "Size", width: 100, minWidth: 70, sortField: .totalSize)
+            Spec(
+                title: String(localized: "Size"),
+                width: 100,
+                minWidth: 70,
+                sortField: .totalSize
+            )
         }
     }
 
@@ -727,7 +747,7 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
                 .map(\.id)
             addMenuItem(
                 to: menu,
-                title: "Cancel Upload",
+                title: String(localized: "Cancel Upload"),
                 action: #selector(cancelUploadsAction(_:)),
                 symbol: "xmark.circle",
                 representedObject: opIds,
@@ -927,7 +947,7 @@ private struct StorageReleaseCell: View {
             case .storage:
                 StorageStateLabel(release: release)
             case .files:
-                Text("\(release.fileCount)")
+                Text(verbatim: release.fileCount.formatted())
                     .monospacedDigit()
                     .frame(maxWidth: .infinity, alignment: .trailing)
             case .size:
@@ -958,7 +978,7 @@ private struct StorageStateLabel: View {
             !progress.isIdle
         {
             Label(
-                "Uploading (\(progress.pending))",
+                "Uploading (\(Int(progress.pending)))",
                 systemImage: "arrow.up.circle"
             )
             .foregroundStyle(.orange)

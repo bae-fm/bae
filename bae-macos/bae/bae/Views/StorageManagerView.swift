@@ -290,7 +290,7 @@ private struct DownloadRow: View {
                 .foregroundStyle(.secondary)
         case .active:
             Label(
-                "Downloading \(op.percent)%",
+                "Downloading \(Int(op.percent))%",
                 systemImage: "arrow.down.circle.fill"
             )
             .foregroundStyle(.orange)
@@ -423,7 +423,10 @@ private struct OutboxSection: View {
                 do { try sync.retryOutbox() }
                 catch {
                     uiStore.showError(
-                        "Failed to retry uploads: \(error.localizedDescription)"
+                        String(
+                            localized:
+                                "Failed to retry uploads: \(error.localizedDescription)"
+                        )
                     )
                 }
             }
@@ -453,7 +456,9 @@ private struct OutboxSection: View {
         do { try sync.cancelOutboxItem(id) }
         catch {
             uiStore.showError(
-                "Failed to cancel: \(error.localizedDescription)"
+                String(
+                    localized: "Failed to cancel: \(error.localizedDescription)"
+                )
             )
         }
     }
@@ -478,14 +483,14 @@ private struct OutboxMasterProgress: View {
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
                 if !snapshot.throughputText.isEmpty {
-                    Text("·").foregroundStyle(.tertiary)
+                    Text(verbatim: "·").foregroundStyle(.tertiary)
                     Text(snapshot.throughputText)
                         .font(.caption)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
                 if !snapshot.etaText.isEmpty {
-                    Text("·").foregroundStyle(.tertiary)
+                    Text(verbatim: "·").foregroundStyle(.tertiary)
                     Text(snapshot.etaText)
                         .font(.caption)
                         .foregroundStyle(.secondary)

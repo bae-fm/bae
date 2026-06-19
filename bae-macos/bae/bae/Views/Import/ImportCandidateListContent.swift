@@ -262,9 +262,10 @@ struct ImportCandidateListContent: View {
     }
 
     @ViewBuilder
-    private func sortButton(_ order: CandidateSortOrder, _ label: String)
-        -> some View
-    {
+    private func sortButton(
+        _ order: CandidateSortOrder,
+        _ label: LocalizedStringKey
+    ) -> some View {
         Button {
             sortOrder = order
         } label: {
@@ -298,9 +299,11 @@ private struct CandidateTabBar: View {
         }
     }
 
-    private func segment(_ tab: CandidateTab, _ label: String, _ count: Int)
-        -> some View
-    {
+    private func segment(
+        _ tab: CandidateTab,
+        _ label: LocalizedStringKey,
+        _ count: Int
+    ) -> some View {
         let isActive = activeTab == tab
         return Button {
             activeTab = tab
@@ -309,7 +312,7 @@ private struct CandidateTabBar: View {
                 Text(label)
                     .font(.caption)
                     .fontWeight(isActive ? .semibold : .regular)
-                Text("\(count)")
+                Text(verbatim: count.formatted())
                     .font(.caption2)
                     .monospacedDigit()
                     .padding(.horizontal, 5)
@@ -363,7 +366,7 @@ private struct FolderSectionHeader: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer()
-            Text("\(count)")
+            Text(verbatim: count.formatted())
                 .font(.caption)
                 .monospacedDigit()
                 .foregroundStyle(.tertiary)

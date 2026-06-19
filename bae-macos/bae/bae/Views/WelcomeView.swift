@@ -130,7 +130,7 @@ struct WelcomeView: View {
     private var chooseView: some View {
         VStack(spacing: 32) {
             Spacer()
-            Text("bae")
+            Text(verbatim: "bae")
                 .font(.system(size: 48, weight: .bold, design: .rounded))
             Text("Get started with your music library.")
                 .font(.title3)
@@ -773,7 +773,9 @@ struct WelcomeView: View {
             return .cloudKit
         case .googleDrive:
             guard let token = oauthTokenJson else {
-                error = "OAuth token required for Google Drive"
+                error = String(
+                    localized: "OAuth token required for Google Drive"
+                )
                 return nil
             }
             return .googleDrive(
@@ -782,7 +784,7 @@ struct WelcomeView: View {
             )
         case .dropbox:
             guard let token = oauthTokenJson else {
-                error = "OAuth token required for Dropbox"
+                error = String(localized: "OAuth token required for Dropbox")
                 return nil
             }
             return .dropbox(
@@ -791,7 +793,7 @@ struct WelcomeView: View {
             )
         case .oneDrive:
             guard let token = oauthTokenJson else {
-                error = "OAuth token required for OneDrive"
+                error = String(localized: "OAuth token required for OneDrive")
                 return nil
             }
             return .oneDrive(

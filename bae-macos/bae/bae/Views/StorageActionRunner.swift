@@ -56,7 +56,11 @@ final class StorageActionRunner {
             // and per-release transfer events — not an awaited per-release loop.
             downloads.queuePins(releaseIds)
         case .unpin:
-            runEach(releaseIds, "remove local copy", releaseEditor.unpinRelease)
+            runEach(
+                releaseIds,
+                String(localized: "remove local copy"),
+                releaseEditor.unpinRelease
+            )
         }
     }
 
@@ -65,7 +69,8 @@ final class StorageActionRunner {
     func confirmManage(pin: Bool, deleteSource: Bool) {
         let releaseIds = pendingManage ?? []
         pendingManage = nil
-        runEach(releaseIds, "move into library") { releaseId in
+        runEach(releaseIds, String(localized: "move into library")) {
+            releaseId in
             try await self.releaseEditor.manageRelease(
                 releaseId,
                 pin,
@@ -87,7 +92,10 @@ final class StorageActionRunner {
             }
             catch {
                 uiStore.showError(
-                    "Failed to cancel upload: \(error.localizedDescription)"
+                    String(
+                        localized:
+                            "Failed to cancel upload: \(error.localizedDescription)"
+                    )
                 )
                 return
             }
@@ -99,13 +107,14 @@ final class StorageActionRunner {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = "Move Here"
+        panel.prompt = String(localized: "Move Here")
 
         guard panel.runModal() == .OK, let url = panel.url else {
             return
         }
         let newPath = url.path(percentEncoded: false)
-        runEach(releaseIds, "move out of library") { releaseId in
+        runEach(releaseIds, String(localized: "move out of library")) {
+            releaseId in
             try await self.releaseEditor.unmanageRelease(releaseId, newPath)
         }
     }
@@ -128,7 +137,10 @@ final class StorageActionRunner {
             }
             catch {
                 uiStore.showError(
-                    "Failed to \(verb): \(error.localizedDescription)"
+                    String(
+                        localized:
+                            "Failed to \(verb): \(error.localizedDescription)"
+                    )
                 )
             }
         }

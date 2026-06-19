@@ -18,6 +18,9 @@ private enum WizardStep: Equatable {
 
 private struct ProviderOption: Identifiable {
     let id: BridgeCloudProvider
+    // Resolved through the catalog at the access site (not stored as a
+    // `LocalizedStringKey`, which isn't `Sendable` and would break the
+    // concurrency-safe global `providerDisplay`/`providerOptions` tables).
     let name: String
     let description: String
     let icon: String
@@ -30,32 +33,34 @@ private struct ProviderOption: Identifiable {
 private let providerDisplay: [BridgeCloudProvider: ProviderOption] = [
     .cloudKit: ProviderOption(
         id: .cloudKit,
-        name: "iCloud",
-        description: "Sync via your iCloud account",
+        name: String(localized: "iCloud"),
+        description: String(localized: "Sync via your iCloud account"),
         icon: "icloud"
     ),
     .googleDrive: ProviderOption(
         id: .googleDrive,
-        name: "Google Drive",
-        description: "Sync via Google Drive",
+        name: String(localized: "Google Drive"),
+        description: String(localized: "Sync via Google Drive"),
         icon: "externaldrive"
     ),
     .dropbox: ProviderOption(
         id: .dropbox,
-        name: "Dropbox",
-        description: "Sync via Dropbox",
+        name: String(localized: "Dropbox"),
+        description: String(localized: "Sync via Dropbox"),
         icon: "externaldrive"
     ),
     .oneDrive: ProviderOption(
         id: .oneDrive,
-        name: "OneDrive",
-        description: "Sync via Microsoft OneDrive",
+        name: String(localized: "OneDrive"),
+        description: String(localized: "Sync via Microsoft OneDrive"),
         icon: "externaldrive"
     ),
     .s3: ProviderOption(
         id: .s3,
-        name: "S3-compatible",
-        description: "Any S3-compatible storage (AWS, Backblaze, Minio, ...)",
+        name: String(localized: "S3-compatible"),
+        description: String(
+            localized: "Any S3-compatible storage (AWS, Backblaze, Minio, ...)"
+        ),
         icon: "externaldrive.connected.to.line.below"
     ),
 ]
@@ -160,7 +165,7 @@ struct SyncSetupWizard: View {
     private var headerTitle: String {
         switch step {
         case .selectProvider:
-            "Set Up Sync"
+            String(localized: "Set Up Sync")
         case .configure(let provider):
             provider.displayName
         }
@@ -312,7 +317,11 @@ struct SyncSetupWizard: View {
 
     #if BAE_OAUTH_PROVIDERS
         private func oauthFields(provider: BridgeCloudProvider) -> some View {
-            Section {
+            let connectTitle: LocalizedStringKey =
+                isWorking
+                ? "Connecting..."
+                : "Connect \(provider.displayName)"
+            return Section {
                 VStack(spacing: 12) {
                     Text(
                         "Opens your browser to authorize bae with \(provider.displayName)."
@@ -323,11 +332,7 @@ struct SyncSetupWizard: View {
 
                     HStack {
                         Spacer()
-                        Button(
-                            isWorking
-                                ? "Connecting..."
-                                : "Connect \(provider.displayName)"
-                        ) {
+                        Button(connectTitle) {
                             connectOAuth(provider: provider)
                         }
                         .disabled(isWorking)
@@ -423,7 +428,8 @@ struct SyncSetupWizard: View {
         if case BridgeError.Diagnostic(let category, let detail) = error,
             category == .config
         {
-            return detail.contains("denied") ? "Access denied" : detail
+            return detail.contains("denied")
+                ? String(localized: "Access denied") : detail
         }
         #if BAE_CLOUDKIT
             if case CloudKitError.Storage(let msg) = error {

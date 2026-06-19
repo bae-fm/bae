@@ -216,7 +216,7 @@ struct WrappingHStack: Layout {
 /// A transparent ghost pill button — the toolbar's escape actions.
 private struct GhostPill: View {
     let icon: String?
-    let label: String
+    let label: LocalizedStringKey
     let action: () -> Void
 
     @State
@@ -351,7 +351,7 @@ private struct SignalBadge: View {
                     .scaleEffect(0.6)
                     .frame(width: 16, height: 16)
             case .found(let count):
-                countCapsule("\(count)", tone: .green)
+                countCapsule(count.formatted(), tone: .green)
             case .confirms(let count):
                 if count > 0 {
                     Image(systemName: "checkmark")
@@ -364,10 +364,10 @@ private struct SignalBadge: View {
                         )
                 }
                 else {
-                    countCapsule("0", tone: .muted)
+                    countCapsule(0.formatted(), tone: .muted)
                 }
             case .noMatch:
-                countCapsule("0", tone: .muted)
+                countCapsule(0.formatted(), tone: .muted)
             case .skipped:
                 Image(systemName: "minus")
                     .font(.system(size: 10, weight: .semibold))
@@ -471,51 +471,53 @@ private enum SignalBadgeStyle {
 
     static func label(for kind: SignalKind) -> String {
         switch kind {
-        case .discId: "Disc ID"
-        case .barcode: "Barcode"
-        case .catalog: "Catalog"
+        case .discId: String(localized: "Disc ID")
+        case .barcode: String(localized: "Barcode")
+        case .catalog: String(localized: "Catalog")
         }
     }
 
     static func originLabel(for origin: SignalOrigin) -> String {
         switch origin {
-        case .discToc: "Disc TOC"
-        case .cueSheet: "CUE sheet"
-        case .artwork: "Cover OCR"
-        case .folderName: "folder name"
-        case .filename: "file name"
-        case .textFile: "Text file"
+        case .discToc: String(localized: "Disc TOC")
+        case .cueSheet: String(localized: "CUE sheet")
+        case .artwork: String(localized: "Cover OCR")
+        case .folderName: String(localized: "folder name")
+        case .filename: String(localized: "file name")
+        case .textFile: String(localized: "Text file")
         }
     }
 
     static func roleLabel(for role: SignalRole) -> String {
         switch role {
-        case .identity: "Identifies · finds releases"
-        case .filter: "Refines · narrows the match"
+        case .identity: String(localized: "Identifies · finds releases")
+        case .filter: String(localized: "Refines · narrows the match")
         }
     }
 
     static func stateLabel(for signal: ToolbarSignal) -> String {
         if signal.excluded {
-            return "Excluded from search"
+            return String(localized: "Excluded from search")
         }
         switch signal.state {
         case .lookingUp:
             return signal.role == .filter
-                ? "Matching\u{2026}" : "Looking up\u{2026}"
+                ? String(localized: "Matching\u{2026}")
+                : String(localized: "Looking up\u{2026}")
         case .found(let count):
-            return count == 1 ? "1 release" : "\(count) releases"
+            return String(localized: "\(Int(count)) releases")
         case .noMatch:
-            return "No releases matched"
+            return String(localized: "No releases matched")
         case .skipped:
             return signal.kind == .discId
-                ? "No disc layout" : "No source to scan"
+                ? String(localized: "No disc layout")
+                : String(localized: "No source to scan")
         case .failed(let failure):
             return failure.badgeLine
         case .confirms(let count):
             return count > 0
-                ? "Matches this pressing"
-                : "No matched pressing carries this catno"
+                ? String(localized: "Matches this pressing")
+                : String(localized: "No matched pressing carries this catno")
         }
     }
 

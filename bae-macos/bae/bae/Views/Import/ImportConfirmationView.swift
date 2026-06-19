@@ -194,7 +194,7 @@ struct ImportConfirmationView<
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.orange)
                         Text(
-                            "Track count mismatch: release has \(expectedTrackCount) tracks but local files don't match"
+                            "Track count mismatch: release has \(Int(expectedTrackCount)) tracks but local files don't match"
                         )
                         .font(.callout)
                         .foregroundStyle(.orange)
@@ -272,7 +272,7 @@ struct ImportConfirmationView<
     /// rather than leaving stray separators.
     private var metaLine: String {
         let count = values.tracks.count
-        let trackText = count == 1 ? "1 track" : "\(count) tracks"
+        let trackText = String(localized: "\(count) tracks")
         return [values.pressing.format, values.pressing.year, trackText]
             .filter { !$0.isEmpty }
             .joined(separator: " · ")
@@ -291,8 +291,7 @@ struct ImportConfirmationView<
                         .foregroundStyle(.orange)
                         .font(.callout)
                         .help(
-                            "The cloud upload failed and retries automatically. "
-                                + "See the Storage Manager for details."
+                            "The cloud upload failed and retries automatically. See the Storage Manager for details."
                         )
                     }
                     else {

@@ -57,7 +57,7 @@ struct BaeApp: App {
         if let name = appDelegate.appService?.configStore.config.libraryName,
             !name.isEmpty
         {
-            return "\(name) — bae"
+            return String(localized: "\(name) — bae")
         }
         return "bae"
     }
@@ -181,9 +181,11 @@ struct BaeApp: App {
     private var lockConfirmMessage: String {
         let name =
             appDelegate.appService?.configStore.config.libraryName
-            ?? "This library"
-        return
-            "\(name)'s encryption key will be removed from the keychain. This session keeps working; you'll need to re-enter the key on next launch."
+            ?? String(localized: "This library")
+        return String(
+            localized:
+                "\(name)'s encryption key will be removed from the keychain. This session keeps working; you'll need to re-enter the key on next launch."
+        )
     }
 
     /// Pre-shell content: shown before any library has been opened.
@@ -449,7 +451,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
             }
             catch {
                 uiStore.showError(
-                    "Couldn't add folder: \(error.localizedDescription)"
+                    String(
+                        localized:
+                            "Couldn't add folder: \(error.localizedDescription)"
+                    )
                 )
             }
             uiStore.navigateToImport()
