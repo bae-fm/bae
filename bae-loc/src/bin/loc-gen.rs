@@ -1,7 +1,7 @@
 //! `loc-gen` — validate the master catalog and emit native resource files.
 //!
-//!   loc-gen check  \[--catalog PATH\]
-//!   loc-gen emit   --target {apple|android|windows} --out-dir DIR \[--catalog PATH\]
+//!   loc-gen check  [--catalog &lt;path&gt;]
+//!   loc-gen emit   --target {apple|android|windows} --out-dir &lt;dir&gt; [--catalog &lt;path&gt;]
 //!
 //! `--catalog` defaults to `bae-bridge/loc/catalog.toml` (relative to the
 //! working directory, i.e. the repo root the build scripts run from).
