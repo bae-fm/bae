@@ -82,10 +82,10 @@ pub struct BridgeLibrary {
     pub id: String,
     pub name: String,
     pub path: String,
-    /// Short label naming the library's cloud provider for display
-    /// ("S3-compatible", "iCloud", …), or "Local only" when it syncs nowhere.
-    /// Pre-built in core so the UI renders it directly.
-    pub cloud_provider_label: String,
+    /// The library's cloud provider, or `None` when it syncs nowhere
+    /// (local-only). The UI renders the name: brand names pass through, the
+    /// generic cases resolve a catalog key.
+    pub cloud_provider: Option<BridgeCloudProvider>,
     pub is_active: bool,
 }
 
@@ -404,6 +404,53 @@ mod audio_format_tests {
         for channels in [1_i64, 2] {
             let key = super::bridge_audio_channels_key(channels).expect("1 and 2 have words");
             assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
+        }
+    }
+}
+
+/// Localization key for a cloud provider's display name, or `None` for the
+/// brand-name providers the UI passes through verbatim (iCloud, Google Drive,
+/// Dropbox, OneDrive). `None` provider means local-only. One source of these
+/// keys for every platform; the UI resolves the key through its string catalog.
+#[uniffi::export]
+pub fn bridge_cloud_provider_label_key(provider: Option<BridgeCloudProvider>) -> Option<String> {
+    match provider {
+        None => Some("core.cloud.local_only".to_string()),
+        Some(BridgeCloudProvider::S3) => Some("core.cloud.s3_compatible".to_string()),
+        Some(
+            BridgeCloudProvider::CloudKit
+            | BridgeCloudProvider::GoogleDrive
+            | BridgeCloudProvider::Dropbox
+            | BridgeCloudProvider::OneDrive,
+        ) => None,
+    }
+}
+
+#[cfg(test)]
+mod cloud_provider_tests {
+    use super::BridgeCloudProvider;
+
+    /// The cloud-provider keys the UI resolves (local-only, S3) must exist; the
+    /// brand-name providers have no key (the UI hardcodes them).
+    #[test]
+    fn keys_exist_in_catalog() {
+        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
+            .expect("catalog parses");
+        for provider in [None, Some(BridgeCloudProvider::S3)] {
+            let key = super::bridge_cloud_provider_label_key(provider)
+                .expect("local-only and S3 carry keys");
+            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
+        }
+        for provider in [
+            BridgeCloudProvider::CloudKit,
+            BridgeCloudProvider::GoogleDrive,
+            BridgeCloudProvider::Dropbox,
+            BridgeCloudProvider::OneDrive,
+        ] {
+            assert!(
+                super::bridge_cloud_provider_label_key(Some(provider)).is_none(),
+                "brand-name providers pass through, no key"
+            );
         }
     }
 }
@@ -1846,10 +1893,6 @@ pub struct BridgeConfig {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSyncConfig {
     pub provider: BridgeSyncProvider,
-    /// Short label naming `provider` for display ("S3-compatible", "iCloud",
-    /// …). Pre-built in core so the UI renders it directly instead of
-    /// switching on `provider`.
-    pub cloud_provider_label: String,
     /// Display name for the connected account (e.g. "s3://bucket", "iCloud").
     pub cloud_account_display: Option<String>,
 }
@@ -2032,10 +2075,6 @@ pub struct BridgeRestoreCodeInfo {
     pub library_id: String,
     pub library_name: String,
     pub cloud_provider: BridgeCloudProvider,
-    /// Short label naming `cloud_provider` for display ("S3-compatible",
-    /// "iCloud", …). Pre-built in core so the UI renders it directly instead
-    /// of switching on `cloud_provider`.
-    pub cloud_provider_label: String,
     pub needs_oauth: bool,
 }
 
@@ -2260,6 +2299,9 @@ pub(crate) fn bridge_cloud_provider(p: &bae_core::config::CloudProvider) -> Brid
     }
 }
 
+/// Only the OAuth sign-in and authorize flows still map a bare bridge provider
+/// back to core; gated so non-OAuth builds don't carry a dead mapping.
+#[cfg(feature = "oauth-providers")]
 pub(crate) fn bridge_cloud_provider_to_core(
     p: BridgeCloudProvider,
 ) -> bae_core::config::CloudProvider {

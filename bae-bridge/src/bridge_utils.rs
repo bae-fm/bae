@@ -29,7 +29,6 @@ pub(crate) fn build_bridge_config(config: &bae_core::config::Config) -> BridgeCo
             .provider
             .as_ref()
             .map(|provider| BridgeSyncConfig {
-                cloud_provider_label: bae_core::config::cloud_provider_label(Some(provider)),
                 provider: bridge_sync_provider(provider, &config.cloud_home),
                 cloud_account_display: config.cloud_account_display(),
             }),

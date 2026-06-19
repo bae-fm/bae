@@ -152,21 +152,6 @@ pub fn install_test_keyring() {
 /// duplicate it would have to keep mapping back and forth.
 pub use coven::config::CloudProvider;
 
-/// Short label naming a library's cloud provider for display, or "Local only"
-/// when it syncs nowhere. The single source of truth for these names — the UI
-/// renders the returned string rather than switching on the provider itself.
-pub fn cloud_provider_label(provider: Option<&CloudProvider>) -> String {
-    match provider {
-        None => "Local only",
-        Some(CloudProvider::S3) => "S3-compatible",
-        Some(CloudProvider::CloudKit) => "iCloud",
-        Some(CloudProvider::GoogleDrive) => "Google Drive",
-        Some(CloudProvider::Dropbox) => "Dropbox",
-        Some(CloudProvider::OneDrive) => "OneDrive",
-    }
-    .to_string()
-}
-
 /// Parse an RFC 3339 timestamp into Unix epoch milliseconds. coven and bae's
 /// own queue both store sync/created times as RFC 3339 text, but the UI only
 /// needs an instant, so this is the one place that maps the text to epoch

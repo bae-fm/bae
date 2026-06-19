@@ -238,7 +238,7 @@ struct WelcomeView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(entry.info.libraryName)
                                 .font(.body.bold())
-                            Text(entry.info.cloudProviderLabel)
+                            Text(entry.info.cloudProvider.displayName)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -274,7 +274,7 @@ struct WelcomeView: View {
                             HStack(spacing: 8) {
                                 ZStack(alignment: .trailing) {
                                     Button(
-                                        "Connect \(entry.info.cloudProviderLabel)"
+                                        "Connect \(entry.info.cloudProvider.displayName)"
                                     ) {
                                         restoreCodeInput = entry.code
                                         decodedRestore = .success(entry.info)
@@ -419,7 +419,7 @@ struct WelcomeView: View {
                     if case .success(let info) = decodedRestore {
                         LabeledContent(
                             "Provider",
-                            value: info.cloudProviderLabel
+                            value: info.cloudProvider.displayName
                         )
                         LabeledContent("Library", value: info.libraryName)
                         #if BAE_OAUTH_PROVIDERS
@@ -510,8 +510,7 @@ struct WelcomeView: View {
                     .font(.callout)
                 }
                 else {
-                    Button("Connect \(cloudProviderLabel(provider: provider))")
-                    {
+                    Button("Connect \(provider.displayName)") {
                         doOAuthAuthorize(provider: provider)
                     }
                 }
@@ -526,7 +525,7 @@ struct WelcomeView: View {
         // bridge symbol that isn't there.
         Picker("Cloud provider", selection: $restoreProvider) {
             ForEach(availableCloudProviders(), id: \.self) { provider in
-                Text(cloudProviderLabel(provider: provider)).tag(provider)
+                Text(provider.displayName).tag(provider)
             }
         }
         .onChange(of: restoreProvider) {
@@ -610,7 +609,7 @@ struct WelcomeView: View {
                 }
                 else {
                     Button(
-                        "Connect \(cloudProviderLabel(provider: restoreProvider))"
+                        "Connect \(restoreProvider.displayName)"
                     ) {
                         doOAuthAuthorize(provider: restoreProvider)
                     }
