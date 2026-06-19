@@ -104,7 +104,9 @@ struct FolderImportTab: View {
             }
             catch {
                 uiStore.showError(
-                    "Scan failed: \(error.localizedDescription)"
+                    String(
+                        localized: "Scan failed: \(error.localizedDescription)"
+                    )
                 )
             }
         }
@@ -134,8 +136,10 @@ struct FolderImportTab: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.message = "Select a folder to watch for music to import"
-        panel.prompt = "Add"
+        panel.message = String(
+            localized: "Select a folder to watch for music to import"
+        )
+        panel.prompt = String(localized: "Add")
         guard panel.runModal() == .OK, let url = panel.url else {
             return
         }
@@ -144,7 +148,10 @@ struct FolderImportTab: View {
         }
         catch {
             uiStore.showError(
-                "Couldn't add folder: \(error.localizedDescription)"
+                String(
+                    localized:
+                        "Couldn't add folder: \(error.localizedDescription)"
+                )
             )
         }
     }
@@ -212,7 +219,10 @@ struct FolderImportTab: View {
         }
         catch {
             uiStore.showError(
-                "Couldn't update skip state: \(error.localizedDescription)"
+                String(
+                    localized:
+                        "Couldn't update skip state: \(error.localizedDescription)"
+                )
             )
         }
     }
@@ -231,7 +241,10 @@ struct FolderImportTab: View {
         }
         catch {
             uiStore.showError(
-                "Couldn't remove folder: \(error.localizedDescription)"
+                String(
+                    localized:
+                        "Couldn't remove folder: \(error.localizedDescription)"
+                )
             )
         }
     }

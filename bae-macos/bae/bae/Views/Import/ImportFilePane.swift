@@ -98,7 +98,7 @@ struct ImportFilePane: View {
     /// extending to the trailing edge. Replaces the chevron-collapsible
     /// section headers — the accent rules carry the hierarchy now.
     private func accentSection<Content: View>(
-        _ title: String,
+        _ title: LocalizedStringKey,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -210,7 +210,10 @@ struct ImportFilePane: View {
                             }
                             catch {
                                 onError(
-                                    "Could not read \(pair.cueName): \(error.localizedDescription)"
+                                    String(
+                                        localized:
+                                            "Could not read \(pair.cueName): \(error.localizedDescription)"
+                                    )
                                 )
                             }
                         } label: {
@@ -228,7 +231,7 @@ struct ImportFilePane: View {
                             .padding(.leading, 8)
                     }
                     if let trackCount = pair.trackCount {
-                        Text("\(trackCount) tracks")
+                        Text("\(Int(trackCount)) tracks")
                             .font(.caption2)
                             .fontWeight(.semibold)
                             .foregroundStyle(Theme.accent)
@@ -306,7 +309,10 @@ struct ImportFilePane: View {
             }
             catch {
                 onError(
-                    "Could not read \(file.name): \(error.localizedDescription)"
+                    String(
+                        localized:
+                            "Could not read \(file.name): \(error.localizedDescription)"
+                    )
                 )
             }
         }

@@ -413,12 +413,16 @@ private struct CardMenuButton: View {
     private func presentMenu() {
         showMenu = true
         let menu = NSMenu()
-        let playItem = MenuItem(title: "Play") { onPlay() }
+        let playItem = MenuItem(title: String(localized: "Play")) { onPlay() }
         menu.addItem(playItem)
         menu.addItem(NSMenuItem.separator())
-        let queueItem = MenuItem(title: "Add to Queue") { onAddToQueue() }
+        let queueItem = MenuItem(title: String(localized: "Add to Queue")) {
+            onAddToQueue()
+        }
         menu.addItem(queueItem)
-        let nextItem = MenuItem(title: "Add Next") { onAddNext() }
+        let nextItem = MenuItem(title: String(localized: "Add Next")) {
+            onAddNext()
+        }
         menu.addItem(nextItem)
 
         menu.popUp(

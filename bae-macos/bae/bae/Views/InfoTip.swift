@@ -3,7 +3,7 @@ import SwiftUI
 /// A "?" icon that shows an info popover on hover.
 /// The popover stays open while the cursor is over either the icon or the popover itself.
 struct InfoTip: View {
-    let text: String
+    let text: LocalizedStringKey
     var learnMoreURL: URL?
     var width: CGFloat = 260
     var arrowEdge: Edge = .top

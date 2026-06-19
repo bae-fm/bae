@@ -109,8 +109,10 @@ struct LibrarySettingsTab: View {
     /// data-loss warning when releases live only in the cloud; the view just
     /// stitches it onto the base sentence.
     private var disconnectMessage: String {
-        let base =
-            "This will stop syncing and remove the cloud provider configuration."
+        let base = String(
+            localized:
+                "This will stop syncing and remove the cloud provider configuration."
+        )
         guard let extra = disconnectExtraWarning else { return base }
         return "\(base) \(extra)"
     }
@@ -130,8 +132,10 @@ struct LibrarySettingsTab: View {
             logger.error(
                 "Failed to compute disconnect warning: \(error.localizedDescription)"
             )
-            self.error =
-                "Couldn't check for cloud-only releases: \(error.localizedDescription)"
+            self.error = String(
+                localized:
+                    "Couldn't check for cloud-only releases: \(error.localizedDescription)"
+            )
             disconnectExtraWarning = nil
         }
         showDisconnectConfirm = true
@@ -147,7 +151,10 @@ struct LibrarySettingsTab: View {
         }
         catch {
             logger.error("Failed to disconnect: \(error.localizedDescription)")
-            self.error = "Failed to disconnect: \(error.localizedDescription)"
+            self.error = String(
+                localized:
+                    "Failed to disconnect: \(error.localizedDescription)"
+            )
         }
     }
 

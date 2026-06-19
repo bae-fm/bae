@@ -343,7 +343,7 @@ struct NowPlayingBar: View {
         .accessibilityLabel(repeatHelp)
     }
 
-    private var repeatHelp: String {
+    private var repeatHelp: LocalizedStringKey {
         switch repeatMode {
         case .none:
             "Repeat: off"

@@ -4,7 +4,7 @@ import SwiftUI
 struct LibrarySearchField: View {
     @Binding
     var text: String
-    var prompt: String
+    var prompt: LocalizedStringKey
     var focused: FocusState<Bool>.Binding
     var onEscape: () -> Void
 

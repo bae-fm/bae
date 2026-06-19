@@ -7,7 +7,7 @@ struct AboutSettingsTab: View {
     var body: some View {
         VStack(spacing: 16) {
             Spacer()
-            Text("bae")
+            Text(verbatim: "bae")
                 .font(.largeTitle)
                 .fontWeight(.bold)
             if let version = Bundle.main.infoDictionary?[

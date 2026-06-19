@@ -65,8 +65,10 @@ struct DiscogsSettingsTab: View {
             }
         }
         catch {
-            readError =
-                "Couldn't read the stored Discogs key: \(error.localizedDescription)"
+            readError = String(
+                localized:
+                    "Couldn't read the stored Discogs key: \(error.localizedDescription)"
+            )
         }
     }
 
@@ -81,8 +83,10 @@ struct DiscogsSettingsTab: View {
             do {
                 let outcome = try await discogs.saveDiscogsToken(token)
                 if case .rejected = outcome {
-                    saveError =
-                        "Discogs rejected this key — check it and save again."
+                    saveError = String(
+                        localized:
+                            "Discogs rejected this key — check it and save again."
+                    )
                 }
                 // `.valid` / `.unvalidated` update the persisted status
                 // reactively through the config event; nothing to set here.
@@ -91,8 +95,10 @@ struct DiscogsSettingsTab: View {
                 logger.debug("saveToken cancelled")
             }
             catch {
-                saveError =
-                    "Couldn't save the Discogs key: \(error.localizedDescription)"
+                saveError = String(
+                    localized:
+                        "Couldn't save the Discogs key: \(error.localizedDescription)"
+                )
             }
         }
     }
@@ -109,8 +115,10 @@ struct DiscogsSettingsTab: View {
                 logger.debug("revalidate cancelled")
             }
             catch {
-                saveError =
-                    "Couldn't re-check the Discogs key: \(error.localizedDescription)"
+                saveError = String(
+                    localized:
+                        "Couldn't re-check the Discogs key: \(error.localizedDescription)"
+                )
             }
         }
     }
@@ -123,8 +131,10 @@ struct DiscogsSettingsTab: View {
             draft = ""
         }
         catch {
-            saveError =
-                "Couldn't remove the Discogs key: \(error.localizedDescription)"
+            saveError = String(
+                localized:
+                    "Couldn't remove the Discogs key: \(error.localizedDescription)"
+            )
         }
     }
 }
@@ -213,7 +223,7 @@ struct DiscogsSettingsContent: View {
 
     @ViewBuilder
     private func connectedRow(
-        label: String,
+        label: LocalizedStringKey,
         systemImage: String,
         tint: Color
     ) -> some View {

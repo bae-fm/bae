@@ -44,7 +44,7 @@ struct LibraryView: View {
                         onAddNext: { releaseId in
                             queue.addReleaseNext(releaseId)
                         },
-                        headerTitle: "Library",
+                        headerTitle: String(localized: "Library"),
                     ) { albumId in
                         AlbumDetailView(albumId: albumId)
                     }

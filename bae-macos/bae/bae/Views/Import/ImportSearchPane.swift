@@ -73,14 +73,14 @@ struct ImportSearchFormView: View {
                 HStack {
                     AutocompleteTextField(
                         text: $searchArtist,
-                        placeholder: "Artist",
+                        placeholder: String(localized: "Artist"),
                         suggestions: generalSuggestions,
                         isLoading: isScanning,
                         onSubmit: { onSearch() },
                     )
                     AutocompleteTextField(
                         text: $searchAlbum,
-                        placeholder: "Album",
+                        placeholder: String(localized: "Album"),
                         suggestions: generalSuggestions,
                         isLoading: isScanning,
                         onSubmit: { onSearch() },
@@ -92,7 +92,7 @@ struct ImportSearchFormView: View {
                 HStack {
                     AutocompleteTextField(
                         text: $searchCatalog,
-                        placeholder: "e.g. WPCR-80001",
+                        placeholder: String(localized: "e.g. WPCR-80001"),
                         suggestions: catalogSuggestions,
                         isLoading: isScanning,
                         onSubmit: { onSearch() },
@@ -318,8 +318,7 @@ struct ImportSearchPane: View {
                         onViewMatches()
                     } label: {
                         Label(
-                            "View automatic matches "
-                                + "(\(found.group.pressings.count))",
+                            "View automatic matches (\(found.group.pressings.count))",
                             systemImage: "chevron.left",
                         )
                     }
@@ -544,7 +543,7 @@ struct ImportSearchPane: View {
     @ViewBuilder
     private func conflictSection(
         signal: ExcludedSignal,
-        title: String,
+        title: LocalizedStringKey,
         subtitle: AttributedString,
         results: [MetadataResult],
         libraryStatuses: [String: LibraryStatus],
@@ -594,9 +593,8 @@ struct ImportSearchPane: View {
     private func discidSectionSubtitle(count: Int, sourceLabel: String)
         -> AttributedString
     {
-        let releaseWord = count == 1 ? "release" : "releases"
-        return AttributedString(
-            "matched \(count) \(releaseWord) on \(sourceLabel)"
+        AttributedString(
+            String(localized: "matched \(count) releases on \(sourceLabel)")
         )
     }
 
@@ -608,8 +606,9 @@ struct ImportSearchPane: View {
         count: Int,
         matchedBarcode: String?
     ) -> AttributedString {
-        let releaseWord = count == 1 ? "release" : "releases"
-        var subtitle = AttributedString("matched \(count) \(releaseWord)")
+        var subtitle = AttributedString(
+            String(localized: "matched \(count) releases")
+        )
         if let barcode = matchedBarcode, !barcode.isEmpty {
             subtitle += AttributedString(" · ")
             var mono = AttributedString(barcode)
@@ -621,9 +620,9 @@ struct ImportSearchPane: View {
 
     private func ignoreButtonLabel(signal: ExcludedSignal) -> String {
         switch signal {
-        case .disc: "Ignore DiscID"
-        case .barcode: "Ignore Barcode"
-        case .catalog: "Ignore Catalog"
+        case .disc: String(localized: "Ignore DiscID")
+        case .barcode: String(localized: "Ignore Barcode")
+        case .catalog: String(localized: "Ignore Catalog")
         }
     }
 

@@ -136,8 +136,10 @@ struct CoverSheetView: View {
             // Sheet dismissed mid-fetch; teardown owns the next transition.
         }
         catch {
-            errorMessage =
-                "Failed to load covers: \(error.localizedDescription)"
+            errorMessage = String(
+                localized:
+                    "Failed to load covers: \(error.localizedDescription)"
+            )
             loading = false
         }
     }

@@ -187,7 +187,9 @@ struct MainAppView: View {
                 let url = URL(dataRepresentation: data, relativeTo: nil)
             else {
                 DispatchQueue.main.async {
-                    uiStore.showError("Could not read dropped item")
+                    uiStore.showError(
+                        String(localized: "Could not read dropped item")
+                    )
                 }
                 return
             }
@@ -200,7 +202,9 @@ struct MainAppView: View {
                 isDir.boolValue
             else {
                 DispatchQueue.main.async {
-                    uiStore.showError("Drop a folder to import, not a file")
+                    uiStore.showError(
+                        String(localized: "Drop a folder to import, not a file")
+                    )
                 }
                 return
             }
@@ -210,7 +214,10 @@ struct MainAppView: View {
                 }
                 catch {
                     uiStore.showError(
-                        "Couldn't add folder: \(error.localizedDescription)"
+                        String(
+                            localized:
+                                "Couldn't add folder: \(error.localizedDescription)"
+                        )
                     )
                 }
                 uiStore.navigateToImport()

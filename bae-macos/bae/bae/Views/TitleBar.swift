@@ -97,7 +97,10 @@ struct TitleBar: View {
             catch {
                 guard !Task.isCancelled else { return }
                 uiStore.showError(
-                    "Search failed: \(error.localizedDescription)"
+                    String(
+                        localized:
+                            "Search failed: \(error.localizedDescription)"
+                    )
                 )
             }
         }

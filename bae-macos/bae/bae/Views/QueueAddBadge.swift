@@ -9,7 +9,9 @@ struct QueueAddBadge: View {
 
     var body: some View {
         if let count = displayedCount {
-            Text("+\(count)")
+            // A bare count, not chrome: render with the locale's digits via
+            // `.formatted()` and `verbatim` so it doesn't become a catalog key.
+            Text(verbatim: "+\(count.formatted())")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 5)
