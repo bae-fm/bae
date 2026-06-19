@@ -46,7 +46,14 @@ struct ReleaseDetail: Identifiable {
     init(summary: ReleaseSummary, bridge: BridgeRelease) {
         self.summary = summary
         displayName = bridge.displayName
-        compactMetadata = bridge.compactMetadata
+        compactMetadata = [
+            bridge.year.map { String($0) },
+            bridge.format,
+            bridge.label,
+            bridge.catalogNumber,
+            bridge.country,
+        ]
+        .compactMap { $0 }.joined(separator: " \u{00B7} ")
         totalDurationMs = bridge.totalDurationMs
         tracks = bridge.tracks.map(Track.init(from:))
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))

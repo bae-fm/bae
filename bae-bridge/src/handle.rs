@@ -1707,7 +1707,6 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
         label: rel.label,
         catalog_number: rel.catalog_number,
         country: rel.country,
-        compact_metadata: rel.compact_metadata,
         storage_state: crate::types::BridgeReleaseStorageState::from_core(summary.storage_state),
         storage_actions: summary
             .storage_actions

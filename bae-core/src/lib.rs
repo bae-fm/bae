@@ -22,7 +22,6 @@ pub mod network;
 pub mod oauth;
 pub mod playback;
 pub mod queue;
-pub mod release_metadata_compact;
 pub mod retry;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod signals;

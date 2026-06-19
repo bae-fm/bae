@@ -243,9 +243,6 @@ pub struct ReleaseDetail {
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
-    /// Pre-rendered pressing line joining year/format/label/catalog
-    /// number/country with " · ". Empty when none are set.
-    pub compact_metadata: String,
     /// Total duration across all tracks, in milliseconds. The UI formats it.
     pub total_duration_ms: i64,
     pub tracks: Vec<TrackDetail>,
