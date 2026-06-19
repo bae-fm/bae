@@ -66,6 +66,9 @@ macro_rules! free_encode_resources {
 
 // Thread-local FFmpeg error counter for per-decode error tracking
 thread_local! {
+    // clippy::missing_const_for_thread_local fires spuriously on the Android target
+    // even though `= const { ... }` is already the const form; suppress the false positive.
+    #[allow(clippy::missing_const_for_thread_local)]
     static FFMPEG_DECODE_ERRORS: Cell<u32> = const { Cell::new(0) };
 }
 

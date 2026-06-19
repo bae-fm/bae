@@ -1,7 +1,6 @@
 package fm.bae.app.ui
 
 import android.util.Log
-import fm.bae.app.formatDurationMs
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +51,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import fm.bae.app.formatDurationMs
 import fm.bae.app.OpenLibrary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -306,10 +306,18 @@ private fun AlbumDetailContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    val compactMeta = selectedRelease?.let {
-                        listOfNotNull(it.year?.toString(), it.format, it.label, it.catalogNumber, it.country)
-                            .joinToString(" · ")
-                    }.orEmpty()
+                    val compactMeta =
+                        if (selectedRelease != null) {
+                            listOfNotNull(
+                                selectedRelease.year?.toString(),
+                                selectedRelease.format,
+                                selectedRelease.label,
+                                selectedRelease.catalogNumber,
+                                selectedRelease.country,
+                            ).joinToString(" · ")
+                        } else {
+                            ""
+                        }
                     if (selectedRelease != null && compactMeta.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(

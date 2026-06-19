@@ -1,7 +1,6 @@
 package fm.bae.app.ui
 
 import androidx.compose.foundation.clickable
-import fm.bae.app.formatDurationMs
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import fm.bae.app.formatDurationMs
 import fm.bae.app.OpenLibrary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

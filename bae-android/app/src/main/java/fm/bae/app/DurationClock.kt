@@ -8,7 +8,10 @@ fun formatDurationMs(ms: Long?): String {
 }
 
 /** Format the time remaining as "-M:SS" (e.g. "-3:07"). */
-fun formatRemainingMs(positionMs: Long, durationMs: Long): String {
+fun formatRemainingMs(
+    positionMs: Long,
+    durationMs: Long,
+): String {
     val remaining = (durationMs - positionMs).coerceAtLeast(0)
     return "-" + formatDurationMs(remaining)
 }
