@@ -192,10 +192,6 @@ pub struct BridgeRelease {
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
-    /// Compact pressing-metadata line: whichever of `year`, `format`,
-    /// `label`, `catalog_number`, `country` are set, joined by ` · `.
-    /// Empty when none are set. The UI renders this as-is.
-    pub compact_metadata: String,
     /// Where this release's files live.
     pub storage_state: BridgeReleaseStorageState,
     /// Storage transitions available right now, gated on cloud-home by the

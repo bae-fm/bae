@@ -3544,14 +3544,6 @@ pub(crate) fn resolve_release(
         release_cover,
     );
 
-    let compact_metadata = crate::release_metadata_compact::release_metadata_compact(
-        release.pressing.year,
-        release.pressing.format.as_deref(),
-        release.pressing.label.as_deref(),
-        release.pressing.catalog_number.as_deref(),
-        release.pressing.country.as_deref(),
-    );
-
     ReleaseDetail {
         summary,
         display_name,
@@ -3560,7 +3552,6 @@ pub(crate) fn resolve_release(
         label: release.pressing.label,
         catalog_number: release.pressing.catalog_number,
         country: release.pressing.country,
-        compact_metadata,
         total_duration_ms,
         tracks,
         track_groups,
