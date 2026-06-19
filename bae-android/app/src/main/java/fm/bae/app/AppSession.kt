@@ -62,13 +62,21 @@ class OpenLibrary(
      * before the first track plays).
      */
     fun wireUp(scope: CoroutineScope) {
-        appHandle.subscribeUiEvents(object : UiEventCallback {
-            override fun onEvent(event: BridgeUiEvent) {
-                scope.launch(Dispatchers.Main) {
-                    UiEventReducer.reduce(event, libraryStore, configStore, playback)
+        appHandle.subscribeUiEvents(
+            object : UiEventCallback {
+                override fun onEvent(event: BridgeUiEvent) {
+                    scope.launch(Dispatchers.Main) {
+                        UiEventReducer.reduce(
+                            event,
+                            libraryStore,
+                            configStore,
+                            playback,
+                            LocaleErrorLines(appContext),
+                        )
+                    }
                 }
-            }
-        })
+            },
+        )
         appHandle.triggerSync()
     }
 
@@ -103,9 +111,13 @@ sealed interface AppScreen {
         val fingerprint: String?,
     ) : AppScreen
 
-    data class LibraryOpen(val session: OpenLibrary) : AppScreen
+    data class LibraryOpen(
+        val session: OpenLibrary,
+    ) : AppScreen
 
-    data class Failed(val message: String) : AppScreen
+    data class Failed(
+        val message: String,
+    ) : AppScreen
 }
 
 /**
@@ -195,9 +207,10 @@ object AppSessionHolder {
         }
         onScreen(AppScreen.Loading)
         try {
-            val handle = withContext(Dispatchers.IO) {
-                initApp(libraryId, POSITION_UPDATE_INTERVAL_MS)
-            }
+            val handle =
+                withContext(Dispatchers.IO) {
+                    initApp(libraryId, POSITION_UPDATE_INTERVAL_MS)
+                }
             val config: BridgeConfig = withContext(Dispatchers.IO) { handle.getConfig() }
 
             if (config.encryptionKeyStored && !handle.hasEncryptionKey()) {
@@ -218,25 +231,29 @@ object AppSessionHolder {
 
             val appContext = context.applicationContext
             val library = Library(handle)
-            val session = OpenLibrary(
-                libraryId = libraryId,
-                appHandle = handle,
-                library = library,
-                libraryStore = LibraryStore(),
-                configStore = ConfigStore(config, handle.isSyncReady()),
-                playback = BaeCorePlayer(
-                    applicationLooper = Looper.getMainLooper(),
+            val session =
+                OpenLibrary(
+                    libraryId = libraryId,
                     appHandle = handle,
                     library = library,
-                    context = appContext,
-                    scope = appScope,
-                    isAppForeground = {
-                        ProcessLifecycleOwner.get().lifecycle.currentState
-                            .isAtLeast(Lifecycle.State.STARTED)
-                    },
-                ),
-                appContext = appContext,
-            )
+                    libraryStore = LibraryStore(),
+                    configStore = ConfigStore(config, handle.isSyncReady()),
+                    playback =
+                        BaeCorePlayer(
+                            applicationLooper = Looper.getMainLooper(),
+                            appHandle = handle,
+                            library = library,
+                            context = appContext,
+                            scope = appScope,
+                            isAppForeground = {
+                                ProcessLifecycleOwner
+                                    .get()
+                                    .lifecycle.currentState
+                                    .isAtLeast(Lifecycle.State.STARTED)
+                            },
+                        ),
+                    appContext = appContext,
+                )
             current = session
             session.wireUp(appScope)
             onScreen(AppScreen.LibraryOpen(session))

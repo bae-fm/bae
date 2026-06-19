@@ -1,6 +1,7 @@
 package fm.bae.app.data
 
 import android.util.Log
+import fm.bae.app.ErrorLines
 import fm.bae.app.playback.PlaybackEventSink
 import uniffi.bae_bridge.BridgeUiEvent
 
@@ -25,22 +26,40 @@ object UiEventReducer {
         libraryStore: LibraryStore,
         configStore: ConfigStore,
         player: PlaybackEventSink,
+        errors: ErrorLines,
     ) {
         when (event) {
             // ── Library ────────────────────────────────────────────────────
-            is BridgeUiEvent.AlbumAdded -> libraryStore.handleAlbumAdded(event.album)
-            is BridgeUiEvent.AlbumUpdated -> libraryStore.handleAlbumUpdated(event.album)
-            is BridgeUiEvent.AlbumRemoved -> libraryStore.handleAlbumRemoved(event.albumId)
-            is BridgeUiEvent.ReleaseAdded ->
+            is BridgeUiEvent.AlbumAdded -> {
+                libraryStore.handleAlbumAdded(event.album)
+            }
+
+            is BridgeUiEvent.AlbumUpdated -> {
+                libraryStore.handleAlbumUpdated(event.album)
+            }
+
+            is BridgeUiEvent.AlbumRemoved -> {
+                libraryStore.handleAlbumRemoved(event.albumId)
+            }
+
+            is BridgeUiEvent.ReleaseAdded -> {
                 libraryStore.handleReleaseAdded(event.album, event.release)
-            is BridgeUiEvent.ReleaseUpdated ->
+            }
+
+            is BridgeUiEvent.ReleaseUpdated -> {
                 libraryStore.handleReleaseUpdated(event.albumId, event.release)
-            is BridgeUiEvent.ReleaseRemoved ->
+            }
+
+            is BridgeUiEvent.ReleaseRemoved -> {
                 libraryStore.handleReleaseRemoved(event.albumId, event.releaseId, event.album)
+            }
 
             // ── Playback (projected into the BaeCorePlayer) ─────────────────
-            is BridgeUiEvent.PlaybackLoading -> player.onLoading(event.trackId, event.track)
-            is BridgeUiEvent.PlaybackPlaying ->
+            is BridgeUiEvent.PlaybackLoading -> {
+                player.onLoading(event.trackId, event.track)
+            }
+
+            is BridgeUiEvent.PlaybackPlaying -> {
                 player.onPlaying(
                     trackId = event.trackId,
                     trackTitle = event.trackTitle,
@@ -49,7 +68,9 @@ object UiEventReducer {
                     coverImageId = event.coverImageId,
                     durationMs = event.durationMs.toLong(),
                 )
-            is BridgeUiEvent.PlaybackPaused ->
+            }
+
+            is BridgeUiEvent.PlaybackPaused -> {
                 player.onPaused(
                     trackId = event.trackId,
                     trackTitle = event.trackTitle,
@@ -58,42 +79,77 @@ object UiEventReducer {
                     coverImageId = event.coverImageId,
                     durationMs = event.durationMs.toLong(),
                 )
-            BridgeUiEvent.PlaybackStopped -> player.onStopped()
+            }
+
+            BridgeUiEvent.PlaybackStopped -> {
+                player.onStopped()
+            }
+
             // A track couldn't be played (cloud-only not downloaded, decode
             // failure); core has already fallen back to stopped. Surface why.
-            is BridgeUiEvent.PlaybackError -> configStore.showError(event.message)
-            is BridgeUiEvent.PlaybackProgress ->
+            is BridgeUiEvent.PlaybackError -> {
+                configStore.showError(errors.line(event.reason))
+            }
+
+            is BridgeUiEvent.PlaybackProgress -> {
                 player.onProgress(
                     positionMs = event.positionMs.toLong(),
                     durationMs = event.durationMs.toLong(),
                     progress = event.progress,
                 )
-            is BridgeUiEvent.RepeatModeChanged -> player.onRepeatModeChanged(event.mode)
-            is BridgeUiEvent.QueueUpdated ->
+            }
+
+            is BridgeUiEvent.RepeatModeChanged -> {
+                player.onRepeatModeChanged(event.mode)
+            }
+
+            is BridgeUiEvent.QueueUpdated -> {
                 player.onQueueUpdated(
                     items = event.items,
                     hasNext = event.hasNext,
                     hasPrevious = event.hasPrevious,
                 )
-            is BridgeUiEvent.VolumeChanged -> player.onVolumeChanged(event.volume)
-            is BridgeUiEvent.MuteChanged -> player.onMuteChanged(event.isMuted)
+            }
+
+            is BridgeUiEvent.VolumeChanged -> {
+                player.onVolumeChanged(event.volume)
+            }
+
+            is BridgeUiEvent.MuteChanged -> {
+                player.onMuteChanged(event.isMuted)
+            }
 
             // ── Config / sync ──────────────────────────────────────────────
             is BridgeUiEvent.ConfigChanged -> {
                 configStore.setConfig(event.config)
                 configStore.setSyncReady(event.syncReady)
             }
-            is BridgeUiEvent.SyncingChanged -> configStore.setSyncing(event.syncing)
-            is BridgeUiEvent.SyncError -> configStore.setSyncError(event.message)
+
+            is BridgeUiEvent.SyncingChanged -> {
+                configStore.setSyncing(event.syncing)
+            }
+
+            // A null error means sync recovered — it clears the banner (the
+            // bridge's `Option<BridgeError>`, the same as macOS/iOS `error.map`).
+            is BridgeUiEvent.SyncError -> {
+                configStore.setSyncError(event.error?.let { errors.line(it) })
+            }
 
             // ── Errors ─────────────────────────────────────────────────────
-            is BridgeUiEvent.Error -> configStore.showError(event.message)
-            BridgeUiEvent.ErrorCleared -> configStore.clearError()
+            is BridgeUiEvent.Error -> {
+                configStore.showError(errors.line(event.error))
+            }
+
+            BridgeUiEvent.ErrorCleared -> {
+                configStore.clearError()
+            }
 
             // Desktop-only events (import/scan/candidate/preview) never fire
             // on mobile; log if one ever does so a future mobile-firing event is
             // visible.
-            else -> Log.d(TAG, "ignoring ${event::class.simpleName}")
+            else -> {
+                Log.d(TAG, "ignoring ${event::class.simpleName}")
+            }
         }
     }
 }
