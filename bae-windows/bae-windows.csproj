@@ -73,7 +73,7 @@
   <!--
     Generate Strings/en-US/Core.resw from the master catalog before the build, so
     a catalog edit reaches the app without a manual step. Mirrors the macOS build
-    (bae-bridge/build-macos.sh runs `loc-gen emit --target apple`). loc-gen writes
+    (bae-bridge/build-macos.sh runs loc-gen's apple-target emit). loc-gen writes
     <out-dir>/en-US/Core.resw, so the out-dir is the Strings folder. Runs from the
     repo root (two levels up from this project) where the default catalog path
     (bae-bridge/loc/catalog.toml) resolves.
