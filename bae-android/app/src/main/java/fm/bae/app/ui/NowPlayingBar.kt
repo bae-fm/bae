@@ -48,7 +48,8 @@ import uniffi.bae_bridge.BridgeRepeatMode
  * [QueueScreen] in a bottom sheet for queue management. Hidden until something
  * is loaded.
  */
-@OptIn(ExperimentalMaterial3Api::class, androidx.media3.common.util.UnstableApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun NowPlayingBar(session: OpenLibrary) {
     val player = session.playback
