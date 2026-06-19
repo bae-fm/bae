@@ -2,210 +2,210 @@
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
-  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>search</value></data>
-  <data name="LibrariesButton.Content" xml:space="preserve"><value>libraries</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>close</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>close library</value></data>
-  <data name="ImportButton.Content" xml:space="preserve"><value>import</value></data>
-  <data name="StorageButton.Content" xml:space="preserve"><value>storage</value></data>
-  <data name="SettingsButton.Content" xml:space="preserve"><value>settings</value></data>
-  <data name="action.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="action.close" xml:space="preserve"><value>Close</value></data>
-  <data name="action.delete" xml:space="preserve"><value>Delete</value></data>
-  <data name="action.import" xml:space="preserve"><value>Import</value></data>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>rechercher</value></data>
+  <data name="LibrariesButton.Content" xml:space="preserve"><value>bibliothèques</value></data>
+  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>fermer</value></data>
+  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>fermer la bibliothèque</value></data>
+  <data name="ImportButton.Content" xml:space="preserve"><value>importer</value></data>
+  <data name="StorageButton.Content" xml:space="preserve"><value>stockage</value></data>
+  <data name="SettingsButton.Content" xml:space="preserve"><value>réglages</value></data>
+  <data name="action.cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="action.close" xml:space="preserve"><value>Fermer</value></data>
+  <data name="action.delete" xml:space="preserve"><value>Supprimer</value></data>
+  <data name="action.import" xml:space="preserve"><value>Importer</value></data>
   <data name="action.ok" xml:space="preserve"><value>OK</value></data>
-  <data name="action.play" xml:space="preserve"><value>Play</value></data>
-  <data name="action.save" xml:space="preserve"><value>Save</value></data>
-  <data name="action.search" xml:space="preserve"><value>search</value></data>
-  <data name="album.delete.body" xml:space="preserve"><value>This removes the release from the library.</value></data>
-  <data name="album.delete.failed" xml:space="preserve"><value>couldn't delete</value></data>
-  <data name="album.delete.title" xml:space="preserve"><value>delete release?</value></data>
-  <data name="album.edit.label" xml:space="preserve"><value>edit</value></data>
-  <data name="album.edit.load_failed" xml:space="preserve"><value>couldn't load the metadata editor</value></data>
-  <data name="album.edit.reset" xml:space="preserve"><value>Reset to Source</value></data>
-  <data name="album.edit.reset_failed" xml:space="preserve"><value>couldn't reset to source</value></data>
-  <data name="album.edit.title" xml:space="preserve"><value>edit metadata</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Gallery</value></data>
-  <data name="album.open_failed" xml:space="preserve"><value>couldn't open this album</value></data>
-  <data name="album.reidentify.label" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.reidentify.confirm" xml:space="preserve"><value>Re-identify</value></data>
-  <data name="album.reidentify.title" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.release_picker" xml:space="preserve"><value>Release</value></data>
-  <data name="album.shuffle" xml:space="preserve"><value>shuffle</value></data>
+  <data name="action.play" xml:space="preserve"><value>Lire</value></data>
+  <data name="action.save" xml:space="preserve"><value>Enregistrer</value></data>
+  <data name="action.search" xml:space="preserve"><value>rechercher</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>Cela supprime l'édition de la bibliothèque.</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>suppression impossible</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>supprimer l'édition ?</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>modifier</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>impossible de charger l'éditeur de métadonnées</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>Réinitialiser à la source</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>impossible de réinitialiser à la source</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>modifier les métadonnées</value></data>
+  <data name="album.gallery" xml:space="preserve"><value>Galerie</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>impossible d'ouvrir cet album</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>réidentifier</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>Réidentifier</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>réidentifier</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>Édition</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>lecture aléatoire</value></data>
   <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
   <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
   <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
   <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
-  <data name="cloud.signin.failed" xml:space="preserve"><value>cloud sign-in failed</value></data>
-  <data name="cloud.signin.in_progress" xml:space="preserve"><value>signing in to {provider}…</value></data>
-  <data name="cloud.signin.not_configured" xml:space="preserve"><value>cloud sign-in isn't configured on this build (no oauth-creds.json)</value></data>
-  <data name="cloud.unsupported_provider" xml:space="preserve"><value>this build doesn't support {provider} sync</value></data>
-  <data name="cover.change_title" xml:space="preserve"><value>change cover</value></data>
-  <data name="cover.fetch_failed" xml:space="preserve"><value>couldn't fetch remote covers</value></data>
-  <data name="cover.fetching" xml:space="preserve"><value>fetching covers…</value></data>
-  <data name="cover.images_load_failed" xml:space="preserve"><value>couldn't load this release's images</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>No cover art available — the import uses its default cover.</value></data>
-  <data name="cover.none_remote" xml:space="preserve"><value>No remote covers found</value></data>
-  <data name="cover.pick_hint" xml:space="preserve"><value>Pick a cover, or leave unselected to use the default.</value></data>
-  <data name="cover.release_files" xml:space="preserve"><value>Release files</value></data>
-  <data name="cover.remote_sources" xml:space="preserve"><value>Remote sources</value></data>
-  <data name="cover.section_title" xml:space="preserve"><value>Cover</value></data>
-  <data name="cover.show_failed" xml:space="preserve"><value>couldn't show remote covers: {detail}</value></data>
-  <data name="error.playback_title" xml:space="preserve"><value>playback error</value></data>
-  <data name="error.title" xml:space="preserve"><value>error</value></data>
-  <data name="gallery.load_failed" xml:space="preserve"><value>couldn't load the gallery</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>couldn't read the gallery</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>gallery</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>conflict</value></data>
-  <data name="identify.error" xml:space="preserve"><value>error</value></data>
-  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
-  <data name="identify.identifying" xml:space="preserve"><value>identifying…</value></data>
-  <data name="identify.manual" xml:space="preserve"><value>manual search only</value></data>
-  <data name="identify.not_found" xml:space="preserve"><value>not found</value></data>
-  <data name="import.already_in_library" xml:space="preserve"><value>this release is already in your library</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>Back to Search</value></data>
-  <data name="import.choose_folder" xml:space="preserve"><value>choose folder &amp; scan</value></data>
-  <data name="import.complete" xml:space="preserve"><value>imported</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>confirm import</value></data>
-  <data name="import.drop_caption" xml:space="preserve"><value>scan &amp; import</value></data>
-  <data name="import.drop_folder_only" xml:space="preserve"><value>drop a folder to import</value></data>
-  <data name="import.drop_read_failed" xml:space="preserve"><value>could not read the dropped item</value></data>
-  <data name="import.error_title" xml:space="preserve"><value>import error</value></data>
-  <data name="import.error.load_release" xml:space="preserve"><value>couldn't load the release to import</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>couldn't load storage settings</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>couldn't read storage settings</value></data>
-  <data name="import.failed" xml:space="preserve"><value>import failed</value></data>
-  <data name="import.field.artist_manual" xml:space="preserve"><value>artist (manual search)</value></data>
-  <data name="import.no_releases" xml:space="preserve"><value>no releases found</value></data>
-  <data name="import.preview" xml:space="preserve"><value>preview</value></data>
-  <data name="import.progress.percent" xml:space="preserve"><value>importing {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>import release</value></data>
-  <data name="import.rerun_identify" xml:space="preserve"><value>re-run identification</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>scanning…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Keep local copy</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Managed</value></data>
-  <data name="import.title" xml:space="preserve"><value>import</value></data>
-  <data name="import.view_in_library" xml:space="preserve"><value>view in library</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>échec de la connexion au cloud</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>connexion à {provider}…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>la connexion au cloud n'est pas configurée sur cette version (pas de oauth-creds.json)</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>cette version ne prend pas en charge la synchronisation {provider}</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>changer la pochette</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>impossible de récupérer les pochettes distantes</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>récupération des pochettes…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>impossible de charger les images de cette édition</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>Aucune pochette disponible — l'import utilise sa pochette par défaut.</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>Aucune pochette distante trouvée</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>Choisissez une pochette, ou laissez non sélectionné pour utiliser celle par défaut.</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>Fichiers de l'édition</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>Sources distantes</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>Pochette</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>impossible d'afficher les pochettes distantes : {detail}</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>erreur de lecture</value></data>
+  <data name="error.title" xml:space="preserve"><value>erreur</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>impossible de charger la galerie</value></data>
+  <data name="gallery.read_failed" xml:space="preserve"><value>impossible de lire la galerie</value></data>
+  <data name="gallery.title" xml:space="preserve"><value>galerie</value></data>
+  <data name="identify.conflict" xml:space="preserve"><value>conflit</value></data>
+  <data name="identify.error" xml:space="preserve"><value>erreur</value></data>
+  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {trouvée (#)} other {trouvées (#)}}</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>identification…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>recherche manuelle uniquement</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>introuvable</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>cette édition est déjà dans votre bibliothèque</value></data>
+  <data name="import.back_to_search" xml:space="preserve"><value>Retour à la recherche</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>choisir un dossier et analyser</value></data>
+  <data name="import.complete" xml:space="preserve"><value>importé</value></data>
+  <data name="import.confirm_title" xml:space="preserve"><value>confirmer l'import</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>analyser et importer</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>déposez un dossier à importer</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>impossible de lire l'élément déposé</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>erreur d'import</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>impossible de charger l'édition à importer</value></data>
+  <data name="import.error.load_storage_settings" xml:space="preserve"><value>impossible de charger les réglages de stockage</value></data>
+  <data name="import.error.read_storage_settings" xml:space="preserve"><value>impossible de lire les réglages de stockage</value></data>
+  <data name="import.failed" xml:space="preserve"><value>échec de l'import</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>artiste (recherche manuelle)</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>aucune édition trouvée</value></data>
+  <data name="import.preview" xml:space="preserve"><value>aperçu</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>import {percent}%</value></data>
+  <data name="import.release_title" xml:space="preserve"><value>importer l'édition</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>relancer l'identification</value></data>
+  <data name="import.scanning" xml:space="preserve"><value>analyse…</value></data>
+  <data name="import.storage.keep_local" xml:space="preserve"><value>Conserver une copie locale</value></data>
+  <data name="import.storage.managed" xml:space="preserve"><value>Gérés</value></data>
+  <data name="import.title" xml:space="preserve"><value>importer</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>voir dans la bibliothèque</value></data>
   <data name="libraries.active" xml:space="preserve"><value>{name}  ·  active</value></data>
-  <data name="libraries.new" xml:space="preserve"><value>new library</value></data>
-  <data name="libraries.rename" xml:space="preserve"><value>rename</value></data>
-  <data name="libraries.title" xml:space="preserve"><value>libraries</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>couldn't create a library</value></data>
-  <data name="library.empty" xml:space="preserve"><value>library is empty</value></data>
-  <data name="library.load_failed" xml:space="preserve"><value>couldn't load the library</value></data>
-  <data name="library.locked" xml:space="preserve"><value>library is locked</value></data>
-  <data name="library.open_failed" xml:space="preserve"><value>couldn't open the library</value></data>
-  <data name="library.unlock.body" xml:space="preserve"><value>This library is encrypted and its key isn't on this device. Enter the 64-character hex key to unlock it.</value></data>
-  <data name="library.unlock.confirm" xml:space="preserve"><value>Unlock</value></data>
-  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64-character hex key</value></data>
-  <data name="library.unlock.title" xml:space="preserve"><value>unlock library</value></data>
-  <data name="menu.add_to_queue" xml:space="preserve"><value>Add to Queue</value></data>
-  <data name="menu.change_cover" xml:space="preserve"><value>Change cover…</value></data>
-  <data name="menu.delete" xml:space="preserve"><value>Delete…</value></data>
-  <data name="menu.export" xml:space="preserve"><value>Export…</value></data>
-  <data name="menu.play" xml:space="preserve"><value>Play</value></data>
-  <data name="menu.play_next" xml:space="preserve"><value>Play Next</value></data>
-  <data name="menu.set_primary" xml:space="preserve"><value>Set as primary release</value></data>
-  <data name="menu.set_primary_done" xml:space="preserve"><value>set as primary release</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>delete</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>cancel</value></data>
-  <data name="outbox.load_failed" xml:space="preserve"><value>couldn't load the outbox</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>nouvelle bibliothèque</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>renommer</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>bibliothèques</value></data>
+  <data name="library.create_failed" xml:space="preserve"><value>impossible de créer une bibliothèque</value></data>
+  <data name="library.empty" xml:space="preserve"><value>la bibliothèque est vide</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>impossible de charger la bibliothèque</value></data>
+  <data name="library.locked" xml:space="preserve"><value>la bibliothèque est verrouillée</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>impossible d'ouvrir la bibliothèque</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>Cette bibliothèque est chiffrée et sa clé n'est pas sur cet appareil. Saisissez la clé hexadécimale de 64 caractères pour la déverrouiller.</value></data>
+  <data name="library.unlock.confirm" xml:space="preserve"><value>Déverrouiller</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>clé hexadécimale de 64 caractères</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>déverrouiller la bibliothèque</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>Ajouter à la file</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>Changer la pochette…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>Supprimer…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>Exporter…</value></data>
+  <data name="menu.play" xml:space="preserve"><value>Lire</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>Lire à la suite</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>Définir comme édition principale</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>définir comme édition principale</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>supprimer</value></data>
+  <data name="outbox.cancel_item" xml:space="preserve"><value>annuler</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>impossible de charger la file d'envoi</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pause</value></data>
-  <data name="outbox.read_failed" xml:space="preserve"><value>couldn't read the outbox</value></data>
-  <data name="outbox.resume" xml:space="preserve"><value>resume</value></data>
-  <data name="outbox.retry_now" xml:space="preserve"><value>retry now</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>uploading · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, one {# attempt} other {# attempts}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>failed</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>upload</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>impossible de lire la file d'envoi</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>reprendre</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>réessayer maintenant</value></data>
+  <data name="outbox.upload.active_percent" xml:space="preserve"><value>envoi · {percent}%</value></data>
+  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, one {# tentative} other {# tentatives}}</value></data>
+  <data name="outbox.upload.failed" xml:space="preserve"><value>échec</value></data>
+  <data name="outbox.upload.kind" xml:space="preserve"><value>envoyer</value></data>
   <data name="outbox.upload.state.active" xml:space="preserve"><value>active</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>failed</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>queued</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>clear queue</value></data>
-  <data name="queue.remove_item" xml:space="preserve"><value>Remove from queue</value></data>
-  <data name="queue.title" xml:space="preserve"><value>queue</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>restore code</value></data>
-  <data name="restore.confirm" xml:space="preserve"><value>restore</value></data>
-  <data name="restore.failed" xml:space="preserve"><value>restore failed</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloud storage</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>encryption key (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>library id</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>library name (optional)</value></data>
-  <data name="restore.from_cloud" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_cloud_title" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>restore from code</value></data>
-  <data name="restore.in_progress" xml:space="preserve"><value>restoring…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>restoring {name}…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>invalid restore code</value></data>
-  <data name="s3.field.access_key" xml:space="preserve"><value>access key</value></data>
-  <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>
-  <data name="s3.field.endpoint" xml:space="preserve"><value>endpoint (optional)</value></data>
-  <data name="s3.field.key_prefix" xml:space="preserve"><value>key prefix (optional)</value></data>
-  <data name="s3.field.region" xml:space="preserve"><value>region</value></data>
-  <data name="s3.field.secret_key" xml:space="preserve"><value>secret key</value></data>
-  <data name="search.failed" xml:space="preserve"><value>search failed</value></data>
+  <data name="outbox.upload.state.failed" xml:space="preserve"><value>échec</value></data>
+  <data name="outbox.upload.state.queued" xml:space="preserve"><value>en file</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>vider la file</value></data>
+  <data name="queue.remove_item" xml:space="preserve"><value>Retirer de la file</value></data>
+  <data name="queue.title" xml:space="preserve"><value>file</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>code de restauration</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>restaurer</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>échec de la restauration</value></data>
+  <data name="restore.field.cloud_storage" xml:space="preserve"><value>stockage cloud</value></data>
+  <data name="restore.field.encryption_key" xml:space="preserve"><value>clé de chiffrement (hex)</value></data>
+  <data name="restore.field.library_id" xml:space="preserve"><value>id de la bibliothèque</value></data>
+  <data name="restore.field.library_name" xml:space="preserve"><value>nom de la bibliothèque (facultatif)</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>restaurer depuis le cloud</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>restaurer depuis le cloud</value></data>
+  <data name="restore.from_code" xml:space="preserve"><value>restaurer depuis un code</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>restauration…</value></data>
+  <data name="restore.in_progress_named" xml:space="preserve"><value>restauration de {name}…</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>code de restauration non valide</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>clé d'accès</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>Bucket S3</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>point de terminaison (facultatif)</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>préfixe de clé (facultatif)</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>région</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>clé secrète</value></data>
+  <data name="search.failed" xml:space="preserve"><value>échec de la recherche</value></data>
   <data name="search.field.album" xml:space="preserve"><value>album</value></data>
-  <data name="search.field.artist" xml:space="preserve"><value>artist</value></data>
+  <data name="search.field.artist" xml:space="preserve"><value>artiste</value></data>
   <data name="search.field.source" xml:space="preserve"><value>source</value></data>
-  <data name="search.no_matches" xml:space="preserve"><value>no matches</value></data>
-  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs token</value></data>
-  <data name="settings.discogs.recheck" xml:space="preserve"><value>re-check</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs rejected this key — check it and save again.</value></data>
-  <data name="settings.discogs.remove" xml:space="preserve"><value>remove token</value></data>
-  <data name="settings.discogs.save" xml:space="preserve"><value>save token</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>couldn't save the key — something went wrong.</value></data>
-  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
-  <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
-  <data name="settings.library_label" xml:space="preserve"><value>Library: {name}</value></data>
-  <data name="settings.lock_library" xml:space="preserve"><value>lock library</value></data>
-  <data name="settings.restore_code.label" xml:space="preserve"><value>restore code (enter on another device)</value></data>
-  <data name="settings.restore_code.show" xml:space="preserve"><value>show restore code</value></data>
-  <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(unavailable — is sync connected?)</value></data>
-  <data name="settings.s3.connect" xml:space="preserve"><value>connect S3</value></data>
-  <data name="settings.s3.connecting" xml:space="preserve"><value>connecting to S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>browsable — stored unencrypted</value></data>
-  <data name="settings.storage.mode" xml:space="preserve"><value>storage</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>opaque — end-to-end encrypted</value></data>
-  <data name="settings.sync.disconnect" xml:space="preserve"><value>disconnect</value></data>
-  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} click disconnect again to confirm.</value></data>
-  <data name="settings.sync.now" xml:space="preserve"><value>sync now</value></data>
-  <data name="settings.title" xml:space="preserve"><value>settings</value></data>
-  <data name="signal.exclude" xml:space="preserve"><value>exclude signal</value></data>
-  <data name="signal.include" xml:space="preserve"><value>include signal</value></data>
-  <data name="signal.kind.barcode" xml:space="preserve"><value>Barcode</value></data>
-  <data name="signal.kind.catalog" xml:space="preserve"><value>Catalog</value></data>
-  <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
-  <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>newest</value></data>
-  <data name="sort.title" xml:space="preserve"><value>title</value></data>
-  <data name="sort.year" xml:space="preserve"><value>year</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Move into library</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Pin for offline</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Move out of library…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Remove local copy</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>Cancel upload</value></data>
-  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# files}}</value></data>
-  <data name="storage.load_failed" xml:space="preserve"><value>couldn't load storage</value></data>
-  <data name="storage.read_failed" xml:space="preserve"><value>couldn't read storage</value></data>
-  <data name="storage.state.cloud_only" xml:space="preserve"><value>Cloud-only</value></data>
-  <data name="storage.state.pinned" xml:space="preserve"><value>Pinned</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Unmanaged</value></data>
-  <data name="storage.title" xml:space="preserve"><value>storage</value></data>
-  <data name="sync.error_title" xml:space="preserve"><value>sync error</value></data>
-  <data name="sync.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="sync.synced" xml:space="preserve"><value>synced {time}</value></data>
-  <data name="sync.syncing" xml:space="preserve"><value>syncing…</value></data>
-  <data name="track.export.flac" xml:space="preserve"><value>FLAC (lossless)</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>aucune correspondance</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>Jeton Discogs</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>revérifier</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs a rejeté cette clé — vérifiez-la et enregistrez à nouveau.</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>supprimer le jeton</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>enregistrer le jeton</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>impossible d'enregistrer la clé — une erreur s'est produite.</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Jeton d'API Discogs</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>Validation…</value></data>
+  <data name="settings.library_label" xml:space="preserve"><value>Bibliothèque : {name}</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>verrouiller la bibliothèque</value></data>
+  <data name="settings.restore_code.label" xml:space="preserve"><value>code de restauration (à saisir sur un autre appareil)</value></data>
+  <data name="settings.restore_code.show" xml:space="preserve"><value>afficher le code de restauration</value></data>
+  <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(indisponible — la synchronisation est-elle connectée ?)</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>connecter S3</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>connexion à S3…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>navigable — stocké sans chiffrement</value></data>
+  <data name="settings.storage.mode" xml:space="preserve"><value>stockage</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>opaque — chiffré de bout en bout</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>déconnecter</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} cliquez à nouveau sur déconnecter pour confirmer.</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>synchroniser maintenant</value></data>
+  <data name="settings.title" xml:space="preserve"><value>réglages</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>exclure le signal</value></data>
+  <data name="signal.include" xml:space="preserve"><value>inclure le signal</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>Code-barres</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>Catalogue</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>ID de disque</value></data>
+  <data name="sort.artist" xml:space="preserve"><value>artiste</value></data>
+  <data name="sort.newest" xml:space="preserve"><value>plus récent</value></data>
+  <data name="sort.title" xml:space="preserve"><value>titre</value></data>
+  <data name="sort.year" xml:space="preserve"><value>année</value></data>
+  <data name="storage.action.manage" xml:space="preserve"><value>Déplacer dans la bibliothèque</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>Épingler hors ligne</value></data>
+  <data name="storage.action.unmanage" xml:space="preserve"><value>Déplacer hors de la bibliothèque…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>Supprimer la copie locale</value></data>
+  <data name="storage.cancel_upload" xml:space="preserve"><value>Annuler l'envoi</value></data>
+  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# fichier} other {# fichiers}}</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>impossible de charger le stockage</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>impossible de lire le stockage</value></data>
+  <data name="storage.state.cloud_only" xml:space="preserve"><value>Cloud uniquement</value></data>
+  <data name="storage.state.pinned" xml:space="preserve"><value>Épinglé</value></data>
+  <data name="storage.state.unmanaged" xml:space="preserve"><value>Non gérés</value></data>
+  <data name="storage.title" xml:space="preserve"><value>stockage</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>erreur de synchronisation</value></data>
+  <data name="sync.reconnect" xml:space="preserve"><value>Reconnecter</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>synchronisé {time}</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>synchronisation…</value></data>
+  <data name="track.export.flac" xml:space="preserve"><value>FLAC (sans perte)</value></data>
   <data name="track.export.mp3" xml:space="preserve"><value>MP3 (320 kbps)</value></data>
-  <data name="welcome.choose_library" xml:space="preserve"><value>choose a library</value></data>
-  <data name="welcome.create_library" xml:space="preserve"><value>create library</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>no library yet</value></data>
-  <data name="welcome.your_libraries" xml:space="preserve"><value>your libraries</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>choisir une bibliothèque</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>créer une bibliothèque</value></data>
+  <data name="welcome.no_library" xml:space="preserve"><value>aucune bibliothèque pour l'instant</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>vos bibliothèques</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
-  <data name="settings.discogs.connected" xml:space="preserve"><value>connected</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>saved — couldn't validate yet (offline). will retry.</value></data>
-  <data name="settings.sync.initializing" xml:space="preserve"><value>initializing</value></data>
-  <data name="settings.sync.not_connected" xml:space="preserve"><value>Sync: not connected</value></data>
-  <data name="settings.sync.ready" xml:space="preserve"><value>ready</value></data>
-  <data name="settings.sync.status" xml:space="preserve"><value>Sync: {provider}{account} — {state}</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>connecté</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>enregistré — validation impossible pour l'instant (hors ligne). nouvelle tentative à venir.</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>initialisation</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>Synchronisation : non connectée</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>prêt</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>Synchronisation : {provider}{account} — {state}</value></data>
 </root>
