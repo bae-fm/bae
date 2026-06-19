@@ -9,9 +9,20 @@ namespace Bae.Windows;
 /// </summary>
 public sealed class OutboxSnapshot
 {
-    /// <summary>Pre-formatted summary band, e.g. "2 uploading · 1 failed · 3 queued";
+    /// <summary>One-line queue summary, e.g. "2 uploading · 1 failed · 3 queued";
     /// empty when the queue is idle so the UI can hide it.</summary>
-    public string Summary { get; set; } = string.Empty;
+    public string Summary
+    {
+        get
+        {
+            var parts = new System.Collections.Generic.List<string>();
+            if (Total.Active > 0) parts.Add($"{Total.Active} uploading");
+            if (Total.Failed > 0) parts.Add($"{Total.Failed} failed");
+            if (Total.Queued > 0) parts.Add($"{Total.Queued} queued");
+            if (Deletes.Count > 0) parts.Add($"{Deletes.Count} pending delete{(Deletes.Count == 1 ? "" : "s")}");
+            return string.Join(" · ", parts);
+        }
+    }
     public List<UploadOp> Uploads { get; set; } = new();
     public List<DeleteOp> Deletes { get; set; } = new();
 
@@ -36,6 +47,9 @@ public sealed class OutboxSnapshot
 /// <summary>Aggregate upload progress across the queue.</summary>
 public sealed class UploadProgress
 {
+    public uint Queued { get; set; }
+    public uint Active { get; set; }
+    public uint Failed { get; set; }
     public long BytesDone { get; set; }
     public long BytesTotal { get; set; }
 }

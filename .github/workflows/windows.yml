@@ -108,7 +108,14 @@ jobs:
       - name: Check C# formatting
         # dotnet format uses .editorconfig rules. --verify-no-changes exits non-zero
         # if any file would be reformatted, failing the build.
-        run: dotnet format bae-windows\bae-windows.csproj --verify-no-changes
+        #
+        # Run whitespace and style only, not analyzers. IDE0051/IDE0052 dead-code
+        # diagnostics are caught by MSBuild with EnforceCodeStyleInBuild=true (below),
+        # which compiles XAML first — without XAML compilation, dotnet format
+        # analyzers incorrectly flags XAML-bound event handlers as unused.
+        run: |
+          dotnet format whitespace bae-windows\bae-windows.csproj --verify-no-changes
+          dotnet format style bae-windows\bae-windows.csproj --verify-no-changes
 
       - name: Build the WinUI app (C# → P/Invoke → FFI DLL)
         # Unpackaged WinUI 3 (C#/.NET) app, x64, framework-dependent. Proves the

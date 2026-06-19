@@ -1275,9 +1275,6 @@ struct FfiUploadProgress {
 /// totals, a pre-formatted summary band, throughput, and ETA.
 #[derive(Serialize)]
 struct FfiOutboxSnapshot {
-    /// Pre-formatted summary, e.g. "2 uploading · 1 failed · 3 queued"; empty
-    /// when the queue is idle so the UI can hide the band.
-    summary: String,
     uploads: Vec<FfiUploadOp>,
     deletes: Vec<FfiDeleteOp>,
     per_release: std::collections::HashMap<String, FfiUploadProgress>,
@@ -1340,7 +1337,6 @@ fn outbox_snapshot_to_ffi(snapshot: &bae_core::library::OutboxSnapshot) -> FfiOu
         .map(|(k, v)| (k.clone(), upload_progress_to_ffi(v)))
         .collect();
     FfiOutboxSnapshot {
-        summary: snapshot.summary.clone(),
         uploads,
         deletes,
         per_release,
