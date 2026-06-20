@@ -1,0 +1,68 @@
+---
+title: Pregled pohrane
+description: Kako bae pohranjuje vaše glazbene datoteke
+---
+
+Datoteke izdanja mogu živjeti na najviše tri mjesta. Pri uvozu izdanja birate između **upravljano** i **neupravljano**. Upravljane datoteke kopiraju se u bae pohranu; neupravljane ostaju gdje jesu.
+
+## Ukratko
+
+|                              | Neupravljano     | Upravljano — lokalno | Upravljano — cloud |
+|------------------------------|------------------|----------------------|--------------------|
+| Datoteke su na               | Vašoj lokaciji   | `~/.bae/libraries/`  | Cloud pružatelju   |
+| bae kopira pri uvozu         | Ne               | Da                   | Da                 |
+| Dostupno offline             | Da               | Da                   | Ne                 |
+| Šifrirano u mirovanju        | Ne               | Ne                   | Samo neproziran home |
+| Može se sinkronizirati u cloud | Ne             | Da                   | —                  |
+| Sinkronizira na druge uređaje | Ne              | Ne                   | Da                 |
+| Brisanje izdanja uklanja datoteke | Ne          | Da                   | Da                 |
+
+Upravljano izdanje može imati datoteke lokalno, u cloudu ili na oba mjesta. Ako imate postavljen cloud home, upravljani uvozi idu na oba.
+
+## Neupravljano
+
+Usmjerite bae na datoteke koje ste već organizirali. bae ih indeksira, ali ništa ne premješta, kopira ni mijenja. Ako imate glazbu složenu na svoj način, možete je katalogizirati bez dupliciranja podataka.
+
+Ograničenje: bae ne može šifrirati, sinkronizirati ni sigurnosno kopirati neupravljane datoteke.
+
+## Upravljano — lokalno
+
+Svaka biblioteka ima home direktorij na vašem računalu (`~/.bae/libraries/{uuid}/`). Tu bae čuva bazu podataka, slike i, za upravljana izdanja, lokalnu kopiju datoteka izdanja.
+
+Kad uvezete izdanje kao upravljano, bae kopira datoteke u home biblioteke. Originali se ne mijenjaju. bae reproducira lokalnu kopiju.
+
+## Upravljano — cloud
+
+Cloud home je jedna udaljena lokacija pohrane za datoteke izdanja, changesetove metapodataka, slike i snapshotove. Postavljanje omogućuje sinkronizaciju više uređaja i cloud kopiju.
+
+Kad uvezete upravljano izdanje s postavljenim cloud home, bae kopira datoteke u home biblioteke *i* prenosi ih u cloud home. Oboje se događa tijekom uvoza.
+
+Izdanje koje postoji samo u cloud homeu, npr. sinkronizirano s drugog uređaja koji ga još nije preuzeo, nije dostupno offline dok se datoteke ne preuzmu lokalno.
+
+### Neproziran ili pregledljiv
+
+Pri postavljanju cloud homea birate kako pohranjuje objekte, za bilo kojeg pružatelja:
+
+- **Neproziran** (zadano) šifrira svaki objekt ključem biblioteke i sprema ga na prikriveni put. Pružatelj vidi samo šifrirani tekst.
+- **Pregledljiv** sprema sve nešifrirano, sa stvarnim nazivima datoteka, pod stabilnim putovima temeljenima na id-ovima: `storage/{album_id}/{release_id}/{import_folder}/01 Track.flac` za datoteke izdanja i `images/{album_id}/{release_id}/cover.jpg` za slike. Možete otvoriti bucket i reproducirati ili kopirati stvarne datoteke bilo kojim alatom. Mape su id-ovi, ne tekst izvođača ili albuma, što izbjegava sudare i čuva mapu svakog izdanja nepromjenjivom. Ništa nije šifrirano; home se oslanja na kontrolu pristupa pružatelja. Pregledljiv ne znači javno: vjerodajnice bucketa kontroliraju pristup u oba načina.
+
+Pogledajte [Šifriranje](/hr/architecture/encryption#nacini-pohrane-neproziran-i-pregledljiv) za potpunu usporedbu.
+
+### Podržani pružatelji
+
+- **Google Drive** — prijava preko OAuth, bae stvara mapu u vašem Driveu
+- **Dropbox** — prijava preko OAuth
+- **OneDrive** — prijava preko OAuth
+- **iCloud Drive** (macOS) — koristi vaš iCloud kontejner, bez prijave
+- **S3-kompatibilno** — bilo koji bucket: AWS S3, Backblaze B2, Cloudflare R2, Wasabi, MinIO itd.
+
+Potrošački cloud pružatelji koriste OAuth prijavu: bez API ključeva ili konfiguracije bucketa. iCloud Drive, samo macOS, koristi postojeći iCloud kontejner bez prijave. S3-kompatibilni pružatelji zahtijevaju ručno postavljanje vjerodajnica i namijenjeni su tehničkijim korisnicima.
+
+## Kako radi
+
+1. Uvezite izdanje — odaberite **upravljano** ili **neupravljano**
+2. Upravljani uvozi kopiraju datoteke u lokalni home biblioteke
+3. Ako je cloud home postavljen, upravljani uvozi prenose datoteke i tamo: šifrirano u neprozirnom homeu, u čistom tekstu u pregledljivom homeu
+4. Drugi uređaji povezani s istim cloud homeom sinkroniziraju se automatski
+
+Pogledajte [Sinkronizacija](/hr/storage/sync) za sinkronizaciju više uređaja i [Šifriranje](/hr/architecture/encryption) za šifriranje datoteka.

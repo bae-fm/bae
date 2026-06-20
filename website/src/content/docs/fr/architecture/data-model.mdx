@@ -1,0 +1,81 @@
+---
+title: Modèle de données
+description: Comment bae organise bibliothèques, fichiers, images et métadonnées
+---
+
+## Bibliothèques et emplacements de stockage
+
+Une **bibliothèque** est l'entité principale : une collection musicale avec sa propre identité (`library_id`), son nom et sa clé de chiffrement. Elle vit dans un **répertoire de bibliothèque** sur le disque (`~/.bae/libraries/{uuid}/`), où l'app de bureau écrit la base de données de référence.
+
+Une bibliothèque peut avoir un **cloud home** optionnel : un emplacement cloud unique, comme un dossier Google Drive ou un bucket S3, qui sert de point central pour la synchronisation multi-appareils. Il y a un cloud home par bibliothèque, configuré dans `config.yaml`. Consulte [Cloud Home](/fr/architecture/cloud-home) pour les détails.
+
+Les fichiers d'édition peuvent vivre à un ou plusieurs de ces emplacements :
+
+- **Répertoire de bibliothèque** (`~/.bae/libraries/{uuid}/storage/`) — copie locale, disponible hors ligne
+- **Cloud home** (`cloud-home/storage/`) — copie chiffrée, disponible pour la synchronisation
+- **Non géré** — les fichiers restent là où ils sont sur disque ; bae les indexe seulement
+
+Une édition peut être seulement locale, seulement cloud, ou les deux. Les fichiers seulement cloud ne sont pas disponibles hors ligne.
+
+## Organisation des dossiers
+
+### Répertoire de bibliothèque
+
+```
+~/.bae/libraries/{uuid}/
+  config.yaml                  # réglages propres à l'appareil (non synchronisés)
+  library.db                   # SQLite -- toutes les métadonnées
+  images/ab/cd/{id}            # images de bibliothèque (pochettes, photos d'artistes)
+  storage/ab/cd/{file_id}      # fichiers d'édition
+```
+
+`config.yaml` contient les réglages propres à l'appareil. Il n'est pas synchronisé. Les identifiants vont dans le trousseau du système, pas ici.
+
+Les fichiers sous `images/` et `storage/` utilisent une organisation basée sur un hash : les 2 premiers caractères de l'ID forment le dossier préfixe, les 2 suivants forment un sous-dossier. Pas de noms de fichiers ni d'extensions sur disque ; les noms d'origine et types de contenu vivent dans la base de données. La même organisation existe dans le répertoire de bibliothèque et le cloud home.
+
+### Cloud home
+
+Le cloud home reflète les données de la bibliothèque et ajoute les mécanismes de synchronisation et de contrôle d'accès :
+
+| Chemin | Rôle |
+|---|---|
+| `snapshot.db.enc` | Snapshot complet de la base de données, amorçage des nouveaux appareils |
+| `changes/{device_id}/{seq}.enc` | Changesets incrémentaux |
+| `heads/{device_id}.json.enc` | Numéros de séquence par appareil |
+| `images/ab/cd/{id}` | Images de bibliothèque chiffrées |
+| `storage/ab/cd/{file_id}` | Fichiers d'édition chiffrés |
+| `membership/{pubkey}/{seq}.enc` | Entrées de la chaîne de membres |
+| `keys/{user_pubkey}.enc` | Clés de chiffrement enveloppées par appareil |
+
+### Entrées du trousseau
+
+Gérées par `KeyService`, avec le trousseau du système. Sur macOS, il s'agit du magasin de données protégé avec synchronisation iCloud Keychain. Toutes les entrées sont espacées par `library_id`, sauf mention contraire.
+
+| Entrée | Portée | Rôle |
+|---|---|---|
+| `encryption_master_key` | par bibliothèque | Chiffrement des fichiers et métadonnées |
+| `cloud_home_credentials` | par bibliothèque | Énumération sérialisée : accès+secret S3, jeton OAuth ou rien (iCloud) |
+| `discogs_api_key` | par bibliothèque | Accès à l'API Discogs |
+| `bae_user_signing_key` | global | Clé de signature Ed25519 |
+| `bae_user_public_key` | global | Clé publique Ed25519 |
+
+## Deux classes de fichiers
+
+### Fichiers d'édition
+
+Tous les fichiers fournis avec une édition : audio, images, feuilles CUE, logs, etc. Ce sont les données de l'utilisateur. bae les stocke exactement comme importés, en préservant les fichiers d'origine pour pouvoir les exporter intacts.
+
+### Images de métadonnées
+
+Images que bae crée et gère, séparées des fichiers d'édition :
+
+- **Pochettes d'édition** — images affichées dans les grilles d'albums, vues de détail et lecture. Une par édition. Elles peuvent venir d'un fichier de l'édition ou de MusicBrainz/Discogs. bae fait sa propre copie pour pouvoir recadrer ou redimensionner sans toucher à l'original.
+- **Images d'artistes** — récupérées depuis des sources externes pendant l'importation.
+
+## Parcours au premier lancement
+
+**Nouvelle bibliothèque** : au premier lancement, l'app de bureau affiche un écran d'accueil. L'utilisateur crée une bibliothèque, ce qui génère un UUID, crée l'arborescence et lance l'app. Le dossier `storage/` commence vide ; les fichiers apparaissent avec les importations.
+
+**Restaurer depuis un cloud home** : l'utilisateur fournit les identifiants du cloud home et la clé de chiffrement. bae télécharge le snapshot, applique les changesets plus récents et télécharge les images. Le `storage/` local commence vide ; les fichiers d'édition sont lus depuis le cloud home à la demande.
+
+**Passer du local au cloud** : l'utilisateur se connecte avec un fournisseur cloud. bae génère une clé de chiffrement si nécessaire, envoie un snapshot complet, les images et les fichiers d'édition, puis passe à la synchronisation incrémentale.

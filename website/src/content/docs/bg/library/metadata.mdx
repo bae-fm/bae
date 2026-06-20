@@ -1,0 +1,24 @@
+---
+title: Метаданни
+description: Как bae обработва метаданни за албуми и песни
+---
+
+bae попълва библиотеката с метаданни от online databases при импорт.
+
+## Какво се съхранява
+
+- **Album info**: заглавие, изпълнител, година
+- **Track info**: имена, durations, disc и track numbers
+- **Artwork**: cover images от MusicBrainz Cover Art Archive и Discogs
+- **Release info**: label, catalog number, barcode, country, format
+- **External IDs**: Discogs release ID, MusicBrainz release и artist IDs
+
+Метаданните идват от MusicBrainz и Discogs и се пазят в bae database. bae не чете и не записва embedded tags. Файловете не се променят.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> е отворена музикална енциклопедия и основен източник за bae. API ключ не е нужен; bae раздалечава заявките автоматично.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> е полезен за vinyl releases, detailed credits, catalog numbers и label information. Нужен е personal API token от <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a>.

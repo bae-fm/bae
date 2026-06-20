@@ -1,0 +1,60 @@
+---
+title: Cloud Home
+description: CloudHome trait 和与后端无关的云存储
+---
+
+cloud home 是一个资料库的单一远程存储位置：一个 Google Drive 文件夹、一个 S3 bucket、一个 Dropbox 文件夹。它保存发行版本文件、元数据变更集、封面、快照和 membership chain。在 **opaque** home（默认）中，信任来自加密而不是存储后端：提供商只在混淆键下保存密文。home 也可以设置为 **browsable**，以稳定的 ID 路径和真实文件名明文保存内容；见[存储模式](/zh-hans/architecture/encryption#存储模式opaque-和-browsable)。
+
+## CloudHome trait
+
+`CloudHome` trait 是让 bae 不依赖具体后端的抽象。trait 之上的所有逻辑都是通用的；trait 之下的实现适配具体云提供商。
+
+### 通用部分（trait 之上）
+
+- **Cloud home 布局** — `changes/`、`heads/`、`snapshot.db`、`images/`、`storage/`、`membership/`、`keys/`。逻辑路径不随后端改变。opaque home 按 ID 哈希把音频和封面分片到 `storage/` 和 `images/`；browsable home 在同样两个前缀下使用稳定的 ID 路径和真实文件名，例如 `storage/{album_id}/{release_id}/{import_folder}/01 Track.flac`、`images/{album_id}/{release_id}/cover.jpg`。
+- **加密** — 每个资料库一个对称密钥；opaque home 中的所有内容离开设备前都会加密。browsable home 跳过加密并保存明文（不使用 `.enc` 后缀）。
+- **同步协议** — 变更集、快照、以及“最后写入者胜出”的冲突处理；各后端算法相同。
+- **Membership chain** — 追加式日志，使用 Ed25519 签名，并把加密密钥封装给每个成员的公钥。
+
+### 可变部分（trait 之下）
+
+- **存储 API** — 文件如何实际读写（S3 API、Google Drive API、本地文件系统等）。
+- **访问管理** — 新设备如何获得存储访问权限（共享文件夹或生成凭据）。
+- **身份验证** — 新设备如何认证（你的云账号或内嵌凭据）。
+- **变更通知** — 消费云支持推送通知；S3 需要轮询。
+
+### trait 接口
+
+```rust
+trait CloudHome {
+    // Storage -- same interface, different API underneath
+    fn write(path, data) -> Result;
+    fn read(path) -> Result<Bytes>;
+    fn read_range(path, start, end) -> Result<Bytes>;
+    fn list(prefix) -> Result<Vec<String>>;
+    fn delete(path) -> Result;
+    fn exists(path) -> Result<bool>;
+
+    // Access management -- varies by backend
+    fn grant_access(member_email_or_id) -> Result<JoinInfo>;
+    fn revoke_access(member_email_or_id) -> Result;
+}
+
+调用方（同步引擎、图片上传器、文件存储等）直接使用这个接口。它们不需要知道自己面对的是哪个后端。
+```
+
+## 访问管理
+
+`grant_access` 和 `revoke_access` 的行为取决于后端。Google Drive、Dropbox、OneDrive 等消费云通过提供商 API 共享文件夹：你在新设备上登录同一个账号后，文件夹已经可访问。兼容 S3 的后端会为每台设备生成作用域受限的 IAM 凭据，并把它们放入邀请码。
+
+无论哪种后端，加密密钥都会通过 membership chain 单独交付，并封装给新设备的公钥。
+
+## 实现
+
+| 后端 | 认证 | 说明 |
+|---|---|---|
+| S3 (aws-sdk-s3) | Access key + secret | 任意兼容 S3 的服务（AWS、B2、R2、Wasabi、MinIO） |
+| Google Drive | OAuth | bae 在用户的 Drive 中创建文件夹 |
+| Dropbox | OAuth | |
+| OneDrive | OAuth | |
+| iCloud Drive | 本地文件系统 | 仅 macOS，使用 iCloud 容器，无需登录 |

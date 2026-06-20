@@ -1,0 +1,60 @@
+---
+title: Cloud Home
+description: El trait CloudHome y almacenamiento cloud independiente del backend
+---
+
+El cloud home es una única ubicación remota de almacenamiento para una biblioteca: una carpeta de Google Drive, un bucket S3 o una carpeta de Dropbox. Contiene archivos de ediciones, conjuntos de cambios de metadatos, arte, snapshots y la cadena de membresía. En un hogar **opaco** (predeterminado), toda la confianza está en la criptografía, no en el backend de almacenamiento: el proveedor guarda texto cifrado en claves ofuscadas. Un hogar también puede configurarse como **navegable**, guardando todo sin cifrar en rutas estables basadas en ids con nombres de archivo reales; consulta [Modos de almacenamiento](/es/architecture/encryption#modos-de-almacenamiento-opaco-y-navegable).
+
+## El trait CloudHome
+
+El trait `CloudHome` es la abstracción que permite a bae trabajar con distintos backends. Todo lo que está por encima del trait es universal. Todo lo que está por debajo se adapta al proveedor cloud específico.
+
+### Qué es universal (por encima del trait)
+
+- **Diseño del cloud home** — `changes/`, `heads/`, `snapshot.db`, `images/`, `storage/`, `membership/`, `keys/`. Las mismas rutas lógicas sin importar el backend. Un hogar opaco fragmenta audio y arte bajo `storage/` e `images/` por un hash de su id; un hogar navegable los organiza bajo esos dos prefijos en rutas estables basadas en ids con nombres reales (`storage/{album_id}/{release_id}/{import_folder}/01 Track.flac`, `images/{album_id}/{release_id}/cover.jpg`).
+- **Cifrado** — una clave simétrica por biblioteca; en un hogar opaco todo se cifra antes de salir del dispositivo. Un hogar navegable omite el cifrado y guarda texto sin cifrar, sin el sufijo `.enc`.
+- **Protocolo de sincronización** — conjuntos de cambios, snapshots y resolución de conflictos con último escritor gana. El algoritmo es el mismo en todos los backends.
+- **Cadena de membresía** — registro solo anexable con firmas Ed25519 y clave de cifrado envuelta para la clave pública de cada miembro.
+
+### Qué varía (por debajo del trait)
+
+- **API de almacenamiento** — cómo se leen y escriben realmente los archivos: API de S3, API de Google Drive, sistema de archivos local, etc.
+- **Gestión de acceso** — cómo un dispositivo nuevo obtiene acceso al almacenamiento: acceso a carpeta o emisión de credenciales.
+- **Autenticación** — cómo se autentica un dispositivo nuevo: tu cuenta cloud o credenciales incrustadas.
+- **Notificaciones de cambios** — las nubes de consumo admiten notificaciones push; S3 requiere sondeo.
+
+### Interfaz del trait
+
+```rust
+trait CloudHome {
+    // Storage -- same interface, different API underneath
+    fn write(path, data) -> Result;
+    fn read(path) -> Result<Bytes>;
+    fn read_range(path, start, end) -> Result<Bytes>;
+    fn list(prefix) -> Result<Vec<String>>;
+    fn delete(path) -> Result;
+    fn exists(path) -> Result<bool>;
+
+    // Access management -- varies by backend
+    fn grant_access(member_email_or_id) -> Result<JoinInfo>;
+    fn revoke_access(member_email_or_id) -> Result;
+}
+
+Los llamadores, como el motor de sincronización, el cargador de imágenes y el almacenamiento de archivos, usan esta interfaz directamente. No necesitan saber con qué backend están hablando.
+```
+
+## Gestión de acceso
+
+El funcionamiento de `grant_access` y `revoke_access` depende del backend. Las nubes de consumo (Google Drive, Dropbox, OneDrive) comparten la carpeta mediante la API del proveedor: inicias sesión con tu cuenta en el dispositivo nuevo y la carpeta ya es accesible. Los backends compatibles con S3 emiten credenciales IAM acotadas para cada dispositivo, incrustadas en el código de invitación.
+
+En ambos casos, la clave de cifrado se entrega por separado mediante la cadena de membresía, envuelta para la clave pública del dispositivo nuevo.
+
+## Implementaciones
+
+| Backend | Autenticación | Notas |
+|---|---|---|
+| S3 (aws-sdk-s3) | Clave de acceso + secreto | Cualquier servicio compatible con S3: AWS, B2, R2, Wasabi, MinIO |
+| Google Drive | OAuth | bae crea una carpeta en el Drive del usuario |
+| Dropbox | OAuth | |
+| OneDrive | OAuth | |
+| iCloud Drive | Sistema de archivos local | Solo macOS, usa el contenedor de iCloud, sin inicio de sesión |

@@ -1,0 +1,49 @@
+---
+title: Izvori podataka
+description: Vanjske usluge koje bae koristi za metapodatke i slike
+---
+
+bae tijekom uvoza koristi vanjske usluge za dohvat metapodataka i slika. Evo što svaka usluga pruža i kako se postavlja.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> je otvorena glazbena enciklopedija i glavni izvor metapodataka za bae. Pruža:
+
+- Potpune popise zapisa
+- Informacije o grupama izdanja
+- ISRC kodove
+- Usporedbu CD TOC-a za preciznu identifikaciju CD-a
+- Povezane vanjske URL-ove, uključujući Discogs poveznice
+
+### Autentikacija
+
+API ključ nije potreban. MusicBrainz je besplatan i otvoren.
+
+### Ograničenja zahtjeva
+
+MusicBrainz provodi prosjek od 1 zahtjeva u sekundi po IP adresi. Ako to prekoračite, MusicBrainz vraća 503 pogreške i može privremeno blokirati IP. bae automatski razmiče zahtjeve kako bi ostao unutar limita.
+
+### Saznajte više
+
+Pogledajte <a href="https://musicbrainz.org/doc/MusicBrainz_API" target="_blank">MusicBrainz API dokumentaciju</a> i <a href="https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting" target="_blank">detalje o ograničenjima</a>.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> je glazbena baza podataka i tržište. Posebno je koristan za:
+
+- Vinilna izdanja i prešanja
+- Detaljne zasluge: producent, inženjer itd.
+- Kataloške brojeve i barkodove
+- Informacije o labelima
+
+### Autentikacija
+
+Discogs zahtijeva osobni API token. Postavljate ga tijekom početne konfiguracije bae i potreban vam je vlastiti token.
+
+### Ograničenja zahtjeva
+
+Discogs dopušta 60 autentificiranih zahtjeva u minuti. bae time upravlja automatski.
+
+### Početak
+
+Token preuzmite u <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a>. Zalijepite ga tijekom postavljanja.

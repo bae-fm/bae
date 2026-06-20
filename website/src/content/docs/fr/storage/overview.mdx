@@ -1,0 +1,68 @@
+---
+title: Vue d'ensemble du stockage
+description: Comment bae stocke tes fichiers musicaux
+---
+
+Les fichiers d'une édition peuvent vivre à trois endroits au maximum. Lors d'une importation, tu choisis entre **géré** et **non géré**. Les fichiers gérés sont copiés dans le stockage de bae ; les fichiers non gérés restent là où ils sont.
+
+## En un coup d'œil
+
+|                              | Non géré         | Géré — local       | Géré — cloud       |
+|------------------------------|------------------|--------------------|--------------------|
+| Emplacement des fichiers     | Ton emplacement  | `~/.bae/libraries/` | Fournisseur cloud  |
+| bae copie à l'importation    | Non              | Oui                | Oui                |
+| Disponible hors ligne        | Oui              | Oui                | Non                |
+| Chiffré au repos             | Non              | Non                | Home opaque seulement |
+| Peut se synchroniser au cloud | Non             | Oui                | —                  |
+| Synchronisé vers d'autres appareils | Non      | Non                | Oui                |
+| Supprimer l'édition supprime les fichiers | Non | Oui                | Oui                |
+
+Une édition gérée peut avoir ses fichiers en local, dans le cloud, ou les deux. Si un cloud home est configuré, les importations gérées vont aux deux endroits.
+
+## Non géré
+
+Indique à bae des fichiers que tu as déjà organisés. bae les indexe, mais ne déplace, ne copie et ne modifie rien. Si ta musique est déjà rangée à ta façon, cela permet de la cataloguer sans dupliquer les données.
+
+La limite : bae ne peut pas chiffrer, synchroniser ni sauvegarder les fichiers non gérés.
+
+## Géré — local
+
+Chaque bibliothèque a un répertoire de départ sur ta machine (`~/.bae/libraries/{uuid}/`). bae y garde sa base de données, ses images et, pour les éditions gérées, une copie locale des fichiers de l'édition.
+
+Quand tu importes une édition comme gérée, bae copie les fichiers dans ce répertoire. Les originaux ne sont pas modifiés. bae lit la copie locale.
+
+## Géré — cloud
+
+Un cloud home est un emplacement distant unique qui contient les fichiers d'éditions, changements de métadonnées, images et snapshots. En configurer un active la synchronisation entre appareils et la sauvegarde cloud.
+
+Quand tu importes une édition gérée avec un cloud home configuré, bae copie les fichiers dans le répertoire de bibliothèque *et* les envoie au cloud home. Les deux actions se font pendant l'importation.
+
+Une édition qui existe seulement dans le cloud home, par exemple synchronisée depuis un autre appareil qui ne l'a pas encore téléchargée, n'est pas disponible hors ligne tant que les fichiers ne sont pas récupérés localement.
+
+### Opaque ou navigable
+
+Quand tu configures le cloud home, tu choisis la façon dont il stocke les objets, quel que soit le fournisseur :
+
+- **Opaque** (par défaut) chiffre chaque objet avec la clé de bibliothèque et le stocke à un chemin masqué. Le fournisseur ne voit que du texte chiffré.
+- **Navigable** stocke tout sans chiffrement, avec les vrais noms de fichiers, sous des chemins stables basés sur des ids : `storage/{album_id}/{release_id}/{import_folder}/01 Track.flac` pour les fichiers d'édition, et `images/{album_id}/{release_id}/cover.jpg` pour les images. Tu peux ouvrir le bucket et lire ou copier tes fichiers avec n'importe quel outil. Les dossiers sont des ids, pas du texte d'artiste ou d'album, ce qui évite les collisions et garde le dossier de chaque édition immuable. Rien n'est chiffré ; le home dépend du contrôle d'accès du fournisseur. Navigable ne veut pas dire public : les identifiants du bucket protègent l'accès dans les deux modes.
+
+Consulte [Chiffrement](/fr/architecture/encryption#modes-de-stockage-opaque-et-navigable) pour la comparaison complète.
+
+### Fournisseurs pris en charge
+
+- **Google Drive** — connexion OAuth, bae crée un dossier dans ton Drive
+- **Dropbox** — connexion OAuth
+- **OneDrive** — connexion OAuth
+- **iCloud Drive** (macOS) — utilise ton conteneur iCloud, sans connexion
+- **Compatible S3** — n'importe quel bucket : AWS S3, Backblaze B2, Cloudflare R2, Wasabi, MinIO, etc.
+
+Les fournisseurs cloud grand public utilisent OAuth : pas de clés d'API ni de configuration de bucket. iCloud Drive, sur macOS seulement, utilise ton conteneur iCloud existant sans connexion. Les fournisseurs compatibles S3 nécessitent une configuration manuelle des identifiants et s'adressent à des utilisateurs plus techniques.
+
+## Fonctionnement
+
+1. Importe une édition — choisis **géré** ou **non géré**
+2. Les importations gérées copient les fichiers vers le répertoire de bibliothèque local
+3. Si un cloud home est configuré, elles envoient aussi les fichiers là-bas : chiffrés sur un home opaque, en clair sur un home navigable
+4. Les autres appareils connectés au même cloud home se synchronisent automatiquement
+
+Consulte [Synchronisation](/fr/storage/sync) pour la synchronisation entre appareils et [Chiffrement](/fr/architecture/encryption) pour le chiffrement des fichiers.

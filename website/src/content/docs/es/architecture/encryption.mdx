@@ -1,0 +1,47 @@
+---
+title: Cifrado
+description: Cómo bae cifra tus datos
+---
+
+De forma predeterminada, bae cifra tus archivos de música y metadatos de biblioteca antes de que salgan de tu máquina, y el proveedor de almacenamiento solo ve texto cifrado. Un cloud home puede configurarse para guardar todo en claro en rutas estructuradas y navegables; consulta [Modos de almacenamiento](#modos-de-almacenamiento-opaco-y-navegable) abajo.
+
+## Modos de almacenamiento: opaco y navegable
+
+Al configurar un cloud home eliges cómo almacena sus objetos. La elección queda fija para ese hogar y está disponible para todos los proveedores.
+
+- **Opaco** (predeterminado) — cada objeto se cifra con la clave de la biblioteca y se guarda en una ruta ofuscada y direccionada por contenido (`storage/ab/cd/{id}` para audio, `images/ab/cd/{id}` para arte). El proveedor solo ve texto cifrado en claves no legibles. Elige esto si no quieres que el proveedor, ni quien llegue al bucket, pueda leer tu biblioteca.
+- **Navegable** — los objetos se guardan sin cifrar, con el nombre real del archivo, bajo una ruta estable basada en los ids del álbum y la edición: `storage/{album_id}/{release_id}/{import_folder}/01 Track Title.flac` para archivos de edición, reflejando la carpeta importada, e `images/{album_id}/{release_id}/cover.jpg` e `images/{artist_id}/artist.jpg` para arte. Puedes abrir el bucket en la interfaz web del proveedor o en un explorador de archivos, ver tus nombres de archivo reales y reproducirlos o copiarlos directamente. Nada está cifrado, así que la protección del hogar depende completamente del control de acceso del proveedor.
+
+Navegable significa *no ofuscado*, no *nombrado para humanos*: las carpetas son ids en vez de texto de artista o álbum. Usar ids mantiene el diseño sin colisiones por construcción: cada edición se escribe una vez en su propia carpeta `{release_id}` y nunca colisiona con los archivos de otra edición ni los absorbe. Dos ediciones del mismo álbum son carpetas hermanas bajo el álbum. Tampoco significa público: el acceso al bucket está protegido por las credenciales del proveedor igual que en un hogar opaco; el modo solo cambia si lo guardado es legible para quien ya tiene acceso.
+
+El resto de esta página describe un hogar **opaco**. Un hogar navegable no realiza ninguno de los pasos de cifrado siguientes; cada objeto se escribe como texto sin cifrar en su clave estructurada por ids.
+
+## Clave de biblioteca
+
+Cada biblioteca tiene una clave maestra de cifrado de 256 bits, generada al crear la biblioteca y guardada en el llavero del sistema operativo: macOS Keychain, Windows Credential Manager o Linux Secret Service. La clave nunca toca el disco como texto sin cifrar.
+
+## Cifrado de archivos
+
+Los archivos se cifran con XChaCha20-Poly1305 en fragmentos de 64 KB. Cada archivo recibe un nonce aleatorio antepuesto al blob cifrado. Esto significa:
+
+- Archivos idénticos producen texto cifrado distinto por el nonce aleatorio
+- Los archivos pueden descifrarse de forma independiente, sin dependencia entre archivos
+- El cifrado por fragmentos permite solicitudes por rango para transmisión
+
+## Cifrado del cloud home
+
+En un hogar opaco, todo en el cloud home está cifrado:
+
+- **Conjuntos de cambios** — cifrados con la clave de la biblioteca
+- **Snapshots** — cifrados con la clave de la biblioteca
+- **Imágenes** — cifradas con la clave de la biblioteca
+- **Entradas de membresía** — cifradas con la clave de la biblioteca
+- **Claves envueltas** — cifradas para cada dispositivo mediante sealed boxes; consulta [Membresía](/es/architecture/membership)
+
+Los archivos head, con números de secuencia por dispositivo, también se cifran. El proveedor de almacenamiento solo ve blobs opacos y rutas de claves.
+
+## Gestión de claves
+
+La clave de tu biblioteca se guarda en el llavero del sistema operativo bajo un espacio de nombres específico de la biblioteca. Si usas bae en varios dispositivos, la clave se distribuye mediante el sistema de membresía: cifrada para tu clave pública personal con una sealed box, de modo que solo tus dispositivos puedan desenvolverla.
+
+Si pierdes acceso a todos los dispositivos y no tienes una copia de seguridad de tu llavero, los datos de la biblioteca en el bucket no se pueden recuperar. Esto es deliberado: no hay mecanismo de recuperación del lado del servidor.

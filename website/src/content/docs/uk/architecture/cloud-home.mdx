@@ -1,0 +1,51 @@
+---
+title: Cloud Home
+description: Trait CloudHome і хмарне сховище незалежно від backend
+---
+
+Cloud home — одна віддалена локація для бібліотеки: Google Drive folder, S3 bucket або Dropbox folder. Вона містить release files, metadata changesets, artwork, snapshots і membership chain. В **opaque** home довіра покладається на криптографію: провайдер зберігає ciphertext під obfuscated keys. **Browsable** home зберігає все unencrypted у stable id-keyed paths зі справжніми filenames; дивіться [Режими сховища](/uk/architecture/encryption#режими-сховища-opaque-і-browsable).
+
+## Trait CloudHome
+
+`CloudHome` робить bae незалежним від backend. Над trait усе універсальне; під trait реалізується конкретний провайдер.
+
+### Універсальне
+
+- **Layout** — `changes/`, `heads/`, `snapshot.db`, `images/`, `storage/`, `membership/`, `keys/`
+- **Encryption** — один symmetric key на бібліотеку; opaque home шифрує все перед виходом з пристрою; browsable home зберігає plaintext
+- **Sync protocol** — changesets, snapshots, last-writer-wins
+- **Membership chain** — append-only log з Ed25519 signatures і wrapped encryption key
+
+### Що відрізняється
+
+Storage API, access management, authentication і change notifications залежать від backend. Google Drive, Dropbox і OneDrive працюють через OAuth; S3-compatible backend-и видають scoped IAM credentials.
+
+### Інтерфейс trait
+
+```rust
+trait CloudHome {
+    // Storage -- same interface, different API underneath
+    fn write(path, data) -> Result;
+    fn read(path) -> Result<Bytes>;
+    fn read_range(path, start, end) -> Result<Bytes>;
+    fn list(prefix) -> Result<Vec<String>>;
+    fn delete(path) -> Result;
+    fn exists(path) -> Result<bool>;
+
+    // Access management -- varies by backend
+    fn grant_access(member_email_or_id) -> Result<JoinInfo>;
+    fn revoke_access(member_email_or_id) -> Result;
+}
+
+Виклики, наприклад рушій синхронізації, завантажувач зображень і сховище файлів, використовують цей інтерфейс напряму. Їм не потрібно знати, з яким backend вони працюють.
+```
+
+## Реалізації
+
+| Backend | Auth | Нотатки |
+|---|---|---|
+| S3 (aws-sdk-s3) | Access key + secret | Будь-який S3-compatible service: AWS, B2, R2, Wasabi, MinIO |
+| Google Drive | OAuth | bae створює folder у Drive користувача |
+| Dropbox | OAuth | |
+| OneDrive | OAuth | |
+| iCloud Drive | Local filesystem | Лише macOS, iCloud container, без входу |

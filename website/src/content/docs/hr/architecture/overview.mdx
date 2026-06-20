@@ -1,0 +1,22 @@
+---
+title: Pregled
+description: Kako je bae složen
+---
+
+bae je upravitelj glazbene biblioteke koji koristi decentralizirani identitet i end-to-end šifriranje nad zamjenjivom pohranom za sinkronizaciju više uređaja bez vlastitog poslužitelja.
+
+## Identitet
+
+Svaki uređaj ima lokalno generiran par ključeva (Ed25519/X25519). Javni ključevi su identiteti. Nema središnjeg poslužitelja identiteta.
+
+## Šifriranje
+
+Jedan simetrični ključ po biblioteci, dijeljen među uređajima biblioteke. Sve u cloud homeu šifrira se prije nego napusti uređaj. Pružatelj pohrane vidi neprozirne blobove. Pogledajte [Šifriranje](/hr/architecture/encryption).
+
+## Pohrana
+
+Zamjenjiva. Bilo koji komercijalni cloud pružatelj (Google Drive, Dropbox, OneDrive, iCloud Drive), bilo koji S3-kompatibilan bucket (AWS, B2, R2, Wasabi, MinIO) ili samo lokalno bez clouda. Jedan trait `CloudHome` apstrahira razlike. Pogledajte [Cloud Home](/hr/architecture/cloud-home).
+
+## Sinkronizacija
+
+Uređaji se sinkroniziraju preko cloud homea pomoću šifriranih changesetova. Svaka izmjena proizvodi kompaktan binarni diff; drugi uređaji ga preuzimaju i primjenjuju. Sukobi se rješavaju automatski pravilom zadnji zapis pobjeđuje s hibridnim logičkim satovima. Biblioteka se sinkronizira među više uređaja preko lanca članstva i potpisanih changesetova. Pogledajte [Sinkronizacija](/hr/storage/sync).

@@ -1,0 +1,29 @@
+---
+title: Шифриране
+description: Как bae шифрира данните ви
+---
+
+По подразбиране bae шифрира музикалните файлове и metadata преди да напуснат машината. Storage provider вижда само ciphertext. Cloud home може да бъде browsable и да пази plaintext.
+
+## Режими на съхранение: opaque и browsable
+
+- **Opaque** — всеки object се шифрира с library key и се пази под obfuscated content-addressed path (`storage/ab/cd/{id}`, `images/ab/cd/{id}`).
+- **Browsable** — objects се пазят unencrypted с real filename под stable id paths: `storage/{album_id}/{release_id}/{import_folder}/01 Track Title.flac`, `images/{album_id}/{release_id}/cover.jpg`, `images/{artist_id}/artist.jpg`. Това не е public; access control остава при provider credentials.
+
+Browsable означава not obscured, но не human-named: folders са ids, не artist/album text. Останалата част описва opaque home.
+
+## Library key
+
+Всяка библиотека има 256-bit master encryption key, създаден при създаване на библиотеката и пазен в OS keyring: macOS Keychain, Windows Credential Manager или Linux Secret Service. Ключът не се записва plaintext на диск.
+
+## File encryption
+
+Файловете се шифрират с XChaCha20-Poly1305 на 64 KB chunks. Всеки файл има random nonce. Identical files дават different ciphertext, files могат да се decrypt-ват независимо, а chunking поддържа range requests за streaming.
+
+## Cloud home encryption
+
+Changesets, snapshots, images, membership entries и wrapped keys са encrypted. Wrapped keys са encrypted за всяко device чрез sealed boxes; вижте [Членство](/bg/architecture/membership). Head files също са encrypted.
+
+## Key management
+
+Library key се пази в OS keyring под library namespace. При няколко устройства key се разпространява чрез membership system. Ако загубите всички устройства и keyring backup, bucket data не може да се възстанови; няма server-side recovery.

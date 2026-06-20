@@ -1,0 +1,68 @@
+---
+title: Przegląd przechowywania
+description: Jak bae przechowuje pliki muzyczne
+---
+
+Pliki wydania mogą znajdować się w maksymalnie trzech miejscach. Podczas importu wydania wybierasz między **zarządzanym** i **niezarządzanym**. Pliki zarządzane są kopiowane do przechowywania bae; pliki niezarządzane zostają tam, gdzie są.
+
+## W skrócie
+
+|                              | Niezarządzane    | Zarządzane — lokalnie | Zarządzane — cloud |
+|------------------------------|------------------|-----------------------|--------------------|
+| Pliki są w                   | Twojej lokalizacji | `~/.bae/libraries/` | Dostawcy cloud     |
+| bae kopiuje pliki przy imporcie | Nie           | Tak                  | Tak                |
+| Dostępne offline             | Tak              | Tak                  | Nie                |
+| Szyfrowane w spoczynku       | Nie              | Nie                  | Tylko home opakowy |
+| Może synchronizować do cloud | Nie              | Tak                  | —                  |
+| Synchronizuje na inne urządzenia | Nie          | Nie                  | Tak                |
+| Usunięcie wydania usuwa pliki | Nie             | Tak                  | Tak                |
+
+Wydanie zarządzane może mieć pliki lokalnie, w cloud albo w obu miejscach. Jeśli cloud home jest skonfigurowany, importy zarządzane trafiają do obu.
+
+## Niezarządzane
+
+Wskaż bae pliki, które masz już uporządkowane. bae je indeksuje, ale niczego nie przenosi, nie kopiuje ani nie modyfikuje. Jeśli masz już muzykę ułożoną po swojemu, możesz ją skatalogować bez duplikowania danych.
+
+Ograniczenie: bae nie może szyfrować, synchronizować ani tworzyć kopii zapasowych plików niezarządzanych.
+
+## Zarządzane — lokalnie
+
+Każda biblioteka ma katalog domowy na twojej maszynie (`~/.bae/libraries/{uuid}/`). Tam bae trzyma bazę danych, obrazy i, dla wydań zarządzanych, lokalną kopię plików wydania.
+
+Gdy importujesz wydanie jako zarządzane, bae kopiuje pliki do katalogu domowego biblioteki. Oryginały pozostają nietknięte. bae odtwarza z lokalnej kopii.
+
+## Zarządzane — cloud
+
+Cloud home to pojedyncza zdalna lokalizacja przechowująca pliki wydań, changesety metadanych, grafiki i snapshoty. Skonfigurowanie jej włącza synchronizację wielu urządzeń i kopię w cloud.
+
+Gdy importujesz wydanie zarządzane z skonfigurowanym cloud home, bae kopiuje pliki do katalogu domowego biblioteki *i* wysyła je do cloud home. Obie operacje dzieją się podczas importu.
+
+Wydanie istniejące tylko w cloud home, np. zsynchronizowane z innego urządzenia, które go jeszcze nie pobrało, nie jest dostępne offline, dopóki pliki nie zostaną pobrane lokalnie.
+
+### Opakowe albo przeglądalne
+
+Podczas konfiguracji cloud home wybierasz sposób przechowywania obiektów, dla dowolnego dostawcy:
+
+- **Opakowe** (domyślne) szyfruje każdy obiekt kluczem biblioteki i zapisuje go pod zaciemnioną ścieżką. Dostawca widzi tylko szyfrogram.
+- **Przeglądalne** zapisuje wszystko bez szyfrowania, z prawdziwymi nazwami plików, pod stabilnymi ścieżkami opartymi na id: `storage/{album_id}/{release_id}/{import_folder}/01 Track.flac` dla plików wydań i `images/{album_id}/{release_id}/cover.jpg` dla grafik. Możesz otworzyć bucket i odtwarzać albo kopiować pliki dowolnym narzędziem. Foldery są id, nie tekstem wykonawcy czy albumu, co zapobiega kolizjom i utrzymuje folder każdego wydania niezmienny. Nic nie jest szyfrowane; home polega na kontroli dostępu dostawcy. Przeglądalne nie znaczy publiczne: dane dostępu do bucketu kontrolują dostęp w obu trybach.
+
+Zobacz [Szyfrowanie](/pl/architecture/encryption#tryby-przechowywania-opakowy-i-przegladalny) dla pełnego porównania.
+
+### Obsługiwani dostawcy
+
+- **Google Drive** — logowanie OAuth, bae tworzy folder w twoim Drive
+- **Dropbox** — logowanie OAuth
+- **OneDrive** — logowanie OAuth
+- **iCloud Drive** (macOS) — używa twojego kontenera iCloud, bez logowania
+- **Zgodne z S3** — dowolny bucket: AWS S3, Backblaze B2, Cloudflare R2, Wasabi, MinIO itd.
+
+Konsumenccy dostawcy cloud, tacy jak Google Drive i Dropbox, używają logowania OAuth: bez kluczy API i konfiguracji bucketu. iCloud Drive, tylko na macOS, używa istniejącego kontenera iCloud bez logowania. Dostawcy zgodni z S3 wymagają ręcznej konfiguracji danych dostępu i są przeznaczeni dla bardziej technicznych użytkowników.
+
+## Jak to działa
+
+1. Importujesz wydanie — wybierasz **zarządzane** albo **niezarządzane**
+2. Importy zarządzane kopiują pliki do lokalnego katalogu domowego biblioteki
+3. Jeśli skonfigurowano cloud home, importy zarządzane wysyłają też pliki tam: szyfrowane w home opakowym, jawne w home przeglądalnym
+4. Inne urządzenia podłączone do tego samego cloud home synchronizują się automatycznie
+
+Zobacz [Synchronizację](/pl/storage/sync), aby poznać synchronizację wielu urządzeń, oraz [Szyfrowanie](/pl/architecture/encryption), aby poznać szyfrowanie plików.

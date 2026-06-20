@@ -1,0 +1,51 @@
+---
+title: Cloud Home
+description: CloudHome trait と backend に依存しない cloud storage
+---
+
+cloud home は 1 つのライブラリ用のリモート保存先です。Google Drive folder、S3 bucket、Dropbox folder などです。release files、metadata changesets、artwork、snapshots、membership chain を保持します。**opaque** home では信頼は storage backend ではなく暗号にあります。provider は obfuscated keys に ciphertext を保存します。**browsable** home では、すべてを stable id-keyed paths に unencrypted で保存し、real filenames を保ちます。詳しくは [ストレージモード](/ja/architecture/encryption#ストレージモード-opaque-と-browsable)。
+
+## CloudHome trait
+
+`CloudHome` trait は bae を backend-agnostic にする抽象化です。trait より上は共通で、trait より下が cloud provider ごとの実装です。
+
+### 共通部分
+
+- **Cloud home layout** — `changes/`, `heads/`, `snapshot.db`, `images/`, `storage/`, `membership/`, `keys/`
+- **Encryption** — library ごとに 1 symmetric key。opaque home はすべて暗号化し、browsable home は plaintext を保存します
+- **Sync protocol** — changesets、snapshots、last-writer-wins
+- **Membership chain** — Ed25519 signatures を持つ append-only log と、各 member の public key に wrapped された encryption key
+
+### backend ごとの差
+
+Storage API、access management、authentication、change notifications が異なります。consumer clouds は provider API で folder を共有し、S3-compatible backends は device ごとに scoped IAM credentials を発行します。
+
+### trait interface
+
+```rust
+trait CloudHome {
+    // Storage -- same interface, different API underneath
+    fn write(path, data) -> Result;
+    fn read(path) -> Result<Bytes>;
+    fn read_range(path, start, end) -> Result<Bytes>;
+    fn list(prefix) -> Result<Vec<String>>;
+    fn delete(path) -> Result;
+    fn exists(path) -> Result<bool>;
+
+    // Access management -- varies by backend
+    fn grant_access(member_email_or_id) -> Result<JoinInfo>;
+    fn revoke_access(member_email_or_id) -> Result;
+}
+
+同期エンジン、画像アップローダー、ファイル保存処理などの呼び出し側は、このインターフェイスを直接使います。相手がどのバックエンドかを知る必要はありません。
+```
+
+## 実装
+
+| Backend | Auth | Notes |
+|---|---|---|
+| S3 (aws-sdk-s3) | Access key + secret | AWS、B2、R2、Wasabi、MinIO など任意の S3-compatible service |
+| Google Drive | OAuth | bae がユーザーの Drive に folder を作ります |
+| Dropbox | OAuth | |
+| OneDrive | OAuth | |
+| iCloud Drive | Local filesystem | macOS のみ。iCloud container を使い、sign-in は不要 |

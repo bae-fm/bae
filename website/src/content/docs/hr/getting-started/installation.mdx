@@ -1,0 +1,55 @@
+---
+title: Instalacija
+description: Preuzmite i instalirajte bae ili baeium na svakoj platformi
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## Dva izdanja
+
+Svaka platforma objavljuje se u dva izdanja, izgrađena iz istog izvornog koda:
+
+- **bae** — puna aplikacija: sinkronizacija sa S3, Google Drive, Dropbox, OneDrive i iCloud.
+- **baeium** — bez vlasničkih dijelova: samo S3-kompatibilna pohrana, bez OAuth pružatelja, bez iCloud/CloudKit i bez telemetrije. Sav je kod Apache-2.0.
+
+Mogu se instalirati jedno uz drugo, svako s vlastitom bibliotekom i vlastitim ključevima sinkroniziranima preko iCloud Keychaina. Odaberite izdanje ispod.
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">Preuzmi bae za macOS</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">Preuzmi baeium za macOS</DownloadButton>
+
+1. Otvorite preuzeti `.dmg`
+2. Povucite aplikaciju u mapu Applications
+3. Otvorite je iz Applications
+
+Oba izdanja automatski se ažuriraju preko vlastitog Sparkle feeda.
+
+## iOS
+
+iOS buildovi su **nepotpisane `.ipa` datoteke za sideloading**. Instalirajte ih pomoću [AltStore](https://altstore.io) ili [Sideloadly](https://sideloadly.io), ili ih ponovno potpišite u Xcodeu svojim Apple ID-jem. Besplatan Apple ID radi za baeium. Distribucija preko App Storea nije postavljena.
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">Preuzmi bae za iOS</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">Preuzmi baeium za iOS</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">Preuzmi bae za Android</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">Preuzmi baeium za Android</DownloadButton>
+
+Dopustite instaliranje iz preglednika ili datoteka kad se to zatraži, zatim otvorite `.apk`.
+
+## Windows
+
+Windows buildovi su **nepotpisani** zipovi nepakirane aplikacije. Raspakirajte i pokrenite `bae.exe` ili `baeium.exe`. SmartScreen može upozoriti pri prvom pokretanju.
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">Preuzmi bae za Windows</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">Preuzmi baeium za Windows</DownloadButton>
+
+## Linux
+
+Uskoro.
+
+## Izgradnja iz izvornog koda
+
+baeium ne treba ništa vlasničko za izgradnju. U [README-u repozitorija](https://github.com/bae-fm/bae#building-baeium-yourself) nalaze se upute po platformi, uključujući iOS s besplatnim provisioningom.

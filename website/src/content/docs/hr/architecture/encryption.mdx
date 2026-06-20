@@ -1,0 +1,47 @@
+---
+title: Šifriranje
+description: Kako bae šifrira vaše podatke
+---
+
+Prema zadanim postavkama, bae šifrira glazbene datoteke i metapodatke biblioteke prije nego napuste računalo, a pružatelj pohrane vidi samo šifrirani tekst. Cloud home se može postaviti da sve sprema u čistom tekstu na strukturiranim, pregledljivim putovima; pogledajte [Načini pohrane](#nacini-pohrane-neproziran-i-pregledljiv) ispod.
+
+## Načini pohrane: neproziran i pregledljiv
+
+Pri postavljanju cloud homea birate kako sprema objekte. Izbor je fiksan za taj home i nudi se za svakog pružatelja.
+
+- **Neproziran** (zadano) — svaki se objekt šifrira ključem biblioteke i sprema na prikriveni put adresiran sadržajem (`storage/ab/cd/{id}` za audio, `images/ab/cd/{id}` za slike). Pružatelj vidi samo šifrirani tekst na nerazumljivim ključevima. Odaberite to ako ne želite da pružatelj ili netko s pristupom bucketu čita biblioteku.
+- **Pregledljiv** — objekti se spremaju nešifrirano, sa stvarnim nazivom datoteke, pod stabilnim putom temeljenim na id-ovima albuma i izdanja: `storage/{album_id}/{release_id}/{import_folder}/01 Track Title.flac` za datoteke izdanja i `images/{album_id}/{release_id}/cover.jpg` te `images/{artist_id}/artist.jpg` za slike. Možete otvoriti bucket u web sučelju pružatelja ili pregledniku datoteka, vidjeti stvarne nazive i izravno ih reproducirati ili kopirati. Ništa nije šifrirano, pa zaštita homea u potpunosti ovisi o kontroli pristupa pružatelja.
+
+Pregledljiv znači *nije prikriven*, ne *imenovan za ljude*: mape su id-ovi, a ne tekst izvođača ili albuma. Korištenje id-ova drži raspored bez sudara: svako izdanje zapisuje se jednom u vlastitu mapu `{release_id}` i nikad se ne sudara s datotekama drugog izdanja. Dva izdanja istog albuma su susjedne mape pod albumom. To ne znači ni javno: pristup bucketu zaštićen je vjerodajnicama pružatelja isto kao kod neprozirnog homea; način mijenja samo čitljivost pohranjenog za onoga tko već ima pristup.
+
+Ostatak stranice opisuje **neproziran** home. Pregledljiv home ne izvodi nijedno šifriranje ispod; svaki se objekt zapisuje kao čisti tekst na svoj id-strukturirani ključ.
+
+## Ključ biblioteke
+
+Svaka biblioteka ima 256-bitni glavni ključ šifriranja, generiran pri stvaranju biblioteke i spremljen u keyring operacijskog sustava: macOS Keychain, Windows Credential Manager ili Linux Secret Service. Ključ nikad ne dodiruje disk kao čisti tekst.
+
+## Šifriranje datoteka
+
+Datoteke se šifriraju pomoću XChaCha20-Poly1305 u blokovima od 64 KB. Svaka datoteka dobiva nasumični nonce ispred šifriranog bloba. To znači:
+
+- Jednake datoteke proizvode različit šifrirani tekst zbog nasumičnog noncea
+- Datoteke se mogu dešifrirati neovisno, bez ovisnosti među datotekama
+- Blokovno šifriranje podržava učinkovite zahtjeve raspona za streaming
+
+## Šifriranje cloud homea
+
+U neprozirnom homeu sve u cloud homeu je šifrirano:
+
+- **Changesetovi** — šifrirani ključem biblioteke
+- **Snapshotovi** — šifrirani ključem biblioteke
+- **Slike** — šifrirane ključem biblioteke
+- **Stavke članstva** — šifrirane ključem biblioteke
+- **Omotani ključevi** — šifrirani za svaki uređaj sealed boxes; pogledajte [Članstvo](/hr/architecture/membership)
+
+Head datoteke, sa sekvencijskim brojevima po uređaju, također su šifrirane. Pružatelj pohrane vidi samo neprozirne blobove i putove ključeva.
+
+## Upravljanje ključevima
+
+Ključ vaše biblioteke spremljen je u keyringu operacijskog sustava pod namespaceom biblioteke. Ako koristite bae na više uređaja, ključ se distribuira sustavom članstva: šifriran za vaš osobni javni ključ sealed boxom, tako da ga samo vaši uređaji mogu otvoriti.
+
+Ako izgubite pristup svim uređajima i nemate sigurnosnu kopiju keyringa, podaci biblioteke u bucketu ne mogu se vratiti. To je namjerno: nema poslužiteljskog mehanizma oporavka.

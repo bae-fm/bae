@@ -1,0 +1,30 @@
+---
+title: Metadaten
+description: Wie bae Album- und Track-Metadaten behandelt
+---
+
+bae füllt deine Bibliothek beim Import mit Metadaten aus Online-Datenbanken.
+
+## Was gespeichert wird
+
+Wenn du ein Album importierst, speichert bae:
+
+- **Albuminfos**: Titel, Künstler, Jahr
+- **Trackinfos**: Namen, Laufzeiten, Disc- und Tracknummern
+- **Artwork**: Coverbilder aus dem MusicBrainz Cover Art Archive und Discogs
+- **Editionsinfos**: Label, Katalognummer, Barcode, Land, Format
+- **Externe IDs**: Discogs-Release-ID, MusicBrainz-Release- und Künstler-IDs
+
+Alle Metadaten kommen aus MusicBrainz und Discogs und werden in der bae-Datenbank gespeichert. bae liest oder schreibt keine eingebetteten Tags. Deine Dateien werden nie verändert. Ob verwaltet, also in den bae-Speicher verschoben, oder nicht verwaltet, also am Ort belassen: Die Bytes bleiben unverändert.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> ist eine offene Musik-Enzyklopädie und baes primäre Metadatenquelle. Sie bietet vollständige Tracklisten, Release-Gruppeninformationen, ISRC-Codes und CD-TOC-Abgleich für präzise Identifikation.
+
+Kein API-Schlüssel nötig. MusicBrainz ist kostenlos und offen. Es erzwingt im Durchschnitt 1 Anfrage pro Sekunde und IP-Adresse; bae verteilt Anfragen automatisch.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> ist eine Musikdatenbank und ein Marktplatz, besonders nützlich für Vinyl-Editionen, detaillierte Credits, Katalognummern und Labelinformationen.
+
+Discogs erfordert ein persönliches API-Token. Hole es in den <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a> und füge es während der Einrichtung ein. Das Limit beträgt 60 authentifizierte Anfragen pro Minute; bae verwaltet das automatisch.

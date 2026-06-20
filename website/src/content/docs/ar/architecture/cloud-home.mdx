@@ -1,0 +1,60 @@
+---
+title: Cloud Home
+description: trait CloudHome والتخزين السحابي المستقل عن الخلفية
+---
+
+cloud home موقع تخزين بعيد واحد للمكتبة: مجلد Google Drive واحد، أو bucket S3 واحد، أو مجلد Dropbox واحد. يحفظ ملفات الإصدارات، وحزم تغييرات البيانات الوصفية، والصور، واللقطات، و membership chain. في **opaque** home الافتراضي، الثقة تأتي من التشفير لا من مزود التخزين؛ يخزن المزود نصًا مشفرًا عند مفاتيح مبهمة. ويمكن ضبط home ليكون **browsable** فيحفظ كل شيء واضحًا في مسارات ثابتة مبنية على المعرفات مع أسماء الملفات الحقيقية؛ راجع [أوضاع التخزين](/ar/architecture/encryption#أوضاع-التخزين-opaque-و-browsable).
+
+## trait CloudHome
+
+`CloudHome` هو التجريد الذي يجعل bae غير مرتبط بخلفية محددة. كل ما فوق trait عام، وكل ما تحته يتكيف مع مزود السحابة المحدد.
+
+### ما هو عام
+
+- **تخطيط cloud home** — `changes/` و `heads/` و `snapshot.db` و `images/` و `storage/` و `membership/` و `keys/`. المسارات المنطقية نفسها مهما كانت الخلفية. opaque home يجزئ الصوت والصور تحت `storage/` و `images/` بحسب hash المعرف؛ browsable home يستخدم المسارين نفسيهما مع مسارات ثابتة مبنية على المعرفات وأسماء الملفات الحقيقية مثل `storage/{album_id}/{release_id}/{import_folder}/01 Track.flac` و `images/{album_id}/{release_id}/cover.jpg`.
+- **التشفير** — مفتاح متماثل واحد لكل مكتبة؛ في opaque home يشفر كل شيء قبل مغادرة الجهاز. browsable home يتجاوز التشفير ويخزن نصًا واضحًا ولا يستخدم لاحقة `.enc`.
+- **بروتوكول المزامنة** — حزم تغييرات، لقطات، وحل تعارضات بقاعدة آخر كاتب يفوز. الخوارزمية نفسها في كل الخلفيات.
+- **Membership chain** — سجل إلحاقي بتوقيعات Ed25519، ومفتاح تشفير ملفوف لكل عضو بحسب مفتاحه العام.
+
+### ما يختلف
+
+- **واجهة التخزين** — كيف تقرأ وتكتب الملفات فعليًا: S3 API أو Google Drive API أو نظام الملفات المحلي.
+- **إدارة الوصول** — كيف يحصل جهاز جديد على وصول للتخزين: مشاركة مجلد أو إصدار بيانات اعتماد.
+- **المصادقة** — كيف يثبت الجهاز الجديد هويته: حسابك السحابي أو بيانات اعتماد مدمجة.
+- **إشعارات التغيير** — السحابات الاستهلاكية تدعم الإشعارات؛ S3 يحتاج إلى polling.
+
+### واجهة trait
+
+```rust
+trait CloudHome {
+    // Storage -- same interface, different API underneath
+    fn write(path, data) -> Result;
+    fn read(path) -> Result<Bytes>;
+    fn read_range(path, start, end) -> Result<Bytes>;
+    fn list(prefix) -> Result<Vec<String>>;
+    fn delete(path) -> Result;
+    fn exists(path) -> Result<bool>;
+
+    // Access management -- varies by backend
+    fn grant_access(member_email_or_id) -> Result<JoinInfo>;
+    fn revoke_access(member_email_or_id) -> Result;
+}
+
+تستخدم الجهات المستدعية، مثل محرك المزامنة ورافع الصور وتخزين الملفات، هذه الواجهة مباشرة. لا تحتاج إلى معرفة الخلفية التي تتعامل معها.
+```
+
+## إدارة الوصول
+
+يعتمد عمل `grant_access` و `revoke_access` على الخلفية. السحابات الاستهلاكية مثل Google Drive و Dropbox و OneDrive تشارك المجلد عبر API المزود؛ تسجل الدخول إلى حسابك على الجهاز الجديد فيصبح المجلد متاحًا. خلفيات S3 تصدر بيانات اعتماد IAM محدودة لكل جهاز وتضعها في رمز الدعوة.
+
+في الحالتين، يسلم مفتاح التشفير بشكل منفصل عبر membership chain، ملفوفًا إلى المفتاح العام للجهاز الجديد.
+
+## التنفيذات
+
+| الخلفية | المصادقة | ملاحظات |
+|---|---|---|
+| S3 (aws-sdk-s3) | Access key + secret | أي خدمة متوافقة مع S3 مثل AWS و B2 و R2 و Wasabi و MinIO |
+| Google Drive | OAuth | ينشئ bae مجلدًا في Drive الخاص بالمستخدم |
+| Dropbox | OAuth | |
+| OneDrive | OAuth | |
+| iCloud Drive | نظام ملفات محلي | macOS فقط، يستخدم حاوية iCloud بلا تسجيل دخول |

@@ -1,0 +1,26 @@
+---
+title: メタデータ
+description: bae がアルバムとトラックのメタデータを扱う方法
+---
+
+bae はインポート時に online databases からメタデータを取得してライブラリを埋めます。
+
+## 保存される内容
+
+アルバムをインポートすると、bae は次を保存します。
+
+- **Album info**: タイトル、アーティスト、年
+- **Track info**: 名前、長さ、ディスク番号とトラック番号
+- **Artwork**: MusicBrainz Cover Art Archive と Discogs のカバー画像
+- **Release info**: label、catalog number、barcode、country、format
+- **External IDs**: Discogs release ID、MusicBrainz release と artist IDs
+
+すべてのメタデータは MusicBrainz と Discogs から来て、bae database に保存されます。bae は embedded tags を読み書きしません。managed でも unmanaged でも、ファイルの bytes は変わりません。
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> はオープンな音楽百科事典で、bae の主なメタデータソースです。完全な track listings、release group information、ISRC codes、CD TOC matching を提供します。API キーは不要です。
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> は音楽データベース兼マーケットプレイスで、vinyl releases、詳細 credits、catalog numbers、label information に向いています。個人 API token が必要で、<a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a> から取得します。

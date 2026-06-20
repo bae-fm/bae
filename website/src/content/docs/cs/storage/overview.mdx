@@ -1,0 +1,68 @@
+---
+title: Přehled úložiště
+description: Jak bae ukládá hudební soubory
+---
+
+Soubory vydání mohou být až na třech místech. Při importu vydání volíte mezi **spravovaným** a **nespravovaným** režimem. Spravované soubory se zkopírují do úložiště bae; nespravované zůstanou tam, kde jsou.
+
+## Stručně
+
+|                              | Nespravované     | Spravované — místní | Spravované — cloud |
+|------------------------------|------------------|---------------------|--------------------|
+| Soubory jsou v               | Vašem umístění   | `~/.bae/libraries/` | Cloudový poskytovatel |
+| bae kopíruje při importu     | Ne               | Ano                 | Ano                |
+| Dostupné offline             | Ano              | Ano                 | Ne                 |
+| Šifrované v klidu            | Ne               | Ne                  | Jen opakní home    |
+| Může synchronizovat do cloudu | Ne              | Ano                 | —                  |
+| Synchronizuje na jiná zařízení | Ne             | Ne                  | Ano                |
+| Smazání vydání odstraní soubory | Ne            | Ano                 | Ano                |
+
+Spravované vydání může mít soubory místně, v cloudu nebo na obou místech. Pokud je nastaven cloud home, spravované importy jdou na obě místa.
+
+## Nespravované
+
+Nasměrujte bae na soubory, které už máte uspořádané. bae je indexuje, ale nic nepřesouvá, nekopíruje ani neupravuje. Pokud máte hudbu uspořádanou po svém, můžete ji katalogizovat bez duplikace dat.
+
+Omezení: bae nemůže nespravované soubory šifrovat, synchronizovat ani zálohovat.
+
+## Spravované — místní
+
+Každá knihovna má domovský adresář na vašem počítači (`~/.bae/libraries/{uuid}/`). Tam bae ukládá databázi, obrázky a u spravovaných vydání místní kopii souborů vydání.
+
+Při importu vydání jako spravovaného bae zkopíruje soubory do domova knihovny. Originály se nemění. bae přehrává z místní kopie.
+
+## Spravované — cloud
+
+Cloud home je jedno vzdálené úložiště pro soubory vydání, změnové sady metadat, obrázky a snapshoty. Jeho nastavení zapne synchronizaci více zařízení a cloudovou kopii.
+
+Při importu spravovaného vydání s nastaveným cloud home bae zkopíruje soubory do domova knihovny *a* nahraje je do cloud home. Obojí proběhne při importu.
+
+Vydání, které existuje jen v cloud home, například synchronizované z jiného zařízení a ještě nestažené, není dostupné offline, dokud se soubory nestáhnou místně.
+
+### Opakní nebo procházetelné
+
+Při nastavení cloud home volíte pro libovolného poskytovatele způsob ukládání objektů:
+
+- **Opakní** (výchozí) šifruje každý objekt klíčem knihovny a ukládá ho pod zastřenou cestou. Poskytovatel vidí jen šifrovaný text.
+- **Procházetelné** ukládá vše nešifrovaně, se skutečnými názvy souborů, pod stabilními cestami podle id: `storage/{album_id}/{release_id}/{import_folder}/01 Track.flac` pro soubory vydání a `images/{album_id}/{release_id}/cover.jpg` pro obrázky. Bucket můžete otevřít a soubory přehrát nebo zkopírovat libovolným nástrojem. Složky jsou id, ne text interpreta nebo alba, což brání kolizím a udržuje složku každého vydání neměnnou. Nic není šifrované; home se spoléhá na řízení přístupu poskytovatele. Procházetelné neznamená veřejné: přístup v obou režimech řídí přihlašovací údaje bucketu.
+
+Úplné srovnání je v [Šifrování](/cs/architecture/encryption#rezimy-uloziste-opakni-a-prochazetelne).
+
+### Podporovaní poskytovatelé
+
+- **Google Drive** — přihlášení přes OAuth, bae vytvoří složku ve vašem Drive
+- **Dropbox** — přihlášení přes OAuth
+- **OneDrive** — přihlášení přes OAuth
+- **iCloud Drive** (macOS) — používá váš iCloud kontejner, bez přihlášení
+- **Kompatibilní se S3** — libovolný bucket: AWS S3, Backblaze B2, Cloudflare R2, Wasabi, MinIO atd.
+
+Spotřebitelské cloudy, jako Google Drive a Dropbox, používají OAuth přihlášení: bez API klíčů a konfigurace bucketu. iCloud Drive, jen na macOS, používá existující iCloud kontejner bez přihlášení. Poskytovatelé kompatibilní se S3 vyžadují ruční nastavení přihlašovacích údajů a míří na techničtější uživatele.
+
+## Jak to funguje
+
+1. Importujte vydání — zvolte **spravované** nebo **nespravované**
+2. Spravované importy kopírují soubory do místního domova knihovny
+3. Pokud je nastaven cloud home, spravované importy nahrají soubory i tam: šifrovaně v opakním home, v čitelné podobě v procházetelném home
+4. Další zařízení připojená ke stejnému cloud home se synchronizují automaticky
+
+Viz [Synchronizace](/cs/storage/sync) pro synchronizaci více zařízení a [Šifrování](/cs/architecture/encryption) pro šifrování souborů.

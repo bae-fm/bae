@@ -1,0 +1,49 @@
+---
+title: Fontes de dados
+description: Serviços externos que bae usa para metadados e arte
+---
+
+bae usa serviços externos durante a importação para buscar metadados e arte. Veja o que cada serviço fornece e como configurá-lo.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> é uma enciclopédia musical aberta e a fonte principal de metadados do bae. Ela fornece:
+
+- Listas completas de faixas
+- Informações de grupos de edições
+- Códigos ISRC
+- Correspondência de TOC de CD para identificação precisa de CDs
+- URLs externas vinculadas, incluindo referências cruzadas do Discogs
+
+### Autenticação
+
+Nenhuma chave de API é necessária. MusicBrainz é gratuito e aberto.
+
+### Limites de taxa
+
+MusicBrainz impõe média de 1 solicitação por segundo por endereço IP. Se você ultrapassar isso, MusicBrainz retorna erros 503 e pode bloquear temporariamente seu IP. bae espaça as solicitações automaticamente para ficar dentro desse limite.
+
+### Saiba mais
+
+Veja a <a href="https://musicbrainz.org/doc/MusicBrainz_API" target="_blank">documentação da API MusicBrainz</a> e os <a href="https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting" target="_blank">detalhes de limite de taxa</a>.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> é um banco de dados musical e mercado. Ele é especialmente útil para:
+
+- Edições e prensagens em vinil
+- Créditos detalhados: produtor, engenheiro, etc.
+- Números de catálogo e códigos de barras
+- Informações de gravadoras
+
+### Autenticação
+
+Discogs exige um token pessoal de API. Você configura isso durante a configuração inicial do bae e precisa do seu próprio token.
+
+### Limites de taxa
+
+Discogs permite 60 solicitações autenticadas por minuto. bae gerencia isso automaticamente.
+
+### Começar
+
+Obtenha seu token em <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a>. Cole-o durante a configuração.

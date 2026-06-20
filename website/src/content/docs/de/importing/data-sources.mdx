@@ -1,0 +1,49 @@
+---
+title: Datenquellen
+description: Externe Dienste, die bae für Metadaten und Artwork nutzt
+---
+
+bae nutzt beim Import externe Dienste, um Metadaten und Artwork abzurufen. Hier steht, was jeder Dienst liefert und wie er eingerichtet wird.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> ist eine offene Musik-Enzyklopädie und baes primäre Metadatenquelle. Sie liefert:
+
+- Vollständige Tracklisten
+- Informationen zu Release-Gruppen
+- ISRC-Codes
+- CD-TOC-Abgleich für präzise CD-Identifikation
+- Verknüpfte externe URLs, einschließlich Discogs-Querverweisen
+
+### Authentifizierung
+
+Kein API-Schlüssel nötig. MusicBrainz ist kostenlos und offen.
+
+### Ratenbegrenzung
+
+MusicBrainz erzwingt im Durchschnitt 1 Anfrage pro Sekunde und IP-Adresse. Wenn du das überschreitest, gibt MusicBrainz 503-Fehler zurück und kann deine IP vorübergehend blockieren. bae verteilt Anfragen automatisch, um innerhalb dieses Limits zu bleiben.
+
+### Mehr erfahren
+
+Siehe die <a href="https://musicbrainz.org/doc/MusicBrainz_API" target="_blank">MusicBrainz-API-Dokumentation</a> und die <a href="https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting" target="_blank">Details zur Ratenbegrenzung</a>.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> ist eine Musikdatenbank und ein Marktplatz. Besonders nützlich ist es für:
+
+- Vinyl-Editionen und Pressungen
+- Detaillierte Credits: Produzent, Toningenieur usw.
+- Katalognummern und Barcodes
+- Labelinformationen
+
+### Authentifizierung
+
+Discogs erfordert ein persönliches API-Token. Du richtest es während der ersten Konfiguration von bae ein und brauchst dein eigenes Token.
+
+### Ratenbegrenzung
+
+Discogs erlaubt 60 authentifizierte Anfragen pro Minute. bae verwaltet das automatisch.
+
+### Loslegen
+
+Hole dein Token in den <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a>. Füge es während der Einrichtung ein.

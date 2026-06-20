@@ -1,0 +1,35 @@
+---
+title: Membresía
+description: Identidad, cadena de membresía y conjuntos de cambios firmados
+---
+
+La membresía de una biblioteca es el conjunto de dispositivos autorizados para leerla y escribirla. Esta página cubre los mecanismos técnicos: identidad, cadena de membresía, conjuntos de cambios firmados y envoltura de claves.
+
+## Identidad
+
+Cada dispositivo tiene un par de claves Ed25519/X25519, generado en el primer uso y guardado en el llavero del sistema operativo. Las claves públicas son identidades. No hay directorio central ni servidor de cuentas. Las claves públicas se intercambian por un canal externo.
+
+## Cadena de membresía
+
+La membresía de una biblioteca se registra con una cadena solo anexable de entradas firmadas, guardadas en el cloud home en `membership/{pubkey}/{seq}.enc`. Cada entrada registra una acción Add o Remove, la clave pública y el rol del dispositivo objetivo, y está firmada por un propietario actual.
+
+La primera entrada siempre es el dispositivo de origen, añadido como propietario. La cadena se valida al construirse: se rechazan entradas con firmas inválidas o procedentes de no propietarios.
+
+## Conjuntos de cambios firmados
+
+Cada conjunto de cambios enviado al cloud home está firmado por la clave Ed25519 del dispositivo autor. Al descargarlo, bae verifica que el autor era un dispositivo autorizado en el momento en que se creó el conjunto de cambios, comprobando la cadena de membresía. Los conjuntos de cambios de dispositivos no autorizados o con firmas inválidas se descartan.
+
+## Envoltura de claves
+
+La clave de cifrado de la biblioteca se envuelve, cifrada con sealed box, para la clave pública X25519 de cada dispositivo y se guarda en el cloud home en `keys/{user_pubkey}.enc`. Solo el destinatario previsto puede desenvolverla con su clave privada. Cuando se revoca un dispositivo, se genera una nueva clave de cifrado y se vuelve a envolver para todos los dispositivos restantes.
+
+## Códigos de invitación
+
+Un código de invitación agrupa todo lo que necesita un dispositivo que se une:
+
+- La clave de cifrado de la biblioteca, cifrada con sealed box para la clave pública del dispositivo nuevo
+- Coordenadas del cloud home: tipo de proveedor, ID de carpeta o bucket
+- Credenciales de almacenamiento: en S3, credenciales IAM emitidas; en nubes de consumo, el acceso a la carpeta se comparte mediante la API del proveedor
+- Una entrada firmada de la cadena de membresía que añade el dispositivo nuevo
+
+Un dispositivo propietario genera el código después de recibir la clave pública del dispositivo nuevo. El dispositivo nuevo lo pega en bae, desenvuelve la clave de cifrado, se conecta al cloud home y empieza a sincronizar.

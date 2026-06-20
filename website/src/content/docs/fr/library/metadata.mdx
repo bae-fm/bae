@@ -1,0 +1,30 @@
+---
+title: Métadonnées
+description: Comment bae gère les métadonnées d'albums et de pistes
+---
+
+bae remplit ta bibliothèque avec des métadonnées de bases de données en ligne pendant l'importation.
+
+## Ce qui est stocké
+
+Quand tu importes un album, bae enregistre :
+
+- **Infos d'album** : titre, artiste, année
+- **Infos de pistes** : noms, durées, numéros de disque et de piste
+- **Illustrations** : pochettes depuis MusicBrainz Cover Art Archive et Discogs
+- **Infos d'édition** : label, numéro de catalogue, code-barres, pays, format
+- **IDs externes** : ID d'édition Discogs, IDs d'édition et d'artiste MusicBrainz
+
+Toutes les métadonnées viennent de MusicBrainz et Discogs et sont stockées dans la base de données de bae. bae ne lit ni n'écrit les tags intégrés. Tes fichiers ne sont jamais modifiés. Qu'ils soient gérés, donc déplacés vers le stockage de bae, ou non gérés, donc laissés sur place, les octets restent inchangés.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> est une encyclopédie musicale ouverte et la source principale de métadonnées de bae. Elle fournit des listes de pistes complètes, des informations de groupes d'éditions, des codes ISRC et une correspondance de table des matières de CD pour une identification précise.
+
+Aucune clé d'API n'est nécessaire. MusicBrainz est gratuit et ouvert. Elle impose une moyenne de 1 requête par seconde et par adresse IP ; bae espace les requêtes automatiquement.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> est une base de données musicale et une place de marché, particulièrement utile pour les éditions vinyle, les crédits détaillés, les numéros de catalogue et les informations de labels.
+
+Discogs nécessite un jeton d'API personnel. Obtiens le tien dans <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a> et colle-le pendant la configuration. La limite est de 60 requêtes authentifiées par minute ; bae gère cela automatiquement.

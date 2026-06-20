@@ -1,0 +1,16 @@
+---
+title: Източници на данни
+description: Външни услуги, които bae използва за метаданни и изображения
+---
+
+bae използва външни услуги при импорт за метаданни и изображения.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> е отворена музикална енциклопедия и основният източник на метаданни за bae. Дава track lists, release group информация, ISRC кодове, CD TOC matching и външни URLs, включително Discogs връзки. API ключ не е нужен. MusicBrainz позволява средно 1 request/second/IP; bae автоматично раздалечава заявките.
+
+Вижте <a href="https://musicbrainz.org/doc/MusicBrainz_API" target="_blank">MusicBrainz API docs</a> и <a href="https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting" target="_blank">rate limiting details</a>.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> е музикална база и marketplace, полезна за vinyl releases, pressings, detailed credits, catalog numbers, barcodes и label information. Нужен е personal API token от <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a>. Лимитът е 60 authenticated requests/minute; bae го управлява автоматично.

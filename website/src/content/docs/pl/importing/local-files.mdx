@@ -1,0 +1,51 @@
+---
+title: Importowanie
+description: Importuj muzykę z plików lokalnych
+---
+
+bae importuje pliki FLAC z komputera. Wybierasz folder, bae skanuje go w poszukiwaniu wydań, dopasowujesz każde do wpisu MusicBrainz albo Discogs, a metadane są pobierane.
+
+## Pierwsze kroki
+
+Kliknij **Import** na pasku tytułu, wybierz **Pliki lokalne** i wskaż folder.
+
+bae skanuje folder rekurencyjnie, wykrywa wydania i pokazuje je jako kandydatów. Przechodzisz przez każde z nich: identyfikujesz, wybierasz grafikę, wybierasz opcję przechowywania i importujesz.
+
+## Obsługiwane formaty
+
+Tylko FLAC: pojedyncze pliki ścieżek oraz obrazy płyt CUE+FLAC.
+
+| Układ | Przykład |
+|--------|----------|
+| Plik na ścieżkę | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE+FLAC | `album.cue` + `album.flac` (jeden plik, dzielony według arkusza CUE) |
+| Wielopłytowe CUE+FLAC | `CD1/disc1.cue` + `CD1/disc1.flac`, `CD2/...` |
+
+## Skanowanie katalogów
+
+Katalog jest traktowany jako jedno wydanie, jeśli zawiera bezpośrednio pliki audio albo jego podkatalogi wyglądają jak foldery płyt, np. `CD1`, `CD2`, `Disc 1`, `Disc 2` albo same liczby, jak `1`, `2`.
+
+Wykrywanie folderów płyt używa heurystyk: nazwy podkatalogów muszą być krótkie, maksymalnie 15 znaków, i muszą być albo numeryczne, albo mieć wspólny prefiks co najmniej 2 znaków. To odróżnia wydania wielopłytowe od kolekcji osobnych albumów o dłuższych nazwach.
+
+Katalogi, które nie są liśćmi, są przeszukiwane rekurencyjnie. Maksymalna głębokość to 10. Pliki są klasyfikowane jako audio, grafika (JPG, PNG, WEBP, GIF, BMP) albo dokumenty (CUE, LOG, TXT, M3U). Pliki ukryte, pliki zerobajtowe i uszkodzone pliki, np. złe nagłówki FLAC albo ucięte audio, są pomijane.
+
+## Identyfikacja
+
+Każde wykryte wydanie musi zostać dopasowane do wpisu MusicBrainz albo Discogs, żeby bae mógł pobrać metadane.
+
+- **Automatycznie** — oblicz i wyszukaj <a href="https://musicbrainz.org/doc/Disc_ID" target="_blank">identyfikator płyty MusicBrainz</a>. Można go obliczyć na dwa sposoby:
+  - Z pliku LOG (EAC, XLD itd.)
+  - Z arkusza CUE i pliku FLAC
+- **Ręcznie** — wyszukaj w MusicBrainz i Discogs według:
+  - Wykonawcy i nazwy albumu
+  - Numeru katalogowego
+  - Kodu kreskowego
+
+Po wybraniu wyniku bae sprawdza, czy liczba ścieżek pasuje do lokalnych plików. Niezgodności są oznaczane.
+
+## Potwierdzenie
+
+Po dopasowaniu przeglądasz szczegóły wydania:
+
+- **Grafika** — bae pobiera okładki z MusicBrainz Cover Art Archive i Discogs. Dostępne są też pliki graficzne w folderze, np. `cover.jpg` albo `front.png`. Obrazy wykonawców są pobierane z Discogs.
+- **Przechowywanie** — zarządzane przez bae (pliki są kopiowane do przechowywania bae, szyfrowane i wysyłane, jeśli skonfigurowano cloud home) albo samodzielnie zarządzane (bae indeksuje pliki w miejscu, bez kopiowania). Pliki nigdy nie są modyfikowane. Szczegóły są w [Przeglądzie przechowywania](/pl/storage/overview).

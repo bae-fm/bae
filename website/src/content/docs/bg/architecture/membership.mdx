@@ -1,0 +1,26 @@
+---
+title: Членство
+description: Идентичност, верига на членството и подписани changeset-и
+---
+
+Членството на библиотека е множеството устройства, които могат да четат и пишат. Механизмите са identity, membership chain, signed changesets и key wrapping.
+
+## Identity
+
+Всяко устройство има Ed25519/X25519 keypair, създадена при първа употреба и пазена в OS keyring. Public keys са identities. Няма central directory или account server.
+
+## Membership chain
+
+Членството се следи чрез append-only chain от signed entries в cloud home на `membership/{pubkey}/{seq}.enc`. Entry съдържа Add или Remove, public key и role на target device, и е signed от current owner. Invalid signatures или non-owner entries се reject-ват.
+
+## Signed changesets
+
+Всеки changeset в cloud home е signed от Ed25519 key на author device. При pull bae проверява, че author е бил authorized device при създаване. Unauthorized или invalid changesets се discard-ват.
+
+## Key wrapping
+
+Encryption key на библиотеката е sealed-box encrypted за X25519 public key на всяко device и пазен в `keys/{user_pubkey}.enc`. Само получателят може да го unwrap-не с private key. При revoke се генерира нов key и се re-wrap-ва за останалите устройства.
+
+## Invite codes
+
+Invite code съдържа library encryption key, cloud home coordinates, storage credentials и signed membership entry. Owner device генерира кода след получаване на public key на новото устройство; новото устройство го поставя в bae и започва sync.

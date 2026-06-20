@@ -1,0 +1,56 @@
+---
+title: ストレージ概要
+description: bae が音楽ファイルを保存する方法
+---
+
+リリースファイルは最大 3 か所に存在できます。リリースをインポートするとき、**managed** と **unmanaged** を選びます。managed ファイルは bae のストレージにコピーされ、unmanaged ファイルは元の場所に残ります。
+
+## 一覧
+
+|                              | Unmanaged        | Managed — local    | Managed — cloud    |
+|------------------------------|------------------|--------------------|--------------------|
+| ファイルの場所               | 自分の場所       | `~/.bae/libraries/` | Cloud provider     |
+| インポート時に bae がコピー  | いいえ           | はい               | はい               |
+| オフライン利用               | はい             | はい               | いいえ             |
+| 保存時の暗号化               | いいえ           | いいえ             | Opaque home のみ   |
+| cloud 同期可能               | いいえ           | はい               | —                  |
+| 他デバイスへ同期             | いいえ           | いいえ             | はい               |
+| リリース削除でファイル削除   | いいえ           | はい               | はい               |
+
+managed リリースは、ローカル、cloud、またはその両方にファイルを持てます。cloud home が設定されている場合、managed インポートは両方に送られます。
+
+## Unmanaged
+
+すでに整理済みのファイルを bae に指定します。bae はインデックスしますが、移動、コピー、変更はしません。自分の方法で整理済みの音楽を、データ複製なしでカタログ化できます。
+
+制限: bae は unmanaged ファイルを暗号化、同期、バックアップできません。
+
+## Managed — local
+
+各ライブラリにはローカルの home ディレクトリ (`~/.bae/libraries/{uuid}/`) があります。bae はデータベース、画像、managed リリースのローカルコピーをここに保存します。
+
+## Managed — cloud
+
+cloud home は、リリースファイル、メタデータ changesets、アートワーク、snapshots を置く 1 つのリモート保存先です。これにより複数デバイス同期と cloud backup が有効になります。
+
+cloud home が設定された managed インポートでは、bae はファイルを library home にコピーし、同時に cloud home にアップロードします。cloud home にしかないリリースは、ローカルに取得されるまでオフライン再生できません。
+
+### Opaque または browsable
+
+- **Opaque** (デフォルト) は各オブジェクトをライブラリキーで暗号化し、難読化された path に保存します。プロバイダーは ciphertext だけを見ます。
+- **Browsable** はすべてを暗号化せず、実ファイル名を保って stable id-keyed paths に保存します。例: `storage/{album_id}/{release_id}/{import_folder}/01 Track.flac`、`images/{album_id}/{release_id}/cover.jpg`。bucket を開いて実ファイルを再生またはコピーできます。public という意味ではなく、アクセスはプロバイダーの credentials で制御されます。
+
+比較は [暗号化](/ja/architecture/encryption#ストレージモード-opaque-と-browsable) を参照してください。
+
+### 対応プロバイダー
+
+Google Drive、Dropbox、OneDrive は OAuth でサインインします。iCloud Drive (macOS) は既存の iCloud container を使います。S3-compatible は AWS S3、Backblaze B2、Cloudflare R2、Wasabi、MinIO など任意の bucket に対応し、手動 credentials が必要です。
+
+## 仕組み
+
+1. リリースをインポートし、**managed** または **unmanaged** を選ぶ
+2. managed インポートはファイルをローカル library home にコピーする
+3. cloud home があれば、opaque home では暗号化、browsable home では平文でアップロードする
+4. 同じ cloud home に接続した他デバイスが自動同期する
+
+詳しくは [同期](/ja/storage/sync) と [暗号化](/ja/architecture/encryption) を参照してください。

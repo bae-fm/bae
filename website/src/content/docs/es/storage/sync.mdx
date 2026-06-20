@@ -1,0 +1,41 @@
+---
+title: Sincronización
+description: Sincroniza tu biblioteca entre dispositivos
+---
+
+bae sincroniza tu biblioteca en varios dispositivos mediante tu cloud home. Cada edición, importación y eliminación se propaga automáticamente.
+
+## Configurar la sincronización
+
+1. Ve a **Ajustes > Sincronización**
+2. Inicia sesión con un proveedor cloud (Google Drive, Dropbox, OneDrive), usa iCloud Drive (macOS) o introduce credenciales S3
+3. bae genera un ID de dispositivo y empieza a sincronizar
+
+## Cómo funciona
+
+Los cambios se sincronizan de forma incremental: cada edición produce un pequeño conjunto de cambios que se cifra y se envía al cloud home. Otros dispositivos descargan y aplican los nuevos conjuntos de cambios. bae sincroniza después de cada cambio y consulta cada 30 segundos para recoger cambios de otros dispositivos. Si el cloud home no está disponible, la sincronización reintenta en el siguiente ciclo.
+
+Los dispositivos nuevos arrancan desde un snapshot completo periódico y luego aplican solo los conjuntos de cambios posteriores.
+
+## Resolución de conflictos
+
+Cuando dos dispositivos editan los mismos datos, bae resuelve conflictos automáticamente con la regla de último escritor gana. Si dos dispositivos editan campos distintos de la misma edición, ambos cambios se conservan. Los conflictos reales, el mismo campo editado en ambos lados, se resuelven por marca de tiempo. Las eliminaciones ganan sobre ediciones concurrentes.
+
+## Qué se sincroniza
+
+- Metadatos: álbumes, pistas, artistas y sellos
+- Arte de álbum e imágenes de artistas
+- Archivos de ediciones, si están gestionados por bae
+
+Los ajustes específicos del dispositivo (`config.yaml`) no se sincronizan.
+
+## Modos
+
+La sincronización no es todo o nada:
+
+- **Solo local** — sin cloud home y sin sincronización. Todo permanece en un dispositivo.
+- **Sincronizado entre tus dispositivos** — los conjuntos de cambios se sincronizan entre tus dispositivos mediante el cloud home, cada uno con su propio ID de dispositivo.
+
+## Cifrado
+
+Todos los datos del cloud home se cifran antes de subirse. El proveedor cloud nunca ve texto sin cifrar. Consulta [Cifrado](/es/architecture/encryption).

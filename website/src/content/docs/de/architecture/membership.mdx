@@ -1,0 +1,35 @@
+---
+title: Mitgliedschaft
+description: Identität, Mitgliedschaftskette und signierte Changesets
+---
+
+Die Mitgliedschaft einer Bibliothek ist die Menge der Geräte, die sie lesen und schreiben dürfen. Diese Seite beschreibt die technischen Mechanismen dahinter: Identität, Mitgliedschaftskette, signierte Changesets und Schlüsselumhüllung.
+
+## Identität
+
+Jedes Gerät hat ein Ed25519/X25519-Schlüsselpaar, das beim ersten Gebrauch erzeugt und im OS-Schlüsselbund gespeichert wird. Öffentliche Schlüssel sind Identitäten. Es gibt kein zentrales Verzeichnis und keinen Kontoserver. Öffentliche Schlüssel werden außerhalb des Systems ausgetauscht.
+
+## Mitgliedschaftskette
+
+Die Mitgliedschaft einer Bibliothek wird durch eine append-only Kette signierter Einträge verfolgt, gespeichert im Cloud Home unter `membership/{pubkey}/{seq}.enc`. Jeder Eintrag enthält eine Add- oder Remove-Aktion, den öffentlichen Schlüssel und die Rolle des Zielgeräts, und ist von einem aktuellen Owner signiert.
+
+Der erste Eintrag ist immer das Ursprungsgerät, als Owner hinzugefügt. Die Kette wird beim Aufbau validiert: Einträge mit ungültigen Signaturen oder von Nicht-Ownern werden abgelehnt.
+
+## Signierte Changesets
+
+Jedes Changeset, das ins Cloud Home hochgeladen wird, ist mit dem Ed25519-Schlüssel des Autorgeräts signiert. Beim Abruf prüft bae anhand der Mitgliedschaftskette, dass der Autor zum Erstellungszeitpunkt ein berechtigtes Gerät war. Changesets von nicht autorisierten Geräten oder mit ungültigen Signaturen werden verworfen.
+
+## Schlüsselumhüllung
+
+Der Verschlüsselungsschlüssel der Bibliothek wird für den öffentlichen X25519-Schlüssel jedes Geräts umhüllt, also per sealed box verschlüsselt, und im Cloud Home unter `keys/{user_pubkey}.enc` gespeichert. Nur der vorgesehene Empfänger kann ihn mit seinem privaten Schlüssel auspacken. Wenn ein Gerät widerrufen wird, wird ein neuer Verschlüsselungsschlüssel erzeugt und für alle verbleibenden Geräte erneut umhüllt.
+
+## Einladungscodes
+
+Ein Einladungscode bündelt alles, was ein beitretendes Gerät benötigt:
+
+- Den Verschlüsselungsschlüssel der Bibliothek, per sealed box für den öffentlichen Schlüssel des neuen Geräts verschlüsselt
+- Cloud-Home-Koordinaten: Anbietertyp, Ordner-ID oder Bucket
+- Speicherzugangsdaten: bei S3 ausgestellte IAM-Zugangsdaten, bei Verbraucher-Clouds erfolgt Ordnerfreigabe über die Anbieter-API
+- Einen signierten Eintrag der Mitgliedschaftskette, der das neue Gerät hinzufügt
+
+Ein Owner-Gerät erzeugt den Code, nachdem es den öffentlichen Schlüssel des neuen Geräts erhalten hat. Das neue Gerät fügt ihn in bae ein, packt den Verschlüsselungsschlüssel aus, verbindet sich mit dem Cloud Home und beginnt zu synchronisieren.

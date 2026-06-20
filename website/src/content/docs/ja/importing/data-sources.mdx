@@ -1,0 +1,28 @@
+---
+title: データソース
+description: bae がメタデータと画像に使う外部サービス
+---
+
+bae はインポート時に外部サービスを使ってメタデータと画像を取得します。
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> はオープンな音楽百科事典で、bae の主なメタデータソースです。完全なトラックリスト、リリースグループ情報、ISRC コード、正確な CD 識別のための CD TOC matching、Discogs 相互参照を含む外部 URL を提供します。
+
+### 認証
+
+API キーは不要です。MusicBrainz は無料でオープンです。
+
+### レート制限
+
+MusicBrainz は IP アドレスごとに平均 1 秒 1 リクエストを適用します。超過すると 503 エラーが返り、一時的に IP がブロックされる場合があります。bae はこの制限内に収まるよう自動でリクエスト間隔を空けます。
+
+### 詳細
+
+<a href="https://musicbrainz.org/doc/MusicBrainz_API" target="_blank">MusicBrainz API docs</a> と <a href="https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting" target="_blank">rate limiting details</a> を参照してください。
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> は音楽データベース兼マーケットプレイスです。vinyl releases、pressings、詳細 credits、カタログ番号、バーコード、label 情報に向いています。
+
+Discogs には個人 API token が必要です。bae の初期設定時に設定します。token は <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a> から取得します。レート制限は認証済みリクエスト 60 件/分で、bae が自動的に扱います。

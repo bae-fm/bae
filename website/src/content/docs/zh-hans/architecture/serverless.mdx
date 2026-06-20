@@ -1,0 +1,28 @@
+---
+title: 无自有服务器
+description: bae 如何在没有自有服务器的情况下同步
+---
+
+bae 没有自己的服务器。每台设备都是客户端，读写同一个 cloud home；所有同步都经过这个存储位置，而不是经过 bae 运行的机器。
+
+## cloud home 是汇合点
+
+资料库的 [cloud home](/zh-hans/architecture/cloud-home) 是你控制的存储后端中的 bucket 或文件夹：兼容 S3 的存储、Google Drive、Dropbox、OneDrive 或 iCloud。每台设备都会：
+
+- 将加密数据库变更集和发行版本文件推送到 cloud home
+- 在每个同步周期从 cloud home 拉取其他设备的变更
+
+你的设备不会彼此直接通信。它们通过同步到同一个 cloud home 来达到一致。
+
+## cloud home 中有什么
+
+- 加密的发行版本文件（音频、图片等）
+- 加密的数据库快照和同步变更集
+- 加密的资料库图片
+- 记录谁可以读写资料库的 membership chain
+
+## 零知识存储
+
+存储后端不持有密钥，也不解密数据。每个数据块都在客户端上传前加密，并在客户端下载后解密。cloud home 不知道你的资料库内容、元数据或加密密钥；它无法读取、搜索或索引你的音乐。它只是存储。
+
+添加另一台设备，就是在这份共享存储上授予 [membership](/zh-hans/architecture/membership)；没有需要连接的 bae 服务器。

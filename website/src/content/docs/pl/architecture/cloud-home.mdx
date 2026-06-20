@@ -1,0 +1,60 @@
+---
+title: Cloud Home
+description: Trait CloudHome i przechowywanie cloud niezależne od backendu
+---
+
+Cloud home to pojedyncza zdalna lokalizacja przechowywania dla biblioteki: folder Google Drive, bucket S3 albo folder Dropbox. Przechowuje pliki wydań, changesety metadanych, grafiki, snapshoty i łańcuch członkostwa. W home **opakowym** (domyślnym) zaufanie leży w kryptografii, nie w backendzie przechowywania: dostawca zapisuje szyfrogram pod zaciemnionymi kluczami. Home może też być **przeglądalny**, zapisując wszystko bez szyfrowania pod stabilnymi ścieżkami opartymi na id z prawdziwymi nazwami plików; zobacz [Tryby przechowywania](/pl/architecture/encryption#tryby-przechowywania-opakowy-i-przegladalny).
+
+## Trait CloudHome
+
+Trait `CloudHome` jest abstrakcją, dzięki której bae jest niezależny od backendu. Wszystko ponad traitem jest wspólne. Wszystko pod nim dostosowuje się do konkretnego dostawcy cloud.
+
+### Co jest wspólne (ponad traitem)
+
+- **Układ cloud home** — `changes/`, `heads/`, `snapshot.db`, `images/`, `storage/`, `membership/`, `keys/`. Te same ścieżki logiczne niezależnie od backendu. Home opakowy rozkłada audio i grafiki pod `storage/` i `images/` według hasha id; home przeglądalny układa je pod tymi samymi prefiksami w stabilnych ścieżkach opartych na id z prawdziwymi nazwami (`storage/{album_id}/{release_id}/{import_folder}/01 Track.flac`, `images/{album_id}/{release_id}/cover.jpg`).
+- **Szyfrowanie** — jeden klucz symetryczny na bibliotekę; w home opakowym wszystko jest szyfrowane, zanim opuści urządzenie. Home przeglądalny pomija szyfrowanie i zapisuje tekst jawny; sufiks `.enc` znika.
+- **Protokół synchronizacji** — changesety, snapshoty, rozwiązywanie konfliktów metodą ostatni zapis wygrywa. Ten sam algorytm wszędzie.
+- **Łańcuch członkostwa** — log append-only z podpisami Ed25519 i kluczem szyfrowania opakowanym dla klucza publicznego każdego członka.
+
+### Co się różni (pod traitem)
+
+- **API przechowywania** — jak pliki są faktycznie czytane i zapisywane: API S3, API Google Drive, lokalny system plików itd.
+- **Zarządzanie dostępem** — jak nowe urządzenie dostaje dostęp do przechowywania: dostęp do folderu albo wydanie poświadczeń.
+- **Uwierzytelnianie** — jak nowe urządzenie się uwierzytelnia: twoje konto cloud albo osadzone poświadczenia.
+- **Powiadomienia o zmianach** — konsumenckie cloudy obsługują powiadomienia push; S3 wymaga odpytywania.
+
+### Interfejs traitu
+
+```rust
+trait CloudHome {
+    // Storage -- same interface, different API underneath
+    fn write(path, data) -> Result;
+    fn read(path) -> Result<Bytes>;
+    fn read_range(path, start, end) -> Result<Bytes>;
+    fn list(prefix) -> Result<Vec<String>>;
+    fn delete(path) -> Result;
+    fn exists(path) -> Result<bool>;
+
+    // Access management -- varies by backend
+    fn grant_access(member_email_or_id) -> Result<JoinInfo>;
+    fn revoke_access(member_email_or_id) -> Result;
+}
+
+Wywołujący, tacy jak silnik synchronizacji, wysyłanie obrazów i przechowywanie plików, używają tego interfejsu bezpośrednio. Nie muszą wiedzieć, z którym backendem rozmawiają.
+```
+
+## Zarządzanie dostępem
+
+Działanie `grant_access` i `revoke_access` zależy od backendu. Konsumenckie cloudy (Google Drive, Dropbox, OneDrive) udostępniają folder przez API dostawcy: logujesz się na nowe urządzenie i folder jest już dostępny. Backendy zgodne z S3 tworzą poświadczenia IAM o ograniczonym zakresie dla każdego urządzenia, osadzone w kodzie zaproszenia.
+
+W obu przypadkach klucz szyfrowania jest dostarczany oddzielnie przez łańcuch członkostwa, opakowany dla klucza publicznego nowego urządzenia.
+
+## Implementacje
+
+| Backend | Auth | Uwagi |
+|---|---|---|
+| S3 (aws-sdk-s3) | Klucz dostępu + sekret | Dowolna usługa zgodna z S3: AWS, B2, R2, Wasabi, MinIO |
+| Google Drive | OAuth | bae tworzy folder w Drive użytkownika |
+| Dropbox | OAuth | |
+| OneDrive | OAuth | |
+| iCloud Drive | Lokalny system plików | Tylko macOS, używa kontenera iCloud, bez logowania |

@@ -1,0 +1,47 @@
+---
+title: Verschlüsselung
+description: Wie bae deine Daten verschlüsselt
+---
+
+Standardmäßig verschlüsselt bae deine Musikdateien und Bibliotheksmetadaten, bevor sie deinen Rechner verlassen, und der Speicheranbieter sieht nur Chiffretext. Ein Cloud Home kann stattdessen so eingestellt werden, dass alles im Klartext unter strukturierten, durchsuchbaren Pfaden gespeichert wird; siehe [Speichermodi](#speichermodi-opak-und-durchsuchbar) unten.
+
+## Speichermodi: opak und durchsuchbar
+
+Beim Einrichten eines Cloud Home wählst du, wie es seine Objekte speichert. Die Wahl ist für dieses Home fest und wird für jeden Anbieter angeboten.
+
+- **Opak** (Standard) — jedes Objekt wird mit dem Bibliotheksschlüssel verschlüsselt und unter einem verschleierten, inhaltsadressierten Pfad gespeichert (`storage/ab/cd/{id}` für Audio, `images/ab/cd/{id}` für Artwork). Der Anbieter sieht nur Chiffretext unter nicht lesbaren Schlüsseln. Wähle dies, wenn der Anbieter oder jemand mit Zugriff auf den Bucket deine Bibliothek nicht lesen soll.
+- **Durchsuchbar** — Objekte werden unverschlüsselt mit echtem Dateinamen unter einem stabilen Pfad gespeichert, der auf Album- und Editions-ids basiert: `storage/{album_id}/{release_id}/{import_folder}/01 Track Title.flac` für Editionsdateien, als Spiegel des importierten Ordners, sowie `images/{album_id}/{release_id}/cover.jpg` und `images/{artist_id}/artist.jpg` für Artwork. Du kannst den Bucket in der Weboberfläche des Anbieters oder in einem Dateibrowser öffnen, echte Dateinamen sehen und sie direkt abspielen oder kopieren. Nichts ist verschlüsselt, also hängt der Schutz des Home vollständig an der Zugriffskontrolle des Anbieters.
+
+Durchsuchbar heißt *nicht verschleiert*, nicht *menschenbenannt*: Die Ordner sind ids statt Künstler- oder Albumtext. ids halten die Struktur kollisionsfrei: Jede Edition wird einmal in ihren eigenen `{release_id}`-Ordner geschrieben und kollidiert nie mit Dateien einer anderen Edition oder nimmt sie auf. Zwei Editionen desselben Albums sind Geschwisterordner unter dem Album. Es heißt auch nicht öffentlich: Der Zugriff auf den Bucket wird wie bei einem opaken Home durch die Zugangsdaten des Anbieters geschützt; der Modus ändert nur, ob die gespeicherten Inhalte für jemanden mit Zugriff lesbar sind.
+
+Der Rest dieser Seite beschreibt ein **opakes** Home. Ein durchsuchbares Home führt keine der folgenden Verschlüsselungen aus; jedes Objekt wird als Klartext an seinen id-strukturierten Schlüssel geschrieben.
+
+## Bibliotheksschlüssel
+
+Jede Bibliothek hat einen 256-Bit-Master-Verschlüsselungsschlüssel, der beim Erstellen der Bibliothek erzeugt und im OS-Schlüsselbund gespeichert wird: macOS Keychain, Windows Credential Manager oder Linux Secret Service. Der Schlüssel wird nie im Klartext auf die Festplatte geschrieben.
+
+## Dateiverschlüsselung
+
+Dateien werden mit XChaCha20-Poly1305 in 64-KB-Blöcken verschlüsselt. Jede Datei erhält einen zufälligen Nonce vor dem verschlüsselten Blob. Das bedeutet:
+
+- Identische Dateien erzeugen unterschiedlichen Chiffretext durch den zufälligen Nonce
+- Dateien können unabhängig entschlüsselt werden, ohne Abhängigkeit zwischen Dateien
+- Blockbasierte Verschlüsselung unterstützt effiziente Range-Requests für Streaming
+
+## Cloud-Home-Verschlüsselung
+
+In einem opaken Home ist alles im Cloud Home verschlüsselt:
+
+- **Changesets** — verschlüsselt mit dem Bibliotheksschlüssel
+- **Snapshots** — verschlüsselt mit dem Bibliotheksschlüssel
+- **Bilder** — verschlüsselt mit dem Bibliotheksschlüssel
+- **Mitgliedschaftseinträge** — verschlüsselt mit dem Bibliotheksschlüssel
+- **Umhüllte Schlüssel** — für jedes Gerät über sealed boxes verschlüsselt; siehe [Mitgliedschaft](/de/architecture/membership)
+
+Head-Dateien mit Sequenznummern pro Gerät sind ebenfalls verschlüsselt. Der Speicheranbieter sieht nur opake Blobs und Schlüsselpfade.
+
+## Schlüsselverwaltung
+
+Der Schlüssel deiner Bibliothek wird im OS-Schlüsselbund unter einem bibliotheksspezifischen Namespace gespeichert. Wenn du bae auf mehreren Geräten verwendest, wird der Schlüssel über das Mitgliedschaftssystem verteilt: verschlüsselt für deinen persönlichen öffentlichen Schlüssel mit einer sealed box, sodass nur deine Geräte ihn auspacken können.
+
+Wenn du den Zugriff auf alle Geräte verlierst und keine Sicherung deines Schlüsselbunds hast, sind die Bibliotheksdaten im Bucket nicht wiederherstellbar. Das ist beabsichtigt: Es gibt keinen serverseitigen Wiederherstellungsmechanismus.

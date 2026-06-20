@@ -1,0 +1,41 @@
+---
+title: Synchronisierung
+description: Deine Bibliothek zwischen Geräten synchronisieren
+---
+
+bae synchronisiert deine Bibliothek über dein Cloud Home auf mehreren Geräten. Jede Bearbeitung, jeder Import und jede Löschung wird automatisch weitergegeben.
+
+## Synchronisierung einrichten
+
+1. Gehe zu **Einstellungen > Synchronisierung**
+2. Melde dich bei einem Cloud-Anbieter an (Google Drive, Dropbox, OneDrive), nutze iCloud Drive (macOS) oder gib S3-Zugangsdaten ein
+3. bae erzeugt eine Geräte-ID und beginnt mit der Synchronisierung
+
+## Funktionsweise
+
+Änderungen werden inkrementell synchronisiert: Jede Bearbeitung erzeugt ein kleines Changeset, das verschlüsselt und in das Cloud Home hochgeladen wird. Andere Geräte laden neue Changesets und wenden sie an. bae synchronisiert nach jeder Änderung und fragt alle 30 Sekunden nach Änderungen anderer Geräte. Wenn das Cloud Home nicht erreichbar ist, versucht die Synchronisierung es im nächsten Zyklus erneut.
+
+Neue Geräte starten aus einem periodischen vollständigen Snapshot und wenden danach nur die späteren Changesets an.
+
+## Konfliktlösung
+
+Wenn zwei Geräte dieselben Daten bearbeiten, löst bae Konflikte automatisch mit Last-Writer-Wins. Wenn zwei Geräte verschiedene Felder derselben Edition bearbeiten, bleiben beide Änderungen erhalten. Echte Konflikte, also dasselbe Feld auf beiden Seiten, werden per Zeitstempel entschieden. Löschungen gewinnen gegenüber gleichzeitigen Bearbeitungen.
+
+## Was synchronisiert wird
+
+- Metadaten: Alben, Tracks, Künstler, Labels
+- Album-Artwork und Künstlerbilder
+- Editionsdateien, wenn sie von bae verwaltet werden
+
+Gerätespezifische Einstellungen (`config.yaml`) werden nicht synchronisiert.
+
+## Modi
+
+Synchronisierung ist nicht alles oder nichts:
+
+- **Nur lokal** — kein Cloud Home, keine Synchronisierung. Alles bleibt auf einem Gerät.
+- **Zwischen deinen Geräten synchronisiert** — Changesets synchronisieren über das Cloud Home zwischen deinen Geräten, jedes mit eigener Geräte-ID.
+
+## Verschlüsselung
+
+Alle Daten im Cloud Home werden vor dem Upload verschlüsselt. Der Cloud-Anbieter sieht nie Klartext. Siehe [Verschlüsselung](/de/architecture/encryption).

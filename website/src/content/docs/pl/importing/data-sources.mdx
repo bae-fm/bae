@@ -1,0 +1,49 @@
+---
+title: Źródła danych
+description: Zewnętrzne usługi, których bae używa do metadanych i grafik
+---
+
+bae używa usług zewnętrznych podczas importu, aby pobierać metadane i grafiki. Oto, co zapewnia każda usługa i jak ją skonfigurować.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> to otwarta encyklopedia muzyczna i główne źródło metadanych bae. Zapewnia:
+
+- Pełne listy ścieżek
+- Informacje o grupach wydań
+- Kody ISRC
+- Dopasowanie TOC CD do dokładnej identyfikacji płyt CD
+- Powiązane zewnętrzne adresy URL, w tym odnośniki do Discogs
+
+### Uwierzytelnianie
+
+Klucz API nie jest potrzebny. MusicBrainz jest darmowy i otwarty.
+
+### Limity zapytań
+
+MusicBrainz wymusza średnio 1 zapytanie na sekundę na adres IP. Jeśli przekroczysz ten limit, MusicBrainz zwraca błędy 503 i może tymczasowo zablokować IP. bae automatycznie rozkłada zapytania, aby zmieścić się w limicie.
+
+### Więcej informacji
+
+Zobacz <a href="https://musicbrainz.org/doc/MusicBrainz_API" target="_blank">dokumentację API MusicBrainz</a> i <a href="https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting" target="_blank">szczegóły limitów zapytań</a>.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> to baza danych muzyki i marketplace. Szczególnie przydaje się do:
+
+- Wydań i tłoczeń winylowych
+- Szczegółowych kredytów: producent, realizator itd.
+- Numerów katalogowych i kodów kreskowych
+- Informacji o labelach
+
+### Uwierzytelnianie
+
+Discogs wymaga osobistego tokenu API. Konfigurujesz go podczas początkowej konfiguracji bae i potrzebujesz własnego tokenu.
+
+### Limity zapytań
+
+Discogs pozwala na 60 uwierzytelnionych zapytań na minutę. bae obsługuje to automatycznie.
+
+### Start
+
+Token znajdziesz w <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a>. Wklej go podczas konfiguracji.

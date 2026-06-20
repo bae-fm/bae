@@ -1,0 +1,52 @@
+---
+title: データモデル
+description: bae がライブラリ、ファイル、画像、メタデータを整理する方法
+---
+
+## ライブラリと保存場所
+
+**library** は最上位の単位です。`library_id`、名前、暗号化キーを持つ音楽コレクションで、desktop app が authoritative database を書き込む **library home** (`~/.bae/libraries/{uuid}/`) にあります。
+
+library は任意で **cloud home** を持てます。これは Google Drive folder や S3 bucket などの 1 つの cloud location で、複数デバイス同期の hub です。1 library に 1 cloud home で、`config.yaml` に設定されます。詳しくは [Cloud Home](/ja/architecture/cloud-home)。
+
+release files は、library home (`~/.bae/libraries/{uuid}/storage/`)、cloud home (`cloud-home/storage/`)、または unmanaged な元の場所にあります。cloud-only files はオフライン再生できません。
+
+## ディレクトリ構成
+
+### Library home
+
+```
+~/.bae/libraries/{uuid}/
+  config.yaml                  # device-specific settings (not synced)
+  library.db                   # SQLite -- all metadata
+  images/ab/cd/{id}            # library images (covers, artist photos)
+  storage/ab/cd/{file_id}      # release files
+```
+
+`config.yaml` は同期されません。credentials は OS keyring に入ります。`images/` と `storage/` は hash-based layout を使います。ID の先頭 2 文字が prefix directory、次の 2 文字が subdirectory です。元の filename と content type は database にあります。
+
+### Cloud home
+
+| Path | Purpose |
+|---|---|
+| `snapshot.db.enc` | 新しいデバイス用の full database snapshot |
+| `changes/{device_id}/{seq}.enc` | Incremental sync changesets |
+| `heads/{device_id}.json.enc` | Per-device sequence numbers |
+| `images/ab/cd/{id}` | Encrypted library images |
+| `storage/ab/cd/{file_id}` | Encrypted release files |
+| `membership/{pubkey}/{seq}.enc` | Membership chain entries |
+| `keys/{user_pubkey}.enc` | Per-device wrapped encryption keys |
+
+### Keyring entries
+
+`KeyService` が OS keyring を使って管理します。macOS では iCloud Keychain sync の protected data store です。`encryption_master_key`、`cloud_home_credentials`、`discogs_api_key` は library scope、`bae_user_signing_key` と `bae_user_public_key` は global です。
+
+## 2 種類のファイル
+
+**Release files** は audio、images、CUE sheets、logs など、リリースに付属するユーザーデータです。bae はインポート時のまま保存します。
+
+**Metadata images** は bae が管理する画像で、release covers と artist images です。元のファイルを変更せずに crop や resize できるよう、bae がコピーを作ります。
+
+## 初回フロー
+
+新しい library は UUID とディレクトリ構造を作ります。cloud home から復元する場合は snapshot を取得し、より新しい changesets と images を適用します。local から cloud へ移行する場合、snapshot、images、release files を送信し、その後 incremental sync に移ります。

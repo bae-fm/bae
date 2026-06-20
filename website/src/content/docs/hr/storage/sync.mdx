@@ -1,0 +1,41 @@
+---
+title: Sinkronizacija
+description: Sinkronizirajte biblioteku između uređaja
+---
+
+bae sinkronizira biblioteku na više uređaja preko vašeg cloud homea. Svaka izmjena, uvoz i brisanje prenosi se automatski.
+
+## Postavljanje sinkronizacije
+
+1. Idite na **Settings > Sync**
+2. Prijavite se kod cloud pružatelja (Google Drive, Dropbox, OneDrive), upotrijebite iCloud Drive (macOS) ili unesite S3 vjerodajnice
+3. bae generira ID uređaja i počinje sinkronizaciju
+
+## Kako radi
+
+Promjene se sinkroniziraju inkrementalno: svaka izmjena stvara mali changeset koji se šifrira i šalje u cloud home. Drugi uređaji preuzimaju i primjenjuju nove changesetove. bae sinkronizira nakon svake promjene i provjerava svakih 30 sekundi ima li promjena s drugih uređaja. Ako cloud home nije dostupan, sinkronizacija pokušava u sljedećem ciklusu.
+
+Novi uređaji kreću od periodičnog punog snapshota, zatim primjenjuju samo kasnije changesetove.
+
+## Rješavanje sukoba
+
+Kad dva uređaja uređuju iste podatke, bae sukobe rješava automatski pravilom zadnji zapis pobjeđuje. Ako dva uređaja uređuju različita polja istog izdanja, obje promjene ostaju. Pravi sukobi, isto polje uređeno s obje strane, rješavaju se prema vremenskoj oznaci. Brisanja pobjeđuju istodobne izmjene.
+
+## Što se sinkronizira
+
+- Metapodaci: albumi, zapisi, izvođači, labeli
+- Slike albuma i izvođača
+- Datoteke izdanja, ako njima upravlja bae
+
+Postavke specifične za uređaj (`config.yaml`) ne sinkroniziraju se.
+
+## Načini
+
+Sinkronizacija nije sve ili ništa:
+
+- **Samo lokalno** — bez cloud homea, bez sinkronizacije. Sve ostaje na jednom uređaju.
+- **Sinkronizirano između vaših uređaja** — changesetovi se sinkroniziraju između uređaja preko cloud homea, svaki sa svojim ID-jem uređaja.
+
+## Šifriranje
+
+Svi podaci u cloud homeu šifriraju se prije prijenosa. Cloud pružatelj nikad ne vidi čisti tekst. Pogledajte [Šifriranje](/hr/architecture/encryption).

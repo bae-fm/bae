@@ -1,0 +1,39 @@
+---
+title: 同期
+description: 複数デバイスでライブラリを同期する
+---
+
+bae は cloud home を通じてライブラリを複数デバイス間で同期します。編集、インポート、削除は自動的に伝播します。
+
+## 同期の設定
+
+1. **Settings > Sync** に移動
+2. Google Drive、Dropbox、OneDrive にサインインするか、iCloud Drive (macOS) を使うか、S3 credentials を入力
+3. bae が device ID を生成して同期を開始
+
+## 仕組み
+
+変更は incremental に同期されます。各編集は小さな encrypted changeset を作り、cloud home に push されます。他デバイスは新しい changesets を pull して適用します。bae は各変更後に同期し、他デバイスの変更を拾うため 30 秒ごとに poll します。cloud home に到達できない場合、次のサイクルで再試行します。
+
+新しいデバイスは定期的な full snapshot から bootstrapping し、その後の changesets だけを適用します。
+
+## 競合解決
+
+同じデータを 2 つのデバイスが編集した場合、bae は last-writer-wins で自動解決します。同じリリースの別フィールドなら両方残ります。同じフィールドの競合は timestamp で解決されます。削除は同時編集より優先されます。
+
+## 同期されるもの
+
+- メタデータ: albums、tracks、artists、labels
+- Album art と artist images
+- bae-managed の release files
+
+デバイス固有設定 (`config.yaml`) は同期されません。
+
+## モード
+
+- **Local only** — cloud home なし、同期なし。すべて 1 台のデバイスに残ります。
+- **Synced across your devices** — changesets が cloud home を通じて自分のデバイス間で同期されます。
+
+## 暗号化
+
+cloud home のすべてのデータはアップロード前に暗号化されます。cloud provider は平文を見ません。詳しくは [暗号化](/ja/architecture/encryption)。

@@ -1,0 +1,30 @@
+---
+title: Metapodaci
+description: Kako bae obrađuje metapodatke albuma i zapisa
+---
+
+bae tijekom uvoza popunjava biblioteku metapodacima iz internetskih baza podataka.
+
+## Što se sprema
+
+Kad uvezete album, bae sprema:
+
+- **Informacije o albumu**: naslov, izvođač, godina
+- **Informacije o zapisima**: nazivi, trajanja, brojevi diskova i zapisa
+- **Slike**: omoti iz MusicBrainz Cover Art Archive i Discogs
+- **Informacije o izdanju**: label, kataloški broj, barkod, zemlja, format
+- **Vanjski ID-jevi**: Discogs ID izdanja, MusicBrainz ID izdanja i izvođača
+
+Svi metapodaci dolaze iz MusicBrainz i Discogs i spremaju se u bae bazu podataka. bae ne čita ni ne piše ugrađene tagove. Vaše se datoteke nikad ne mijenjaju. Bile upravljane, premještene u bae pohranu, ili neupravljane, ostavljene na mjestu, bajtovi ostaju isti.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> je otvorena glazbena enciklopedija i glavni izvor metapodataka za bae. Pruža potpune popise zapisa, informacije o grupama izdanja, ISRC kodove i CD TOC usporedbu za preciznu identifikaciju.
+
+API ključ nije potreban. MusicBrainz je besplatan i otvoren. Provodi prosjek od 1 zahtjeva u sekundi po IP adresi; bae automatski razmiče zahtjeve.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> je glazbena baza podataka i tržište, posebno korisno za vinilna izdanja, detaljne zasluge, kataloške brojeve i informacije o labelima.
+
+Discogs zahtijeva osobni API token. Preuzmite ga u <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a> i zalijepite tijekom postavljanja. Limit je 60 autentificiranih zahtjeva u minuti; bae time upravlja automatski.

@@ -1,0 +1,51 @@
+---
+title: Importación
+description: Importa música desde archivos locales
+---
+
+bae importa archivos FLAC desde tu ordenador. Seleccionas una carpeta, bae la analiza para detectar ediciones, emparejas cada una con una entrada de MusicBrainz o Discogs, y se incorporan los metadatos.
+
+## Primeros pasos
+
+Haz clic en **Importar** en la barra de título, selecciona **Archivos locales** y elige una carpeta.
+
+bae analiza la carpeta recursivamente, detecta ediciones y las muestra como candidatas. Revisas cada una: la identificas, eliges el arte, escoges una opción de almacenamiento y la importas.
+
+## Formatos admitidos
+
+Solo FLAC: tanto archivos de pista individuales como imágenes de disco CUE+FLAC.
+
+| Diseño | Cómo se ve |
+|--------|------------|
+| Un archivo por pista | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE+FLAC | `album.cue` + `album.flac` (un solo archivo, dividido por hoja CUE) |
+| CUE+FLAC multidisco | `CD1/disc1.cue` + `CD1/disc1.flac`, `CD2/...` |
+
+## Análisis de directorios
+
+Un directorio se trata como una sola edición si contiene archivos de audio directamente, o si sus subdirectorios parecen carpetas de discos, por ejemplo `CD1`, `CD2`, `Disc 1`, `Disc 2` o números como `1`, `2`.
+
+La detección de carpetas de disco usa heurísticas: los nombres de subdirectorios deben ser cortos, de 15 caracteres o menos, y deben ser todos numéricos o compartir un prefijo común de al menos 2 caracteres. Esto distingue ediciones multidisco de colecciones de álbumes separados con nombres más largos.
+
+Los directorios que no son hojas se recorren recursivamente. La profundidad máxima es 10. Los archivos se clasifican como audio, arte (JPG, PNG, WEBP, GIF, BMP) o documentos (CUE, LOG, TXT, M3U). Se omiten archivos ocultos, archivos de cero bytes y archivos dañados, como cabeceras FLAC inválidas o audio truncado.
+
+## Identificar
+
+Cada edición detectada debe emparejarse con una entrada de MusicBrainz o Discogs para que bae pueda incorporar los metadatos.
+
+- **Automáticamente** — calcula y busca un <a href="https://musicbrainz.org/doc/Disc_ID" target="_blank">ID de disco de MusicBrainz</a>. Puede calcularse de dos maneras:
+  - Desde un archivo LOG (EAC, XLD, etc.)
+  - Desde una hoja CUE y un archivo FLAC
+- **Manualmente** — busca en MusicBrainz y Discogs por:
+  - Artista y nombre de álbum
+  - Número de catálogo
+  - Código de barras
+
+Cuando seleccionas un resultado, bae verifica que el número de pistas coincida con tus archivos locales. Las discrepancias se señalan.
+
+## Confirmar
+
+Después del emparejamiento, revisas los detalles de la edición:
+
+- **Arte** — bae obtiene portadas desde Cover Art Archive de MusicBrainz y desde Discogs. También están disponibles los archivos de imagen de la carpeta, como `cover.jpg` o `front.png`. Las imágenes de artistas se obtienen desde Discogs.
+- **Almacenamiento** — gestionado por bae (los archivos se copian al almacenamiento de bae, y se cifran y suben si hay un cloud home configurado) o gestionado por ti (bae indexa los archivos donde están, sin copiarlos). Los archivos nunca se modifican. Consulta [Resumen de almacenamiento](/es/storage/overview) para más detalles.

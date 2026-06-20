@@ -1,0 +1,26 @@
+---
+title: Джерела даних
+description: Зовнішні служби, які bae використовує для метаданих і зображень
+---
+
+bae використовує зовнішні служби під час імпорту для метаданих і зображень.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> — відкрита музична енциклопедія і головне джерело метаданих bae. Вона надає повні списки треків, інформацію про групи видань, ISRC-коди, CD TOC matching і зовнішні URL, включно з посиланнями Discogs.
+
+### Автентифікація
+
+API-ключ не потрібен. MusicBrainz безплатний і відкритий.
+
+### Ліміти
+
+MusicBrainz дозволяє в середньому 1 запит на секунду з IP-адреси. При перевищенні повертаються 503 помилки, а IP може бути тимчасово заблокований. bae автоматично розносить запити.
+
+### Докладніше
+
+Дивіться <a href="https://musicbrainz.org/doc/MusicBrainz_API" target="_blank">MusicBrainz API docs</a> і <a href="https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting" target="_blank">rate limiting details</a>.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> — музична база даних і маркетплейс, корисна для вінілових видань, пресувань, детальних credits, каталожних номерів, штрихкодів і label-інформації. Discogs потребує особистий API token; отримайте його в <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a>. Ліміт — 60 автентифікованих запитів на хвилину; bae керує цим автоматично.

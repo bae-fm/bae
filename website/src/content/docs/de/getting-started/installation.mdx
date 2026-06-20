@@ -1,0 +1,55 @@
+---
+title: Installation
+description: bae oder baeium auf jeder Plattform herunterladen und installieren
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## Zwei Editionen
+
+Jede Plattform erscheint in zwei Editionen, die aus demselben Quellcode gebaut werden:
+
+- **bae** — die vollständige App: Synchronisierung mit S3, Google Drive, Dropbox, OneDrive und iCloud.
+- **baeium** — ohne proprietäre Teile: nur S3-kompatibler Speicher, keine OAuth-Anbieter, kein iCloud/CloudKit, keine Telemetrie. Jede Zeile ist Apache-2.0.
+
+Sie lassen sich nebeneinander installieren, jeweils mit eigener Bibliothek und eigenen, über iCloud Keychain synchronisierten Schlüsseln. Wähle unten die gewünschte Edition.
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">bae für macOS herunterladen</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">baeium für macOS herunterladen</DownloadButton>
+
+1. Öffne die geladene `.dmg`
+2. Ziehe die App in den Programme-Ordner
+3. Öffne sie aus Programme
+
+Beide Editionen aktualisieren sich automatisch über ihren eigenen Sparkle-Feed.
+
+## iOS
+
+iOS-Builds sind **unsignierte `.ipa`-Dateien für Sideloading**. Installiere sie mit [AltStore](https://altstore.io) oder [Sideloadly](https://sideloadly.io), oder signiere sie in Xcode mit deiner eigenen Apple ID neu. Eine kostenlose Apple ID funktioniert für baeium. App-Store-Verteilung ist nicht eingerichtet.
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">bae für iOS herunterladen</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">baeium für iOS herunterladen</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">bae für Android herunterladen</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">baeium für Android herunterladen</DownloadButton>
+
+Erlaube die Installation aus dem Browser oder Dateimanager, wenn Android danach fragt, und öffne dann die `.apk`.
+
+## Windows
+
+Windows-Builds sind **unsignierte** Zip-Dateien der nicht paketierten App. Entpacke sie und starte `bae.exe` oder `baeium.exe`. SmartScreen kann beim ersten Start warnen.
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">bae für Windows herunterladen</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">baeium für Windows herunterladen</DownloadButton>
+
+## Linux
+
+Kommt bald.
+
+## Aus dem Quellcode bauen
+
+baeium benötigt keine proprietären Bestandteile zum Bauen. Im [Repository-README](https://github.com/bae-fm/bae#building-baeium-yourself) stehen plattformspezifische Anleitungen, einschließlich iOS mit kostenlosem Provisioning.

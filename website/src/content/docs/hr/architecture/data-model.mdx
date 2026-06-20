@@ -1,0 +1,81 @@
+---
+title: Model podataka
+description: Kako bae organizira biblioteke, datoteke, slike i metapodatke
+---
+
+## Biblioteke i lokacije pohrane
+
+**Biblioteka** je glavna cjelina: glazbena kolekcija s vlastitim identitetom (`library_id`), nazivom i ključem šifriranja. Živi u **homeu biblioteke** na disku (`~/.bae/libraries/{uuid}/`), gdje desktop aplikacija piše autoritativnu bazu podataka.
+
+Biblioteka može opcionalno imati **cloud home**: jednu cloud lokaciju, poput Google Drive mape ili S3 bucketa, koja služi kao središte za sinkronizaciju više uređaja. Jedan cloud home po biblioteci, konfiguriran u `config.yaml`. Pogledajte [Cloud Home](/hr/architecture/cloud-home) za detalje.
+
+Datoteke izdanja mogu biti na jednoj ili više ovih lokacija:
+
+- **Home biblioteke** (`~/.bae/libraries/{uuid}/storage/`) — lokalna kopija, dostupna offline
+- **Cloud home** (`cloud-home/storage/`) — šifrirana kopija, dostupna za sinkronizaciju
+- **Neupravljano** — datoteke ostaju gdje jesu na disku; bae ih samo indeksira
+
+Izdanje može biti samo lokalno, samo u cloudu ili oboje. Datoteke samo u cloudu nisu dostupne za offline reprodukciju.
+
+## Raspored direktorija
+
+### Home biblioteke
+
+```
+~/.bae/libraries/{uuid}/
+  config.yaml                  # postavke specifične za uređaj (ne sinkroniziraju se)
+  library.db                   # SQLite -- svi metapodaci
+  images/ab/cd/{id}            # slike biblioteke (omoti, fotografije izvođača)
+  storage/ab/cd/{file_id}      # datoteke izdanja
+```
+
+`config.yaml` sadrži postavke specifične za uređaj. Ne sinkronizira se. Vjerodajnice idu u keyring operacijskog sustava, ne ovdje.
+
+Datoteke u `images/` i `storage/` koriste raspored temeljen na hashu: prva 2 znaka ID-ja čine prefiks direktorij, sljedeća 2 poddirektorij. Na disku nema naziva datoteka ni ekstenzija; izvorni nazivi i tipovi sadržaja žive u bazi. Isti raspored koristi se u homeu biblioteke i cloud homeu.
+
+### Cloud home
+
+Cloud home zrcali podatke biblioteke i dodaje mehanizme sinkronizacije i kontrole pristupa:
+
+| Put | Svrha |
+|---|---|
+| `snapshot.db.enc` | Puni snapshot baze za pokretanje novih uređaja |
+| `changes/{device_id}/{seq}.enc` | Inkrementalni sync changesetovi |
+| `heads/{device_id}.json.enc` | Sekvencijski brojevi po uređaju |
+| `images/ab/cd/{id}` | Šifrirane slike biblioteke |
+| `storage/ab/cd/{file_id}` | Šifrirane datoteke izdanja |
+| `membership/{pubkey}/{seq}.enc` | Stavke lanca članstva |
+| `keys/{user_pubkey}.enc` | Ključevi šifriranja omotani po uređaju |
+
+### Stavke keyringa
+
+Upravlja ih `KeyService` preko keyringa operacijskog sustava. Na macOS-u to je zaštićena pohrana podataka sa sinkronizacijom iCloud Keychain. Sve stavke imaju namespace po `library_id`, osim ako je drukčije navedeno.
+
+| Stavka | Opseg | Svrha |
+|---|---|---|
+| `encryption_master_key` | po biblioteci | Šifriranje datoteka i metapodataka |
+| `cloud_home_credentials` | po biblioteci | Serijalizirani enum: S3 access+secret, OAuth token ili none (iCloud) |
+| `discogs_api_key` | po biblioteci | Pristup Discogs API-ju |
+| `bae_user_signing_key` | globalno | Ed25519 ključ za potpis |
+| `bae_user_public_key` | globalno | Ed25519 javni ključ |
+
+## Dvije klase datoteka
+
+### Datoteke izdanja
+
+Sve datoteke koje su došle s izdanjem: audio, slike, CUE liste, logovi itd. To su korisnički podaci. bae ih sprema točno kako su uvezene, čuvajući originale da se mogu izvesti neizmijenjeni.
+
+### Slike metapodataka
+
+Slike koje bae stvara i upravlja, odvojene od datoteka izdanja:
+
+- **Omoti izdanja** — slike za mreže albuma, detaljne prikaze i reprodukciju. Jedna po izdanju. Mogu doći iz datoteke u izdanju ili iz MusicBrainz/Discogs. bae radi vlastitu kopiju kako bi mogao izrezivati ili mijenjati veličinu bez utjecaja na original.
+- **Slike izvođača** — dohvaćaju se iz vanjskih izvora tijekom uvoza.
+
+## Tokovi prvog pokretanja
+
+**Nova biblioteka**: pri prvom pokretanju desktop aplikacija prikazuje zaslon dobrodošlice. Korisnik stvara novu biblioteku, što generira UUID, stvara strukturu direktorija i pokreće aplikaciju. Direktorij `storage/` počinje prazan; datoteke se pojavljuju uvozom.
+
+**Vraćanje iz cloud homea**: korisnik daje vjerodajnice cloud homea i ključ šifriranja. bae preuzima snapshot, primjenjuje novije changesetove i preuzima slike. Lokalni `storage/` počinje prazan; datoteke izdanja streamaju se iz cloud homea na zahtjev.
+
+**Prijelaz s lokalnog na cloud**: korisnik se prijavljuje kod cloud pružatelja. bae generira ključ šifriranja ako je potrebno, šalje puni snapshot, slike i datoteke izdanja, zatim prelazi na inkrementalnu sinkronizaciju.

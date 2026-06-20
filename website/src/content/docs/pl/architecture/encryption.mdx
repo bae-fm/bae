@@ -1,0 +1,47 @@
+---
+title: Szyfrowanie
+description: Jak bae szyfruje twoje dane
+---
+
+Domyślnie bae szyfruje pliki muzyczne i metadane biblioteki, zanim opuszczą twoją maszynę, a dostawca przechowywania widzi tylko szyfrogram. Cloud home może zamiast tego przechowywać wszystko jawnie pod uporządkowanymi, przeglądalnymi ścieżkami; zobacz [Tryby przechowywania](#tryby-przechowywania-opakowy-i-przegladalny) poniżej.
+
+## Tryby przechowywania: opakowy i przeglądalny
+
+Podczas konfiguracji cloud home wybierasz, jak przechowuje obiekty. Wybór jest stały dla tego home i dostępny dla każdego dostawcy.
+
+- **Opakowy** (domyślny) — każdy obiekt jest szyfrowany kluczem biblioteki i przechowywany pod zaciemnioną, adresowaną treścią ścieżką (`storage/ab/cd/{id}` dla audio, `images/ab/cd/{id}` dla grafik). Dostawca widzi tylko szyfrogram pod niezrozumiałymi kluczami. Wybierz to, jeśli nie chcesz, aby dostawca albo ktokolwiek z dostępem do bucketu czytał bibliotekę.
+- **Przeglądalny** — obiekty są przechowywane bez szyfrowania, z prawdziwą nazwą pliku, pod stabilną ścieżką opartą na id albumu i wydania: `storage/{album_id}/{release_id}/{import_folder}/01 Track Title.flac` dla plików wydań, odzwierciedlając importowany folder, oraz `images/{album_id}/{release_id}/cover.jpg` i `images/{artist_id}/artist.jpg` dla grafik. Możesz otworzyć bucket w interfejsie web dostawcy albo przeglądarce plików, zobaczyć prawdziwe nazwy plików i odtwarzać albo kopiować je bezpośrednio. Nic nie jest szyfrowane, więc ochrona home opiera się całkowicie na kontroli dostępu dostawcy.
+
+Przeglądalny znaczy *niezaciemniony*, nie *nazwany dla ludzi*: foldery są id, nie tekstem wykonawcy lub albumu. Użycie id utrzymuje układ bez kolizji: każde wydanie jest zapisane raz we własnym folderze `{release_id}` i nigdy nie koliduje z plikami innego wydania ani ich nie wchłania. Dwa wydania tego samego albumu są folderami rodzeństwa pod albumem. To także nie znaczy publiczny: dostęp do bucketu jest chroniony poświadczeniami dostawcy tak samo jak w home opakowym; tryb zmienia tylko czy przechowywana zawartość jest czytelna dla kogoś, kto już ma dostęp.
+
+Reszta tej strony opisuje home **opakowy**. Home przeglądalny nie wykonuje żadnego z poniższych szyfrowań; każdy obiekt jest zapisywany jako tekst jawny pod kluczem opartym na id.
+
+## Klucz biblioteki
+
+Każda biblioteka ma 256-bitowy główny klucz szyfrowania, generowany przy tworzeniu biblioteki i przechowywany w pęku kluczy systemu operacyjnego: macOS Keychain, Windows Credential Manager albo Linux Secret Service. Klucz nigdy nie trafia na dysk w tekście jawnym.
+
+## Szyfrowanie plików
+
+Pliki są szyfrowane XChaCha20-Poly1305 w blokach 64 KB. Każdy plik dostaje losowy nonce dołączony przed zaszyfrowanym blobem. Oznacza to:
+
+- Identyczne pliki tworzą różne szyfrogramy dzięki losowemu nonce
+- Pliki mogą być odszyfrowywane niezależnie, bez zależności między plikami
+- Szyfrowanie blokowe wspiera wydajne żądania zakresów przy streamingu
+
+## Szyfrowanie cloud home
+
+W home opakowym wszystko w cloud home jest szyfrowane:
+
+- **Changesety** — szyfrowane kluczem biblioteki
+- **Snapshoty** — szyfrowane kluczem biblioteki
+- **Obrazy** — szyfrowane kluczem biblioteki
+- **Wpisy członkostwa** — szyfrowane kluczem biblioteki
+- **Opakowane klucze** — szyfrowane dla każdego urządzenia przez sealed boxes; zobacz [Członkostwo](/pl/architecture/membership)
+
+Pliki head, z numerami sekwencji dla urządzeń, też są szyfrowane. Dostawca przechowywania widzi tylko opakowe bloby i ścieżki kluczy.
+
+## Zarządzanie kluczami
+
+Klucz biblioteki jest przechowywany w pęku kluczy systemu operacyjnego pod przestrzenią nazw konkretnej biblioteki. Jeśli używasz bae na wielu urządzeniach, klucz jest rozprowadzany przez system członkostwa: zaszyfrowany dla twojego osobistego klucza publicznego sealed boxem, tak aby tylko twoje urządzenia mogły go rozpakować.
+
+Jeśli stracisz dostęp do wszystkich urządzeń i nie masz kopii zapasowej pęku kluczy, dane biblioteki w buckecie są nie do odzyskania. To zamierzone: nie ma mechanizmu odzyskiwania po stronie serwera.

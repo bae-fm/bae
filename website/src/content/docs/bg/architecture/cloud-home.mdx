@@ -1,0 +1,51 @@
+---
+title: Cloud Home
+description: Trait CloudHome и cloud съхранение независимо от backend
+---
+
+Cloud home е една отдалечена storage location за библиотека: Google Drive folder, S3 bucket или Dropbox folder. Съдържа release files, metadata changesets, artwork, snapshots и membership chain. **Opaque** home разчита на cryptography; provider пази ciphertext. **Browsable** home пази plaintext в stable id-keyed paths; вижте [Режими на съхранение](/bg/architecture/encryption#режими-на-съхранение-opaque-и-browsable).
+
+## Trait CloudHome
+
+`CloudHome` прави bae backend-agnostic. Над trait всичко е universal; под него се адаптира към конкретния provider.
+
+### Universal
+
+- Layout: `changes/`, `heads/`, `snapshot.db`, `images/`, `storage/`, `membership/`, `keys/`
+- Encryption: symmetric key за библиотека; opaque шифрира, browsable пази plaintext
+- Sync protocol: changesets, snapshots, last-writer-wins
+- Membership chain: append-only log с Ed25519 signatures и wrapped encryption key
+
+### Разлики
+
+Storage API, access management, authentication и change notifications зависят от backend. Consumer clouds споделят folder чрез provider API; S3-compatible backends издават scoped IAM credentials.
+
+### Интерфейс
+
+```rust
+trait CloudHome {
+    // Storage -- same interface, different API underneath
+    fn write(path, data) -> Result;
+    fn read(path) -> Result<Bytes>;
+    fn read_range(path, start, end) -> Result<Bytes>;
+    fn list(prefix) -> Result<Vec<String>>;
+    fn delete(path) -> Result;
+    fn exists(path) -> Result<bool>;
+
+    // Access management -- varies by backend
+    fn grant_access(member_email_or_id) -> Result<JoinInfo>;
+    fn revoke_access(member_email_or_id) -> Result;
+}
+
+Извикващите части, като sync engine, качването на изображения и файловото съхранение, използват този интерфейс директно. Не е нужно да знаят с кой backend работят.
+```
+
+## Implementations
+
+| Backend | Auth | Notes |
+|---|---|---|
+| S3 (aws-sdk-s3) | Access key + secret | Any S3-compatible service: AWS, B2, R2, Wasabi, MinIO |
+| Google Drive | OAuth | bae създава папка в Drive на потребителя |
+| Dropbox | OAuth | |
+| OneDrive | OAuth | |
+| iCloud Drive | Local filesystem | macOS only, uses the iCloud container, no sign-in needed |

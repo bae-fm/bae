@@ -1,0 +1,51 @@
+---
+title: Importation
+description: Importer de la musique depuis des fichiers locaux
+---
+
+bae importe des fichiers FLAC depuis ton ordinateur. Tu choisis un dossier, bae l'analyse pour détecter les éditions, tu associes chacune à une entrée MusicBrainz ou Discogs, puis les métadonnées sont intégrées.
+
+## Commencer
+
+Clique sur **Importer** dans la barre de titre, puis sélectionne **Fichiers locaux** et choisis un dossier.
+
+bae analyse le dossier récursivement, détecte les éditions et les affiche comme candidates. Tu les traites une par une : identification, choix de l'illustration, choix du stockage, puis importation.
+
+## Formats pris en charge
+
+FLAC uniquement : fichiers de pistes individuels et images disque CUE+FLAC.
+
+| Organisation | Exemple |
+|--------|---------|
+| Un fichier par piste | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE+FLAC | `album.cue` + `album.flac` (un seul fichier, découpé par feuille CUE) |
+| CUE+FLAC multidisque | `CD1/disc1.cue` + `CD1/disc1.flac`, `CD2/...` |
+
+## Analyse des dossiers
+
+Un dossier est traité comme une seule édition s'il contient directement des fichiers audio, ou si ses sous-dossiers ressemblent à des dossiers de disques, par exemple `CD1`, `CD2`, `Disc 1`, `Disc 2`, ou de simples nombres comme `1`, `2`.
+
+La détection des dossiers de disques utilise des heuristiques : les noms de sous-dossiers doivent être courts, 15 caractères ou moins, et être soit tous numériques, soit partager un préfixe commun d'au moins 2 caractères. Cela distingue les éditions multidisques des collections d'albums séparés aux noms plus longs.
+
+Les dossiers qui ne sont pas des feuilles sont parcourus récursivement. La profondeur maximale est 10. Les fichiers sont classés comme audio, illustrations (JPG, PNG, WEBP, GIF, BMP) ou documents (CUE, LOG, TXT, M3U). Les fichiers cachés, vides et corrompus, comme des en-têtes FLAC invalides ou un audio tronqué, sont ignorés.
+
+## Identifier
+
+Chaque édition détectée doit être associée à une entrée MusicBrainz ou Discogs pour que bae puisse récupérer les métadonnées.
+
+- **Automatiquement** — calcule et recherche un <a href="https://musicbrainz.org/doc/Disc_ID" target="_blank">ID de disque MusicBrainz</a>. Il peut être calculé de deux façons :
+  - Depuis un fichier LOG (EAC, XLD, etc.)
+  - Depuis une feuille CUE et un fichier FLAC
+- **Manuellement** — cherche dans MusicBrainz et Discogs par :
+  - Artiste et nom d'album
+  - Numéro de catalogue
+  - Code-barres
+
+Quand tu sélectionnes un résultat, bae vérifie que le nombre de pistes correspond à tes fichiers locaux. Les écarts sont signalés.
+
+## Confirmer
+
+Une fois l'association faite, tu vérifies les détails de l'édition :
+
+- **Illustration** — bae récupère les pochettes depuis le Cover Art Archive de MusicBrainz et Discogs. Les fichiers image du dossier, comme `cover.jpg` ou `front.png`, sont aussi disponibles. Les images d'artistes viennent de Discogs.
+- **Stockage** — géré par bae (les fichiers sont copiés dans le stockage de bae, chiffrés et envoyés si un cloud home est configuré) ou autogéré (bae indexe les fichiers sur place sans les copier). Les fichiers ne sont jamais modifiés. Consulte [Vue d'ensemble du stockage](/fr/storage/overview) pour les détails.

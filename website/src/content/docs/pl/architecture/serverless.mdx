@@ -1,0 +1,28 @@
+---
+title: Bez własnego serwera
+description: Jak bae synchronizuje bez własnego serwera
+---
+
+bae nie ma własnego serwera. Każde urządzenie jest klientem, który czyta i zapisuje wspólny cloud home; cała synchronizacja przechodzi przez to przechowywanie, nie przez maszynę uruchamianą przez bae.
+
+## Cloud home jest punktem spotkania
+
+[Cloud home](/pl/architecture/cloud-home) biblioteki to bucket albo folder w backendzie przechowywania, który kontrolujesz: przechowywanie zgodne z S3, Google Drive, Dropbox, OneDrive albo iCloud. Każde urządzenie:
+
+- wysyła zaszyfrowane changesety bazy danych i pliki wydań do cloud home
+- pobiera z niego zmiany innych urządzeń w każdym cyklu synchronizacji
+
+Twoje urządzenia nigdy nie rozmawiają ze sobą bezpośrednio. Zbiegają się, bo oba synchronizują się z tym samym cloud home.
+
+## Co jest w cloud home
+
+- Zaszyfrowane pliki wydań: audio, obrazy itd.
+- Zaszyfrowane snapshoty bazy danych i changesety synchronizacji
+- Zaszyfrowane obrazy biblioteki
+- Łańcuch członkostwa zapisujący, kto może czytać albo pisać bibliotekę
+
+## Przechowywanie bez wiedzy o treści
+
+Backend przechowywania nigdy nie trzyma kluczy i nigdy nie odszyfrowuje. Każdy blob jest szyfrowany na kliencie przed wysłaniem i odszyfrowywany na kliencie po pobraniu. Cloud home nie zna zawartości biblioteki, metadanych ani kluczy szyfrowania; nie może czytać, przeszukiwać ani indeksować twojej muzyki. Jest tylko przechowywaniem.
+
+Dodanie innego urządzenia to nadanie [członkostwa](/pl/architecture/membership) nad tym samym wspólnym przechowywaniem; nie ma serwera, z którym trzeba się połączyć.

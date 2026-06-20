@@ -1,0 +1,22 @@
+---
+title: Überblick
+description: Wie bae zusammengesetzt ist
+---
+
+bae ist ein Musikbibliotheksmanager, der dezentrale Identität und Ende-zu-Ende-Verschlüsselung über austauschbarem Speicher für serverlose Synchronisierung zwischen mehreren Geräten nutzt.
+
+## Identität
+
+Jedes Gerät hat ein lokal erzeugtes Schlüsselpaar (Ed25519/X25519). Öffentliche Schlüssel sind Identitäten. Es gibt keinen zentralen Identitätsserver.
+
+## Verschlüsselung
+
+Ein symmetrischer Schlüssel pro Bibliothek, geteilt zwischen den Geräten der Bibliothek. Alles im Cloud Home wird verschlüsselt, bevor es das Gerät verlässt. Der Speicheranbieter sieht opake Blobs. Siehe [Verschlüsselung](/de/architecture/encryption).
+
+## Speicher
+
+Austauschbar. Jeder kommerzielle Cloud-Anbieter (Google Drive, Dropbox, OneDrive, iCloud Drive), jeder S3-kompatible Bucket (AWS, B2, R2, Wasabi, MinIO) oder nur lokal ohne Cloud. Ein einziges `CloudHome`-Trait abstrahiert die Unterschiede. Siehe [Cloud Home](/de/architecture/cloud-home).
+
+## Synchronisierung
+
+Geräte synchronisieren über das Cloud Home mit verschlüsselten Changesets. Jede Bearbeitung erzeugt einen kompakten binären Diff; andere Geräte laden ihn und wenden ihn an. Konflikte werden automatisch per Last-Writer-Wins mit hybriden logischen Uhren gelöst. Eine Bibliothek synchronisiert über mehrere Geräte mithilfe einer Mitgliedschaftskette und signierter Changesets. Siehe [Synchronisierung](/de/storage/sync).

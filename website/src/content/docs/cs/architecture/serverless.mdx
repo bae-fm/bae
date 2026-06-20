@@ -1,0 +1,28 @@
+---
+title: Bez vlastního serveru
+description: Jak bae synchronizuje bez vlastního serveru
+---
+
+bae nemá vlastní server. Každé zařízení je klient, který čte a zapisuje sdílený cloud home; veškerá synchronizace prochází tímto úložištěm, ne strojem provozovaným bae.
+
+## Cloud home je místo setkání
+
+[Cloud home](/cs/architecture/cloud-home) knihovny je bucket nebo složka v úložném backendu, který ovládáte: úložiště kompatibilní se S3, Google Drive, Dropbox, OneDrive nebo iCloud. Každé zařízení:
+
+- nahrává do cloud home šifrované změnové sady databáze a soubory vydání
+- stahuje z něj změny ostatních zařízení v každém synchronizačním cyklu
+
+Vaše zařízení spolu nikdy nemluví přímo. Sjednocují se tím, že se obě synchronizují proti stejnému cloud home.
+
+## Co je v cloud home
+
+- Šifrované soubory vydání: audio, obrázky atd.
+- Šifrované databázové snapshoty a synchronizační změnové sady
+- Šifrované obrázky knihovny
+- Členský řetěz, který zaznamenává, kdo může knihovnu číst nebo zapisovat
+
+## Úložiště bez znalosti obsahu
+
+Úložný backend nikdy nedrží klíče a nikdy nedešifruje. Každý blob je před nahráním zašifrován na klientovi a po stažení dešifrován na klientovi. Cloud home nezná obsah knihovny, metadata ani šifrovací klíče; nemůže číst, hledat ani indexovat hudbu. Je to jen úložiště.
+
+Přidání dalšího zařízení je udělení [členství](/cs/architecture/membership) nad stejným sdíleným úložištěm; není server, ke kterému by se připojovalo.

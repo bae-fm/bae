@@ -1,0 +1,51 @@
+---
+title: Import
+description: Import hudby z místních souborů
+---
+
+bae importuje soubory FLAC z počítače. Vyberete složku, bae ji prohledá kvůli vydáním, každé spárujete se záznamem MusicBrainz nebo Discogs a metadata se načtou.
+
+## Začínáme
+
+Klikněte na **Import** v titulkovém pruhu, vyberte **Místní soubory** a zvolte složku.
+
+bae složku prohledá rekurzivně, rozpozná vydání a zobrazí je jako kandidáty. Každé projdete: identifikace, výběr obrázku, volba úložiště a import.
+
+## Podporované formáty
+
+Pouze FLAC: jednotlivé soubory stop i obrazy disků CUE+FLAC.
+
+| Rozvržení | Příklad |
+|--------|---------|
+| Soubor na stopu | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE+FLAC | `album.cue` + `album.flac` (jeden soubor, dělený podle CUE sheetu) |
+| Vícediskové CUE+FLAC | `CD1/disc1.cue` + `CD1/disc1.flac`, `CD2/...` |
+
+## Prohledávání adresářů
+
+Adresář se považuje za jedno vydání, pokud obsahuje zvukové soubory přímo nebo pokud jeho podadresáře vypadají jako složky disků, například `CD1`, `CD2`, `Disc 1`, `Disc 2` nebo jednoduchá čísla `1`, `2`.
+
+Detekce složek disků používá heuristiky: názvy podadresářů musí být krátké, nejvýše 15 znaků, a buď všechny číselné, nebo sdílet společný prefix alespoň 2 znaky. Tím se vícedisková vydání odlišují od kolekcí samostatných alb s delšími názvy.
+
+Adresáře, které nejsou listy, se procházejí rekurzivně. Maximální hloubka je 10. Soubory se třídí jako audio, obrázky (JPG, PNG, WEBP, GIF, BMP) nebo dokumenty (CUE, LOG, TXT, M3U). Skryté soubory, nulové soubory a poškozené soubory, například špatné hlavičky FLAC nebo uříznutý zvuk, se přeskočí.
+
+## Identifikace
+
+Každé nalezené vydání je potřeba spárovat se záznamem MusicBrainz nebo Discogs, aby bae mohl načíst metadata.
+
+- **Automaticky** — vypočítat a vyhledat <a href="https://musicbrainz.org/doc/Disc_ID" target="_blank">MusicBrainz disc ID</a>. Lze ho vypočítat dvěma způsoby:
+  - Ze souboru LOG (EAC, XLD atd.)
+  - Z CUE sheetu a souboru FLAC
+- **Ručně** — hledat v MusicBrainz a Discogs podle:
+  - Interpreta a názvu alba
+  - Katalogového čísla
+  - Čárového kódu
+
+Když vyberete výsledek, bae ověří, že počet stop odpovídá místním souborům. Neshody se označí.
+
+## Potvrzení
+
+Po spárování zkontrolujete detaily vydání:
+
+- **Obrázky** — bae načítá obaly z MusicBrainz Cover Art Archive a Discogs. Dostupné jsou i obrázky ve složce, například `cover.jpg` nebo `front.png`. Obrázky interpretů se načítají z Discogs.
+- **Úložiště** — spravované bae (soubory se zkopírují do úložiště bae, zašifrují a nahrají, pokud je nastaven cloud home) nebo samostatně spravované (bae indexuje soubory na místě bez kopírování). Soubory se nikdy nemění. Podrobnosti jsou v [Přehledu úložiště](/cs/storage/overview).

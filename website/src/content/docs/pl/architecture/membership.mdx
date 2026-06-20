@@ -1,0 +1,35 @@
+---
+title: Członkostwo
+description: Tożsamość, łańcuch członkostwa i podpisane changesety
+---
+
+Członkostwo biblioteki to zbiór urządzeń uprawnionych do jej czytania i zapisywania. Ta strona opisuje mechanizmy techniczne: tożsamość, łańcuch członkostwa, podpisane changesety i opakowanie kluczy.
+
+## Tożsamość
+
+Każde urządzenie ma parę kluczy Ed25519/X25519, generowaną przy pierwszym użyciu i przechowywaną w pęku kluczy systemu operacyjnego. Klucze publiczne są tożsamościami. Nie ma centralnego katalogu ani serwera kont. Klucze publiczne są wymieniane poza systemem.
+
+## Łańcuch członkostwa
+
+Członkostwo biblioteki jest śledzone przez append-only łańcuch podpisanych wpisów przechowywanych w cloud home pod `membership/{pubkey}/{seq}.enc`. Każdy wpis zapisuje akcję Add albo Remove, klucz publiczny i rolę urządzenia docelowego, i jest podpisany przez bieżącego właściciela.
+
+Pierwszy wpis to zawsze urządzenie źródłowe, dodane jako właściciel. Łańcuch jest walidowany przy budowie: wpisy z nieprawidłowymi podpisami albo od nie-właścicieli są odrzucane.
+
+## Podpisane changesety
+
+Każdy changeset wysłany do cloud home jest podpisany kluczem Ed25519 urządzenia autora. Przy pobieraniu bae sprawdza, czy autor był uprawnionym urządzeniem w chwili utworzenia changesetu, używając łańcucha członkostwa. Changesety z urządzeń nieuprawnionych albo z nieprawidłowymi podpisami są odrzucane.
+
+## Opakowanie kluczy
+
+Klucz szyfrowania biblioteki jest opakowany, zaszyfrowany sealed boxem, dla klucza publicznego X25519 każdego urządzenia i zapisany w cloud home pod `keys/{user_pubkey}.enc`. Tylko zamierzony odbiorca może go rozpakować swoim kluczem prywatnym. Gdy urządzenie zostaje odwołane, generowany jest nowy klucz szyfrowania i ponownie opakowywany dla wszystkich pozostałych urządzeń.
+
+## Kody zaproszeń
+
+Kod zaproszenia zawiera wszystko, czego potrzebuje dołączające urządzenie:
+
+- Klucz szyfrowania biblioteki, zaszyfrowany sealed boxem dla klucza publicznego nowego urządzenia
+- Koordynaty cloud home: typ dostawcy, ID folderu albo bucket
+- Dane dostępu do przechowywania: w S3 wydane poświadczenia IAM; w konsumenckich cloudach udostępnianie folderu odbywa się przez API dostawcy
+- Podpisany wpis łańcucha członkostwa dodający nowe urządzenie
+
+Urządzenie właściciela generuje kod po otrzymaniu klucza publicznego nowego urządzenia. Nowe urządzenie wkleja go do bae, rozpakowuje klucz szyfrowania, łączy się z cloud home i zaczyna synchronizować.

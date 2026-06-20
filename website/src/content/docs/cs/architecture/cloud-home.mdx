@@ -1,0 +1,60 @@
+---
+title: Cloud Home
+description: Trait CloudHome a cloudové úložiště nezávislé na backendu
+---
+
+Cloud home je jedno vzdálené úložiště pro knihovnu: složka Google Drive, bucket S3 nebo složka Dropbox. Obsahuje soubory vydání, změnové sady metadat, obrázky, snapshoty a členský řetěz. V **opakním** home (výchozí) je veškerá důvěra v kryptografii, ne v backendu úložiště: poskytovatel ukládá šifrovaný text pod zastřenými klíči. Home může být také **procházetelný**, kdy se vše ukládá nešifrovaně pod stabilními cestami podle id se skutečnými názvy souborů; viz [Režimy úložiště](/cs/architecture/encryption#rezimy-uloziste-opakni-a-prochazetelne).
+
+## Trait CloudHome
+
+Trait `CloudHome` je abstrakce, díky které je bae nezávislé na backendu. Vše nad traitem je univerzální. Vše pod ním se přizpůsobuje konkrétnímu cloudovému poskytovateli.
+
+### Co je univerzální (nad traitem)
+
+- **Rozvržení cloud home** — `changes/`, `heads/`, `snapshot.db`, `images/`, `storage/`, `membership/`, `keys/`. Stejné logické cesty bez ohledu na backend. Opakní home rozděluje audio a obrázky pod `storage/` a `images/` podle hashe jejich id; procházetelný home je ukládá pod stejné dva prefixy do stabilních id cest se skutečnými názvy (`storage/{album_id}/{release_id}/{import_folder}/01 Track.flac`, `images/{album_id}/{release_id}/cover.jpg`).
+- **Šifrování** — jeden symetrický klíč na knihovnu; v opakním home se vše šifruje před opuštěním zařízení. Procházetelný home šifrování přeskočí a ukládá čitelný text; přípona `.enc` se nepoužije.
+- **Synchronizační protokol** — změnové sady, snapshoty, řešení konfliktů pravidlem poslední zápis vyhrává. Stejný algoritmus všude.
+- **Členský řetěz** — append-only log s podpisy Ed25519 a šifrovacím klíčem zabaleným pro veřejný klíč každého člena.
+
+### Co se liší (pod traitem)
+
+- **API úložiště** — jak se soubory skutečně čtou a zapisují: API S3, API Google Drive, místní souborový systém atd.
+- **Správa přístupu** — jak nové zařízení získá přístup k úložišti: přístup ke složce nebo vydání přihlašovacích údajů.
+- **Ověření** — jak se nové zařízení ověří: váš cloudový účet nebo vložené přihlašovací údaje.
+- **Oznámení změn** — spotřebitelské cloudy podporují push oznámení; S3 vyžaduje polling.
+
+### Rozhraní traitu
+
+```rust
+trait CloudHome {
+    // Storage -- same interface, different API underneath
+    fn write(path, data) -> Result;
+    fn read(path) -> Result<Bytes>;
+    fn read_range(path, start, end) -> Result<Bytes>;
+    fn list(prefix) -> Result<Vec<String>>;
+    fn delete(path) -> Result;
+    fn exists(path) -> Result<bool>;
+
+    // Access management -- varies by backend
+    fn grant_access(member_email_or_id) -> Result<JoinInfo>;
+    fn revoke_access(member_email_or_id) -> Result;
+}
+
+Volající části, například synchronizační engine, uploader obrázků a úložiště souborů, používají toto rozhraní přímo. Nemusí vědět, se kterým backendem komunikují.
+```
+
+## Správa přístupu
+
+Jak fungují `grant_access` a `revoke_access`, závisí na backendu. Spotřebitelské cloudy (Google Drive, Dropbox, OneDrive) sdílejí složku přes API poskytovatele: na novém zařízení se přihlásíte ke svému účtu a složka je dostupná. Backendy kompatibilní se S3 vydávají omezené IAM přihlašovací údaje pro každé zařízení, vložené do pozvánkového kódu.
+
+V obou případech je šifrovací klíč doručen samostatně přes členský řetěz, zabalený pro veřejný klíč nového zařízení.
+
+## Implementace
+
+| Backend | Auth | Poznámky |
+|---|---|---|
+| S3 (aws-sdk-s3) | Access key + secret | Libovolná služba kompatibilní se S3: AWS, B2, R2, Wasabi, MinIO |
+| Google Drive | OAuth | bae vytvoří složku v Drive uživatele |
+| Dropbox | OAuth | |
+| OneDrive | OAuth | |
+| iCloud Drive | Místní souborový systém | Jen macOS, používá iCloud kontejner, bez přihlášení |

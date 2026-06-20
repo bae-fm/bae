@@ -1,0 +1,35 @@
+---
+title: Členství
+description: Identita, členský řetěz a podepsané změnové sady
+---
+
+Členství knihovny je sada zařízení oprávněných knihovnu číst a zapisovat. Tato stránka popisuje technické mechanismy: identitu, členský řetěz, podepsané změnové sady a balení klíčů.
+
+## Identita
+
+Každé zařízení má pár klíčů Ed25519/X25519, vygenerovaný při prvním použití a uložený v klíčence operačního systému. Veřejné klíče jsou identity. Neexistuje centrální adresář ani server účtů. Veřejné klíče se vyměňují mimo systém.
+
+## Členský řetěz
+
+Členství knihovny se sleduje append-only řetězem podepsaných položek uložených v cloud home na `membership/{pubkey}/{seq}.enc`. Každá položka zaznamená akci Add nebo Remove, veřejný klíč a roli cílového zařízení, a je podepsaná aktuálním vlastníkem.
+
+První položka je vždy původní zařízení přidané jako vlastník. Řetěz se při konstrukci ověřuje: položky s neplatným podpisem nebo od nevlastníků jsou odmítnuty.
+
+## Podepsané změnové sady
+
+Každá změnová sada nahraná do cloud home je podepsaná Ed25519 klíčem autorského zařízení. Při stažení bae ověří, že autor byl v době vytvoření změnové sady oprávněné zařízení, pomocí členského řetězu. Změnové sady od neoprávněných zařízení nebo s neplatnými podpisy jsou zahozeny.
+
+## Balení klíčů
+
+Šifrovací klíč knihovny je zabalen, zašifrovaný sealed boxem, pro X25519 veřejný klíč každého zařízení a uložen v cloud home na `keys/{user_pubkey}.enc`. Rozbalit ho může jen určený příjemce svým soukromým klíčem. Když je zařízení odvoláno, vygeneruje se nový šifrovací klíč a znovu se zabalí pro všechna zbývající zařízení.
+
+## Pozvánkové kódy
+
+Pozvánkový kód obsahuje vše, co nové zařízení potřebuje:
+
+- Šifrovací klíč knihovny, zašifrovaný sealed boxem pro veřejný klíč nového zařízení
+- Souřadnice cloud home: typ poskytovatele, ID složky nebo bucket
+- Přihlašovací údaje úložiště: u S3 vydané IAM údaje; u spotřebitelských cloudů sdílení složky přes API poskytovatele
+- Podepsanou položku členského řetězu, která přidává nové zařízení
+
+Vlastnické zařízení vygeneruje kód po přijetí veřejného klíče nového zařízení. Nové zařízení ho vloží do bae, rozbalí šifrovací klíč, připojí se ke cloud home a začne synchronizovat.

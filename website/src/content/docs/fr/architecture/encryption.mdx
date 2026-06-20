@@ -1,0 +1,47 @@
+---
+title: Chiffrement
+description: Comment bae chiffre tes données
+---
+
+Par défaut, bae chiffre tes fichiers musicaux et les métadonnées de bibliothèque avant qu'ils quittent ta machine, et le fournisseur de stockage ne voit que du texte chiffré. Un cloud home peut aussi être configuré pour tout stocker en clair à des chemins structurés et navigables ; consulte [Modes de stockage](#modes-de-stockage-opaque-et-navigable) ci-dessous.
+
+## Modes de stockage : opaque et navigable
+
+Quand tu configures un cloud home, tu choisis comment il stocke ses objets. Le choix est fixe pour ce home et proposé pour tous les fournisseurs.
+
+- **Opaque** (par défaut) — chaque objet est chiffré avec la clé de bibliothèque et stocké à un chemin masqué et adressé par contenu (`storage/ab/cd/{id}` pour l'audio, `images/ab/cd/{id}` pour les images). Le fournisseur ne voit que du texte chiffré à des clés incompréhensibles. Choisis cela si tu ne veux pas que le fournisseur, ou quiconque atteint le bucket, lise ta bibliothèque.
+- **Navigable** — les objets sont stockés sans chiffrement, avec le vrai nom du fichier, sous un chemin stable basé sur les ids d'album et d'édition : `storage/{album_id}/{release_id}/{import_folder}/01 Track Title.flac` pour les fichiers d'édition, en reflétant le dossier importé, et `images/{album_id}/{release_id}/cover.jpg` et `images/{artist_id}/artist.jpg` pour les images. Tu peux ouvrir le bucket dans l'interface web du fournisseur ou un explorateur de fichiers, voir tes vrais noms de fichiers, puis les lire ou les copier directement. Rien n'est chiffré, donc la protection du home repose entièrement sur le contrôle d'accès du fournisseur.
+
+Navigable signifie *non masqué*, pas *nommé pour des humains* : les dossiers sont des ids plutôt que du texte d'artiste ou d'album. Utiliser des ids garde l'organisation sans collisions par construction : chaque édition est écrite une fois dans son propre dossier `{release_id}` et ne collisionne jamais avec les fichiers d'une autre édition. Deux éditions du même album sont des dossiers frères sous l'album. Cela ne signifie pas public non plus : l'accès au bucket est protégé par les identifiants du fournisseur comme pour un home opaque ; le mode change seulement la lisibilité de ce qui est stocké pour quelqu'un qui a déjà accès.
+
+Le reste de cette page décrit un home **opaque**. Un home navigable n'applique aucun des chiffrements ci-dessous ; chaque objet est écrit en clair à sa clé structurée par ids.
+
+## Clé de bibliothèque
+
+Chaque bibliothèque possède une clé maîtresse de chiffrement 256 bits, générée à la création de la bibliothèque et stockée dans le trousseau du système : macOS Keychain, Windows Credential Manager ou Linux Secret Service. La clé n'est jamais écrite sur disque en clair.
+
+## Chiffrement des fichiers
+
+Les fichiers sont chiffrés avec XChaCha20-Poly1305 par blocs de 64 Ko. Chaque fichier reçoit un nonce aléatoire préfixé au blob chiffré. Cela signifie :
+
+- Des fichiers identiques produisent des textes chiffrés différents grâce au nonce aléatoire
+- Les fichiers peuvent être déchiffrés indépendamment, sans dépendance entre eux
+- Le chiffrement par blocs permet des requêtes par plage pour la lecture en streaming
+
+## Chiffrement du cloud home
+
+Sur un home opaque, tout ce qui se trouve dans le cloud home est chiffré :
+
+- **Changesets** — chiffrés avec la clé de bibliothèque
+- **Snapshots** — chiffrés avec la clé de bibliothèque
+- **Images** — chiffrées avec la clé de bibliothèque
+- **Entrées de membres** — chiffrées avec la clé de bibliothèque
+- **Clés enveloppées** — chiffrées pour chaque appareil via des sealed boxes ; consulte [Membres](/fr/architecture/membership)
+
+Les fichiers head, avec les numéros de séquence par appareil, sont aussi chiffrés. Le fournisseur de stockage ne voit que des blobs opaques et des chemins de clés.
+
+## Gestion des clés
+
+La clé de ta bibliothèque est stockée dans le trousseau du système sous un espace de noms propre à la bibliothèque. Si tu utilises bae sur plusieurs appareils, la clé est distribuée par le système de membres : chiffrée pour ta clé publique personnelle avec une sealed box, afin que seuls tes appareils puissent la déballer.
+
+Si tu perds l'accès à tous tes appareils et que tu n'as pas de sauvegarde de ton trousseau, les données de la bibliothèque dans le bucket sont irrécupérables. C'est voulu : il n'y a pas de mécanisme de récupération côté serveur.

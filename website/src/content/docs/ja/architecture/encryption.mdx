@@ -1,0 +1,33 @@
+---
+title: 暗号化
+description: bae がデータを暗号化する方法
+---
+
+デフォルトでは、bae は音楽ファイルとライブラリメタデータを端末から出る前に暗号化し、storage provider は ciphertext だけを見ます。cloud home は、structured navigable paths に平文で保存する browsable mode にも設定できます。
+
+## ストレージモード: opaque と browsable
+
+cloud home を設定するとき、オブジェクトの保存方法を選びます。
+
+- **Opaque** (デフォルト) — 各オブジェクトを library key で暗号化し、content-addressed かつ obfuscated な path (`storage/ab/cd/{id}`、`images/ab/cd/{id}`) に保存します。provider は読めない keys 上の ciphertext だけを見ます。
+- **Browsable** — オブジェクトを unencrypted で保存し、real filename を保ち、album と release ids に基づく stable path に置きます。例: `storage/{album_id}/{release_id}/{import_folder}/01 Track Title.flac`、`images/{album_id}/{release_id}/cover.jpg`、`images/{artist_id}/artist.jpg`。provider の web UI や file browser で bucket を開き、直接再生またはコピーできます。保護は provider の access control に依存します。
+
+Browsable は *not obscured* という意味で、human-named ではありません。folders は artist/album text ではなく ids です。これにより release folder の衝突を避けます。public という意味でもありません。
+
+以下は **opaque** home の説明です。browsable home では以下の暗号化を行わず、plaintext を id-structured key に書き込みます。
+
+## Library key
+
+各 library には 256-bit master encryption key があります。library 作成時に生成され、macOS Keychain、Windows Credential Manager、Linux Secret Service などの OS keyring に保存されます。key は plaintext で disk に書かれません。
+
+## File encryption
+
+Files は XChaCha20-Poly1305 で 64 KB chunks ごとに暗号化されます。各 file には random nonce が前置されます。同一ファイルでも ciphertext は変わり、files は独立して復号でき、chunk-based encryption は streaming 用 range requests を支えます。
+
+## Cloud home encryption
+
+opaque home では changesets、snapshots、images、membership entries、wrapped keys が暗号化されます。wrapped keys は sealed boxes で各 device に暗号化されます。詳しくは [Membership](/ja/architecture/membership)。head files も暗号化されます。
+
+## Key management
+
+library key は library-specific namespace の OS keyring に保存されます。複数デバイスでは membership system により、personal public key 向け sealed box として配布されます。すべてのデバイスと keyring backup を失うと、bucket 内の library data は復元できません。server-side recovery はありません。

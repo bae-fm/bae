@@ -1,0 +1,49 @@
+---
+title: Sources de données
+description: Services externes que bae utilise pour les métadonnées et les images
+---
+
+bae utilise des services externes pendant l'importation pour récupérer métadonnées et images. Voici ce que chaque service fournit et comment le configurer.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a> est une encyclopédie musicale ouverte et la source principale de métadonnées de bae. Elle fournit :
+
+- Listes de pistes complètes
+- Informations de groupes d'éditions
+- Codes ISRC
+- Correspondance de table des matières de CD pour identifier les CDs précisément
+- URLs externes liées, y compris les références croisées Discogs
+
+### Authentification
+
+Aucune clé d'API n'est nécessaire. MusicBrainz est gratuit et ouvert.
+
+### Limites de débit
+
+MusicBrainz impose une moyenne de 1 requête par seconde et par adresse IP. Si tu dépasses cette limite, MusicBrainz renvoie des erreurs 503 et peut bloquer temporairement ton IP. bae espace les requêtes automatiquement pour rester dans cette limite.
+
+### En savoir plus
+
+Consulte la <a href="https://musicbrainz.org/doc/MusicBrainz_API" target="_blank">documentation de l'API MusicBrainz</a> et les <a href="https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting" target="_blank">détails des limites de débit</a>.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a> est une base de données musicale et une place de marché. Elle est particulièrement utile pour :
+
+- Éditions et pressages vinyle
+- Crédits détaillés : producteur, ingénieur, etc.
+- Numéros de catalogue et codes-barres
+- Informations de labels
+
+### Authentification
+
+Discogs nécessite un jeton d'API personnel. Tu le configures pendant la configuration initiale de bae et tu dois utiliser ton propre jeton.
+
+### Limites de débit
+
+Discogs autorise 60 requêtes authentifiées par minute. bae gère cela automatiquement.
+
+### Commencer
+
+Obtiens ton jeton dans <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a>. Colle-le pendant la configuration.

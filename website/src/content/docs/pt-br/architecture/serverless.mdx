@@ -1,0 +1,28 @@
+---
+title: Sem servidor próprio
+description: Como bae sincroniza sem um servidor próprio
+---
+
+bae não tem servidor próprio. Cada dispositivo é um cliente que lê e grava em um cloud home compartilhado; toda sincronização passa por esse armazenamento, não por uma máquina que executa bae.
+
+## O cloud home é o ponto de encontro
+
+O [cloud home](/pt-br/architecture/cloud-home) de uma biblioteca é um bucket ou pasta em um backend de armazenamento que você controla: armazenamento compatível com S3, Google Drive, Dropbox, OneDrive ou iCloud. Cada dispositivo:
+
+- envia seus changesets criptografados de banco de dados e arquivos de edição ao cloud home
+- baixa as mudanças dos outros dispositivos a partir dele em cada ciclo de sincronização
+
+Seus dispositivos nunca conversam diretamente entre si. Eles convergem porque sincronizam contra o mesmo cloud home.
+
+## O que vive no cloud home
+
+- Arquivos de edição criptografados: áudio, imagens, etc.
+- Snapshots de banco de dados e changesets de sincronização criptografados
+- Imagens de biblioteca criptografadas
+- A cadeia de membros que registra quem pode ler ou gravar na biblioteca
+
+## Armazenamento sem conhecimento
+
+O backend de armazenamento nunca guarda chaves e nunca descriptografa. Cada blob é criptografado no cliente antes do envio e descriptografado no cliente depois do download. O cloud home não sabe o conteúdo, os metadados nem as chaves de criptografia da sua biblioteca; não pode ler, pesquisar nem indexar sua música. É armazenamento, nada mais.
+
+Adicionar outro dispositivo é uma concessão de [membro](/pt-br/architecture/membership) sobre esse mesmo armazenamento compartilhado; não há servidor ao qual se conectar.

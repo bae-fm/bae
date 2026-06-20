@@ -1,0 +1,22 @@
+---
+title: 概览
+description: bae 的组成方式
+---
+
+bae 是音乐资料库管理器。它使用去中心化身份、端到端加密和可替换存储，在没有 bae 自有服务器的情况下进行多设备同步。
+
+## 身份
+
+每台设备都有本地生成的密钥对（Ed25519/X25519）。公钥就是身份。没有中央身份服务器。
+
+## 加密
+
+每个资料库有一个对称密钥，在该资料库的设备之间共享。cloud home 中的所有内容都会在离开设备前加密；存储提供商只能看到不透明的数据块。见[加密](/zh-hans/architecture/encryption)。
+
+## 存储
+
+存储是可替换的：可以使用 Google Drive、Dropbox、OneDrive、iCloud Drive 等商业云提供商，可以使用兼容 S3 的 bucket（AWS、B2、R2、Wasabi、MinIO），也可以只保存在本地、不使用云端。一个 `CloudHome` trait 抽象了不同后端的差异。见 [Cloud Home](/zh-hans/architecture/cloud-home)。
+
+## 同步
+
+设备通过 cloud home 同步加密变更集。每次编辑都会产生紧凑的二进制差异；其他设备拉取并应用它。冲突通过 hybrid logical clock 的“最后写入者胜出”规则自动解决。资料库通过 membership chain 和已签名变更集在多台设备之间同步。见[同步](/zh-hans/storage/sync)。

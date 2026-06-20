@@ -1,0 +1,35 @@
+---
+title: Membres
+description: Identité, chaîne de membres et changesets signés
+---
+
+Les membres d'une bibliothèque sont les appareils autorisés à la lire et à l'écrire. Cette page couvre les mécanismes techniques : identité, chaîne de membres, changesets signés et enveloppe de clés.
+
+## Identité
+
+Chaque appareil possède une paire de clés Ed25519/X25519, générée au premier usage et stockée dans le trousseau du système. Les clés publiques sont les identités. Il n'y a pas d'annuaire central ni de serveur de comptes. Les clés publiques sont échangées hors bande.
+
+## Chaîne de membres
+
+Les membres d'une bibliothèque sont suivis par une chaîne append-only d'entrées signées stockées dans le cloud home à `membership/{pubkey}/{seq}.enc`. Chaque entrée enregistre une action Add ou Remove, la clé publique et le rôle de l'appareil cible, et elle est signée par un propriétaire actuel.
+
+La première entrée est toujours l'appareil d'origine, ajouté comme propriétaire. La chaîne est validée à la construction : les entrées avec signatures invalides ou venant de non-propriétaires sont rejetées.
+
+## Changesets signés
+
+Chaque changeset envoyé au cloud home est signé par la clé Ed25519 de l'appareil auteur. À la récupération, bae vérifie que l'auteur était un appareil autorisé au moment de la création du changeset, en vérifiant la chaîne de membres. Les changesets d'appareils non autorisés ou avec signatures invalides sont rejetés.
+
+## Enveloppe de clés
+
+La clé de chiffrement de la bibliothèque est enveloppée, chiffrée par sealed box, pour la clé publique X25519 de chaque appareil et stockée dans le cloud home à `keys/{user_pubkey}.enc`. Seul le destinataire prévu peut la déballer avec sa clé privée. Quand un appareil est révoqué, une nouvelle clé de chiffrement est générée et ré-enveloppée pour tous les appareils restants.
+
+## Codes d'invitation
+
+Un code d'invitation regroupe tout ce dont un appareil rejoignant la bibliothèque a besoin :
+
+- La clé de chiffrement de la bibliothèque, chiffrée par sealed box pour la clé publique du nouvel appareil
+- Les coordonnées du cloud home : type de fournisseur, ID de dossier ou bucket
+- Les identifiants de stockage : sur S3, identifiants IAM émis ; sur les clouds grand public, le partage du dossier se fait via l'API du fournisseur
+- Une entrée signée de la chaîne de membres ajoutant le nouvel appareil
+
+Un appareil propriétaire génère le code après avoir reçu la clé publique du nouvel appareil. Le nouvel appareil le colle dans bae, déballe la clé de chiffrement, se connecte au cloud home et commence à synchroniser.

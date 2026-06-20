@@ -1,0 +1,23 @@
+---
+title: Без власного сервера
+description: Як bae синхронізує без власного сервера
+---
+
+bae не має власного сервера. Кожен пристрій є клієнтом, який читає й пише shared cloud home; уся синхронізація проходить через це сховище.
+
+## Cloud home — місце зустрічі
+
+[Cloud home](/uk/architecture/cloud-home) бібліотеки — bucket або folder у storage backend, який ви контролюєте: S3-compatible storage, Google Drive, Dropbox, OneDrive або iCloud. Кожен пристрій передає encrypted database changesets і release files до cloud home та забирає звідти зміни інших пристроїв у кожному sync cycle.
+
+Пристрої не говорять напряму. Вони сходяться, бо синхронізуються з тим самим cloud home.
+
+## Що зберігається в cloud home
+
+- Encrypted release files: audio, images тощо
+- Encrypted database snapshots і sync changesets
+- Encrypted library images
+- Membership chain, що записує, хто може читати або писати бібліотеку
+
+## Zero-knowledge storage
+
+Storage backend не має ключів і не розшифровує. Кожен blob шифрується на клієнті до upload і розшифровується на клієнті після download. Cloud home не знає contents, metadata або encryption keys; він не може читати, шукати або індексувати музику. Додавання пристрою — це grant [членства](/uk/architecture/membership) над тим самим shared storage.

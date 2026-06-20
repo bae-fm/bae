@@ -1,0 +1,60 @@
+---
+title: Cloud Home
+description: Das CloudHome-Trait und backendunabhängiger Cloud-Speicher
+---
+
+Das Cloud Home ist ein einzelner entfernter Speicherort für eine Bibliothek: ein Google-Drive-Ordner, ein S3-Bucket, ein Dropbox-Ordner. Es enthält Editionsdateien, Metadaten-Changesets, Artwork, Snapshots und die Mitgliedschaftskette. In einem **opaken** Home (Standard) liegt das Vertrauen in der Kryptografie, nicht im Speicherbackend: Der Anbieter speichert Chiffretext unter verschleierten Schlüsseln. Ein Home kann stattdessen **durchsuchbar** sein und alles unverschlüsselt unter stabilen, id-basierten Pfaden mit echten Dateinamen speichern; siehe [Speichermodi](/de/architecture/encryption#speichermodi-opak-und-durchsuchbar).
+
+## Das CloudHome-Trait
+
+Das `CloudHome`-Trait ist die Abstraktion, die bae backendunabhängig macht. Alles oberhalb des Traits ist universell. Alles darunter passt sich an den jeweiligen Cloud-Anbieter an.
+
+### Was universell ist (oberhalb des Traits)
+
+- **Cloud-Home-Struktur** — `changes/`, `heads/`, `snapshot.db`, `images/`, `storage/`, `membership/`, `keys/`. Dieselben logischen Pfade unabhängig vom Backend. Ein opakes Home shardet Audio und Artwork unter `storage/` und `images/` nach einem Hash ihrer id; ein durchsuchbares Home legt sie unter denselben zwei Präfixen in stabilen id-basierten Pfaden mit echten Namen ab (`storage/{album_id}/{release_id}/{import_folder}/01 Track.flac`, `images/{album_id}/{release_id}/cover.jpg`).
+- **Verschlüsselung** — ein symmetrischer Schlüssel pro Bibliothek; in einem opaken Home wird alles verschlüsselt, bevor es das Gerät verlässt. Ein durchsuchbares Home überspringt die Verschlüsselung und speichert Klartext; das Suffix `.enc` entfällt.
+- **Synchronisierungsprotokoll** — Changesets, Snapshots, Konfliktlösung per Last-Writer-Wins. Derselbe Algorithmus überall.
+- **Mitgliedschaftskette** — append-only Log mit Ed25519-Signaturen und Verschlüsselungsschlüssel, der für den öffentlichen Schlüssel jedes Mitglieds umhüllt ist.
+
+### Was variiert (unterhalb des Traits)
+
+- **Speicher-API** — wie Dateien tatsächlich gelesen und geschrieben werden: S3-API, Google-Drive-API, lokales Dateisystem usw.
+- **Zugriffsverwaltung** — wie ein neues Gerät Speicherzugriff erhält: Ordnerzugriff oder Ausgabe von Zugangsdaten.
+- **Authentifizierung** — wie ein neues Gerät sich authentifiziert: dein Cloud-Konto oder eingebettete Zugangsdaten.
+- **Änderungsbenachrichtigungen** — Verbraucher-Clouds unterstützen Push-Benachrichtigungen; S3 benötigt Polling.
+
+### Trait-Schnittstelle
+
+```rust
+trait CloudHome {
+    // Storage -- same interface, different API underneath
+    fn write(path, data) -> Result;
+    fn read(path) -> Result<Bytes>;
+    fn read_range(path, start, end) -> Result<Bytes>;
+    fn list(prefix) -> Result<Vec<String>>;
+    fn delete(path) -> Result;
+    fn exists(path) -> Result<bool>;
+
+    // Access management -- varies by backend
+    fn grant_access(member_email_or_id) -> Result<JoinInfo>;
+    fn revoke_access(member_email_or_id) -> Result;
+}
+
+Aufrufer wie Sync-Engine, Bild-Uploader und Dateispeicher verwenden diese Schnittstelle direkt. Sie müssen nicht wissen, mit welchem Backend sie sprechen.
+```
+
+## Zugriffsverwaltung
+
+Wie `grant_access` und `revoke_access` funktionieren, hängt vom Backend ab. Verbraucher-Clouds (Google Drive, Dropbox, OneDrive) teilen den Ordner über die API des Anbieters: Du meldest dich auf dem neuen Gerät bei deinem Konto an und der Ordner ist bereits erreichbar. S3-kompatible Backends geben pro Gerät eingeschränkte IAM-Zugangsdaten aus, eingebettet im Einladungscode.
+
+In beiden Fällen wird der Verschlüsselungsschlüssel separat über die Mitgliedschaftskette geliefert, umhüllt für den öffentlichen Schlüssel des neuen Geräts.
+
+## Implementierungen
+
+| Backend | Auth | Hinweise |
+|---|---|---|
+| S3 (aws-sdk-s3) | Access Key + Secret | Jeder S3-kompatible Dienst: AWS, B2, R2, Wasabi, MinIO |
+| Google Drive | OAuth | bae erstellt einen Ordner im Drive des Nutzers |
+| Dropbox | OAuth | |
+| OneDrive | OAuth | |
+| iCloud Drive | Lokales Dateisystem | Nur macOS, nutzt den iCloud-Container, keine Anmeldung nötig |

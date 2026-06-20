@@ -1,0 +1,60 @@
+---
+title: Cloud Home
+description: trait CloudHome ואחסון ענן ללא תלות בספק
+---
+
+cloud home הוא מיקום אחסון מרוחק יחיד לספרייה: תיקיית Google Drive אחת, bucket S3 אחד או תיקיית Dropbox אחת. הוא מחזיק קובצי מהדורות, חבילות שינוי של נתונים, תמונות, snapshots ו-membership chain. ב-**opaque** home, שהוא ברירת המחדל, האמון נמצא בהצפנה ולא בספק האחסון; הספק שומר טקסט מוצפן במפתחות מוסתרים. אפשר להגדיר home כ-**browsable**, שבו הכול נשמר גלוי במסלולים יציבים לפי מזהים ועם שמות קבצים אמיתיים; ראו [מצבי אחסון](/he/architecture/encryption#מצבי-אחסון-opaque-ו-browsable).
+
+## trait CloudHome
+
+`CloudHome` הוא ההפשטה שמאפשרת ל-bae לא להיות תלוי בספק מסוים. כל מה שמעל trait הוא כללי; כל מה שמתחתיו מתאים את עצמו לספק הענן המסוים.
+
+### מה כללי
+
+- **מבנה cloud home** — `changes/`, `heads/`, `snapshot.db`, `images/`, `storage/`, `membership/`, `keys/`. אותם נתיבים לוגיים בכל ספק. opaque home מפצל שמע ותמונות תחת `storage/` ו-`images/` לפי hash של המזהה; browsable home משתמש באותם שני קידומות עם מסלולים יציבים לפי מזהים ושמות קבצים אמיתיים, למשל `storage/{album_id}/{release_id}/{import_folder}/01 Track.flac` ו-`images/{album_id}/{release_id}/cover.jpg`.
+- **הצפנה** — מפתח סימטרי אחד לכל ספרייה; ב-opaque home הכול מוצפן לפני שהוא עוזב את המכשיר. browsable home מדלג על הצפנה ושומר טקסט גלוי ללא סיומת `.enc`.
+- **פרוטוקול סנכרון** — חבילות שינוי, snapshots ופתרון התנגשויות לפי אחרון כותב מנצח. אותו אלגוריתם בכל מקום.
+- **Membership chain** — יומן להוספה בלבד עם חתימות Ed25519 ומפתח הצפנה עטוף לכל חבר לפי המפתח הציבורי שלו.
+
+### מה משתנה
+
+- **API אחסון** — איך קוראים וכותבים קבצים בפועל: S3 API, Google Drive API, מערכת קבצים מקומית ועוד.
+- **ניהול גישה** — איך מכשיר חדש מקבל גישה לאחסון: שיתוף תיקייה או יצירת פרטי גישה.
+- **אימות** — איך מכשיר חדש מזדהה: חשבון הענן שלכם או פרטי גישה מוטמעים.
+- **התראות שינוי** — עננים צרכניים תומכים בהתראות push; S3 דורש polling.
+
+### ממשק trait
+
+```rust
+trait CloudHome {
+    // Storage -- same interface, different API underneath
+    fn write(path, data) -> Result;
+    fn read(path) -> Result<Bytes>;
+    fn read_range(path, start, end) -> Result<Bytes>;
+    fn list(prefix) -> Result<Vec<String>>;
+    fn delete(path) -> Result;
+    fn exists(path) -> Result<bool>;
+
+    // Access management -- varies by backend
+    fn grant_access(member_email_or_id) -> Result<JoinInfo>;
+    fn revoke_access(member_email_or_id) -> Result;
+}
+
+קוראים כמו מנוע הסנכרון, מעלה התמונות ואחסון הקבצים משתמשים בממשק הזה ישירות. הם אינם צריכים לדעת מול איזה ספק הם עובדים.
+```
+
+## ניהול גישה
+
+האופן שבו `grant_access` ו-`revoke_access` עובדים תלוי בספק. עננים צרכניים כמו Google Drive, Dropbox ו-OneDrive משתפים את התיקייה דרך API של הספק; במכשיר החדש מתחברים לחשבון, והתיקייה כבר זמינה. ספקים תואמי S3 מנפיקים פרטי IAM מוגבלים לכל מכשיר ומכניסים אותם לקוד ההזמנה.
+
+בשני המקרים, מפתח ההצפנה מועבר בנפרד דרך membership chain, עטוף למפתח הציבורי של המכשיר החדש.
+
+## מימושים
+
+| ספק | אימות | הערות |
+|---|---|---|
+| S3 (aws-sdk-s3) | Access key + secret | כל שירות תואם S3, למשל AWS, B2, R2, Wasabi, MinIO |
+| Google Drive | OAuth | bae יוצר תיקייה ב-Drive של המשתמש |
+| Dropbox | OAuth | |
+| OneDrive | OAuth | |
+| iCloud Drive | מערכת קבצים מקומית | macOS בלבד, משתמש במכולת iCloud ללא כניסה נוספת |
