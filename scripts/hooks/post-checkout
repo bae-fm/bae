@@ -54,7 +54,6 @@ fi
 # drops bae_bridge.swift if the project is generated before the bindings land.
 ./bae-bridge/build-macos.sh
 cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
-cp bae-bridge/loc/generated/apple/Core.xcstrings bae-macos/bae/bae/Core.xcstrings
 (cd bae-macos/bae && xcodegen generate)
 # Match the pre-commit hook's xcodebuild flags (notably -derivedDataPath): if the
 # primed SPM packages land in a different DerivedData location, that hook's

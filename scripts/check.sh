@@ -158,7 +158,6 @@ section "macOS"
 MACOS_BUILD_OK=false
 if check "bridge build" ./bae-bridge/build-macos.sh; then
   cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
-  cp bae-bridge/loc/generated/apple/Core.xcstrings bae-macos/bae/bae/Core.xcstrings
   check "xcodegen" bash -c 'cd bae-macos/bae && xcodegen'
   MACOS_XCODE_OK=false
   if check "xcodebuild" \
