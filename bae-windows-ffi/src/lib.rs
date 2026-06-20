@@ -2625,10 +2625,15 @@ fn oauth_provider_from_str(provider: &str) -> Option<bae_core::config::CloudProv
 /// Free the result with [`bae_string_free`].
 #[no_mangle]
 pub extern "C" fn bae_available_cloud_providers() -> *mut c_char {
-    #[allow(unused_mut)]
-    let mut providers = vec!["s3"];
-    #[cfg(feature = "oauth-providers")]
-    providers.extend(["google_drive", "dropbox", "onedrive"]);
+    let providers = [
+        "s3",
+        #[cfg(feature = "oauth-providers")]
+        "google_drive",
+        #[cfg(feature = "oauth-providers")]
+        "dropbox",
+        #[cfg(feature = "oauth-providers")]
+        "onedrive",
+    ];
     json_cstring(&providers)
 }
 
