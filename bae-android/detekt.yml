@@ -8,6 +8,10 @@ exceptions:
   TooGenericExceptionCaught:
     active: false
 
+complexity:
+  TooManyFunctions:
+    ignoreOverridden: true
+
 naming:
   # Jetpack Compose @Composable functions use PascalCase by convention
   # (same exemption applied to ktlint via .editorconfig). detekt's

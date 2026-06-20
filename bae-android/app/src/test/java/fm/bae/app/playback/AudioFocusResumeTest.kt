@@ -79,8 +79,8 @@ class AudioFocusResumeTest {
         val resumesBeforeFocusChurn = handle.resumeCount
 
         // Dictation grabs focus, then releases it.
-        player.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
-        player.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+        player.systemHooks.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
+        player.systemHooks.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
 
         assertEquals(resumesBeforeFocusChurn, handle.resumeCount)
     }
@@ -95,8 +95,8 @@ class AudioFocusResumeTest {
         shadowOf(Looper.getMainLooper()).idle()
         val resumesBeforeFocusChurn = handle.resumeCount
 
-        player.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
-        player.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+        player.systemHooks.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
+        player.systemHooks.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
 
         assertEquals(resumesBeforeFocusChurn + 1, handle.resumeCount)
     }
@@ -111,8 +111,8 @@ class AudioFocusResumeTest {
         shadowOf(Looper.getMainLooper()).idle()
         val resumesBeforeFocusChurn = handle.resumeCount
 
-        player.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS)
-        player.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+        player.systemHooks.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS)
+        player.systemHooks.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
 
         assertEquals(resumesBeforeFocusChurn, handle.resumeCount)
     }
@@ -127,14 +127,14 @@ class AudioFocusResumeTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         // A transient loss while playing arms resume...
-        player.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
+        player.systemHooks.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
         // ...but the user pauses during the interruption (lock screen / notification),
         // which must disarm it.
         player.pause()
         shadowOf(Looper.getMainLooper()).idle()
         val resumesBeforeRegain = handle.resumeCount
 
-        player.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+        player.systemHooks.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
 
         assertEquals(resumesBeforeRegain, handle.resumeCount)
     }
