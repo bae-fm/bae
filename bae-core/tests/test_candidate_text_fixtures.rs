@@ -32,10 +32,9 @@ use tokio::sync::broadcast;
 
 #[derive(Debug, Deserialize)]
 struct Fixture {
-    #[allow(dead_code)]
     name: String,
-    #[allow(dead_code)]
-    notes: Option<String>,
+    #[serde(rename = "notes")]
+    _notes: Option<String>,
     sources: Sources,
     expected: Expected,
 }
