@@ -53,7 +53,7 @@ pub fn init_app(
     library_id: String,
     position_update_interval_ms: u32,
 ) -> Result<Arc<AppHandle>, BridgeError> {
-    configure_logging(Diagnostics::noop());
+    configure_logging(Diagnostics::noop())?;
 
     let RunningApp {
         runtime,
@@ -74,7 +74,7 @@ pub fn configure_diagnostics(
 ) -> Result<Arc<BridgeDiagnostics>, BridgeError> {
     let diagnostics =
         Diagnostics::configure(config.into_core()).map_err(diagnostics_error_to_bridge)?;
-    configure_logging(diagnostics.clone());
+    configure_logging(diagnostics.clone())?;
     Ok(Arc::new(BridgeDiagnostics { diagnostics }))
 }
 
@@ -168,15 +168,14 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
     }
 }
 
-/// Build an `EnvFilter` from `RUST_LOG`. If the variable is unset, defaults to "info".
-/// If set but malformed, warns on stderr and falls back to "info".
-fn env_filter() -> tracing_subscriber::EnvFilter {
+fn env_filter() -> Result<tracing_subscriber::EnvFilter, BridgeError> {
     match std::env::var("RUST_LOG") {
-        Err(_) => tracing_subscriber::EnvFilter::new("info"),
-        Ok(val) => tracing_subscriber::EnvFilter::try_new(&val).unwrap_or_else(|e| {
-            eprintln!("warning: RUST_LOG={val:?} is malformed ({e}), falling back to \"info\"");
-            tracing_subscriber::EnvFilter::new("info")
-        }),
+        Err(std::env::VarError::NotPresent) => Ok(tracing_subscriber::EnvFilter::new("info")),
+        Err(std::env::VarError::NotUnicode(_)) => {
+            Err(BridgeError::config("RUST_LOG is not valid Unicode"))
+        }
+        Ok(value) => tracing_subscriber::EnvFilter::try_new(&value)
+            .map_err(|e| BridgeError::config(format!("RUST_LOG={value:?} is malformed: {e}"))),
     }
 }
 
@@ -191,12 +190,14 @@ fn install_subscriber(subscriber: impl tracing_subscriber::util::SubscriberInitE
 macro_rules! install_logging_subscriber {
     ($diagnostics:expr $(, $layer:expr)+ $(,)?) => {{
         use tracing_subscriber::prelude::*;
+        let filter = env_filter()?;
         install_subscriber(
             tracing_subscriber::registry()
-                .with(env_filter())
+                .with(filter)
                 .with(bae_core::diagnostics::tracing_layer($diagnostics))
                 $(.with($layer))+,
         );
+        Ok(())
     }};
 }
 
@@ -212,33 +213,33 @@ where
 }
 
 #[cfg(target_os = "macos")]
-fn configure_logging(diagnostics: Diagnostics) {
+fn configure_logging(diagnostics: Diagnostics) -> Result<(), BridgeError> {
     install_logging_subscriber!(
         diagnostics,
         fmt_log_layer(),
         tracing_oslog::OsLogger::new("fm.bae.desktop", "default"),
-    );
+    )
 }
 
 #[cfg(target_os = "android")]
-fn configure_logging(diagnostics: Diagnostics) {
+fn configure_logging(diagnostics: Diagnostics) -> Result<(), BridgeError> {
     install_logging_subscriber!(
         diagnostics,
         tracing_android::layer("bae").expect("Android tracing layer initializes"),
-    );
+    )
 }
 
 #[cfg(target_os = "ios")]
-fn configure_logging(diagnostics: Diagnostics) {
+fn configure_logging(diagnostics: Diagnostics) -> Result<(), BridgeError> {
     install_logging_subscriber!(
         diagnostics,
         tracing_oslog::OsLogger::new("fm.bae.app", "default"),
-    );
+    )
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "android", target_os = "ios")))]
-fn configure_logging(diagnostics: Diagnostics) {
-    install_logging_subscriber!(diagnostics, fmt_log_layer());
+fn configure_logging(diagnostics: Diagnostics) -> Result<(), BridgeError> {
+    install_logging_subscriber!(diagnostics, fmt_log_layer())
 }
 
 #[cfg(test)]
