@@ -209,6 +209,10 @@ macro_rules! install_logging_subscriber {
     }};
 }
 
+#[cfg(any(
+    target_os = "macos",
+    not(any(target_os = "macos", target_os = "android", target_os = "ios"))
+))]
 fn fmt_log_layer<S>() -> impl tracing_subscriber::Layer<S>
 where
     S: tracing::Subscriber,
