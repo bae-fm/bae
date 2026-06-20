@@ -1841,6 +1841,35 @@ pub unsafe extern "C" fn bae_cancel_outbox_item(handle: *const BaeHandle, id: i6
     }
 }
 
+/// Stop uploading a release and keep it local-only: drops its queued and
+/// in-flight uploads and deletes any blobs already uploaded this attempt.
+/// Returns null on success, else an owned error string to free with
+/// `bae_free_string`.
+///
+/// # Safety
+/// `handle` must be a live `BaeHandle`; `release_id` a valid C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_cancel_release_upload(
+    handle: *const BaeHandle,
+    release_id: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        return error_cstring("no app handle");
+    };
+    let Some(release_id) = cstr(release_id) else {
+        return error_cstring("invalid release id");
+    };
+    let app = &handle.0;
+    match app.runtime.block_on(
+        app.services
+            .library_manager()
+            .cancel_release_upload(&release_id),
+    ) {
+        Ok(()) => std::ptr::null_mut(),
+        Err(e) => error_cstring(&e.to_string()),
+    }
+}
+
 /// One track in an album-detail track list.
 #[derive(Serialize)]
 struct FfiTrack {

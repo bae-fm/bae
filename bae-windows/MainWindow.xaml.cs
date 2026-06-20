@@ -3390,24 +3390,30 @@ public sealed partial class MainWindow : Window
                 Grid.SetColumn(labelColumn, 0);
                 itemGrid.Children.Add(labelColumn);
 
-                var cancel = new Button { Content = Loc.Chrome("outbox.cancel_item") };
-                cancel.Click += async (_, _) =>
+                // Uploads are stopped per-release (right-click the storage row →
+                // "Cancel Upload"), not per file. A pending delete is genuinely a
+                // single-file operation, so it keeps its per-row cancel.
+                if (activeUpload is null)
                 {
-                    storageStatus.Visibility = Visibility.Collapsed;
-                    cancel.IsEnabled = false;
-                    var error = await System.Threading.Tasks.Task.Run(() => NativeBae.CancelOutboxItem(_handle, id));
-                    if (error is not null)
+                    var cancel = new Button { Content = Loc.Chrome("outbox.cancel_item") };
+                    cancel.Click += async (_, _) =>
                     {
-                        storageStatus.Text = error;
-                        storageStatus.Visibility = Visibility.Visible;
-                        cancel.IsEnabled = true;
-                        return;
-                    }
+                        storageStatus.Visibility = Visibility.Collapsed;
+                        cancel.IsEnabled = false;
+                        var error = await System.Threading.Tasks.Task.Run(() => NativeBae.CancelOutboxItem(_handle, id));
+                        if (error is not null)
+                        {
+                            storageStatus.Text = error;
+                            storageStatus.Visibility = Visibility.Visible;
+                            cancel.IsEnabled = true;
+                            return;
+                        }
 
-                    await LoadOutbox();
-                };
-                Grid.SetColumn(cancel, 1);
-                itemGrid.Children.Add(cancel);
+                        await LoadOutbox();
+                    };
+                    Grid.SetColumn(cancel, 1);
+                    itemGrid.Children.Add(cancel);
+                }
                 outboxPanel.Children.Add(itemGrid);
             }
 
@@ -3544,19 +3550,19 @@ public sealed partial class MainWindow : Window
             menu.Items.Add(item);
         }
 
-        // Cancel the queued uploads of any targeted release (the Uploading-state
-        // counterpart to macOS's Uploading tab). Resolved from the live outbox
-        // snapshot since the storage row carries only a pending count.
-        var cancelIds = await UploadOpIdsForReleases(releaseIds);
-        if (cancelIds.Count > 0)
+        // Stop uploading any targeted release that's mid-transfer, keeping it
+        // local-only. Resolved from the live outbox snapshot since the storage
+        // row carries only a pending count.
+        var uploadingReleases = await UploadingReleases(releaseIds);
+        if (uploadingReleases.Count > 0)
         {
             var cancel = new MenuFlyoutItem { Text = Loc.Chrome("storage.cancel_upload") };
             cancel.Click += async (_, _) =>
             {
-                foreach (var id in cancelIds)
+                foreach (var releaseId in uploadingReleases)
                 {
                     var error = await System.Threading.Tasks.Task.Run(
-                        () => NativeBae.CancelOutboxItem(_handle, id));
+                        () => NativeBae.CancelReleaseUpload(_handle, releaseId));
                     if (error is not null)
                     {
                         storageStatus.Text = error;
@@ -3573,30 +3579,26 @@ public sealed partial class MainWindow : Window
         return menu;
     }
 
-    // The queued upload op ids belonging to any of the given releases, read from
-    // the current outbox snapshot. Empty when none are queued or the snapshot
-    // can't be read.
-    private async System.Threading.Tasks.Task<List<long>> UploadOpIdsForReleases(
+    // Of the given releases, those with uploads queued or in flight. Core omits
+    // idle releases from the per-release map, so presence there is the signal.
+    private async System.Threading.Tasks.Task<List<string>> UploadingReleases(
         List<string> releaseIds)
     {
         var json = await System.Threading.Tasks.Task.Run(
             () => NativeBae.OutboxSnapshotJson(_handle));
-        if (json is null)
-        {
-            return new List<long>();
-        }
-
-        var snapshot = JsonSerializer.Deserialize<OutboxSnapshot>(json, JsonOptions);
+        var snapshot = json is null
+            ? null
+            : JsonSerializer.Deserialize<OutboxSnapshot>(json, JsonOptions);
         if (snapshot is null)
         {
-            return new List<long>();
+            // Couldn't read the outbox; surface it like the panel load does
+            // rather than silently dropping the cancel action.
+            storageStatus.Text = Loc.Chrome("outbox.read_failed");
+            storageStatus.Visibility = Visibility.Visible;
+            return new List<string>();
         }
 
-        var targets = new HashSet<string>(releaseIds);
-        return snapshot.Uploads
-            .Where(op => op.ReleaseId is not null && targets.Contains(op.ReleaseId))
-            .Select(op => op.Id)
-            .ToList();
+        return releaseIds.Where(snapshot.PerRelease.ContainsKey).ToList();
     }
 
     // Run a storage transition on every release in the selection off the UI

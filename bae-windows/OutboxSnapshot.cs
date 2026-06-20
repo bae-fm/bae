@@ -26,6 +26,12 @@ public sealed class OutboxSnapshot
     /// <summary>Aggregate byte progress; the master bar reads its done/total.</summary>
     public UploadProgress Total { get; set; } = new();
 
+    /// <summary>Per-release upload aggregate, keyed by release id. Core omits
+    /// idle releases, so a key's presence means the release has upload work
+    /// queued or in flight — the storage row reads this to offer "Cancel
+    /// Upload".</summary>
+    public Dictionary<string, UploadProgress> PerRelease { get; set; } = new();
+
     /// <summary>One-line queue summary, e.g. "2 uploading · 1 failed · 3 queued";
     /// empty when the queue is idle so the UI can hide it. Each part is a
     /// localized count message from the shared catalog.</summary>

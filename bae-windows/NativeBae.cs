@@ -459,6 +459,15 @@ internal static class NativeBae
     internal static string? CancelOutboxItem(IntPtr handle, long id) =>
         ResultMessage(CancelOutboxItemPtr(handle, id));
 
+    [DllImport(Dll, EntryPoint = "bae_cancel_release_upload", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr CancelReleaseUploadPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+
+    /// <summary>Stop uploading a release and keep it local-only; null on success, else the error.</summary>
+    internal static string? CancelReleaseUpload(IntPtr handle, string releaseId) =>
+        ResultMessage(CancelReleaseUploadPtr(handle, releaseId));
+
     /// <summary>
     /// Album results for a query as JSON (same shape as a page), or
     /// <see cref="IntPtr.Zero"/> on error. Prefer <see cref="SearchJson"/>.
