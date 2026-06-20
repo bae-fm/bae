@@ -19,7 +19,6 @@ disabled_rules:
   - todo                                       # tracked in issues, not the linter
   - multiple_closures_with_trailing_closure    # SwiftUI's Button(action:){}label:{} etc.
   - identifier_name                            # length heuristic; flags idiomatic id/loop vars/fixtures
-  - implicit_optional_initialization           # explicit `= nil` is a deliberate clarity choice
   - file_length                                # type_body_length catches oversized types; long view
                                                # files (many small subviews) and preview fixtures are fine
 

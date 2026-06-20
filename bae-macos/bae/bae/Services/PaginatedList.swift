@@ -116,7 +116,7 @@ final class PaginatedList<Row: Identifiable & Sendable> where Row.ID: Sendable {
     /// Returns the ID at `position`, preferring the highest-generation segment
     /// so fresh data wins over stale when they transiently overlap.
     func idAt(_ position: Int) -> Row.ID? {
-        var best: Segment? = nil
+        var best: Segment?
         for seg in segments where seg.range.contains(position) {
             if best.map({ seg.generation > $0.generation }) ?? true {
                 best = seg

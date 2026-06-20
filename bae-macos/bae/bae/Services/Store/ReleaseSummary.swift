@@ -52,7 +52,7 @@ final class ReleaseSummary: Identifiable {
     /// the wire payload — driven entirely by the transfer event stream, so the
     /// wire `update(from:)` paths leave it untouched (a `ReleaseUpdated` landing
     /// mid-transfer must not clear the in-flight indicator).
-    var transfer: TransferState? = nil
+    var transfer: TransferState?
 
     /// Total release size formatted for the current locale, e.g. "350 MB".
     /// bae-core emits the raw byte count; the UI formats it.

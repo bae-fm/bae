@@ -21,7 +21,7 @@ struct LibrarySettingsTab: View {
     /// pre-formatted warning when releases live only in the cloud (`nil`
     /// when no releases are at risk).
     @State
-    private var disconnectExtraWarning: String? = nil
+    private var disconnectExtraWarning: String?
 
     private var isConnected: Bool {
         configStore.syncReady
@@ -177,7 +177,7 @@ private struct ConnectDeviceSection: View {
     @State
     private var show = false
     @State
-    private var result: Result<String, Error>? = nil
+    private var result: Result<String, Error>?
 
     var body: some View {
         Section("Devices") {

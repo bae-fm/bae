@@ -2,7 +2,7 @@ import SwiftUI
 
 extension FocusedValues {
     @Entry
-    var focusSearch: (() -> Void)? = nil
+    var focusSearch: (() -> Void)?
 }
 
 private let titleBarLeadingPadding: CGFloat = 80

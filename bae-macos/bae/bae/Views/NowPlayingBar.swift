@@ -131,9 +131,9 @@ struct NowPlayingBar: View {
     @State
     private var queueButtonDropTargeted = false
     @State
-    private var queueAddDisplayedCount: Int? = nil
+    private var queueAddDisplayedCount: Int?
     @State
-    private var queueAddHideTask: Task<Void, Never>? = nil
+    private var queueAddHideTask: Task<Void, Never>?
 
     var body: some View {
         HStack(spacing: 16) {
