@@ -1,4 +1,3 @@
-#![allow(rustdoc::broken_intra_doc_links, rustdoc::private_intra_doc_links)]
 //! C ABI over bae-core for the native Windows app (WinUI 3 / C#).
 //!
 //! Windows binds bae-core through this hand-written `extern "C"` surface, the way
@@ -662,7 +661,7 @@ struct FfiRestoreCodeInfo {
     library_name: String,
     provider: String,
     /// Whether restoring this library needs an OAuth sign-in (Google Drive,
-    /// Dropbox, OneDrive). The caller runs [`bae_oauth_authorize`] for the
+    /// Dropbox, OneDrive). The caller runs `bae_oauth_authorize` for the
     /// provider and passes the token JSON to [`bae_restore_from_code`].
     needs_oauth: bool,
 }
@@ -779,7 +778,7 @@ pub unsafe extern "C" fn bae_oauth_authorize(provider: *const c_char) -> *mut c_
 }
 
 /// Restore a library from a restore code. For OAuth providers (Google Drive,
-/// Dropbox, OneDrive) the caller first runs [`bae_oauth_authorize`] and passes
+/// Dropbox, OneDrive) the caller first runs `bae_oauth_authorize` and passes
 /// the resulting token JSON as `oauth_token_json`; for credential providers it
 /// passes null. Pulls the library from the cloud, then returns `{library_id,
 /// error}` as JSON for the caller to [`bae_init`]. No handle — runs before
@@ -859,7 +858,7 @@ enum FfiRestoreSource {
 /// Restore a library by entering its cloud location and credentials directly,
 /// rather than from a restore code. `library_id` and `encryption_key_hex`
 /// identify and unlock the library; `library_name` names the local copy (empty
-/// generates one); `source_json` is an [`FfiRestoreSource`]. Pulls the library
+/// generates one); `source_json` is an `FfiRestoreSource`. Pulls the library
 /// from the cloud, then returns `{library_id, error}` as JSON for the caller to
 /// [`bae_init`]. Blocks on the pull — call off the UI thread. No handle — runs
 /// before [`bae_init`]. Free with [`bae_string_free`].
@@ -3357,7 +3356,7 @@ pub unsafe extern "C" fn bae_rerun_identify_for_candidate(
 /// Seed the import confirmation pane from a candidate release the user has
 /// chosen to import, before any DB row exists. Fetches the release from its
 /// metadata source (`"discogs"` or `"musicbrainz"`) and returns a JSON
-/// [`FfiPrefetchedEdit`] `{edit, remote_covers, local_artwork}`:
+/// `FfiPrefetchedEdit` `{edit, remote_covers, local_artwork}`:
 ///
 /// - `edit` is the raw editor form ([`bae_core::import::RawReleaseEdit`],
 ///   `{album_title, album_artist_text, pressing, tracks}`) — the same shape as
@@ -3466,7 +3465,7 @@ struct FfiLibraryStatus {
 
 /// Check whether the chosen candidate (source `"discogs"` or `"musicbrainz"`
 /// plus its release id) is already in the library, as a JSON
-/// [`FfiLibraryStatus`] `{release_in_library, album_in_library, album_id,
+/// `FfiLibraryStatus` `{release_in_library, album_in_library, album_id,
 /// album_title}`. The import confirmation shows a banner when
 /// `release_in_library` is set, linking to `album_id`. Returns null on error.
 /// Free with [`bae_string_free`].
