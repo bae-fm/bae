@@ -267,7 +267,8 @@ else
   fi
 
   if command -v detekt &>/dev/null; then
-    check "detekt" detekt --input bae-android/app/src/main/java --build-upon-default-config
+    check "detekt" detekt --input bae-android/app/src/main/java \
+      --config bae-android/detekt.yml --build-upon-default-config
   else
     skip "detekt" "not installed — brew install detekt"
   fi

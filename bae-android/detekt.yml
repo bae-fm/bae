@@ -11,9 +11,9 @@ exceptions:
 naming:
   # Jetpack Compose @Composable functions use PascalCase by convention
   # (same exemption applied to ktlint via .editorconfig). detekt's
-  # FunctionNaming doesn't understand the Compose annotation.
+  # FunctionNaming needs the Compose annotations named explicitly.
   FunctionNaming:
-    active: false
+    ignoreAnnotated: ["Composable", "Preview"]
   # Compose files commonly contain both a parameter data class and the
   # composable that uses it. detekt counts only class declarations (not
   # @Composable functions) as top-level declarations, so every such file
