@@ -1,0 +1,49 @@
+---
+title: 데이터 소스
+description: bae가 메타데이터와 아트워크에 사용하는 외부 서비스
+---
+
+bae는 가져오기 중 외부 서비스를 사용해 메타데이터와 아트워크를 가져옵니다. 각 서비스가 제공하는 것과 설정 방법은 다음과 같습니다.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a>는 열린 음악 백과사전이며 bae의 기본 메타데이터 소스입니다. 제공하는 내용은 다음과 같습니다.
+
+- 포괄적인 트랙 목록
+- 릴리스 그룹 정보
+- ISRC 코드
+- 정확한 CD 식별을 위한 CD TOC 매칭
+- 연결된 외부 URL, Discogs 교차 참조 포함
+
+### 인증
+
+API 키가 필요 없습니다. MusicBrainz는 무료이며 공개되어 있습니다.
+
+### 요청 제한
+
+MusicBrainz는 IP 주소당 평균 초당 1개 요청을 적용합니다. 이를 넘으면 MusicBrainz가 503 오류를 반환하고 IP를 일시적으로 차단할 수 있습니다. bae는 이 제한 안에 머물도록 요청 간격을 자동으로 조절합니다.
+
+### 더 알아보기
+
+<a href="https://musicbrainz.org/doc/MusicBrainz_API" target="_blank">MusicBrainz API 문서</a>와 <a href="https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting" target="_blank">요청 제한 세부 정보</a>를 참고하세요.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a>는 음악 데이터베이스이자 마켓플레이스입니다. 특히 다음 항목에 강합니다.
+
+- 레코드 릴리스와 프레싱
+- 자세한 크레딧: 프로듀서, 엔지니어 등
+- 카탈로그 번호와 바코드
+- 레이블 정보
+
+### 인증
+
+Discogs에는 개인 API 토큰이 필요합니다. bae 초기 설정 중 이를 설정하며, 본인의 토큰이 필요합니다.
+
+### 요청 제한
+
+Discogs는 인증된 요청을 분당 60개까지 허용합니다. bae가 이를 자동으로 처리합니다.
+
+### 시작하기
+
+<a href="https://www.discogs.com/settings/developers" target="_blank">Discogs 개발자 설정</a>에서 토큰을 가져오세요. 설정 중 붙여 넣으면 됩니다.

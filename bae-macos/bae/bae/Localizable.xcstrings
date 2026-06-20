@@ -87,6 +87,12 @@
             "state": "translated",
             "value": "%1$@ - %2$@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ - %2$@"
+          }
         }
       }
     },
@@ -175,6 +181,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ · iz %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · 출처: %2$@"
           }
         }
       }
@@ -265,6 +277,12 @@
             "state": "translated",
             "value": "%1$@ — %2$lld od %3$lld"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ — %3$lld개 중 %2$lld개"
+          }
         }
       }
     },
@@ -350,6 +368,12 @@
           }
         },
         "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — bae"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "%@ — bae"
@@ -442,6 +466,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ključ za šifriranje fonoteke %@ uklonit će se iz privjeska ključeva. Ova sesija nastavlja raditi; pri sljedećem pokretanju morat ćete ponovno unijeti ključ."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@의 암호화 키가 키체인에서 제거됩니다. 이 세션은 계속 작동하지만 다음 실행 때 키를 다시 입력해야 합니다."
           }
         }
       }
@@ -762,6 +792,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%1$lld datoteka · %2$@"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "파일 %1$lld개 · %2$@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "파일 %1$lld개 · %2$@"
                 }
               }
             }
@@ -1089,6 +1137,24 @@
               }
             }
           }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "릴리스 %lld개"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "릴리스 %lld개"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -1412,6 +1478,24 @@
               }
             }
           }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "트랙 %lld개"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "트랙 %lld개"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -1497,6 +1581,12 @@
           }
         },
         "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(%@)"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "(%@)"
@@ -1590,6 +1680,12 @@
             "state": "translated",
             "value": "64-znamenkasti heksadecimalni ključ za šifriranje"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "64자 16진수 암호화 키"
+          }
         }
       }
     },
@@ -1678,6 +1774,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "API ključ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 키"
           }
         }
       }
@@ -1768,6 +1870,12 @@
             "state": "translated",
             "value": "O programu"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정보"
+          }
         }
       }
     },
@@ -1856,6 +1964,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pristupni ključ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access Key"
           }
         }
       }
@@ -1946,6 +2060,12 @@
             "state": "translated",
             "value": "Pristup odbijen"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "접근 거부됨"
+          }
         }
       }
     },
@@ -2034,6 +2154,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Račun"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계정"
           }
         }
       }
@@ -2124,6 +2250,12 @@
             "state": "translated",
             "value": "Dodaj"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가"
+          }
         }
       }
     },
@@ -2212,6 +2344,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dodaj kao sljedeće"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음에 추가"
           }
         }
       }
@@ -2302,6 +2440,12 @@
             "state": "translated",
             "value": "Dodajte mapu iz koje ćete uvoziti glazbu"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음악을 가져올 폴더 추가"
+          }
         }
       }
     },
@@ -2390,6 +2534,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dodajte mapu za nadzor uvoza"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가져오기를 감시할 폴더 추가"
           }
         }
       }
@@ -2480,6 +2630,12 @@
             "state": "translated",
             "value": "Dodaj kriterij sortiranja"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정렬 기준 추가"
+          }
         }
       }
     },
@@ -2568,6 +2724,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dodaj u red"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대기열에 추가"
           }
         }
       }
@@ -2658,6 +2820,12 @@
             "state": "translated",
             "value": "Dodano"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가됨"
+          }
         }
       }
     },
@@ -2746,6 +2914,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Album"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앨범"
           }
         }
       }
@@ -2836,6 +3010,12 @@
             "state": "translated",
             "value": "Omot albuma"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앨범 아트"
+          }
         }
       }
     },
@@ -2924,6 +3104,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izvođač albuma"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앨범 아티스트"
           }
         }
       }
@@ -3014,6 +3200,12 @@
             "state": "translated",
             "value": "Naziv albuma"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앨범 제목"
+          }
         }
       }
     },
@@ -3102,6 +3294,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Albumi"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앨범"
           }
         }
       }
@@ -3192,6 +3390,12 @@
             "state": "translated",
             "value": "Sve"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체"
+          }
         }
       }
     },
@@ -3280,6 +3484,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Drugo izdanje ovog albuma već je u vašoj fonoteci"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 앨범의 다른 릴리스가 라이브러리에 있습니다"
           }
         }
       }
@@ -3370,6 +3580,12 @@
             "state": "translated",
             "value": "Bilo koja pohrana kompatibilna s S3 (AWS, Backblaze, Minio, ...)"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S3 호환 저장소(AWS, Backblaze, Minio 등)"
+          }
         }
       }
     },
@@ -3458,6 +3674,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jeste li sigurni da želite izbrisati ovo izdanje? Ovo se ne može poništiti."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 릴리스를 삭제할까요? 되돌릴 수 없습니다."
           }
         }
       }
@@ -3548,6 +3770,12 @@
             "state": "translated",
             "value": "Izvođač"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아티스트"
+          }
         }
       }
     },
@@ -3636,6 +3864,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izvođači, albumi, skladbe"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아티스트, 앨범, 트랙"
           }
         }
       }
@@ -3726,6 +3960,12 @@
             "state": "translated",
             "value": "Zvuk"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오디오"
+          }
         }
       }
     },
@@ -3814,6 +4054,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Autorizacija..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인증 중..."
           }
         }
       }
@@ -3904,6 +4150,12 @@
             "state": "translated",
             "value": "Natrag"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "뒤로"
+          }
         }
       }
     },
@@ -3992,6 +4244,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Crtični kod"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "바코드"
           }
         }
       }
@@ -4082,6 +4340,12 @@
             "state": "translated",
             "value": "Pregledivo — pohranjeno bez šifriranja"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탐색 가능 — 암호화하지 않고 저장"
+          }
         }
       }
     },
@@ -4170,6 +4434,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spremnik"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버킷"
           }
         }
       }
@@ -4260,6 +4530,12 @@
             "state": "translated",
             "value": "CUE datoteka"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE 시트"
+          }
         }
       }
     },
@@ -4348,6 +4624,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odustani"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "취소"
           }
         }
       }
@@ -4438,6 +4720,12 @@
             "state": "translated",
             "value": "Otkaži prijenos"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업로드 취소"
+          }
         }
       }
     },
@@ -4526,6 +4814,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Otkaži ovo preuzimanje"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 다운로드 취소"
           }
         }
       }
@@ -4616,6 +4910,12 @@
             "state": "translated",
             "value": "Katalog"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "카탈로그"
+          }
         }
       }
     },
@@ -4704,6 +5004,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kataloški br."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "카탈로그 #"
           }
         }
       }
@@ -4794,6 +5100,12 @@
             "state": "translated",
             "value": "Kataloški broj"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "카탈로그 번호"
+          }
         }
       }
     },
@@ -4882,6 +5194,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Promijeni omot"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커버 변경"
           }
         }
       }
@@ -4972,6 +5290,12 @@
             "state": "translated",
             "value": "Promijeni omot..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커버 변경..."
+          }
         }
       }
     },
@@ -5060,6 +5384,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Provjeri ima li ažuriranja..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 확인..."
           }
         }
       }
@@ -5150,6 +5480,12 @@
             "state": "translated",
             "value": "Odaberite skeniranu mapu za pretraživanje metapodataka"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메타데이터를 검색할 스캔된 폴더를 선택하세요"
+          }
         }
       }
     },
@@ -5238,6 +5574,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Očisti"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지우기"
           }
         }
       }
@@ -5328,6 +5670,12 @@
             "state": "translated",
             "value": "Kliknite za isključivanje"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클릭하여 제외"
+          }
         }
       }
     },
@@ -5416,6 +5764,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kliknite za uključivanje"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클릭하여 포함"
           }
         }
       }
@@ -5506,6 +5860,12 @@
             "state": "translated",
             "value": "Zatvori"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "닫기"
+          }
         }
       }
     },
@@ -5594,6 +5954,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zatvori fonoteku"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 닫기"
           }
         }
       }
@@ -5684,6 +6050,12 @@
             "state": "translated",
             "value": "Oblak"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클라우드"
+          }
         }
       }
     },
@@ -5772,6 +6144,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pružatelj usluge u oblaku"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클라우드 제공자"
           }
         }
       }
@@ -5862,6 +6240,12 @@
             "state": "translated",
             "value": "Sažmi red sinkronizacije"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화 대기열 접기"
+          }
         }
       }
     },
@@ -5950,6 +6334,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spremanje identiteta..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "신원 저장 중..."
           }
         }
       }
@@ -6040,6 +6430,12 @@
             "state": "translated",
             "value": "Potvrdi uvoz"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가져오기 확인"
+          }
         }
       }
     },
@@ -6128,6 +6524,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Poveži"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결"
           }
         }
       }
@@ -6218,6 +6620,12 @@
             "state": "translated",
             "value": "Poveži %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 연결"
+          }
         }
       }
     },
@@ -6306,6 +6714,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Poveži drugi uređaj"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 기기 연결"
           }
         }
       }
@@ -6396,6 +6810,12 @@
             "state": "translated",
             "value": "Poveži drugi uređaj..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 기기 연결..."
+          }
         }
       }
     },
@@ -6484,6 +6904,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Povezano"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결됨"
           }
         }
       }
@@ -6574,6 +7000,12 @@
             "state": "translated",
             "value": "Povezivanje..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결 중..."
+          }
         }
       }
     },
@@ -6662,6 +7094,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kopiraj kod"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코드 복사"
           }
         }
       }
@@ -6752,6 +7190,12 @@
             "state": "translated",
             "value": "Kopiraj pojedinosti"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "세부 정보 복사"
+          }
         }
       }
     },
@@ -6840,6 +7284,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kopiraj ID fonoteke"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 ID 복사"
           }
         }
       }
@@ -6930,6 +7380,12 @@
             "state": "translated",
             "value": "Kopiraj pojedinosti"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "세부 정보 복사"
+          }
         }
       }
     },
@@ -7018,6 +7474,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nije moguće pročitati %1$@: %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@을(를) 읽을 수 없음: %2$@"
           }
         }
       }
@@ -7108,6 +7570,12 @@
             "state": "translated",
             "value": "Nije moguće pročitati ispuštenu stavku"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "놓은 항목을 읽을 수 없음"
+          }
         }
       }
     },
@@ -7196,6 +7664,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nije moguće dodati mapu: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더를 추가할 수 없음: %@"
           }
         }
       }
@@ -7286,6 +7760,12 @@
             "state": "translated",
             "value": "Nije moguće provjeriti izdanja samo u oblaku: %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클라우드 전용 릴리스를 확인할 수 없음: %@"
+          }
         }
       }
     },
@@ -7374,6 +7854,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nije moguće učitati sliku"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미지를 불러올 수 없습니다"
           }
         }
       }
@@ -7464,6 +7950,12 @@
             "state": "translated",
             "value": "Nije moguće ponovno provjeriti Discogs ključ: %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs 키를 다시 확인할 수 없음: %@"
+          }
         }
       }
     },
@@ -7552,6 +8044,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nije moguće pročitati pohranjeni Discogs ključ: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장된 Discogs 키를 읽을 수 없음: %@"
           }
         }
       }
@@ -7642,6 +8140,12 @@
             "state": "translated",
             "value": "Nije moguće ukloniti mapu: %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더를 제거할 수 없음: %@"
+          }
         }
       }
     },
@@ -7730,6 +8234,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nije moguće ukloniti Discogs ključ: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs 키를 제거할 수 없음: %@"
           }
         }
       }
@@ -7820,6 +8330,12 @@
             "state": "translated",
             "value": "Nije moguće spremiti Discogs ključ: %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs 키를 저장할 수 없음: %@"
+          }
         }
       }
     },
@@ -7908,6 +8424,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nije moguće ažurirati stanje preskakanja: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "건너뛰기 상태를 업데이트할 수 없음: %@"
           }
         }
       }
@@ -7998,6 +8520,12 @@
             "state": "translated",
             "value": "Država"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "국가"
+          }
         }
       }
     },
@@ -8086,6 +8614,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Promjena omota nije uspjela"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커버 변경 실패"
           }
         }
       }
@@ -8176,6 +8710,12 @@
             "state": "translated",
             "value": "OCR omota"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커버 OCR"
+          }
         }
       }
     },
@@ -8264,6 +8804,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stvori novu fonoteku"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 라이브러리 만들기"
           }
         }
       }
@@ -8354,6 +8900,12 @@
             "state": "translated",
             "value": "Promijeni način ponavljanja"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "반복 모드 전환"
+          }
         }
       }
     },
@@ -8442,6 +8994,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Datum dodavanja (najnovije)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가한 날짜(최신)"
           }
         }
       }
@@ -8532,6 +9090,12 @@
             "state": "translated",
             "value": "Datum dodavanja (najstarije)"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가한 날짜(오래된 순)"
+          }
         }
       }
     },
@@ -8620,6 +9184,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izbriši"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제"
           }
         }
       }
@@ -8710,6 +9280,12 @@
             "state": "translated",
             "value": "Izbriši izdanje"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴리스 삭제"
+          }
         }
       }
     },
@@ -8798,6 +9374,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izbriši izvorne datoteke"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "원본 파일 삭제"
           }
         }
       }
@@ -8888,6 +9470,12 @@
             "state": "translated",
             "value": "Pojedinosti"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "세부 정보"
+          }
         }
       }
     },
@@ -8976,6 +9564,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uređaji"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기기"
           }
         }
       }
@@ -9066,6 +9660,12 @@
             "state": "translated",
             "value": "Disk"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "디스크"
+          }
         }
       }
     },
@@ -9154,6 +9754,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ID diska"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "디스크 ID"
           }
         }
       }
@@ -9244,6 +9850,12 @@
             "state": "translated",
             "value": "Sadržaj diska"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "디스크 TOC"
+          }
         }
       }
     },
@@ -9333,6 +9945,12 @@
             "state": "translated",
             "value": "ID diska"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DiscID"
+          }
         }
       }
     },
@@ -9418,6 +10036,12 @@
           }
         },
         "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "Discogs"
@@ -9511,6 +10135,12 @@
             "state": "translated",
             "value": "Discogs je odbio ovaj ključ — provjerite ga i ponovno spremite."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs가 이 키를 거부했습니다. 확인한 뒤 다시 저장하세요."
+          }
         }
       }
     },
@@ -9599,6 +10229,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prekini vezu"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결 해제"
           }
         }
       }
@@ -9689,6 +10325,12 @@
             "state": "translated",
             "value": "Prekinuti sinkronizaciju?"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화를 연결 해제할까요?"
+          }
         }
       }
     },
@@ -9777,6 +10419,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dokumenti"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "문서"
           }
         }
       }
@@ -9867,6 +10515,12 @@
             "state": "translated",
             "value": "Gotovo"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "완료"
+          }
         }
       }
     },
@@ -9955,6 +10609,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preuzimanje %lld%%"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% 다운로드 중"
           }
         }
       }
@@ -10045,6 +10705,12 @@
             "state": "translated",
             "value": "Preuzimanja"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다운로드"
+          }
         }
       }
     },
@@ -10133,6 +10799,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Povucite za promjenu veličine"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "끌어서 크기 조절"
           }
         }
       }
@@ -10223,6 +10895,12 @@
             "state": "translated",
             "value": "Povucite skladbe ovamo ili reproducirajte album"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기에 트랙을 끌어 놓거나 앨범을 재생하세요"
+          }
         }
       }
     },
@@ -10311,6 +10989,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ID pogona"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drive ID"
           }
         }
       }
@@ -10401,6 +11085,12 @@
             "state": "translated",
             "value": "Ispustite mapu za uvoz, ne datoteku"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일이 아니라 가져올 폴더를 놓으세요"
+          }
         }
       }
     },
@@ -10486,6 +11176,12 @@
           }
         },
         "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dropbox"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "Dropbox"
@@ -10579,6 +11275,12 @@
             "state": "translated",
             "value": "Uredi metapodatke"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메타데이터 편집"
+          }
         }
       }
     },
@@ -10667,6 +11369,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uredi metapodatke..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메타데이터 편집..."
           }
         }
       }
@@ -10757,6 +11465,12 @@
             "state": "translated",
             "value": "Ključ za šifriranje"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "암호화 키"
+          }
         }
       }
     },
@@ -10845,6 +11559,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ključ za šifriranje (64 heksadecimalna znaka)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "암호화 키(64자 16진수)"
           }
         }
       }
@@ -10935,6 +11655,12 @@
             "state": "translated",
             "value": "Krajnja točka"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint"
+          }
         }
       }
     },
@@ -11023,6 +11749,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Krajnja točka (neobavezno)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "endpoint(선택 사항)"
           }
         }
       }
@@ -11113,6 +11845,12 @@
             "state": "translated",
             "value": "Unesite pojedinosti ručno"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "세부 정보 직접 입력"
+          }
         }
       }
     },
@@ -11201,6 +11939,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pogreška"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오류"
           }
         }
       }
@@ -11291,6 +12035,12 @@
             "state": "translated",
             "value": "Svaki je objekt šifriran prije prijenosa. Svatko s pristupom pohrani vidi samo šifrirani tekst pod nečitljivim ključevima."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모든 객체는 업로드 전에 암호화됩니다. 저장소에 접근할 수 있는 사람도 불투명한 키 아래 암호문만 봅니다."
+          }
         }
       }
     },
@@ -11379,6 +12129,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Točno izdanje"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정확한 프레싱"
           }
         }
       }
@@ -11469,6 +12225,12 @@
             "state": "translated",
             "value": "Isključeno iz pretraživanja"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색에서 제외됨"
+          }
         }
       }
     },
@@ -11557,6 +12319,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Proširi red sinkronizacije"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화 대기열 펼치기"
           }
         }
       }
@@ -11647,6 +12415,12 @@
             "state": "translated",
             "value": "Izvoz nije uspio"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내보내기 실패"
+          }
         }
       }
     },
@@ -11735,6 +12509,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "FLAC (bez gubitaka)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FLAC(무손실)"
           }
         }
       }
@@ -11825,6 +12605,12 @@
             "state": "translated",
             "value": "Neuspjelo"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실패"
+          }
         }
       }
     },
@@ -11913,6 +12699,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nije uspjelo %1$@: %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 실패: %2$@"
           }
         }
       }
@@ -12003,6 +12795,12 @@
             "state": "translated",
             "value": "Otkazivanje prijenosa nije uspjelo: %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업로드를 취소할 수 없음: %@"
+          }
         }
       }
     },
@@ -12091,6 +12889,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Otkazivanje nije uspjelo: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "취소할 수 없음: %@"
           }
         }
       }
@@ -12181,6 +12985,12 @@
             "state": "translated",
             "value": "Prekid veze nije uspio: %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결을 해제할 수 없음: %@"
+          }
         }
       }
     },
@@ -12269,6 +13079,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Učitavanje omota nije uspjelo: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커버를 불러올 수 없음: %@"
           }
         }
       }
@@ -12359,6 +13175,12 @@
             "state": "translated",
             "value": "Ponovni pokušaj prijenosa nije uspio: %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업로드를 다시 시도할 수 없음: %@"
+          }
         }
       }
     },
@@ -12447,6 +13269,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Postavljanje primarnog izdanja nije uspjelo: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기본 릴리스로 설정할 수 없음: %@"
           }
         }
       }
@@ -12537,6 +13365,12 @@
             "state": "translated",
             "value": "Dohvaćanje omota..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커버 가져오는 중..."
+          }
         }
       }
     },
@@ -12625,6 +13459,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Datoteke"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일"
           }
         }
       }
@@ -12715,6 +13555,12 @@
             "state": "translated",
             "value": "Filtar"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "필터"
+          }
         }
       }
     },
@@ -12803,6 +13649,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Filtriraj..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "필터..."
           }
         }
       }
@@ -12893,6 +13745,12 @@
             "state": "translated",
             "value": "ID mape"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 ID"
+          }
         }
       }
     },
@@ -12981,6 +13839,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Putanja mape"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 경로"
           }
         }
       }
@@ -13071,6 +13935,12 @@
             "state": "translated",
             "value": "Format"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "형식"
+          }
         }
       }
     },
@@ -13159,6 +14029,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Format:"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "형식:"
           }
         }
       }
@@ -13249,6 +14125,12 @@
             "state": "translated",
             "value": "Pronađeno iz prethodnog postavljanja na ovom Macu."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac의 이전 설정에서 찾았습니다."
+          }
         }
       }
     },
@@ -13337,6 +14219,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Općenito"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일반"
           }
         }
       }
@@ -13427,6 +14315,12 @@
             "state": "translated",
             "value": "Započnite sa svojom glazbenom fonotekom."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음악 라이브러리를 시작하세요."
+          }
         }
       }
     },
@@ -13516,6 +14410,12 @@
             "state": "translated",
             "value": "Idi na trenutnu reprodukciju"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 재생 중으로 이동"
+          }
         }
       }
     },
@@ -13601,6 +14501,12 @@
           }
         },
         "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google Drive"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "Google Drive"
@@ -13693,6 +14599,12 @@
             "state": "translated",
             "value": "Pozdrav"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "안녕하세요"
+          }
         }
       }
     },
@@ -13781,6 +14693,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Identificira · pronalazi izdanja"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "식별 · 릴리스 찾기"
           }
         }
       }
@@ -13871,6 +14789,12 @@
             "state": "translated",
             "value": "Identifikacija…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "식별 중…"
+          }
         }
       }
     },
@@ -13959,6 +14883,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Identitet ažuriran."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "신원이 업데이트되었습니다."
           }
         }
       }
@@ -14049,6 +14979,12 @@
             "state": "translated",
             "value": "Zanemari crtični kod"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "바코드 무시"
+          }
         }
       }
     },
@@ -14137,6 +15073,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zanemari katalog"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "카탈로그 무시"
           }
         }
       }
@@ -14227,6 +15169,12 @@
             "state": "translated",
             "value": "Zanemari ID diska"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DiscID 무시"
+          }
         }
       }
     },
@@ -14315,6 +15263,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Slike"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미지"
           }
         }
       }
@@ -14405,6 +15359,12 @@
             "state": "translated",
             "value": "Uvoz"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가져오기"
+          }
         }
       }
     },
@@ -14493,6 +15453,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uvezi mapu..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 가져오기..."
           }
         }
       }
@@ -14583,6 +15549,12 @@
             "state": "translated",
             "value": "Uvezi kao"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음으로 가져오기"
+          }
         }
       }
     },
@@ -14671,6 +15643,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uvezite glazbu za početak"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시작하려면 음악을 가져오세요"
           }
         }
       }
@@ -14761,6 +15739,12 @@
             "state": "translated",
             "value": "Uvezeno"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가져옴"
+          }
         }
       }
     },
@@ -14849,6 +15833,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uvezeno — prijenos nije uspio, ponovni pokušaj"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가져옴 — 업로드 실패, 다시 시도 중"
           }
         }
       }
@@ -14939,6 +15929,12 @@
             "state": "translated",
             "value": "Uvezeno — prijenos u oblak"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가져옴 — 클라우드에 업로드 중"
+          }
         }
       }
     },
@@ -15027,6 +16023,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "U fonoteci"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리에 있음"
           }
         }
       }
@@ -15117,6 +16119,12 @@
             "state": "translated",
             "value": "Zadrži trenutne metapodatke"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 메타데이터 유지"
+          }
         }
       }
     },
@@ -15205,6 +16213,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zadrži lokalnu kopiju"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 복사본 유지"
           }
         }
       }
@@ -15295,6 +16309,12 @@
             "state": "translated",
             "value": "Prefiks ključa"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Key Prefix"
+          }
         }
       }
     },
@@ -15383,6 +16403,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Otisak ključa: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키 지문: %@"
           }
         }
       }
@@ -15473,6 +16499,12 @@
             "state": "translated",
             "value": "Vrsta"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "종류"
+          }
         }
       }
     },
@@ -15561,6 +16593,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izdavač"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "레이블"
           }
         }
       }
@@ -15651,6 +16689,12 @@
             "state": "translated",
             "value": "Saznajte više"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "더 알아보기"
+          }
         }
       }
     },
@@ -15739,6 +16783,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ostavite prazno za standardni AWS S3"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "표준 AWS S3는 비워 두세요"
           }
         }
       }
@@ -15829,6 +16879,12 @@
             "state": "translated",
             "value": "Fonoteka"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리"
+          }
         }
       }
     },
@@ -15917,6 +16973,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ID fonoteke"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 ID"
           }
         }
       }
@@ -16007,6 +17069,12 @@
             "state": "translated",
             "value": "Fonoteka zaključana"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 잠김"
+          }
         }
       }
     },
@@ -16095,6 +17163,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Naziv fonoteke (neobavezno)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 이름(선택 사항)"
           }
         }
       }
@@ -16185,6 +17259,12 @@
             "state": "translated",
             "value": "Vjerojatno uvezeno"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가져온 것으로 보임"
+          }
         }
       }
     },
@@ -16273,6 +17353,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Učitavanje"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "불러오는 중"
           }
         }
       }
@@ -16363,6 +17449,12 @@
             "state": "translated",
             "value": "Učitavanje pojedinosti izdanja..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴리스 세부 정보 불러오는 중..."
+          }
         }
       }
     },
@@ -16451,6 +17543,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Učitavanje..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "불러오는 중..."
           }
         }
       }
@@ -16541,6 +17639,12 @@
             "state": "translated",
             "value": "Zaključaj"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠금"
+          }
         }
       }
     },
@@ -16629,6 +17733,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zaključaj fonoteku..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 잠금..."
           }
         }
       }
@@ -16719,6 +17829,12 @@
             "state": "translated",
             "value": "Zaključati fonoteku?"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리를 잠글까요?"
+          }
         }
       }
     },
@@ -16807,6 +17923,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Provjera signala iznad."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위 신호를 조회 중입니다."
           }
         }
       }
@@ -16897,6 +18019,12 @@
             "state": "translated",
             "value": "Provjera…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "조회 중…"
+          }
         }
       }
     },
@@ -16985,6 +18113,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "MP3 (320 kbps)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MP3(320 kbps)"
           }
         }
       }
@@ -17075,6 +18209,12 @@
             "state": "translated",
             "value": "Upravljano"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "관리형"
+          }
         }
       }
     },
@@ -17163,6 +18303,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odgovara ovom izdanju"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 프레싱과 일치"
           }
         }
       }
@@ -17253,6 +18399,12 @@
             "state": "translated",
             "value": "Podudaranje…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "맞추는 중…"
+          }
         }
       }
     },
@@ -17341,6 +18493,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Samo metapodaci"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메타데이터만"
           }
         }
       }
@@ -17431,6 +18589,12 @@
             "state": "translated",
             "value": "Samo metapodaci — polja izdanja ostaju prazna; bilježi se samo grupa albuma."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메타데이터만 — 프레싱 필드는 비워 두고 앨범 그룹만 기록합니다."
+          }
         }
       }
     },
@@ -17519,6 +18683,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Premjesti"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이동"
           }
         }
       }
@@ -17609,6 +18779,12 @@
             "state": "translated",
             "value": "Premjesti ovamo"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기로 이동"
+          }
         }
       }
     },
@@ -17697,6 +18873,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Premjesti u fonoteku"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리로 이동"
           }
         }
       }
@@ -17787,6 +18969,12 @@
             "state": "translated",
             "value": "Premjesti u nove"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 항목으로 이동"
+          }
         }
       }
     },
@@ -17875,6 +19063,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Utišaj"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음소거"
           }
         }
       }
@@ -17965,6 +19159,12 @@
             "state": "translated",
             "value": "Naziv"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름"
+          }
         }
       }
     },
@@ -18053,6 +19253,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Naziv (A–Ž)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름(A–Z)"
           }
         }
       }
@@ -18143,6 +19349,12 @@
             "state": "translated",
             "value": "Naziv (Ž–A)"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름(Z–A)"
+          }
         }
       }
     },
@@ -18231,6 +19443,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Novo"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로 만들기"
           }
         }
       }
@@ -18321,6 +19539,12 @@
             "state": "translated",
             "value": "Nova fonoteka..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 라이브러리..."
+          }
         }
       }
     },
@@ -18409,6 +19633,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Novi naziv"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 이름"
           }
         }
       }
@@ -18499,6 +19729,12 @@
             "state": "translated",
             "value": "Sljedeća fonoteka"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 라이브러리"
+          }
         }
       }
     },
@@ -18587,6 +19823,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sljedeća skladba"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 트랙"
           }
         }
       }
@@ -18677,6 +19919,12 @@
             "state": "translated",
             "value": "Sljedeća skladba"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 트랙"
+          }
         }
       }
     },
@@ -18765,6 +20013,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nema fonoteka"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 없음"
           }
         }
       }
@@ -18855,6 +20109,12 @@
             "state": "translated",
             "value": "Nema albuma"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앨범 없음"
+          }
         }
       }
     },
@@ -18943,6 +20203,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nije pronađeno automatsko podudaranje"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 일치 항목 없음"
           }
         }
       }
@@ -19033,6 +20299,12 @@
             "state": "translated",
             "value": "Nema dostupnog omota"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용 가능한 커버 아트 없음"
+          }
         }
       }
     },
@@ -19121,6 +20393,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nema rasporeda diska"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "디스크 레이아웃 없음"
           }
         }
       }
@@ -19211,6 +20489,12 @@
             "state": "translated",
             "value": "Još nema signala za identifikaciju — pretražite ručno"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아직 식별 신호 없음 — 수동으로 검색하세요"
+          }
         }
       }
     },
@@ -19299,6 +20583,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nema slike"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미지 없음"
           }
         }
       }
@@ -19389,6 +20679,12 @@
             "state": "translated",
             "value": "Nije učitana nijedna fonoteka"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "불러온 라이브러리 없음"
+          }
         }
       }
     },
@@ -19477,6 +20773,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nijedno podudarno izdanje nema ovaj kataloški broj"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일치한 프레싱에 이 catno가 없습니다"
           }
         }
       }
@@ -19567,6 +20869,12 @@
             "state": "translated",
             "value": "Nema podudaranja"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일치 없음"
+          }
         }
       }
     },
@@ -19655,6 +20963,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nije pronađeno podudaranje"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일치 항목 없음"
           }
         }
       }
@@ -19745,6 +21059,12 @@
             "state": "translated",
             "value": "Nijedno izdanje se ne podudara"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일치한 릴리스 없음"
+          }
         }
       }
     },
@@ -19833,6 +21153,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nisu pronađeni udaljeni omoti"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "원격 커버 없음"
           }
         }
       }
@@ -19923,6 +21249,12 @@
             "state": "translated",
             "value": "Nisu pronađeni udaljeni ni lokalni omoti"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "원격 또는 로컬 아트워크 없음"
+          }
         }
       }
     },
@@ -20011,6 +21343,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nema rezultata"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "결과 없음"
           }
         }
       }
@@ -20101,6 +21439,12 @@
             "state": "translated",
             "value": "Nema izvora za skeniranje"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스캔할 소스 없음"
+          }
         }
       }
     },
@@ -20189,6 +21533,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nema skladbi"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "트랙 없음"
           }
         }
       }
@@ -20279,6 +21629,12 @@
             "state": "translated",
             "value": "Ovdje još ničega nema"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아직 아무것도 없습니다"
+          }
         }
       }
     },
@@ -20367,6 +21723,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Trenutno svira"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 재생 중"
           }
         }
       }
@@ -20457,6 +21819,12 @@
             "state": "translated",
             "value": "Za Dropbox je potreban OAuth token"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dropbox에는 OAuth 토큰이 필요합니다"
+          }
         }
       }
     },
@@ -20545,6 +21913,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Za Google Drive je potreban OAuth token"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google Drive에는 OAuth 토큰이 필요합니다"
           }
         }
       }
@@ -20635,6 +22009,12 @@
             "state": "translated",
             "value": "Za OneDrive je potreban OAuth token"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OneDrive에는 OAuth 토큰이 필요합니다"
+          }
         }
       }
     },
@@ -20723,6 +22103,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "U redu"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인"
           }
         }
       }
@@ -20813,6 +22199,12 @@
             "state": "translated",
             "value": "Objekti se pohranjuju nešifrirani na čitljivim putanjama, pa svatko s pristupom pohrani može čitati vaše datoteke po nazivu. Dijeljenje nije dostupno za pregledivu fonoteku."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "객체는 읽을 수 있는 경로에 평문으로 저장되므로 저장소 접근 권한이 있는 사람은 파일명을 통해 파일을 읽을 수 있습니다. 탐색 가능 라이브러리에서는 공유를 사용할 수 없습니다."
+          }
         }
       }
     },
@@ -20898,6 +22290,12 @@
           }
         },
         "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OneDrive"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "OneDrive"
@@ -20991,6 +22389,12 @@
             "state": "translated",
             "value": "Nečitljivo — šifrirano s kraja na kraj"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "불투명 — 종단 간 암호화"
+          }
         }
       }
     },
@@ -21079,6 +22483,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Otvori fonoteku"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 열기"
           }
         }
       }
@@ -21169,6 +22579,12 @@
             "state": "translated",
             "value": "Otvori postavke"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정 열기"
+          }
         }
       }
     },
@@ -21257,6 +22673,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Najprije otvorite fonoteku"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "먼저 라이브러리를 여세요"
           }
         }
       }
@@ -21347,6 +22769,12 @@
             "state": "translated",
             "value": "Najprije otvorite fonoteku za pristup postavkama"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정에 접근하려면 먼저 라이브러리를 여세요"
+          }
         }
       }
     },
@@ -21435,6 +22863,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Otvori grupu izdanja na %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@에서 릴리스 그룹 열기"
           }
         }
       }
@@ -21525,6 +22959,12 @@
             "state": "translated",
             "value": "Otvara preglednik za autorizaciju aplikacije bae putem %@."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@에서 bae를 인증하도록 브라우저를 엽니다."
+          }
         }
       }
     },
@@ -21613,6 +23053,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zalijepite kod za vraćanje"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원 코드 붙여넣기"
           }
         }
       }
@@ -21703,6 +23149,12 @@
             "state": "translated",
             "value": "Zalijepite svoj ključ ovdje"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기에 키 붙여넣기"
+          }
         }
       }
     },
@@ -21791,6 +23243,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zalijepite kod za vraćanje ili unesite pojedinosti ručno."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원 코드를 붙여 넣거나 세부 정보를 직접 입력하세요."
           }
         }
       }
@@ -21881,6 +23339,12 @@
             "state": "translated",
             "value": "Putanja"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로"
+          }
         }
       }
     },
@@ -21969,6 +23433,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pauziraj"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일시 정지"
           }
         }
       }
@@ -22059,6 +23529,12 @@
             "state": "translated",
             "value": "Pauzirano"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일시 정지됨"
+          }
         }
       }
     },
@@ -22147,6 +23623,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Brisanje na čekanju"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제 대기 중"
           }
         }
       }
@@ -22237,6 +23719,12 @@
             "state": "translated",
             "value": "Odaberite izdanje koje imate ili odbacite signal kojem manje vjerujete."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가지고 있는 릴리스를 선택하거나 덜 신뢰하는 신호를 닫으세요."
+          }
         }
       }
     },
@@ -22325,6 +23813,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prikvači za izvanmrežni rad"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오프라인용으로 고정"
           }
         }
       }
@@ -22415,6 +23909,12 @@
             "state": "translated",
             "value": "Prikvačeno"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "고정됨"
+          }
         }
       }
     },
@@ -22503,6 +24003,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prikvačeno za izvanmrežni rad"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오프라인용으로 고정됨"
           }
         }
       }
@@ -22593,6 +24099,12 @@
             "state": "translated",
             "value": "Reproduciraj"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생"
+          }
         }
       }
     },
@@ -22681,6 +24193,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reproduciraj / pauziraj"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생 / 일시 정지"
           }
         }
       }
@@ -22771,6 +24289,12 @@
             "state": "translated",
             "value": "Reproduciraj sljedeće"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음에 재생"
+          }
         }
       }
     },
@@ -22859,6 +24383,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reprodukcija"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생"
           }
         }
       }
@@ -22949,6 +24479,12 @@
             "state": "translated",
             "value": "Položaj reprodukcije"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생 위치"
+          }
         }
       }
     },
@@ -23037,6 +24573,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prethodna fonoteka"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이전 라이브러리"
           }
         }
       }
@@ -23127,6 +24669,12 @@
             "state": "translated",
             "value": "Prethodna skladba"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이전 트랙"
+          }
         }
       }
     },
@@ -23215,6 +24763,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prethodna skladba"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이전 트랙"
           }
         }
       }
@@ -23305,6 +24859,12 @@
             "state": "translated",
             "value": "Pružatelj usluge"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제공자"
+          }
         }
       }
     },
@@ -23393,6 +24953,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preuzeti polja albuma, skladbe i izdanja iz novoidentificiranog izvora? Vaše izmjene bit će prepisane."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로 식별한 소스에서 앨범, 트랙, 프레싱 필드를 가져올까요? 수정한 내용은 덮어씁니다."
           }
         }
       }
@@ -23483,6 +25049,12 @@
             "state": "translated",
             "value": "Red"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대기열"
+          }
         }
       }
     },
@@ -23571,6 +25143,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Red je prazan"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대기열이 비어 있습니다"
           }
         }
       }
@@ -23661,6 +25239,12 @@
             "state": "translated",
             "value": "Na čekanju"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대기 중"
+          }
         }
       }
     },
@@ -23749,6 +25333,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ponovno provjeri"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 확인"
           }
         }
       }
@@ -23839,6 +25429,12 @@
             "state": "translated",
             "value": "Ponovno identificiraj"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 식별"
+          }
         }
       }
     },
@@ -23927,6 +25523,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ponovna identifikacija nije uspjela."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 식별 실패."
           }
         }
       }
@@ -24017,6 +25619,12 @@
             "state": "translated",
             "value": "Ponovno identificiraj..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 식별..."
+          }
         }
       }
     },
@@ -24105,6 +25713,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pokreni ponovno"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 실행"
           }
         }
       }
@@ -24195,6 +25809,12 @@
             "state": "translated",
             "value": "Ponovno poveži"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 연결"
+          }
         }
       }
     },
@@ -24283,6 +25903,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Profini"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "좁히기"
           }
         }
       }
@@ -24373,6 +25999,12 @@
             "state": "translated",
             "value": "Profinjuje · sužava podudaranje"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "좁히기 · 일치 범위 줄이기"
+          }
         }
       }
     },
@@ -24461,6 +26093,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Osvježi"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로 고침"
           }
         }
       }
@@ -24551,6 +26189,12 @@
             "state": "translated",
             "value": "Osvježi iz novog izvora"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 소스에서 새로 고침"
+          }
         }
       }
     },
@@ -24639,6 +26283,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Osvježavanje metapodataka iz novog izvora..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 소스에서 메타데이터 새로 고치는 중..."
           }
         }
       }
@@ -24729,6 +26379,12 @@
             "state": "translated",
             "value": "Regija"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지역"
+          }
         }
       }
     },
@@ -24817,6 +26473,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izdanje %lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴리스 %lld"
           }
         }
       }
@@ -24907,6 +26569,12 @@
             "state": "translated",
             "value": "Datoteke izdanja"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴리스 파일"
+          }
         }
       }
     },
@@ -24995,6 +26663,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izdanje (pressanje)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴리스 프레싱"
           }
         }
       }
@@ -25085,6 +26759,12 @@
             "state": "translated",
             "value": "Udaljeni izvori"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "원격 소스"
+          }
         }
       }
     },
@@ -25173,6 +26853,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ukloni"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제거"
           }
         }
       }
@@ -25263,6 +26949,12 @@
             "state": "translated",
             "value": "Ukloni mapu"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 제거"
+          }
         }
       }
     },
@@ -25351,6 +27043,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ukloni iz reda"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대기열에서 제거"
           }
         }
       }
@@ -25441,6 +27139,12 @@
             "state": "translated",
             "value": "Ukloni iz reda"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대기열에서 제거"
+          }
         }
       }
     },
@@ -25529,6 +27233,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ukloni iz reda sinkronizacije"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화 대기열에서 제거"
           }
         }
       }
@@ -25619,6 +27329,12 @@
             "state": "translated",
             "value": "Ukloniti ovu fonoteku iz privjeska ključeva?"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키체인에서 이 라이브러리를 제거할까요?"
+          }
         }
       }
     },
@@ -25707,6 +27423,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preimenuj"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름 변경"
           }
         }
       }
@@ -25797,6 +27519,12 @@
             "state": "translated",
             "value": "Preimenuj fonoteku"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 이름 변경"
+          }
         }
       }
     },
@@ -25885,6 +27613,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preimenuj fonoteku..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 이름 변경..."
           }
         }
       }
@@ -25975,6 +27709,12 @@
             "state": "translated",
             "value": "Ponavljanje: album"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "반복: 앨범"
+          }
         }
       }
     },
@@ -26063,6 +27803,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ponavljanje: isključeno"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "반복: 끔"
           }
         }
       }
@@ -26153,6 +27899,12 @@
             "state": "translated",
             "value": "Ponavljanje: skladba"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "반복: 트랙"
+          }
         }
       }
     },
@@ -26241,6 +27993,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vraćanje nije uspjelo: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재설정 실패: %@"
           }
         }
       }
@@ -26331,6 +28089,12 @@
             "state": "translated",
             "value": "Vrati na izvor"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "소스로 재설정"
+          }
         }
       }
     },
@@ -26419,6 +28183,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vraćanje..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재설정 중..."
           }
         }
       }
@@ -26509,6 +28279,12 @@
             "state": "translated",
             "value": "Vrati"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원"
+          }
         }
       }
     },
@@ -26597,6 +28373,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kod za vraćanje"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원 코드"
           }
         }
       }
@@ -26687,6 +28469,12 @@
             "state": "translated",
             "value": "Vrati pomoću koda..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코드에서 복원..."
+          }
         }
       }
     },
@@ -26776,6 +28564,12 @@
             "state": "translated",
             "value": "Vrati iz oblaka"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클라우드에서 복원"
+          }
         }
       }
     },
@@ -26863,6 +28657,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vrati pri pokretanju"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시작 시 복원"
           }
         }
       }
@@ -26953,6 +28753,12 @@
             "state": "translated",
             "value": "Vratite svoje fonoteke"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 복원"
+          }
         }
       }
     },
@@ -27041,6 +28847,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vratite svoju fonoteku"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 복원"
           }
         }
       }
@@ -27131,6 +28943,12 @@
             "state": "translated",
             "value": "Vraćanje fonoteke..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 복원 중..."
+          }
         }
       }
     },
@@ -27219,6 +29037,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nastavi"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재개"
           }
         }
       }
@@ -27309,6 +29133,12 @@
             "state": "translated",
             "value": "Ponovi uvoz"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가져오기 다시 시도"
+          }
         }
       }
     },
@@ -27397,6 +29227,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pokušaj sada"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 다시 시도"
           }
         }
       }
@@ -27487,6 +29323,12 @@
             "state": "translated",
             "value": "Ponovni pokušaj (%lld)"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 시도 중(%lld)"
+          }
         }
       }
     },
@@ -27575,6 +29417,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prikaži fonoteku u Finderu"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finder에서 라이브러리 보기"
           }
         }
       }
@@ -27665,6 +29513,12 @@
             "state": "translated",
             "value": "Prikaži u Finderu"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finder에서 보기"
+          }
         }
       }
     },
@@ -27753,6 +29607,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kompatibilno s S3"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S3 호환"
           }
         }
       }
@@ -27843,6 +29703,12 @@
             "state": "translated",
             "value": "Spremi"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장"
+          }
         }
       }
     },
@@ -27931,6 +29797,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spremi kao..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 이름으로 저장..."
           }
         }
       }
@@ -28021,6 +29893,12 @@
             "state": "translated",
             "value": "Spremanje nije uspjelo: %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장 실패: %@"
+          }
         }
       }
     },
@@ -28110,6 +29988,12 @@
             "state": "translated",
             "value": "Spremljeno — provjera još nije moguća (izvanmrežno). Pokušat će ponovno."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장됨 — 아직 검증할 수 없습니다(오프라인). 다시 시도합니다."
+          }
         }
       }
     },
@@ -28197,6 +30081,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sprema trenutnu skladbu, položaj, red i glasnoću pri izlasku te ih vraća pri sljedećem pokretanju."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "종료 시 현재 트랙, 위치, 대기열, 음량을 저장하고 다음 실행 때 복원합니다."
           }
         }
       }
@@ -28287,6 +30177,12 @@
             "state": "translated",
             "value": "Spremanje..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장 중..."
+          }
         }
       }
     },
@@ -28375,6 +30271,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skeniranje nije uspjelo: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스캔 실패: %@"
           }
         }
       }
@@ -28465,6 +30367,12 @@
             "state": "translated",
             "value": "Skenirajte ovaj QR kod ili zalijepite kod na drugom uređaju kako biste tamo sinkronizirali ovu fonoteku."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 QR 코드를 스캔하거나 다른 기기에 코드를 붙여 넣어 이 라이브러리를 그곳에서 동기화하세요."
+          }
         }
       }
     },
@@ -28553,6 +30461,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pretraži"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색"
           }
         }
       }
@@ -28643,6 +30557,12 @@
             "state": "translated",
             "value": "Pretražite MusicBrainz ili Discogs za pronalaženje metapodataka"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메타데이터를 찾으려면 MusicBrainz 또는 Discogs 검색"
+          }
         }
       }
     },
@@ -28731,6 +30651,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pretraživanje nije uspjelo: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색 실패: %@"
           }
         }
       }
@@ -28821,6 +30747,12 @@
             "state": "translated",
             "value": "Pretraži ručno"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "수동 검색"
+          }
         }
       }
     },
@@ -28909,6 +30841,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pretraživanje..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색 중..."
           }
         }
       }
@@ -28999,6 +30937,12 @@
             "state": "translated",
             "value": "Tajni ključ"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "secret key"
+          }
         }
       }
     },
@@ -29087,6 +31031,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odjeljak"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "섹션"
           }
         }
       }
@@ -29177,6 +31127,12 @@
             "state": "translated",
             "value": "Odaberite mapu"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 선택"
+          }
         }
       }
     },
@@ -29265,6 +31221,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odaberite mapu za nadzor glazbe za uvoz"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가져올 음악을 감시할 폴더 선택"
           }
         }
       }
@@ -29355,6 +31317,12 @@
             "state": "translated",
             "value": "Postavi sinkronizaciju"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화 설정"
+          }
         }
       }
     },
@@ -29443,6 +31411,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Postavi kao primarno izdanje"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기본 릴리스로 설정"
           }
         }
       }
@@ -29533,6 +31507,12 @@
             "state": "translated",
             "value": "Postavi identitet"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "신원 설정"
+          }
         }
       }
     },
@@ -29621,6 +31601,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Postavi identitet na ovo izdanje"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 프레싱으로 신원 설정"
           }
         }
       }
@@ -29711,6 +31697,12 @@
             "state": "translated",
             "value": "Postavi sinkronizaciju..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화 설정..."
+          }
         }
       }
     },
@@ -29799,6 +31791,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Postavke"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정"
           }
         }
       }
@@ -29889,6 +31887,12 @@
             "state": "translated",
             "value": "Naizmjenično"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "셔플"
+          }
         }
       }
     },
@@ -29977,6 +31981,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Signali"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "신호"
           }
         }
       }
@@ -30067,6 +32077,12 @@
             "state": "translated",
             "value": "Signali se ne slažu oko identiteta"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "신호가 신원에 대해 일치하지 않습니다"
+          }
         }
       }
     },
@@ -30155,6 +32171,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Veličina"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "크기"
           }
         }
       }
@@ -30245,6 +32267,12 @@
             "state": "translated",
             "value": "Preskoči"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "건너뛰기"
+          }
         }
       }
     },
@@ -30333,6 +32361,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preskoči identifikaciju"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "식별 건너뛰기"
           }
         }
       }
@@ -30423,6 +32457,12 @@
             "state": "translated",
             "value": "Preskočeno"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "건너뜀"
+          }
         }
       }
     },
@@ -30511,6 +32551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sortiraj"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정렬"
           }
         }
       }
@@ -30601,6 +32647,12 @@
             "state": "translated",
             "value": "Sortiraj uzlazno"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오름차순 정렬"
+          }
         }
       }
     },
@@ -30689,6 +32741,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sortiraj silazno"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내림차순 정렬"
           }
         }
       }
@@ -30779,6 +32837,12 @@
             "state": "translated",
             "value": "Pokretanje ponovne identifikacije..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 식별 시작 중..."
+          }
         }
       }
     },
@@ -30867,6 +32931,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pohrana"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소"
           }
         }
       }
@@ -30957,6 +33027,12 @@
             "state": "translated",
             "value": "Upravitelj pohrane"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소 관리자"
+          }
         }
       }
     },
@@ -31045,6 +33121,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pohrana..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소..."
           }
         }
       }
@@ -31135,6 +33217,12 @@
             "state": "translated",
             "value": "Mijenjanje fonoteka..."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 전환 중..."
+          }
         }
       }
     },
@@ -31223,6 +33311,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sinkronizacija"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화"
           }
         }
       }
@@ -31313,6 +33407,12 @@
             "state": "translated",
             "value": "Sinkroniziraj sada"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 동기화"
+          }
         }
       }
     },
@@ -31401,6 +33501,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sinkronizacija ne uspijeva"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화 실패 중"
           }
         }
       }
@@ -31491,6 +33597,12 @@
             "state": "translated",
             "value": "Red sinkronizacije"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화 대기열"
+          }
         }
       }
     },
@@ -31579,6 +33691,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sinkroniziraj putem Dropboxa"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dropbox로 동기화"
           }
         }
       }
@@ -31669,6 +33787,12 @@
             "state": "translated",
             "value": "Sinkroniziraj putem Google Drivea"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google Drive로 동기화"
+          }
         }
       }
     },
@@ -31757,6 +33881,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sinkroniziraj putem Microsoft OneDrivea"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microsoft OneDrive로 동기화"
           }
         }
       }
@@ -31847,6 +33977,12 @@
             "state": "translated",
             "value": "Sinkroniziraj putem svog iCloud računa"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 계정으로 동기화"
+          }
         }
       }
     },
@@ -31935,6 +34071,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tekstualna datoteka"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트 파일"
           }
         }
       }
@@ -32025,6 +34167,12 @@
             "state": "translated",
             "value": "ID Google Drive mape koja sadrži vašu fonoteku"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리가 들어 있는 Google Drive 폴더 ID"
+          }
         }
       }
     },
@@ -32113,6 +34261,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "UUID iz fonoteke vašeg drugog uređaja"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 기기의 라이브러리 UUID"
           }
         }
       }
@@ -32203,6 +34357,12 @@
             "state": "translated",
             "value": "Prijenos u oblak nije uspio i ponavlja se automatski. Pojedinosti potražite u Upravitelju pohrane."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클라우드 업로드가 실패했으며 자동으로 다시 시도합니다. 자세한 내용은 저장소 관리자를 확인하세요."
+          }
         }
       }
     },
@@ -32291,6 +34451,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ključ za šifriranje ove fonoteke nije u privjesku ključeva. Unesite 64-znamenkasti heksadecimalni ključ za otključavanje."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이브러리의 암호화 키가 키링에 없습니다. 잠금을 해제하려면 64자 16진수 키를 입력하세요."
           }
         }
       }
@@ -32381,6 +34547,12 @@
             "state": "translated",
             "value": "Ova fonoteka"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이브러리"
+          }
         }
       }
     },
@@ -32469,6 +34641,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ovo izdanje već je u vašoj fonoteci"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 릴리스는 이미 라이브러리에 있습니다"
           }
         }
       }
@@ -32559,6 +34737,12 @@
             "state": "translated",
             "value": "Ovime će se zaustaviti sinkronizacija i ukloniti konfiguracija pružatelja usluge u oblaku."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화를 중지하고 클라우드 제공자 설정을 제거합니다."
+          }
         }
       }
     },
@@ -32647,6 +34831,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Naslov"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제목"
           }
         }
       }
@@ -32737,6 +34927,12 @@
             "state": "translated",
             "value": "Za povezivanje [nabavite svoj besplatni API ključ](https://www.discogs.com/settings/developers) i zalijepite ga iznad."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결하려면 [무료 API 키를 받기](https://www.discogs.com/settings/developers) 후 위에 붙여 넣으세요."
+          }
         }
       }
     },
@@ -32825,6 +35021,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Za pretraživanje Discogsa [nabavite svoj besplatni API ključ](https://www.discogs.com/settings/developers) i dodajte ga u postavke."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs를 검색하려면 [무료 API 키를 받기](https://www.discogs.com/settings/developers) 후 설정에 추가하세요."
           }
         }
       }
@@ -32915,6 +35117,12 @@
             "state": "translated",
             "value": "Prikaži/sakrij red"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대기열 전환"
+          }
         }
       }
     },
@@ -33004,6 +35212,12 @@
             "state": "translated",
             "value": "Ukupno: %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "합계: %@"
+          }
         }
       }
     },
@@ -33092,6 +35306,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skladba"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "트랙"
           }
         }
       }
@@ -33416,6 +35636,24 @@
               }
             }
           }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "트랙 수 불일치: 릴리스에는 트랙이 %lld개 있지만 로컬 파일과 맞지 않습니다"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "트랙 수 불일치: 릴리스에는 트랙이 %lld개 있지만 로컬 파일과 맞지 않습니다"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -33504,6 +35742,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skladba za izvoz nije pronađena"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내보낼 트랙을 찾을 수 없음"
           }
         }
       }
@@ -33594,6 +35838,12 @@
             "state": "translated",
             "value": "Skladbe"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "트랙"
+          }
         }
       }
     },
@@ -33682,6 +35932,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prijenos nije uspio"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전송 실패"
           }
         }
       }
@@ -33772,6 +36028,12 @@
             "state": "translated",
             "value": "Pokušajte s drugim pojmovima ili drugim izvorom"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 검색어 또는 다른 소스를 사용하세요"
+          }
         }
       }
     },
@@ -33860,6 +36122,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Otključaj"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠금 해제"
           }
         }
       }
@@ -33950,6 +36218,12 @@
             "state": "translated",
             "value": "Neupravljano"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자체 관리형"
+          }
         }
       }
     },
@@ -34039,6 +36313,12 @@
             "state": "translated",
             "value": "Uključi zvuk"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음소거 해제"
+          }
         }
       }
     },
@@ -34127,6 +36407,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prijenos"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업로드 중"
           }
         }
       }
@@ -34451,6 +36737,24 @@
               }
             }
           }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "업로드 중(%lld개 남음)…"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "업로드 중(%lld개 남음)…"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -34539,6 +36843,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prijenos (%lld)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업로드 중(%lld)"
           }
         }
       }
@@ -34629,6 +36939,12 @@
             "state": "translated",
             "value": "Koristi ovaj omot"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 커버 사용"
+          }
         }
       }
     },
@@ -34717,6 +37033,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Koristi iCloud"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 사용"
           }
         }
       }
@@ -34807,6 +37129,12 @@
             "state": "translated",
             "value": "Koristi iCloud za sinkronizaciju. Zahtijeva omogućen iCloud u Postavkama sustava."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화에 iCloud를 사용합니다. 시스템 설정에서 iCloud가 켜져 있어야 합니다."
+          }
         }
       }
     },
@@ -34895,6 +37223,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Koristi raspored skladbi za pronalaženje savršenih podudaranja na MusicBrainzu."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "트랙 레이아웃으로 MusicBrainz에서 정확한 일치를 찾습니다."
           }
         }
       }
@@ -34985,6 +37319,12 @@
             "state": "translated",
             "value": "Verzija %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버전 %@"
+          }
         }
       }
     },
@@ -35073,6 +37413,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prikaži automatska podudaranja (%lld)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 일치 보기(%lld)"
           }
         }
       }
@@ -35163,6 +37509,12 @@
             "state": "translated",
             "value": "Prikaži u fonoteci"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리에서 보기"
+          }
         }
       }
     },
@@ -35251,6 +37603,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Glasnoća"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음량"
           }
         }
       }
@@ -35341,6 +37699,12 @@
             "state": "translated",
             "value": "Godina"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연도"
+          }
         }
       }
     },
@@ -35429,6 +37793,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Godina nepoznata"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연도 알 수 없음"
           }
         }
       }
@@ -35519,6 +37889,12 @@
             "state": "translated",
             "value": "Bez koda za vraćanje nećete moći oporaviti ovu fonoteku."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원 코드 없이는 이 라이브러리를 복구할 수 없습니다."
+          }
         }
       }
     },
@@ -35607,6 +37983,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vaše fonoteke"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 라이브러리"
           }
         }
       }
@@ -35697,6 +38079,12 @@
             "state": "translated",
             "value": "Vaša fonoteka"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 라이브러리"
+          }
         }
       }
     },
@@ -35785,6 +38173,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "[Discogs](https://www.discogs.com) je glazbena baza podataka s detaljnim podacima o izdanjima — izdavačima, kataloškim brojevima, varijantama izdanja i drugim."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[Discogs](https://www.discogs.com)는 레이블, 카탈로그 번호, 프레싱 변형 등 자세한 릴리스 정보를 가진 음악 데이터베이스입니다."
           }
         }
       }
@@ -35875,6 +38269,12 @@
             "state": "translated",
             "value": "[Discogs](https://www.discogs.com) je glazbena baza podataka s detaljnim podacima o izdanjima — izdavačima, kataloškim brojevima, varijantama izdanja i drugim. bae ga može koristiti kao izvor metapodataka pri uvozu albuma."
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[Discogs](https://www.discogs.com)는 레이블, 카탈로그 번호, 프레싱 변형 등 자세한 릴리스 정보를 가진 음악 데이터베이스입니다. bae는 앨범을 가져올 때 이를 메타데이터 소스로 사용할 수 있습니다."
+          }
         }
       }
     },
@@ -35959,6 +38359,12 @@
           }
         },
         "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bae"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "bae"
@@ -36052,6 +38458,12 @@
             "state": "translated",
             "value": "odvojeno zarezima"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "쉼표로 구분"
+          }
         }
       }
     },
@@ -36140,6 +38552,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "npr. /Apps/bae/Moja fonoteka"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예: /Apps/bae/My Library"
           }
         }
       }
@@ -36230,6 +38648,12 @@
             "state": "translated",
             "value": "npr. 4943674251780"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예: 4943674251780"
+          }
         }
       }
     },
@@ -36318,6 +38742,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "npr. WPCR-80001"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예: WPCR-80001"
           }
         }
       }
@@ -36408,6 +38838,12 @@
             "state": "translated",
             "value": "naziv datoteke"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일명"
+          }
         }
       }
     },
@@ -36497,6 +38933,12 @@
             "state": "translated",
             "value": "naziv mape"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 이름"
+          }
         }
       }
     },
@@ -36582,6 +39024,12 @@
           }
         },
         "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "iCloud"
@@ -36909,6 +39357,24 @@
               }
             }
           }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "일치한 릴리스 %lld개"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "일치한 릴리스 %lld개"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -36997,6 +39463,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "podudarno %1$lld izdanja na %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@에서 일치한 릴리스 %1$lld개"
           }
         }
       }
@@ -37087,6 +39559,12 @@
             "state": "translated",
             "value": "premještanje u fonoteku"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리로 이동"
+          }
         }
       }
     },
@@ -37175,6 +39653,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "premještanje iz fonoteke"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 밖으로 이동"
           }
         }
       }
@@ -37265,6 +39749,12 @@
             "state": "translated",
             "value": "uklanjanje lokalne kopije"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 복사본 제거"
+          }
         }
       }
     },
@@ -37353,6 +39843,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "· prazno = izvođač albuma"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· 비워 두면 앨범 아티스트"
           }
         }
       }

@@ -17,6 +17,7 @@ const HEADER_TAGS = new Map([
   ['de', ['de']],
   ['pt-BR', ['pt', 'pt-br']],
   ['ja', ['ja']],
+  ['ko', ['ko']],
   ['zh-Hans', ['zh', 'zh-cn', 'zh-sg', 'zh-hans']],
   ['ar', ['ar']],
   ['he', ['he']],

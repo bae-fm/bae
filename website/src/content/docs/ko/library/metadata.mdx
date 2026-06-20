@@ -1,0 +1,30 @@
+---
+title: 메타데이터
+description: bae가 앨범과 트랙 메타데이터를 처리하는 방식
+---
+
+bae는 가져오기 중 온라인 데이터베이스에서 메타데이터를 가져와 라이브러리에 채웁니다.
+
+## 저장되는 것
+
+앨범을 가져오면 bae는 다음 정보를 저장합니다.
+
+- **앨범 정보**: 제목, 아티스트, 연도
+- **트랙 정보**: 이름, 길이, 디스크와 트랙 번호
+- **아트워크**: MusicBrainz Cover Art Archive와 Discogs의 커버 이미지
+- **릴리스 정보**: 레이블, 카탈로그 번호, 바코드, 국가, 형식
+- **외부 ID**: Discogs 릴리스 ID, MusicBrainz 릴리스와 아티스트 ID
+
+모든 메타데이터는 MusicBrainz와 Discogs에서 오며 bae 데이터베이스에 저장됩니다. bae는 내장 태그를 읽거나 쓰지 않습니다. 파일은 수정되지 않습니다. 관리형: bae 저장소로 이동 또는 자체 관리형: 원래 위치에 남김 여부와 상관없이 바이트는 그대로입니다.
+
+## MusicBrainz
+
+<a href="https://musicbrainz.org" target="_blank">MusicBrainz</a>는 열린 음악 백과사전이며 bae의 기본 메타데이터 소스입니다. 포괄적인 트랙 목록, 릴리스 그룹 정보, ISRC 코드, 정확한 식별을 위한 CD TOC 매칭을 제공합니다.
+
+API 키가 필요 없습니다. MusicBrainz는 무료이며 공개되어 있습니다. IP 주소당 평균 초당 1개 요청을 적용하며, bae는 요청 간격을 자동으로 조절합니다.
+
+## Discogs
+
+<a href="https://www.discogs.com" target="_blank">Discogs</a>는 음악 데이터베이스이자 마켓플레이스이며, 레코드 릴리스, 자세한 크레딧, 카탈로그 번호, 레이블 정보에 특히 강합니다.
+
+Discogs에는 개인 API 토큰이 필요합니다. <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs 개발자 설정</a>에서 토큰을 가져와 설정 중 붙여 넣으세요. 요청 제한은 인증된 요청 분당 60개이며, bae가 이를 자동으로 처리합니다.

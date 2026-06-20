@@ -1,0 +1,55 @@
+---
+title: 설치
+description: 모든 플랫폼에서 bae 또는 baeium을 내려받고 설치하기
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## 두 가지 에디션
+
+모든 플랫폼은 같은 소스에서 빌드된 두 가지 에디션을 제공합니다.
+
+- **bae** — 전체 앱: S3, Google Drive, Dropbox, OneDrive, iCloud 동기화.
+- **baeium** — 독점 구성 요소 없음: S3 호환 저장소만, OAuth 제공자 없음, iCloud/CloudKit 없음, 텔레메트리 없음. 모든 코드는 Apache-2.0입니다.
+
+두 에디션은 나란히 설치되며, 각자 별도의 라이브러리와 iCloud 키체인으로 동기화되는 키를 사용합니다. 아래에서 원하는 에디션을 선택하세요.
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">macOS용 bae 다운로드</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">macOS용 baeium 다운로드</DownloadButton>
+
+1. 내려받은 `.dmg`를 엽니다
+2. 앱을 Applications 폴더로 끌어 놓습니다
+3. Applications에서 앱을 엽니다
+
+두 에디션 모두 각자의 Sparkle 피드를 통해 자동 업데이트됩니다.
+
+## iOS
+
+iOS 빌드는 **사이드로드용 서명되지 않은 `.ipa` 파일**입니다. [AltStore](https://altstore.io) 또는 [Sideloadly](https://sideloadly.io)로 설치하거나, Xcode에서 본인 Apple ID로 다시 서명하세요. 무료 Apple ID는 baeium에 사용할 수 있습니다. App Store 배포는 아직 설정되어 있지 않습니다.
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">iOS용 bae 다운로드</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">iOS용 baeium 다운로드</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">Android용 bae 다운로드</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">Android용 baeium 다운로드</DownloadButton>
+
+메시지가 표시되면 브라우저나 파일 앱에서 설치를 허용한 뒤 `.apk`를 엽니다.
+
+## Windows
+
+Windows 빌드는 패키징되지 않은 앱의 **서명되지 않은** zip입니다. 압축을 풀고 `bae.exe` 또는 `baeium.exe`를 실행하세요. 첫 실행 때 SmartScreen 경고가 표시될 수 있습니다.
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">Windows용 bae 다운로드</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">Windows용 baeium 다운로드</DownloadButton>
+
+## Linux
+
+준비 중입니다.
+
+## 소스에서 빌드
+
+baeium은 독점 구성 요소 없이 빌드할 수 있습니다. 무료 프로비저닝으로 iOS를 빌드하는 방법을 포함한 플랫폼별 자체 빌드 안내는 [저장소 README](https://github.com/bae-fm/bae#building-baeium-yourself)를 참고하세요.

@@ -75,10 +75,10 @@ fn json_str(s: &str) -> serde_json::Value {
 /// The shipping locales beyond the English source. The generated catalog carries
 /// a slot for each — English value, marked `new` (needs translation) — so the app
 /// declares support and translators have a target; English shows at runtime until
-/// a locale is actually translated. (Source: en. RTL: ar, he. CJK: ja, zh-Hans.
+/// a locale is actually translated. (Source: en. RTL: ar, he. CJK: ja, ko, zh-Hans.
 /// Slavic: uk/bg Cyrillic, pl/cs/hr Latin.)
 const TARGET_LOCALES: &[&str] = &[
-    "es", "fr", "de", "pt-BR", "ja", "zh-Hans", "ar", "he", "uk", "bg", "pl", "cs", "hr",
+    "es", "fr", "de", "pt-BR", "ja", "ko", "zh-Hans", "ar", "he", "uk", "bg", "pl", "cs", "hr",
 ];
 
 fn string_unit_state(value: &str, state: &str) -> serde_json::Value {

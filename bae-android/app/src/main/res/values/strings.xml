@@ -6,7 +6,7 @@
   accessibility descriptions. Proper nouns (the "bae" wordmark), log lines, and
   identifiers stay as literals in code and are not listed here.
 
-  The 13 non-English shipping locales declare support via the generated
+  The 14 non-English shipping locales declare support via the generated
   values-<locale>/core_strings.xml directories; these chrome strings are not yet
   translated, so a non-English locale falls back to this English source until a
   translation is added.
