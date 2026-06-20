@@ -16,7 +16,7 @@ pub mod check;
 pub mod emit;
 pub mod mf1;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// The parsed master catalog. Keyed by dotted message id (e.g.
 /// `core.identify.barcode.looking_up`). `BTreeMap` so every emit is
@@ -72,6 +72,21 @@ impl Catalog {
     pub fn from_toml(src: &str) -> Result<Self, toml::de::Error> {
         toml::from_str(src)
     }
+
+    /// Every non-source locale named by any message translation. These locales
+    /// define the generated resource set; messages without a translation for a
+    /// target locale fall back to the source value at emit time.
+    pub fn target_locales<'a>(&'a self, src_lang: &str) -> Vec<&'a str> {
+        let mut locales = BTreeSet::new();
+        for msg in self.messages.values() {
+            for locale in msg.translations.keys() {
+                if locale != src_lang {
+                    locales.insert(locale.as_str());
+                }
+            }
+        }
+        locales.into_iter().collect()
+    }
 }
 
 /// Classify a dotted id by its first segment. Unknown prefixes are an error so
@@ -126,5 +141,20 @@ value = "remove this library from this device"
         assert_eq!(namespace_of("core.error.x").unwrap(), Namespace::Core);
         assert_eq!(namespace_of("ui.button.ok").unwrap(), Namespace::Ui);
         assert!(namespace_of("misc.oops").is_err());
+    }
+
+    #[test]
+    fn target_locales_are_derived_from_translation_keys() {
+        let src = r#"
+[messages."core.one"]
+value = "one"
+translations = { es = "uno", "zh-Hans" = "一" }
+
+[messages."core.two"]
+value = "two"
+translations = { es = "dos", en = "two" }
+"#;
+        let cat = Catalog::from_toml(src).expect("catalog parses");
+        assert_eq!(cat.target_locales("en"), vec!["es", "zh-Hans"]);
     }
 }

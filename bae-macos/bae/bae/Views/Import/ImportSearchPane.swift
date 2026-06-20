@@ -450,7 +450,7 @@ struct ImportSearchPane: View {
 
     private var discIdInfoIcon: some View {
         InfoTip(
-            text: "Uses track layout to find perfect matches on MusicBrainz.",
+            text: "Uses track layout to find exact matches on MusicBrainz.",
             learnMoreURL: URL(
                 string: "https://bae.fm/importing/local-files#identify"
             ),

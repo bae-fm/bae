@@ -74576,37 +74576,37 @@
         }
       }
     },
-    "Uses track layout to find perfect matches on MusicBrainz.": {
+    "Uses track layout to find exact matches on MusicBrainz.": {
       "comment": "Import search: info tip explaining disc-ID identification",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "Uses track layout to find exact matches on MusicBrainz."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usa la disposición de las pistas para encontrar coincidencias perfectas en MusicBrainz."
+            "value": "Usa la disposición de las pistas para encontrar coincidencias exactas en MusicBrainz."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utilise la disposition des pistes pour trouver des correspondances parfaites sur MusicBrainz."
+            "value": "Utilise la disposition des pistes pour trouver des correspondances exactes sur MusicBrainz."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verwendet das Titel-Layout, um perfekte Treffer auf MusicBrainz zu finden."
+            "value": "Verwendet das Titel-Layout, um exakte Treffer auf MusicBrainz zu finden."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usa o layout das faixas para encontrar correspondências perfeitas no MusicBrainz."
+            "value": "Usa o layout das faixas para encontrar correspondências exatas no MusicBrainz."
           }
         },
         "ja": {
@@ -74618,19 +74618,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "利用曲目布局在 MusicBrainz 上查找完美匹配项。"
+            "value": "利用曲目布局在 MusicBrainz 上查找精确匹配项。"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "يستخدم تخطيط المقطوعات للعثور على تطابقات مثالية في MusicBrainz."
+            "value": "يستخدم تخطيط المقطوعات للعثور على تطابقات دقيقة في MusicBrainz."
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "משתמש בפריסת הרצועות כדי למצוא התאמות מושלמות ב-MusicBrainz."
+            "value": "משתמש בפריסת הרצועות כדי למצוא התאמות מדויקות ב-MusicBrainz."
           }
         },
         "uk": {
@@ -74648,7 +74648,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wykorzystuje układ utworów do znalezienia idealnych dopasowań w MusicBrainz."
+            "value": "Wykorzystuje układ utworów do znalezienia dokładnych dopasowań w MusicBrainz."
           }
         },
         "cs": {
@@ -74660,7 +74660,7 @@
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Koristi raspored skladbi za pronalaženje savršenih podudaranja na MusicBrainzu."
+            "value": "Koristi raspored skladbi za pronalaženje točnih podudaranja na MusicBrainzu."
           }
         },
         "ko": {
@@ -74672,97 +74672,97 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "利用曲目布局在 MusicBrainz 上尋找精確匹配項。"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "Usa la disposizione delle tracce per trovare corrispondenze esatte su MusicBrainz."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "MusicBrainz'de kesin eşleşmeleri bulmak için parça düzenini kullanır."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "Dùng bố cục bản nhạc để tìm các kết quả khớp chính xác trên MusicBrainz."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "Gebruikt de trackindeling om exacte overeenkomsten op MusicBrainz te vinden."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "ट्रैक क्रम का उपयोग करके MusicBrainz पर सटीक मिलान ढूंढता है।"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "ট্র্যাক বিন্যাস ব্যবহার করে MusicBrainz-এ সঠিক মিল খুঁজে।"
           }
         },
         "ta": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "டிராக் அமைப்பைப் பயன்படுத்தி MusicBrainz-இல் துல்லியமான பொருத்தங்களை கண்டறிகிறது."
           }
         },
         "te": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "ట్రాక్ అమరికను ఉపయోగించి MusicBrainzలో ఖచ్చితమైన సరిపోలికలను కనుగొంటుంది."
           }
         },
         "mr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "ट्रॅक मांडणी वापरून MusicBrainz वर अचूक जुळण्या शोधते."
           }
         },
         "ur": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "ٹریک ترتیب استعمال کر کے MusicBrainz پر درست مماثلتیں تلاش کرتا ہے۔"
           }
         },
         "gu": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "ટ્રેક ગોઠવણીનો ઉપયોગ કરીને MusicBrainz પર ચોક્કસ મેળ શોધે છે."
           }
         },
         "kn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "ಟ್ರ್ಯಾಕ್ ವಿನ್ಯಾಸವನ್ನು ಬಳಸಿ MusicBrainz ನಲ್ಲಿ ನಿಖರ ಹೊಂದಾಣಿಕೆಗಳನ್ನು ಹುಡುಕುತ್ತದೆ."
           }
         },
         "ml": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "ട്രാക്ക് ക്രമം ഉപയോഗിച്ച് MusicBrainz-ൽ കൃത്യമായ പൊരുത്തങ്ങൾ കണ്ടെത്തുന്നു."
           }
         },
         "pa": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "ਟਰੈਕ ਬਣਤਰ ਵਰਤ ਕੇ MusicBrainz 'ਤੇ ਸਹੀ ਮਿਲਾਪ ਲੱਭਦਾ ਹੈ।"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses track layout to find perfect matches on MusicBrainz."
+            "value": "ใช้ลำดับแทร็กเพื่อค้นหารายการที่ตรงกันอย่างแม่นยำบน MusicBrainz"
           }
         }
       }
