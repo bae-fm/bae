@@ -28,6 +28,8 @@
 	<string>$(BAE_ENVIRONMENT)</string>
 	<key>BaeGitCommit</key>
 	<string>$(BAE_GIT_COMMIT)</string>
+	<key>BaeSentryDsn</key>
+	<string>$(BAE_SENTRY_DSN)</string>
 	<key>NSCameraUsageDescription</key>
 	<string>bae uses the camera to scan a QR code from your music library.</string>
 	<key>UIBackgroundModes</key>

@@ -982,14 +982,14 @@ pub struct LibraryManager {
     /// Test-only injection points for the cloud read/write paths, so tests
     /// resolve the cloud home and the sync-ready gate without standing up a live
     /// `SyncManager`.
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     test_overrides: TestOverrides,
 }
 
 /// Test-only overrides for state that production reads from a live
 /// `SyncManager`. Tests that exercise the cloud read/write paths inject these
 /// instead of standing up a full sync stack.
-#[cfg(feature = "test-utils")]
+#[cfg(any(test, feature = "test-utils"))]
 #[derive(Clone, Default)]
 struct TestOverrides {
     /// Cloud home + encryption. Production wires the cloud home through
@@ -1033,7 +1033,7 @@ impl Clone for LibraryManager {
             upload_throughput: self.upload_throughput.clone(),
             sync_paused: self.sync_paused.clone(),
             download_queue: self.download_queue.clone(),
-            #[cfg(feature = "test-utils")]
+            #[cfg(any(test, feature = "test-utils"))]
             test_overrides: self.test_overrides.clone(),
         }
     }
@@ -1072,7 +1072,7 @@ impl LibraryManager {
             upload_throughput: Arc::new(crate::library::UploadThroughput::new()),
             sync_paused: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
-            #[cfg(feature = "test-utils")]
+            #[cfg(any(test, feature = "test-utils"))]
             test_overrides: TestOverrides::default(),
         }
     }
@@ -1081,7 +1081,7 @@ impl LibraryManager {
     /// and `get_encryption_service` resolve without a live `SyncManager`. Used
     /// by transfer tests that read/write the cloud (CloudOnly unmanage, manage
     /// → CloudOnly upload).
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn set_cloud_override(
         &mut self,
         cloud_home: Arc<dyn CloudHome>,
@@ -1094,14 +1094,14 @@ impl LibraryManager {
     /// drives uploads by hand via `process_cloud_uploads_with` calls this so the
     /// CloudOnly manage gate treats the pipeline as running; the refusal test
     /// never calls it, leaving the gate to read the real (absent) sync loop.
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn set_force_sync_ready(&mut self) {
         self.test_overrides.force_sync_ready = true;
     }
 
     /// Shorten the deferred storage-cleanup delay so a scheduled drain runs
     /// promptly under test (production waits `CLEANUP_DELAY`).
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn set_cleanup_delay(&mut self, delay: std::time::Duration) {
         self.test_overrides.cleanup_delay = Some(delay);
     }
@@ -1110,7 +1110,7 @@ impl LibraryManager {
     /// browsable read/write paths against an injected cloud override (production
     /// sets this through the cloud-setup wizard). `cloud_blob_cipher` reads it to
     /// pick plaintext vs. encrypted.
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn set_home_storage(&self, storage: crate::config::HomeStorage) {
         self.config_handle
             .update(|c| c.cloud_home.storage = storage)
@@ -1122,7 +1122,7 @@ impl LibraryManager {
     /// `storage_path(id)` default. Mirrors what `ResolvedTrackAudio` threads into
     /// the cloud reader, exposed so a test can assert the read key matches the
     /// stored upload key without setting up full playback.
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn resolve_track_cloud_key_for_test(&self, file_id: &str) -> String {
         let file = self
             .database
@@ -1136,7 +1136,7 @@ impl LibraryManager {
     /// The readable cover `cloud_path` the current home would store for a
     /// release: `Some({artist}/{album}/cover.{ext})` on a browsable home, `None`
     /// on an opaque one. Exposes the same computation `change_cover` performs.
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn cover_cloud_path_for_test(
         &self,
         release_id: &str,
@@ -1153,7 +1153,7 @@ impl LibraryManager {
     /// deletion entry point (delete_release/delete_album/unpin/unmanage) routes
     /// through here so the queued local `storage/` copies are actually removed.
     fn spawn_cleanup(&self) {
-        #[cfg(feature = "test-utils")]
+        #[cfg(any(test, feature = "test-utils"))]
         if let Some(delay) = self.test_overrides.cleanup_delay {
             crate::storage::local::cleanup::schedule_cleanup_after(&self.library_dir, delay);
             return;
@@ -1194,7 +1194,7 @@ impl LibraryManager {
     }
 
     fn encryption_service_inner(&self) -> Option<EncryptionService> {
-        #[cfg(feature = "test-utils")]
+        #[cfg(any(test, feature = "test-utils"))]
         if let Some((_, encryption)) = &self.test_overrides.cloud {
             return Some(encryption.clone());
         }
@@ -1726,7 +1726,7 @@ impl LibraryManager {
     }
 
     pub fn get_cloud_home(&self) -> Option<Arc<dyn CloudHome>> {
-        #[cfg(feature = "test-utils")]
+        #[cfg(any(test, feature = "test-utils"))]
         if let Some((cloud_home, _)) = &self.test_overrides.cloud {
             return Some(cloud_home.clone());
         }
@@ -4807,7 +4807,7 @@ impl LibraryManager {
     /// flip — the release only becomes managed once the upload observer (which
     /// fires from inside the running loop) confirms the last upload landed.
     pub fn is_sync_ready(&self) -> bool {
-        #[cfg(feature = "test-utils")]
+        #[cfg(any(test, feature = "test-utils"))]
         if self.test_overrides.force_sync_ready {
             return true;
         }

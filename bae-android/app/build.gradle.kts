@@ -13,13 +13,14 @@ val baeVersionName = System.getenv("BAE_VERSION") ?: "0.0-dev"
 val baeVersionCode = (System.getenv("BAE_VERSION_CODE") ?: "1").toInt()
 val baeGitCommit = System.getenv("BAE_GIT_COMMIT") ?: "dev"
 val baeCovenRev = System.getenv("BAE_COVEN_REV") ?: "dev"
-val baeEnvironment = System.getenv("BAE_ENVIRONMENT") ?: ""
-val baeDatadogSite = System.getenv("BAE_DATADOG_SITE") ?: ""
-val baeDatadogClientToken = System.getenv("BAE_DATADOG_CLIENT_TOKEN") ?: ""
+val baeEnvironment = System.getenv("BAE_ENVIRONMENT")
+val baeDatadogSite = System.getenv("BAE_DATADOG_SITE")
+val baeDatadogClientToken = System.getenv("BAE_DATADOG_CLIENT_TOKEN")
+val baeSentryDsn = System.getenv("BAE_SENTRY_DSN")
 val releaseKeystore = System.getenv("ANDROID_KEYSTORE_FILE")
 
-fun buildConfigString(value: String): String =
-    "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+fun buildConfigString(value: String?): String =
+    value?.let { "\"${it.replace("\\", "\\\\").replace("\"", "\\\"")}\"" } ?: "null"
 
 android {
     namespace = "fm.bae.app"
@@ -37,6 +38,7 @@ android {
         buildConfigField("String", "BAE_ENVIRONMENT", buildConfigString(baeEnvironment))
         buildConfigField("String", "BAE_DATADOG_SITE", buildConfigString(baeDatadogSite))
         buildConfigField("String", "BAE_DATADOG_CLIENT_TOKEN", buildConfigString(baeDatadogClientToken))
+        buildConfigField("String", "BAE_SENTRY_DSN", buildConfigString(baeSentryDsn))
 
         // The launcher label. The baeium flavor overrides it to "baeium" so the two
         // editions are distinguishable once both are installed.
@@ -183,6 +185,7 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("sh.calvin.reorderable:reorderable:2.4.0")
     implementation("androidx.browser:browser:1.8.0")
+    implementation("io.sentry:sentry-android-ndk:8.16.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.15.1")

@@ -1,0 +1,162 @@
+﻿using System.Reflection;
+using System.Runtime.InteropServices;
+using Sentry;
+
+namespace Bae.Windows;
+
+internal static class BaeCrashReporting
+{
+    private static readonly Assembly AppAssembly = Assembly.GetExecutingAssembly();
+    private static IDisposable? _managedSdk;
+
+    internal static void Configure()
+    {
+        if (_managedSdk is not null)
+        {
+            return;
+        }
+
+        var config = Config();
+        if (config is null)
+        {
+            return;
+        }
+
+        _managedSdk = SentrySdk.Init(options =>
+        {
+            options.Dsn = config.Dsn;
+            options.Environment = config.Environment;
+            options.Release = config.Release;
+            options.SendDefaultPii = false;
+        });
+        SentrySdk.ConfigureScope(scope =>
+        {
+            scope.SetTag("edition", config.Edition);
+            scope.SetTag("git_commit", config.GitCommit);
+        });
+        ConfigureNative(config);
+    }
+
+    private static CrashReportingConfig? Config()
+    {
+        if (!NativeBae.SupportsOAuthProviders())
+        {
+            return null;
+        }
+        var appVersion = AppAssembly.GetName().Version;
+        var dsn = ConfiguredString("BaeSentryDsn");
+        var environment = ConfiguredString("BaeEnvironment");
+        var gitCommit = ConfiguredString("BaeGitCommit");
+        if (appVersion is null || dsn is null || environment is null || gitCommit is null)
+        {
+            return null;
+        }
+        return new CrashReportingConfig(
+            dsn,
+            environment,
+            $"bae@{appVersion}+{gitCommit}",
+            "bae",
+            gitCommit);
+    }
+
+    private static void ConfigureNative(CrashReportingConfig config)
+    {
+        try
+        {
+            var appDir = AppContext.BaseDirectory;
+            var handler = Path.Combine(appDir, "crashpad_handler.exe");
+            if (!File.Exists(handler))
+            {
+                BaeDiagnostics.Logger.Error($"Sentry native handler missing at {handler}");
+                return;
+            }
+
+            var options = NativeSentry.OptionsNew();
+            NativeSentry.OptionsSetDsn(options, config.Dsn);
+            NativeSentry.OptionsSetEnvironment(options, config.Environment);
+            NativeSentry.OptionsSetRelease(options, config.Release);
+            NativeSentry.OptionsSetDist(options, config.GitCommit);
+            NativeSentry.OptionsSetDebug(options, 0);
+            NativeSentry.OptionsSetAutoSessionTracking(options, 1);
+            NativeSentry.OptionsSetHandlerPath(options, handler);
+            var databasePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "bae",
+                "sentry-native");
+            Directory.CreateDirectory(databasePath);
+            NativeSentry.OptionsSetDatabasePath(options, databasePath);
+
+            if (NativeSentry.Init(options) != 0)
+            {
+                BaeDiagnostics.Logger.Error("Failed to configure native crash reporting");
+                return;
+            }
+            NativeSentry.SetTag("edition", config.Edition);
+            NativeSentry.SetTag("git_commit", config.GitCommit);
+        }
+        catch (Exception exception) when (
+            exception is DllNotFoundException
+                or EntryPointNotFoundException
+                or BadImageFormatException)
+        {
+            BaeDiagnostics.Logger.Error("Failed to load native crash reporting", exception);
+        }
+    }
+
+    private static string? ConfiguredString(string name)
+    {
+        var value = AppAssembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => attribute.Key == name)
+            ?.Value;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.StartsWith("$(", StringComparison.Ordinal) ? null : trimmed;
+    }
+}
+
+internal sealed record CrashReportingConfig(
+    string Dsn,
+    string Environment,
+    string Release,
+    string Edition,
+    string GitCommit);
+
+internal static class NativeSentry
+{
+    [DllImport("sentry", EntryPoint = "sentry_options_new", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern nint OptionsNew();
+
+    [DllImport("sentry", EntryPoint = "sentry_options_set_dsn", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    internal static extern void OptionsSetDsn(nint options, string dsn);
+
+    [DllImport("sentry", EntryPoint = "sentry_options_set_environment", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    internal static extern void OptionsSetEnvironment(nint options, string environment);
+
+    [DllImport("sentry", EntryPoint = "sentry_options_set_release", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    internal static extern void OptionsSetRelease(nint options, string release);
+
+    [DllImport("sentry", EntryPoint = "sentry_options_set_dist", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    internal static extern void OptionsSetDist(nint options, string dist);
+
+    [DllImport("sentry", EntryPoint = "sentry_options_set_debug", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void OptionsSetDebug(nint options, int debug);
+
+    [DllImport("sentry", EntryPoint = "sentry_options_set_auto_session_tracking", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void OptionsSetAutoSessionTracking(nint options, int enabled);
+
+    [DllImport("sentry", EntryPoint = "sentry_options_set_handler_path", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    internal static extern void OptionsSetHandlerPath(nint options, string path);
+
+    [DllImport("sentry", EntryPoint = "sentry_options_set_database_path", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    internal static extern void OptionsSetDatabasePath(nint options, string path);
+
+    [DllImport("sentry", EntryPoint = "sentry_init", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int Init(nint options);
+
+    [DllImport("sentry", EntryPoint = "sentry_set_tag", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    internal static extern void SetTag(string key, string value);
+}

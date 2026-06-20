@@ -7,6 +7,10 @@ options:
     # 16.0 (the FFmpeg link floor), which a 17.0 app target satisfies.
     iOS: "17.0"
   xcodeVersion: "26.0"
+packages:
+  Sentry:
+    url: https://github.com/getsentry/sentry-cocoa
+    exactVersion: "9.18.0"
 targets:
   bae:
     type: application
@@ -30,6 +34,7 @@ targets:
       # only bridge methods present on the iOS xcframework (or guards the
       # desktop-only ones behind `#if !os(iOS)`).
       - path: ../../bae-macos/bae/bae/BaeDiagnostics.swift
+      - path: ../../bae-macos/bae/bae/BaeCrashReporting.swift
       - path: ../../bae-macos/bae/bae/BaeLogger.swift
       - path: ../../bae-macos/bae/bae/Theme.swift
       # AppKit/UIKit-bridged via a `PlatformImage` typealias behind
@@ -102,6 +107,7 @@ targets:
           fi
     dependencies:
       - framework: ../BaeBridgeFFI-ios.xcframework
+      - package: Sentry
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fm.bae.bae
@@ -115,6 +121,7 @@ targets:
         BAE_DATADOG_CLIENT_TOKEN: $(BAE_DATADOG_CLIENT_TOKEN)
         BAE_ENVIRONMENT: $(BAE_ENVIRONMENT)
         BAE_GIT_COMMIT: $(BAE_GIT_COMMIT)
+        BAE_SENTRY_DSN: $(BAE_SENTRY_DSN)
         # CODE_SIGN_ENTITLEMENTS is set in Config.xcconfig (full) and overridden
         # by the generated Features.xcconfig (baeium), not here — a setting in this
         # block lands in the pbxproj and would override the xcconfig layer the

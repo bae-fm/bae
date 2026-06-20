@@ -435,6 +435,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
 
     func applicationDidFinishLaunching(_: Notification) {
         if !Self.isPreview {
+            BaeCrashReporting.configure()
             BaeDiagnostics.configure(source: "macos")
             logger.info("application launched")
             initKeyring()

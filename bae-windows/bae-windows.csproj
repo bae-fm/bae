@@ -55,6 +55,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260508005" />
+    <PackageReference Include="Sentry" Version="6.6.0" />
     <!--
       ICU MessageFormat 1 runtime. The localization catalog stores each message
       as a verbatim MF1 string (plural / select / named args); this parses it at
@@ -80,6 +81,10 @@
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>BaeGitCommit</_Parameter1>
       <_Parameter2>$(BAE_GIT_COMMIT)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BaeSentryDsn</_Parameter1>
+      <_Parameter2>$(BAE_SENTRY_DSN)</_Parameter2>
     </AssemblyAttribute>
   </ItemGroup>
 

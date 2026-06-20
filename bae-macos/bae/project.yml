@@ -14,6 +14,9 @@ packages:
   swift-collections:
     url: https://github.com/apple/swift-collections
     from: "1.4.1"
+  Sentry:
+    url: https://github.com/getsentry/sentry-cocoa
+    exactVersion: "9.18.0"
 targets:
   bae:
     type: application
@@ -41,6 +44,7 @@ targets:
         BaeDatadogClientToken: $(BAE_DATADOG_CLIENT_TOKEN)
         BaeEnvironment: $(BAE_ENVIRONMENT)
         BaeGitCommit: $(BAE_GIT_COMMIT)
+        BaeSentryDsn: $(BAE_SENTRY_DSN)
         CFBundleDocumentTypes:
           - CFBundleTypeName: Folder
             LSItemContentTypes:
@@ -88,6 +92,7 @@ targets:
       - framework: ../BaeBridgeFFI.xcframework
         embed: false
       - package: Sparkle
+      - package: Sentry
       - package: swift-collections
         product: OrderedCollections
       - sdk: CoreAudio.framework

@@ -39,9 +39,9 @@ object BaeDiagnostics {
 
     private fun bridgeConfig(): BridgeDiagnosticsConfig {
         if (BuildConfig.BAE_EDITION == "bae") {
-            val datadogSite = configuredString(BuildConfig.BAE_DATADOG_SITE)
-            val clientToken = configuredString(BuildConfig.BAE_DATADOG_CLIENT_TOKEN)
-            val environment = configuredString(BuildConfig.BAE_ENVIRONMENT)
+            val datadogSite = configuredBuildString(BuildConfig.BAE_DATADOG_SITE)
+            val clientToken = configuredBuildString(BuildConfig.BAE_DATADOG_CLIENT_TOKEN)
+            val environment = configuredBuildString(BuildConfig.BAE_ENVIRONMENT)
             if (datadogSite != null && clientToken != null && environment != null) {
                 return BridgeDiagnosticsConfig.Enabled(
                     BridgeDatadogDiagnosticsConfig(
@@ -63,11 +63,11 @@ object BaeDiagnostics {
 
         return BridgeDiagnosticsConfig.Disabled
     }
+}
 
-    private fun configuredString(value: String): String? {
-        val trimmed = value.trim()
-        return trimmed.takeIf { it.isNotEmpty() && !it.startsWith("\$(") }
-    }
+internal fun configuredBuildString(value: String?): String? {
+    val trimmed = value?.trim() ?: return null
+    return trimmed.takeIf { it.isNotEmpty() && !it.startsWith("\$(") }
 }
 
 class BaeLogger(

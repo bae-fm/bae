@@ -13,6 +13,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        BaeCrashReporting.Configure();
         BaeDiagnostics.Configure();
         BaeDiagnostics.Logger.Info("application launched");
 

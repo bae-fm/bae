@@ -19,6 +19,7 @@ struct BaeApp: App {
         #endif
         var launchError: String?
         do {
+            BaeCrashReporting.configure()
             BaeDiagnostics.configure(source: "ios")
             Logger.bae("BaeApp").info("application launched")
             // App processes on iOS have no $HOME, which bae-core needs to locate its
