@@ -59,6 +59,9 @@ jobs:
       run: |
         cargo test -p bae-loc
         cargo test -p bae-bridge --lib
+        # chrome-string orphan gate (core.* keys are gated by the bae-bridge
+        # loc_key_coverage test above); fails on unreferenced, un-allowlisted keys.
+        python3 scripts/loc-chrome-orphans.py
 
     - name: Build macOS app
       id: build_macos
