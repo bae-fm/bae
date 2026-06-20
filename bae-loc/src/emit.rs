@@ -72,17 +72,6 @@ fn json_str(s: &str) -> serde_json::Value {
     serde_json::Value::String(s.to_string())
 }
 
-/// The shipping locales beyond the English source. Generated resources carry a
-/// slot for each locale so every app declares the same language set. (Source:
-/// en. RTL: ar, he, ur. CJK:
-/// ja, ko, zh-Hans, zh-Hant. Indic: hi, bn, ta, te, mr, gu, kn, ml, pa.
-/// Slavic: uk/bg Cyrillic, pl/cs/hr Latin.)
-const TARGET_LOCALES: &[&str] = &[
-    "es", "fr", "de", "pt-BR", "ja", "ko", "zh-Hans", "zh-Hant", "ar", "he", "uk", "bg", "pl",
-    "cs", "hr", "it", "tr", "vi", "nl", "hi", "bn", "ta", "te", "mr", "ur", "gu", "kn", "ml", "pa",
-    "th",
-];
-
 fn string_unit_state(value: &str, state: &str) -> serde_json::Value {
     serde_json::json!({ "stringUnit": { "state": state, "value": value } })
 }
@@ -142,17 +131,21 @@ fn apple_unit(msg: &Message, value: &str, state: &str) -> Result<serde_json::Val
     Ok(string_unit_state(&rendered, state))
 }
 
-/// Build the `.xcstrings` `localizations` body for one message: the English
-/// source (state `translated`) plus every `TARGET_LOCALES` entry — its
-/// translation at state `translated`, or the English source at `new` where that
+/// Build the `.xcstrings` `localizations` body for one message: the source
+/// locale (state `translated`) plus every catalog target locale — its
+/// translation at state `translated`, or the source value at `new` where that
 /// locale isn't translated yet.
-fn apple_localization(msg: &Message, src_lang: &str) -> Result<serde_json::Value, String> {
+fn apple_localization(
+    msg: &Message,
+    src_lang: &str,
+    target_locales: &[&str],
+) -> Result<serde_json::Value, String> {
     let mut locs = serde_json::Map::new();
     locs.insert(
         src_lang.to_string(),
         apple_unit(msg, &msg.value, "translated")?,
     );
-    for loc in TARGET_LOCALES {
+    for loc in target_locales {
         let (value, state) = localized(msg, loc, src_lang);
         locs.insert((*loc).to_string(), apple_unit(msg, value, state)?);
     }
@@ -162,6 +155,7 @@ fn apple_localization(msg: &Message, src_lang: &str) -> Result<serde_json::Value
 /// Emit the source-language `Core.xcstrings` for the whole catalog.
 pub fn apple_xcstrings(cat: &Catalog, src_lang: &str) -> Result<String, String> {
     let mut strings = serde_json::Map::new();
+    let target_locales = cat.target_locales(src_lang);
     for (id, msg) in &cat.messages {
         let mut entry = serde_json::Map::new();
         if let Some(comment) = &msg.comment {
@@ -169,7 +163,7 @@ pub fn apple_xcstrings(cat: &Catalog, src_lang: &str) -> Result<String, String> 
         }
         entry.insert(
             "localizations".to_string(),
-            apple_localization(msg, src_lang)?,
+            apple_localization(msg, src_lang, &target_locales)?,
         );
         strings.insert(id.clone(), serde_json::Value::Object(entry));
     }
@@ -234,9 +228,10 @@ fn android_values_dir(locale: &str) -> String {
     }
 }
 
-/// Emit the full Android resource set: the English source under `values/`, plus
-/// one `values-<qualifier>/core_strings.xml` per `TARGET_LOCALES` entry carrying
-/// that locale's translations (English where a message isn't translated yet).
+/// Emit the full Android resource set: the source language under `values/`, plus
+/// one `values-<qualifier>/core_strings.xml` per catalog target locale carrying
+/// that locale's translations (source-language values where a message isn't
+/// translated yet).
 /// Android resolves resources per directory, so a locale the app should
 /// "support" must have its own directory — without it the locale falls back to
 /// `values/` and never registers as supported (so its plural rules and
@@ -247,7 +242,7 @@ pub fn android_resource_files(cat: &Catalog, src_lang: &str) -> Vec<(String, Str
         "values/core_strings.xml".to_string(),
         android_strings_xml(cat, src_lang, src_lang),
     )];
-    for loc in TARGET_LOCALES {
+    for loc in cat.target_locales(src_lang) {
         files.push((
             format!("{}/core_strings.xml", android_values_dir(loc)),
             android_strings_xml(cat, loc, src_lang),
@@ -291,13 +286,13 @@ pub fn windows_resw(cat: &Catalog, locale: &str, src_lang: &str) -> String {
     out
 }
 
-/// The shipping locales in build/BCP-47 form: the English source plus every
-/// `TARGET_LOCALES` entry. Windows resources are per-language directories (unlike
-/// Apple's single multi-locale `.xcstrings`), so the catalog fans out to one
-/// `Core.resw` per locale.
-fn windows_locales(src_lang: &str) -> Vec<String> {
+/// The generated Windows locales in build/BCP-47 form: the source language plus
+/// every catalog target locale. Windows resources are per-language directories
+/// (unlike Apple's single multi-locale `.xcstrings`), so the catalog fans out to
+/// one `Core.resw` per locale.
+fn windows_locales(cat: &Catalog, src_lang: &str) -> Vec<String> {
     let mut locales = vec![format!("{src_lang}-US")];
-    locales.extend(TARGET_LOCALES.iter().map(|l| (*l).to_string()));
+    locales.extend(cat.target_locales(src_lang).into_iter().map(str::to_string));
     locales
 }
 
@@ -309,7 +304,7 @@ fn windows_locales(src_lang: &str) -> Vec<String> {
 /// per-locale values inside one file.
 pub fn windows_resw_all(cat: &Catalog, src_lang: &str) -> Vec<(std::path::PathBuf, String)> {
     let src_dir = format!("{src_lang}-US");
-    windows_locales(src_lang)
+    windows_locales(cat, src_lang)
         .into_iter()
         .map(|dir| {
             // The source directory ("en-US") looks up the source language; every
@@ -338,6 +333,7 @@ mod tests {
         let c = cat(r#"
 [messages."core.error.not_found.release"]
 value = "that release couldn't be found"
+translations = { ar = "تعذر العثور على ذلك الإصدار", "zh-Hans" = "找不到该发行版" }
 
 [messages."core.identify.barcode.looking_up"]
 args = { position = "Int", total = "Int" }
@@ -351,7 +347,8 @@ value = "Looking up barcode {position} of {total}"
         );
         assert!(json.contains("that release couldn't be found"), "{json}");
         assert!(json.contains("\"sourceLanguage\": \"en\""));
-        // Every shipping locale gets a slot; the non-source ones are `new`.
+        // Every catalog target locale gets a slot; messages without that
+        // locale are `new`.
         assert!(
             json.contains("\"ar\"") && json.contains("\"zh-Hans\""),
             "{json}"
@@ -429,10 +426,11 @@ value = "Looking up barcode {position} of {total}"
         let c = cat(r#"
 [messages."core.error.not_found.release"]
 value = "that release couldn't be found"
+translations = { ar = "تعذر العثور على ذلك الإصدار", "zh-Hans" = "找不到该发行版" }
 "#);
         let files = windows_resw_all(&c, "en");
-        // One Core.resw per shipping locale: en-US source + every TARGET_LOCALES.
-        assert_eq!(files.len(), TARGET_LOCALES.len() + 1);
+        // One Core.resw per generated locale: en-US source + catalog targets.
+        assert_eq!(files.len(), 3);
         let paths: Vec<String> = files
             .iter()
             .map(|(p, _)| p.to_string_lossy().replace('\\', "/"))
@@ -443,14 +441,15 @@ value = "that release couldn't be found"
             paths.contains(&"zh-Hans/Core.resw".to_string()),
             "{paths:?}"
         );
-        // Every locale carries the English source (others untranslated until a
-        // translator fills them) — no invented translations.
-        for (_, contents) in &files {
-            assert!(
-                contents.contains("that release couldn't be found"),
-                "{contents}"
-            );
-        }
+        let source = files
+            .iter()
+            .find(|(p, _)| p.to_string_lossy().replace('\\', "/") == "en-US/Core.resw")
+            .unwrap();
+        assert!(
+            source.1.contains("that release couldn't be found"),
+            "{}",
+            source.1
+        );
     }
 
     #[test]
@@ -472,10 +471,11 @@ value = "that release couldn't be found"
         let c = cat(r#"
 [messages."core.audio.channels.mono"]
 value = "mono"
+translations = { ar = "أحادي", "zh-Hans" = "单声道" }
 "#);
         let files = android_resource_files(&c, "en");
-        // One source `values/` file plus one per target locale.
-        assert_eq!(files.len(), 1 + TARGET_LOCALES.len());
+        // One source `values/` file plus one per catalog target locale.
+        assert_eq!(files.len(), 3);
         let paths: Vec<&str> = files.iter().map(|(p, _)| p.as_str()).collect();
         assert!(paths.contains(&"values/core_strings.xml"), "{paths:?}");
         assert!(
@@ -483,8 +483,6 @@ value = "mono"
             "{paths:?}"
         );
         assert!(paths.contains(&"values-ar/core_strings.xml"), "{paths:?}");
-        // No translations in this catalog, so every locale falls back to English.
-        assert!(files.iter().all(|(_, body)| body.contains("mono")));
     }
 
     #[test]
@@ -511,18 +509,18 @@ translations = { pl = "{count, plural, one {# usunięcie oczekuje} few {# usuni�
         assert!(json.contains("%lld usunięć oczekuje"), "{json}");
 
         // Android: the Spanish file carries the translation verbatim; an
-        // untranslated locale (de) keeps the English source.
+        // target locale untranslated for this message keeps the English source.
         let files = android_resource_files(&c, "en");
         let es = files
             .iter()
             .find(|(p, _)| p == "values-es/core_strings.xml")
             .unwrap();
         assert!(es.1.contains("no se encontró ese lanzamiento"), "{}", es.1);
-        let de = files
+        let pl = files
             .iter()
-            .find(|(p, _)| p == "values-de/core_strings.xml")
+            .find(|(p, _)| p == "values-pl/core_strings.xml")
             .unwrap();
-        assert!(de.1.contains("that release couldn"), "{}", de.1);
+        assert!(pl.1.contains("that release couldn"), "{}", pl.1);
 
         // Windows: the Polish Core.resw carries the four-category MF1 verbatim.
         let resw = windows_resw_all(&c, "en");
