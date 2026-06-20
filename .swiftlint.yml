@@ -16,7 +16,6 @@ disabled_rules:
   # Style/idiom — heuristics that fight SwiftUI idioms or our conventions rather
   # than measure real complexity. The structural rules (function/type body length,
   # cyclomatic complexity, parameter count) carry the code-quality load instead.
-  - todo                                       # tracked in issues, not the linter
   - multiple_closures_with_trailing_closure    # SwiftUI's Button(action:){}label:{} etc.
   - identifier_name                            # length heuristic; flags idiomatic id/loop vars/fixtures
   - file_length                                # type_body_length catches oversized types; long view
