@@ -93,10 +93,9 @@
 
     The bridge-originated strings (core.*) and shared chrome (ui.*) live in the
     master catalog (bae-bridge/loc/catalog.toml); loc-gen emits them as
-    Strings/en-US/Core.resw. The 14 non-source locales each get a Strings/<lang>/
-    directory with the English source marked for translation (untranslated until
-    a translator fills them); English shows at runtime until then. Bare app chrome
-    (titles, buttons) lives in the committed Strings/<lang>/Resources.resw.
+    Strings/en-US/Core.resw. The 30 non-source locales each get a Strings/<lang>/
+    directory for generated core strings. Bare app chrome (titles, buttons) lives
+    in the committed Strings/<lang>/Resources.resw.
 
     Every Strings/<lang>/*.resw compiles into the per-language resource map. The
     PRIResource item is how the WinUI/MSBuild resource pipeline picks them up; the

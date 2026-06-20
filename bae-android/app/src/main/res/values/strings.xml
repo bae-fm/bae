@@ -6,10 +6,9 @@
   accessibility descriptions. Proper nouns (the "bae" wordmark), log lines, and
   identifiers stay as literals in code and are not listed here.
 
-  The 14 non-English shipping locales declare support via the generated
-  values-<locale>/core_strings.xml directories; these chrome strings are not yet
-  translated, so a non-English locale falls back to this English source until a
-  translation is added.
+  The 30 non-English shipping locales declare support via the generated
+  values-<locale>/core_strings.xml directories. Chrome translations live beside
+  this source in values-<locale>/strings.xml when the locale ships app chrome.
 -->
 <resources>
     <!-- Common -->

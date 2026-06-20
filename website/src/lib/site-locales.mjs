@@ -1395,6 +1395,2622 @@ export const landing = {
   },
 };
 
+
+
+
+
+
+
+
+const addedSidebarTranslations = {
+  sections: {
+    gettingStarted: {
+      it: "Primi passi",
+      tr: "Başlarken",
+      vi: "Bắt đầu",
+      nl: "Aan de slag",
+      hi: "शुरुआत",
+      bn: "শুরু করা",
+      ta: "தொடங்குதல்",
+      te: "ప్రారంభం",
+      mr: "सुरुवात",
+      ur: "شروع کریں",
+      gu: "શરૂઆત",
+      kn: "ಪ್ರಾರಂಭ",
+      ml: "ആരംഭിക്കുക",
+      pa: "ਸ਼ੁਰੂਆਤ",
+      th: "เริ่มต้น",
+      "zh-Hant": "入門"
+    },
+    library: {
+      it: "Libreria",
+      tr: "Kitaplık",
+      vi: "Thư viện",
+      nl: "Bibliotheek",
+      hi: "लाइब्रेरी",
+      bn: "লাইব্রেরি",
+      ta: "நூலகம்",
+      te: "లైబ్రరీ",
+      mr: "लायब्ररी",
+      ur: "لائبریری",
+      gu: "લાઇબ્રેરી",
+      kn: "ಲೈಬ್ರರಿ",
+      ml: "ലൈബ്രറി",
+      pa: "ਲਾਇਬ੍ਰੇਰੀ",
+      th: "ไลบรารี",
+      "zh-Hant": "資料庫"
+    },
+    storage: {
+      it: "Archiviazione",
+      tr: "Depolama",
+      vi: "Lưu trữ",
+      nl: "Opslag",
+      hi: "स्टोरेज",
+      bn: "স্টোরেজ",
+      ta: "சேமிப்பு",
+      te: "నిల్వ",
+      mr: "साठवण",
+      ur: "اسٹوریج",
+      gu: "સંગ્રહ",
+      kn: "ಸಂಗ್ರಹಣೆ",
+      ml: "സംഭരണം",
+      pa: "ਸਟੋਰੇਜ",
+      th: "พื้นที่จัดเก็บ",
+      "zh-Hant": "儲存空間"
+    },
+    architecture: {
+      it: "Architettura",
+      tr: "Mimari",
+      vi: "Kiến trúc",
+      nl: "Architectuur",
+      hi: "आर्किटेक्चर",
+      bn: "আর্কিটেকচার",
+      ta: "கட்டமைப்பு",
+      te: "నిర్మాణం",
+      mr: "रचना",
+      ur: "ساخت",
+      gu: "રચના",
+      kn: "ವಾಸ್ತುಶಿಲ್ಪ",
+      ml: "ആർക്കിടെക്ചർ",
+      pa: "ਆਰਕੀਟੈਕਚਰ",
+      th: "สถาปัตยกรรม",
+      "zh-Hant": "架構"
+    }
+  },
+  pages: {
+    installation: {
+      it: "Installazione",
+      tr: "Kurulum",
+      vi: "Cài đặt",
+      nl: "Installatie",
+      hi: "इंस्टॉलेशन",
+      bn: "ইনস্টলেশন",
+      ta: "நிறுவல்",
+      te: "ఇన్‌స్టాలేషన్",
+      mr: "स्थापना",
+      ur: "تنصیب",
+      gu: "ઇન્સ્ટોલેશન",
+      kn: "ಸ್ಥಾಪನೆ",
+      ml: "ഇൻസ്റ്റാളേഷൻ",
+      pa: "ਇੰਸਟਾਲੇਸ਼ਨ",
+      th: "การติดตั้ง",
+      "zh-Hant": "安裝"
+    },
+    quickStart: {
+      it: "Avvio rapido",
+      tr: "Hızlı başlangıç",
+      vi: "Bắt đầu nhanh",
+      nl: "Snelstart",
+      hi: "त्वरित शुरुआत",
+      bn: "দ্রুত শুরু",
+      ta: "விரைவு தொடக்கம்",
+      te: "త్వరిత ప్రారంభం",
+      mr: "जलद सुरुवात",
+      ur: "فوری آغاز",
+      gu: "ઝડપી શરૂઆત",
+      kn: "ತ್ವರಿತ ಪ್ರಾರಂಭ",
+      ml: "ദ്രുതാരംഭം",
+      pa: "ਤੁਰੰਤ ਸ਼ੁਰੂਆਤ",
+      th: "เริ่มใช้อย่างรวดเร็ว",
+      "zh-Hant": "快速開始"
+    },
+    importing: {
+      it: "Importazione",
+      tr: "İçe aktarma",
+      vi: "Nhập",
+      nl: "Importeren",
+      hi: "इम्पोर्ट",
+      bn: "ইম্পোর্ট",
+      ta: "இறக்குமதி",
+      te: "దిగుమతి",
+      mr: "आयात",
+      ur: "درآمد",
+      gu: "આયાત",
+      kn: "ಆಮದು",
+      ml: "ഇറക്കുമതി",
+      pa: "ਆਯਾਤ",
+      th: "นำเข้า",
+      "zh-Hant": "匯入"
+    },
+    metadata: {
+      it: "Metadati",
+      tr: "Üst veri",
+      vi: "Siêu dữ liệu",
+      nl: "Metadata",
+      hi: "मेटाडेटा",
+      bn: "মেটাডেটা",
+      ta: "மெட்டாடேட்டா",
+      te: "మెటాడేటా",
+      mr: "मेटाडेटा",
+      ur: "میٹا ڈیٹا",
+      gu: "મેટાડેટા",
+      kn: "ಮೆಟಾಡೇಟಾ",
+      ml: "മെറ്റാഡാറ്റ",
+      pa: "ਮੈਟਾਡਾਟਾ",
+      th: "เมทาดาทา",
+      "zh-Hant": "中繼資料"
+    },
+    browsing: {
+      it: "Navigazione",
+      tr: "Göz atma",
+      vi: "Duyệt",
+      nl: "Bladeren",
+      hi: "ब्राउज़िंग",
+      bn: "ব্রাউজ",
+      ta: "உலாவல்",
+      te: "బ్రౌజింగ్",
+      mr: "ब्राउझिंग",
+      ur: "براؤزنگ",
+      gu: "બ્રાઉઝિંગ",
+      kn: "ಬ್ರೌಸಿಂಗ್",
+      ml: "ബ്രൗസിംഗ്",
+      pa: "ਝਲਕਣਾ",
+      th: "เรียกดู",
+      "zh-Hant": "瀏覽"
+    },
+    overview: {
+      it: "Panoramica",
+      tr: "Genel bakış",
+      vi: "Tổng quan",
+      nl: "Overzicht",
+      hi: "ओवरव्यू",
+      bn: "ওভারভিউ",
+      ta: "மேலோட்டம்",
+      te: "అవలోకనం",
+      mr: "आढावा",
+      ur: "جائزہ",
+      gu: "ઝાંખી",
+      kn: "ಅವಲೋಕನ",
+      ml: "അവലോകനം",
+      pa: "ਝਲਕ",
+      th: "ภาพรวม",
+      "zh-Hant": "概覽"
+    },
+    sync: {
+      it: "Sincronizzazione",
+      tr: "Eşzamanlama",
+      vi: "Đồng bộ",
+      nl: "Synchronisatie",
+      hi: "सिंक",
+      bn: "সিঙ্ক",
+      ta: "ஒத்திசைவு",
+      te: "సింక్",
+      mr: "समक्रमण",
+      ur: "مطابقت پذیری",
+      gu: "સિંક",
+      kn: "ಸಿಂಕ್",
+      ml: "സിങ്ക്",
+      pa: "ਸਿੰਕ",
+      th: "ซิงค์",
+      "zh-Hant": "同步"
+    },
+    dataModel: {
+      it: "Modello dati",
+      tr: "Veri modeli",
+      vi: "Mô hình dữ liệu",
+      nl: "Datamodel",
+      hi: "डेटा मॉडल",
+      bn: "ডেটা মডেল",
+      ta: "தரவு மாதிரி",
+      te: "డేటా మోడల్",
+      mr: "डेटा मॉडेल",
+      ur: "ڈیٹا ماڈل",
+      gu: "ડેટા મોડેલ",
+      kn: "ಡೇಟಾ ಮಾದರಿ",
+      ml: "ഡാറ്റ മോഡൽ",
+      pa: "ਡਾਟਾ ਮਾਡਲ",
+      th: "โมเดลข้อมูล",
+      "zh-Hant": "資料模型"
+    },
+    cloudHome: {
+      it: "Cloud home",
+      tr: "Bulut evi",
+      vi: "Cloud home",
+      nl: "Cloud home",
+      hi: "क्लाउड होम",
+      bn: "ক্লাউড হোম",
+      ta: "கிளவுட் ஹோம்",
+      te: "క్లౌడ్ హోమ్",
+      mr: "क्लाउड होम",
+      ur: "کلاؤڈ ہوم",
+      gu: "ક્લાઉડ હોમ",
+      kn: "ಕ್ಲೌಡ್ ಹೋಮ್",
+      ml: "ക്ലൗഡ് ഹോം",
+      pa: "ਕਲਾਉਡ ਹੋਮ",
+      th: "Cloud home",
+      "zh-Hant": "雲端位置"
+    },
+    encryption: {
+      it: "Crittografia",
+      tr: "Şifreleme",
+      vi: "Mã hóa",
+      nl: "Versleuteling",
+      hi: "एन्क्रिप्शन",
+      bn: "এনক্রিপশন",
+      ta: "குறியாக்கம்",
+      te: "ఎన్‌క్రిప్షన్",
+      mr: "कूटबद्धीकरण",
+      ur: "خفیہ کاری",
+      gu: "એન્ક્રિપ્શન",
+      kn: "ಎನ್‌ಕ್ರಿಪ್ಷನ್",
+      ml: "എൻക്രിപ്ഷൻ",
+      pa: "ਇਨਕ੍ਰਿਪਸ਼ਨ",
+      th: "การเข้ารหัส",
+      "zh-Hant": "加密"
+    },
+    membership: {
+      it: "Appartenenza",
+      tr: "Üyelik",
+      vi: "Thành viên",
+      nl: "Lidmaatschap",
+      hi: "सदस्यता",
+      bn: "সদস্যতা",
+      ta: "உறுப்பினர் நிலை",
+      te: "సభ్యత్వం",
+      mr: "सदस्यत्व",
+      ur: "رکنیت",
+      gu: "સભ્યતા",
+      kn: "ಸದಸ್ಯತ್ವ",
+      ml: "അംഗത്വം",
+      pa: "ਮੈਂਬਰਸ਼ਿਪ",
+      th: "สมาชิกภาพ",
+      "zh-Hant": "成員資格"
+    },
+    serverless: {
+      it: "Senza server",
+      tr: "Sunucusuz",
+      vi: "Không máy chủ",
+      nl: "Serverloos",
+      hi: "सर्वर रहित",
+      bn: "সার্ভারবিহীন",
+      ta: "சர்வர் இல்லாமல்",
+      te: "సర్వర్‌లెస్",
+      mr: "सर्व्हरविरहित",
+      ur: "بغیر سرور",
+      gu: "સર્વર વિના",
+      kn: "ಸರ್ವರ್ ಇಲ್ಲದೆ",
+      ml: "സർവർ ഇല്ലാതെ",
+      pa: "ਸਰਵਰ ਰਹਿਤ",
+      th: "ไร้เซิร์ฟเวอร์",
+      "zh-Hant": "無伺服器"
+    }
+  }
+};
+const addedLanding = {
+  "zh-Hant": {
+    metaDescription: "bae 是一個音樂資料庫，用來管理你擁有的專輯，可在手機與桌面端使用，並透過你已有的雲端儲存同步。bae 仍在 1.0 之前，不適合一般使用。",
+    title: "bae：你的音樂，隨處可用",
+    navDocs: "文件",
+    navDownload: "下載",
+    languageLabel: "語言",
+    heroTitle: [
+      "你的音樂",
+      "隨處可用"
+    ],
+    heroText: "你的全部音樂，都在手機與桌面端。透過你的雲端儲存在裝置間同步，不需要執行伺服器。",
+    heroBold: "私有，屬於你。",
+    statusLabel: "bae 開發狀態",
+    statusKicker: "Pre-1.0",
+    statusTitle: "不適合一般使用。",
+    statusText: "僅限測試建置。資料與同步格式會在沒有遷移的情況下變更。",
+    downloadMac: "下載 macOS 版",
+    seeFeatures: "查看功能",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "屬於你",
+        "你的檔案仍然屬於你"
+      ],
+      [
+        "私有",
+        "你的裝置保存金鑰"
+      ],
+      [
+        "隨處可用",
+        "透過你的雲同步"
+      ]
+    ],
+    sheepAlt: "戴著耳機的 bae 羊",
+    noteSynced: "已同步",
+    noteSyncedSub: "跨你的裝置",
+    noteCloud: "你的雲",
+    noteCloudSub: "無伺服器",
+    syncEyebrow: "加密同步",
+    syncTitle: [
+      "只屬於你，位於",
+      "每台裝置"
+    ],
+    syncText: "你的裝置透過你選擇的雲端儲存同步。無需執行伺服器。所有內容離開裝置前都會加密。只有你能讀取。",
+    desktop: "你的桌面端",
+    phone: "你的手機",
+    holdsKeys: "保存金鑰",
+    encrypted: "已加密",
+    cloudStorage: "你的雲端儲存",
+    encryptionLink: "查看加密如何運作 →",
+    libraryEyebrow: "資料庫",
+    libraryTitle: [
+      "你的整個收藏，",
+      "按發行版本準確整理"
+    ],
+    libraryText: "把你擁有的專輯放進一個資料庫，然後帶到任何地方。",
+    cards: [
+      [
+        "發行版本，而不是資料夾",
+        "把音樂資料夾交給 bae，bae 會協助把每個資料夾匹配到正確的發行版本。同一張專輯的不同發行版本會分組顯示。",
+        [
+          "中繼資料來源",
+          "封面圖",
+          "發行版本分組"
+        ]
+      ],
+      [
+        "整個資料庫，每台裝置",
+        "你的雲保存資料庫。每台裝置都能看到全部內容。曲目播放時下載；固定的發行版本可離線播放。",
+        [
+          "手機與桌面端",
+          "離線固定"
+        ]
+      ],
+      [
+        "播放細節",
+        "專輯保留播放細節：黑膠與卡帶錄音會在換面時暫停。CUE 表可用於播放 CD pregap。",
+        [
+          "CD pregap",
+          "黑膠換面"
+        ]
+      ],
+      [
+        "由你控制",
+        "你的音樂仍然屬於你。你的檔案留在你放置的位置。你控制自己的資料庫。",
+        [
+          "你的檔案",
+          "無鎖定"
+        ]
+      ]
+    ],
+    engineEyebrow: "內部結構",
+    engineTitle: [
+      "每個平台上的",
+      "原生應用"
+    ],
+    engineText: "每個應用都是對應平台的原生應用。它們都使用同一個 Rust 核心來處理資料庫、播放、同步和加密。",
+    rustCore: "Rust 核心",
+    rustCoreSub: "資料庫 · 播放 · 同步 · 加密",
+    sharedRustCore: "共享 Rust 核心",
+    deps: [
+      [
+        "FFmpeg",
+        "音訊解碼"
+      ],
+      [
+        "SQLite",
+        "資料庫"
+      ],
+      [
+        "雲端儲存",
+        "同步後端"
+      ]
+    ],
+    playbackEyebrow: "播放",
+    playbackTitle: "圍繞你的檔案建構",
+    minis: [
+      [
+        "原始品質",
+        "你的檔案會保持原樣。播放使用原始檔案。"
+      ],
+      [
+        "本機優先",
+        "在不更改檔案的情況下把資料夾匹配到發行版本。需要同步時再加入雲端儲存。"
+      ],
+      [
+        "離線播放",
+        "把發行版本固定到裝置。它們會繼續離線播放。"
+      ]
+    ],
+    endAria: "把你的收藏帶回家",
+    endPrefix: "把你的收藏帶到",
+    endFallback: "身邊。",
+    endText: "私有、開源，並處於開發中。你加入的一切仍然屬於你。",
+    readArchitecture: "閱讀架構",
+    footerStatus: "私有且開源",
+    cycleWords: [
+      "身邊",
+      "任何地方",
+      "一起",
+      "離線",
+      "由你控制"
+    ]
+  },
+  it: {
+    metaDescription: "bae: la tua musica ovunque. Tutta la tua musica sul telefono e sul desktop. Ascolta su più dispositivi, sincronizzati tramite il tuo cloud. Nessun server da mantenere.",
+    title: "bae: la tua musica ovunque",
+    navDocs: "Documenti",
+    navDownload: "Scarica",
+    languageLabel: "Lingua",
+    heroTitle: [
+      "La tua musica",
+      "ovunque"
+    ],
+    heroText: "Tutta la tua musica sul telefono e sul desktop. Ascolta su più dispositivi, sincronizzati tramite il tuo cloud. Nessun server da mantenere.",
+    heroBold: "Privata, tua.",
+    statusLabel: "stato di sviluppo di bae",
+    statusKicker: "Pre-1.0",
+    statusTitle: "Non pronto per l’uso generale.",
+    statusText: "Solo build di prova. I formati di dati e sincronizzazione cambieranno senza migrazione.",
+    downloadMac: "Scarica per macOS",
+    seeFeatures: "Vedi funzioni",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "Tua",
+        "i file restano tuoi"
+      ],
+      [
+        "Privata",
+        "i tuoi dispositivi conservano le chiavi"
+      ],
+      [
+        "Ovunque",
+        "sincronizzata tramite il tuo cloud"
+      ]
+    ],
+    sheepAlt: "la pecora bae con le cuffie",
+    noteSynced: "Sincronizzazione",
+    noteSyncedSub: "tra i tuoi dispositivi",
+    noteCloud: "Il tuo cloud",
+    noteCloudSub: "nessun server",
+    syncEyebrow: "Sincronizzazione cifrata",
+    syncTitle: [
+      "La tua musica",
+      "ovunque"
+    ],
+    syncText: "La tua libreria si sincronizza tramite il cloud che scegli. Tutto viene cifrato prima di lasciare il dispositivo. Solo tu puoi leggerlo.",
+    desktop: "Desktop",
+    phone: "Telefono",
+    holdsKeys: "conserva le chiavi",
+    encrypted: "Crittografia",
+    cloudStorage: "Archiviazione",
+    encryptionLink: "Crittografia →",
+    libraryEyebrow: "Libreria",
+    libraryTitle: [
+      "Tutta la tua collezione,",
+      "precisa per edizione"
+    ],
+    libraryText: "Porta gli album che possiedi in una sola libreria e portali con te.",
+    cards: [
+      [
+        "Release, non cartelle",
+        "bae abbina le cartelle musicali ai metadati della release e raggruppa release diverse dello stesso album.",
+        [
+          "Metadati",
+          "Copertina",
+          "Release"
+        ]
+      ],
+      [
+        "Tutta la libreria, ogni dispositivo",
+        "Il tuo cloud conserva la libreria. Le tracce vengono scaricate durante la riproduzione; le release fissate funzionano offline.",
+        [
+          "Telefono e desktop",
+          "Offline"
+        ]
+      ],
+      [
+        "Dettagli di riproduzione",
+        "Gli album conservano dettagli come cambi lato e pregap CUE.",
+        [
+          "Pregap CD",
+          "Cambi lato"
+        ]
+      ],
+      [
+        "Sotto il tuo controllo",
+        "La musica e i file restano tuoi.",
+        [
+          "I tuoi file",
+          "Nessun lock-in"
+        ]
+      ]
+    ],
+    engineEyebrow: "Sotto il cofano",
+    engineTitle: [
+      "App native",
+      "su ogni piattaforma"
+    ],
+    engineText: "Ogni app è nativa della sua piattaforma e usa lo stesso core Rust per libreria, riproduzione, sincronizzazione e cifratura.",
+    rustCore: "Core Rust",
+    rustCoreSub: "libreria · riproduzione · sincronizzazione · cifratura",
+    sharedRustCore: "core Rust condiviso",
+    deps: [
+      [
+        "FFmpeg",
+        "decodifica audio"
+      ],
+      [
+        "SQLite",
+        "database libreria"
+      ],
+      [
+        "Storage cloud",
+        "sync"
+      ]
+    ],
+    playbackEyebrow: "Riproduzione",
+    playbackTitle: "Costruito sui tuoi file",
+    minis: [
+      [
+        "Qualità originale",
+        "La riproduzione usa i file originali."
+      ],
+      [
+        "Prima locale",
+        "Abbina cartelle senza modificare i file."
+      ],
+      [
+        "Offline",
+        "Fissa le release per riprodurle offline."
+      ]
+    ],
+    endAria: "Leggi architettura",
+    endPrefix: "Leggi architettura",
+    endFallback: ".",
+    endText: "Privato, open source e in sviluppo. Tutto ciò che aggiungi resta tuo.",
+    readArchitecture: "Leggi architettura",
+    footerStatus: "privato e open source",
+    cycleWords: [
+      "a casa",
+      "ovunque",
+      "insieme",
+      "offline",
+      "sotto controllo"
+    ]
+  },
+  tr: {
+    metaDescription: "bae: müziğin her yerde. Tüm müziğin telefonda ve masaüstünde. Kendi bulut depolaman üzerinden cihazlar arasında dinle. Çalıştırman gereken sunucu yok.",
+    title: "bae: müziğin her yerde",
+    navDocs: "Belgeler",
+    navDownload: "İndir",
+    languageLabel: "Dil",
+    heroTitle: [
+      "Müziğin",
+      "her yerde"
+    ],
+    heroText: "Tüm müziğin telefonda ve masaüstünde. Kendi bulut depolaman üzerinden cihazlar arasında dinle. Çalıştırman gereken sunucu yok.",
+    heroBold: "Özel, senin.",
+    statusLabel: "bae geliştirme durumu",
+    statusKicker: "Pre-1.0",
+    statusTitle: "Genel kullanıma hazır değil.",
+    statusText: "Yalnızca test derlemeleri. Veri ve eşzamanlama biçimleri geçiş olmadan değişecek.",
+    downloadMac: "macOS için indir",
+    seeFeatures: "Özellikleri gör",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "Senin",
+        "dosyaların sende kalır"
+      ],
+      [
+        "Özel",
+        "anahtarlar cihazlarında durur"
+      ],
+      [
+        "Her yerde",
+        "kendi bulutunla eşzamanlanır"
+      ]
+    ],
+    sheepAlt: "kulaklık takan bae koyunu",
+    noteSynced: "Eşzamanlama",
+    noteSyncedSub: "cihazların arasında",
+    noteCloud: "Bulutun",
+    noteCloudSub: "sunucu yok",
+    syncEyebrow: "Şifreli eşzamanlama",
+    syncTitle: [
+      "Müziğin",
+      "her yerde"
+    ],
+    syncText: "Cihazların seçtiğin bulut depolama üzerinden eşzamanlanır. Her şey cihazından çıkmadan önce şifrelenir. Sadece sen okuyabilirsin.",
+    desktop: "Masaüstü",
+    phone: "Telefon",
+    holdsKeys: "anahtarları tutar",
+    encrypted: "Şifreleme",
+    cloudStorage: "Depolama",
+    encryptionLink: "Şifreleme →",
+    libraryEyebrow: "Kitaplık",
+    libraryTitle: [
+      "Tüm koleksiyonun,",
+      "sürüme göre doğru"
+    ],
+    libraryText: "Sahip olduğun albümleri tek bir kitaplığa koy ve her yere taşı.",
+    cards: [
+      [
+        "Klasör değil, sürüm",
+        "bae müzik klasörlerini sürüm metadatasıyla eşleştirir ve aynı albümün farklı sürümlerini birlikte gösterir.",
+        [
+          "Metadata",
+          "Kapak",
+          "Sürümler"
+        ]
+      ],
+      [
+        "Tüm kitaplık, her cihaz",
+        "Bulutun kitaplığı tutar. Parçalar çalarken indirilir; sabitlenen sürümler çevrimdışı çalar.",
+        [
+          "Telefon ve masaüstü",
+          "Çevrimdışı"
+        ]
+      ],
+      [
+        "Çalma ayrıntıları",
+        "Albümler yüz geçişleri ve CUE pregap gibi çalma ayrıntılarını korur.",
+        [
+          "CD pregap",
+          "Yüz geçişleri"
+        ]
+      ],
+      [
+        "Kontrol sende",
+        "Müziğin ve dosyaların senindir.",
+        [
+          "Dosyaların",
+          "Kilitlenme yok"
+        ]
+      ]
+    ],
+    engineEyebrow: "İç yapı",
+    engineTitle: [
+      "Her platformda",
+      "yerel uygulama"
+    ],
+    engineText: "Her uygulama kendi platformuna özgüdür ve kitaplık, çalma, eşzamanlama ve şifreleme için aynı Rust çekirdeğini kullanır.",
+    rustCore: "Rust çekirdeği",
+    rustCoreSub: "kitaplık · çalma · eşzamanlama · şifreleme",
+    sharedRustCore: "paylaşılan Rust çekirdeği",
+    deps: [
+      [
+        "FFmpeg",
+        "ses çözme"
+      ],
+      [
+        "SQLite",
+        "kitaplık veritabanı"
+      ],
+      [
+        "Bulut depolama",
+        "eşzamanlama"
+      ]
+    ],
+    playbackEyebrow: "Çalma",
+    playbackTitle: "Dosyalarının etrafında kurulu",
+    minis: [
+      [
+        "Özgün kalite",
+        "Çalma özgün dosyalarını kullanır."
+      ],
+      [
+        "Önce yerel",
+        "Dosyaları değiştirmeden klasörleri eşleştir."
+      ],
+      [
+        "Çevrimdışı",
+        "Çevrimdışı çalmak için sürümleri sabitle."
+      ]
+    ],
+    endAria: "Mimariyi oku",
+    endPrefix: "Mimariyi oku",
+    endFallback: ".",
+    endText: "Özel, açık kaynak ve geliştirme aşamasında. Eklediğin her şey senin kalır.",
+    readArchitecture: "Mimariyi oku",
+    footerStatus: "özel ve açık kaynak",
+    cycleWords: [
+      "eve",
+      "her yere",
+      "birlikte",
+      "çevrimdışı",
+      "kontrol altında"
+    ]
+  },
+  vi: {
+    metaDescription: "bae: nhạc của bạn ở mọi nơi. Toàn bộ nhạc của bạn trên điện thoại và máy tính. Nghe trên nhiều thiết bị, đồng bộ qua bộ nhớ đám mây của bạn. Không có máy chủ phải vận hành.",
+    title: "bae: nhạc của bạn ở mọi nơi",
+    navDocs: "Tài liệu",
+    navDownload: "Tải xuống",
+    languageLabel: "Ngôn ngữ",
+    heroTitle: [
+      "Nhạc của bạn",
+      "ở mọi nơi"
+    ],
+    heroText: "Toàn bộ nhạc của bạn trên điện thoại và máy tính. Nghe trên nhiều thiết bị, đồng bộ qua bộ nhớ đám mây của bạn. Không có máy chủ phải vận hành.",
+    heroBold: "Riêng tư, của bạn.",
+    statusLabel: "trạng thái phát triển bae",
+    statusKicker: "Pre-1.0",
+    statusTitle: "Chưa sẵn sàng cho sử dụng chung.",
+    statusText: "Chỉ dành cho bản thử nghiệm. Dạng dữ liệu và đồng bộ sẽ thay đổi không kèm chuyển đổi.",
+    downloadMac: "Tải cho macOS",
+    seeFeatures: "Xem tính năng",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "Của bạn",
+        "file vẫn là của bạn"
+      ],
+      [
+        "Riêng tư",
+        "thiết bị của bạn giữ khóa"
+      ],
+      [
+        "Mọi nơi",
+        "đồng bộ qua cloud của bạn"
+      ]
+    ],
+    sheepAlt: "cừu bae đeo tai nghe",
+    noteSynced: "Đồng bộ",
+    noteSyncedSub: "giữa các thiết bị",
+    noteCloud: "Cloud của bạn",
+    noteCloudSub: "không máy chủ",
+    syncEyebrow: "Đồng bộ mã hóa",
+    syncTitle: [
+      "Nhạc của bạn",
+      "ở mọi nơi"
+    ],
+    syncText: "Thiết bị của bạn đồng bộ qua bộ nhớ đám mây bạn chọn. Mọi thứ được mã hóa trước khi rời thiết bị. Chỉ bạn đọc được.",
+    desktop: "Máy tính",
+    phone: "Điện thoại",
+    holdsKeys: "giữ khóa",
+    encrypted: "Mã hóa",
+    cloudStorage: "Lưu trữ",
+    encryptionLink: "Mã hóa →",
+    libraryEyebrow: "Thư viện",
+    libraryTitle: [
+      "Toàn bộ bộ sưu tập,",
+      "đúng theo bản phát hành"
+    ],
+    libraryText: "Đưa các album bạn sở hữu vào một thư viện rồi mang đi mọi nơi.",
+    cards: [
+      [
+        "Bản phát hành, không phải thư mục",
+        "bae ghép thư mục nhạc với metadata bản phát hành và nhóm các bản khác nhau của cùng album.",
+        [
+          "Metadata",
+          "Bìa",
+          "Bản phát hành"
+        ]
+      ],
+      [
+        "Cả thư viện, mọi thiết bị",
+        "Cloud của bạn giữ thư viện. Track tải xuống khi phát; bản được ghim phát offline.",
+        [
+          "Điện thoại và máy tính",
+          "Offline"
+        ]
+      ],
+      [
+        "Chi tiết phát",
+        "Album giữ chi tiết như đổi mặt đĩa và CUE pregap.",
+        [
+          "CD pregap",
+          "Đổi mặt"
+        ]
+      ],
+      [
+        "Bạn kiểm soát",
+        "Nhạc và file vẫn là của bạn.",
+        [
+          "File của bạn",
+          "Không khóa"
+        ]
+      ]
+    ],
+    engineEyebrow: "Bên trong",
+    engineTitle: [
+      "Ứng dụng native",
+      "trên mọi nền tảng"
+    ],
+    engineText: "Mỗi ứng dụng là native cho nền tảng của nó và dùng cùng Rust core cho thư viện, phát, đồng bộ và mã hóa.",
+    rustCore: "Rust core",
+    rustCoreSub: "thư viện · phát · đồng bộ · mã hóa",
+    sharedRustCore: "Rust core chung",
+    deps: [
+      [
+        "FFmpeg",
+        "giải mã âm thanh"
+      ],
+      [
+        "SQLite",
+        "cơ sở dữ liệu thư viện"
+      ],
+      [
+        "Lưu trữ cloud",
+        "đồng bộ"
+      ]
+    ],
+    playbackEyebrow: "Phát nhạc",
+    playbackTitle: "Xây quanh file của bạn",
+    minis: [
+      [
+        "Chất lượng gốc",
+        "Phát bằng file gốc của bạn."
+      ],
+      [
+        "Cục bộ trước",
+        "Ghép thư mục mà không đổi file."
+      ],
+      [
+        "Offline",
+        "Ghim bản phát hành để nghe offline."
+      ]
+    ],
+    endAria: "Đọc kiến trúc",
+    endPrefix: "Đọc kiến trúc",
+    endFallback: ".",
+    endText: "Riêng tư, mã nguồn mở và đang phát triển. Mọi thứ bạn thêm vẫn là của bạn.",
+    readArchitecture: "Đọc kiến trúc",
+    footerStatus: "riêng tư và mã nguồn mở",
+    cycleWords: [
+      "về nhà",
+      "mọi nơi",
+      "cùng nhau",
+      "ngoại tuyến",
+      "trong quyền kiểm soát"
+    ]
+  },
+  nl: {
+    metaDescription: "bae: je muziek overal. Al je muziek op telefoon en desktop. Luister op al je apparaten, gesynchroniseerd via je eigen cloudopslag. Geen server om te beheren.",
+    title: "bae: je muziek overal",
+    navDocs: "Docs",
+    navDownload: "Download",
+    languageLabel: "Taal",
+    heroTitle: [
+      "Je muziek",
+      "overal"
+    ],
+    heroText: "Al je muziek op telefoon en desktop. Luister op al je apparaten, gesynchroniseerd via je eigen cloudopslag. Geen server om te beheren.",
+    heroBold: "Privé, van jou.",
+    statusLabel: "ontwikkelstatus van bae",
+    statusKicker: "Pre-1.0",
+    statusTitle: "Niet klaar voor algemeen gebruik.",
+    statusText: "Alleen testbuilds. Data- en synchronisatieformaten veranderen zonder migratie.",
+    downloadMac: "Download voor macOS",
+    seeFeatures: "Bekijk functies",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "Van jou",
+        "je bestanden blijven van jou"
+      ],
+      [
+        "Privé",
+        "je apparaten bewaren de sleutels"
+      ],
+      [
+        "Overal",
+        "gesynchroniseerd via je cloud"
+      ]
+    ],
+    sheepAlt: "bae het schaap met koptelefoon",
+    noteSynced: "Synchronisatie",
+    noteSyncedSub: "tussen je apparaten",
+    noteCloud: "Je cloud",
+    noteCloudSub: "geen server",
+    syncEyebrow: "Versleutelde synchronisatie",
+    syncTitle: [
+      "Je muziek",
+      "overal"
+    ],
+    syncText: "Je apparaten synchroniseren via de cloudopslag die jij kiest. Alles wordt versleuteld voordat het je apparaat verlaat. Alleen jij kunt het lezen.",
+    desktop: "Desktop",
+    phone: "Telefoon",
+    holdsKeys: "bewaart de sleutels",
+    encrypted: "Versleuteling",
+    cloudStorage: "Opslag",
+    encryptionLink: "Versleuteling →",
+    libraryEyebrow: "Bibliotheek",
+    libraryTitle: [
+      "Je hele collectie,",
+      "kloppend per uitgave"
+    ],
+    libraryText: "Zet de albums die je bezit in één bibliotheek en neem ze overal mee.",
+    cards: [
+      [
+        "Uitgaven, geen mappen",
+        "bae koppelt je muziekmappen aan uitgavemetadata en groepeert verschillende uitgaven van hetzelfde album.",
+        [
+          "Metadata",
+          "Hoes",
+          "Uitgaven"
+        ]
+      ],
+      [
+        "Hele bibliotheek, elk apparaat",
+        "Je cloud bewaart de bibliotheek. Tracks downloaden tijdens het afspelen; vastgezette uitgaven spelen offline.",
+        [
+          "Telefoon en desktop",
+          "Offline"
+        ]
+      ],
+      [
+        "Afspeeldetails",
+        "Albums bewaren details zoals kantwissels en CUE-pregaps.",
+        [
+          "CD-pregaps",
+          "Kantwissels"
+        ]
+      ],
+      [
+        "Jij beheert het",
+        "Je muziek en bestanden blijven van jou.",
+        [
+          "Je bestanden",
+          "Geen lock-in"
+        ]
+      ]
+    ],
+    engineEyebrow: "Onder de motorkap",
+    engineTitle: [
+      "Native apps",
+      "op elk platform"
+    ],
+    engineText: "Elke app is native voor het platform en gebruikt dezelfde Rust-kern voor bibliotheek, afspelen, synchronisatie en versleuteling.",
+    rustCore: "Rust-kern",
+    rustCoreSub: "bibliotheek · afspelen · synchronisatie · versleuteling",
+    sharedRustCore: "gedeelde Rust-kern",
+    deps: [
+      [
+        "FFmpeg",
+        "audio decoderen"
+      ],
+      [
+        "SQLite",
+        "bibliotheekdatabase"
+      ],
+      [
+        "Cloudopslag",
+        "synchronisatie"
+      ]
+    ],
+    playbackEyebrow: "Afspelen",
+    playbackTitle: "Gebouwd rond je bestanden",
+    minis: [
+      [
+        "Originele kwaliteit",
+        "Afspelen gebruikt je originele bestanden."
+      ],
+      [
+        "Lokaal eerst",
+        "Koppel mappen zonder bestanden te wijzigen."
+      ],
+      [
+        "Offline",
+        "Zet uitgaven vast om offline te spelen."
+      ]
+    ],
+    endAria: "Lees architectuur",
+    endPrefix: "Lees architectuur",
+    endFallback: ".",
+    endText: "Privé, open source en in ontwikkeling. Alles wat je toevoegt blijft van jou.",
+    readArchitecture: "Lees architectuur",
+    footerStatus: "privé en open source",
+    cycleWords: [
+      "naar huis",
+      "overal",
+      "samen",
+      "offline",
+      "onder controle"
+    ]
+  },
+  hi: {
+    metaDescription: "bae: आपका संगीत हर जगह. आपका पूरा संगीत फ़ोन और डेस्कटॉप पर। अपने क्लाउड स्टोरेज से डिवाइसों के बीच सुनें। चलाने के लिए कोई सर्वर नहीं।",
+    title: "bae: आपका संगीत हर जगह",
+    navDocs: "दस्तावेज़",
+    navDownload: "डाउनलोड",
+    languageLabel: "भाषा",
+    heroTitle: [
+      "आपका संगीत",
+      "हर जगह"
+    ],
+    heroText: "आपका पूरा संगीत फ़ोन और डेस्कटॉप पर। अपने क्लाउड स्टोरेज से डिवाइसों के बीच सुनें। चलाने के लिए कोई सर्वर नहीं।",
+    heroBold: "निजी, आपका।",
+    statusLabel: "bae विकास स्थिति",
+    statusKicker: "Pre-1.0",
+    statusTitle: "सामान्य उपयोग के लिए तैयार नहीं।",
+    statusText: "केवल परीक्षण बिल्ड। डेटा और सिंक फ़ॉर्मेट बिना माइग्रेशन बदलेंगे।",
+    downloadMac: "macOS के लिए डाउनलोड",
+    seeFeatures: "सुविधाएँ देखें",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "आपका संगीत",
+        "आपकी फ़ाइलें आपकी रहती हैं"
+      ],
+      [
+        "निजी",
+        "आपके डिवाइस कुंजियाँ रखते हैं"
+      ],
+      [
+        "हर जगह",
+        "आपके क्लाउड से सिंक"
+      ]
+    ],
+    sheepAlt: "आपका संगीत",
+    noteSynced: "सिंक",
+    noteSyncedSub: "डिवाइसों के बीच",
+    noteCloud: "आपका क्लाउड",
+    noteCloudSub: "सर्वर नहीं",
+    syncEyebrow: "एन्क्रिप्टेड सिंक",
+    syncTitle: [
+      "आपका संगीत",
+      "हर जगह"
+    ],
+    syncText: "आपके डिवाइस आपके चुने हुए क्लाउड स्टोरेज से सिंक होते हैं। सब कुछ डिवाइस छोड़ने से पहले एन्क्रिप्ट होता है। केवल आप पढ़ सकते हैं।",
+    desktop: "डेस्कटॉप",
+    phone: "फ़ोन",
+    holdsKeys: "कुंजियाँ रखता है",
+    encrypted: "एन्क्रिप्शन",
+    cloudStorage: "स्टोरेज",
+    encryptionLink: "एन्क्रिप्शन →",
+    libraryEyebrow: "लाइब्रेरी",
+    libraryTitle: [
+      "आपका पूरा संग्रह,",
+      "रिलीज़ के हिसाब से सही"
+    ],
+    libraryText: "अपने एल्बमों को एक लाइब्रेरी में रखें और उन्हें कहीं भी ले जाएँ।",
+    cards: [
+      [
+        "रिलीज़ के हिसाब से सही",
+        "अपने एल्बमों को एक लाइब्रेरी में रखें और उन्हें कहीं भी ले जाएँ।",
+        [
+          "मेटाडेटा",
+          "ओवरव्यू",
+          "सिंक"
+        ]
+      ],
+      [
+        "लाइब्रेरी",
+        "आपके डिवाइस आपके चुने हुए क्लाउड स्टोरेज से सिंक होते हैं। सब कुछ डिवाइस छोड़ने से पहले एन्क्रिप्ट होता है। केवल आप पढ़ सकते हैं।",
+        [
+          "फ़ोन",
+          "डेस्कटॉप"
+        ]
+      ],
+      [
+        "एन्क्रिप्शन",
+        "आपके डिवाइस आपके चुने हुए क्लाउड स्टोरेज से सिंक होते हैं। सब कुछ डिवाइस छोड़ने से पहले एन्क्रिप्ट होता है। केवल आप पढ़ सकते हैं।",
+        [
+          "एन्क्रिप्शन",
+          "सिंक"
+        ]
+      ],
+      [
+        "आपका संगीत",
+        "आपकी फ़ाइलें आपकी रहती हैं",
+        [
+          "आपका संगीत",
+          "निजी और ओपन सोर्स"
+        ]
+      ]
+    ],
+    engineEyebrow: "आर्किटेक्चर",
+    engineTitle: [
+      "डेस्कटॉप",
+      "फ़ोन"
+    ],
+    engineText: "आपके डिवाइस आपके चुने हुए क्लाउड स्टोरेज से सिंक होते हैं। सब कुछ डिवाइस छोड़ने से पहले एन्क्रिप्ट होता है। केवल आप पढ़ सकते हैं।",
+    rustCore: "Rust core",
+    rustCoreSub: "लाइब्रेरी · सिंक · एन्क्रिप्शन",
+    sharedRustCore: "Rust core",
+    deps: [
+      [
+        "FFmpeg",
+        "audio"
+      ],
+      [
+        "SQLite",
+        "लाइब्रेरी"
+      ],
+      [
+        "स्टोरेज",
+        "सिंक"
+      ]
+    ],
+    playbackEyebrow: "प्लेबैक",
+    playbackTitle: "आपका संगीत हर जगह",
+    minis: [
+      [
+        "आपका संगीत",
+        "आपकी फ़ाइलें आपकी रहती हैं"
+      ],
+      [
+        "स्टोरेज",
+        "आपके डिवाइस आपके चुने हुए क्लाउड स्टोरेज से सिंक होते हैं। सब कुछ डिवाइस छोड़ने से पहले एन्क्रिप्ट होता है। केवल आप पढ़ सकते हैं।"
+      ],
+      [
+        "सिंक",
+        "आपके क्लाउड से सिंक"
+      ]
+    ],
+    endAria: "आर्किटेक्चर पढ़ें",
+    endPrefix: "आर्किटेक्चर पढ़ें",
+    endFallback: ".",
+    endText: "निजी, ओपन सोर्स और विकास में। आप जो जोड़ते हैं वह आपका रहता है।",
+    readArchitecture: "आर्किटेक्चर पढ़ें",
+    footerStatus: "निजी और ओपन सोर्स",
+    cycleWords: [
+      "घर",
+      "हर जगह",
+      "साथ",
+      "ऑफ़लाइन",
+      "नियंत्रण में"
+    ]
+  },
+  bn: {
+    metaDescription: "bae: আপনার সঙ্গীত সবখানে. আপনার সব সঙ্গীত ফোন ও ডেস্কটপে। আপনার ক্লাউড স্টোরেজ দিয়ে ডিভাইসগুলোর মধ্যে শুনুন। চালানোর মতো কোনো সার্ভার নেই।",
+    title: "bae: আপনার সঙ্গীত সবখানে",
+    navDocs: "ডকুমেন্টেশন",
+    navDownload: "ডাউনলোড",
+    languageLabel: "ভাষা",
+    heroTitle: [
+      "আপনার সঙ্গীত",
+      "সবখানে"
+    ],
+    heroText: "আপনার সব সঙ্গীত ফোন ও ডেস্কটপে। আপনার ক্লাউড স্টোরেজ দিয়ে ডিভাইসগুলোর মধ্যে শুনুন। চালানোর মতো কোনো সার্ভার নেই।",
+    heroBold: "ব্যক্তিগত, আপনার।",
+    statusLabel: "bae উন্নয়নের অবস্থা",
+    statusKicker: "Pre-1.0",
+    statusTitle: "সাধারণ ব্যবহারের জন্য প্রস্তুত নয়।",
+    statusText: "শুধু পরীক্ষামূলক বিল্ড। ডেটা ও সিঙ্ক ফরম্যাট মাইগ্রেশন ছাড়া বদলাবে।",
+    downloadMac: "macOS-এর জন্য ডাউনলোড",
+    seeFeatures: "বৈশিষ্ট্য দেখুন",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "আপনার সঙ্গীত",
+        "আপনার ফাইল আপনারই থাকে"
+      ],
+      [
+        "ব্যক্তিগত",
+        "আপনার ডিভাইস কী রাখে"
+      ],
+      [
+        "সবখানে",
+        "আপনার ক্লাউড দিয়ে সিঙ্ক"
+      ]
+    ],
+    sheepAlt: "আপনার সঙ্গীত",
+    noteSynced: "সিঙ্ক",
+    noteSyncedSub: "আপনার ডিভাইসগুলোর মধ্যে",
+    noteCloud: "আপনার ক্লাউড",
+    noteCloudSub: "সার্ভার নেই",
+    syncEyebrow: "এনক্রিপ্টেড সিঙ্ক",
+    syncTitle: [
+      "আপনার সঙ্গীত",
+      "সবখানে"
+    ],
+    syncText: "আপনার ডিভাইস আপনার বেছে নেওয়া ক্লাউড স্টোরেজ দিয়ে সিঙ্ক হয়। সবকিছু ডিভাইস ছাড়ার আগে এনক্রিপ্ট হয়। শুধু আপনি পড়তে পারেন।",
+    desktop: "ডেস্কটপ",
+    phone: "ফোন",
+    holdsKeys: "কী রাখে",
+    encrypted: "এনক্রিপশন",
+    cloudStorage: "স্টোরেজ",
+    encryptionLink: "এনক্রিপশন →",
+    libraryEyebrow: "লাইব্রেরি",
+    libraryTitle: [
+      "আপনার পুরো সংগ্রহ,",
+      "রিলিজ অনুযায়ী সঠিক"
+    ],
+    libraryText: "আপনার অ্যালবামগুলো এক লাইব্রেরিতে রাখুন এবং যেকোনো জায়গায় নিয়ে যান।",
+    cards: [
+      [
+        "রিলিজ অনুযায়ী সঠিক",
+        "আপনার অ্যালবামগুলো এক লাইব্রেরিতে রাখুন এবং যেকোনো জায়গায় নিয়ে যান।",
+        [
+          "মেটাডেটা",
+          "ওভারভিউ",
+          "সিঙ্ক"
+        ]
+      ],
+      [
+        "লাইব্রেরি",
+        "আপনার ডিভাইস আপনার বেছে নেওয়া ক্লাউড স্টোরেজ দিয়ে সিঙ্ক হয়। সবকিছু ডিভাইস ছাড়ার আগে এনক্রিপ্ট হয়। শুধু আপনি পড়তে পারেন।",
+        [
+          "ফোন",
+          "ডেস্কটপ"
+        ]
+      ],
+      [
+        "এনক্রিপশন",
+        "আপনার ডিভাইস আপনার বেছে নেওয়া ক্লাউড স্টোরেজ দিয়ে সিঙ্ক হয়। সবকিছু ডিভাইস ছাড়ার আগে এনক্রিপ্ট হয়। শুধু আপনি পড়তে পারেন।",
+        [
+          "এনক্রিপশন",
+          "সিঙ্ক"
+        ]
+      ],
+      [
+        "আপনার সঙ্গীত",
+        "আপনার ফাইল আপনারই থাকে",
+        [
+          "আপনার সঙ্গীত",
+          "ব্যক্তিগত ও ওপেন সোর্স"
+        ]
+      ]
+    ],
+    engineEyebrow: "আর্কিটেকচার",
+    engineTitle: [
+      "ডেস্কটপ",
+      "ফোন"
+    ],
+    engineText: "আপনার ডিভাইস আপনার বেছে নেওয়া ক্লাউড স্টোরেজ দিয়ে সিঙ্ক হয়। সবকিছু ডিভাইস ছাড়ার আগে এনক্রিপ্ট হয়। শুধু আপনি পড়তে পারেন।",
+    rustCore: "Rust core",
+    rustCoreSub: "লাইব্রেরি · সিঙ্ক · এনক্রিপশন",
+    sharedRustCore: "Rust core",
+    deps: [
+      [
+        "FFmpeg",
+        "audio"
+      ],
+      [
+        "SQLite",
+        "লাইব্রেরি"
+      ],
+      [
+        "স্টোরেজ",
+        "সিঙ্ক"
+      ]
+    ],
+    playbackEyebrow: "প্লেব্যাক",
+    playbackTitle: "আপনার সঙ্গীত সবখানে",
+    minis: [
+      [
+        "আপনার সঙ্গীত",
+        "আপনার ফাইল আপনারই থাকে"
+      ],
+      [
+        "স্টোরেজ",
+        "আপনার ডিভাইস আপনার বেছে নেওয়া ক্লাউড স্টোরেজ দিয়ে সিঙ্ক হয়। সবকিছু ডিভাইস ছাড়ার আগে এনক্রিপ্ট হয়। শুধু আপনি পড়তে পারেন।"
+      ],
+      [
+        "সিঙ্ক",
+        "আপনার ক্লাউড দিয়ে সিঙ্ক"
+      ]
+    ],
+    endAria: "আর্কিটেকচার পড়ুন",
+    endPrefix: "আর্কিটেকচার পড়ুন",
+    endFallback: ".",
+    endText: "ব্যক্তিগত, ওপেন সোর্স এবং উন্নয়নে। আপনি যা যোগ করেন তা আপনারই থাকে।",
+    readArchitecture: "আর্কিটেকচার পড়ুন",
+    footerStatus: "ব্যক্তিগত ও ওপেন সোর্স",
+    cycleWords: [
+      "ঘরে",
+      "সবখানে",
+      "একসাথে",
+      "অফলাইন",
+      "নিয়ন্ত্রণে"
+    ]
+  },
+  ta: {
+    metaDescription: "bae: உங்கள் இசை எங்கும். உங்கள் முழு இசையும் தொலைபேசி மற்றும் டெஸ்க்டாப்பில். உங்கள் கிளவுட் சேமிப்பகத்தின் மூலம் சாதனங்களுக்கு இடையில் கேளுங்கள். இயக்க வேண்டிய சர்வர் இல்லை.",
+    title: "bae: உங்கள் இசை எங்கும்",
+    navDocs: "ஆவணங்கள்",
+    navDownload: "பதிவிறக்கு",
+    languageLabel: "மொழி",
+    heroTitle: [
+      "உங்கள் இசை",
+      "எங்கும்"
+    ],
+    heroText: "உங்கள் முழு இசையும் தொலைபேசி மற்றும் டெஸ்க்டாப்பில். உங்கள் கிளவுட் சேமிப்பகத்தின் மூலம் சாதனங்களுக்கு இடையில் கேளுங்கள். இயக்க வேண்டிய சர்வர் இல்லை.",
+    heroBold: "தனிப்பட்டது, உங்களுடையது.",
+    statusLabel: "bae மேம்பாட்டு நிலை",
+    statusKicker: "Pre-1.0",
+    statusTitle: "பொது பயன்பாட்டுக்கு தயாரில்லை.",
+    statusText: "சோதனை build-கள் மட்டுமே. தரவு மற்றும் sync வடிவங்கள் migration இல்லாமல் மாறும்.",
+    downloadMac: "macOS-க்கு பதிவிறக்கு",
+    seeFeatures: "அம்சங்களைப் பாருங்கள்",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "உங்கள் இசை",
+        "உங்கள் கோப்புகள் உங்களிடமே இருக்கும்"
+      ],
+      [
+        "தனிப்பட்டது",
+        "உங்கள் சாதனங்கள் விசைகளை வைத்திருக்கும்"
+      ],
+      [
+        "எங்கும்",
+        "உங்கள் cloud மூலம் sync"
+      ]
+    ],
+    sheepAlt: "உங்கள் இசை",
+    noteSynced: "ஒத்திசைவு",
+    noteSyncedSub: "உங்கள் சாதனங்களுக்கு இடையில்",
+    noteCloud: "உங்கள் cloud",
+    noteCloudSub: "server இல்லை",
+    syncEyebrow: "குறியாக்கப்பட்ட sync",
+    syncTitle: [
+      "உங்கள் இசை",
+      "எங்கும்"
+    ],
+    syncText: "உங்கள் சாதனங்கள் நீங்கள் தேர்ந்தெடுத்த கிளவுட் சேமிப்பகத்தின் மூலம் ஒத்திசைகின்றன. எல்லாம் சாதனத்தை விட்டு செல்லும் முன் குறியாக்கப்படுகிறது. நீங்கள் மட்டுமே படிக்க முடியும்.",
+    desktop: "டெஸ்க்டாப்",
+    phone: "தொலைபேசி",
+    holdsKeys: "விசைகளை வைத்திருக்கும்",
+    encrypted: "குறியாக்கம்",
+    cloudStorage: "சேமிப்பு",
+    encryptionLink: "குறியாக்கம் →",
+    libraryEyebrow: "நூலகம்",
+    libraryTitle: [
+      "உங்கள் முழு சேகரிப்பு,",
+      "வெளியீட்டுக்கு துல்லியமாக"
+    ],
+    libraryText: "உங்களுடைய ஆல்பங்களை ஒரே நூலகத்தில் கொண்டு வந்து எங்கும் எடுத்துச் செல்லுங்கள்.",
+    cards: [
+      [
+        "வெளியீட்டுக்கு துல்லியமாக",
+        "உங்களுடைய ஆல்பங்களை ஒரே நூலகத்தில் கொண்டு வந்து எங்கும் எடுத்துச் செல்லுங்கள்.",
+        [
+          "மெட்டாடேட்டா",
+          "மேலோட்டம்",
+          "ஒத்திசைவு"
+        ]
+      ],
+      [
+        "நூலகம்",
+        "உங்கள் சாதனங்கள் நீங்கள் தேர்ந்தெடுத்த கிளவுட் சேமிப்பகத்தின் மூலம் ஒத்திசைகின்றன. எல்லாம் சாதனத்தை விட்டு செல்லும் முன் குறியாக்கப்படுகிறது. நீங்கள் மட்டுமே படிக்க முடியும்.",
+        [
+          "தொலைபேசி",
+          "டெஸ்க்டாப்"
+        ]
+      ],
+      [
+        "குறியாக்கம்",
+        "உங்கள் சாதனங்கள் நீங்கள் தேர்ந்தெடுத்த கிளவுட் சேமிப்பகத்தின் மூலம் ஒத்திசைகின்றன. எல்லாம் சாதனத்தை விட்டு செல்லும் முன் குறியாக்கப்படுகிறது. நீங்கள் மட்டுமே படிக்க முடியும்.",
+        [
+          "குறியாக்கம்",
+          "ஒத்திசைவு"
+        ]
+      ],
+      [
+        "உங்கள் இசை",
+        "உங்கள் கோப்புகள் உங்களிடமே இருக்கும்",
+        [
+          "உங்கள் இசை",
+          "தனிப்பட்டது மற்றும் open source"
+        ]
+      ]
+    ],
+    engineEyebrow: "கட்டமைப்பு",
+    engineTitle: [
+      "டெஸ்க்டாப்",
+      "தொலைபேசி"
+    ],
+    engineText: "உங்கள் சாதனங்கள் நீங்கள் தேர்ந்தெடுத்த கிளவுட் சேமிப்பகத்தின் மூலம் ஒத்திசைகின்றன. எல்லாம் சாதனத்தை விட்டு செல்லும் முன் குறியாக்கப்படுகிறது. நீங்கள் மட்டுமே படிக்க முடியும்.",
+    rustCore: "Rust core",
+    rustCoreSub: "நூலகம் · ஒத்திசைவு · குறியாக்கம்",
+    sharedRustCore: "Rust core",
+    deps: [
+      [
+        "FFmpeg",
+        "audio"
+      ],
+      [
+        "SQLite",
+        "நூலகம்"
+      ],
+      [
+        "சேமிப்பு",
+        "ஒத்திசைவு"
+      ]
+    ],
+    playbackEyebrow: "பிளேபேக்",
+    playbackTitle: "உங்கள் இசை எங்கும்",
+    minis: [
+      [
+        "உங்கள் இசை",
+        "உங்கள் கோப்புகள் உங்களிடமே இருக்கும்"
+      ],
+      [
+        "சேமிப்பு",
+        "உங்கள் சாதனங்கள் நீங்கள் தேர்ந்தெடுத்த கிளவுட் சேமிப்பகத்தின் மூலம் ஒத்திசைகின்றன. எல்லாம் சாதனத்தை விட்டு செல்லும் முன் குறியாக்கப்படுகிறது. நீங்கள் மட்டுமே படிக்க முடியும்."
+      ],
+      [
+        "ஒத்திசைவு",
+        "உங்கள் cloud மூலம் sync"
+      ]
+    ],
+    endAria: "கட்டமைப்பைப் படிக்க",
+    endPrefix: "கட்டமைப்பைப் படிக்க",
+    endFallback: ".",
+    endText: "தனிப்பட்டது, open source, வளர்ச்சியில். நீங்கள் சேர்ப்பது அனைத்தும் உங்களுடையதே.",
+    readArchitecture: "கட்டமைப்பைப் படிக்க",
+    footerStatus: "தனிப்பட்டது மற்றும் open source",
+    cycleWords: [
+      "வீட்டிற்கு",
+      "எங்கும்",
+      "ஒன்றாக",
+      "ஆஃப்லைன்",
+      "கட்டுப்பாட்டில்"
+    ]
+  },
+  te: {
+    metaDescription: "bae: మీ సంగీతం ఎక్కడైనా. మీ మొత్తం సంగీతం ఫోన్ మరియు డెస్క్‌టాప్‌లో. మీ క్లౌడ్ నిల్వ ద్వారా పరికరాల మధ్య వినండి. నడపాల్సిన సర్వర్ లేదు.",
+    title: "bae: మీ సంగీతం ఎక్కడైనా",
+    navDocs: "డాక్స్",
+    navDownload: "డౌన్‌లోడ్",
+    languageLabel: "భాష",
+    heroTitle: [
+      "మీ సంగీతం",
+      "ఎక్కడైనా"
+    ],
+    heroText: "మీ మొత్తం సంగీతం ఫోన్ మరియు డెస్క్‌టాప్‌లో. మీ క్లౌడ్ నిల్వ ద్వారా పరికరాల మధ్య వినండి. నడపాల్సిన సర్వర్ లేదు.",
+    heroBold: "ప్రైవేట్, మీదే.",
+    statusLabel: "bae అభివృద్ధి స్థితి",
+    statusKicker: "Pre-1.0",
+    statusTitle: "సాధారణ వినియోగానికి సిద్ధంగా లేదు.",
+    statusText: "పరీక్ష build-లు మాత్రమే. డేటా మరియు sync ఫార్మాట్‌లు migration లేకుండా మారుతాయి.",
+    downloadMac: "macOS కోసం డౌన్‌లోడ్",
+    seeFeatures: "లక్షణాలు చూడండి",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "మీ సంగీతం",
+        "మీ ఫైల్‌లు మీదే"
+      ],
+      [
+        "ప్రైవేట్",
+        "మీ పరికరాలు కీలు ఉంచుతాయి"
+      ],
+      [
+        "ఎక్కడైనా",
+        "మీ cloud ద్వారా sync"
+      ]
+    ],
+    sheepAlt: "మీ సంగీతం",
+    noteSynced: "సింక్",
+    noteSyncedSub: "మీ పరికరాల మధ్య",
+    noteCloud: "మీ cloud",
+    noteCloudSub: "server లేదు",
+    syncEyebrow: "ఎన్‌క్రిప్టెడ్ sync",
+    syncTitle: [
+      "మీ సంగీతం",
+      "ఎక్కడైనా"
+    ],
+    syncText: "మీ పరికరాలు మీరు ఎంచుకున్న క్లౌడ్ నిల్వ ద్వారా సింక్ అవుతాయి. పరికరం విడిచే ముందు అన్నీ ఎన్‌క్రిప్ట్ అవుతాయి. మీరు మాత్రమే చదవగలరు.",
+    desktop: "డెస్క్‌టాప్",
+    phone: "ఫోన్",
+    holdsKeys: "కీలు ఉంచుతుంది",
+    encrypted: "ఎన్‌క్రిప్షన్",
+    cloudStorage: "నిల్వ",
+    encryptionLink: "ఎన్‌క్రిప్షన్ →",
+    libraryEyebrow: "లైబ్రరీ",
+    libraryTitle: [
+      "మీ మొత్తం సేకరణ,",
+      "రిలీజ్‌కు సరిపడా ఖచ్చితం"
+    ],
+    libraryText: "మీ ఆల్బమ్‌లను ఒక లైబ్రరీలో పెట్టి ఎక్కడికైనా తీసుకెళ్లండి.",
+    cards: [
+      [
+        "రిలీజ్‌కు సరిపడా ఖచ్చితం",
+        "మీ ఆల్బమ్‌లను ఒక లైబ్రరీలో పెట్టి ఎక్కడికైనా తీసుకెళ్లండి.",
+        [
+          "మెటాడేటా",
+          "అవలోకనం",
+          "సింక్"
+        ]
+      ],
+      [
+        "లైబ్రరీ",
+        "మీ పరికరాలు మీరు ఎంచుకున్న క్లౌడ్ నిల్వ ద్వారా సింక్ అవుతాయి. పరికరం విడిచే ముందు అన్నీ ఎన్‌క్రిప్ట్ అవుతాయి. మీరు మాత్రమే చదవగలరు.",
+        [
+          "ఫోన్",
+          "డెస్క్‌టాప్"
+        ]
+      ],
+      [
+        "ఎన్‌క్రిప్షన్",
+        "మీ పరికరాలు మీరు ఎంచుకున్న క్లౌడ్ నిల్వ ద్వారా సింక్ అవుతాయి. పరికరం విడిచే ముందు అన్నీ ఎన్‌క్రిప్ట్ అవుతాయి. మీరు మాత్రమే చదవగలరు.",
+        [
+          "ఎన్‌క్రిప్షన్",
+          "సింక్"
+        ]
+      ],
+      [
+        "మీ సంగీతం",
+        "మీ ఫైల్‌లు మీదే",
+        [
+          "మీ సంగీతం",
+          "ప్రైవేట్ మరియు open source"
+        ]
+      ]
+    ],
+    engineEyebrow: "నిర్మాణం",
+    engineTitle: [
+      "డెస్క్‌టాప్",
+      "ఫోన్"
+    ],
+    engineText: "మీ పరికరాలు మీరు ఎంచుకున్న క్లౌడ్ నిల్వ ద్వారా సింక్ అవుతాయి. పరికరం విడిచే ముందు అన్నీ ఎన్‌క్రిప్ట్ అవుతాయి. మీరు మాత్రమే చదవగలరు.",
+    rustCore: "Rust core",
+    rustCoreSub: "లైబ్రరీ · సింక్ · ఎన్‌క్రిప్షన్",
+    sharedRustCore: "Rust core",
+    deps: [
+      [
+        "FFmpeg",
+        "audio"
+      ],
+      [
+        "SQLite",
+        "లైబ్రరీ"
+      ],
+      [
+        "నిల్వ",
+        "సింక్"
+      ]
+    ],
+    playbackEyebrow: "ప్లేబ్యాక్",
+    playbackTitle: "మీ సంగీతం ఎక్కడైనా",
+    minis: [
+      [
+        "మీ సంగీతం",
+        "మీ ఫైల్‌లు మీదే"
+      ],
+      [
+        "నిల్వ",
+        "మీ పరికరాలు మీరు ఎంచుకున్న క్లౌడ్ నిల్వ ద్వారా సింక్ అవుతాయి. పరికరం విడిచే ముందు అన్నీ ఎన్‌క్రిప్ట్ అవుతాయి. మీరు మాత్రమే చదవగలరు."
+      ],
+      [
+        "సింక్",
+        "మీ cloud ద్వారా sync"
+      ]
+    ],
+    endAria: "నిర్మాణం చదవండి",
+    endPrefix: "నిర్మాణం చదవండి",
+    endFallback: ".",
+    endText: "ప్రైవేట్, open source, అభివృద్ధిలో ఉంది. మీరు జోడించిన ప్రతిదీ మీదే.",
+    readArchitecture: "నిర్మాణం చదవండి",
+    footerStatus: "ప్రైవేట్ మరియు open source",
+    cycleWords: [
+      "ఇంటికి",
+      "ఎక్కడైనా",
+      "కలిసి",
+      "ఆఫ్‌లైన్",
+      "నియంత్రణలో"
+    ]
+  },
+  mr: {
+    metaDescription: "bae: तुमचे संगीत सर्वत्र. तुमचे सर्व संगीत फोन आणि डेस्कटॉपवर. तुमच्या क्लाउड साठवणीतून डिव्हाइसदरम्यान ऐका. चालवायचा सर्व्हर नाही.",
+    title: "bae: तुमचे संगीत सर्वत्र",
+    navDocs: "दस्तऐवज",
+    navDownload: "डाउनलोड",
+    languageLabel: "भाषा",
+    heroTitle: [
+      "तुमचे संगीत",
+      "सर्वत्र"
+    ],
+    heroText: "तुमचे सर्व संगीत फोन आणि डेस्कटॉपवर. तुमच्या क्लाउड साठवणीतून डिव्हाइसदरम्यान ऐका. चालवायचा सर्व्हर नाही.",
+    heroBold: "खाजगी, तुमचे.",
+    statusLabel: "bae विकास स्थिती",
+    statusKicker: "Pre-1.0",
+    statusTitle: "सामान्य वापरासाठी तयार नाही.",
+    statusText: "फक्त चाचणी build. डेटा आणि sync स्वरूप migration शिवाय बदलतील.",
+    downloadMac: "macOS साठी डाउनलोड",
+    seeFeatures: "वैशिष्ट्ये पहा",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "तुमचे संगीत",
+        "तुमच्या फाइल्स तुमच्याच राहतात"
+      ],
+      [
+        "खाजगी",
+        "तुमची डिव्हाइस कळा ठेवतात"
+      ],
+      [
+        "सर्वत्र",
+        "तुमच्या cloud मधून sync"
+      ]
+    ],
+    sheepAlt: "तुमचे संगीत",
+    noteSynced: "समक्रमण",
+    noteSyncedSub: "तुमच्या डिव्हाइसदरम्यान",
+    noteCloud: "तुमचा cloud",
+    noteCloudSub: "server नाही",
+    syncEyebrow: "कूटबद्ध sync",
+    syncTitle: [
+      "तुमचे संगीत",
+      "सर्वत्र"
+    ],
+    syncText: "तुमची डिव्हाइसेस तुम्ही निवडलेल्या क्लाउड साठवणीतून समक्रमित होतात. सर्व काही डिव्हाइस सोडण्याआधी कूटबद्ध होते. फक्त तुम्ही वाचू शकता.",
+    desktop: "डेस्कटॉप",
+    phone: "फोन",
+    holdsKeys: "कळा ठेवते",
+    encrypted: "कूटबद्धीकरण",
+    cloudStorage: "साठवण",
+    encryptionLink: "कूटबद्धीकरण →",
+    libraryEyebrow: "लायब्ररी",
+    libraryTitle: [
+      "तुमचा पूर्ण संग्रह,",
+      "रिलीजप्रमाणे अचूक"
+    ],
+    libraryText: "तुमचे अल्बम एका लायब्ररीत ठेवा आणि कुठेही घेऊन जा.",
+    cards: [
+      [
+        "रिलीजप्रमाणे अचूक",
+        "तुमचे अल्बम एका लायब्ररीत ठेवा आणि कुठेही घेऊन जा.",
+        [
+          "मेटाडेटा",
+          "आढावा",
+          "समक्रमण"
+        ]
+      ],
+      [
+        "लायब्ररी",
+        "तुमची डिव्हाइसेस तुम्ही निवडलेल्या क्लाउड साठवणीतून समक्रमित होतात. सर्व काही डिव्हाइस सोडण्याआधी कूटबद्ध होते. फक्त तुम्ही वाचू शकता.",
+        [
+          "फोन",
+          "डेस्कटॉप"
+        ]
+      ],
+      [
+        "कूटबद्धीकरण",
+        "तुमची डिव्हाइसेस तुम्ही निवडलेल्या क्लाउड साठवणीतून समक्रमित होतात. सर्व काही डिव्हाइस सोडण्याआधी कूटबद्ध होते. फक्त तुम्ही वाचू शकता.",
+        [
+          "कूटबद्धीकरण",
+          "समक्रमण"
+        ]
+      ],
+      [
+        "तुमचे संगीत",
+        "तुमच्या फाइल्स तुमच्याच राहतात",
+        [
+          "तुमचे संगीत",
+          "खाजगी आणि open source"
+        ]
+      ]
+    ],
+    engineEyebrow: "रचना",
+    engineTitle: [
+      "डेस्कटॉप",
+      "फोन"
+    ],
+    engineText: "तुमची डिव्हाइसेस तुम्ही निवडलेल्या क्लाउड साठवणीतून समक्रमित होतात. सर्व काही डिव्हाइस सोडण्याआधी कूटबद्ध होते. फक्त तुम्ही वाचू शकता.",
+    rustCore: "Rust core",
+    rustCoreSub: "लायब्ररी · समक्रमण · कूटबद्धीकरण",
+    sharedRustCore: "Rust core",
+    deps: [
+      [
+        "FFmpeg",
+        "audio"
+      ],
+      [
+        "SQLite",
+        "लायब्ररी"
+      ],
+      [
+        "साठवण",
+        "समक्रमण"
+      ]
+    ],
+    playbackEyebrow: "प्लेबॅक",
+    playbackTitle: "तुमचे संगीत सर्वत्र",
+    minis: [
+      [
+        "तुमचे संगीत",
+        "तुमच्या फाइल्स तुमच्याच राहतात"
+      ],
+      [
+        "साठवण",
+        "तुमची डिव्हाइसेस तुम्ही निवडलेल्या क्लाउड साठवणीतून समक्रमित होतात. सर्व काही डिव्हाइस सोडण्याआधी कूटबद्ध होते. फक्त तुम्ही वाचू शकता."
+      ],
+      [
+        "समक्रमण",
+        "तुमच्या cloud मधून sync"
+      ]
+    ],
+    endAria: "रचना वाचा",
+    endPrefix: "रचना वाचा",
+    endFallback: ".",
+    endText: "खाजगी, open source आणि विकासात. तुम्ही जोडलेले सर्व तुमचेच राहते.",
+    readArchitecture: "रचना वाचा",
+    footerStatus: "खाजगी आणि open source",
+    cycleWords: [
+      "घरी",
+      "सर्वत्र",
+      "एकत्र",
+      "ऑफलाइन",
+      "नियंत्रणात"
+    ]
+  },
+  ur: {
+    metaDescription: "bae: آپ کی موسیقی ہر جگہ. آپ کی ساری موسیقی فون اور ڈیسک ٹاپ پر۔ اپنے کلاؤڈ اسٹوریج کے ذریعے آلات کے درمیان سنیں۔ چلانے کے لیے کوئی سرور نہیں۔",
+    title: "bae: آپ کی موسیقی ہر جگہ",
+    navDocs: "دستاویزات",
+    navDownload: "ڈاؤن لوڈ",
+    languageLabel: "زبان",
+    heroTitle: [
+      "آپ کی موسیقی",
+      "ہر جگہ"
+    ],
+    heroText: "آپ کی ساری موسیقی فون اور ڈیسک ٹاپ پر۔ اپنے کلاؤڈ اسٹوریج کے ذریعے آلات کے درمیان سنیں۔ چلانے کے لیے کوئی سرور نہیں۔",
+    heroBold: "نجی، آپ کی۔",
+    statusLabel: "bae کی ترقی کی حالت",
+    statusKicker: "Pre-1.0",
+    statusTitle: "عام استعمال کے لیے تیار نہیں۔",
+    statusText: "صرف ٹیسٹ build۔ ڈیٹا اور sync فارمیٹ migration کے بغیر بدلیں گے۔",
+    downloadMac: "macOS کے لیے ڈاؤن لوڈ",
+    seeFeatures: "خصوصیات دیکھیں",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "آپ کی موسیقی",
+        "آپ کی فائلیں آپ کی رہتی ہیں"
+      ],
+      [
+        "نجی",
+        "آپ کے آلات کلیدیں رکھتے ہیں"
+      ],
+      [
+        "ہر جگہ",
+        "آپ کے cloud سے sync"
+      ]
+    ],
+    sheepAlt: "آپ کی موسیقی",
+    noteSynced: "مطابقت پذیری",
+    noteSyncedSub: "آپ کے آلات کے درمیان",
+    noteCloud: "آپ کا cloud",
+    noteCloudSub: "server نہیں",
+    syncEyebrow: "خفیہ sync",
+    syncTitle: [
+      "آپ کی موسیقی",
+      "ہر جگہ"
+    ],
+    syncText: "آپ کے آلات آپ کے منتخب کردہ کلاؤڈ اسٹوریج سے مطابقت پذیر ہوتے ہیں۔ ہر چیز آلے سے نکلنے سے پہلے خفیہ ہو جاتی ہے۔ صرف آپ پڑھ سکتے ہیں۔",
+    desktop: "ڈیسک ٹاپ",
+    phone: "فون",
+    holdsKeys: "کلیدیں رکھتا ہے",
+    encrypted: "خفیہ کاری",
+    cloudStorage: "اسٹوریج",
+    encryptionLink: "خفیہ کاری →",
+    libraryEyebrow: "لائبریری",
+    libraryTitle: [
+      "آپ کا پورا مجموعہ،",
+      "ریلیز کے مطابق درست"
+    ],
+    libraryText: "اپنے البمز کو ایک لائبریری میں رکھیں اور ہر جگہ لے جائیں۔",
+    cards: [
+      [
+        "ریلیز کے مطابق درست",
+        "اپنے البمز کو ایک لائبریری میں رکھیں اور ہر جگہ لے جائیں۔",
+        [
+          "میٹا ڈیٹا",
+          "جائزہ",
+          "مطابقت پذیری"
+        ]
+      ],
+      [
+        "لائبریری",
+        "آپ کے آلات آپ کے منتخب کردہ کلاؤڈ اسٹوریج سے مطابقت پذیر ہوتے ہیں۔ ہر چیز آلے سے نکلنے سے پہلے خفیہ ہو جاتی ہے۔ صرف آپ پڑھ سکتے ہیں۔",
+        [
+          "فون",
+          "ڈیسک ٹاپ"
+        ]
+      ],
+      [
+        "خفیہ کاری",
+        "آپ کے آلات آپ کے منتخب کردہ کلاؤڈ اسٹوریج سے مطابقت پذیر ہوتے ہیں۔ ہر چیز آلے سے نکلنے سے پہلے خفیہ ہو جاتی ہے۔ صرف آپ پڑھ سکتے ہیں۔",
+        [
+          "خفیہ کاری",
+          "مطابقت پذیری"
+        ]
+      ],
+      [
+        "آپ کی موسیقی",
+        "آپ کی فائلیں آپ کی رہتی ہیں",
+        [
+          "آپ کی موسیقی",
+          "نجی اور open source"
+        ]
+      ]
+    ],
+    engineEyebrow: "ساخت",
+    engineTitle: [
+      "ڈیسک ٹاپ",
+      "فون"
+    ],
+    engineText: "آپ کے آلات آپ کے منتخب کردہ کلاؤڈ اسٹوریج سے مطابقت پذیر ہوتے ہیں۔ ہر چیز آلے سے نکلنے سے پہلے خفیہ ہو جاتی ہے۔ صرف آپ پڑھ سکتے ہیں۔",
+    rustCore: "Rust core",
+    rustCoreSub: "لائبریری · مطابقت پذیری · خفیہ کاری",
+    sharedRustCore: "Rust core",
+    deps: [
+      [
+        "FFmpeg",
+        "audio"
+      ],
+      [
+        "SQLite",
+        "لائبریری"
+      ],
+      [
+        "اسٹوریج",
+        "مطابقت پذیری"
+      ]
+    ],
+    playbackEyebrow: "پلے بیک",
+    playbackTitle: "آپ کی موسیقی ہر جگہ",
+    minis: [
+      [
+        "آپ کی موسیقی",
+        "آپ کی فائلیں آپ کی رہتی ہیں"
+      ],
+      [
+        "اسٹوریج",
+        "آپ کے آلات آپ کے منتخب کردہ کلاؤڈ اسٹوریج سے مطابقت پذیر ہوتے ہیں۔ ہر چیز آلے سے نکلنے سے پہلے خفیہ ہو جاتی ہے۔ صرف آپ پڑھ سکتے ہیں۔"
+      ],
+      [
+        "مطابقت پذیری",
+        "آپ کے cloud سے sync"
+      ]
+    ],
+    endAria: "ساخت پڑھیں",
+    endPrefix: "ساخت پڑھیں",
+    endFallback: ".",
+    endText: "نجی، open source، اور ترقی میں۔ آپ جو کچھ شامل کرتے ہیں وہ آپ کا رہتا ہے۔",
+    readArchitecture: "ساخت پڑھیں",
+    footerStatus: "نجی اور open source",
+    cycleWords: [
+      "گھر",
+      "ہر جگہ",
+      "ساتھ",
+      "آف لائن",
+      "اختیار میں"
+    ]
+  },
+  gu: {
+    metaDescription: "bae: તમારું સંગીત બધે. તમારું બધું સંગીત ફોન અને ડેસ્કટોપ પર. તમારા ક્લાઉડ સંગ્રહ દ્વારા ઉપકરણો વચ્ચે સાંભળો. ચલાવવાનો સર્વર નથી.",
+    title: "bae: તમારું સંગીત બધે",
+    navDocs: "દસ્તાવેજો",
+    navDownload: "ડાઉનલોડ",
+    languageLabel: "ભાષા",
+    heroTitle: [
+      "તમારું સંગીત",
+      "બધે"
+    ],
+    heroText: "તમારું બધું સંગીત ફોન અને ડેસ્કટોપ પર. તમારા ક્લાઉડ સંગ્રહ દ્વારા ઉપકરણો વચ્ચે સાંભળો. ચલાવવાનો સર્વર નથી.",
+    heroBold: "ખાનગી, તમારું.",
+    statusLabel: "bae વિકાસ સ્થિતિ",
+    statusKicker: "Pre-1.0",
+    statusTitle: "સામાન્ય ઉપયોગ માટે તૈયાર નથી.",
+    statusText: "ફક્ત પરીક્ષણ build. ડેટા અને sync ફોર્મેટ migration વગર બદલાશે.",
+    downloadMac: "macOS માટે ડાઉનલોડ",
+    seeFeatures: "સુવિધાઓ જુઓ",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "તમારું સંગીત",
+        "તમારી ફાઇલો તમારી જ રહે છે"
+      ],
+      [
+        "ખાનગી",
+        "તમારા ઉપકરણો કીઓ રાખે છે"
+      ],
+      [
+        "બધે",
+        "તમારા cloud દ્વારા sync"
+      ]
+    ],
+    sheepAlt: "તમારું સંગીત",
+    noteSynced: "સિંક",
+    noteSyncedSub: "તમારા ઉપકરણો વચ્ચે",
+    noteCloud: "તમારો cloud",
+    noteCloudSub: "server નથી",
+    syncEyebrow: "એન્ક્રિપ્ટેડ sync",
+    syncTitle: [
+      "તમારું સંગીત",
+      "બધે"
+    ],
+    syncText: "તમારા ઉપકરણો તમે પસંદ કરેલા ક્લાઉડ સંગ્રહ દ્વારા સિંક થાય છે. બધું ઉપકરણ છોડે તે પહેલાં એન્ક્રિપ્ટ થાય છે. માત્ર તમે વાંચી શકો છો.",
+    desktop: "ડેસ્કટોપ",
+    phone: "ફોન",
+    holdsKeys: "કીઓ રાખે છે",
+    encrypted: "એન્ક્રિપ્શન",
+    cloudStorage: "સંગ્રહ",
+    encryptionLink: "એન્ક્રિપ્શન →",
+    libraryEyebrow: "લાઇબ્રેરી",
+    libraryTitle: [
+      "તમારો સંપૂર્ણ સંગ્રહ,",
+      "રિલીઝ મુજબ ચોક્કસ"
+    ],
+    libraryText: "તમારા એલ્બમોને એક લાઇબ્રેરીમાં મૂકો અને બધે લઈ જાઓ.",
+    cards: [
+      [
+        "રિલીઝ મુજબ ચોક્કસ",
+        "તમારા એલ્બમોને એક લાઇબ્રેરીમાં મૂકો અને બધે લઈ જાઓ.",
+        [
+          "મેટાડેટા",
+          "ઝાંખી",
+          "સિંક"
+        ]
+      ],
+      [
+        "લાઇબ્રેરી",
+        "તમારા ઉપકરણો તમે પસંદ કરેલા ક્લાઉડ સંગ્રહ દ્વારા સિંક થાય છે. બધું ઉપકરણ છોડે તે પહેલાં એન્ક્રિપ્ટ થાય છે. માત્ર તમે વાંચી શકો છો.",
+        [
+          "ફોન",
+          "ડેસ્કટોપ"
+        ]
+      ],
+      [
+        "એન્ક્રિપ્શન",
+        "તમારા ઉપકરણો તમે પસંદ કરેલા ક્લાઉડ સંગ્રહ દ્વારા સિંક થાય છે. બધું ઉપકરણ છોડે તે પહેલાં એન્ક્રિપ્ટ થાય છે. માત્ર તમે વાંચી શકો છો.",
+        [
+          "એન્ક્રિપ્શન",
+          "સિંક"
+        ]
+      ],
+      [
+        "તમારું સંગીત",
+        "તમારી ફાઇલો તમારી જ રહે છે",
+        [
+          "તમારું સંગીત",
+          "ખાનગી અને open source"
+        ]
+      ]
+    ],
+    engineEyebrow: "રચના",
+    engineTitle: [
+      "ડેસ્કટોપ",
+      "ફોન"
+    ],
+    engineText: "તમારા ઉપકરણો તમે પસંદ કરેલા ક્લાઉડ સંગ્રહ દ્વારા સિંક થાય છે. બધું ઉપકરણ છોડે તે પહેલાં એન્ક્રિપ્ટ થાય છે. માત્ર તમે વાંચી શકો છો.",
+    rustCore: "Rust core",
+    rustCoreSub: "લાઇબ્રેરી · સિંક · એન્ક્રિપ્શન",
+    sharedRustCore: "Rust core",
+    deps: [
+      [
+        "FFmpeg",
+        "audio"
+      ],
+      [
+        "SQLite",
+        "લાઇબ્રેરી"
+      ],
+      [
+        "સંગ્રહ",
+        "સિંક"
+      ]
+    ],
+    playbackEyebrow: "પ્લેબેક",
+    playbackTitle: "તમારું સંગીત બધે",
+    minis: [
+      [
+        "તમારું સંગીત",
+        "તમારી ફાઇલો તમારી જ રહે છે"
+      ],
+      [
+        "સંગ્રહ",
+        "તમારા ઉપકરણો તમે પસંદ કરેલા ક્લાઉડ સંગ્રહ દ્વારા સિંક થાય છે. બધું ઉપકરણ છોડે તે પહેલાં એન્ક્રિપ્ટ થાય છે. માત્ર તમે વાંચી શકો છો."
+      ],
+      [
+        "સિંક",
+        "તમારા cloud દ્વારા sync"
+      ]
+    ],
+    endAria: "રચના વાંચો",
+    endPrefix: "રચના વાંચો",
+    endFallback: ".",
+    endText: "ખાનગી, open source અને વિકાસમાં. તમે ઉમેરો તે બધું તમારું જ રહે છે.",
+    readArchitecture: "રચના વાંચો",
+    footerStatus: "ખાનગી અને open source",
+    cycleWords: [
+      "ઘરે",
+      "બધે",
+      "સાથે",
+      "ઑફલાઇન",
+      "નિયંત્રણમાં"
+    ]
+  },
+  kn: {
+    metaDescription: "bae: ನಿಮ್ಮ ಸಂಗೀತ ಎಲ್ಲೆಡೆ. ನಿಮ್ಮ ಎಲ್ಲಾ ಸಂಗೀತ ಫೋನ್ ಮತ್ತು ಡೆಸ್ಕ್‌ಟಾಪ್‌ನಲ್ಲಿ. ನಿಮ್ಮ ಕ್ಲೌಡ್ ಸಂಗ್ರಹಣೆಯ ಮೂಲಕ ಸಾಧನಗಳ ನಡುವೆ ಕೇಳಿ. ಚಾಲನೆ ಮಾಡಬೇಕಾದ ಸರ್ವರ್ ಇಲ್ಲ.",
+    title: "bae: ನಿಮ್ಮ ಸಂಗೀತ ಎಲ್ಲೆಡೆ",
+    navDocs: "ದಾಖಲೆಗಳು",
+    navDownload: "ಡೌನ್‌ಲೋಡ್",
+    languageLabel: "ಭಾಷೆ",
+    heroTitle: [
+      "ನಿಮ್ಮ ಸಂಗೀತ",
+      "ಎಲ್ಲೆಡೆ"
+    ],
+    heroText: "ನಿಮ್ಮ ಎಲ್ಲಾ ಸಂಗೀತ ಫೋನ್ ಮತ್ತು ಡೆಸ್ಕ್‌ಟಾಪ್‌ನಲ್ಲಿ. ನಿಮ್ಮ ಕ್ಲೌಡ್ ಸಂಗ್ರಹಣೆಯ ಮೂಲಕ ಸಾಧನಗಳ ನಡುವೆ ಕೇಳಿ. ಚಾಲನೆ ಮಾಡಬೇಕಾದ ಸರ್ವರ್ ಇಲ್ಲ.",
+    heroBold: "ಖಾಸಗಿ, ನಿಮ್ಮದು.",
+    statusLabel: "bae ಅಭಿವೃದ್ಧಿ ಸ್ಥಿತಿ",
+    statusKicker: "Pre-1.0",
+    statusTitle: "ಸಾಮಾನ್ಯ ಬಳಕೆಗೆ ಸಿದ್ಧವಿಲ್ಲ.",
+    statusText: "ಪರೀಕ್ಷಾ build ಮಾತ್ರ. ಡೇಟಾ ಮತ್ತು sync ರೂಪಗಳು migration ಇಲ್ಲದೆ ಬದಲಾಗುತ್ತವೆ.",
+    downloadMac: "macOS ಗೆ ಡೌನ್‌ಲೋಡ್",
+    seeFeatures: "ವೈಶಿಷ್ಟ್ಯಗಳನ್ನು ನೋಡಿ",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "ನಿಮ್ಮ ಸಂಗೀತ",
+        "ನಿಮ್ಮ ಫೈಲ್‌ಗಳು ನಿಮ್ಮದೇ ಇರುತ್ತವೆ"
+      ],
+      [
+        "ಖಾಸಗಿ",
+        "ನಿಮ್ಮ ಸಾಧನಗಳು ಕೀಲಿಗಳನ್ನು ಇಟ್ಟುಕೊಳ್ಳುತ್ತವೆ"
+      ],
+      [
+        "ಎಲ್ಲೆಡೆ",
+        "ನಿಮ್ಮ cloud ಮೂಲಕ sync"
+      ]
+    ],
+    sheepAlt: "ನಿಮ್ಮ ಸಂಗೀತ",
+    noteSynced: "ಸಿಂಕ್",
+    noteSyncedSub: "ನಿಮ್ಮ ಸಾಧನಗಳ ನಡುವೆ",
+    noteCloud: "ನಿಮ್ಮ cloud",
+    noteCloudSub: "server ಇಲ್ಲ",
+    syncEyebrow: "ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡಿದ sync",
+    syncTitle: [
+      "ನಿಮ್ಮ ಸಂಗೀತ",
+      "ಎಲ್ಲೆಡೆ"
+    ],
+    syncText: "ನಿಮ್ಮ ಸಾಧನಗಳು ನೀವು ಆಯ್ದ ಕ್ಲೌಡ್ ಸಂಗ್ರಹಣೆಯ ಮೂಲಕ ಸಿಂಕ್ ಆಗುತ್ತವೆ. ಸಾಧನ ತೊರೆಯುವ ಮೊದಲು ಎಲ್ಲವೂ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಆಗುತ್ತದೆ. ನೀವು ಮಾತ್ರ ಓದಬಹುದು.",
+    desktop: "ಡೆಸ್ಕ್‌ಟಾಪ್",
+    phone: "ಫೋನ್",
+    holdsKeys: "ಕೀಲಿಗಳನ್ನು ಇಟ್ಟುಕೊಳ್ಳುತ್ತದೆ",
+    encrypted: "ಎನ್‌ಕ್ರಿಪ್ಷನ್",
+    cloudStorage: "ಸಂಗ್ರಹಣೆ",
+    encryptionLink: "ಎನ್‌ಕ್ರಿಪ್ಷನ್ →",
+    libraryEyebrow: "ಲೈಬ್ರರಿ",
+    libraryTitle: [
+      "ನಿಮ್ಮ ಸಂಪೂರ್ಣ ಸಂಗ್ರಹ,",
+      "ರಿಲೀಸ್‌ಗೆ ಸರಿಯಾಗಿ"
+    ],
+    libraryText: "ನಿಮ್ಮ ಆಲ್ಬಂಗಳನ್ನು ಒಂದು ಲೈಬ್ರರಿಯಲ್ಲಿ ಇಟ್ಟು ಎಲ್ಲಿಗೆ ಬೇಕಾದರೂ ತೆಗೆದುಕೊಂಡು ಹೋಗಿ.",
+    cards: [
+      [
+        "ರಿಲೀಸ್‌ಗೆ ಸರಿಯಾಗಿ",
+        "ನಿಮ್ಮ ಆಲ್ಬಂಗಳನ್ನು ಒಂದು ಲೈಬ್ರರಿಯಲ್ಲಿ ಇಟ್ಟು ಎಲ್ಲಿಗೆ ಬೇಕಾದರೂ ತೆಗೆದುಕೊಂಡು ಹೋಗಿ.",
+        [
+          "ಮೆಟಾಡೇಟಾ",
+          "ಅವಲೋಕನ",
+          "ಸಿಂಕ್"
+        ]
+      ],
+      [
+        "ಲೈಬ್ರರಿ",
+        "ನಿಮ್ಮ ಸಾಧನಗಳು ನೀವು ಆಯ್ದ ಕ್ಲೌಡ್ ಸಂಗ್ರಹಣೆಯ ಮೂಲಕ ಸಿಂಕ್ ಆಗುತ್ತವೆ. ಸಾಧನ ತೊರೆಯುವ ಮೊದಲು ಎಲ್ಲವೂ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಆಗುತ್ತದೆ. ನೀವು ಮಾತ್ರ ಓದಬಹುದು.",
+        [
+          "ಫೋನ್",
+          "ಡೆಸ್ಕ್‌ಟಾಪ್"
+        ]
+      ],
+      [
+        "ಎನ್‌ಕ್ರಿಪ್ಷನ್",
+        "ನಿಮ್ಮ ಸಾಧನಗಳು ನೀವು ಆಯ್ದ ಕ್ಲೌಡ್ ಸಂಗ್ರಹಣೆಯ ಮೂಲಕ ಸಿಂಕ್ ಆಗುತ್ತವೆ. ಸಾಧನ ತೊರೆಯುವ ಮೊದಲು ಎಲ್ಲವೂ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಆಗುತ್ತದೆ. ನೀವು ಮಾತ್ರ ಓದಬಹುದು.",
+        [
+          "ಎನ್‌ಕ್ರಿಪ್ಷನ್",
+          "ಸಿಂಕ್"
+        ]
+      ],
+      [
+        "ನಿಮ್ಮ ಸಂಗೀತ",
+        "ನಿಮ್ಮ ಫೈಲ್‌ಗಳು ನಿಮ್ಮದೇ ಇರುತ್ತವೆ",
+        [
+          "ನಿಮ್ಮ ಸಂಗೀತ",
+          "ಖಾಸಗಿ ಮತ್ತು open source"
+        ]
+      ]
+    ],
+    engineEyebrow: "ವಾಸ್ತುಶಿಲ್ಪ",
+    engineTitle: [
+      "ಡೆಸ್ಕ್‌ಟಾಪ್",
+      "ಫೋನ್"
+    ],
+    engineText: "ನಿಮ್ಮ ಸಾಧನಗಳು ನೀವು ಆಯ್ದ ಕ್ಲೌಡ್ ಸಂಗ್ರಹಣೆಯ ಮೂಲಕ ಸಿಂಕ್ ಆಗುತ್ತವೆ. ಸಾಧನ ತೊರೆಯುವ ಮೊದಲು ಎಲ್ಲವೂ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಆಗುತ್ತದೆ. ನೀವು ಮಾತ್ರ ಓದಬಹುದು.",
+    rustCore: "Rust core",
+    rustCoreSub: "ಲೈಬ್ರರಿ · ಸಿಂಕ್ · ಎನ್‌ಕ್ರಿಪ್ಷನ್",
+    sharedRustCore: "Rust core",
+    deps: [
+      [
+        "FFmpeg",
+        "audio"
+      ],
+      [
+        "SQLite",
+        "ಲೈಬ್ರರಿ"
+      ],
+      [
+        "ಸಂಗ್ರಹಣೆ",
+        "ಸಿಂಕ್"
+      ]
+    ],
+    playbackEyebrow: "ಪ್ಲೇಬ್ಯಾಕ್",
+    playbackTitle: "ನಿಮ್ಮ ಸಂಗೀತ ಎಲ್ಲೆಡೆ",
+    minis: [
+      [
+        "ನಿಮ್ಮ ಸಂಗೀತ",
+        "ನಿಮ್ಮ ಫೈಲ್‌ಗಳು ನಿಮ್ಮದೇ ಇರುತ್ತವೆ"
+      ],
+      [
+        "ಸಂಗ್ರಹಣೆ",
+        "ನಿಮ್ಮ ಸಾಧನಗಳು ನೀವು ಆಯ್ದ ಕ್ಲೌಡ್ ಸಂಗ್ರಹಣೆಯ ಮೂಲಕ ಸಿಂಕ್ ಆಗುತ್ತವೆ. ಸಾಧನ ತೊರೆಯುವ ಮೊದಲು ಎಲ್ಲವೂ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಆಗುತ್ತದೆ. ನೀವು ಮಾತ್ರ ಓದಬಹುದು."
+      ],
+      [
+        "ಸಿಂಕ್",
+        "ನಿಮ್ಮ cloud ಮೂಲಕ sync"
+      ]
+    ],
+    endAria: "ವಾಸ್ತುಶಿಲ್ಪ ಓದಿ",
+    endPrefix: "ವಾಸ್ತುಶಿಲ್ಪ ಓದಿ",
+    endFallback: ".",
+    endText: "ಖಾಸಗಿ, open source, ಮತ್ತು ಅಭಿವೃದ್ಧಿಯಲ್ಲಿದೆ. ನೀವು ಸೇರಿಸುವುದೆಲ್ಲ ನಿಮ್ಮದೇ ಇರುತ್ತದೆ.",
+    readArchitecture: "ವಾಸ್ತುಶಿಲ್ಪ ಓದಿ",
+    footerStatus: "ಖಾಸಗಿ ಮತ್ತು open source",
+    cycleWords: [
+      "ಮನೆಗೆ",
+      "ಎಲ್ಲೆಡೆ",
+      "ಒಟ್ಟಿಗೆ",
+      "ಆಫ್‌ಲೈನ್",
+      "ನಿಯಂತ್ರಣದಲ್ಲಿ"
+    ]
+  },
+  ml: {
+    metaDescription: "bae: നിങ്ങളുടെ സംഗീതം എല്ലായിടത്തും. നിങ്ങളുടെ മുഴുവൻ സംഗീതവും ഫോൺ, ഡെസ്ക്ടോപ്പ് എന്നിവയിൽ. നിങ്ങളുടെ ക്ലൗഡ് സംഭരണത്തിലൂടെ ഉപകരണങ്ങൾക്കിടയിൽ കേൾക്കൂ. പ്രവർത്തിപ്പിക്കേണ്ട സർവർ ഇല്ല.",
+    title: "bae: നിങ്ങളുടെ സംഗീതം എല്ലായിടത്തും",
+    navDocs: "ഡോക്സ്",
+    navDownload: "ഡൗൺലോഡ്",
+    languageLabel: "ഭാഷ",
+    heroTitle: [
+      "നിങ്ങളുടെ സംഗീതം",
+      "എല്ലായിടത്തും"
+    ],
+    heroText: "നിങ്ങളുടെ മുഴുവൻ സംഗീതവും ഫോൺ, ഡെസ്ക്ടോപ്പ് എന്നിവയിൽ. നിങ്ങളുടെ ക്ലൗഡ് സംഭരണത്തിലൂടെ ഉപകരണങ്ങൾക്കിടയിൽ കേൾക്കൂ. പ്രവർത്തിപ്പിക്കേണ്ട സർവർ ഇല്ല.",
+    heroBold: "സ്വകാര്യവും നിങ്ങളുടേതും.",
+    statusLabel: "bae വികസന നില",
+    statusKicker: "Pre-1.0",
+    statusTitle: "പൊതു ഉപയോഗത്തിന് തയ്യാറല്ല.",
+    statusText: "പരിശോധന build മാത്രം. ഡാറ്റയും sync രൂപങ്ങളും migration ഇല്ലാതെ മാറും.",
+    downloadMac: "macOS-നായി ഡൗൺലോഡ്",
+    seeFeatures: "സവിശേഷതകൾ കാണുക",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "നിങ്ങളുടെ സംഗീതം",
+        "നിങ്ങളുടെ ഫയലുകൾ നിങ്ങളുടേതായി തുടരും"
+      ],
+      [
+        "സ്വകാര്യ",
+        "നിങ്ങളുടെ ഉപകരണങ്ങൾ കീകൾ സൂക്ഷിക്കുന്നു"
+      ],
+      [
+        "എല്ലായിടത്തും",
+        "നിങ്ങളുടെ cloud വഴി sync"
+      ]
+    ],
+    sheepAlt: "നിങ്ങളുടെ സംഗീതം",
+    noteSynced: "സിങ്ക്",
+    noteSyncedSub: "നിങ്ങളുടെ ഉപകരണങ്ങൾക്കിടയിൽ",
+    noteCloud: "നിങ്ങളുടെ cloud",
+    noteCloudSub: "server ഇല്ല",
+    syncEyebrow: "എൻക്രിപ്റ്റ് ചെയ്ത sync",
+    syncTitle: [
+      "നിങ്ങളുടെ സംഗീതം",
+      "എല്ലായിടത്തും"
+    ],
+    syncText: "നിങ്ങളുടെ ഉപകരണങ്ങൾ നിങ്ങൾ തെരഞ്ഞെടുത്ത ക്ലൗഡ് സംഭരണത്തിലൂടെ സിങ്ക് ചെയ്യുന്നു. ഉപകരണത്തെ വിട്ടുപോകുന്നതിന് മുമ്പ് എല്ലാം എൻക്രിപ്റ്റ് ചെയ്യപ്പെടുന്നു. നിങ്ങൾക്കു മാത്രമേ വായിക്കാനാകൂ.",
+    desktop: "ഡെസ്ക്ടോപ്പ്",
+    phone: "ഫോൺ",
+    holdsKeys: "കീകൾ സൂക്ഷിക്കുന്നു",
+    encrypted: "എൻക്രിപ്ഷൻ",
+    cloudStorage: "സംഭരണം",
+    encryptionLink: "എൻക്രിപ്ഷൻ →",
+    libraryEyebrow: "ലൈബ്രറി",
+    libraryTitle: [
+      "നിങ്ങളുടെ മുഴുവൻ ശേഖരം,",
+      "റിലീസ് കൃത്യതയോടെ"
+    ],
+    libraryText: "നിങ്ങളുടെ ആൽബങ്ങൾ ഒരു ലൈബ്രറിയിലേക്ക് കൊണ്ടുവന്ന് എവിടെയും കൊണ്ടുപോകൂ.",
+    cards: [
+      [
+        "റിലീസ് കൃത്യതയോടെ",
+        "നിങ്ങളുടെ ആൽബങ്ങൾ ഒരു ലൈബ്രറിയിലേക്ക് കൊണ്ടുവന്ന് എവിടെയും കൊണ്ടുപോകൂ.",
+        [
+          "മെറ്റാഡാറ്റ",
+          "അവലോകനം",
+          "സിങ്ക്"
+        ]
+      ],
+      [
+        "ലൈബ്രറി",
+        "നിങ്ങളുടെ ഉപകരണങ്ങൾ നിങ്ങൾ തെരഞ്ഞെടുത്ത ക്ലൗഡ് സംഭരണത്തിലൂടെ സിങ്ക് ചെയ്യുന്നു. ഉപകരണത്തെ വിട്ടുപോകുന്നതിന് മുമ്പ് എല്ലാം എൻക്രിപ്റ്റ് ചെയ്യപ്പെടുന്നു. നിങ്ങൾക്കു മാത്രമേ വായിക്കാനാകൂ.",
+        [
+          "ഫോൺ",
+          "ഡെസ്ക്ടോപ്പ്"
+        ]
+      ],
+      [
+        "എൻക്രിപ്ഷൻ",
+        "നിങ്ങളുടെ ഉപകരണങ്ങൾ നിങ്ങൾ തെരഞ്ഞെടുത്ത ക്ലൗഡ് സംഭരണത്തിലൂടെ സിങ്ക് ചെയ്യുന്നു. ഉപകരണത്തെ വിട്ടുപോകുന്നതിന് മുമ്പ് എല്ലാം എൻക്രിപ്റ്റ് ചെയ്യപ്പെടുന്നു. നിങ്ങൾക്കു മാത്രമേ വായിക്കാനാകൂ.",
+        [
+          "എൻക്രിപ്ഷൻ",
+          "സിങ്ക്"
+        ]
+      ],
+      [
+        "നിങ്ങളുടെ സംഗീതം",
+        "നിങ്ങളുടെ ഫയലുകൾ നിങ്ങളുടേതായി തുടരും",
+        [
+          "നിങ്ങളുടെ സംഗീതം",
+          "സ്വകാര്യവും open source-ഉം"
+        ]
+      ]
+    ],
+    engineEyebrow: "ആർക്കിടെക്ചർ",
+    engineTitle: [
+      "ഡെസ്ക്ടോപ്പ്",
+      "ഫോൺ"
+    ],
+    engineText: "നിങ്ങളുടെ ഉപകരണങ്ങൾ നിങ്ങൾ തെരഞ്ഞെടുത്ത ക്ലൗഡ് സംഭരണത്തിലൂടെ സിങ്ക് ചെയ്യുന്നു. ഉപകരണത്തെ വിട്ടുപോകുന്നതിന് മുമ്പ് എല്ലാം എൻക്രിപ്റ്റ് ചെയ്യപ്പെടുന്നു. നിങ്ങൾക്കു മാത്രമേ വായിക്കാനാകൂ.",
+    rustCore: "Rust core",
+    rustCoreSub: "ലൈബ്രറി · സിങ്ക് · എൻക്രിപ്ഷൻ",
+    sharedRustCore: "Rust core",
+    deps: [
+      [
+        "FFmpeg",
+        "audio"
+      ],
+      [
+        "SQLite",
+        "ലൈബ്രറി"
+      ],
+      [
+        "സംഭരണം",
+        "സിങ്ക്"
+      ]
+    ],
+    playbackEyebrow: "പ്ലേബാക്ക്",
+    playbackTitle: "നിങ്ങളുടെ സംഗീതം എല്ലായിടത്തും",
+    minis: [
+      [
+        "നിങ്ങളുടെ സംഗീതം",
+        "നിങ്ങളുടെ ഫയലുകൾ നിങ്ങളുടേതായി തുടരും"
+      ],
+      [
+        "സംഭരണം",
+        "നിങ്ങളുടെ ഉപകരണങ്ങൾ നിങ്ങൾ തെരഞ്ഞെടുത്ത ക്ലൗഡ് സംഭരണത്തിലൂടെ സിങ്ക് ചെയ്യുന്നു. ഉപകരണത്തെ വിട്ടുപോകുന്നതിന് മുമ്പ് എല്ലാം എൻക്രിപ്റ്റ് ചെയ്യപ്പെടുന്നു. നിങ്ങൾക്കു മാത്രമേ വായിക്കാനാകൂ."
+      ],
+      [
+        "സിങ്ക്",
+        "നിങ്ങളുടെ cloud വഴി sync"
+      ]
+    ],
+    endAria: "ആർക്കിടെക്ചർ വായിക്കുക",
+    endPrefix: "ആർക്കിടെക്ചർ വായിക്കുക",
+    endFallback: ".",
+    endText: "സ്വകാര്യവും open source-ഉം വികസനത്തിലുമാണ്. നിങ്ങൾ ചേർക്കുന്നതെല്ലാം നിങ്ങളുടേതായി തുടരും.",
+    readArchitecture: "ആർക്കിടെക്ചർ വായിക്കുക",
+    footerStatus: "സ്വകാര്യവും open source-ഉം",
+    cycleWords: [
+      "വീട്ടിലേക്ക്",
+      "എവിടെയും",
+      "ഒരുമിച്ച്",
+      "ഓഫ്‌ലൈൻ",
+      "നിയന്ത്രണത്തിൽ"
+    ]
+  },
+  pa: {
+    metaDescription: "bae: ਤੁਹਾਡਾ ਸੰਗੀਤ ਹਰ ਜਗ੍ਹਾ. ਤੁਹਾਡਾ ਸਾਰਾ ਸੰਗੀਤ ਫੋਨ ਅਤੇ ਡੈਸਕਟਾਪ ਉੱਤੇ। ਆਪਣੇ ਕਲਾਉਡ ਸਟੋਰੇਜ ਰਾਹੀਂ ਡਿਵਾਈਸਾਂ ਵਿਚਕਾਰ ਸੁਣੋ। ਚਲਾਉਣ ਲਈ ਕੋਈ ਸਰਵਰ ਨਹੀਂ।",
+    title: "bae: ਤੁਹਾਡਾ ਸੰਗੀਤ ਹਰ ਜਗ੍ਹਾ",
+    navDocs: "ਡਾਕਸ",
+    navDownload: "ਡਾਊਨਲੋਡ",
+    languageLabel: "ਭਾਸ਼ਾ",
+    heroTitle: [
+      "ਤੁਹਾਡਾ ਸੰਗੀਤ",
+      "ਹਰ ਜਗ੍ਹਾ"
+    ],
+    heroText: "ਤੁਹਾਡਾ ਸਾਰਾ ਸੰਗੀਤ ਫੋਨ ਅਤੇ ਡੈਸਕਟਾਪ ਉੱਤੇ। ਆਪਣੇ ਕਲਾਉਡ ਸਟੋਰੇਜ ਰਾਹੀਂ ਡਿਵਾਈਸਾਂ ਵਿਚਕਾਰ ਸੁਣੋ। ਚਲਾਉਣ ਲਈ ਕੋਈ ਸਰਵਰ ਨਹੀਂ।",
+    heroBold: "ਨਿੱਜੀ, ਤੁਹਾਡਾ।",
+    statusLabel: "bae ਵਿਕਾਸ ਹਾਲਤ",
+    statusKicker: "Pre-1.0",
+    statusTitle: "ਆਮ ਵਰਤੋਂ ਲਈ ਤਿਆਰ ਨਹੀਂ।",
+    statusText: "ਕੇਵਲ ਟੈਸਟ build। ਡਾਟਾ ਅਤੇ sync ਫਾਰਮੈਟ migration ਤੋਂ ਬਿਨਾਂ ਬਦਲਣਗੇ।",
+    downloadMac: "macOS ਲਈ ਡਾਊਨਲੋਡ",
+    seeFeatures: "ਫੀਚਰ ਵੇਖੋ",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "ਤੁਹਾਡਾ ਸੰਗੀਤ",
+        "ਤੁਹਾਡੀਆਂ ਫਾਈਲਾਂ ਤੁਹਾਡੀਆਂ ਰਹਿੰਦੀਆਂ ਹਨ"
+      ],
+      [
+        "ਨਿੱਜੀ",
+        "ਤੁਹਾਡੇ ਡਿਵਾਈਸ ਕੁੰਜੀਆਂ ਰੱਖਦੇ ਹਨ"
+      ],
+      [
+        "ਹਰ ਜਗ੍ਹਾ",
+        "ਤੁਹਾਡੇ cloud ਰਾਹੀਂ sync"
+      ]
+    ],
+    sheepAlt: "ਤੁਹਾਡਾ ਸੰਗੀਤ",
+    noteSynced: "ਸਿੰਕ",
+    noteSyncedSub: "ਤੁਹਾਡੇ ਡਿਵਾਈਸਾਂ ਵਿਚਕਾਰ",
+    noteCloud: "ਤੁਹਾਡਾ cloud",
+    noteCloudSub: "server ਨਹੀਂ",
+    syncEyebrow: "ਇਨਕ੍ਰਿਪਟਿਡ sync",
+    syncTitle: [
+      "ਤੁਹਾਡਾ ਸੰਗੀਤ",
+      "ਹਰ ਜਗ੍ਹਾ"
+    ],
+    syncText: "ਤੁਹਾਡੇ ਡਿਵਾਈਸ ਤੁਹਾਡੇ ਚੁਣੇ ਕਲਾਉਡ ਸਟੋਰੇਜ ਰਾਹੀਂ ਸਿੰਕ ਹੁੰਦੇ ਹਨ। ਸਭ ਕੁਝ ਡਿਵਾਈਸ ਛੱਡਣ ਤੋਂ ਪਹਿਲਾਂ ਇਨਕ੍ਰਿਪਟ ਹੁੰਦਾ ਹੈ। ਸਿਰਫ਼ ਤੁਸੀਂ ਪੜ੍ਹ ਸਕਦੇ ਹੋ।",
+    desktop: "ਡੈਸਕਟਾਪ",
+    phone: "ਫੋਨ",
+    holdsKeys: "ਕੁੰਜੀਆਂ ਰੱਖਦਾ ਹੈ",
+    encrypted: "ਇਨਕ੍ਰਿਪਸ਼ਨ",
+    cloudStorage: "ਸਟੋਰੇਜ",
+    encryptionLink: "ਇਨਕ੍ਰਿਪਸ਼ਨ →",
+    libraryEyebrow: "ਲਾਇਬ੍ਰੇਰੀ",
+    libraryTitle: [
+      "ਤੁਹਾਡਾ ਪੂਰਾ ਸੰਗ੍ਰਹਿ,",
+      "ਰਿਲੀਜ਼ ਮੁਤਾਬਕ ਸਹੀ"
+    ],
+    libraryText: "ਆਪਣੇ ਐਲਬਮ ਇੱਕ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਰੱਖੋ ਅਤੇ ਹਰ ਥਾਂ ਲੈ ਜਾਓ।",
+    cards: [
+      [
+        "ਰਿਲੀਜ਼ ਮੁਤਾਬਕ ਸਹੀ",
+        "ਆਪਣੇ ਐਲਬਮ ਇੱਕ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਰੱਖੋ ਅਤੇ ਹਰ ਥਾਂ ਲੈ ਜਾਓ।",
+        [
+          "ਮੈਟਾਡਾਟਾ",
+          "ਝਲਕ",
+          "ਸਿੰਕ"
+        ]
+      ],
+      [
+        "ਲਾਇਬ੍ਰੇਰੀ",
+        "ਤੁਹਾਡੇ ਡਿਵਾਈਸ ਤੁਹਾਡੇ ਚੁਣੇ ਕਲਾਉਡ ਸਟੋਰੇਜ ਰਾਹੀਂ ਸਿੰਕ ਹੁੰਦੇ ਹਨ। ਸਭ ਕੁਝ ਡਿਵਾਈਸ ਛੱਡਣ ਤੋਂ ਪਹਿਲਾਂ ਇਨਕ੍ਰਿਪਟ ਹੁੰਦਾ ਹੈ। ਸਿਰਫ਼ ਤੁਸੀਂ ਪੜ੍ਹ ਸਕਦੇ ਹੋ।",
+        [
+          "ਫੋਨ",
+          "ਡੈਸਕਟਾਪ"
+        ]
+      ],
+      [
+        "ਇਨਕ੍ਰਿਪਸ਼ਨ",
+        "ਤੁਹਾਡੇ ਡਿਵਾਈਸ ਤੁਹਾਡੇ ਚੁਣੇ ਕਲਾਉਡ ਸਟੋਰੇਜ ਰਾਹੀਂ ਸਿੰਕ ਹੁੰਦੇ ਹਨ। ਸਭ ਕੁਝ ਡਿਵਾਈਸ ਛੱਡਣ ਤੋਂ ਪਹਿਲਾਂ ਇਨਕ੍ਰਿਪਟ ਹੁੰਦਾ ਹੈ। ਸਿਰਫ਼ ਤੁਸੀਂ ਪੜ੍ਹ ਸਕਦੇ ਹੋ।",
+        [
+          "ਇਨਕ੍ਰਿਪਸ਼ਨ",
+          "ਸਿੰਕ"
+        ]
+      ],
+      [
+        "ਤੁਹਾਡਾ ਸੰਗੀਤ",
+        "ਤੁਹਾਡੀਆਂ ਫਾਈਲਾਂ ਤੁਹਾਡੀਆਂ ਰਹਿੰਦੀਆਂ ਹਨ",
+        [
+          "ਤੁਹਾਡਾ ਸੰਗੀਤ",
+          "ਨਿੱਜੀ ਅਤੇ open source"
+        ]
+      ]
+    ],
+    engineEyebrow: "ਆਰਕੀਟੈਕਚਰ",
+    engineTitle: [
+      "ਡੈਸਕਟਾਪ",
+      "ਫੋਨ"
+    ],
+    engineText: "ਤੁਹਾਡੇ ਡਿਵਾਈਸ ਤੁਹਾਡੇ ਚੁਣੇ ਕਲਾਉਡ ਸਟੋਰੇਜ ਰਾਹੀਂ ਸਿੰਕ ਹੁੰਦੇ ਹਨ। ਸਭ ਕੁਝ ਡਿਵਾਈਸ ਛੱਡਣ ਤੋਂ ਪਹਿਲਾਂ ਇਨਕ੍ਰਿਪਟ ਹੁੰਦਾ ਹੈ। ਸਿਰਫ਼ ਤੁਸੀਂ ਪੜ੍ਹ ਸਕਦੇ ਹੋ।",
+    rustCore: "Rust core",
+    rustCoreSub: "ਲਾਇਬ੍ਰੇਰੀ · ਸਿੰਕ · ਇਨਕ੍ਰਿਪਸ਼ਨ",
+    sharedRustCore: "Rust core",
+    deps: [
+      [
+        "FFmpeg",
+        "audio"
+      ],
+      [
+        "SQLite",
+        "ਲਾਇਬ੍ਰੇਰੀ"
+      ],
+      [
+        "ਸਟੋਰੇਜ",
+        "ਸਿੰਕ"
+      ]
+    ],
+    playbackEyebrow: "ਪਲੇਬੈਕ",
+    playbackTitle: "ਤੁਹਾਡਾ ਸੰਗੀਤ ਹਰ ਜਗ੍ਹਾ",
+    minis: [
+      [
+        "ਤੁਹਾਡਾ ਸੰਗੀਤ",
+        "ਤੁਹਾਡੀਆਂ ਫਾਈਲਾਂ ਤੁਹਾਡੀਆਂ ਰਹਿੰਦੀਆਂ ਹਨ"
+      ],
+      [
+        "ਸਟੋਰੇਜ",
+        "ਤੁਹਾਡੇ ਡਿਵਾਈਸ ਤੁਹਾਡੇ ਚੁਣੇ ਕਲਾਉਡ ਸਟੋਰੇਜ ਰਾਹੀਂ ਸਿੰਕ ਹੁੰਦੇ ਹਨ। ਸਭ ਕੁਝ ਡਿਵਾਈਸ ਛੱਡਣ ਤੋਂ ਪਹਿਲਾਂ ਇਨਕ੍ਰਿਪਟ ਹੁੰਦਾ ਹੈ। ਸਿਰਫ਼ ਤੁਸੀਂ ਪੜ੍ਹ ਸਕਦੇ ਹੋ।"
+      ],
+      [
+        "ਸਿੰਕ",
+        "ਤੁਹਾਡੇ cloud ਰਾਹੀਂ sync"
+      ]
+    ],
+    endAria: "ਆਰਕੀਟੈਕਚਰ ਪੜ੍ਹੋ",
+    endPrefix: "ਆਰਕੀਟੈਕਚਰ ਪੜ੍ਹੋ",
+    endFallback: ".",
+    endText: "ਨਿੱਜੀ, open source ਅਤੇ ਵਿਕਾਸ ਵਿੱਚ। ਤੁਸੀਂ ਜੋ ਜੋੜਦੇ ਹੋ ਉਹ ਤੁਹਾਡਾ ਰਹਿੰਦਾ ਹੈ।",
+    readArchitecture: "ਆਰਕੀਟੈਕਚਰ ਪੜ੍ਹੋ",
+    footerStatus: "ਨਿੱਜੀ ਅਤੇ open source",
+    cycleWords: [
+      "ਘਰ",
+      "ਹਰ ਥਾਂ",
+      "ਇਕੱਠੇ",
+      "ਆਫਲਾਈਨ",
+      "ਕੰਟਰੋਲ ਵਿੱਚ"
+    ]
+  },
+  th: {
+    metaDescription: "bae: เพลงของคุณทุกที่. เพลงทั้งหมดของคุณบนโทรศัพท์และเดสก์ท็อป ฟังข้ามอุปกรณ์ผ่านพื้นที่จัดเก็บคลาวด์ของคุณเอง ไม่มีเซิร์ฟเวอร์ที่ต้องดูแล",
+    title: "bae: เพลงของคุณทุกที่",
+    navDocs: "เอกสาร",
+    navDownload: "ดาวน์โหลด",
+    languageLabel: "ภาษา",
+    heroTitle: [
+      "เพลงของคุณ",
+      "ทุกที่"
+    ],
+    heroText: "เพลงทั้งหมดของคุณบนโทรศัพท์และเดสก์ท็อป ฟังข้ามอุปกรณ์ผ่านพื้นที่จัดเก็บคลาวด์ของคุณเอง ไม่มีเซิร์ฟเวอร์ที่ต้องดูแล",
+    heroBold: "ส่วนตัว เป็นของคุณ",
+    statusLabel: "สถานะการพัฒนา bae",
+    statusKicker: "Pre-1.0",
+    statusTitle: "ยังไม่พร้อมสำหรับการใช้งานทั่วไป",
+    statusText: "มีเฉพาะ build สำหรับทดสอบ รูปแบบข้อมูลและ sync จะเปลี่ยนโดยไม่มี migration",
+    downloadMac: "ดาวน์โหลดสำหรับ macOS",
+    seeFeatures: "ดูคุณสมบัติ",
+    platformMeta: "macOS · iOS · Windows · Android",
+    trust: [
+      [
+        "เพลงของคุณ",
+        "ไฟล์ยังเป็นของคุณ"
+      ],
+      [
+        "ส่วนตัว",
+        "อุปกรณ์ของคุณเก็บกุญแจ"
+      ],
+      [
+        "ทุกที่",
+        "sync ผ่าน cloud ของคุณ"
+      ]
+    ],
+    sheepAlt: "เพลงของคุณ",
+    noteSynced: "ซิงค์",
+    noteSyncedSub: "ระหว่างอุปกรณ์ของคุณ",
+    noteCloud: "cloud ของคุณ",
+    noteCloudSub: "ไม่มี server",
+    syncEyebrow: "sync แบบเข้ารหัส",
+    syncTitle: [
+      "เพลงของคุณ",
+      "ทุกที่"
+    ],
+    syncText: "อุปกรณ์ของคุณซิงค์ผ่านพื้นที่จัดเก็บคลาวด์ที่คุณเลือก ทุกอย่างถูกเข้ารหัสก่อนออกจากอุปกรณ์ มีเพียงคุณที่อ่านได้",
+    desktop: "เดสก์ท็อป",
+    phone: "โทรศัพท์",
+    holdsKeys: "เก็บกุญแจ",
+    encrypted: "การเข้ารหัส",
+    cloudStorage: "พื้นที่จัดเก็บ",
+    encryptionLink: "การเข้ารหัส →",
+    libraryEyebrow: "ไลบรารี",
+    libraryTitle: [
+      "คอลเลกชันทั้งหมดของคุณ",
+      "ตรงตามรุ่นที่เผยแพร่"
+    ],
+    libraryText: "นำอัลบั้มที่คุณมีมาไว้ในไลบรารีเดียว แล้วพกไปได้ทุกที่",
+    cards: [
+      [
+        "ตรงตามรุ่นที่เผยแพร่",
+        "นำอัลบั้มที่คุณมีมาไว้ในไลบรารีเดียว แล้วพกไปได้ทุกที่",
+        [
+          "เมทาดาทา",
+          "ภาพรวม",
+          "ซิงค์"
+        ]
+      ],
+      [
+        "ไลบรารี",
+        "อุปกรณ์ของคุณซิงค์ผ่านพื้นที่จัดเก็บคลาวด์ที่คุณเลือก ทุกอย่างถูกเข้ารหัสก่อนออกจากอุปกรณ์ มีเพียงคุณที่อ่านได้",
+        [
+          "โทรศัพท์",
+          "เดสก์ท็อป"
+        ]
+      ],
+      [
+        "การเข้ารหัส",
+        "อุปกรณ์ของคุณซิงค์ผ่านพื้นที่จัดเก็บคลาวด์ที่คุณเลือก ทุกอย่างถูกเข้ารหัสก่อนออกจากอุปกรณ์ มีเพียงคุณที่อ่านได้",
+        [
+          "การเข้ารหัส",
+          "ซิงค์"
+        ]
+      ],
+      [
+        "เพลงของคุณ",
+        "ไฟล์ยังเป็นของคุณ",
+        [
+          "เพลงของคุณ",
+          "ส่วนตัวและ open source"
+        ]
+      ]
+    ],
+    engineEyebrow: "สถาปัตยกรรม",
+    engineTitle: [
+      "เดสก์ท็อป",
+      "โทรศัพท์"
+    ],
+    engineText: "อุปกรณ์ของคุณซิงค์ผ่านพื้นที่จัดเก็บคลาวด์ที่คุณเลือก ทุกอย่างถูกเข้ารหัสก่อนออกจากอุปกรณ์ มีเพียงคุณที่อ่านได้",
+    rustCore: "Rust core",
+    rustCoreSub: "ไลบรารี · ซิงค์ · การเข้ารหัส",
+    sharedRustCore: "Rust core",
+    deps: [
+      [
+        "FFmpeg",
+        "audio"
+      ],
+      [
+        "SQLite",
+        "ไลบรารี"
+      ],
+      [
+        "พื้นที่จัดเก็บ",
+        "ซิงค์"
+      ]
+    ],
+    playbackEyebrow: "การเล่น",
+    playbackTitle: "เพลงของคุณ ทุกที่",
+    minis: [
+      [
+        "เพลงของคุณ",
+        "ไฟล์ยังเป็นของคุณ"
+      ],
+      [
+        "พื้นที่จัดเก็บ",
+        "อุปกรณ์ของคุณซิงค์ผ่านพื้นที่จัดเก็บคลาวด์ที่คุณเลือก ทุกอย่างถูกเข้ารหัสก่อนออกจากอุปกรณ์ มีเพียงคุณที่อ่านได้"
+      ],
+      [
+        "ซิงค์",
+        "sync ผ่าน cloud ของคุณ"
+      ]
+    ],
+    endAria: "อ่านสถาปัตยกรรม",
+    endPrefix: "อ่านสถาปัตยกรรม",
+    endFallback: ".",
+    endText: "เป็นส่วนตัว open source และอยู่ระหว่างพัฒนา ทุกอย่างที่คุณเพิ่มยังเป็นของคุณ",
+    readArchitecture: "อ่านสถาปัตยกรรม",
+    footerStatus: "ส่วนตัวและ open source",
+    cycleWords: [
+      "กลับบ้าน",
+      "ทุกที่",
+      "ด้วยกัน",
+      "ออฟไลน์",
+      "อยู่ในการควบคุม"
+    ]
+  }
+};
+
+for (const [section, values] of Object.entries(addedSidebarTranslations.sections)) {
+  Object.assign(sidebarTranslations.sections[section], values);
+}
+for (const [page, values] of Object.entries(addedSidebarTranslations.pages)) {
+  Object.assign(sidebarTranslations.pages[page], values);
+}
+Object.assign(landing, addedLanding);
+
 const fallback = landing.en;
 for (const locale of LOCALES) {
   landing[locale.code] ??= fallback;
