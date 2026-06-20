@@ -107,6 +107,13 @@ if has_changes_in "bae-bridge" || has_changes_in "bae-core"; then
         echo "Fix the warnings above and try again"
         exit 1
     }
+
+    # Validate the localization catalog (ICU syntax, arg coverage, translation
+    # completeness) before any native resource files are emitted from it.
+    run_check "loc-gen check" cargo run -q -p bae-loc --bin loc-gen -- check || {
+        echo "Localization catalog is invalid"
+        exit 1
+    }
 fi
 
 # bae-macos checks (depends on bae-bridge)
