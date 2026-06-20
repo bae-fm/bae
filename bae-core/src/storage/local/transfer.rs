@@ -263,12 +263,13 @@ impl TransferService {
         &self,
         release_id: String,
         new_path: String,
+        cancel: crate::library::CancellationToken,
     ) -> mpsc::UnboundedReceiver<TransferProgress> {
         let (tx, rx) = mpsc::unbounded_channel();
         let library_manager = self.library_manager.clone();
 
         tokio::spawn(async move {
-            let result = do_unmanage(&release_id, &new_path, &library_manager, &tx).await;
+            let result = do_unmanage(&release_id, &new_path, &cancel, &library_manager, &tx).await;
 
             if let Err(e) = result {
                 error!("Unmanage failed for release {}: {}", release_id, e);
@@ -817,6 +818,7 @@ async fn do_manage(
 async fn do_unmanage(
     release_id: &str,
     new_path: &str,
+    cancel: &crate::library::CancellationToken,
     library_manager: &LibraryManager,
     tx: &mpsc::UnboundedSender<TransferProgress>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -853,8 +855,20 @@ async fn do_unmanage(
     let dest_dir = std::path::Path::new(new_path);
     tokio::fs::create_dir_all(dest_dir).await?;
 
+    // Copies written so far at `new_path`. If the user cancels mid-transfer we
+    // delete these so a cancelled unmanage leaves no orphans — the managed cloud
+    // and `storage/` copies are never touched until the irreversible flip below,
+    // so the release stays fully managed and intact.
+    let mut written: Vec<std::path::PathBuf> = Vec::new();
+
     // Write + verify every file at the new location before queueing any delete.
     for (i, file) in files.iter().enumerate() {
+        // Cancellation is checked per file (the read/write of one file is the
+        // slow unit); the current file finishes, then we stop and roll back.
+        if cancel.is_cancelled() {
+            return cancel_unmanage(release_id, &written, tx).await;
+        }
+
         send_file_progress(tx, release_id, i, files.len(), &file.original_filename, 0);
 
         // Verified read: `storage/` if Pinned, else cloud download + decrypt.
@@ -880,8 +894,15 @@ async fn do_unmanage(
         // fires next sync with no grace window, so the new copy must be durable
         // first, not merely in the page cache).
         fsync_file_and_dir(&dest).await?;
+        written.push(dest);
 
         send_file_progress(tx, release_id, i, files.len(), &file.original_filename, 100);
+    }
+
+    // A cancel landing between the last write and the irreversible flip still
+    // rolls back cleanly.
+    if cancel.is_cancelled() {
+        return cancel_unmanage(release_id, &written, tx).await;
     }
 
     // Every file is now durable at `new_path`. Flip the release to Unmanaged,
@@ -896,5 +917,35 @@ async fn do_unmanage(
         release_id: release_id.to_string(),
     });
 
+    Ok(())
+}
+
+/// Roll back a cancelled unmanage: delete the partial copies written at the new
+/// path (the managed cloud/`storage/` copies were never touched) and end the
+/// transfer cleanly so the release stays managed. Reported as `Complete` because
+/// the transfer is over — not as `Failed`, since the user asked for the stop.
+async fn cancel_unmanage(
+    release_id: &str,
+    written: &[std::path::PathBuf],
+    tx: &mpsc::UnboundedSender<TransferProgress>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    info!(
+        "Unmanage cancelled for {release_id}; removing {} partial copies",
+        written.len()
+    );
+    for path in written {
+        if let Err(e) = tokio::fs::remove_file(path).await {
+            warn!(
+                "Failed to remove partial unmanage copy {}: {e}",
+                path.display()
+            );
+        }
+    }
+    // Best-effort like every other transfer-progress send: a gone receiver means
+    // the driving transfer was already abandoned (view dismissed), which is
+    // expected, not an error to surface.
+    let _ = tx.send(TransferProgress::Complete {
+        release_id: release_id.to_string(),
+    });
     Ok(())
 }

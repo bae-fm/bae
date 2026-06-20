@@ -674,6 +674,20 @@ impl AppHandle {
             .map_err(BridgeError::internal)
     }
 
+    /// Cancel whatever transition a release is mid-flight — a pin (download), a
+    /// managed upload, or an unmanage — leaving it in its prior state. The UI
+    /// calls this from the storage row and the queue pane without knowing which
+    /// is running; a no-op if nothing is in progress.
+    pub fn cancel_release_transition(&self, release_id: String) -> Result<(), BridgeError> {
+        self.runtime
+            .block_on(
+                self.app_services
+                    .library_manager()
+                    .cancel_release_transition(&release_id),
+            )
+            .map_err(BridgeError::internal)
+    }
+
     /// Pause or resume the cloud-upload pipeline. While paused, new enqueues
     /// still land in the outbox but the sync cycle won't drain them; the
     /// snapshot's `paused` field flips so the UI can render the toggle.

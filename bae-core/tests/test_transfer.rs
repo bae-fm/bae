@@ -729,6 +729,72 @@ async fn test_unmanage_from_pinned_writes_then_queues_deletes() {
     assert_eq!(deletes.len(), originals.len(), "cloud deletes queued");
 }
 
+/// Cancelling an unmanage after the first file is written rolls back: the
+/// partial copy at the new path is deleted, no managed-copy delete is queued,
+/// and the release stays managed (pinned) — the SAFETY INVARIANT holds across a
+/// user-initiated stop, not just a write failure.
+#[tokio::test]
+async fn test_unmanage_cancelled_after_first_file_rolls_back_and_stays_managed() {
+    tracing_init();
+
+    let temp = TempDir::new().unwrap();
+    let library_path = temp.path().join("library");
+    tokio::fs::create_dir_all(&library_path).await.unwrap();
+    let new_path = temp.path().join("exported");
+
+    let (db, mgr, _cloud) = setup_db_with_cloud(&temp, &library_path).await;
+    let (_album_id, release_id) = create_album_and_release(&db, None, true).await;
+    let library_dir = LibraryDir::new(library_path.clone());
+    let originals = create_pinned_local_files(&mgr, &release_id, &library_dir).await;
+
+    let token = bae_core::library::CancellationToken::new();
+    let service = TransferService::new(mgr.clone());
+    let mut rx = service.unmanage_release(
+        release_id.clone(),
+        new_path.to_str().unwrap().to_string(),
+        token.clone(),
+    );
+
+    // Let the first file finish, then cancel; the next file's pre-check rolls
+    // back. The channel sequences this deterministically.
+    while let Some(p) = rx.recv().await {
+        match p {
+            TransferProgress::FileProgress {
+                file_index: 0,
+                percent: 100,
+                ..
+            } => token.cancel(),
+            TransferProgress::Complete { .. } | TransferProgress::Failed { .. } => break,
+            _ => {}
+        }
+    }
+
+    // Every partial copy at the new path is gone (the first file's was deleted on
+    // rollback; the rest were never written).
+    for (name, _) in &originals {
+        assert!(
+            !new_path.join(name).exists(),
+            "{name} rolled back from the new path"
+        );
+    }
+
+    // The release is untouched: still managed/pinned, with no managed-copy
+    // deletes queued.
+    use bae_core::album_detail::ReleaseStorageState;
+    assert_eq!(
+        storage_state(&mgr, &release_id).await,
+        ReleaseStorageState::Pinned
+    );
+    assert!(
+        read_pending_deletions(&library_path).await.is_empty(),
+        "no local deletes queued on cancel"
+    );
+    assert!(
+        db.get_pending_cloud_deletes().await.unwrap().is_empty(),
+        "no cloud deletes queued on cancel"
+    );
+}
+
 /// Unmanage that fails on file 2 of 3: NO delete is queued, every managed copy
 /// (storage/ + cloud) stays intact, and the release stays managed.
 #[tokio::test]
@@ -773,9 +839,11 @@ async fn test_unmanage_abort_on_write_failure_queues_no_deletes() {
     tokio::fs::write(&new_path, b"blocker").await.unwrap();
 
     let service = TransferService::new(mgr.clone());
-    let events = collect_progress(
-        service.unmanage_release(release_id.clone(), new_path.to_str().unwrap().to_string()),
-    )
+    let events = collect_progress(service.unmanage_release(
+        release_id.clone(),
+        new_path.to_str().unwrap().to_string(),
+        bae_core::library::CancellationToken::new(),
+    ))
     .await;
     assert!(
         events

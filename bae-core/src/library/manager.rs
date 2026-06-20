@@ -845,6 +845,20 @@ impl Drop for TransferEndedGuard {
     }
 }
 
+/// Removes a release's transfer cancellation token from the registry when the
+/// transfer ends — whether it completes normally or its future is dropped (a
+/// view dismiss), so a dropped transfer never leaves a stale token behind.
+struct TransferCancelGuard {
+    registry: Arc<Mutex<HashMap<String, crate::library::CancellationToken>>>,
+    release_id: String,
+}
+
+impl Drop for TransferCancelGuard {
+    fn drop(&mut self) {
+        self.registry.lock().unwrap().remove(&self.release_id);
+    }
+}
+
 /// Events emitted by LibraryManager when data changes.
 ///
 /// Album-level and release-level events are mutually exclusive for the same
@@ -982,6 +996,12 @@ pub struct LibraryManager {
     /// release is managed afresh. Shared across clones; transient (a restart
     /// drops it, by which point the queue rows are already gone).
     upload_cancelling: Arc<Mutex<std::collections::HashSet<String>>>,
+    /// Cancellation tokens for in-progress foreground transfers (unmanage),
+    /// keyed by release id. `cancel_release_transition` fires the token; the
+    /// transfer observes it between files, deletes the partial copies it wrote,
+    /// and leaves the release managed (no orphans). Registered for the transfer's
+    /// duration; transient.
+    transfer_cancels: Arc<Mutex<HashMap<String, crate::library::CancellationToken>>>,
     /// In-memory queue for "Pin for offline". A single serial worker drains it
     /// one release at a time. Shared across manager clones; transient (empty
     /// after a restart — a release that wasn't fully pinned stays cloud-only).
@@ -1040,6 +1060,7 @@ impl Clone for LibraryManager {
             upload_throughput: self.upload_throughput.clone(),
             sync_paused: self.sync_paused.clone(),
             upload_cancelling: self.upload_cancelling.clone(),
+            transfer_cancels: self.transfer_cancels.clone(),
             download_queue: self.download_queue.clone(),
             #[cfg(any(test, feature = "test-utils"))]
             test_overrides: self.test_overrides.clone(),
@@ -1080,6 +1101,7 @@ impl LibraryManager {
             upload_throughput: Arc::new(crate::library::UploadThroughput::new()),
             sync_paused: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             upload_cancelling: Arc::new(Mutex::new(std::collections::HashSet::new())),
+            transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             #[cfg(any(test, feature = "test-utils"))]
             test_overrides: TestOverrides::default(),
@@ -4786,8 +4808,21 @@ impl LibraryManager {
     /// durability-first ordering (every copy is verified at the new path before
     /// any delete is queued).
     pub async fn unmanage_release(&self, release_id: &str, new_path: &str) -> Result<(), String> {
+        // Register a cancellation token so `cancel_release_transition` can stop
+        // this transfer; the guard deregisters even if this future is dropped.
+        let cancel = crate::library::CancellationToken::new();
+        self.transfer_cancels
+            .lock()
+            .unwrap()
+            .insert(release_id.to_string(), cancel.clone());
+        let _dereg = TransferCancelGuard {
+            registry: self.transfer_cancels.clone(),
+            release_id: release_id.to_string(),
+        };
+
         let transfer_service = crate::storage::local::transfer::TransferService::new(self.clone());
-        let rx = transfer_service.unmanage_release(release_id.to_string(), new_path.to_string());
+        let rx =
+            transfer_service.unmanage_release(release_id.to_string(), new_path.to_string(), cancel);
         let result = self
             .drive_transfer(release_id, ReleaseStorageAction::Unmanage, rx, |_| {})
             .await;
@@ -4795,6 +4830,48 @@ impl LibraryManager {
             self.spawn_cleanup();
         }
         result
+    }
+
+    /// Cancel the in-progress transition for a release, whatever it is: a pin
+    /// (download), a managed upload, or an unmanage. The UI calls this from the
+    /// storage row and the queue pane without knowing which is running — a
+    /// release is in at most one transition at a time. A no-op if nothing is in
+    /// progress. Each branch is gated on the transition actually running:
+    /// `cancel_release_upload` on a settled release would delete its blobs, so it
+    /// fires only when uploads are genuinely pending.
+    pub async fn cancel_release_transition(&self, release_id: &str) -> Result<(), LibraryError> {
+        if self.cancel_transfer(release_id) {
+            return Ok(());
+        }
+        if self.download_queue.contains(release_id) {
+            self.cancel_download(release_id);
+            return Ok(());
+        }
+        if self
+            .database
+            .has_pending_uploads_for_release(release_id)
+            .await?
+        {
+            return self.cancel_release_upload(release_id).await;
+        }
+        Ok(())
+    }
+
+    /// Fire the cancellation token for a release's in-progress foreground
+    /// transfer (unmanage), if one is registered; returns whether it fired. The
+    /// transfer observes the token between files, deletes its partial copies, and
+    /// leaves the release managed. A missing token is not an error — it means no
+    /// transfer is running, so the caller falls through to the other transition
+    /// kinds. The lookup and fire share one lock, so there's no check-then-act
+    /// race with the deregistering drop guard.
+    fn cancel_transfer(&self, release_id: &str) -> bool {
+        match self.transfer_cancels.lock().unwrap().get(release_id) {
+            Some(token) => {
+                token.cancel();
+                true
+            }
+            None => false,
+        }
     }
 
     /// Drain a transfer's progress channel, translating each non-terminal
@@ -6735,6 +6812,88 @@ mod tests {
                 .await
                 .unwrap(),
             1
+        );
+    }
+
+    #[tokio::test]
+    async fn cancel_release_transition_fires_a_registered_transfer_token() {
+        let (manager, _temp_dir) = setup_test_manager().await;
+
+        // A registered unmanage token is fired by the unified cancel.
+        let token = crate::library::CancellationToken::new();
+        manager
+            .transfer_cancels
+            .lock()
+            .unwrap()
+            .insert("rel-x".to_string(), token.clone());
+        manager.cancel_release_transition("rel-x").await.unwrap();
+        assert!(token.is_cancelled(), "transfer token fired");
+
+        // Nothing in progress for an unknown release → no-op, no error.
+        manager.cancel_release_transition("rel-none").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn unmanage_cancelled_before_copy_leaves_release_managed() {
+        let (manager, temp_dir) = setup_test_manager().await;
+        let album = create_test_album();
+        let release = create_test_release(&album.id); // managed: true
+        manager.database.insert_album(&album).await.unwrap();
+        manager.database.insert_release(&release).await.unwrap();
+        manager
+            .database
+            .upsert_release_local_copy(&DbReleaseLocalCopy {
+                release_id: release.id.clone(),
+                unmanaged_path: None,
+                pinned_locally: true,
+            })
+            .await
+            .unwrap();
+        manager
+            .database
+            .insert_file(&DbFile {
+                id: format!("{}-f", release.id),
+                release_id: release.id.clone(),
+                original_filename: "a.flac".to_string(),
+                file_size: 10,
+                content_type: crate::util::content_type::ContentType::Flac,
+                cloud_path: None,
+                created_at: Utc::now(),
+            })
+            .await
+            .unwrap();
+
+        // A token cancelled before the copy loop runs: the transfer stops at the
+        // first check, before reading/writing any file, and never flips state.
+        let token = crate::library::CancellationToken::new();
+        token.cancel();
+        let dest = temp_dir.path().join("out");
+        let svc = crate::storage::local::transfer::TransferService::new(manager.clone());
+        let mut rx = svc.unmanage_release(
+            release.id.clone(),
+            dest.to_string_lossy().to_string(),
+            token,
+        );
+
+        let mut completed = false;
+        while let Some(p) = rx.recv().await {
+            if matches!(
+                p,
+                crate::storage::local::transfer::TransferProgress::Complete { .. }
+            ) {
+                completed = true;
+            }
+        }
+        assert!(completed, "cancelled unmanage ends cleanly (Complete)");
+
+        let after = manager
+            .get_release_by_id(&release.id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(
+            after.managed,
+            "cancelled unmanage leaves the release managed"
         );
     }
 
