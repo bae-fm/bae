@@ -5,8 +5,9 @@ set -euo pipefail
 # Run after: xcodebuild build
 
 APP_PATH="${1:-build/Build/Products/Release/bae.app}"
+APP_NAME="$(basename "$APP_PATH" .app)"
 FRAMEWORKS_DIR="$APP_PATH/Contents/Frameworks"
-BINARY="$APP_PATH/Contents/MacOS/bae"
+BINARY="$APP_PATH/Contents/MacOS/$APP_NAME"
 
 if [[ ! -f "$BINARY" ]]; then
     echo "Error: Binary not found at $BINARY"
