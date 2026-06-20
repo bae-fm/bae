@@ -7,6 +7,7 @@ pub mod clock;
 pub mod config;
 pub mod cue_flac;
 pub mod db;
+pub mod diagnostics;
 pub mod discogs;
 pub mod encryption;
 pub mod id_provider;
