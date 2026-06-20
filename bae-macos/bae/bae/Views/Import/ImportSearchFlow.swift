@@ -68,26 +68,7 @@ enum ImportSearchFlow {
         }
         let capturedTab = snapshot.search.activeTab
         let capturedSource = snapshot.search.activeSource
-
-        let query: BridgeSearchQuery =
-            switch capturedTab {
-            case .general:
-                .general(
-                    artist: snapshot.search.searchArtist,
-                    album: snapshot.search.searchAlbum,
-                    source: capturedSource.bridge
-                )
-            case .catalogNumber:
-                .catalogNumber(
-                    catalogNumber: snapshot.search.searchCatalog,
-                    source: capturedSource.bridge
-                )
-            case .barcode:
-                .barcode(
-                    barcode: snapshot.search.searchBarcode,
-                    source: capturedSource.bridge
-                )
-            }
+        let query = searchQuery(from: snapshot.search)
 
         importStore.mutateCandidate(forKey: key) { candidate in
             var tabResults = candidate.search.activeResults()
@@ -103,68 +84,35 @@ enum ImportSearchFlow {
         let task = Task { @MainActor in
             do {
                 let response = try await importer.searchForCandidate(query)
-                let searchTab: SearchTab =
-                    switch response.tab {
-                    case .general: .general
-                    case .catalogNumber: .catalogNumber
-                    case .barcode: .barcode
-                    }
-                let resultSource = MetadataSource(bridge: response.source)
-                importStore.mutateCandidate(forKey: key) { candidate in
-                    var tabResults = CandidateSearchState.TabResults()
-                    tabResults.groups = response.groups.map(
-                        ReleaseGroup.init(bridge:)
-                    )
-                    tabResults.hasSearched = true
-                    tabResults.isSearching = false
-                    candidate.search.setResults(
-                        tabResults,
-                        forTab: searchTab,
-                        source: resultSource
-                    )
-                    for status in response.statuses {
-                        candidate.libraryStatuses[status.releaseId] =
-                            LibraryStatus(bridge: status)
-                    }
-                    candidate.searchTask = nil
-                }
+                applySearchResults(
+                    response,
+                    importStore: importStore,
+                    key: key
+                )
             }
             catch is CancellationError {
                 logger.debug(
                     "Search cancelled for key: \(key, privacy: .public)"
                 )
-                importStore.mutateCandidate(forKey: key) { candidate in
-                    var tabResults = candidate.search.results(
-                        forTab: capturedTab,
-                        source: capturedSource
-                    )
-                    tabResults.isSearching = false
-                    candidate.search.setResults(
-                        tabResults,
-                        forTab: capturedTab,
-                        source: capturedSource
-                    )
-                }
+                clearSearching(
+                    importStore: importStore,
+                    key: key,
+                    tab: capturedTab,
+                    source: capturedSource,
+                    error: nil
+                )
             }
             catch {
                 logger.error(
                     "Search failed: \(error.localizedDescription)"
                 )
-                importStore.mutateCandidate(forKey: key) { candidate in
-                    candidate.error =
-                        "Search failed: \(error.localizedDescription)"
-                    var tabResults = candidate.search.results(
-                        forTab: capturedTab,
-                        source: capturedSource
-                    )
-                    tabResults.isSearching = false
-                    candidate.search.setResults(
-                        tabResults,
-                        forTab: capturedTab,
-                        source: capturedSource
-                    )
-                    candidate.searchTask = nil
-                }
+                clearSearching(
+                    importStore: importStore,
+                    key: key,
+                    tab: capturedTab,
+                    source: capturedSource,
+                    error: "Search failed: \(error.localizedDescription)"
+                )
             }
         }
 
@@ -173,6 +121,98 @@ enum ImportSearchFlow {
         }
     }
 
+    /// The bridge query for the active tab: the general (artist/album),
+    /// catalog-number, or barcode field set, all scoped to the active source.
+    @MainActor
+    private static func searchQuery(
+        from search: CandidateSearchState
+    ) -> BridgeSearchQuery {
+        switch search.activeTab {
+        case .general:
+            .general(
+                artist: search.searchArtist,
+                album: search.searchAlbum,
+                source: search.activeSource.bridge
+            )
+        case .catalogNumber:
+            .catalogNumber(
+                catalogNumber: search.searchCatalog,
+                source: search.activeSource.bridge
+            )
+        case .barcode:
+            .barcode(
+                barcode: search.searchBarcode,
+                source: search.activeSource.bridge
+            )
+        }
+    }
+
+    /// Write a completed search response onto the candidate: replace the active
+    /// tab's results and merge in each release's library status.
+    @MainActor
+    private static func applySearchResults(
+        _ response: BridgeCandidateSearchResults,
+        importStore: ImportStore,
+        key: String
+    ) {
+        let searchTab: SearchTab =
+            switch response.tab {
+            case .general: .general
+            case .catalogNumber: .catalogNumber
+            case .barcode: .barcode
+            }
+        let resultSource = MetadataSource(bridge: response.source)
+        importStore.mutateCandidate(forKey: key) { candidate in
+            var tabResults = CandidateSearchState.TabResults()
+            tabResults.groups = response.groups.map(ReleaseGroup.init(bridge:))
+            tabResults.hasSearched = true
+            tabResults.isSearching = false
+            candidate.search.setResults(
+                tabResults,
+                forTab: searchTab,
+                source: resultSource
+            )
+            for status in response.statuses {
+                candidate.libraryStatuses[status.releaseId] =
+                    LibraryStatus(bridge: status)
+            }
+            candidate.searchTask = nil
+        }
+    }
+
+    /// Clear the in-flight spinner on the captured tab (cancel or failure). On
+    /// failure, `error` is set and the search task is dropped; on cancel both
+    /// stay as-is (a fresh search owns the task).
+    @MainActor
+    private static func clearSearching(
+        importStore: ImportStore,
+        key: String,
+        tab: SearchTab,
+        source: MetadataSource,
+        error: String?
+    ) {
+        importStore.mutateCandidate(forKey: key) { candidate in
+            if let error {
+                candidate.error = error
+            }
+            var tabResults = candidate.search.results(
+                forTab: tab,
+                source: source
+            )
+            tabResults.isSearching = false
+            candidate.search.setResults(
+                tabResults,
+                forTab: tab,
+                source: source
+            )
+            if error != nil {
+                candidate.searchTask = nil
+            }
+        }
+    }
+}
+
+extension ImportSearchFlow {
     // MARK: - Add as Unknown
 
     /// Project the candidate's audio files into a `ReleaseUserEdit`
@@ -242,35 +282,43 @@ enum ImportSearchFlow {
 
     // MARK: - Prefetch and confirm
 
+    /// The pressing the user picked to prefetch: the search `result`, the
+    /// `identityChoice` made at row-time (carried through to the confirmation
+    /// page so commit applies it), and the local track count to reconcile the
+    /// fetched detail against.
+    struct PrefetchSelection {
+        let result: MetadataResult
+        let identityChoice: IdentityChoice
+        let localTrackCount: UInt32?
+    }
+
     @MainActor
     static func prefetchAndConfirm(
         library: Library,
         importStore: ImportStore,
         key: String,
-        result: MetadataResult,
-        identityChoice: IdentityChoice,
-        localTrackCount: UInt32?
+        selection: PrefetchSelection
     ) {
         importStore.mutateCandidate(forKey: key) { candidate in
             candidate.mode = .loadingDetail
             candidate.error = nil
             // The choice was made at row-time. Carry it through
             // prefetch into the confirmation page so commit can apply it.
-            candidate.identityChoice = identityChoice
+            candidate.identityChoice = selection.identityChoice
         }
 
-        let releaseId = result.releaseId
-        let bridgeSource = result.source.bridge
+        let releaseId = selection.result.releaseId
+        let bridgeSource = selection.result.source.bridge
         let task = Task { @MainActor in
             do {
                 let bridgeDetail = try await library.prefetchRelease(
                     releaseId,
                     bridgeSource,
-                    localTrackCount
+                    selection.localTrackCount
                 )
                 let preview = shapeUserEditFromReleaseDetail(
                     detail: bridgeDetail,
-                    choice: identityChoice.bridge
+                    choice: selection.identityChoice.bridge
                 )
                 importStore.mutateCandidate(forKey: key) { candidate in
                     // Keep the full source detail: flipping the Exact /
@@ -331,7 +379,30 @@ enum ImportSearchFlow {
         }
     }
 
+}
+
+extension ImportSearchFlow {
     // MARK: - Shared search pane builder
+
+    /// The import-flow services a search pane drives: search/identify on
+    /// `importer`, prefetch on `library`, candidate state on `importStore`, and
+    /// Discogs availability on `configStore`.
+    struct ImportServices {
+        let importer: Importer
+        let library: Library
+        let importStore: ImportStore
+        let configStore: ConfigStore
+    }
+
+    /// Which candidate a search pane renders, and the selection state it shows:
+    /// `selectedReleaseId` is the pressing whose confirm pane is open (so its row
+    /// renders selected); `localTrackCount` reconciles a picked release's detail.
+    struct SearchPaneInput {
+        let candidate: Candidate
+        let key: String
+        let localTrackCount: UInt32?
+        let selectedReleaseId: String?
+    }
 
     /// `onSelect` defaults to the import flow's prefetch + docked-pane path
     /// (picking a pressing opens the confirm pane). Re-identify overrides it
@@ -341,54 +412,88 @@ enum ImportSearchFlow {
     @MainActor
     @ViewBuilder
     static func buildSearchPane(
-        importer: Importer,
-        library: Library,
-        importStore: ImportStore,
-        configStore: ConfigStore,
-        key: String,
-        candidate: Candidate,
-        localTrackCount: UInt32?,
+        services: ImportServices,
+        input: SearchPaneInput,
         openSettings: @escaping () -> Void,
-        /// Release id of the pressing whose confirm pane is open, so its row
-        /// renders selected.
-        selectedReleaseId: String?,
         onAddAsUnknown: (() -> Void)?,
-        onSelect: ((MetadataResult) -> Void)? = nil,
+        onSelect: ((MetadataResult) -> Void)? = nil
     ) -> some View {
-        let tabResults = candidate.search.activeResults()
+        let key = input.key
+        let importStore = services.importStore
         // Picking a pressing row defaults to claiming it as the exact pressing;
         // the pane's Import-as toggle flips it to Metadata-only afterward.
-        let resolvedOnSelect: (MetadataResult) -> Void =
-            onSelect
-            ?? { result in
-                prefetchAndConfirm(
-                    library: library,
-                    importStore: importStore,
-                    key: key,
-                    result: result,
-                    identityChoice: .exact(
-                        releaseId: result.releaseId,
-                        source: result.source
-                    ),
-                    localTrackCount: localTrackCount
-                )
-            }
+        let resolvedOnSelect =
+            onSelect ?? defaultOnSelect(services: services, input: input)
+        let fields = searchFieldBindings(importStore: importStore, input: input)
 
         ImportSearchPane(
-            state: ImportSearchState(
-                identifyState: candidate.identifyState,
-                showManualSearch: candidate.search.showManualSearch,
-                error: candidate.error,
-                searchGroups: tabResults.groups,
-                selectedReleaseId: selectedReleaseId,
-                isSearching: tabResults.isSearching,
-                hasSearched: tabResults.hasSearched,
-                isImporting: isImporting(candidate),
-                libraryStatuses: candidate.libraryStatuses,
-                discogsEnabled: configStore.config.discogsUsable,
-                signals: candidate.signals,
-                signalsToolbar: candidate.signalsToolbar,
+            state: searchPaneState(
+                candidate: input.candidate,
+                services: services,
+                input: input
             ),
+            activeTab: fields.activeTab,
+            activeSource: fields.activeSource,
+            searchArtist: fields.artist,
+            searchAlbum: fields.album,
+            searchCatalog: fields.catalog,
+            searchBarcode: fields.barcode,
+            onSearch: {
+                dispatchSearch(
+                    importer: services.importer,
+                    importStore: importStore,
+                    key: key
+                )
+            },
+            onOpenSettings: openSettings,
+            onSearchManually: setManualSearch(
+                importStore: importStore,
+                key: key,
+                on: true
+            ),
+            onViewMatches: setManualSearch(
+                importStore: importStore,
+                key: key,
+                on: false
+            ),
+            onAddAsUnknown: onAddAsUnknown,
+            onToggleSignal: { signal in
+                services.importer.toggleSignalForCandidate(key, signal.bridge)
+            },
+            onRerun: { services.importer.rerunIdentifyForCandidate(key) },
+            onSelect: resolvedOnSelect,
+        )
+    }
+
+    /// The tab/source/text bindings the pane's form edits, each writing back
+    /// through `mutateCandidate` so edits land on the candidate in the store.
+    struct SearchFieldBindings {
+        let activeTab: Binding<SearchTab>
+        let activeSource: Binding<MetadataSource>
+        let artist: Binding<String>
+        let album: Binding<String>
+        let catalog: Binding<String>
+        let barcode: Binding<String>
+    }
+
+    @MainActor
+    private static func searchFieldBindings(
+        importStore: ImportStore,
+        input: SearchPaneInput
+    ) -> SearchFieldBindings {
+        let candidate = input.candidate
+        let key = input.key
+        func text(
+            _ field: WritableKeyPath<CandidateSearchState, String>
+        ) -> Binding<String> {
+            makeSearchFieldBinding(
+                importStore: importStore,
+                key: key,
+                candidate: candidate,
+                field: field
+            )
+        }
+        return SearchFieldBindings(
             activeTab: makeActiveTabBinding(
                 importStore: importStore,
                 key: key,
@@ -399,57 +504,75 @@ enum ImportSearchFlow {
                 key: key,
                 candidate: candidate
             ),
-            searchArtist: makeSearchFieldBinding(
-                importStore: importStore,
-                key: key,
-                candidate: candidate,
-                field: \.searchArtist
-            ),
-            searchAlbum: makeSearchFieldBinding(
-                importStore: importStore,
-                key: key,
-                candidate: candidate,
-                field: \.searchAlbum
-            ),
-            searchCatalog: makeSearchFieldBinding(
-                importStore: importStore,
-                key: key,
-                candidate: candidate,
-                field: \.searchCatalog
-            ),
-            searchBarcode: makeSearchFieldBinding(
-                importStore: importStore,
-                key: key,
-                candidate: candidate,
-                field: \.searchBarcode
-            ),
-            onSearch: {
-                dispatchSearch(
-                    importer: importer,
-                    importStore: importStore,
-                    key: key
-                )
-            },
-            onOpenSettings: openSettings,
-            onSearchManually: {
-                importStore.mutateCandidate(forKey: key) {
-                    $0.search.showManualSearch = true
-                }
-            },
-            onViewMatches: {
-                importStore.mutateCandidate(forKey: key) {
-                    $0.search.showManualSearch = false
-                }
-            },
-            onAddAsUnknown: onAddAsUnknown,
-            onToggleSignal: { signal in
-                importer.toggleSignalForCandidate(key, signal.bridge)
-            },
-            onRerun: {
-                importer.rerunIdentifyForCandidate(key)
-            },
-            onSelect: resolvedOnSelect,
+            artist: text(\.searchArtist),
+            album: text(\.searchAlbum),
+            catalog: text(\.searchCatalog),
+            barcode: text(\.searchBarcode)
         )
+    }
+
+    /// Show (`on: true`) or hide (`on: false`) the manual-search fields by
+    /// flipping the candidate's `showManualSearch` flag.
+    @MainActor
+    private static func setManualSearch(
+        importStore: ImportStore,
+        key: String,
+        on: Bool
+    ) -> () -> Void {
+        {
+            importStore.mutateCandidate(forKey: key) {
+                $0.search.showManualSearch = on
+            }
+        }
+    }
+
+    /// The pane's read-only state snapshot from the candidate, plus the
+    /// open-confirm selection and Discogs availability the pane renders against.
+    @MainActor
+    private static func searchPaneState(
+        candidate: Candidate,
+        services: ImportServices,
+        input: SearchPaneInput
+    ) -> ImportSearchState {
+        let tabResults = candidate.search.activeResults()
+        return ImportSearchState(
+            identifyState: candidate.identifyState,
+            showManualSearch: candidate.search.showManualSearch,
+            error: candidate.error,
+            searchGroups: tabResults.groups,
+            selectedReleaseId: input.selectedReleaseId,
+            isSearching: tabResults.isSearching,
+            hasSearched: tabResults.hasSearched,
+            isImporting: isImporting(candidate),
+            libraryStatuses: candidate.libraryStatuses,
+            discogsEnabled: services.configStore.config.discogsUsable,
+            signals: candidate.signals,
+            signalsToolbar: candidate.signalsToolbar,
+        )
+    }
+
+    /// The default row-pick handler: claim the picked pressing as Exact and run
+    /// `prefetchAndConfirm`. Re-identify overrides this with its own `onSelect`.
+    @MainActor
+    private static func defaultOnSelect(
+        services: ImportServices,
+        input: SearchPaneInput
+    ) -> (MetadataResult) -> Void {
+        { result in
+            prefetchAndConfirm(
+                library: services.library,
+                importStore: services.importStore,
+                key: input.key,
+                selection: PrefetchSelection(
+                    result: result,
+                    identityChoice: .exact(
+                        releaseId: result.releaseId,
+                        source: result.source
+                    ),
+                    localTrackCount: input.localTrackCount
+                )
+            )
+        }
     }
 
     // MARK: - Import-as choice (in the pane)
@@ -507,7 +630,14 @@ enum ImportSearchFlow {
         // populated by the time this binding is read. Force-unwrap on
         // get keeps the binding non-optional for the form.
         Binding(
-            get: { candidate.editValues! },
+            get: {
+                guard let values = candidate.editValues else {
+                    preconditionFailure(
+                        "editValues must be seeded before the confirm binding is read"
+                    )
+                }
+                return values
+            },
             set: { newValue in
                 importStore.mutateCandidate(forKey: key) {
                     $0.editValues = newValue
@@ -516,85 +646,79 @@ enum ImportSearchFlow {
         )
     }
 
-    /// Build the confirmation view for a candidate. Source-detail
-    /// fields (track-count mismatch, library status, remote cover art)
-    /// are passed as discrete inputs rather than a whole
+    /// The candidate, services, and source-detail-derived display inputs a
+    /// confirmation view renders. The detail fields (track-count mismatch,
+    /// library status, remote cover art) are discrete rather than a whole
     /// `ImportReleaseDetail`, so Unknown imports can supply their
-    /// file-tag-derived equivalents (no source release id, no remote
-    /// cover art, no track-count source to mismatch against).
+    /// file-tag-derived equivalents (no source release id, no remote cover art,
+    /// no track-count source to mismatch against).
+    struct ConfirmationInputs {
+        let importStore: ImportStore
+        let key: String
+        let uiStore: UiStore
+        let trackCountMismatch: Bool
+        let expectedTrackCount: UInt32
+        let libraryStatus: LibraryStatus?
+        let remoteCoverArts: [BridgeRemoteCover]
+        let hasCoverOptions: Bool
+        let storageManaged: Binding<Bool>
+        let storagePinned: Binding<Bool>
+        let importDisabled: Bool
+        let localArtwork: [ArtworkFile]
+    }
+
+    /// The confirmation view's action callbacks: commit the import, and open the
+    /// just-imported release in the library.
+    struct ConfirmationCallbacks {
+        let onConfirmImport: () -> Void
+        let onViewInLibrary: (String) -> Void
+    }
+
+    /// Build the confirmation view for a candidate.
     @MainActor
     @ViewBuilder
     static func buildConfirmationView(
-        importStore: ImportStore,
-        key: String,
-        trackCountMismatch: Bool,
-        expectedTrackCount: UInt32,
-        libraryStatus: LibraryStatus?,
-        remoteCoverArts: [BridgeRemoteCover],
-        hasCoverOptions: Bool,
-        storageManaged: Binding<Bool>,
-        storagePinned: Binding<Bool>,
-        importDisabled: Bool,
-        localArtwork: [ArtworkFile],
-        uiStore: UiStore,
-        onConfirmImport: @escaping () -> Void,
-        onViewInLibrary: @escaping (String) -> Void,
+        inputs: ConfirmationInputs,
+        callbacks: ConfirmationCallbacks,
         @ViewBuilder coverContent: @escaping () -> some View,
-        @ViewBuilder actionExtra: @escaping () -> some View,
+        @ViewBuilder actionExtra: @escaping () -> some View
     ) -> some View {
+        let importStore = inputs.importStore
+        let key = inputs.key
+        let uiStore = inputs.uiStore
         let candidate = importStore.candidate(forKey: key)
         let selectedCover = candidate?.selectedCover
         let importing = candidate.map(isImporting) ?? false
 
         if let candidate {
-            // The Exact / Metadata-only toggle applies only to a source-backed
-            // pick; Unknown imports have no detail or release ref and get no
-            // toggle. Unwrapping here means `changeChoice` needs no in-closure
-            // guard.
-            let exactness: ImportExactnessChoice? = {
-                guard let detail = candidate.releaseDetailBridge,
-                    let choice = candidate.identityChoice,
-                    let ref = choice.releaseRef
-                else {
-                    return nil
-                }
-                return ImportExactnessChoice(
-                    isMetadataOnly: choice.isApproximate,
-                    onSelect: { wantExact in
-                        changeChoice(
-                            importStore: importStore,
-                            key: key,
-                            detail: detail,
-                            ref: ref,
-                            wantExact: wantExact
-                        )
-                    }
-                )
-            }()
             ImportConfirmationView(
                 values: makeEditValuesBinding(
                     importStore: importStore,
                     key: key,
                     candidate: candidate
                 ),
-                storageManaged: storageManaged,
-                storagePinned: storagePinned,
-                importDisabled: importDisabled,
-                trackCountMismatch: trackCountMismatch,
-                expectedTrackCount: expectedTrackCount,
-                libraryStatus: libraryStatus,
+                storageManaged: inputs.storageManaged,
+                storagePinned: inputs.storagePinned,
+                importDisabled: inputs.importDisabled,
+                trackCountMismatch: inputs.trackCountMismatch,
+                expectedTrackCount: inputs.expectedTrackCount,
+                libraryStatus: inputs.libraryStatus,
                 importStatus: candidate.importStatus,
                 error: candidate.error,
-                hasCoverOptions: hasCoverOptions,
+                hasCoverOptions: inputs.hasCoverOptions,
                 importing: importing,
-                exactness: exactness,
-                onConfirmImport: onConfirmImport,
-                onViewInLibrary: onViewInLibrary,
+                exactness: exactnessChoice(
+                    for: candidate,
+                    importStore: importStore,
+                    key: key
+                ),
+                onConfirmImport: callbacks.onConfirmImport,
+                onViewInLibrary: callbacks.onViewInLibrary,
                 onEditCover: {
                     uiStore.presentModal {
                         CoverPickerView(
-                            remoteCoverArts: remoteCoverArts,
-                            localArtwork: localArtwork,
+                            remoteCoverArts: inputs.remoteCoverArts,
+                            localArtwork: inputs.localArtwork,
                             selectedCover: selectedCover,
                             onSelect: { selection in
                                 importStore.mutateCandidate(forKey: key) {
@@ -611,5 +735,36 @@ enum ImportSearchFlow {
                 actionExtra: actionExtra,
             )
         }
+    }
+
+    /// The Exact / Metadata-only toggle, or `nil` when it doesn't apply. The
+    /// toggle renders only for a source-backed pick (one with a stored detail and
+    /// a release ref); Unknown imports have neither and get no toggle.
+    /// Unwrapping the detail/ref here means `changeChoice` needs no in-closure
+    /// guard.
+    @MainActor
+    private static func exactnessChoice(
+        for candidate: Candidate,
+        importStore: ImportStore,
+        key: String
+    ) -> ImportExactnessChoice? {
+        guard let detail = candidate.releaseDetailBridge,
+            let choice = candidate.identityChoice,
+            let ref = choice.releaseRef
+        else {
+            return nil
+        }
+        return ImportExactnessChoice(
+            isMetadataOnly: choice.isApproximate,
+            onSelect: { wantExact in
+                changeChoice(
+                    importStore: importStore,
+                    key: key,
+                    detail: detail,
+                    ref: ref,
+                    wantExact: wantExact
+                )
+            }
+        )
     }
 }

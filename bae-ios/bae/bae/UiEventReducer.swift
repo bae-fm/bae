@@ -33,16 +33,27 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         let mediaControlService = mediaControlService
         let appHandle = appHandle
         Task { @MainActor in
-            UiEventReducer.reduce(
-                event,
+            let context = ReducerContext(
                 playbackStore: playbackStore,
                 configStore: configStore,
                 libraryStore: libraryStore,
                 mediaControlService: mediaControlService,
                 appHandle: appHandle
             )
+            UiEventReducer.reduce(event, into: context)
         }
     }
+}
+
+/// The stores and services a `UiEventReducer` writes, bundled so the reducer and
+/// its per-category helpers take one dependency rather than five separate ones.
+@MainActor
+struct ReducerContext {
+    let playbackStore: PlaybackStore
+    let configStore: ConfigStore
+    let libraryStore: LibraryStore
+    let mediaControlService: MediaControlService
+    let appHandle: AppHandle
 }
 
 /// Reduces the mobile subset of `BridgeUiEvent`s into the shared stores and the
@@ -51,21 +62,42 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
 /// lock-screen Now Playing info). Library, config, sync, and error events land
 /// on their stores.
 ///
-/// Desktop-only events (import, scan, candidate, preview) never fire on
-/// iOS; the trailing `default` logs any such variant so a future mobile-firing
-/// event is visible.
+/// `reduce` groups the variants by store and routes each group to a helper;
+/// the helpers handle only the variants routed to them. Desktop-only events
+/// (import, scan, candidate, preview) never fire on iOS; the trailing `default`
+/// logs any such variant so a future mobile-firing event is visible.
 enum UiEventReducer {
     @MainActor
-    static func reduce(
-        _ event: BridgeUiEvent,
-        playbackStore: PlaybackStore,
-        configStore: ConfigStore,
-        libraryStore: LibraryStore,
-        mediaControlService: MediaControlService,
-        appHandle: AppHandle
-    ) {
+    static func reduce(_ event: BridgeUiEvent, into context: ReducerContext) {
         switch event {
-        // ── Library ──────────────────────────────────────────────────────
+        case .albumAdded, .albumUpdated, .albumRemoved,
+            .releaseAdded, .releaseUpdated, .releaseRemoved:
+            reduceLibraryShape(event, into: context)
+
+        case .playbackPlaying, .playbackPaused:
+            reducePlaybackTransport(event, into: context)
+
+        case .playbackLoading, .playbackStopped, .playbackError, .playbackProgress:
+            reducePlaybackState(event, into: context)
+
+        case .repeatModeChanged, .volumeChanged, .muteChanged, .queueUpdated:
+            reducePlaybackControls(event, into: context)
+
+        case .configChanged, .syncError, .error, .errorCleared:
+            reduceConfigAndError(event, into: context)
+
+        default:
+            logger.debug("ignoring event \(String(describing: event), privacy: .public)")
+        }
+    }
+
+    // Each helper handles only the variants `reduce` routes to it; the `default`
+    // is unreachable in practice and present only for switch exhaustiveness.
+
+    @MainActor
+    private static func reduceLibraryShape(_ event: BridgeUiEvent, into context: ReducerContext) {
+        let libraryStore = context.libraryStore
+        switch event {
         case .albumAdded(let album):
             libraryStore.handleAlbumAdded(album: album)
             libraryStore.libraryShapeSubject.send(
@@ -105,7 +137,17 @@ enum UiEventReducer {
                 .releaseRemoved(albumId: albumId, releaseId: releaseId)
             )
 
-        // ── Playback ───────────────────────────────────────────────────
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private static func reducePlaybackTransport(
+        _ event: BridgeUiEvent,
+        into context: ReducerContext
+    ) {
+        switch event {
         case .playbackPlaying(
             let trackId,
             let trackTitle,
@@ -116,25 +158,19 @@ enum UiEventReducer {
             let coverImageId,
             let durationMs
         ):
-            playbackStore.nowPlaying = .playing(
-                NowPlayingTrack(
+            applyNowPlaying(
+                track: NowPlayingTrack(
                     trackId: trackId,
                     trackTitle: trackTitle,
                     artistNames: artistNames,
                     albumId: albumId,
                     coverImageId: coverImageId,
                     durationMs: durationMs
-                )
-            )
-            mediaControlService.beginPlaybackSession()
-            mediaControlService.updateNowPlaying(
-                trackTitle: trackTitle,
-                artistNames: artistNames,
+                ),
                 albumTitle: albumTitle,
-                coverImageId: coverImageId,
-                durationMs: durationMs,
                 isPlaying: true,
-                appHandle: appHandle
+                beginsSession: true,
+                into: context
             )
 
         case .playbackPaused(
@@ -147,26 +183,60 @@ enum UiEventReducer {
             let coverImageId,
             let durationMs
         ):
-            playbackStore.nowPlaying = .paused(
-                NowPlayingTrack(
+            applyNowPlaying(
+                track: NowPlayingTrack(
                     trackId: trackId,
                     trackTitle: trackTitle,
                     artistNames: artistNames,
                     albumId: albumId,
                     coverImageId: coverImageId,
                     durationMs: durationMs
-                )
-            )
-            mediaControlService.updateNowPlaying(
-                trackTitle: trackTitle,
-                artistNames: artistNames,
+                ),
                 albumTitle: albumTitle,
-                coverImageId: coverImageId,
-                durationMs: durationMs,
                 isPlaying: false,
-                appHandle: appHandle
+                beginsSession: false,
+                into: context
             )
 
+        default:
+            break
+        }
+    }
+
+    /// Set the now-playing track (playing vs paused) and mirror it to the lock
+    /// screen, activating the audio session when a fresh playing event begins
+    /// one. `albumTitle` is the one lock-screen field `NowPlayingTrack` doesn't
+    /// carry (it holds `albumId` for navigation instead).
+    @MainActor
+    private static func applyNowPlaying(
+        track: NowPlayingTrack,
+        albumTitle: String,
+        isPlaying: Bool,
+        beginsSession: Bool,
+        into context: ReducerContext
+    ) {
+        context.playbackStore.nowPlaying = isPlaying ? .playing(track) : .paused(track)
+        if beginsSession {
+            context.mediaControlService.beginPlaybackSession()
+        }
+        context.mediaControlService.updateNowPlaying(
+            NowPlayingMetadata(
+                trackTitle: track.trackTitle,
+                artistNames: track.artistNames,
+                albumTitle: albumTitle,
+                coverImageId: track.coverImageId,
+                durationMs: track.durationMs
+            ),
+            isPlaying: isPlaying,
+            appHandle: context.appHandle
+        )
+    }
+
+    @MainActor
+    private static func reducePlaybackState(_ event: BridgeUiEvent, into context: ReducerContext) {
+        let playbackStore = context.playbackStore
+        let mediaControlService = context.mediaControlService
+        switch event {
         case .playbackLoading(let trackId, let track):
             // Bare event (track == nil): enter loading, keep the prior track on
             // screen, and clear the frozen position bar. Resolved event: swap to the
@@ -202,7 +272,7 @@ enum UiEventReducer {
             // failure); core has already fallen back to stopped. Surface why —
             // the actionable cloud cases render their keyed line, everything
             // else the generic category line, resolved for the device locale.
-            configStore.showError(DisplayError(reason))
+            context.configStore.showError(DisplayError(reason))
 
         case .playbackProgress(
             let positionMs,
@@ -224,6 +294,16 @@ enum UiEventReducer {
                 durationMs: durationMs
             )
 
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private static func reducePlaybackControls(_ event: BridgeUiEvent, into context: ReducerContext)
+    {
+        let playbackStore = context.playbackStore
+        switch event {
         case .repeatModeChanged(let mode):
             playbackStore.repeatMode = RepeatMode(bridge: mode)
 
@@ -235,12 +315,20 @@ enum UiEventReducer {
 
         case .queueUpdated(let items, let hasNext, let hasPrevious):
             playbackStore.queueItems = items.map(QueueItem.init(bridge:))
-            mediaControlService.updateCommandAvailability(
+            context.mediaControlService.updateCommandAvailability(
                 hasNext: hasNext,
                 hasPrevious: hasPrevious
             )
 
-        // ── Config / sync ──────────────────────────────────────────────
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private static func reduceConfigAndError(_ event: BridgeUiEvent, into context: ReducerContext) {
+        let configStore = context.configStore
+        switch event {
         case .configChanged(let config, let syncReady):
             configStore.config = Config(bridge: config)
             configStore.syncReady = syncReady
@@ -251,17 +339,14 @@ enum UiEventReducer {
             // along on the `DisplayError` for a copyable disclosure.
             configStore.syncError = error.map { DisplayError($0) }
 
-        // ── Errors ─────────────────────────────────────────────────────
         case .error(let error):
             configStore.showError(DisplayError(error))
 
         case .errorCleared:
             configStore.clearError()
 
-        // Desktop-only (import/scan/candidate/preview) variants never fire
-        // on iOS; log if one ever does.
         default:
-            logger.debug("ignoring event \(String(describing: event), privacy: .public)")
+            break
         }
     }
 }

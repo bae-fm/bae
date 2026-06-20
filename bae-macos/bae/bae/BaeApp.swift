@@ -227,6 +227,14 @@ struct BaeApp: App {
     }
 
     var body: some Scene {
+        mainWindow
+        storageManagerWindow
+        settingsWindow
+    }
+}
+
+extension BaeApp {
+    private var mainWindow: some Scene {
         Window("bae", id: "main") {
             libraryModals(
                 Group {
@@ -280,6 +288,9 @@ struct BaeApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .commandsRemoved()
+    }
+
+    private var storageManagerWindow: some Scene {
         Window("Storage Manager", id: "storage-manager") {
             if let appService = appDelegate.appService {
                 StorageManagerView()
@@ -306,6 +317,9 @@ struct BaeApp: App {
         }
         .defaultSize(width: 800, height: 500)
         .commandsRemoved()
+    }
+
+    private var settingsWindow: some Scene {
         Settings {
             if let appService = appDelegate.appService {
                 SettingsView(checkForUpdatesViewModel: checkForUpdatesViewModel)

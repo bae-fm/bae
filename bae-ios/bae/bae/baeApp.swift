@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct baeApp: App {
+struct BaeApp: App {
     // The host's OAuth client config and any error loading it. Present only in a
     // full build; a baeium (S3-only) build compiles out the OAuth flow entirely, so
     // there is nothing to load and no property to carry.

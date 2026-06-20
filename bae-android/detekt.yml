@@ -1,30 +1,33 @@
-# Detekt config for the Android app, applied on top of detekt's defaults
-# (CI: `detekt --config bae-android/detekt.yml --build-upon-default-config`).
-# The codebase predates these opinionated default rules and follows a lighter
-# house style, so the rules it doesn't adopt are disabled, and Jetpack Compose's
-# PascalCase @Composable / @Preview function names are allowed (FunctionNaming
-# otherwise flags every Composable).
-complexity:
-  LongMethod:
-    active: false
-  LongParameterList:
-    active: false
-  CyclomaticComplexMethod:
-    active: false
-  TooManyFunctions:
-    active: false
+# Overlay on top of detekt's built-in defaults (--build-upon-default-config).
+# Only deviations from the defaults are listed here.
+
 exceptions:
+  # Kotlin coroutines surface arbitrary platform exceptions as `Exception`.
+  # Catching the base type is the correct pattern when the caller cannot
+  # enumerate all possible subtypes from a heterogeneous async call stack.
   TooGenericExceptionCaught:
     active: false
-  SwallowedException:
-    active: false
+
 naming:
+  # Jetpack Compose @Composable functions use PascalCase by convention
+  # (same exemption applied to ktlint via .editorconfig). detekt's
+  # FunctionNaming doesn't understand the Compose annotation.
   FunctionNaming:
-    ignoreAnnotated: ['Composable', 'Preview']
+    active: false
+  # Compose files commonly contain both a parameter data class and the
+  # composable that uses it. detekt counts only class declarations (not
+  # @Composable functions) as top-level declarations, so every such file
+  # falsely fires this rule.
+  MatchingDeclarationName:
+    active: false
+
 style:
   MagicNumber:
-    active: false
-  ReturnCount:
-    active: false
+    # Property declarations are the naming point for constants: `val Foo = Color(0xFF…)`
+    # names the value. Inline literals in expressions are still flagged.
+    ignorePropertyDeclaration: true
   UtilityClassWithPublicConstructor:
+    # Keyring.kt is the JNI bootstrap for the native keyring library; it uses
+    # class + companion object to produce the correct JNI symbol names. Making
+    # it an `object` would break the JNI ABI.
     active: false

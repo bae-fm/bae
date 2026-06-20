@@ -130,8 +130,11 @@
             }
         }
 
-        // MARK: - CloudKitDriver Protocol
+    }
 
+    // MARK: - CloudKitDriver Protocol
+
+    extension CloudKitService {
         func writeRecord(key: String, data: Data) throws {
             try ensureZone()
             let sem = DispatchSemaphore(value: 0)
@@ -219,77 +222,81 @@
 
         func listRecords(prefix: String) throws -> [String] {
             try ensureZone()
-            nonisolated(unsafe) var keys: [String] = []
+            var keys: [String] = []
 
             let predicate = NSPredicate(format: "key BEGINSWITH %@", prefix)
             let query = CKQuery(recordType: recordType, predicate: predicate)
 
-            // Initial fetch
-            nonisolated(unsafe) var cursor: CKQueryOperation.Cursor? = nil
-            do {
-                let sem = DispatchSemaphore(value: 0)
-                nonisolated(unsafe) var resultError: Error?
-                nonisolated(unsafe) var nextCursor: CKQueryOperation.Cursor?
-
-                database.fetch(withQuery: query, inZoneWith: zoneID) { result in
-                    switch result {
-                    case .success((let matchResults, let queryCursor)):
-                        nextCursor = queryCursor
-                        for (_, recordResult) in matchResults {
-                            if case .success(let record) = recordResult,
-                                let key = record["key"] as? String
-                            {
-                                keys.append(key)
-                            }
-                        }
-                    case .failure(let error):
-                        resultError = error
-                    }
-                    sem.signal()
-                }
-                sem.wait()
-
-                if let error = resultError {
-                    throw CloudKitError.Storage(
-                        msg: cloudKitErrorMessage(error, op: "List")
-                    )
-                }
-                cursor = nextCursor
+            var cursor = try fetchKeysPage(into: &keys) { handler in
+                database.fetch(
+                    withQuery: query,
+                    inZoneWith: zoneID,
+                    completionHandler: handler
+                )
             }
-
-            // Fetch remaining pages
             while let activeCursor = cursor {
-                let sem = DispatchSemaphore(value: 0)
-                nonisolated(unsafe) var resultError: Error?
-                nonisolated(unsafe) var nextCursor: CKQueryOperation.Cursor?
-
-                database.fetch(withCursor: activeCursor) { result in
-                    switch result {
-                    case .success((let matchResults, let queryCursor)):
-                        nextCursor = queryCursor
-                        for (_, recordResult) in matchResults {
-                            if case .success(let record) = recordResult,
-                                let key = record["key"] as? String
-                            {
-                                keys.append(key)
-                            }
-                        }
-                    case .failure(let error):
-                        resultError = error
-                    }
-                    sem.signal()
-                }
-                sem.wait()
-
-                if let error = resultError {
-                    throw CloudKitError.Storage(
-                        msg: cloudKitErrorMessage(error, op: "List")
+                cursor = try fetchKeysPage(into: &keys) { handler in
+                    database.fetch(
+                        withCursor: activeCursor,
+                        completionHandler: handler
                     )
                 }
-                cursor = nextCursor
             }
 
             return keys
+        }
+
+        /// Run one CloudKit query page synchronously: `issue` starts the fetch
+        /// with the given completion handler (the initial `withQuery` or a
+        /// follow-up `withCursor`). Appends every matched record's `key` to
+        /// `keys` and returns the next page's cursor (`nil` when the last page is
+        /// reached). Throws on the page's failure result.
+        private func fetchKeysPage(
+            into keys: inout [String],
+            issue: (
+                @escaping (
+                    Result<
+                        (
+                            matchResults: [(
+                                CKRecord.ID, Result<CKRecord, Error>
+                            )],
+                            queryCursor: CKQueryOperation.Cursor?
+                        ),
+                        Error
+                    >
+                ) -> Void
+            ) -> Void
+        ) throws -> CKQueryOperation.Cursor? {
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var pageKeys: [String] = []
+            nonisolated(unsafe) var resultError: Error?
+            nonisolated(unsafe) var nextCursor: CKQueryOperation.Cursor?
+
+            issue { result in
+                switch result {
+                case .success((let matchResults, let queryCursor)):
+                    nextCursor = queryCursor
+                    for (_, recordResult) in matchResults {
+                        if case .success(let record) = recordResult,
+                            let key = record["key"] as? String
+                        {
+                            pageKeys.append(key)
+                        }
+                    }
+                case .failure(let error):
+                    resultError = error
+                }
+                sem.signal()
+            }
+            sem.wait()
+
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(error, op: "List")
+                )
+            }
+            keys.append(contentsOf: pageKeys)
+            return nextCursor
         }
 
         func deleteRecord(key: String) throws {

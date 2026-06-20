@@ -1,24 +1,8 @@
 root = true
 
 # ktlint configuration for the Android app's hand-written Kotlin (the CI step
-# runs `ktlint "bae-android/app/src/**/*.kt"` with brew's latest ktlint). The
-# codebase predates ktlint 1.x's stricter `ktlint_official` formatting rules and
-# follows a lighter house style, so relax the newest strict rules it doesn't
-# adopt and allow Jetpack Compose's PascalCase `@Composable` / `@Preview`
-# function names (the standard function-naming rule otherwise flags every one).
+# runs `ktlint "bae-android/app/src/**/*.kt"` with brew's latest ktlint).
+# Jetpack Compose @Composable / @Preview functions use PascalCase by convention;
+# the standard function-naming rule would flag every one.
 [*.{kt,kts}]
 ktlint_function_naming_ignore_when_annotated_with = Composable,Preview
-ktlint_standard_function-signature = disabled
-ktlint_standard_function-expression-body = disabled
-ktlint_standard_multiline-expression-wrapping = disabled
-ktlint_standard_chain-method-continuation = disabled
-ktlint_standard_when-entry-bracing = disabled
-ktlint_standard_class-signature = disabled
-ktlint_standard_blank-line-between-when-conditions = disabled
-ktlint_standard_blank-line-before-declaration = disabled
-ktlint_standard_if-else-wrapping = disabled
-ktlint_standard_multiline-if-else = disabled
-ktlint_standard_no-blank-line-before-rbrace = disabled
-ktlint_standard_import-ordering = disabled
-ktlint_standard_no-empty-first-line-in-class-body = disabled
-ktlint_standard_if-else-bracing = disabled

@@ -238,9 +238,11 @@ struct StorageTableView: NSViewRepresentable {
         coordinator.applySortIndicator(to: outlineView, sort: sort)
         coordinator.applySelection(selection, to: outlineView)
     }
+}
 
-    // MARK: - Coordinator
+// MARK: - Coordinator
 
+extension StorageTableView {
     @MainActor
     final class Coordinator: NSObject, NSOutlineViewDataSource,
         NSOutlineViewDelegate
@@ -498,227 +500,231 @@ struct StorageTableView: NSViewRepresentable {
                 self.outlineView?.reloadItem(release, reloadChildren: true)
             }
         }
+    }
+}
 
-        // MARK: Sorting
+// MARK: - Sorting & selection
 
-        func outlineView(
-            _ outlineView: NSOutlineView,
-            sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]
-        ) {
-            guard
-                let descriptor = outlineView.sortDescriptors.first,
-                let key = descriptor.key,
-                let field = sortField(forDescriptorKey: key)
-            else {
-                return
-            }
-            // Server-side sort: write the new `BridgeStorageSort` back through
-            // the binding so the view's `rebuildList()` runs. The header
-            // indicator already reflects the click.
-            sort.wrappedValue = BridgeStorageSort(
-                field: field,
-                direction: descriptor.ascending ? .ascending : .descending
-            )
+extension StorageTableView.Coordinator {
+    func outlineView(
+        _ outlineView: NSOutlineView,
+        sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]
+    ) {
+        guard
+            let descriptor = outlineView.sortDescriptors.first,
+            let key = descriptor.key,
+            let field = sortField(forDescriptorKey: key)
+        else {
+            return
         }
+        // Server-side sort: write the new `BridgeStorageSort` back through
+        // the binding so the view's `rebuildList()` runs. The header
+        // indicator already reflects the click.
+        sort.wrappedValue = BridgeStorageSort(
+            field: field,
+            direction: descriptor.ascending ? .ascending : .descending
+        )
+    }
 
-        /// Reflect the active `BridgeStorageSort` in the header indicator
-        /// without re-triggering `sortDescriptorsDidChange` (set the array
-        /// directly rather than mutating the column).
-        func applySortIndicator(
-            to outlineView: NSOutlineView,
-            sort: BridgeStorageSort
-        ) {
-            guard
-                let column = StorageTableColumn.allCases.first(where: {
-                    $0.sortField == sort.field
-                })
+    /// Reflect the active `BridgeStorageSort` in the header indicator
+    /// without re-triggering `sortDescriptorsDidChange` (set the array
+    /// directly rather than mutating the column).
+    func applySortIndicator(
+        to outlineView: NSOutlineView,
+        sort: BridgeStorageSort
+    ) {
+        guard
+            let column = StorageTableColumn.allCases.first(where: {
+                $0.sortField == sort.field
+            })
+        else {
+            logger.error(
+                "Sort field \(String(describing: sort.field)) maps to no column"
+            )
+            return
+        }
+        let descriptor = NSSortDescriptor(
+            key: column.rawValue,
+            ascending: sort.direction == .ascending
+        )
+        if outlineView.sortDescriptors.first != descriptor {
+            outlineView.sortDescriptors = [descriptor]
+        }
+    }
+
+    // MARK: Selection
+
+    /// The release id an outline item belongs to: a release row resolves
+    /// through `list.idAt(index)`, a file row carries its owning release id.
+    func releaseId(for item: Any) -> String? {
+        if let release = item as? StorageReleaseItem {
+            return list.idAt(release.index)
+        }
+        if let file = item as? StorageFileItem {
+            return file.releaseId
+        }
+        return nil
+    }
+
+    func outlineViewSelectionDidChange(_ notification: Notification) {
+        guard !applyingSelection,
+            let outlineView = notification.object as? NSOutlineView
+        else {
+            return
+        }
+        var ids: Set<String> = []
+        for row in outlineView.selectedRowIndexes {
+            guard let item = outlineView.item(atRow: row) else {
+                logger.warning("Selected row \(row) resolved no item")
+                continue
+            }
+            if let id = releaseId(for: item) {
+                ids.insert(id)
+            }
+        }
+        if ids != selection.wrappedValue {
+            selection.wrappedValue = ids
+        }
+    }
+
+    /// Push the bound release-id selection into the outline view's row
+    /// selection, mapping each id to its loaded position. Guarded so the
+    /// resulting delegate callback doesn't echo back through the binding.
+    func applySelection(
+        _ ids: Set<String>,
+        to outlineView: NSOutlineView?
+    ) {
+        guard let outlineView else { return }
+        var rows = IndexSet()
+        for id in ids {
+            // `position(of:)` reads loaded segments, which can briefly hold
+            // a position past the freshly-rebuilt `rootItems` right after an
+            // `invalidate()` shrinks the count (stale segments outlive the
+            // rebuild). A selected id whose row isn't currently loaded can't
+            // be highlighted yet; skip it.
+            guard let position = list.position(of: id),
+                position < rootItems.count
             else {
-                logger.error(
-                    "Sort field \(String(describing: sort.field)) maps to no column"
+                logger.debug(
+                    "Selected release \(id) has no loaded row to highlight"
                 )
-                return
+                continue
             }
-            let descriptor = NSSortDescriptor(
-                key: column.rawValue,
-                ascending: sort.direction == .ascending
-            )
-            if outlineView.sortDescriptors.first != descriptor {
-                outlineView.sortDescriptors = [descriptor]
+            let row = outlineView.row(forItem: rootItems[position])
+            if row >= 0 {
+                rows.insert(row)
             }
         }
+        guard rows != outlineView.selectedRowIndexes else {
+            return
+        }
+        applyingSelection = true
+        outlineView.selectRowIndexes(rows, byExtendingSelection: false)
+        applyingSelection = false
+    }
+}
 
-        // MARK: Selection
+// MARK: - Cell views
 
-        /// The release id an outline item belongs to: a release row resolves
-        /// through `list.idAt(index)`, a file row carries its owning release id.
-        func releaseId(for item: Any) -> String? {
-            if let release = item as? StorageReleaseItem {
-                return list.idAt(release.index)
-            }
-            if let file = item as? StorageFileItem {
-                return file.releaseId
-            }
+extension StorageTableView.Coordinator {
+    func outlineView(
+        _ outlineView: NSOutlineView,
+        viewFor tableColumn: NSTableColumn?,
+        item: Any
+    ) -> NSView? {
+        guard
+            let tableColumn,
+            let column = StorageTableColumn(
+                rawValue: tableColumn.identifier.rawValue
+            )
+        else {
+            logger.error(
+                "No storage column for \(tableColumn?.identifier.rawValue ?? "nil")"
+            )
             return nil
         }
+        let cell = dequeueCell(outlineView, column: column)
+        cell.host(content(for: item, column: column))
+        return cell
+    }
 
-        func outlineViewSelectionDidChange(_ notification: Notification) {
-            guard !applyingSelection,
-                let outlineView = notification.object as? NSOutlineView
-            else {
-                return
-            }
-            var ids: Set<String> = []
-            for row in outlineView.selectedRowIndexes {
-                guard let item = outlineView.item(atRow: row) else {
-                    logger.warning("Selected row \(row) resolved no item")
-                    continue
-                }
-                if let id = releaseId(for: item) {
-                    ids.insert(id)
-                }
-            }
-            if ids != selection.wrappedValue {
-                selection.wrappedValue = ids
-            }
+    private func dequeueCell(
+        _ outlineView: NSOutlineView,
+        column: StorageTableColumn
+    ) -> HostingTableCell {
+        let identifier = NSUserInterfaceItemIdentifier(column.rawValue)
+        if let reused = outlineView.makeView(
+            withIdentifier: identifier,
+            owner: self
+        ) as? HostingTableCell {
+            return reused
         }
+        let cell = HostingTableCell()
+        cell.identifier = identifier
+        return cell
+    }
 
-        /// Push the bound release-id selection into the outline view's row
-        /// selection, mapping each id to its loaded position. Guarded so the
-        /// resulting delegate callback doesn't echo back through the binding.
-        func applySelection(
-            _ ids: Set<String>,
-            to outlineView: NSOutlineView?
-        ) {
-            guard let outlineView else { return }
-            var rows = IndexSet()
-            for id in ids {
-                // `position(of:)` reads loaded segments, which can briefly hold
-                // a position past the freshly-rebuilt `rootItems` right after an
-                // `invalidate()` shrinks the count (stale segments outlive the
-                // rebuild). A selected id whose row isn't currently loaded can't
-                // be highlighted yet; skip it.
-                guard let position = list.position(of: id),
-                    position < rootItems.count
-                else {
-                    logger.debug(
-                        "Selected release \(id) has no loaded row to highlight"
-                    )
-                    continue
-                }
-                let row = outlineView.row(forItem: rootItems[position])
-                if row >= 0 {
-                    rows.insert(row)
-                }
-            }
-            guard rows != outlineView.selectedRowIndexes else {
-                return
-            }
-            applyingSelection = true
-            outlineView.selectRowIndexes(rows, byExtendingSelection: false)
-            applyingSelection = false
+    /// SwiftUI content for a cell, wrapped with the environment values the
+    /// hosted cell views read at the leaf (`ImageView` needs `MediaPaths`;
+    /// the storage badge reads `OutboxStore`).
+    @ViewBuilder
+    private func content(
+        for item: Any,
+        column: StorageTableColumn
+    ) -> some View {
+        cellBody(for: item, column: column)
+            .environment(mediaPaths)
+            .environment(outboxStore)
+    }
+
+    @ViewBuilder
+    private func cellBody(
+        for item: Any,
+        column: StorageTableColumn
+    ) -> some View {
+        if let release = item as? StorageReleaseItem {
+            releaseCell(release, column: column)
         }
-
-        // MARK: Cell views
-
-        func outlineView(
-            _ outlineView: NSOutlineView,
-            viewFor tableColumn: NSTableColumn?,
-            item: Any
-        ) -> NSView? {
-            guard
-                let tableColumn,
-                let column = StorageTableColumn(
-                    rawValue: tableColumn.identifier.rawValue
-                )
-            else {
-                logger.error(
-                    "No storage column for \(tableColumn?.identifier.rawValue ?? "nil")"
-                )
-                return nil
-            }
-            let cell = dequeueCell(outlineView, column: column)
-            cell.host(content(for: item, column: column))
-            return cell
+        else if let file = item as? StorageFileItem {
+            StorageFileCell(file: file.file, column: column)
         }
+    }
 
-        private func dequeueCell(
-            _ outlineView: NSOutlineView,
-            column: StorageTableColumn
-        ) -> HostingTableCell {
-            let identifier = NSUserInterfaceItemIdentifier(column.rawValue)
-            if let reused = outlineView.makeView(
-                withIdentifier: identifier,
-                owner: self
-            ) as? HostingTableCell {
-                return reused
-            }
-            let cell = HostingTableCell()
-            cell.identifier = identifier
-            return cell
+    private func releaseCell(
+        _ release: StorageReleaseItem,
+        column: StorageTableColumn
+    ) -> AnyView {
+        guard let id = list.idAt(release.index) else {
+            // The page covering this row hasn't loaded yet; the load is
+            // already in flight from `ensureLoaded`. A standing bar shows
+            // until the id arrives and the row reloads.
+            return AnyView(StorageRowPlaceholderCell(column: column))
         }
-
-        /// SwiftUI content for a cell, wrapped with the environment values the
-        /// hosted cell views read at the leaf (`ImageView` needs `MediaPaths`;
-        /// the storage badge reads `OutboxStore`).
-        @ViewBuilder
-        private func content(
-            for item: Any,
-            column: StorageTableColumn
-        ) -> some View {
-            cellBody(for: item, column: column)
-                .environment(mediaPaths)
-                .environment(outboxStore)
-        }
-
-        @ViewBuilder
-        private func cellBody(
-            for item: Any,
-            column: StorageTableColumn
-        ) -> some View {
-            if let release = item as? StorageReleaseItem {
-                releaseCell(release, column: column)
-            }
-            else if let file = item as? StorageFileItem {
-                StorageFileCell(file: file.file, column: column)
-            }
-        }
-
-        private func releaseCell(
-            _ release: StorageReleaseItem,
-            column: StorageTableColumn
-        ) -> AnyView {
-            guard let id = list.idAt(release.index) else {
-                // The page covering this row hasn't loaded yet; the load is
-                // already in flight from `ensureLoaded`. A standing bar shows
-                // until the id arrives and the row reloads.
-                return AnyView(StorageRowPlaceholderCell(column: column))
-            }
-            guard let summary = libraryStore.releaseSummaries[id],
-                let album = libraryStore.albumSummaries[summary.albumId]
-            else {
-                // The id loaded but its summary/album didn't intern — a store
-                // inconsistency. Surface it; show the placeholder over a crash.
-                logger.error(
-                    "Loaded release \(id) has no interned summary or album"
-                )
-                return AnyView(StorageRowPlaceholderCell(column: column))
-            }
-            return AnyView(
-                StorageReleaseCell(
-                    release: summary,
-                    album: album,
-                    column: column
-                )
+        guard let summary = libraryStore.releaseSummaries[id],
+            let album = libraryStore.albumSummaries[summary.albumId]
+        else {
+            // The id loaded but its summary/album didn't intern — a store
+            // inconsistency. Surface it; show the placeholder over a crash.
+            logger.error(
+                "Loaded release \(id) has no interned summary or album"
             )
+            return AnyView(StorageRowPlaceholderCell(column: column))
         }
+        return AnyView(
+            StorageReleaseCell(
+                release: summary,
+                album: album,
+                column: column
+            )
+        )
+    }
 
-        // MARK: Context menu
+    // MARK: Context menu
 
-        func makeContextMenu() -> NSMenu {
-            let menu = NSMenu()
-            menu.delegate = self
-            return menu
-        }
+    func makeContextMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.delegate = self
+        return menu
     }
 }
 

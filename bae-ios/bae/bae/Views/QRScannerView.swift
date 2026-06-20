@@ -94,9 +94,9 @@ class QRScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsD
         from _: AVCaptureConnection
     ) {
         guard
-            let qr = metadataObjects.first
+            let qrObject = metadataObjects.first
                 as? AVMetadataMachineReadableCodeObject,
-            let value = qr.stringValue
+            let value = qrObject.stringValue
         else {
             return
         }

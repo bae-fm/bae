@@ -61,50 +61,63 @@ fun ContentView(
             color = MaterialTheme.colorScheme.background,
         ) {
             Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                when (val current = screen) {
-                    AppScreen.Loading -> LoadingScreen()
-
-                    AppScreen.Onboarding ->
-                        OnboardingScreen(
-                            oauthLinking = oauthLinking,
-                            oauthLinkingError = oauthLinkingError,
-                            onLinked = { info ->
-                                scope.launch {
-                                    AppSessionHolder.openLibrary(context, info.id) { screen = it }
-                                }
-                            },
-                        )
-
-                    is AppScreen.Unlock ->
-                        UnlockScreen(
-                            libraryId = current.libraryId,
-                            libraryName = current.libraryName,
-                            fingerprint = current.fingerprint,
-                            onUnlocked = {
-                                scope.launch {
-                                    AppSessionHolder.openLibrary(
-                                        context,
-                                        current.libraryId,
-                                    ) { screen = it }
-                                }
-                            },
-                        )
-
-                    is AppScreen.LibraryOpen ->
-                        LibraryScreen(
-                            session = current.session,
-                            onLeaveLibrary = {
-                                scope.launch {
-                                    AppSessionHolder.forgetActiveLibrary(context) {
-                                        screen = it
-                                    }
-                                }
-                            },
-                        )
-
-                    is AppScreen.Failed -> FailedScreen(message = current.message)
-                }
+                AppScreenRouter(
+                    screen = screen,
+                    oauthLinking = oauthLinking,
+                    oauthLinkingError = oauthLinkingError,
+                    onScreen = { screen = it },
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun AppScreenRouter(
+    screen: AppScreen,
+    oauthLinking: OAuthLinker?,
+    oauthLinkingError: String?,
+    onScreen: (AppScreen) -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    when (val current = screen) {
+        AppScreen.Loading -> {
+            LoadingScreen()
+        }
+
+        AppScreen.Onboarding -> {
+            OnboardingScreen(
+                oauthLinking = oauthLinking,
+                oauthLinkingError = oauthLinkingError,
+                onLinked = { info ->
+                    scope.launch { AppSessionHolder.openLibrary(context, info.id, onScreen) }
+                },
+            )
+        }
+
+        is AppScreen.Unlock -> {
+            UnlockScreen(
+                libraryId = current.libraryId,
+                libraryName = current.libraryName,
+                fingerprint = current.fingerprint,
+                onUnlocked = {
+                    scope.launch { AppSessionHolder.openLibrary(context, current.libraryId, onScreen) }
+                },
+            )
+        }
+
+        is AppScreen.LibraryOpen -> {
+            LibraryScreen(
+                session = current.session,
+                onLeaveLibrary = {
+                    scope.launch { AppSessionHolder.forgetActiveLibrary(context, onScreen) }
+                },
+            )
+        }
+
+        is AppScreen.Failed -> {
+            FailedScreen(message = current.message)
         }
     }
 }

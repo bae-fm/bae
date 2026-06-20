@@ -58,9 +58,12 @@ extension BridgePlaybackErrorReason {
     var localizedLine: String {
         switch self {
         case .syncDisconnected, .uploadPending:
-            return localizedCoreString(
-                bridgePlaybackErrorReasonKey(reason: self)!
-            )
+            // bridgePlaybackErrorReasonKey returns nil only for Diagnostic,
+            // excluded above; the guard is belt-and-suspenders.
+            guard let key = bridgePlaybackErrorReasonKey(reason: self) else {
+                return ""
+            }
+            return localizedCoreString(key)
         case .diagnostic(let error):
             return error.localizedLine
         }

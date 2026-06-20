@@ -25,6 +25,7 @@ protocol PageSource<Row>: Sendable {
 
 // MARK: - Row load identity
 
+// periphery:ignore
 /// Identity a view folds into its row `.task(id:)` (via `RowLoadID`) so row
 /// loads restart in the two cases that leave rows stale: the list is
 /// *invalidated* (generation bumps) or the list instance is *swapped* for a
@@ -33,16 +34,15 @@ protocol PageSource<Row>: Sendable {
 /// the swap — a fresh instance can sit at the same generation, so the per-row
 /// task never restarts and the swapped-in rows stay stuck on placeholders. The
 /// instance identity closes that gap.
-// periphery:ignore
 struct LoadEpoch: Hashable {
     let instance: ObjectIdentifier
     let generation: Int
 }
 
+// periphery:ignore
 /// A row's load-task identity: which list epoch and which row position. Every
 /// paginated consumer keys its per-row `.task(id:)` on this, so a row's load
 /// restarts when its position changes or when the list is swapped/invalidated.
-// periphery:ignore
 struct RowLoadID: Hashable {
     let epoch: LoadEpoch
     let index: Int
@@ -118,7 +118,7 @@ final class PaginatedList<Row: Identifiable & Sendable> where Row.ID: Sendable {
     func idAt(_ position: Int) -> Row.ID? {
         var best: Segment? = nil
         for seg in segments where seg.range.contains(position) {
-            if best == nil || seg.generation > best!.generation {
+            if best.map({ seg.generation > $0.generation }) ?? true {
                 best = seg
             }
         }
@@ -293,9 +293,9 @@ final class PaginatedList<Row: Identifiable & Sendable> where Row.ID: Sendable {
                     lower = seg.range.lowerBound
                 }
                 if seg.range.upperBound > upper {
-                    rightIds =
-                        rightIds
-                        + Array(seg.ids.suffix(seg.range.upperBound - upper))
+                    rightIds += Array(
+                        seg.ids.suffix(seg.range.upperBound - upper)
+                    )
                     upper = seg.range.upperBound
                 }
                 // The portion within [lower, upper] is superseded by new.ids.
@@ -324,9 +324,9 @@ final class PaginatedList<Row: Identifiable & Sendable> where Row.ID: Sendable {
 
     // MARK: - Test/Preview support
 
+    // periphery:ignore
     /// Await the in-flight reload task if there is one. Used by tests to
     /// synchronize on post-`invalidate()` state without racing.
-    // periphery:ignore
     func awaitReload() async {
         await reloadTask?.value
     }

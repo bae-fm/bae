@@ -37,15 +37,16 @@ class PlaybackService : MediaSessionService() {
             stopSelf()
             return
         }
-        val session = MediaSession.Builder(this, player)
-            .setSessionActivity(sessionActivity())
-            .build()
+        val session =
+            MediaSession
+                .Builder(this, player)
+                .setSessionActivity(sessionActivity())
+                .build()
         addSession(session)
         mediaSession = session
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
-        mediaSession
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
 
     override fun onDestroy() {
         // Release the MediaSession only — never the player. The player is owned

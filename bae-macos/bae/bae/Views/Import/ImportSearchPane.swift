@@ -255,12 +255,14 @@ struct ImportSearchPane: View {
             _
         ) = state.identifyState, !state.showManualSearch {
             conflictView(
-                discidResults: discidResults,
-                discidLibraryStatuses: discidLibraryStatuses,
-                barcodeResults: barcodeResults,
-                barcodeLibraryStatuses: barcodeLibraryStatuses,
-                discidSourceLabel: discidSourceLabel,
-                matchedBarcode: matchedBarcode,
+                ConflictResults(
+                    discidResults: discidResults,
+                    discidLibraryStatuses: discidLibraryStatuses,
+                    barcodeResults: barcodeResults,
+                    barcodeLibraryStatuses: barcodeLibraryStatuses,
+                    discidSourceLabel: discidSourceLabel,
+                    matchedBarcode: matchedBarcode
+                )
             )
         }
         else {
@@ -441,20 +443,40 @@ struct ImportSearchPane: View {
         }
     }
 
+    private var discIdInfoIcon: some View {
+        InfoTip(
+            text: "Uses track layout to find perfect matches on MusicBrainz.",
+            learnMoreURL: URL(
+                string: "https://bae.fm/importing/local-files#identify"
+            ),
+            width: 260,
+        )
+    }
+}
+
+extension ImportSearchPane {
+    // MARK: - Conflict surface
+
+    /// The per-signal results that disagree, destructured from the `.conflict`
+    /// identify state: the disc-id and barcode releases with their library
+    /// statuses, the source the disc-id lookup consulted, and the matched
+    /// barcode value (for the section subtitles).
+    struct ConflictResults {
+        let discidResults: [MetadataResult]
+        let discidLibraryStatuses: [String: LibraryStatus]
+        let barcodeResults: [MetadataResult]
+        let barcodeLibraryStatuses: [String: LibraryStatus]
+        let discidSourceLabel: String?
+        let matchedBarcode: String?
+    }
+
     /// Conflict surface. Renders when both signals returned releases but
     /// they don't agree on a single group (or the intersection was empty).
     /// One section per signal that produced results, stacked vertically;
     /// the user can pick a row directly or exclude a signal (via its section
     /// "Ignore" link or the toolbar toggle) to re-derive without it.
     @ViewBuilder
-    private func conflictView(
-        discidResults: [MetadataResult],
-        discidLibraryStatuses: [String: LibraryStatus],
-        barcodeResults: [MetadataResult],
-        barcodeLibraryStatuses: [String: LibraryStatus],
-        discidSourceLabel: String?,
-        matchedBarcode: String?,
-    ) -> some View {
+    fileprivate func conflictView(_ results: ConflictResults) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             toolbar
 
@@ -476,28 +498,30 @@ struct ImportSearchPane: View {
                     // `discidSourceLabel` is non-nil exactly when the
                     // disc-id side has results (core sets them together),
                     // so the combined guard never hides a populated section.
-                    if !discidResults.isEmpty, let discidSourceLabel {
+                    if !results.discidResults.isEmpty,
+                        let discidSourceLabel = results.discidSourceLabel
+                    {
                         conflictSection(
                             signal: .disc,
                             title: "DiscID",
                             subtitle: discidSectionSubtitle(
-                                count: discidResults.count,
+                                count: results.discidResults.count,
                                 sourceLabel: discidSourceLabel
                             ),
-                            results: discidResults,
-                            libraryStatuses: discidLibraryStatuses,
+                            results: results.discidResults,
+                            libraryStatuses: results.discidLibraryStatuses,
                         )
                     }
-                    if !barcodeResults.isEmpty {
+                    if !results.barcodeResults.isEmpty {
                         conflictSection(
                             signal: .barcode,
                             title: "Barcode",
                             subtitle: barcodeSectionSubtitle(
-                                count: barcodeResults.count,
-                                matchedBarcode: matchedBarcode
+                                count: results.barcodeResults.count,
+                                matchedBarcode: results.matchedBarcode
                             ),
-                            results: barcodeResults,
-                            libraryStatuses: barcodeLibraryStatuses,
+                            results: results.barcodeResults,
+                            libraryStatuses: results.barcodeLibraryStatuses,
                         )
                     }
                 }
@@ -510,7 +534,7 @@ struct ImportSearchPane: View {
     /// "Signals disagree on identity" banner — warm-amber tint, two-line
     /// copy that names the choice the user has to make. Replaces the
     /// thin caption-style banner the conflict view used to lead with.
-    private var conflictBannerLarge: some View {
+    fileprivate var conflictBannerLarge: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "exclamationmark.octagon.fill")
                 .font(.callout)
@@ -618,22 +642,12 @@ struct ImportSearchPane: View {
         return subtitle
     }
 
-    private func ignoreButtonLabel(signal: ExcludedSignal) -> String {
+    fileprivate func ignoreButtonLabel(signal: ExcludedSignal) -> String {
         switch signal {
         case .disc: String(localized: "Ignore DiscID")
         case .barcode: String(localized: "Ignore Barcode")
         case .catalog: String(localized: "Ignore Catalog")
         }
-    }
-
-    private var discIdInfoIcon: some View {
-        InfoTip(
-            text: "Uses track layout to find perfect matches on MusicBrainz.",
-            learnMoreURL: URL(
-                string: "https://bae.fm/importing/local-files#identify"
-            ),
-            width: 260,
-        )
     }
 }
 

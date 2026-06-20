@@ -12,7 +12,9 @@ import uniffi.bae_bridge.BridgeSortCriterion
  * filesystem and must run off the main thread. Mirrors the macOS `Library` /
  * `MediaPaths` domain services.
  */
-class Library(private val handle: AppHandle) {
+class Library(
+    private val handle: AppHandle,
+) {
     fun albumCount(): ULong = handle.getAlbumCount()
 
     fun albumPage(

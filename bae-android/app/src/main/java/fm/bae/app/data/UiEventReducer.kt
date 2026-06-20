@@ -29,64 +29,97 @@ object UiEventReducer {
         errors: ErrorLines,
     ) {
         when (event) {
-            // ── Library ────────────────────────────────────────────────────
+            is BridgeUiEvent.AlbumAdded,
+            is BridgeUiEvent.AlbumUpdated,
+            is BridgeUiEvent.AlbumRemoved,
+            is BridgeUiEvent.ReleaseAdded,
+            is BridgeUiEvent.ReleaseUpdated,
+            is BridgeUiEvent.ReleaseRemoved,
+            -> reduceLibrary(event, libraryStore)
+
+            is BridgeUiEvent.PlaybackLoading,
+            is BridgeUiEvent.PlaybackPlaying,
+            is BridgeUiEvent.PlaybackPaused,
+            BridgeUiEvent.PlaybackStopped,
+            is BridgeUiEvent.PlaybackError,
+            is BridgeUiEvent.PlaybackProgress,
+            is BridgeUiEvent.RepeatModeChanged,
+            is BridgeUiEvent.QueueUpdated,
+            is BridgeUiEvent.VolumeChanged,
+            is BridgeUiEvent.MuteChanged,
+            -> reducePlayback(event, player, configStore, errors)
+
+            is BridgeUiEvent.ConfigChanged,
+            is BridgeUiEvent.SyncingChanged,
+            is BridgeUiEvent.SyncError,
+            is BridgeUiEvent.Error,
+            BridgeUiEvent.ErrorCleared,
+            -> reduceConfig(event, configStore, errors)
+
+            // Desktop-only events (import/scan/candidate/preview) never fire
+            // on mobile; log if one ever does so a future mobile-firing event is visible.
+            else -> Log.d(TAG, "ignoring ${event::class.simpleName}")
+        }
+    }
+
+    private fun reduceLibrary(
+        event: BridgeUiEvent,
+        store: LibraryStore,
+    ) {
+        when (event) {
             is BridgeUiEvent.AlbumAdded -> {
-                libraryStore.handleAlbumAdded(event.album)
+                store.handleAlbumAdded(event.album)
             }
 
             is BridgeUiEvent.AlbumUpdated -> {
-                libraryStore.handleAlbumUpdated(event.album)
+                store.handleAlbumUpdated(event.album)
             }
 
             is BridgeUiEvent.AlbumRemoved -> {
-                libraryStore.handleAlbumRemoved(event.albumId)
+                store.handleAlbumRemoved(event.albumId)
             }
 
             is BridgeUiEvent.ReleaseAdded -> {
-                libraryStore.handleReleaseAdded(event.album, event.release)
+                store.handleReleaseAdded(event.album, event.release)
             }
 
             is BridgeUiEvent.ReleaseUpdated -> {
-                libraryStore.handleReleaseUpdated(event.albumId, event.release)
+                store.handleReleaseUpdated(event.albumId, event.release)
             }
 
             is BridgeUiEvent.ReleaseRemoved -> {
-                libraryStore.handleReleaseRemoved(event.albumId, event.releaseId, event.album)
+                store.handleReleaseRemoved(event.albumId, event.releaseId, event.album)
             }
 
-            // ── Playback (projected into the BaeCorePlayer) ─────────────────
+            else -> {}
+        }
+    }
+
+    private fun reducePlayback(
+        event: BridgeUiEvent,
+        player: PlaybackEventSink,
+        configStore: ConfigStore,
+        errors: ErrorLines,
+    ) {
+        when (event) {
             is BridgeUiEvent.PlaybackLoading -> {
                 player.onLoading(event.trackId, event.track)
             }
 
             is BridgeUiEvent.PlaybackPlaying -> {
-                player.onPlaying(
-                    trackId = event.trackId,
-                    trackTitle = event.trackTitle,
-                    artistNames = event.artistNames,
-                    albumTitle = event.albumTitle,
-                    coverImageId = event.coverImageId,
-                    durationMs = event.durationMs.toLong(),
-                )
+                player.onPlaying(event)
             }
 
             is BridgeUiEvent.PlaybackPaused -> {
-                player.onPaused(
-                    trackId = event.trackId,
-                    trackTitle = event.trackTitle,
-                    artistNames = event.artistNames,
-                    albumTitle = event.albumTitle,
-                    coverImageId = event.coverImageId,
-                    durationMs = event.durationMs.toLong(),
-                )
+                player.onPaused(event)
             }
 
             BridgeUiEvent.PlaybackStopped -> {
                 player.onStopped()
             }
 
-            // A track couldn't be played (cloud-only not downloaded, decode
-            // failure); core has already fallen back to stopped. Surface why.
+            // A track couldn't be played (cloud-only not downloaded, decode failure);
+            // core has already fallen back to stopped. Surface why.
             is BridgeUiEvent.PlaybackError -> {
                 configStore.showError(errors.line(event.reason))
             }
@@ -119,7 +152,16 @@ object UiEventReducer {
                 player.onMuteChanged(event.isMuted)
             }
 
-            // ── Config / sync ──────────────────────────────────────────────
+            else -> {}
+        }
+    }
+
+    private fun reduceConfig(
+        event: BridgeUiEvent,
+        configStore: ConfigStore,
+        errors: ErrorLines,
+    ) {
+        when (event) {
             is BridgeUiEvent.ConfigChanged -> {
                 configStore.setConfig(event.config)
                 configStore.setSyncReady(event.syncReady)
@@ -129,13 +171,11 @@ object UiEventReducer {
                 configStore.setSyncing(event.syncing)
             }
 
-            // A null error means sync recovered — it clears the banner (the
-            // bridge's `Option<BridgeError>`, the same as macOS/iOS `error.map`).
+            // A null error means sync recovered — it clears the banner.
             is BridgeUiEvent.SyncError -> {
                 configStore.setSyncError(event.error?.let { errors.line(it) })
             }
 
-            // ── Errors ─────────────────────────────────────────────────────
             is BridgeUiEvent.Error -> {
                 configStore.showError(errors.line(event.error))
             }
@@ -144,12 +184,7 @@ object UiEventReducer {
                 configStore.clearError()
             }
 
-            // Desktop-only events (import/scan/candidate/preview) never fire
-            // on mobile; log if one ever does so a future mobile-firing event is
-            // visible.
-            else -> {
-                Log.d(TAG, "ignoring ${event::class.simpleName}")
-            }
+            else -> {}
         }
     }
 }

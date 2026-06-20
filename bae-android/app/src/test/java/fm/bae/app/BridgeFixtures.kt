@@ -20,58 +20,61 @@ object BridgeFixtures {
         title: String = "Album Title",
         primaryReleaseId: String = "rel-$id",
         releaseIds: List<String> = listOf(primaryReleaseId),
-    ): BridgeAlbum = BridgeAlbum(
-        id = id,
-        title = title,
-        year = null,
-        isCompilation = false,
-        artistNames = "Artist Name",
-        releaseIds = releaseIds,
-        primaryReleaseId = primaryReleaseId,
-        coverPath = null,
-    )
+    ): BridgeAlbum =
+        BridgeAlbum(
+            id = id,
+            title = title,
+            year = null,
+            isCompilation = false,
+            artistNames = "Artist Name",
+            releaseIds = releaseIds,
+            primaryReleaseId = primaryReleaseId,
+            coverPath = null,
+        )
 
     fun release(
         id: String,
         albumId: String,
         trackGroups: List<BridgeTrackGroup> = emptyList(),
         galleryItems: List<BridgeGalleryItem> = emptyList(),
-    ): BridgeRelease = BridgeRelease(
-        id = id,
-        albumId = albumId,
-        displayName = "Release",
-        releaseName = null,
-        year = null,
-        format = null,
-        label = null,
-        catalogNumber = null,
-        country = null,
-        storageState = BridgeReleaseStorageState.UNMANAGED,
-        storageActions = emptyList(),
-        tracks = trackGroups.flatMap { it.tracks },
-        trackGroups = trackGroups,
-        files = emptyList(),
-        imageFiles = emptyList(),
-        galleryItems = galleryItems,
-        totalDurationMs = 0,
-        fileCount = 0,
-        totalSize = 0,
-        coverPath = null,
-    )
+    ): BridgeRelease =
+        BridgeRelease(
+            id = id,
+            albumId = albumId,
+            displayName = "Release",
+            releaseName = null,
+            year = null,
+            format = null,
+            label = null,
+            catalogNumber = null,
+            country = null,
+            storageState = BridgeReleaseStorageState.UNMANAGED,
+            storageActions = emptyList(),
+            tracks = trackGroups.flatMap { it.tracks },
+            trackGroups = trackGroups,
+            files = emptyList(),
+            imageFiles = emptyList(),
+            galleryItems = galleryItems,
+            totalDurationMs = 0,
+            fileCount = 0,
+            totalSize = 0,
+            coverPath = null,
+        )
 
     fun albumDetail(
         album: BridgeAlbum,
         releases: List<BridgeRelease> = listOf(release(id = album.primaryReleaseId, albumId = album.id)),
     ): BridgeAlbumDetail = BridgeAlbumDetail(album = album, releases = releases)
 
-    fun config(libraryId: String = "lib-1"): BridgeConfig = BridgeConfig(
-        libraryId = libraryId,
-        libraryName = "bae Library",
-        libraryPath = "/tmp/lib",
-        encryptionKeyStored = false,
-        encryptionKeyFingerprint = null,
-        discogsTokenStatus = BridgeDiscogsTokenStatus.NOT_CONFIGURED,
-        discogsUsable = false,
-        sync = null,
-    )
+    fun config(libraryId: String = "lib-1"): BridgeConfig =
+        BridgeConfig(
+            libraryId = libraryId,
+            libraryName = "bae Library",
+            libraryPath = "/tmp/lib",
+            encryptionKeyStored = false,
+            encryptionKeyFingerprint = null,
+            discogsTokenStatus = BridgeDiscogsTokenStatus.NOT_CONFIGURED,
+            discogsUsable = false,
+            sync = null,
+        )
 }

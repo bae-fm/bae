@@ -49,6 +49,11 @@ jobs:
         cargo binstall cargo-machete --no-confirm
         cargo machete
 
+    - name: Check Rust dependency licenses and advisories (cargo-deny)
+      run: |
+        cargo binstall cargo-deny --no-confirm
+        cargo deny check
+
     - name: Run Clippy
       run: |
         cargo clippy --workspace -- -D warnings
@@ -86,6 +91,12 @@ jobs:
         find bae-macos/bae/bae -name "*.swift" -not -name bae_bridge.swift -print0 \
           | xargs -0 xcrun swift-format lint -s
 
+    - name: Swift lint (swiftlint)
+      if: ${{ !cancelled() }}
+      run: |
+        brew install swiftlint
+        swiftlint lint --strict --config .swiftlint.yml bae-macos/bae/bae
+
     - name: Dead code check (periphery)
       if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
       run: |
@@ -112,6 +123,12 @@ jobs:
         /tmp/swiftui-environment-audit \
           --index-store-path bae-macos/bae/.build/derivedData/Index.noindex/DataStore \
           bae-macos/bae/bae
+
+    - name: Check Rust documentation
+      # Broken intra-doc links and invalid rustdoc syntax are caught here.
+      # Runs after the build so all dependencies are already compiled.
+      if: ${{ !cancelled() }}
+      run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
     - name: Free disk before tests
       run: |

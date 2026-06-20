@@ -40,6 +40,24 @@ import uniffi.bae_bridge.BridgeTrackSearchResult
 
 private const val DEBOUNCE_MS = 300L
 
+private suspend fun fetchSearchResults(
+    session: OpenLibrary,
+    query: String,
+): Pair<BridgeSearchResults, Map<String, String>> {
+    delay(DEBOUNCE_MS)
+    val res = session.library.search(query)
+    // imagePathIfExists is a blocking FS read; resolve album thumbnails off-main
+    // (the search call itself is already suspend).
+    val covers =
+        withContext(Dispatchers.IO) {
+            res.albums
+                .mapNotNull { album ->
+                    session.library.imagePathIfExists(album.primaryReleaseId)?.let { album.id to it }
+                }.toMap()
+        }
+    return res to covers
+}
+
 /**
  * Library search results for a non-blank query. Debounces typing, runs the
  * bridge search, and renders two sections — Albums then Tracks. Both row types
@@ -60,35 +78,19 @@ fun SearchResultsScreen(
     val appContext = LocalContext.current
 
     // Re-keyed on query: a new keystroke cancels the in-flight debounce + search
-    // (the suspend bridge call included), so only the latest query's results
-    // land. `results` is not cleared between keystrokes, so the prior results
-    // stay visible while the next search runs instead of flashing the spinner.
+    // (the suspend bridge call included), so only the latest query's results land.
+    // `results` is not cleared between keystrokes, keeping prior results visible
+    // while the next search runs instead of flashing the spinner.
     LaunchedEffect(query) {
         loading = true
         error = null
         try {
-            delay(DEBOUNCE_MS)
-            val res = session.library.search(query)
-            // imagePathIfExists is a blocking FS read; resolve the album
-            // thumbnails off-main (the search call itself is already suspend).
-            val covers =
-                withContext(Dispatchers.IO) {
-                    res.albums
-                        .mapNotNull { album ->
-                            session.library
-                                .imagePathIfExists(album.primaryReleaseId)
-                                ?.let { album.id to it }
-                        }.toMap()
-                }
+            val (res, covers) = fetchSearchResults(session, query)
             results = res
             coverPaths = covers
         } catch (e: CancellationException) {
-            // A new keystroke (or leaving search) cancels this effect — let
-            // structured cancellation propagate; it isn't a search failure.
             throw e
         } catch (e: Exception) {
-            // searchLibrary is a fallible bridge call. Surface a transient
-            // DB/search failure instead of letting it crash the composition.
             error = e.message ?: appContext.getString(R.string.search_failed)
         } finally {
             loading = false
@@ -120,27 +122,40 @@ fun SearchResultsScreen(
             }
 
             current != null -> {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    if (current.albums.isNotEmpty()) {
-                        item { SectionHeader(stringResource(R.string.search_section_albums)) }
-                        items(current.albums, key = { "album:${it.id}" }) { album ->
-                            AlbumResultRow(
-                                album = album,
-                                coverPath = coverPaths[album.id],
-                                onClick = { onSelectAlbum(album.id) },
-                            )
-                        }
-                    }
-                    if (current.tracks.isNotEmpty()) {
-                        item { SectionHeader(stringResource(R.string.search_section_tracks)) }
-                        items(current.tracks, key = { "track:${it.id}" }) { track ->
-                            TrackResultRow(
-                                track = track,
-                                onClick = { onSelectAlbum(track.albumId) },
-                            )
-                        }
-                    }
-                }
+                SearchResultsList(
+                    results = current,
+                    coverPaths = coverPaths,
+                    onSelectAlbum = onSelectAlbum,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchResultsList(
+    results: BridgeSearchResults,
+    coverPaths: Map<String, String>,
+    onSelectAlbum: (String) -> Unit,
+) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (results.albums.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.search_section_albums)) }
+            items(results.albums, key = { "album:${it.id}" }) { album ->
+                AlbumResultRow(
+                    album = album,
+                    coverPath = coverPaths[album.id],
+                    onClick = { onSelectAlbum(album.id) },
+                )
+            }
+        }
+        if (results.tracks.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.search_section_tracks)) }
+            items(results.tracks, key = { "track:${it.id}" }) { track ->
+                TrackResultRow(
+                    track = track,
+                    onClick = { onSelectAlbum(track.albumId) },
+                )
             }
         }
     }

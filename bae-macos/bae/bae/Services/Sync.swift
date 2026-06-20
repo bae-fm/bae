@@ -37,9 +37,9 @@ final class Sync: Sendable, Observable {
     /// Pause or resume the cloud-upload pipeline. In-flight uploads finish; the
     /// queue stops draining until resumed.
     let setSyncPaused: @Sendable (_ paused: Bool) -> Void
-    /// Re-kick the sync loop now (manual pull-to-refresh / retry). Non-throwing.
     // periphery:ignore - called from the iOS pull-to-refresh / sync-retry; the
     // macOS target periphery analyzes doesn't use it (sync is automatic there).
+    /// Re-kick the sync loop now (manual pull-to-refresh / retry). Non-throwing.
     let triggerSync: @Sendable () -> Void
     /// Delete the active library's encryption key from the OS keyring.
     /// The current session keeps working (the key stays in memory);

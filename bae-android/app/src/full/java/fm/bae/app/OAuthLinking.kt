@@ -62,11 +62,16 @@ class OAuthLinking private constructor(
      * `restoreFromCode`. Opens the system browser via a Custom Tab and awaits
      * the redirect captured by [OAuthRedirectActivity].
      */
-    override suspend fun authorize(context: Context, provider: BridgeCloudProvider): String {
-        val key = providerKey(provider)
-            ?: throw IllegalStateException("Cloud sign-in isn't configured for this provider.")
-        val config = providers[key]
-            ?: throw IllegalStateException("Cloud sign-in isn't configured for this provider.")
+    override suspend fun authorize(
+        context: Context,
+        provider: BridgeCloudProvider,
+    ): String {
+        val key =
+            providerKey(provider)
+                ?: throw IllegalStateException("Cloud sign-in isn't configured for this provider.")
+        val config =
+            providers[key]
+                ?: throw IllegalStateException("Cloud sign-in isn't configured for this provider.")
 
         val request = oauthBegin(provider, config.redirectUri)
 
@@ -75,8 +80,9 @@ class OAuthLinking private constructor(
         try {
             CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(request.authUrl))
             val redirect = deferred.await()
-            val code = redirect.getQueryParameter("code")
-                ?: throw IllegalStateException("Authorization finished without a code.")
+            val code =
+                redirect.getQueryParameter("code")
+                    ?: throw IllegalStateException("Authorization finished without a code.")
             // The token exchange is a blocking network call (block_on in the
             // bridge), so keep it off the main thread.
             return withContext(Dispatchers.IO) {
@@ -99,25 +105,31 @@ class OAuthLinking private constructor(
 
         /** Load the bundled creds; null when no `assets/oauth-creds.json`. */
         fun load(context: Context): OAuthLinking? {
-            val text = try {
-                context.assets.open("oauth-creds.json").bufferedReader().use { it.readText() }
-            } catch (e: FileNotFoundException) {
-                Log.d(TAG, "assets/oauth-creds.json not bundled; OAuth linking unavailable")
-                return null
-            } catch (e: IOException) {
-                throw IllegalStateException("Couldn't read oauth-creds.json: ${e.message}", e)
-            }
-            val root = try {
-                JSONObject(text)
-            } catch (e: JSONException) {
-                throw IllegalStateException("oauth-creds.json is malformed: ${e.message}", e)
-            }
+            val text =
+                try {
+                    context.assets
+                        .open("oauth-creds.json")
+                        .bufferedReader()
+                        .use { it.readText() }
+                } catch (e: FileNotFoundException) {
+                    Log.d(TAG, "assets/oauth-creds.json not bundled; OAuth linking unavailable")
+                    return null
+                } catch (e: IOException) {
+                    throw IllegalStateException("Couldn't read oauth-creds.json: ${e.message}", e)
+                }
+            val root =
+                try {
+                    JSONObject(text)
+                } catch (e: JSONException) {
+                    throw IllegalStateException("oauth-creds.json is malformed: ${e.message}", e)
+                }
             val providers = mutableMapOf<String, ProviderConfig>()
             for (key in root.keys()) {
-                val obj = root.optJSONObject(key)
-                    ?: throw IllegalStateException(
-                        "oauth-creds.json entry for $key must be an object.",
-                    )
+                val obj =
+                    root.optJSONObject(key)
+                        ?: throw IllegalStateException(
+                            "oauth-creds.json entry for $key must be an object.",
+                        )
                 val clientId = requiredField(obj, key, "client_id")
                 val redirectUri = requiredField(obj, key, "redirect_uri")
                 val clientSecret = obj.optString("client_secret").takeIf { it.isNotEmpty() }
@@ -129,20 +141,28 @@ class OAuthLinking private constructor(
             return OAuthLinking(providers)
         }
 
-        private fun requiredField(obj: JSONObject, provider: String, field: String): String =
+        private fun requiredField(
+            obj: JSONObject,
+            provider: String,
+            field: String,
+        ): String =
             obj.optString(field).takeIf { it.isNotEmpty() }
                 ?: throw IllegalStateException(
                     "oauth-creds.json is missing $field for $provider.",
                 )
 
         /** coven keys OAuth client creds by provider name. */
-        private fun providerKey(provider: BridgeCloudProvider): String? = when (provider) {
-            BridgeCloudProvider.GOOGLE_DRIVE -> "google_drive"
-            BridgeCloudProvider.DROPBOX -> "dropbox"
-            BridgeCloudProvider.ONE_DRIVE -> "onedrive"
-            BridgeCloudProvider.S3,
-            BridgeCloudProvider.CLOUD_KIT,
-            -> null
-        }
+        private fun providerKey(provider: BridgeCloudProvider): String? =
+            when (provider) {
+                BridgeCloudProvider.GOOGLE_DRIVE -> "google_drive"
+
+                BridgeCloudProvider.DROPBOX -> "dropbox"
+
+                BridgeCloudProvider.ONE_DRIVE -> "onedrive"
+
+                BridgeCloudProvider.S3,
+                BridgeCloudProvider.CLOUD_KIT,
+                -> null
+            }
     }
 }

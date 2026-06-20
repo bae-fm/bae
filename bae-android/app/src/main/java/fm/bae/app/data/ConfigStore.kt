@@ -11,7 +11,10 @@ import uniffi.bae_bridge.BridgeConfig
  * error. The [fm.bae.app.data.UiEventReducer] is the sole writer; views observe
  * the flows.
  */
-class ConfigStore(initialConfig: BridgeConfig, initialSyncReady: Boolean) {
+class ConfigStore(
+    initialConfig: BridgeConfig,
+    initialSyncReady: Boolean,
+) {
     private val _config = MutableStateFlow(initialConfig)
     val config: StateFlow<BridgeConfig> = _config.asStateFlow()
 

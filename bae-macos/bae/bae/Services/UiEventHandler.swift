@@ -51,8 +51,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         let outboxStore = outboxStore
         let downloadStore = downloadStore
         Task { @MainActor in
-            UiEventReducer.reduce(
-                event,
+            let context = ReducerContext(
                 playbackStore: playbackStore,
                 configStore: configStore,
                 importStore: importStore,
@@ -62,6 +61,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
                 outboxStore: outboxStore,
                 downloadStore: downloadStore
             )
+            UiEventReducer.reduce(event, into: context)
         }
     }
 }

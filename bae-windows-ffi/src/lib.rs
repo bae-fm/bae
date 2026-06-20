@@ -1,3 +1,4 @@
+#![allow(rustdoc::broken_intra_doc_links, rustdoc::private_intra_doc_links)]
 //! C ABI over bae-core for the native Windows app (WinUI 3 / C#).
 //!
 //! Windows binds bae-core through this hand-written `extern "C"` surface, the way
@@ -508,7 +509,7 @@ fn remote_cover_to_ffi(cover: &bae_core::import::cover_art::RemoteCover) -> FfiR
 /// A local image file in an import candidate's folder, offered as a cover
 /// choice in the import confirmation picker. `file_id` is the folder-relative
 /// path the import worker matches when this cover is selected (passed back as a
-/// `release_image` [`FfiCoverSelection`]); `path` is the absolute on-disk path
+/// `release_image` `FfiCoverSelection`); `path` is the absolute on-disk path
 /// the UI loads the thumbnail from.
 #[derive(Serialize)]
 struct FfiLocalArtwork {
@@ -584,7 +585,7 @@ enum FfiCoverSelection {
     RemoteCover { url: String, source: String },
 }
 
-/// Decode an [`FfiCoverSelection`] into the import-time
+/// Decode an `FfiCoverSelection` into the import-time
 /// [`bae_core::import::CoverSelection`]: `ReleaseImage`'s `file_id` is the
 /// folder-relative path the import worker matches against the scanned files;
 /// `RemoteCover` carries the URL and its source for download + attribution.
@@ -3535,7 +3536,7 @@ pub unsafe extern "C" fn bae_check_release_in_library(
 /// `selected_cover_json` is the cover the user picked in the confirm pane: when
 /// null or empty the import uses its default cover (the source's first cover
 /// art, else a folder image, else embedded art); otherwise it is an
-/// [`FfiCoverSelection`] JSON (`{"type":"release_image","file_id":"…"}` for a
+/// `FfiCoverSelection` JSON (`{"type":"release_image","file_id":"…"}` for a
 /// folder image, `{"type":"remote_cover","url":"…","source":"musicbrainz"}` for
 /// a remote one). The import runs in the background; progress and the result
 /// arrive as `CandidateImportProgress` / `CandidateImportComplete` /

@@ -45,8 +45,11 @@ class LibraryStore {
      */
     fun seedAlbumDetail(album: BridgeAlbumDetail) {
         _albumDetails.update { details ->
-            if (details.containsKey(album.album.id)) details
-            else details + (album.album.id to album)
+            if (details.containsKey(album.album.id)) {
+                details
+            } else {
+                details + (album.album.id to album)
+            }
         }
     }
 
@@ -80,7 +83,10 @@ class LibraryStore {
     // or reorder album-grid rows. The detail screen observes [albumDetails]
     // directly, so it re-renders on these without a grid refresh.
 
-    fun handleReleaseAdded(album: BridgeAlbum, release: BridgeRelease) {
+    fun handleReleaseAdded(
+        album: BridgeAlbum,
+        release: BridgeRelease,
+    ) {
         _albumDetails.update { details ->
             val existing = details[album.id]
             val releases = (existing?.releases.orEmpty().filter { it.id != release.id }) + release
@@ -88,26 +94,35 @@ class LibraryStore {
         }
     }
 
-    fun handleReleaseUpdated(albumId: String, release: BridgeRelease) {
+    fun handleReleaseUpdated(
+        albumId: String,
+        release: BridgeRelease,
+    ) {
         _albumDetails.update { details ->
-            val existing = details[albumId] ?: run {
-                Log.w(TAG, "ReleaseUpdated for un-interned album $albumId (release ${release.id}); dropping")
-                return@update details
-            }
+            val existing =
+                details[albumId] ?: run {
+                    Log.w(TAG, "ReleaseUpdated for un-interned album $albumId (release ${release.id}); dropping")
+                    return@update details
+                }
             val releases = existing.releases.map { if (it.id == release.id) release else it }
             details + (albumId to existing.copy(releases = releases))
         }
     }
 
-    fun handleReleaseRemoved(albumId: String, releaseId: String, album: BridgeAlbum?) {
+    fun handleReleaseRemoved(
+        albumId: String,
+        releaseId: String,
+        album: BridgeAlbum?,
+    ) {
         // album is null when the album was removed with its last release;
         // AlbumRemoved already dropped the detail, so there's nothing to do.
         if (album == null) return
         _albumDetails.update { details ->
-            val existing = details[albumId] ?: run {
-                Log.w(TAG, "ReleaseRemoved for un-interned album $albumId (release $releaseId); dropping")
-                return@update details
-            }
+            val existing =
+                details[albumId] ?: run {
+                    Log.w(TAG, "ReleaseRemoved for un-interned album $albumId (release $releaseId); dropping")
+                    return@update details
+                }
             val releases = existing.releases.filter { it.id != releaseId }
             // Use the event's post-removal album so releaseIds reflects the
             // authoritative DB-ordered list, not the stale interned one.

@@ -111,9 +111,92 @@ struct EditMetadataForm: View {
         )
     }
 
-    // MARK: - Tracks
+    // MARK: - Grouped card
 
-    private var tracksGroup: some View {
+    /// A titled inset card of label-left / value-right rows separated by
+    /// hairlines — the macOS System-Settings group idiom.
+    private func groupCard(title: String, rows: [FieldRow]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionHeader(title: title, trailing: nil)
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.label) {
+                    index,
+                    row in
+                    fieldRow(row)
+                    if index < rows.count - 1 {
+                        Rectangle()
+                            .fill(.white.opacity(0.07))
+                            .frame(height: 1)
+                    }
+                }
+            }
+            .background(Theme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(.white.opacity(0.07), lineWidth: 1)
+            }
+        }
+    }
+
+    private func fieldRow(_ row: FieldRow) -> some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(row.label)
+                    .font(.system(size: 13))
+                if let hint = row.hint {
+                    Text(hint)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.quaternary)
+                }
+            }
+            .frame(width: 150, alignment: .leading)
+            MetadataField(
+                placeholder: row.placeholder,
+                text: row.text,
+                monospaced: row.monospaced,
+            )
+            .frame(maxWidth: row.width.maxWidth)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+    }
+
+    // MARK: - Section header
+
+    private func sectionHeader(
+        title: String,
+        trailing: String?
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            eyebrow(Text(verbatim: title), size: 11)
+            Spacer()
+            if let trailing {
+                Text(trailing)
+                    .font(.system(size: 11.5))
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.horizontal, 2)
+    }
+
+    /// Section headers render at 11pt; the denser track-table column
+    /// headers pass `size: 10`.
+    private func eyebrow(_ text: Text, size: CGFloat = 10) -> some View {
+        text
+            .font(.system(size: size, weight: .bold))
+            .textCase(.uppercase)
+            .tracking(1)
+            .foregroundStyle(.tertiary)
+    }
+}
+
+// MARK: - Tracks
+
+extension EditMetadataForm {
+    fileprivate var tracksGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionHeader(
                 title: String(localized: "Tracks"),
@@ -233,89 +316,8 @@ struct EditMetadataForm: View {
             ? String(localized: "Artist") : form.albumArtistText
     }
 
-    private let trackOrdinalWidth: CGFloat = 34
-    private let trackNumberWidth: CGFloat = 58
-
-    // MARK: - Grouped card
-
-    /// A titled inset card of label-left / value-right rows separated by
-    /// hairlines — the macOS System-Settings group idiom.
-    private func groupCard(title: String, rows: [FieldRow]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionHeader(title: title, trailing: nil)
-            VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.element.label) {
-                    index,
-                    row in
-                    fieldRow(row)
-                    if index < rows.count - 1 {
-                        Rectangle()
-                            .fill(.white.opacity(0.07))
-                            .frame(height: 1)
-                    }
-                }
-            }
-            .background(Theme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(.white.opacity(0.07), lineWidth: 1)
-            }
-        }
-    }
-
-    private func fieldRow(_ row: FieldRow) -> some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(row.label)
-                    .font(.system(size: 13))
-                if let hint = row.hint {
-                    Text(hint)
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.quaternary)
-                }
-            }
-            .frame(width: 150, alignment: .leading)
-            MetadataField(
-                placeholder: row.placeholder,
-                text: row.text,
-                monospaced: row.monospaced,
-            )
-            .frame(maxWidth: row.width.maxWidth)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-    }
-
-    // MARK: - Section header
-
-    private func sectionHeader(
-        title: String,
-        trailing: String?
-    ) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            eyebrow(Text(verbatim: title), size: 11)
-            Spacer()
-            if let trailing {
-                Text(trailing)
-                    .font(.system(size: 11.5))
-                    .monospacedDigit()
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .padding(.horizontal, 2)
-    }
-
-    /// Section headers render at 11pt; the denser track-table column
-    /// headers pass `size: 10`.
-    private func eyebrow(_ text: Text, size: CGFloat = 10) -> some View {
-        text
-            .font(.system(size: size, weight: .bold))
-            .textCase(.uppercase)
-            .tracking(1)
-            .foregroundStyle(.tertiary)
-    }
+    private var trackOrdinalWidth: CGFloat { 34 }
+    private var trackNumberWidth: CGFloat { 58 }
 }
 
 // MARK: - FieldRow

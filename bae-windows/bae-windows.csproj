@@ -47,6 +47,10 @@
     -->
     <Platforms>x64</Platforms>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <!-- microsoft.windows.sdk.buildtools.msix ≥ 1.7.20250829.1 auto-includes
+         *.resw files as PRIResource, duplicating our explicit glob below.
+         Disable the default to keep our explicit <PRIResource> in control. -->
+    <EnableDefaultPriItems>false</EnableDefaultPriItems>
   </PropertyGroup>
 
   <ItemGroup>
@@ -82,9 +86,9 @@
   <!--
     Generate Strings/en-US/Core.resw from the master catalog before the build, so
     a catalog edit reaches the app without a manual step. Mirrors the macOS build
-    (bae-bridge/build-macos.sh runs loc-gen's apple-target emit). loc-gen writes
-    <out-dir>/en-US/Core.resw, so the out-dir is the Strings folder. Runs from the
-    repo root (two levels up from this project) where the default catalog path
+    (bae-bridge/build-macos.sh runs loc-gen with the apple target). loc-gen writes
+    en-US/Core.resw under the specified out-dir, so out-dir is the Strings folder.
+    Runs from the repo root (two levels up) where the default catalog path
     (bae-bridge/loc/catalog.toml) resolves.
   -->
   <Target Name="GenerateCoreResw" BeforeTargets="BeforeBuild">

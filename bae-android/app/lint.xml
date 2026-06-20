@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!--
+        Generated uniffi Kotlin bindings use java.lang.ref.Cleaner (requires
+        API 33) for memory management. These files are generated at build time
+        from Rust type definitions and cannot be annotated. Suppress NewApi
+        for the generated binding directories; all other source is checked
+        against minSdk normally.
+    -->
+    <issue id="NewApi">
+        <ignore path="**/kotlin-bindings*/**" />
+    </issue>
+    <!--
+        Android-specific UI strings (strings.xml) have not been added to the
+        translation pipeline. The per-language core_strings.xml files are
+        generated from the Rust localization system; strings.xml is not yet
+        wired into that pipeline.
+    -->
+    <issue id="MissingTranslation" severity="ignore" />
+</lint>

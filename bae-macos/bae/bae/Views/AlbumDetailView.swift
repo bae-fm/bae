@@ -255,9 +255,11 @@ struct AlbumDetailView: View {
             },
         )
     }
+}
 
-    // MARK: - Modal presenters
+// MARK: - Modal presenters
 
+extension AlbumDetailView {
     private func presentCoverSheet(
         summary: AlbumSummary,
         selectedReleaseId: String
@@ -537,8 +539,47 @@ struct AlbumDetailView: View {
             uiStore.showError(String(localized: "Track not found for export"))
             return
         }
-        let trackTitle = track.title
+        let panel = makeExportSavePanel(trackTitle: track.title)
+        let formatPopup = panel.formatPopup
 
+        let response = panel.savePanel.runModal()
+        _ = panel.formatDelegate  // prevent deallocation during modal
+
+        guard response == .OK, let url = panel.savePanel.url else {
+            return
+        }
+
+        let formatIndex = formatPopup.indexOfSelectedItem
+        UserDefaults.standard.set(formatIndex, forKey: "exportFormat")
+        let format: BridgeExportFormat = formatIndex == 0 ? .flac : .mp3
+
+        let export = export
+        let outputPath = url.path(percentEncoded: false)
+        exportTask?.cancel()
+        exportTask = Task {
+            do {
+                try await export.exportTrack(trackId, outputPath, format)
+            }
+            catch is CancellationError {
+                // view dismissed mid-export; OutputFileGuard cleaned up
+            }
+            catch {
+                exportError = error.localizedDescription
+            }
+        }
+    }
+
+    /// Build the save panel for a track export, with its format-picker accessory
+    /// view wired to a delegate that keeps the filename extension in sync. The
+    /// caller runs the panel and reads `formatPopup` for the chosen format; the
+    /// delegate must be retained for the modal's lifetime.
+    private func makeExportSavePanel(
+        trackTitle: String
+    ) -> (
+        savePanel: NSSavePanel,
+        formatPopup: NSPopUpButton,
+        formatDelegate: ExportFormatDelegate
+    ) {
         let sanitizedTitle =
             trackTitle
             .replacingOccurrences(of: "/", with: "-")
@@ -564,9 +605,7 @@ struct AlbumDetailView: View {
             String(localized: "FLAC (Lossless)"),
             String(localized: "MP3 (320 kbps)"),
         ])
-        formatPopup.selectItem(
-            at: UserDefaults.standard.integer(forKey: "exportFormat")
-        )
+        formatPopup.selectItem(at: lastFormatIndex)
         formatPopup.target = formatDelegate
         formatPopup.action = #selector(ExportFormatDelegate.formatChanged(_:))
 
@@ -584,31 +623,7 @@ struct AlbumDetailView: View {
             panel.allowedContentTypes = [type]
         }
 
-        let response = panel.runModal()
-        _ = formatDelegate  // prevent deallocation during modal
-
-        guard response == .OK, let url = panel.url else {
-            return
-        }
-
-        let formatIndex = formatPopup.indexOfSelectedItem
-        UserDefaults.standard.set(formatIndex, forKey: "exportFormat")
-        let format: BridgeExportFormat = formatIndex == 0 ? .flac : .mp3
-
-        let export = export
-        let outputPath = url.path(percentEncoded: false)
-        exportTask?.cancel()
-        exportTask = Task {
-            do {
-                try await export.exportTrack(trackId, outputPath, format)
-            }
-            catch is CancellationError {
-                // view dismissed mid-export; OutputFileGuard cleaned up
-            }
-            catch {
-                exportError = error.localizedDescription
-            }
-        }
+        return (panel, formatPopup, formatDelegate)
     }
 }
 
@@ -1272,9 +1287,21 @@ private class ExportFormatDelegate: NSObject {
         isPlaying: Bool = false,
     ) -> some View {
         let store = LibraryStore()
-        store.handleAlbumAdded(album: PreviewData.albumDetails[albumId]!)
-        let summary = store.albumSummaries[albumId]!
-        let primary = store.releaseDetails[summary.primaryReleaseId]!
+        guard let album = PreviewData.albumDetails[albumId] else {
+            fatalError("no preview album for id: \(albumId)")
+        }
+        store.handleAlbumAdded(album: album)
+        guard let summary = store.albumSummaries[albumId] else {
+            fatalError(
+                "handleAlbumAdded did not seed summary for id: \(albumId)"
+            )
+        }
+        guard let primary = store.releaseDetails[summary.primaryReleaseId]
+        else {
+            fatalError(
+                "no releaseDetail seeded for id: \(summary.primaryReleaseId)"
+            )
+        }
         let cursor = PreviewData.releaseCursor(
             releaseIds: summary.releaseIds,
             preferring: summary.primaryReleaseId
@@ -1331,38 +1358,44 @@ private class ExportFormatDelegate: NSObject {
         private var store = LibraryStore()
 
         var body: some View {
+            // swiftlint:disable:next redundant_discardable_let
             let _ = seedIfNeeded()
-            let summary = store.albumSummaries["a-04"]!
-            let selected = store.releaseDetails[selectedReleaseId]!
-            PreviewData.albumExpansionContent(
-                summary: summary,
-                selectedRelease: selected,
-                // Live cursor so selecting a release in the picker cycles the
-                // preview to that release's detail.
-                releaseCursor: Binding(
-                    get: {
-                        PreviewData.releaseCursor(
-                            releaseIds: summary.releaseIds,
-                            preferring: selectedReleaseId
-                        )
-                    },
-                    set: { selectedReleaseId = $0.current.id },
-                ),
-                currentTrackId: "t-d2-3",
-                isPlaying: true,
-            )
-            .padding()
-            .frame(width: 1100, height: 700, alignment: .top)
-            .background(Theme.background)
-            .environment(UiStore())
-            .environment(store)
-            .environment(MediaPaths.stub)
+            if let summary = store.albumSummaries["a-04"],
+                let selected = store.releaseDetails[selectedReleaseId]
+            {
+                PreviewData.albumExpansionContent(
+                    summary: summary,
+                    selectedRelease: selected,
+                    // Live cursor so selecting a release in the picker cycles the
+                    // preview to that release's detail.
+                    releaseCursor: Binding(
+                        get: {
+                            PreviewData.releaseCursor(
+                                releaseIds: summary.releaseIds,
+                                preferring: selectedReleaseId
+                            )
+                        },
+                        set: { selectedReleaseId = $0.current.id },
+                    ),
+                    currentTrackId: "t-d2-3",
+                    isPlaying: true,
+                )
+                .padding()
+                .frame(width: 1100, height: 700, alignment: .top)
+                .background(Theme.background)
+                .environment(UiStore())
+                .environment(store)
+                .environment(MediaPaths.stub)
+            }
         }
 
         @MainActor
         private func seedIfNeeded() {
             if store.albumSummaries["a-04"] == nil {
-                store.handleAlbumAdded(album: PreviewData.albumDetails["a-04"]!)
+                guard let album = PreviewData.albumDetails["a-04"] else {
+                    fatalError("a-04 not in PreviewData.albumDetails")
+                }
+                store.handleAlbumAdded(album: album)
             }
         }
     }

@@ -95,134 +95,8 @@ struct ImportConfirmationView<
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 16) {
-                    coverContent()
-                        .overlay(alignment: .topTrailing) {
-                            if !importing, !isComplete, hasCoverOptions {
-                                Image(systemName: "pencil")
-                                    .font(.caption2)
-                                    .foregroundStyle(.white)
-                                    .padding(3)
-                                    .background(.black.opacity(0.5))
-                                    .clipShape(
-                                        RoundedRectangle(cornerRadius: 3)
-                                    )
-                                    .padding(2)
-                            }
-                        }
-                        .onTapGesture {
-                            if !importing, !isComplete, hasCoverOptions {
-                                onEditCover()
-                            }
-                        }
-
-                    albumSummary
-
-                    VStack(alignment: .trailing, spacing: 10) {
-                        cardAction
-                        if !importing, !isComplete {
-                            if configStore.config.hasCloudHome {
-                                HStack(spacing: 10) {
-                                    ImportCheckboxToggle(
-                                        "Managed",
-                                        isOn: $storageManaged
-                                    )
-                                    if storageManaged {
-                                        ImportCheckboxToggle(
-                                            "Keep local copy",
-                                            isOn: $storagePinned
-                                        )
-                                    }
-                                }
-                                .fixedSize()
-                            }
-                        }
-                    }
-                }
-                .padding(14)
-                .background(Theme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(.white.opacity(0.07), lineWidth: 1)
-                }
-
-                if let libStatus = libraryStatus {
-                    if libStatus.releaseInLibrary {
-                        HStack(spacing: 8) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                            Text("This release is already in your library")
-                                .font(.callout)
-                                .foregroundStyle(.orange)
-                            Spacer()
-                            if let albumId = libStatus.albumId {
-                                Button("View in Library") {
-                                    onViewInLibrary(albumId)
-                                }
-                                .controlSize(.small)
-                            }
-                        }
-                        .padding(10)
-                        .background(Color.orange.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    else if libStatus.albumInLibrary {
-                        HStack(spacing: 8) {
-                            Image(systemName: "info.circle.fill")
-                                .foregroundStyle(.blue)
-                            Text(
-                                "Another release of this album is in your library"
-                            )
-                            .font(.callout)
-                            Spacer()
-                            if let albumId = libStatus.albumId {
-                                Button("View in Library") {
-                                    onViewInLibrary(albumId)
-                                }
-                                .controlSize(.small)
-                            }
-                        }
-                        .padding(10)
-                        .background(Color.blue.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                }
-
-                if trackCountMismatch {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                        Text(
-                            "Track count mismatch: release has \(Int(expectedTrackCount)) tracks but local files don't match"
-                        )
-                        .font(.callout)
-                        .foregroundStyle(.orange)
-                    }
-                    .padding(10)
-                    .background(Color.orange.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-
-                if case .error(let bridgeError) = importStatus {
-                    ErrorDetailDisclosure(error: DisplayError(bridgeError))
-                        .padding(10)
-                        .background(Color.red.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-
-                if let error {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                        Text(error)
-                            .font(.callout)
-                            .foregroundStyle(.red)
-                    }
-                    .padding(10)
-                    .background(Color.red.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
+                headerCard
+                statusBanners
 
                 if let exactness {
                     ImportAsToggle(
@@ -344,6 +218,145 @@ struct ImportConfirmationView<
             Button("Import") { onConfirmImport() }
                 .buttonStyle(.borderedProminent)
                 .disabled(actionDisabled)
+        }
+    }
+}
+
+// MARK: - Header card and status banners
+
+extension ImportConfirmationView {
+    @ViewBuilder
+    fileprivate var headerCard: some View {
+        HStack(alignment: .top, spacing: 16) {
+            coverContent()
+                .overlay(alignment: .topTrailing) {
+                    if !importing, !isComplete, hasCoverOptions {
+                        Image(systemName: "pencil")
+                            .font(.caption2)
+                            .foregroundStyle(.white)
+                            .padding(3)
+                            .background(.black.opacity(0.5))
+                            .clipShape(
+                                RoundedRectangle(cornerRadius: 3)
+                            )
+                            .padding(2)
+                    }
+                }
+                .onTapGesture {
+                    if !importing, !isComplete, hasCoverOptions {
+                        onEditCover()
+                    }
+                }
+
+            albumSummary
+
+            VStack(alignment: .trailing, spacing: 10) {
+                cardAction
+                if !importing, !isComplete {
+                    if configStore.config.hasCloudHome {
+                        HStack(spacing: 10) {
+                            ImportCheckboxToggle(
+                                "Managed",
+                                isOn: $storageManaged
+                            )
+                            if storageManaged {
+                                ImportCheckboxToggle(
+                                    "Keep local copy",
+                                    isOn: $storagePinned
+                                )
+                            }
+                        }
+                        .fixedSize()
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(Theme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(.white.opacity(0.07), lineWidth: 1)
+        }
+    }
+
+    @ViewBuilder
+    fileprivate var statusBanners: some View {
+        if let libStatus = libraryStatus {
+            if libStatus.releaseInLibrary {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("This release is already in your library")
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                    Spacer()
+                    if let albumId = libStatus.albumId {
+                        Button("View in Library") {
+                            onViewInLibrary(albumId)
+                        }
+                        .controlSize(.small)
+                    }
+                }
+                .padding(10)
+                .background(Color.orange.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            else if libStatus.albumInLibrary {
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundStyle(.blue)
+                    Text(
+                        "Another release of this album is in your library"
+                    )
+                    .font(.callout)
+                    Spacer()
+                    if let albumId = libStatus.albumId {
+                        Button("View in Library") {
+                            onViewInLibrary(albumId)
+                        }
+                        .controlSize(.small)
+                    }
+                }
+                .padding(10)
+                .background(Color.blue.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+        }
+
+        if trackCountMismatch {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Text(
+                    "Track count mismatch: release has \(Int(expectedTrackCount)) tracks but local files don't match"
+                )
+                .font(.callout)
+                .foregroundStyle(.orange)
+            }
+            .padding(10)
+            .background(Color.orange.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+
+        if case .error(let bridgeError) = importStatus {
+            ErrorDetailDisclosure(error: DisplayError(bridgeError))
+                .padding(10)
+                .background(Color.red.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+
+        if let error {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Text(error)
+                    .font(.callout)
+                    .foregroundStyle(.red)
+            }
+            .padding(10)
+            .background(Color.red.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
         }
     }
 }

@@ -5,6 +5,17 @@ import os.log
 
 private let logger = Logger.bae("MediaControlService")
 
+/// The lock-screen / Control-Center metadata for the current track: the fields
+/// `updateNowPlaying` writes into `MPNowPlayingInfoCenter`, grouped so the call
+/// takes one metadata value rather than five positional parameters.
+struct NowPlayingMetadata {
+    let trackTitle: String
+    let artistNames: String
+    let albumTitle: String
+    let coverImageId: String?
+    let durationMs: UInt64
+}
+
 /// Bridges playback state to iOS Now Playing (lock screen + Control Center) and
 /// owns the `AVAudioSession`. The cpal CoreAudio sink is silent without an
 /// active `.playback` session, so this activates one when playback starts and
@@ -216,23 +227,19 @@ final class MediaControlService: @unchecked Sendable {
     // MARK: - Now Playing info
 
     func updateNowPlaying(
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        coverImageId: String?,
-        durationMs: UInt64,
+        _ metadata: NowPlayingMetadata,
         isPlaying: Bool,
         appHandle: AppHandle
     ) {
         lastKnownIsPlaying = isPlaying
         let infoCenter = MPNowPlayingInfoCenter.default()
         var info = infoCenter.nowPlayingInfo ?? [:]
-        info[MPMediaItemPropertyTitle] = trackTitle
-        info[MPMediaItemPropertyArtist] = artistNames
-        info[MPMediaItemPropertyAlbumTitle] = albumTitle
-        trackDuration(durationMs, into: &info)
+        info[MPMediaItemPropertyTitle] = metadata.trackTitle
+        info[MPMediaItemPropertyArtist] = metadata.artistNames
+        info[MPMediaItemPropertyAlbumTitle] = metadata.albumTitle
+        trackDuration(metadata.durationMs, into: &info)
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
-        applyArtwork(imageId: coverImageId, appHandle: appHandle, into: &info)
+        applyArtwork(imageId: metadata.coverImageId, appHandle: appHandle, into: &info)
         infoCenter.nowPlayingInfo = info
     }
 
@@ -308,7 +315,9 @@ final class MediaControlService: @unchecked Sendable {
         // No timeline to scrub either, so drop the scrubber (one owner).
         setScrubbingEnabled(false)
     }
+}
 
+extension MediaControlService {
     // MARK: - Artwork
 
     /// Apply cached artwork synchronously if `imageId` is unchanged, else clear

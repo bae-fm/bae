@@ -116,15 +116,19 @@ struct ReIdentifySheet: View {
             if let candidate = importStore.reIdentifyCandidates[key] {
                 VStack(spacing: 0) {
                     ImportSearchFlow.buildSearchPane(
-                        importer: importer,
-                        library: library,
-                        importStore: importStore,
-                        configStore: configStore,
-                        key: key,
-                        candidate: candidate,
-                        localTrackCount: trackCount,
+                        services: ImportSearchFlow.ImportServices(
+                            importer: importer,
+                            library: library,
+                            importStore: importStore,
+                            configStore: configStore
+                        ),
+                        input: ImportSearchFlow.SearchPaneInput(
+                            candidate: candidate,
+                            key: key,
+                            localTrackCount: trackCount,
+                            selectedReleaseId: selectedResult?.releaseId
+                        ),
                         openSettings: { openSettings() },
-                        selectedReleaseId: selectedResult?.releaseId,
                         // Re-identify "Skip identifying" diverges from the
                         // import flow: it commits Unknown in one click (no
                         // editable seed page). The identity flips to FileTags
@@ -271,10 +275,12 @@ struct ReIdentifySheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
 
-    // MARK: - Actions
+// MARK: - Actions
 
-    private func startReIdentify() async {
+extension ReIdentifySheet {
+    fileprivate func startReIdentify() async {
         // Seed the candidate so `ImportSearchFlow.buildSearchPane` has
         // something to read. The reducer overwrites `identifyState` as
         // events arrive; mode/error stay at their defaults.
@@ -293,7 +299,7 @@ struct ReIdentifySheet: View {
         importer.autoIdentifyRelease(key, releaseId)
     }
 
-    private func commit(_ choice: IdentityChoice) {
+    fileprivate func commit(_ choice: IdentityChoice) {
         commitTask?.cancel()
         phase = .committing
         let releaseEditor = releaseEditor
@@ -329,7 +335,7 @@ struct ReIdentifySheet: View {
         }
     }
 
-    private func refreshMetadata() {
+    fileprivate func refreshMetadata() {
         commitTask?.cancel()
         phase = .refreshing
         let releaseEditor = releaseEditor
@@ -359,7 +365,7 @@ struct ReIdentifySheet: View {
         }
     }
 
-    private func finish() {
+    fileprivate func finish() {
         // The user just answered the refresh prompt — they don't need a
         // second "Re-identify complete" beat after that. Close the sheet
         // and navigate the grid to wherever the release landed.

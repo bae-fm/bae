@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,16 +20,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,6 +64,24 @@ import uniffi.bae_bridge.BridgeRelease
 
 private const val TAG = "bae.AlbumDetailScreen"
 
+private data class AlbumPlaybackState(
+    val currentTrackId: String?,
+    val isPlaying: Boolean,
+)
+
+private data class AlbumDetailCallbacks(
+    val fetchGalleryImage: suspend (releaseId: String, fileId: String) -> ByteArray,
+    val onSelectRelease: (String) -> Unit,
+    val onTogglePlayPause: () -> Unit,
+    val onPlayTrackAt: (Int) -> Unit,
+    val onPlayRelease: () -> Unit,
+    val onShuffleRelease: () -> Unit,
+    val onPlayReleaseNext: () -> Unit,
+    val onAddReleaseToQueue: () -> Unit,
+    val onPlayTrackNext: (String) -> Unit,
+    val onAddTrackToQueue: (String) -> Unit,
+)
+
 /**
  * Album detail: header, a release picker when the album has more than one
  * release, and the selected release's track list grouped by side. Tapping a
@@ -79,21 +94,13 @@ fun AlbumDetailScreen(
     albumId: String,
     onBack: () -> Unit,
 ) {
-    // The store is the source of truth for detail: sync events keep it live
-    // (e.g. a release's cover or pin state changing mid-view). Seed it from the
-    // DB on first open when no event has populated this album yet.
     val details by session.libraryStore.albumDetails.collectAsState()
     val detail = details[albumId]
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
     var selectedReleaseId by remember { mutableStateOf<String?>(null) }
-    // Bumped by Retry after a failed seed; re-runs the load below.
     var retryToken by remember(albumId) { mutableStateOf(0) }
-    // Set when the seed read throws, so the spinner gives way to an error+retry
-    // instead of spinning forever. Cleared on album change or retry.
     var loadError by remember(albumId) { mutableStateOf<String?>(null) }
-    // For the fallback error string, which is built off the composition (inside
-    // a LaunchedEffect) where stringResource isn't available.
     val appContext = LocalContext.current
 
     LaunchedEffect(albumId, retryToken) {
@@ -111,7 +118,6 @@ fun AlbumDetailScreen(
         }
     }
 
-    // Pick the initial release once detail is available: primary, else first.
     LaunchedEffect(detail) {
         if (selectedReleaseId == null && detail != null) {
             val primary = detail.album.primaryReleaseId
@@ -125,128 +131,113 @@ fun AlbumDetailScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                }
-                Text(text = "bae", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        val loaded = detail
+        AlbumDetailTopBar(onBack = onBack)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            val loaded = detail
             if (loaded == null) {
-                if (loadError != null) {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center).padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            text = loadError ?: "",
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                        TextButton(onClick = { retryToken++ }) { Text(stringResource(R.string.retry)) }
-                    }
-                } else {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
+                AlbumDetailLoadingBox(loadError, onRetry = { retryToken++ })
             } else {
                 val release = loaded.releases.firstOrNull { it.id == selectedReleaseId }
                 AlbumDetailContent(
                     detail = loaded,
                     selectedRelease = release,
-                    // The release's pre-resolved cover identifier (an absolute
-                    // path the bridge already computed), or null when no cover is
-                    // cached — the header shows a placeholder then.
                     coverPath = release?.coverPath,
-                    // Fetches a cloud-only gallery image's bytes for the lightbox.
-                    fetchGalleryImage = { releaseId, fileId ->
-                        session.appHandle.fetchGalleryImage(releaseId, fileId)
-                    },
-                    onSelectRelease = { newId ->
-                        selectedReleaseId = newId
-                    },
-                    currentTrackId = nowPlaying?.trackId,
-                    isPlaying = isPlaying,
-                    onTogglePlayPause = { session.playback.togglePlayPause() },
-                    onPlayTrackAt = { index ->
-                        // play_release is a core transport command, not a Player
-                        // command: ask core to play this release at this track.
-                        // The resulting Playback*/Queue events project into the
-                        // player; no local player mutation here.
-                        release?.let {
-                            session.appHandle.playRelease(it.id, index.toUInt(), false)
-                        }
-                    },
-                    onPlayRelease = {
-                        release?.let { session.appHandle.playRelease(it.id, null, false) }
-                    },
-                    onShuffleRelease = {
-                        release?.let { session.appHandle.playRelease(it.id, null, true) }
-                    },
-                    // Release-level queueing: hand core the release id so it
-                    // expands the tracks (don't map them client-side).
-                    onPlayReleaseNext = {
-                        release?.let {
-                            try {
-                                session.appHandle.addReleaseNext(it.id)
-                            } catch (e: Exception) {
-                                Log.e(TAG, "addReleaseNext ${it.id} failed", e)
-                            }
-                        }
-                    },
-                    onAddReleaseToQueue = {
-                        release?.let {
-                            try {
-                                session.appHandle.addReleaseToQueue(it.id)
-                            } catch (e: Exception) {
-                                Log.e(TAG, "addReleaseToQueue ${it.id} failed", e)
-                            }
-                        }
-                    },
-                    onPlayTrackNext = { trackId ->
-                        try {
-                            session.appHandle.addNext(listOf(trackId))
-                        } catch (e: Exception) {
-                            Log.e(TAG, "addNext $trackId failed", e)
-                        }
-                    },
-                    onAddTrackToQueue = { trackId ->
-                        try {
-                            session.appHandle.addToQueue(listOf(trackId))
-                        } catch (e: Exception) {
-                            Log.e(TAG, "addToQueue $trackId failed", e)
-                        }
-                    },
+                    playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
+                    callbacks = buildAlbumDetailCallbacks(session, release) { selectedReleaseId = it },
                 )
             }
         }
-
         NowPlayingBar(session = session)
     }
 }
+
+@Composable
+private fun BoxScope.AlbumDetailLoadingBox(
+    loadError: String?,
+    onRetry: () -> Unit,
+) {
+    if (loadError != null) {
+        Column(
+            modifier = Modifier.align(Alignment.Center).padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(text = loadError, color = MaterialTheme.colorScheme.error)
+            TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+        }
+    } else {
+        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+    }
+}
+
+@Composable
+private fun AlbumDetailTopBar(onBack: () -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+            }
+            Text(text = "bae", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+private fun buildAlbumDetailCallbacks(
+    session: OpenLibrary,
+    release: BridgeRelease?,
+    onSelectRelease: (String) -> Unit,
+): AlbumDetailCallbacks =
+    AlbumDetailCallbacks(
+        fetchGalleryImage = { releaseId, fileId -> session.appHandle.fetchGalleryImage(releaseId, fileId) },
+        onSelectRelease = onSelectRelease,
+        onTogglePlayPause = { session.playback.togglePlayPause() },
+        // play_release is a core transport command: ask core to play the release at a track index.
+        onPlayTrackAt = { index -> release?.let { session.appHandle.playRelease(it.id, index.toUInt(), false) } },
+        onPlayRelease = { release?.let { session.appHandle.playRelease(it.id, null, false) } },
+        onShuffleRelease = { release?.let { session.appHandle.playRelease(it.id, null, true) } },
+        onPlayReleaseNext = {
+            release?.let {
+                try {
+                    session.appHandle.addReleaseNext(it.id)
+                } catch (e: Exception) {
+                    Log.e(TAG, "addReleaseNext ${it.id} failed", e)
+                }
+            }
+        },
+        onAddReleaseToQueue = {
+            release?.let {
+                try {
+                    session.appHandle.addReleaseToQueue(it.id)
+                } catch (e: Exception) {
+                    Log.e(TAG, "addReleaseToQueue ${it.id} failed", e)
+                }
+            }
+        },
+        onPlayTrackNext = { trackId ->
+            try {
+                session.appHandle.addNext(listOf(trackId))
+            } catch (e: Exception) {
+                Log.e(TAG, "addNext $trackId failed", e)
+            }
+        },
+        onAddTrackToQueue = { trackId ->
+            try {
+                session.appHandle.addToQueue(listOf(trackId))
+            } catch (e: Exception) {
+                Log.e(TAG, "addToQueue $trackId failed", e)
+            }
+        },
+    )
 
 @Composable
 private fun AlbumDetailContent(
     detail: BridgeAlbumDetail,
     selectedRelease: BridgeRelease?,
     coverPath: String?,
-    fetchGalleryImage: suspend (releaseId: String, fileId: String) -> ByteArray,
-    currentTrackId: String?,
-    isPlaying: Boolean,
-    onSelectRelease: (String) -> Unit,
-    onTogglePlayPause: () -> Unit,
-    onPlayTrackAt: (Int) -> Unit,
-    onPlayRelease: () -> Unit,
-    onShuffleRelease: () -> Unit,
-    onPlayReleaseNext: () -> Unit,
-    onAddReleaseToQueue: () -> Unit,
-    onPlayTrackNext: (String) -> Unit,
-    onAddTrackToQueue: (String) -> Unit,
+    playback: AlbumPlaybackState,
+    callbacks: AlbumDetailCallbacks,
 ) {
     val album = detail.album
     val isCompilation = album.isCompilation
@@ -258,7 +249,7 @@ private fun AlbumDetailContent(
     if (showGallery && galleryRelease != null && galleryItems.isNotEmpty()) {
         GalleryDialog(
             items = galleryItems,
-            loadImage = { fileId -> fetchGalleryImage(galleryRelease.id, fileId) },
+            loadImage = { fileId -> callbacks.fetchGalleryImage(galleryRelease.id, fileId) },
             onDismiss = { showGallery = false },
         )
     }
@@ -268,89 +259,13 @@ private fun AlbumDetailContent(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            Row(verticalAlignment = Alignment.Top) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(140.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .clickable(enabled = galleryItems.isNotEmpty()) { showGallery = true },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (coverPath != null) {
-                        AsyncImage(
-                            model = coverModel(coverPath),
-                            contentDescription = album.title,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.fillMaxSize(),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.MusicNote,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(32.dp),
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = album.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = album.artistNames,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    val year = album.year
-                    if (year != null) {
-                        Text(
-                            text = year.toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    // The release's audio format (e.g. "FLAC · 44.1 kHz · 16-bit
-                    // · stereo"), composed for the locale from the structured
-                    // format core attaches to each audio file. Releases are
-                    // single-format in practice, so the first audio file's
-                    // format represents the release.
-                    val audioFormat =
-                        selectedRelease
-                            ?.files
-                            ?.firstNotNullOfOrNull { it.audioFormat }
-                            ?.text(context)
-                    val compactMeta =
-                        if (selectedRelease != null) {
-                            listOfNotNull(
-                                selectedRelease.year?.toString(),
-                                selectedRelease.format,
-                                selectedRelease.label,
-                                selectedRelease.catalogNumber,
-                                selectedRelease.country,
-                                audioFormat,
-                            ).joinToString(" · ")
-                        } else {
-                            ""
-                        }
-                    if (selectedRelease != null && compactMeta.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = compactMeta,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
+            AlbumDetailHeader(
+                detail = detail,
+                selectedRelease = selectedRelease,
+                coverPath = coverPath,
+                galleryItems = galleryItems,
+                onShowGallery = { showGallery = true },
+            )
         }
 
         if (detail.releases.size > 1) {
@@ -359,7 +274,7 @@ private fun AlbumDetailContent(
                     detail.releases.forEach { rel ->
                         FilterChip(
                             selected = rel.id == selectedRelease?.id,
-                            onClick = { onSelectRelease(rel.id) },
+                            onClick = { callbacks.onSelectRelease(rel.id) },
                             label = { Text(rel.displayName, maxLines = 1) },
                         )
                     }
@@ -368,209 +283,180 @@ private fun AlbumDetailContent(
         }
 
         if (selectedRelease != null) {
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onPlayRelease) {
-                        Icon(
-                            imageVector = Icons.Filled.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.play))
-                    }
-                    OutlinedButton(onClick = onShuffleRelease) {
-                        Icon(
-                            imageVector = Icons.Filled.Shuffle,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.shuffle))
-                    }
-                }
-            }
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onPlayReleaseNext) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.play_next))
-                    }
-                    OutlinedButton(onClick = onAddReleaseToQueue) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.add_to_queue))
-                    }
-                }
-            }
+            item { AlbumActionButtons(callbacks) }
+            albumTrackGroups(selectedRelease, isCompilation, playback, callbacks, context)
+        }
+    }
+}
 
-            // Flatten groups to a release-wide track index so taps map to the
-            // ordered list the player builds from the same flattening.
-            var runningIndex = 0
-            selectedRelease.trackGroups.forEach { group ->
-                val sideHeader = group.side.sideHeaderText(context)
-                if (sideHeader.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = sideHeader,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                    }
-                }
-                val groupOffset = runningIndex
-                itemsIndexed(group.tracks, key = { _, t -> t.id }) { localIndex, track ->
-                    val isCurrent = track.id == currentTrackId
-                    TrackRow(
-                        positionLabel = track.position.positionText(context),
-                        title = track.title,
-                        artistNames = if (isCompilation) track.artistNames else null,
-                        durationLabel = formatDurationMs(track.durationMs),
-                        isCurrent = isCurrent,
-                        isPlaying = isPlaying,
-                        // Tapping the current track toggles play/pause; any other
-                        // track plays the release from there.
-                        onClick = {
-                            if (isCurrent) {
-                                onTogglePlayPause()
-                            } else {
-                                onPlayTrackAt(groupOffset + localIndex)
-                            }
-                        },
-                        onPlayNext = { onPlayTrackNext(track.id) },
-                        onAddToQueue = { onAddTrackToQueue(track.id) },
+@Composable
+private fun AlbumDetailHeader(
+    detail: BridgeAlbumDetail,
+    selectedRelease: BridgeRelease?,
+    coverPath: String?,
+    galleryItems: List<uniffi.bae_bridge.BridgeGalleryItem>,
+    onShowGallery: () -> Unit,
+) {
+    val album = detail.album
+    val context = LocalContext.current
+
+    fun compactMeta(): String {
+        val release = selectedRelease ?: return ""
+        val audioFormat = release.files.firstNotNullOfOrNull { it.audioFormat }?.text(context)
+        return listOfNotNull(
+            release.year?.toString(),
+            release.format,
+            release.label,
+            release.catalogNumber,
+            release.country,
+            audioFormat,
+        ).joinToString(" · ")
+    }
+    Row(verticalAlignment = Alignment.Top) {
+        Box(
+            modifier =
+                Modifier
+                    .size(140.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable(enabled = galleryItems.isNotEmpty(), onClick = onShowGallery),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (coverPath != null) {
+                AsyncImage(
+                    model = coverModel(coverPath),
+                    contentDescription = album.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxSize()) {
+                    Icon(
+                        Icons.Filled.MusicNote,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(32.dp),
                     )
                 }
-                runningIndex += group.tracks.size
             }
-
-            val totalDurationLabel = formatDurationMs(selectedRelease.totalDurationMs)
-            if (totalDurationLabel.isNotEmpty()) {
-                item {
-                    Text(
-                        text = totalDurationLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = album.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(
+                text = album.artistNames,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            album.year?.let {
+                Text(
+                    text = it.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            val meta = compactMeta()
+            if (meta.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = meta,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun TrackRow(
-    positionLabel: String,
-    title: String,
-    artistNames: String?,
-    durationLabel: String,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    onClick: () -> Unit,
-    onPlayNext: () -> Unit,
-    onAddToQueue: () -> Unit,
+private fun AlbumActionButtons(callbacks: AlbumDetailCallbacks) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = callbacks.onPlayRelease) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.play))
+            }
+            OutlinedButton(onClick = callbacks.onShuffleRelease) {
+                Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.shuffle))
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = callbacks.onPlayReleaseNext) {
+                Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.play_next))
+            }
+            OutlinedButton(onClick = callbacks.onAddReleaseToQueue) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.add_to_queue))
+            }
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
+    release: BridgeRelease,
+    isCompilation: Boolean,
+    playback: AlbumPlaybackState,
+    callbacks: AlbumDetailCallbacks,
+    context: android.content.Context,
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (isCurrent) {
-            Box(modifier = Modifier.width(40.dp), contentAlignment = Alignment.CenterStart) {
-                Icon(
-                    imageVector =
-                        if (isPlaying) {
-                            Icons.AutoMirrored.Filled.VolumeUp
-                        } else {
-                            Icons.Filled.PlayArrow
-                        },
-                    contentDescription =
-                        if (isPlaying) {
-                            stringResource(R.string.now_playing)
-                        } else {
-                            stringResource(R.string.paused)
-                        },
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-        } else {
-            Text(
-                text = positionLabel.ifEmpty { "-" },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(40.dp),
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                color =
-                    if (isCurrent) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                maxLines = 1,
-            )
-            if (artistNames != null) {
+    // Flatten groups to a release-wide track index so taps map to the ordered
+    // list the player builds from the same flattening.
+    var runningIndex = 0
+    release.trackGroups.forEach { group ->
+        val sideHeader = group.side.sideHeaderText(context)
+        if (sideHeader.isNotEmpty()) {
+            item {
                 Text(
-                    text = artistNames,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = sideHeader,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
-        if (durationLabel.isNotEmpty()) {
+        val groupOffset = runningIndex
+        itemsIndexed(group.tracks, key = { _, t -> t.id }) { localIndex, track ->
+            val isCurrent = track.id == playback.currentTrackId
+            TrackRow(
+                data =
+                    TrackRowData(
+                        positionLabel = track.position.positionText(context),
+                        title = track.title,
+                        artistNames = if (isCompilation) track.artistNames else null,
+                        durationLabel = formatDurationMs(track.durationMs),
+                        isCurrent = isCurrent,
+                        isPlaying = playback.isPlaying,
+                    ),
+                callbacks =
+                    TrackRowCallbacks(
+                        onClick = {
+                            if (isCurrent) {
+                                callbacks.onTogglePlayPause()
+                            } else {
+                                callbacks.onPlayTrackAt(groupOffset + localIndex)
+                            }
+                        },
+                        onPlayNext = { callbacks.onPlayTrackNext(track.id) },
+                        onAddToQueue = { callbacks.onAddTrackToQueue(track.id) },
+                    ),
+            )
+        }
+        runningIndex += group.tracks.size
+    }
+    val totalDurationLabel = formatDurationMs(release.totalDurationMs)
+    if (totalDurationLabel.isNotEmpty()) {
+        item {
             Text(
-                text = durationLabel,
+                text = totalDurationLabel,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
             )
-        }
-        Box {
-            IconButton(onClick = { menuExpanded = true }) {
-                Icon(
-                    imageVector = Icons.Filled.MoreVert,
-                    contentDescription = stringResource(R.string.track_options),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.play_next)) },
-                    onClick = {
-                        menuExpanded = false
-                        onPlayNext()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.add_to_queue)) },
-                    onClick = {
-                        menuExpanded = false
-                        onAddToQueue()
-                    },
-                )
-            }
         }
     }
 }

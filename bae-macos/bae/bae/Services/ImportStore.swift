@@ -116,7 +116,10 @@ class ImportStore {
             _ dict: inout OrderedDictionary<String, Candidate>
         ) {
             for key in dict.keys {
-                mutate(&dict[key]!)
+                if var c = dict[key] {
+                    mutate(&c)
+                    dict[key] = c
+                }
             }
         }
         sweep(&folderCandidates)
@@ -129,14 +132,12 @@ class ImportStore {
         forKey key: String,
         _ mutate: (inout Candidate) -> Void
     ) {
-        if folderCandidates[key] != nil {
-            var c = folderCandidates[key]!
+        if var c = folderCandidates[key] {
             mutate(&c)
             folderCandidates[key] = c
             return
         }
-        if reIdentifyCandidates[key] != nil {
-            var c = reIdentifyCandidates[key]!
+        if var c = reIdentifyCandidates[key] {
             mutate(&c)
             reIdentifyCandidates[key] = c
         }

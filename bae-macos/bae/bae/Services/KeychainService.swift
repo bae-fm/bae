@@ -3,6 +3,11 @@ import Security
 import os.log
 
 private let logger = Logger.bae("KeychainService")
+// kCFBooleanTrue is typed as CFBoolean? in Swift but is an ObjC singleton constant,
+// never nil. nonisolated(unsafe) because CFBoolean is non-Sendable, but the value
+// is immutable — accessing it from any concurrency domain is safe.
+nonisolated(unsafe) private let cfBoolTrue: CFBoolean = kCFBooleanTrue
+    .unsafelyUnwrapped
 
 /// Manages restore codes in iCloud Keychain for automatic cross-device library discovery.
 ///
@@ -23,7 +28,7 @@ enum KeychainService {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: libraryId,
-            kSecAttrSynchronizable as String: kCFBooleanTrue!,
+            kSecAttrSynchronizable as String: cfBoolTrue,
         ]
 
         // Try to update an existing entry first
@@ -62,10 +67,10 @@ enum KeychainService {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrSynchronizable as String: kCFBooleanTrue!,
+            kSecAttrSynchronizable as String: cfBoolTrue,
             kSecMatchLimit as String: kSecMatchLimitAll,
-            kSecReturnAttributes as String: kCFBooleanTrue!,
-            kSecReturnData as String: kCFBooleanTrue!,
+            kSecReturnAttributes as String: cfBoolTrue,
+            kSecReturnData as String: cfBoolTrue,
         ]
 
         var result: AnyObject?
@@ -94,7 +99,7 @@ enum KeychainService {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: libraryId,
-            kSecAttrSynchronizable as String: kCFBooleanTrue!,
+            kSecAttrSynchronizable as String: cfBoolTrue,
         ]
 
         let status = SecItemDelete(query as CFDictionary)

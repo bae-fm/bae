@@ -1177,6 +1177,9 @@ impl LibraryManager {
 
     /// The injected id source. The import layer and the mappers mint row ids
     /// through this so tests get a deterministic-but-unique sequence.
+    /// Only the desktop import modules call this, so it isn't compiled on
+    /// mobile (where it would otherwise be dead code).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn ids(&self) -> &IdRef {
         &self.ids
     }

@@ -117,86 +117,94 @@ fun QueueScreen(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
-        item(key = "header") {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.queue),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(
-                    onClick = {
-                        try {
-                            session.appHandle.clearQueue()
-                        } catch (e: Exception) {
-                            Log.e(TAG, "clearQueue failed", e)
-                        }
-                    },
-                    enabled = order.isNotEmpty(),
-                ) {
-                    Text(stringResource(R.string.queue_clear))
+        item(key = "header") { QueueHeader(session = session, isQueueEmpty = order.isEmpty()) }
+        queueContent(
+            session = session,
+            order = order,
+            reorderState = reorderState,
+            nowPlaying = nowPlaying,
+            onDismiss = onDismiss,
+        )
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.queueContent(
+    session: OpenLibrary,
+    order: List<KeyedQueueItem>,
+    reorderState: sh.calvin.reorderable.ReorderableLazyListState,
+    nowPlaying: NowPlaying?,
+    onDismiss: () -> Unit,
+) {
+    nowPlaying?.let { np ->
+        item(key = "nowplaying") {
+            SectionLabel(stringResource(R.string.queue_section_now_playing))
+            NowPlayingRow(np)
+        }
+    }
+    if (order.isEmpty()) {
+        item(key = "empty") {
+            Text(
+                text = stringResource(if (nowPlaying != null) R.string.queue_nothing_up_next else R.string.queue_empty),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(32.dp),
+            )
+        }
+    } else {
+        item(key = "uphdr") { SectionLabel(stringResource(R.string.queue_section_up_next)) }
+        itemsIndexed(order, key = { _, k -> k.key }) { index, k ->
+            ReorderableItem(reorderState, key = k.key) { isDragging ->
+                Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
+                    QueueRow(
+                        item = k.item,
+                        dragHandleModifier = Modifier.draggableHandle(),
+                        onClick = {
+                            try {
+                                session.appHandle.skipToQueueIndex(index.toUInt())
+                                onDismiss()
+                            } catch (e: Exception) {
+                                Log.e(TAG, "skipToQueueIndex $index failed", e)
+                            }
+                        },
+                        onRemove = {
+                            try {
+                                session.appHandle.removeFromQueue(index.toUInt())
+                            } catch (e: Exception) {
+                                Log.e(TAG, "removeFromQueue $index failed", e)
+                            }
+                        },
+                    )
                 }
             }
         }
+    }
+}
 
-        nowPlaying?.let { np ->
-            item(key = "nowplaying") {
-                SectionLabel(stringResource(R.string.queue_section_now_playing))
-                NowPlayingRow(np)
-            }
-        }
-
-        if (order.isEmpty()) {
-            item(key = "empty") {
-                Text(
-                    text =
-                        stringResource(
-                            if (nowPlaying != null) R.string.queue_nothing_up_next else R.string.queue_empty,
-                        ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                )
-            }
-        } else {
-            item(key = "uphdr") { SectionLabel(stringResource(R.string.queue_section_up_next)) }
-            itemsIndexed(order, key = { _, k -> k.key }) { index, k ->
-                ReorderableItem(reorderState, key = k.key) { isDragging ->
-                    Surface(
-                        tonalElevation = if (isDragging) 4.dp else 0.dp,
-                        color = MaterialTheme.colorScheme.surface,
-                    ) {
-                        QueueRow(
-                            item = k.item,
-                            dragHandleModifier = Modifier.draggableHandle(),
-                            onClick = {
-                                try {
-                                    session.appHandle.skipToQueueIndex(index.toUInt())
-                                    onDismiss()
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "skipToQueueIndex $index failed", e)
-                                }
-                            },
-                            onRemove = {
-                                try {
-                                    session.appHandle.removeFromQueue(index.toUInt())
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "removeFromQueue $index failed", e)
-                                }
-                            },
-                        )
-                    }
+@Composable
+private fun QueueHeader(
+    session: OpenLibrary,
+    isQueueEmpty: Boolean,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.queue),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(
+            onClick = {
+                try {
+                    session.appHandle.clearQueue()
+                } catch (e: Exception) {
+                    Log.e(TAG, "clearQueue failed", e)
                 }
-            }
+            },
+            enabled = !isQueueEmpty,
+        ) {
+            Text(stringResource(R.string.queue_clear))
         }
     }
 }

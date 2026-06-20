@@ -27,23 +27,9 @@ class UiEventReducerTest {
                 track: BridgeLoadingTrackInfo?,
             ) {}
 
-            override fun onPlaying(
-                trackId: String,
-                trackTitle: String,
-                artistNames: String,
-                albumTitle: String,
-                coverImageId: String?,
-                durationMs: Long,
-            ) {}
+            override fun onPlaying(event: BridgeUiEvent.PlaybackPlaying) {}
 
-            override fun onPaused(
-                trackId: String,
-                trackTitle: String,
-                artistNames: String,
-                albumTitle: String,
-                coverImageId: String?,
-                durationMs: Long,
-            ) {}
+            override fun onPaused(event: BridgeUiEvent.PlaybackPaused) {}
 
             override fun onStopped() {}
 

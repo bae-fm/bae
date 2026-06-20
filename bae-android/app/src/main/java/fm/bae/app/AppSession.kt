@@ -44,12 +44,15 @@ private const val POSITION_UPDATE_INTERVAL_MS = 200u
 class OpenLibrary(
     val libraryId: String,
     val appHandle: AppHandle,
-    val library: Library,
     val libraryStore: LibraryStore,
     val configStore: ConfigStore,
     val playback: BaeCorePlayer,
     private val appContext: Context,
 ) {
+    // Library is always a thin wrapper around appHandle; construct it here rather
+    // than requiring callers to pass a separately-constructed instance.
+    val library = Library(appHandle)
+
     /**
      * Subscribe to the live event stream, routing playback variants into the
      * [BaeCorePlayer] and everything else into the stores.
@@ -229,31 +232,7 @@ object AppSessionHolder {
             current?.dispose()
             current = null
 
-            val appContext = context.applicationContext
-            val library = Library(handle)
-            val session =
-                OpenLibrary(
-                    libraryId = libraryId,
-                    appHandle = handle,
-                    library = library,
-                    libraryStore = LibraryStore(),
-                    configStore = ConfigStore(config, handle.isSyncReady()),
-                    playback =
-                        BaeCorePlayer(
-                            applicationLooper = Looper.getMainLooper(),
-                            appHandle = handle,
-                            library = library,
-                            context = appContext,
-                            scope = appScope,
-                            isAppForeground = {
-                                ProcessLifecycleOwner
-                                    .get()
-                                    .lifecycle.currentState
-                                    .isAtLeast(Lifecycle.State.STARTED)
-                            },
-                        ),
-                    appContext = appContext,
-                )
+            val session = buildSession(libraryId, handle, config, context.applicationContext)
             current = session
             session.wireUp(appScope)
             onScreen(AppScreen.LibraryOpen(session))
@@ -266,5 +245,35 @@ object AppSessionHolder {
             Log.e(TAG, "openLibrary failed for $libraryId", e)
             onScreen(AppScreen.Failed(e.message ?: "Failed to open library"))
         }
+    }
+
+    private fun buildSession(
+        libraryId: String,
+        handle: AppHandle,
+        config: BridgeConfig,
+        appContext: Context,
+    ): OpenLibrary {
+        val library = Library(handle)
+        return OpenLibrary(
+            libraryId = libraryId,
+            appHandle = handle,
+            libraryStore = LibraryStore(),
+            configStore = ConfigStore(config, handle.isSyncReady()),
+            playback =
+                BaeCorePlayer(
+                    applicationLooper = Looper.getMainLooper(),
+                    appHandle = handle,
+                    library = library,
+                    context = appContext,
+                    scope = appScope,
+                    isAppForeground = {
+                        ProcessLifecycleOwner
+                            .get()
+                            .lifecycle.currentState
+                            .isAtLeast(Lifecycle.State.STARTED)
+                    },
+                ),
+            appContext = appContext,
+        )
     }
 }

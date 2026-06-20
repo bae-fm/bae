@@ -126,8 +126,12 @@ struct WelcomeView: View {
             restoreView
         }
     }
+}
 
-    private var chooseView: some View {
+// MARK: - Choose flow
+
+extension WelcomeView {
+    fileprivate var chooseView: some View {
         VStack(spacing: 32) {
             Spacer()
             Text(verbatim: "bae")
@@ -391,8 +395,12 @@ struct WelcomeView: View {
         }
         keychainEntries = decoded
     }
+}
 
-    private var restoreView: some View {
+// MARK: - Restore flow
+
+extension WelcomeView {
+    fileprivate var restoreView: some View {
         VStack(spacing: 0) {
             Text("Restore from cloud")
                 .font(.title2.bold())
@@ -680,7 +688,7 @@ struct WelcomeView: View {
 
     // MARK: - Actions
 
-    private func doCreate() {
+    fileprivate func doCreate() {
         isCreating = true
         error = nil
         Task.detached {
@@ -703,7 +711,7 @@ struct WelcomeView: View {
     /// Restore the library from the current restore-code input. The bridge
     /// re-decodes the code, so callers only need to have confirmed a valid
     /// decode first — there's nothing to pass in.
-    private func doRestoreFromCode() {
+    fileprivate func doRestoreFromCode() {
         let code = restoreCodeInput
         let token = oauthTokenJson
         runRestore {
@@ -805,7 +813,7 @@ struct WelcomeView: View {
     }
 
     #if BAE_OAUTH_PROVIDERS
-        private func doOAuthAuthorize(provider: BridgeCloudProvider) {
+        fileprivate func doOAuthAuthorize(provider: BridgeCloudProvider) {
             isAuthorizing = true
             error = nil
             Task.detached {

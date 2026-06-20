@@ -116,11 +116,13 @@ struct ImportFilePane: View {
             content()
         }
     }
+}
 
-    // MARK: - Artwork cell
+// MARK: - Rows
 
+extension ImportFilePane {
     /// 1:1 thumbnail. Tap opens the gallery at this index.
-    private func artworkCell(_ file: ArtworkFile, index: Int)
+    fileprivate func artworkCell(_ file: ArtworkFile, index: Int)
         -> some View
     {
         Color.clear
@@ -141,7 +143,7 @@ struct ImportFilePane: View {
             )
     }
 
-    private func trackRow(_ file: FileInfo) -> some View {
+    fileprivate func trackRow(_ file: FileInfo) -> some View {
         let isPreviewing = previewingPath == file.localPath
         return Button {
             handleTap(file: file, kind: .audio)
@@ -157,7 +159,7 @@ struct ImportFilePane: View {
         .accentRail(isActive: isPreviewing)
     }
 
-    private func documentRow(_ file: FileInfo) -> some View {
+    fileprivate func documentRow(_ file: FileInfo) -> some View {
         Button {
             handleTap(file: file, kind: .document)
         } label: {
@@ -170,7 +172,7 @@ struct ImportFilePane: View {
         .buttonStyle(.plain)
     }
 
-    private func cueFlacPairRow(_ pair: CueFlacPair) -> some View {
+    fileprivate func cueFlacPairRow(_ pair: CueFlacPair) -> some View {
         let isPreviewingFlac = previewingPath == pair.flacLocalPath
 
         return VStack(spacing: 4) {
@@ -200,36 +202,7 @@ struct ImportFilePane: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    HStack {
-                        Button {
-                            do {
-                                let text = try readTextFile(
-                                    path: pair.cueLocalPath
-                                )
-                                onOpenDocument(pair.cueName, text)
-                            }
-                            catch {
-                                onError(
-                                    String(
-                                        localized:
-                                            "Could not read \(pair.cueName): \(error.localizedDescription)"
-                                    )
-                                )
-                            }
-                        } label: {
-                            Text(pair.cueName)
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-                        .buttonStyle(.plain)
-                        Spacer()
-                        Text(pair.cueSizeText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.leading, 8)
-                    }
+                    cueFileRow(pair)
                     if let trackCount = pair.trackCount {
                         Text("\(Int(trackCount)) tracks")
                             .font(.caption2)
@@ -248,7 +221,40 @@ struct ImportFilePane: View {
         }
     }
 
-    private func fileRow(
+    fileprivate func cueFileRow(_ pair: CueFlacPair) -> some View {
+        HStack {
+            Button {
+                do {
+                    let text = try readTextFile(
+                        path: pair.cueLocalPath
+                    )
+                    onOpenDocument(pair.cueName, text)
+                }
+                catch {
+                    onError(
+                        String(
+                            localized:
+                                "Could not read \(pair.cueName): \(error.localizedDescription)"
+                        )
+                    )
+                }
+            } label: {
+                Text(pair.cueName)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .buttonStyle(.plain)
+            Spacer()
+            Text(pair.cueSizeText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 8)
+        }
+    }
+
+    fileprivate func fileRow(
         icon: String,
         file: FileInfo,
         highlighted: Bool = false,
@@ -297,9 +303,9 @@ struct ImportFilePane: View {
         }
     }
 
-    private enum FileKind { case audio, document }
+    fileprivate enum FileKind { case audio, document }
 
-    private func handleTap(file: FileInfo, kind: FileKind) {
+    fileprivate func handleTap(file: FileInfo, kind: FileKind) {
         switch kind {
         case .audio: onPreviewAudio(file.localPath)
         case .document:

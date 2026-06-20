@@ -51,6 +51,7 @@ import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeGalleryItem
 import java.io.File
 
+private const val FULL_RES_SCALE_THRESHOLD = 1.01f
 private const val TAG = "bae.GalleryDialog"
 
 /**
@@ -151,30 +152,7 @@ private fun ZoomableGalleryImage(
 
     val model =
         remember(data, cacheKey, fullRes) {
-            ImageRequest
-                .Builder(context)
-                .data(data)
-                .crossfade(true)
-                .apply {
-                    // A local on-disk file can be disk-cached by its identifier;
-                    // in-memory bytes (a fetched cloud image) aren't disk-cacheable,
-                    // so the disk key only applies to the File source.
-                    if (data is File) {
-                        diskCacheKey(cacheKey)
-                    }
-                    if (fullRes) {
-                        // Decode at the source's full resolution and reuse the
-                        // already-cached downsampled image as the placeholder, so
-                        // the zoomed view sharpens in place instead of blanking.
-                        size(Size.ORIGINAL)
-                        memoryCacheKey("$cacheKey#orig")
-                        placeholderMemoryCacheKey(cacheKey)
-                    } else {
-                        // Default size resolves to the page bounds: Coil
-                        // downsamples the source to fit, the cheap initial decode.
-                        memoryCacheKey(cacheKey)
-                    }
-                }.build()
+            buildGalleryImageRequest(context, data, cacheKey, fullRes)
         }
 
     AsyncImage(
@@ -202,7 +180,7 @@ private fun ZoomableGalleryImage(
                                     originSet = true
                                 }
                                 scale = (scale * zoom).coerceAtLeast(1f)
-                                if (scale > 1.01f && !fullRes) {
+                                if (scale > FULL_RES_SCALE_THRESHOLD && !fullRes) {
                                     fullRes = true
                                 }
                                 // Consume so the pager doesn't treat a pinch as a
@@ -225,6 +203,35 @@ private fun ZoomableGalleryImage(
                 },
     )
 }
+
+private fun buildGalleryImageRequest(
+    context: coil3.PlatformContext,
+    data: Any,
+    cacheKey: String,
+    fullRes: Boolean,
+): ImageRequest =
+    ImageRequest
+        .Builder(context)
+        .data(data)
+        .crossfade(true)
+        .apply {
+            // A local on-disk file can be disk-cached by its identifier;
+            // in-memory bytes (a fetched cloud image) aren't disk-cacheable,
+            // so the disk key only applies to the File source.
+            if (data is File) diskCacheKey(cacheKey)
+            if (fullRes) {
+                // Decode at the source's full resolution and reuse the
+                // already-cached downsampled image as the placeholder, so
+                // the zoomed view sharpens in place instead of blanking.
+                size(Size.ORIGINAL)
+                memoryCacheKey("$cacheKey#orig")
+                placeholderMemoryCacheKey(cacheKey)
+            } else {
+                // Default size resolves to the page bounds: Coil downsamples
+                // the source to fit, the cheap initial decode.
+                memoryCacheKey(cacheKey)
+            }
+        }.build()
 
 /**
  * A gallery image whose file isn't on disk here: fetch its bytes (downloaded

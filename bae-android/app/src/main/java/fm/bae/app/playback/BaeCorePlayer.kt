@@ -33,6 +33,7 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgeQueueItem
 import uniffi.bae_bridge.BridgeRepeatMode
+import uniffi.bae_bridge.BridgeUiEvent
 
 /** Now-playing snapshot the [fm.bae.app.ui.NowPlayingBar] renders. */
 data class NowPlaying(
@@ -71,32 +72,33 @@ data class QueueItem(
  * live [AppHandle]), so reducer routing is unit-testable against a fake sink.
  */
 interface PlaybackEventSink {
-    fun onLoading(trackId: String, track: BridgeLoadingTrackInfo?)
-    fun onPlaying(
+    fun onLoading(
         trackId: String,
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        coverImageId: String?,
-        durationMs: Long,
+        track: BridgeLoadingTrackInfo?,
     )
-    fun onPaused(
-        trackId: String,
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        coverImageId: String?,
-        durationMs: Long,
-    )
+
+    fun onPlaying(event: BridgeUiEvent.PlaybackPlaying)
+
+    fun onPaused(event: BridgeUiEvent.PlaybackPaused)
+
     fun onStopped()
+
     fun onProgress(
         positionMs: Long,
         durationMs: Long,
         progress: Double,
     )
+
     fun onRepeatModeChanged(mode: BridgeRepeatMode)
-    fun onQueueUpdated(items: List<BridgeQueueItem>, hasNext: Boolean, hasPrevious: Boolean)
+
+    fun onQueueUpdated(
+        items: List<BridgeQueueItem>,
+        hasNext: Boolean,
+        hasPrevious: Boolean,
+    )
+
     fun onVolumeChanged(volume: Float)
+
     fun onMuteChanged(isMuted: Boolean)
 }
 
@@ -119,7 +121,14 @@ private const val TAG = "bae.BaeCorePlayer"
  * Audio focus and becoming-noisy aren't handled by a custom [SimpleBasePlayer],
  * so this requests focus when playback starts and pauses core on focus loss /
  * unplug — the pause reflects back as a `PlaybackPaused` event.
+ *
+ * Implements [SimpleBasePlayer] (6 abstract methods) plus the bridge's
+ * PlaybackEventSink (9 methods) on top of audio focus, state projection, and
+ * transport forwarding; the function count is the interface contract, so
+ * `TooManyFunctions` is suppressed rather than split into helper classes.
  */
+@Suppress("TooManyFunctions")
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class BaeCorePlayer(
     applicationLooper: Looper,
     private val appHandle: AppHandle,
@@ -133,8 +142,8 @@ class BaeCorePlayer(
      * so the service-start decision is unit-testable.
      */
     private val isAppForeground: () -> Boolean,
-) : SimpleBasePlayer(applicationLooper), PlaybackEventSink {
-
+) : SimpleBasePlayer(applicationLooper),
+    PlaybackEventSink {
     /**
      * Display metadata for one track. Queue entries carry it from
      * `getQueueItems`; the current track's is overridden by the
@@ -164,7 +173,10 @@ class BaeCorePlayer(
          * Any queue entry matching the current id is substituted with [current]
          * so its display comes from the authoritative Playing/Paused payload.
          */
-        fun orderedMetas(entries: List<Meta>, current: Meta?): List<Meta> {
+        fun orderedMetas(
+            entries: List<Meta>,
+            current: Meta?,
+        ): List<Meta> {
             val mapped = entries.map { if (it.trackId == current?.trackId) current else it }
             return if (current != null && mapped.none { it.trackId == current.trackId }) {
                 listOf(current) + mapped
@@ -181,13 +193,18 @@ class BaeCorePlayer(
          * first track's metadata hydrates the playlist. Without this guard that
          * empty-but-BUFFERING window crashes the app.
          */
-        fun playbackStateFor(transport: Transport, playlistIsEmpty: Boolean): Int =
+        fun playbackStateFor(
+            transport: Transport,
+            playlistIsEmpty: Boolean,
+        ): Int =
             if (playlistIsEmpty) {
                 Player.STATE_IDLE
-            } else when (transport) {
-                Transport.IDLE -> Player.STATE_IDLE
-                Transport.BUFFERING -> Player.STATE_BUFFERING
-                Transport.READY -> Player.STATE_READY
+            } else {
+                when (transport) {
+                    Transport.IDLE -> Player.STATE_IDLE
+                    Transport.BUFFERING -> Player.STATE_BUFFERING
+                    Transport.READY -> Player.STATE_READY
+                }
             }
 
         internal fun itemDurationMs(
@@ -196,9 +213,10 @@ class BaeCorePlayer(
             durationMs: Long,
         ): Long {
             if (meta.trackId != playingTrackId) return C.TIME_UNSET
-            if (durationMs != C.TIME_UNSET) return durationMs
-            Log.w(TAG, "itemDurationMs missing duration for current track ${meta.trackId}")
-            return C.TIME_UNSET
+            if (durationMs == C.TIME_UNSET) {
+                Log.w(TAG, "itemDurationMs missing duration for current track ${meta.trackId}")
+            }
+            return durationMs
         }
 
         private fun mediaItemData(
@@ -207,39 +225,44 @@ class BaeCorePlayer(
             durationMs: Long,
         ): MediaItemData {
             val currentDurationMs = itemDurationMs(meta, playingTrackId, durationMs)
-            val metadata = mediaMetadata(
-                meta,
-                if (currentDurationMs == C.TIME_UNSET) null else currentDurationMs,
-            )
-            return MediaItemData.Builder(meta.trackId)
+            val metadata =
+                mediaMetadata(
+                    meta,
+                    if (currentDurationMs == C.TIME_UNSET) null else currentDurationMs,
+                )
+            return MediaItemData
+                .Builder(meta.trackId)
                 .setMediaItem(
-                    MediaItem.Builder()
+                    MediaItem
+                        .Builder()
                         .setMediaId(meta.trackId)
                         .setMediaMetadata(metadata)
                         .build(),
-                )
-                .setMediaMetadata(metadata)
+                ).setMediaMetadata(metadata)
                 .setDurationUs(
                     if (currentDurationMs == C.TIME_UNSET) C.TIME_UNSET else Util.msToUs(currentDurationMs),
-                )
-                .build()
+                ).build()
         }
 
-        internal fun mediaMetadata(meta: Meta, durationMs: Long?): MediaMetadata {
-            val metadataBuilder = MediaMetadata.Builder()
-                .setTitle(meta.title)
-                .setArtist(meta.artist)
-                .setAlbumTitle(meta.albumTitle)
-                .setDurationMs(durationMs)
-                .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-                .setIsPlayable(true)
-                .setIsBrowsable(false)
+        internal fun mediaMetadata(
+            meta: Meta,
+            durationMs: Long?,
+        ): MediaMetadata {
+            val metadataBuilder =
+                MediaMetadata
+                    .Builder()
+                    .setTitle(meta.title)
+                    .setArtist(meta.artist)
+                    .setAlbumTitle(meta.albumTitle)
+                    .setDurationMs(durationMs)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                    .setIsPlayable(true)
+                    .setIsBrowsable(false)
             meta.coverPath?.let {
                 metadataBuilder.setArtworkUri(Uri.fromFile(coverFile(it)))
             }
             return metadataBuilder.build()
         }
-
     }
 
     internal enum class Transport { IDLE, BUFFERING, READY }
@@ -312,14 +335,15 @@ class BaeCorePlayer(
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     private val focusRequest: AudioFocusRequest =
-        AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+        AudioFocusRequest
+            .Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(
-                AudioAttributes.Builder()
+                AudioAttributes
+                    .Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                     .build(),
-            )
-            .setOnAudioFocusChangeListener(::onAudioFocusChange)
+            ).setOnAudioFocusChangeListener(::onAudioFocusChange)
             .build()
 
     private var hasFocus: Boolean = false
@@ -333,13 +357,17 @@ class BaeCorePlayer(
      */
     private var resumeOnFocusGain: Boolean = false
 
-    private val becomingNoisyReceiver = object : BroadcastReceiver() {
-        override fun onReceive(c: Context?, intent: Intent?) {
-            if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
-                appHandle.pause()
+    private val becomingNoisyReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                c: Context?,
+                intent: Intent?,
+            ) {
+                if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+                    appHandle.pause()
+                }
             }
         }
-    }
     private var noisyReceiverRegistered = false
 
     init {
@@ -361,7 +389,10 @@ class BaeCorePlayer(
 
     // ── Event intake (called from UiEventReducer on the application looper) ──
 
-    override fun onLoading(trackId: String, track: BridgeLoadingTrackInfo?) {
+    override fun onLoading(
+        trackId: String,
+        track: BridgeLoadingTrackInfo?,
+    ) {
         // Once core resolves the target's metadata, project it as the current
         // track so the player has a non-empty timeline in STATE_BUFFERING — which
         // is what lets Media3 post the media notification and take the service
@@ -371,26 +402,23 @@ class BaeCorePlayer(
         // passes no metadata, holding the prior track on screen with a spinner
         // until the swap — matching macOS. (Projecting a track that isn't in the
         // playlist yet would leave the current index unset.)
-        val current = track?.let {
-            Current(
-                meta(trackId, it.trackTitle, it.artistNames, it.albumTitle, it.coverImageId),
-                durationOrUnset(it.durationMs.toLong()),
-            )
-        }
+        val current =
+            track?.let {
+                Current(
+                    meta(trackId, it.trackTitle, it.artistNames, it.albumTitle, it.coverImageId),
+                    durationOrUnset(it.durationMs.toLong()),
+                )
+            }
         activate(Transport.BUFFERING, current)
     }
 
-    override fun onPlaying(
-        trackId: String,
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        coverImageId: String?,
-        durationMs: Long,
-    ) {
+    override fun onPlaying(event: BridgeUiEvent.PlaybackPlaying) {
         activate(
             Transport.READY,
-            Current(meta(trackId, trackTitle, artistNames, albumTitle, coverImageId), durationOrUnset(durationMs)),
+            Current(
+                meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImageId),
+                durationOrUnset(event.durationMs.toLong()),
+            ),
         )
     }
 
@@ -398,7 +426,10 @@ class BaeCorePlayer(
      *  core-reported [durationMs] ([C.TIME_UNSET] when unknown). The two always
      *  move together, so they're one payload — the bare loading event carries no
      *  [Current] at all and keeps the prior track. */
-    private data class Current(val meta: Meta, val durationMs: Long)
+    private data class Current(
+        val meta: Meta,
+        val durationMs: Long,
+    )
 
     /**
      * Enter an active (play-when-ready) state for [transport]. When core has
@@ -407,7 +438,10 @@ class BaeCorePlayer(
      * the timeline never blinks empty mid-playback. Requests audio focus,
      * republishes the projection, and brings up the playback service.
      */
-    private fun activate(transport: Transport, current: Current?) {
+    private fun activate(
+        transport: Transport,
+        current: Current?,
+    ) {
         this.transport = transport
         playWhenReady = true
         if (current != null) {
@@ -421,22 +455,14 @@ class BaeCorePlayer(
     }
 
     /** Bridge durations are 0 when unknown; map that to Media3's [C.TIME_UNSET]. */
-    private fun durationOrUnset(durationMs: Long): Long =
-        if (durationMs > 0L) durationMs else C.TIME_UNSET
+    private fun durationOrUnset(durationMs: Long): Long = if (durationMs > 0L) durationMs else C.TIME_UNSET
 
-    override fun onPaused(
-        trackId: String,
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        coverImageId: String?,
-        durationMs: Long,
-    ) {
+    override fun onPaused(event: BridgeUiEvent.PlaybackPaused) {
         transport = Transport.READY
         playWhenReady = false
-        playingTrackId = trackId
-        currentMeta = meta(trackId, trackTitle, artistNames, albumTitle, coverImageId)
-        this.durationMs = durationOrUnset(durationMs)
+        playingTrackId = event.trackId
+        currentMeta = meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImageId)
+        this.durationMs = durationOrUnset(event.durationMs.toLong())
         publish()
     }
 
@@ -484,11 +510,12 @@ class BaeCorePlayer(
     }
 
     override fun onRepeatModeChanged(mode: BridgeRepeatMode) {
-        media3RepeatMode = when (mode) {
-            BridgeRepeatMode.NONE -> Player.REPEAT_MODE_OFF
-            BridgeRepeatMode.TRACK -> Player.REPEAT_MODE_ONE
-            BridgeRepeatMode.ALBUM -> Player.REPEAT_MODE_ALL
-        }
+        media3RepeatMode =
+            when (mode) {
+                BridgeRepeatMode.NONE -> Player.REPEAT_MODE_OFF
+                BridgeRepeatMode.TRACK -> Player.REPEAT_MODE_ONE
+                BridgeRepeatMode.ALBUM -> Player.REPEAT_MODE_ALL
+            }
         _repeatMode.value = mode
         publish()
     }
@@ -507,7 +534,11 @@ class BaeCorePlayer(
      * the main thread (cover ids resolve to local file paths via the image
      * resolver, which stats the disk), then re-anchor on the application looper.
      */
-    override fun onQueueUpdated(items: List<BridgeQueueItem>, hasNext: Boolean, hasPrevious: Boolean) {
+    override fun onQueueUpdated(
+        items: List<BridgeQueueItem>,
+        hasNext: Boolean,
+        hasPrevious: Boolean,
+    ) {
         scope.launch {
             val hydrated = withContext(Dispatchers.IO) { items.map { it.toEntry() } }
             entries = hydrated
@@ -531,11 +562,12 @@ class BaeCorePlayer(
             }
         _isPlaying.value = transport == Transport.READY && playWhenReady
         _isLoading.value = transport == Transport.BUFFERING
-        _position.value = PlaybackPosition(
-            progress = progress,
-            elapsedLabel = elapsedLabel,
-            remainingLabel = remainingLabel,
-        )
+        _position.value =
+            PlaybackPosition(
+                progress = progress,
+                elapsedLabel = elapsedLabel,
+                remainingLabel = remainingLabel,
+            )
         _queue.value = entries.map { it.toQueueItem() }
     }
 
@@ -569,22 +601,33 @@ class BaeCorePlayer(
         val playlist = metas.map { meta -> mediaItemData(meta, playingTrackId, durationMs) }
 
         val requestedIndex = playingTrackId?.let { id -> metas.indexOfFirst { it.trackId == id } }
-        val currentIndex = when {
-            playlist.isEmpty() -> C.INDEX_UNSET
-            requestedIndex == null -> C.INDEX_UNSET
-            requestedIndex >= 0 -> requestedIndex
-            else -> {
-                Log.w(
-                    TAG,
-                    "getState missing current track $playingTrackId in playlist ${metas.map { it.trackId }}",
-                )
-                C.INDEX_UNSET
+        val currentIndex =
+            when {
+                playlist.isEmpty() -> {
+                    C.INDEX_UNSET
+                }
+
+                requestedIndex == null -> {
+                    C.INDEX_UNSET
+                }
+
+                requestedIndex >= 0 -> {
+                    requestedIndex
+                }
+
+                else -> {
+                    Log.w(
+                        TAG,
+                        "getState missing current track $playingTrackId in playlist ${metas.map { it.trackId }}",
+                    )
+                    C.INDEX_UNSET
+                }
             }
-        }
 
         val playbackState = playbackStateFor(transport, playlistIsEmpty = playlist.isEmpty())
 
-        return State.Builder()
+        return State
+            .Builder()
             .setAvailableCommands(availableCommands())
             .setPlaybackState(playbackState)
             .setPlayWhenReady(playWhenReady, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
@@ -596,20 +639,21 @@ class BaeCorePlayer(
                     anchorPositionMs,
                     if (playbackState == Player.STATE_READY && playWhenReady) 1.0f else 0.0f,
                 ),
-            )
-            .build()
+            ).build()
     }
 
     private fun availableCommands(): Player.Commands {
-        val builder = Player.Commands.Builder()
-            .add(Player.COMMAND_PLAY_PAUSE)
-            .add(Player.COMMAND_STOP)
-            .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
-            .add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
-            .add(Player.COMMAND_SET_REPEAT_MODE)
-            .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
-            .add(Player.COMMAND_GET_TIMELINE)
-            .add(Player.COMMAND_GET_METADATA)
+        val builder =
+            Player.Commands
+                .Builder()
+                .add(Player.COMMAND_PLAY_PAUSE)
+                .add(Player.COMMAND_STOP)
+                .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                .add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
+                .add(Player.COMMAND_SET_REPEAT_MODE)
+                .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
+                .add(Player.COMMAND_GET_TIMELINE)
+                .add(Player.COMMAND_GET_METADATA)
 
         listOf(
             hasNext to listOf(Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM),
@@ -650,11 +694,20 @@ class BaeCorePlayer(
         when (seekCommand) {
             Player.COMMAND_SEEK_TO_NEXT,
             Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
-            -> appHandle.nextTrack()
+            -> {
+                appHandle.nextTrack()
+            }
+
             Player.COMMAND_SEEK_TO_PREVIOUS,
             Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
-            -> appHandle.previousTrack()
-            Player.COMMAND_SEEK_TO_MEDIA_ITEM -> appHandle.skipToQueueIndex(mediaItemIndex.toUInt())
+            -> {
+                appHandle.previousTrack()
+            }
+
+            Player.COMMAND_SEEK_TO_MEDIA_ITEM -> {
+                appHandle.skipToQueueIndex(mediaItemIndex.toUInt())
+            }
+
             else -> {
                 // In-track seek: COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM. Core seeks by
                 // ratio; derive it from the requested position and known duration.
@@ -670,11 +723,12 @@ class BaeCorePlayer(
     }
 
     override fun handleSetRepeatMode(repeatMode: Int): ListenableFuture<*> {
-        val mode = when (repeatMode) {
-            Player.REPEAT_MODE_ONE -> BridgeRepeatMode.TRACK
-            Player.REPEAT_MODE_ALL -> BridgeRepeatMode.ALBUM
-            else -> BridgeRepeatMode.NONE
-        }
+        val mode =
+            when (repeatMode) {
+                Player.REPEAT_MODE_ONE -> BridgeRepeatMode.TRACK
+                Player.REPEAT_MODE_ALL -> BridgeRepeatMode.ALBUM
+                else -> BridgeRepeatMode.NONE
+            }
         appHandle.setRepeatMode(mode)
         return Futures.immediateVoidFuture()
     }
@@ -759,17 +813,20 @@ class BaeCorePlayer(
                 resumeOnFocusGain = false
                 appHandle.pause()
             }
+
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK,
             -> {
                 resumeOnFocusGain = _isPlaying.value
                 appHandle.pause()
             }
-            AudioManager.AUDIOFOCUS_GAIN ->
+
+            AudioManager.AUDIOFOCUS_GAIN -> {
                 if (resumeOnFocusGain) {
                     resumeOnFocusGain = false
                     appHandle.resume()
                 }
+            }
         }
     }
 

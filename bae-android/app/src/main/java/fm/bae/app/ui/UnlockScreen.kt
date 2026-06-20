@@ -34,11 +34,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.unlockLibrary
 
+private const val HEX_KEY_LENGTH = 64
+
 /**
  * Fallback unlock flow when the encryption key isn't in the keyring. The v1
  * happy path stores the key during `restoreFromCode`, so this rarely triggers,
  * but it's the recovery path when the keyring is wiped.
  */
+private data class UnlockLibraryInfo(
+    val name: String,
+    val fingerprint: String?,
+)
+
+private data class UnlockCallbacks(
+    val onKeyHexChange: (String) -> Unit,
+    val onUnlock: () -> Unit,
+)
+
 @Composable
 fun UnlockScreen(
     libraryId: String,
@@ -51,28 +63,57 @@ fun UnlockScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val appContext = LocalContext.current
+    UnlockForm(
+        info = UnlockLibraryInfo(libraryName, fingerprint),
+        keyHex = keyHex,
+        isUnlocking = isUnlocking,
+        error = error,
+        callbacks =
+            UnlockCallbacks(
+                onKeyHexChange = { keyHex = it.trim() },
+                onUnlock = {
+                    isUnlocking = true
+                    error = null
+                    scope.launch {
+                        try {
+                            withContext(Dispatchers.IO) { unlockLibrary(libraryId, keyHex) }
+                            isUnlocking = false
+                            onUnlocked()
+                        } catch (e: Exception) {
+                            isUnlocking = false
+                            error = e.message ?: appContext.getString(R.string.unlock_failed)
+                        }
+                    }
+                },
+            ),
+    )
+}
 
-    val isValidHex = keyHex.length == 64 && keyHex.all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }
-
+@Composable
+private fun UnlockForm(
+    info: UnlockLibraryInfo,
+    keyHex: String,
+    isUnlocking: Boolean,
+    error: String?,
+    callbacks: UnlockCallbacks,
+) {
+    val isValidHex = keyHex.length == HEX_KEY_LENGTH && keyHex.all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }
     Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Text(stringResource(R.string.unlock_title), style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = libraryName,
+            info.name,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (fingerprint != null) {
+        if (info.fingerprint != null) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = stringResource(R.string.unlock_key_fingerprint, fingerprint),
+                text = stringResource(R.string.unlock_key_fingerprint, info.fingerprint),
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -87,35 +128,15 @@ fun UnlockScreen(
         Spacer(modifier = Modifier.height(24.dp))
         OutlinedTextField(
             value = keyHex,
-            onValueChange = { keyHex = it.trim() },
+            onValueChange = callbacks.onKeyHexChange,
             label = { Text(stringResource(R.string.unlock_key_label)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions =
-                KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    autoCorrectEnabled = false,
-                ),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = {
-                isUnlocking = true
-                error = null
-                scope.launch {
-                    try {
-                        withContext(Dispatchers.IO) { unlockLibrary(libraryId, keyHex) }
-                        isUnlocking = false
-                        onUnlocked()
-                    } catch (e: Exception) {
-                        isUnlocking = false
-                        error = e.message ?: appContext.getString(R.string.unlock_failed)
-                    }
-                }
-            },
-            enabled = isValidHex && !isUnlocking,
-        ) {
+        Button(onClick = callbacks.onUnlock, enabled = isValidHex && !isUnlocking) {
             if (isUnlocking) {
                 CircularProgressIndicator(modifier = Modifier.height(20.dp))
             } else {
@@ -124,11 +145,7 @@ fun UnlockScreen(
         }
         if (error != null) {
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = error!!,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Text(text = error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

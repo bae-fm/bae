@@ -3,6 +3,7 @@ package fm.bae.app.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -49,6 +50,7 @@ import uniffi.bae_bridge.BridgeRepeatMode
  * is loaded.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun NowPlayingBar(session: OpenLibrary) {
     val player = session.playback
@@ -81,119 +83,130 @@ fun NowPlayingBar(session: OpenLibrary) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // The cover + title/artist region is one tap target that expands
-                // the full-screen player; the transport buttons below stay outside
-                // it so their taps don't expand.
-                val nowPlayingDescription =
-                    stringResource(R.string.now_playing_track_by_artist, track.title, track.artist)
-                Row(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .clickable { expanded = true }
-                            // Announce the whole region as one TalkBack element named
-                            // for the track (the cover stays decorative; its info is
-                            // in the title/artist text), instead of an unnamed button
-                            // plus loose text fragments.
-                            .semantics(mergeDescendants = true) {
-                                contentDescription = nowPlayingDescription
-                            },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CoverImage(
-                        path = track.coverPath,
-                        cornerRadius = 4.dp,
-                        iconPadding = 12.dp,
-                        modifier = Modifier.size(48.dp),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = track.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                modifier = Modifier.weight(1f, fill = false),
-                            )
-                        }
-                        Text(
-                            text = track.artist,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                    }
-                }
-                IconButton(onClick = { player.seekToPreviousMediaItem() }) {
-                    Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.previous_track))
-                }
-                PlayPauseControl(
-                    isPlaying = isPlaying,
-                    isLoading = isLoading,
-                    iconSize = 24.dp,
-                    spinnerSize = 24.dp,
-                    spinnerStroke = 2.dp,
-                    onToggle = { player.togglePlayPause() },
-                )
-                IconButton(onClick = { player.seekToNextMediaItem() }) {
-                    Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.next_track))
-                }
-                IconButton(onClick = { queueOpen = true }) {
-                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.queue))
-                }
-                // cycle_repeat_mode is non-throwing; core emits RepeatModeChanged
-                // which updates the repeatMode flow above. NONE is dimmed; ALBUM
-                // and TRACK are accented (TRACK uses the repeat-one glyph).
-                IconButton(onClick = { session.appHandle.cycleRepeatMode() }) {
-                    Icon(
-                        imageVector =
-                            if (repeatMode == BridgeRepeatMode.TRACK) {
-                                Icons.Filled.RepeatOne
-                            } else {
-                                Icons.Filled.Repeat
-                            },
-                        contentDescription = stringResource(R.string.repeat_mode),
-                        tint =
-                            if (repeatMode == BridgeRepeatMode.NONE) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.primary
-                            },
-                    )
-                }
-            }
-
-            // While dragging, follow the finger; the progress events would
-            // otherwise snap the thumb back mid-drag. Null means "not dragging".
-            var dragRatio by remember { mutableStateOf<Float?>(null) }
-            val shownRatio = dragRatio ?: position.progress.toFloat().coerceIn(0f, 1f)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = position.elapsedLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Slider(
-                    value = shownRatio,
-                    onValueChange = { dragRatio = it },
-                    onValueChangeFinished = {
-                        dragRatio?.let { ratio ->
-                            val duration = player.duration
-                            if (duration != C.TIME_UNSET && duration > 0L) {
-                                player.seekTo((ratio * duration).toLong())
-                            }
-                        }
-                        dragRatio = null
-                    },
-                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-                )
-                Text(
-                    text = position.remainingLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                NowPlayingTrackInfo(track = track, onExpand = { expanded = true })
+                NowPlayingTransportButtons(
+                    session = session,
+                    player = player,
+                    repeatMode = repeatMode,
+                    onOpenQueue = { queueOpen = true },
                 )
             }
+            NowPlayingSeekRow(position = position, player = player)
         }
+    }
+}
+
+@Composable
+private fun RowScope.NowPlayingTrackInfo(
+    track: fm.bae.app.playback.NowPlaying,
+    onExpand: () -> Unit,
+) {
+    val nowPlayingDescription = stringResource(R.string.now_playing_track_by_artist, track.title, track.artist)
+    Row(
+        modifier =
+            Modifier
+                .weight(1f)
+                .clickable(onClick = onExpand)
+                // Announce the whole region as one TalkBack element named
+                // for the track (cover stays decorative; info is in the text),
+                // instead of an unnamed button plus loose text fragments.
+                .semantics(mergeDescendants = true) { contentDescription = nowPlayingDescription },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CoverImage(path = track.coverPath, cornerRadius = 4.dp, iconPadding = 12.dp, modifier = Modifier.size(48.dp))
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = track.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Text(
+                text = track.artist,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+private fun NowPlayingTransportButtons(
+    session: OpenLibrary,
+    player: fm.bae.app.playback.BaeCorePlayer,
+    repeatMode: BridgeRepeatMode,
+    onOpenQueue: () -> Unit,
+) {
+    val isPlaying by player.isPlaying.collectAsState()
+    val isLoading by player.isLoading.collectAsState()
+    IconButton(onClick = { player.seekToPreviousMediaItem() }) {
+        Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.previous_track))
+    }
+    PlayPauseControl(
+        isPlaying = isPlaying,
+        isLoading = isLoading,
+        sizes = PlayPauseControlSizes(iconSize = 24.dp, spinnerSize = 24.dp, spinnerStroke = 2.dp),
+        onToggle = { player.togglePlayPause() },
+    )
+    IconButton(onClick = { player.seekToNextMediaItem() }) {
+        Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.next_track))
+    }
+    IconButton(onClick = onOpenQueue) {
+        Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.queue))
+    }
+    // cycle_repeat_mode is non-throwing; core emits RepeatModeChanged which updates
+    // the repeatMode flow. NONE is dimmed; ALBUM and TRACK are accented (TRACK uses
+    // the repeat-one glyph).
+    IconButton(onClick = { session.appHandle.cycleRepeatMode() }) {
+        Icon(
+            imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+            contentDescription = stringResource(R.string.repeat_mode),
+            tint =
+                if (repeatMode == BridgeRepeatMode.NONE) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+        )
+    }
+}
+
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+private fun NowPlayingSeekRow(
+    position: fm.bae.app.playback.PlaybackPosition,
+    player: fm.bae.app.playback.BaeCorePlayer,
+) {
+    // While dragging, follow the finger; the progress events would otherwise snap
+    // the thumb back mid-drag. Null means "not dragging".
+    var dragRatio by remember { mutableStateOf<Float?>(null) }
+    val shownRatio = dragRatio ?: position.progress.toFloat().coerceIn(0f, 1f)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = position.elapsedLabel,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Slider(
+            value = shownRatio,
+            onValueChange = { dragRatio = it },
+            onValueChangeFinished = {
+                dragRatio?.let { ratio ->
+                    val duration = player.duration
+                    if (duration != C.TIME_UNSET && duration > 0L) player.seekTo((ratio * duration).toLong())
+                }
+                dragRatio = null
+            },
+            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+        )
+        Text(
+            text = position.remainingLabel,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
