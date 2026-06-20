@@ -16,17 +16,17 @@ fn parse_oauth_tokens(json: &str) -> Result<bae_core::oauth::OAuthTokens, Bridge
 /// hardcoding one, so a baeium (S3-only) build offers only S3.
 #[uniffi::export]
 pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
-    #[allow(unused_mut)]
-    let mut providers = vec![BridgeCloudProvider::S3];
-    #[cfg(feature = "cloudkit")]
-    providers.push(BridgeCloudProvider::CloudKit);
-    #[cfg(feature = "oauth-providers")]
-    providers.extend([
+    vec![
+        BridgeCloudProvider::S3,
+        #[cfg(feature = "cloudkit")]
+        BridgeCloudProvider::CloudKit,
+        #[cfg(feature = "oauth-providers")]
         BridgeCloudProvider::GoogleDrive,
+        #[cfg(feature = "oauth-providers")]
         BridgeCloudProvider::Dropbox,
+        #[cfg(feature = "oauth-providers")]
         BridgeCloudProvider::OneDrive,
-    ]);
-    providers
+    ]
 }
 
 /// Build a BridgeLibrary from its raw parts. The two call sites that wrap
