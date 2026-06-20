@@ -1,8 +1,14 @@
 import Combine
 import SwiftUI
 
+struct ReleaseImageOption: Identifiable {
+    let id: String
+    let name: String
+    let path: String?
+}
+
 struct CoverSheetView: View {
-    let releaseImages: [(id: String, name: String, path: String?)]
+    let releaseImages: [ReleaseImageOption]
     let fetchRemoteCovers: () async throws -> [BridgeRemoteCover]
     let onSelectRemote: (BridgeRemoteCover) -> Void
     let onSelectReleaseImage: (String) -> Void
@@ -78,10 +84,7 @@ struct CoverSheetView: View {
                             columns: [GridItem(.adaptive(minimum: 120))],
                             spacing: 12
                         ) {
-                            ForEach(
-                                Array(releaseImages.enumerated()),
-                                id: \.offset
-                            ) { _, item in
+                            ForEach(releaseImages) { item in
                                 Button(action: { onSelectReleaseImage(item.id) }
                                 ) {
                                     VStack(spacing: 4) {
@@ -167,8 +170,8 @@ struct CoverSheetView: View {
 #Preview("Cover Sheet") {
     CoverSheetView(
         releaseImages: [
-            (id: "file-1", name: "cover.jpg", path: nil),
-            (id: "file-2", name: "back.jpg", path: nil),
+            ReleaseImageOption(id: "file-1", name: "cover.jpg", path: nil),
+            ReleaseImageOption(id: "file-2", name: "back.jpg", path: nil),
         ],
         fetchRemoteCovers: { PreviewData.remoteCovers },
         onSelectRemote: { _ in },

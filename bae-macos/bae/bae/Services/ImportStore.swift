@@ -10,6 +10,12 @@ enum CandidateTab: Hashable {
     case skipped
 }
 
+struct CandidateTabCounts {
+    var new: Int
+    var added: Int
+    var skipped: Int
+}
+
 /// One row under the Skipped tab: a manually-skipped candidate, or an invalid
 /// folder (looked like a release but failed validation). The view renders each
 /// case with its own row; the data layer decides which folder a row belongs to.
@@ -240,8 +246,8 @@ class ImportStore {
     /// watched folder is no longer present still counts — the watcher drops such
     /// candidates from the store, so the store only holds live ones. Invalid
     /// candidates count under Skipped alongside manually-skipped ones.
-    func candidateTabCounts() -> (new: Int, added: Int, skipped: Int) {
-        var counts = (new: 0, added: 0, skipped: 0)
+    func candidateTabCounts() -> CandidateTabCounts {
+        var counts = CandidateTabCounts(new: 0, added: 0, skipped: 0)
         for candidate in folderCandidates.values {
             switch tab(for: candidate) {
             case .new: counts.new += 1

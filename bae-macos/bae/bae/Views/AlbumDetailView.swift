@@ -11,6 +11,12 @@ struct ReleaseRef: Identifiable, Equatable {
     let id: String
 }
 
+private struct ExportSavePanel {
+    let savePanel: NSSavePanel
+    let formatPopup: NSPopUpButton
+    let formatDelegate: ExportFormatDelegate
+}
+
 // MARK: - AlbumDetailView (smart wiring view)
 
 struct AlbumDetailView: View {
@@ -268,8 +274,9 @@ extension AlbumDetailView {
             .compactMap { libraryStore.releaseDetails[$0] }
             .flatMap(\.imageFiles)
             .map {
-                (
-                    id: $0.id, name: $0.originalFilename,
+                ReleaseImageOption(
+                    id: $0.id,
+                    name: $0.originalFilename,
                     path: try? mediaPaths.filePath($0.id)
                 )
             }
@@ -575,11 +582,7 @@ extension AlbumDetailView {
     /// delegate must be retained for the modal's lifetime.
     private func makeExportSavePanel(
         trackTitle: String
-    ) -> (
-        savePanel: NSSavePanel,
-        formatPopup: NSPopUpButton,
-        formatDelegate: ExportFormatDelegate
-    ) {
+    ) -> ExportSavePanel {
         let sanitizedTitle =
             trackTitle
             .replacingOccurrences(of: "/", with: "-")
@@ -623,7 +626,11 @@ extension AlbumDetailView {
             panel.allowedContentTypes = [type]
         }
 
-        return (panel, formatPopup, formatDelegate)
+        return ExportSavePanel(
+            savePanel: panel,
+            formatPopup: formatPopup,
+            formatDelegate: formatDelegate
+        )
     }
 }
 

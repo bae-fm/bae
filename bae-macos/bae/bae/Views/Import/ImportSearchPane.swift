@@ -196,22 +196,27 @@ struct ImportSearchPane: View {
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (MetadataResult) -> Void
 
+    private struct FoundResult {
+        let group: ReleaseGroup
+        let statuses: [String: LibraryStatus]
+        let provenance: [String: ResultProvenance]
+    }
+
     /// The auto-identified release group, its library statuses, and per-row
     /// provenance, extracted from the identify state. A `Found` state always
     /// carries exactly one group.
-    private var foundResult:
-        (
-            group: ReleaseGroup, statuses: [String: LibraryStatus],
-            provenance: [String: ResultProvenance]
-        )?
-    {
+    private var foundResult: FoundResult? {
         guard
             case .found(let group, let statuses, _, _, let provenance) =
                 state.identifyState
         else {
             return nil
         }
-        return (group, statuses, provenance)
+        return FoundResult(
+            group: group,
+            statuses: statuses,
+            provenance: provenance
+        )
     }
 
     /// Whether the pipeline is mid-triangulation — drives the body's
