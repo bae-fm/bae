@@ -51,6 +51,7 @@ pub fn build_sync_manager(
     outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
     upload_throughput: Arc<UploadThroughput>,
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
+    upload_cancelling: Arc<Mutex<std::collections::HashSet<String>>>,
     events: broadcast::Sender<LibraryEvent>,
 ) -> SyncManager {
     let clock = database.clock().clone();
@@ -63,6 +64,7 @@ pub fn build_sync_manager(
         outbox_in_flight,
         upload_throughput,
         sync_paused,
+        upload_cancelling,
         events,
     ));
 

@@ -5,7 +5,7 @@
 //! blobs that move with the changeset (deletes go through the cloud outbox, not
 //! here). After a release's storage files finish uploading, the observer marks it
 //! managed (cloud-only) and drops this device's local copy.
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use coven::blob::{BlobPlan, BlobRef, BlobScope, BlobUploadObserver, DrainControl};
@@ -164,6 +164,10 @@ pub struct ReleaseUploadObserver {
     in_flight: Arc<Mutex<HashMap<String, u64>>>,
     throughput: Arc<crate::library::UploadThroughput>,
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
+    /// Releases the user stopped uploading mid-`manage`. A file that lands for
+    /// one of these must not flip it to managed; its blob is queued for delete
+    /// instead so the release stays local-only.
+    upload_cancelling: Arc<Mutex<HashSet<String>>>,
     events: broadcast::Sender<LibraryEvent>,
 }
 
@@ -174,6 +178,7 @@ impl ReleaseUploadObserver {
         in_flight: Arc<Mutex<HashMap<String, u64>>>,
         throughput: Arc<crate::library::UploadThroughput>,
         sync_paused: Arc<std::sync::atomic::AtomicBool>,
+        upload_cancelling: Arc<Mutex<HashSet<String>>>,
         events: broadcast::Sender<LibraryEvent>,
     ) -> Self {
         Self {
@@ -182,6 +187,7 @@ impl ReleaseUploadObserver {
             in_flight,
             throughput,
             sync_paused,
+            upload_cancelling,
             events,
         }
     }
@@ -254,6 +260,29 @@ impl ReleaseUploadObserver {
         if release.managed {
             // Its uploads already completed and flipped it; nothing to do.
             debug!("Release {} is already managed; nothing to mark", release.id);
+            return false;
+        }
+        if self.upload_cancelling.lock().unwrap().contains(&release.id) {
+            // The user stopped this release's upload, but this file's write
+            // landed in the gap. Don't flip to managed — queue the now-orphaned
+            // blob for deletion so the release stays local-only.
+            debug!(
+                "Release {} upload was cancelled; deleting orphaned blob for {file_id}",
+                release.id
+            );
+            match self.db.find_file_by_id(file_id).await {
+                Ok(Some(file)) => {
+                    if let Err(e) = self.db.add_cloud_outbox_delete(&file.cloud_key()).await {
+                        warn!("Failed to queue delete for cancelled upload {file_id}: {e}");
+                    }
+                }
+                Ok(None) => {
+                    warn!("Cancelled upload {file_id} has no file row; its blob can't be cleaned")
+                }
+                Err(e) => {
+                    warn!("Failed to look up cancelled upload {file_id} to clean its blob: {e}")
+                }
+            }
             return false;
         }
         let local_copy = match self.db.get_release_local_copy(&release.id).await {
@@ -452,6 +481,130 @@ impl BlobUploadObserver for ReleaseUploadObserver {
 mod tests {
     use super::*;
     use coven::changeset::ChangeOp;
+
+    /// Seed a release with one file (carrying `cloud_path`) and return a
+    /// `(db, observer)` whose `upload_cancelling` already holds the release, so
+    /// `mark_managed_if_complete` exercises the cancelled-mid-upload branch.
+    #[allow(clippy::type_complexity)]
+    async fn observer_with_cancelled_release() -> (
+        Arc<Database>,
+        ReleaseUploadObserver,
+        String,
+        String,
+        tempfile::TempDir,
+    ) {
+        use crate::db::{DbAlbum, DbArtist, DbFile, DbRelease, Pressing, ReleaseMetadataSource};
+        use crate::util::content_type::ContentType;
+        use chrono::Utc;
+
+        let tmp = tempfile::TempDir::new().unwrap();
+        let db = Arc::new(
+            Database::new_test(
+                tmp.path().join("test.db").to_str().unwrap(),
+                Arc::new(crate::clock::SystemClock),
+            )
+            .await
+            .unwrap(),
+        );
+        db.insert_artist(&DbArtist {
+            id: "artist-1".into(),
+            name: "Artist Name".into(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: Utc::now(),
+        })
+        .await
+        .unwrap();
+        db.insert_album(&DbAlbum {
+            id: "album-1".into(),
+            title: "Album Title".into(),
+            artist_id: "artist-1".into(),
+            year: None,
+            primary_release_id: None,
+            is_compilation: false,
+            created_at: Utc::now(),
+        })
+        .await
+        .unwrap();
+        db.insert_release(&DbRelease {
+            id: "rel-1".into(),
+            album_id: "album-1".into(),
+            release_name: None,
+            pressing: Pressing {
+                year: None,
+                format: None,
+                label: None,
+                catalog_number: None,
+                country: None,
+                barcode: None,
+            },
+            disc_id: None,
+            metadata_source: ReleaseMetadataSource::FileTags,
+            metadata_source_release_id: None,
+            managed: false,
+            source_folder_name: None,
+            content_hash: None,
+            created_at: Utc::now(),
+        })
+        .await
+        .unwrap();
+        db.insert_file(&DbFile {
+            id: "file-1".into(),
+            release_id: "rel-1".into(),
+            original_filename: "track.flac".into(),
+            file_size: 1000,
+            content_type: ContentType::Flac,
+            cloud_path: Some("storage/rel-1/track".into()),
+            created_at: Utc::now(),
+        })
+        .await
+        .unwrap();
+
+        let cancelling: Arc<Mutex<HashSet<String>>> =
+            Arc::new(Mutex::new(HashSet::from(["rel-1".to_string()])));
+        let (events, _rx) = broadcast::channel(16);
+        let observer = ReleaseUploadObserver::new(
+            db.clone(),
+            LibraryDir::new(tmp.path().to_path_buf()),
+            Arc::new(Mutex::new(HashMap::new())),
+            Arc::new(crate::library::UploadThroughput::new()),
+            Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            cancelling,
+            events,
+        );
+        (
+            db,
+            observer,
+            "file-1".to_string(),
+            "storage/rel-1/track".to_string(),
+            tmp,
+        )
+    }
+
+    #[tokio::test]
+    async fn cancelled_release_skips_managed_flip_and_queues_blob_delete() {
+        let (db, observer, file_id, cloud_key, _tmp) = observer_with_cancelled_release().await;
+
+        // The file's blob landed after the user stopped the upload.
+        let flipped = observer.mark_managed_if_complete(&file_id).await;
+
+        assert!(!flipped, "a cancelled release must not flip to managed");
+        let release = db.find_release_for_file(&file_id).await.unwrap().unwrap();
+        assert!(!release.managed, "release stays local-only");
+        let deletes: Vec<String> = db
+            .get_pending_cloud_deletes()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|e| e.cloud_key)
+            .collect();
+        assert_eq!(
+            deletes,
+            vec![cloud_key],
+            "the orphaned blob is queued for deletion"
+        );
+    }
 
     fn row(table: &str, op: ChangeOp, cols: &[&str]) -> RowChange {
         RowChange {

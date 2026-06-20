@@ -661,6 +661,19 @@ impl AppHandle {
             .map_err(BridgeError::internal)
     }
 
+    /// Stop uploading a release that's mid-`manage` and keep it local-only:
+    /// drops its queued/in-flight upload rows and deletes any blobs already
+    /// uploaded this attempt, leaving the local copy in place.
+    pub fn cancel_release_upload(&self, release_id: String) -> Result<(), BridgeError> {
+        self.runtime
+            .block_on(
+                self.app_services
+                    .library_manager()
+                    .cancel_release_upload(&release_id),
+            )
+            .map_err(BridgeError::internal)
+    }
+
     /// Pause or resume the cloud-upload pipeline. While paused, new enqueues
     /// still land in the outbox but the sync cycle won't drain them; the
     /// snapshot's `paused` field flips so the UI can render the toggle.

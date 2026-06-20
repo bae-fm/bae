@@ -975,6 +975,13 @@ pub struct LibraryManager {
     /// queue stops draining but in-flight uploads (and new enqueues) keep
     /// flowing. Transient (Running after a restart).
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
+    /// Releases whose in-progress upload the user cancelled ("stop uploading").
+    /// The upload observer consults this so a file that lands after the cancel
+    /// doesn't flip the release to managed; instead its now-orphaned blob is
+    /// queued for deletion, leaving the release local-only. Cleared when the
+    /// release is managed afresh. Shared across clones; transient (a restart
+    /// drops it, by which point the queue rows are already gone).
+    upload_cancelling: Arc<Mutex<std::collections::HashSet<String>>>,
     /// In-memory queue for "Pin for offline". A single serial worker drains it
     /// one release at a time. Shared across manager clones; transient (empty
     /// after a restart — a release that wasn't fully pinned stays cloud-only).
@@ -1032,6 +1039,7 @@ impl Clone for LibraryManager {
             outbox_in_flight: self.outbox_in_flight.clone(),
             upload_throughput: self.upload_throughput.clone(),
             sync_paused: self.sync_paused.clone(),
+            upload_cancelling: self.upload_cancelling.clone(),
             download_queue: self.download_queue.clone(),
             #[cfg(any(test, feature = "test-utils"))]
             test_overrides: self.test_overrides.clone(),
@@ -1071,6 +1079,7 @@ impl LibraryManager {
             outbox_in_flight: Arc::new(Mutex::new(HashMap::new())),
             upload_throughput: Arc::new(crate::library::UploadThroughput::new()),
             sync_paused: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            upload_cancelling: Arc::new(Mutex::new(std::collections::HashSet::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             #[cfg(any(test, feature = "test-utils"))]
             test_overrides: TestOverrides::default(),
@@ -2129,6 +2138,80 @@ impl LibraryManager {
         Ok(())
     }
 
+    /// Stop uploading a release that's mid-`manage` and keep it local-only.
+    ///
+    /// `managed` flips only after a release's *last* file uploads, so stopping
+    /// early leaves the release in a valid local state already — pinned (the
+    /// `storage/` copy stays) or unmanaged (the originals stay). This:
+    ///
+    /// 1. removes the release's still-queued and in-flight upload rows, so no
+    ///    further files leave this device;
+    /// 2. marks the release "cancelling" so a file whose write lands in the gap
+    ///    doesn't flip it to managed — the observer queues that blob's deletion
+    ///    instead (see `ReleaseUploadObserver::mark_managed_if_complete`);
+    /// 3. queues deletions for the files already uploaded this attempt, so the
+    ///    cloud is left holding nothing for the release; and
+    /// 4. clears any "delete the originals once uploaded" intent, so a
+    ///    cloud-only manage doesn't strand the release with no local copy.
+    pub async fn cancel_release_upload(&self, release_id: &str) -> Result<(), LibraryError> {
+        self.upload_cancelling
+            .lock()
+            .unwrap()
+            .insert(release_id.to_string());
+
+        // Pending rows (queued + the single in-flight one) are files whose blob
+        // is not yet durable in the cloud; dropping the rows stops them with
+        // nothing to clean up.
+        let rows = self.database.outbox_items().await?;
+        let mut pending_file_ids = std::collections::HashSet::new();
+        for row in &rows {
+            if row.release_id.as_deref() == Some(release_id)
+                && matches!(row.operation, crate::db::OutboxOpKind::Upload)
+            {
+                pending_file_ids.insert(row.file_id.clone());
+                self.database.remove_cloud_outbox_entry(row.id).await?;
+            }
+        }
+
+        // Files with no pending row already uploaded this attempt: their blobs
+        // are in the cloud, so queue a delete to leave the release local-only.
+        // `cloud_key()` resolves each file's blob key (its stored readable key,
+        // or the hashed-by-id default on an opaque home) — the same resolver
+        // every delete uses.
+        let files = self.database.get_files_for_release(release_id).await?;
+        for file in &files {
+            if !pending_file_ids.contains(&file.id) {
+                self.database
+                    .add_cloud_outbox_delete(&file.cloud_key())
+                    .await?;
+            }
+        }
+
+        // A cloud-only manage may be set to delete the originals once uploaded;
+        // cancel that so stopping never removes the last local copy.
+        self.database
+            .set_release_delete_unmanaged_source_on_upload(release_id, false)
+            .await?;
+
+        self.trigger_sync();
+        self.emit_outbox_changed().await;
+        // Refresh the release row (it no longer reads as "uploading"). A
+        // best-effort UI nudge — the cancel itself already succeeded above.
+        match self.get_release_by_id(release_id).await {
+            Ok(Some(release)) => {
+                self.emit_release_updated(&release.album_id, release_id)
+                    .await
+            }
+            Ok(None) => {
+                warn!("cancel_release_upload: release {release_id} missing; skipped UI refresh")
+            }
+            Err(e) => {
+                warn!("cancel_release_upload: loading release {release_id} for refresh failed: {e}")
+            }
+        }
+        Ok(())
+    }
+
     /// Pause or resume the cloud-upload pipeline. Paused means new enqueues
     /// still land in the outbox but the sync cycle won't drain them; in-flight
     /// uploads finish (coven's `process_uploads` checks the flag between
@@ -2166,6 +2249,7 @@ impl LibraryManager {
             self.outbox_in_flight.clone(),
             self.upload_throughput.clone(),
             self.sync_paused.clone(),
+            self.upload_cancelling.clone(),
             self.event_tx.clone(),
         );
         // coven's `process_uploads` takes the home's at-rest cipher. bae homes are
@@ -4687,6 +4771,9 @@ impl LibraryManager {
         pin: bool,
         delete_unmanaged_source: bool,
     ) -> Result<(), String> {
+        // A fresh manage supersedes any earlier cancel: clear the guard so this
+        // attempt's uploads are allowed to flip the release to managed.
+        self.upload_cancelling.lock().unwrap().remove(release_id);
         let transfer_service = crate::storage::local::transfer::TransferService::new(self.clone());
         let rx =
             transfer_service.manage_release(release_id.to_string(), pin, delete_unmanaged_source);
@@ -5033,6 +5120,7 @@ impl LibraryManager {
             self.outbox_in_flight.clone(),
             self.upload_throughput.clone(),
             self.sync_paused.clone(),
+            self.upload_cancelling.clone(),
             self.event_tx.clone(),
         ));
         self.install_sync_manager(&sm).await;
@@ -6651,6 +6739,73 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn cancel_release_upload_drops_queue_and_deletes_uploaded_blobs() {
+        let (manager, _temp_dir) = setup_test_manager().await;
+        let album = create_test_album();
+        let release = create_test_release(&album.id);
+        manager.database.insert_album(&album).await.unwrap();
+        manager.database.insert_release(&release).await.unwrap();
+        // A managed-in-progress release has a local-copy row (here the originals
+        // at an unmanaged path, the cloud-only manage starting point).
+        manager
+            .database
+            .set_release_unmanaged_path(&release.id, "/tmp/originals")
+            .await
+            .unwrap();
+
+        // One file still queued (not yet uploaded) and one already uploaded this
+        // attempt (no queue row; its blob lives at `cloud_path`).
+        let queued = DbFile {
+            id: format!("{}-queued", release.id),
+            release_id: release.id.clone(),
+            original_filename: "queued.flac".to_string(),
+            file_size: 1000,
+            content_type: crate::util::content_type::ContentType::Flac,
+            cloud_path: None,
+            created_at: Utc::now(),
+        };
+        let uploaded = DbFile {
+            id: format!("{}-uploaded", release.id),
+            release_id: release.id.clone(),
+            original_filename: "uploaded.flac".to_string(),
+            file_size: 1000,
+            content_type: crate::util::content_type::ContentType::Flac,
+            cloud_path: Some("storage/already-uploaded".to_string()),
+            created_at: Utc::now(),
+        };
+        manager.database.insert_file(&queued).await.unwrap();
+        manager.database.insert_file(&uploaded).await.unwrap();
+        manager
+            .add_cloud_outbox_upload(&queued.id, "storage/still-queued", None)
+            .await
+            .unwrap();
+
+        manager.cancel_release_upload(&release.id).await.unwrap();
+
+        // The queued upload is dropped — nothing left to push for the release.
+        assert!(
+            manager
+                .get_pending_cloud_uploads()
+                .await
+                .unwrap()
+                .is_empty(),
+            "cancel removes the release's queued uploads"
+        );
+
+        // The already-uploaded blob is queued for deletion so the cloud is left
+        // holding nothing for the release; the still-queued file (never
+        // uploaded) is not — its blob never landed.
+        let deletes: Vec<String> = manager
+            .get_pending_cloud_deletes()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|e| e.cloud_key)
+            .collect();
+        assert_eq!(deletes, vec!["storage/already-uploaded".to_string()]);
+    }
+
+    #[tokio::test]
     async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
         use crate::library::UploadState;
 
@@ -6792,6 +6947,7 @@ mod tests {
             manager.outbox_in_flight.clone(),
             manager.upload_throughput.clone(),
             manager.sync_paused.clone(),
+            manager.upload_cancelling.clone(),
             manager.event_tx.clone(),
         );
 
