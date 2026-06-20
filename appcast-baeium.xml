@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
-    <title>bae Updates</title>
+    <title>baeium Updates</title>
     <link>https://github.com/bae-fm/bae/releases</link>
-    <description>Most recent updates to bae</description>
+    <description>Most recent updates to baeium</description>
     <language>en</language>
     <item>
       <title>Version 0.4</title>
-      <pubDate>Sat, 20 Jun 2026 04:52:24 +0000</pubDate>
+      <pubDate>Sat, 20 Jun 2026 04:50:21 +0000</pubDate>
       <sparkle:version>10</sparkle:version>
       <sparkle:shortVersionString>0.4</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/bae-fm/bae/releases/download/macos-v0.4/bae-macos.dmg"
-        length="22961445"
+        url="https://github.com/bae-fm/bae/releases/download/macos-v0.4/baeium-macos.dmg"
+        length="22269679"
         type="application/octet-stream"
-        sparkle:edSignature="h9yMyjeLep5MQlaU426uFDsqWldLDZUiC/7hAS9BMGqSFDVHCeg+Y6B2/Lo8DnS4t0xxQgb7wV5EtBFcAZm7Aw=="
+        sparkle:edSignature="fcS+JLDs4WxztzfyA4FYHkAP2DieyVwJxKfQsY5eI3pGaYxE3xAPqPlOCEibaZov2OKJ9V1asyy8fum38qsPBw=="
       />
     </item>
   </channel>
