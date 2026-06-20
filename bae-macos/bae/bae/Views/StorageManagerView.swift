@@ -48,7 +48,6 @@ struct StorageManagerView: View {
             if let list, let runner {
                 StorageTableView(
                     list: list,
-                    filter: filter,
                     selection: $selection,
                     sort: $sort,
                     libraryStore: libraryStore,
@@ -440,7 +439,7 @@ private struct OutboxSection: View {
         ScrollView {
             LazyVStack(spacing: 0) {
                 ForEach(snapshot.uploads, id: \.id) { op in
-                    OutboxUploadRow(op: op) { cancel(op.id) }
+                    OutboxUploadRow(op: op)
                     Divider()
                 }
                 ForEach(snapshot.deletes, id: \.id) { op in
@@ -505,7 +504,6 @@ private struct OutboxTotalProgress: View {
 
 private struct OutboxUploadRow: View {
     let op: BridgeUploadOp
-    let onCancel: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -531,12 +529,6 @@ private struct OutboxUploadRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(width: 90, alignment: .trailing)
-
-            Button(action: onCancel) {
-                Image(systemName: "xmark.circle")
-            }
-            .buttonStyle(.plain)
-            .help("Remove from the sync queue")
         }
         .padding(.horizontal)
         .padding(.vertical, 6)

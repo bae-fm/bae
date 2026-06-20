@@ -83,12 +83,13 @@ final class StorageActionRunner {
         pendingManage = nil
     }
 
-    /// Cancel every queued upload belonging to any of `releaseIds`. The
-    /// caller resolves the outbox op ids from the current snapshot.
-    func cancelUploads(opIds: [Int64]) {
-        for id in opIds {
+    /// Stop uploading each release and keep it local-only: core drops the
+    /// release's queued and in-flight uploads and deletes any blobs already
+    /// uploaded this attempt.
+    func cancelUploads(releaseIds: [String]) {
+        for id in releaseIds {
             do {
-                try sync.cancelOutboxItem(id)
+                try sync.cancelReleaseUpload(id)
             }
             catch {
                 uiStore.showError(

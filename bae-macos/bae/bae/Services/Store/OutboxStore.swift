@@ -22,6 +22,14 @@ class OutboxStore {
         snapshot.perRelease[releaseId]
     }
 
+    /// Whether the release has upload work queued or in flight. Drives the
+    /// storage row's "Cancel Upload" affordance and the suppression of other
+    /// storage actions while a transfer is mid-flight. Idle releases are absent
+    /// from the per-release map, so presence is the signal.
+    func isUploading(forRelease releaseId: String) -> Bool {
+        snapshot.perRelease[releaseId] != nil
+    }
+
     /// The idle (empty) queue. Seeds the store before the first snapshot read
     /// and serves as the fallback if that read fails.
     static var emptySnapshot: BridgeOutboxSnapshot {

@@ -131,7 +131,6 @@ private func sortField(forDescriptorKey key: String) -> BridgeStorageSortField?
 /// it).
 struct StorageTableView: NSViewRepresentable {
     let list: StorageList
-    let filter: BridgeStorageFilter
     @Binding
     var selection: Set<String>
     @Binding
@@ -148,7 +147,6 @@ struct StorageTableView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator(
             list: list,
-            filter: filter,
             selection: $selection,
             sort: $sort,
             libraryStore: libraryStore,
@@ -223,7 +221,6 @@ struct StorageTableView: NSViewRepresentable {
 
         coordinator.update(
             list: list,
-            filter: filter,
             mediaPaths: mediaPaths,
             outboxStore: outboxStore,
         )
@@ -248,7 +245,6 @@ extension StorageTableView {
         NSOutlineViewDelegate
     {
         private(set) var list: StorageList
-        private var filter: BridgeStorageFilter
         private let selection: Binding<Set<String>>
         private let sort: Binding<BridgeStorageSort>
         private let libraryStore: LibraryStore
@@ -281,7 +277,6 @@ extension StorageTableView {
 
         init(
             list: StorageList,
-            filter: BridgeStorageFilter,
             selection: Binding<Set<String>>,
             sort: Binding<BridgeStorageSort>,
             libraryStore: LibraryStore,
@@ -291,7 +286,6 @@ extension StorageTableView {
             outboxStore: OutboxStore,
         ) {
             self.list = list
-            self.filter = filter
             self.selection = selection
             self.sort = sort
             self.libraryStore = libraryStore
@@ -303,12 +297,10 @@ extension StorageTableView {
 
         func update(
             list: StorageList,
-            filter: BridgeStorageFilter,
             mediaPaths: MediaPaths,
             outboxStore: OutboxStore,
         ) {
             self.list = list
-            self.filter = filter
             self.mediaPaths = mediaPaths
             self.outboxStore = outboxStore
         }
@@ -746,32 +738,33 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         let targets = menuTargets(forClicked: item)
         guard !targets.isEmpty else { return }
 
-        switch filter {
-        case .uploading:
-            let opIds = outboxStore.snapshot.uploads
-                .filter { $0.releaseId.map(targets.contains) ?? false }
-                .map(\.id)
+        // A release uploading right now can't be managed/pinned/unmanaged (those
+        // race the observer that completes the transition), so the only action it
+        // offers is stopping the upload — in every tab, not just "Uploading".
+        let uploading = targets.filter {
+            outboxStore.isUploading(forRelease: $0)
+        }
+        if !uploading.isEmpty {
             addMenuItem(
                 to: menu,
                 title: String(localized: "Cancel Upload"),
                 action: #selector(cancelUploadsAction(_:)),
                 symbol: "xmark.circle",
-                representedObject: opIds,
-                isEnabled: !opIds.isEmpty
+                representedObject: uploading
             )
-        case .all, .unmanaged, .managed:
-            for action in intersectedActions(of: targets) {
-                addMenuItem(
-                    to: menu,
-                    title: action.label,
-                    action: #selector(runStorageAction(_:)),
-                    symbol: action.systemImage,
-                    representedObject: StorageActionInvocation(
-                        action: action,
-                        releaseIds: targets
-                    )
+            return
+        }
+        for action in intersectedActions(of: targets) {
+            addMenuItem(
+                to: menu,
+                title: action.label,
+                action: #selector(runStorageAction(_:)),
+                symbol: action.systemImage,
+                representedObject: StorageActionInvocation(
+                    action: action,
+                    releaseIds: targets
                 )
-            }
+            )
         }
     }
 
@@ -827,32 +820,21 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
 
     @objc
     private func cancelUploadsAction(_ sender: NSMenuItem) {
-        guard let opIds = sender.representedObject as? [Int64] else {
-            logger.error("Cancel-upload menu item carried no op ids")
+        guard let releaseIds = sender.representedObject as? [String] else {
+            logger.error("Cancel-upload menu item carried no release ids")
             return
         }
-        runner.cancelUploads(opIds: opIds)
+        runner.cancelUploads(releaseIds: releaseIds)
     }
 
     /// Storage actions every targeted release allows, preserving the order the
     /// core emits them in. Single target → that release's actions; multi-select
     /// → the intersection so the menu only offers transitions applicable to
-    /// all.
-    ///
-    /// Suppressed entirely when any targeted release has uploads in flight:
-    /// acting mid-upload races the observer that completes the
-    /// unmanaged → cloud step (the same gate the album-detail "Storage…" sheet
-    /// applies). The core leaves this gate to the UI because the outbox
-    /// snapshot stays fresher than a cached release.
+    /// all. Callers handle the uploading case before reaching here (an uploading
+    /// release offers only "Cancel Upload").
     private func intersectedActions(
         of releaseIds: [String]
     ) -> [BridgeReleaseStorageAction] {
-        let anyUploading = releaseIds.contains { id in
-            outboxStore.progress(forRelease: id)?.isIdle == false
-        }
-        if anyUploading {
-            return []
-        }
         let perRelease = releaseIds.map { id in
             Set(libraryStore.releaseSummaries[id]?.storageActions ?? [])
         }
