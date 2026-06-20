@@ -218,7 +218,7 @@ impl Diagnostics {
             return Ok(Self::noop());
         };
         if !config.is_complete() {
-            return Ok(Self::noop());
+            return Err(DiagnosticsError::IncompleteConfig);
         }
         Self::with_transport(config, dependencies, Arc::new(DatadogTransport::new()))
     }
@@ -488,6 +488,8 @@ pub enum DiagnosticsError {
     SpawnWorker(#[source] std::io::Error),
     #[error("diagnostics runtime failed to start")]
     BuildRuntime(#[source] std::io::Error),
+    #[error("diagnostics config is missing required Datadog fields")]
+    IncompleteConfig,
     #[error("diagnostics worker stopped")]
     WorkerStopped,
     #[error("diagnostics Datadog site is invalid: {0}")]
@@ -579,6 +581,7 @@ pub fn should_retry(error: &DiagnosticsError) -> bool {
         }
         DiagnosticsError::SpawnWorker(_)
         | DiagnosticsError::BuildRuntime(_)
+        | DiagnosticsError::IncompleteConfig
         | DiagnosticsError::WorkerStopped
         | DiagnosticsError::InvalidSite(_)
         | DiagnosticsError::InvalidUrl { .. }
@@ -819,7 +822,14 @@ mod tests {
 
         let mut incomplete = config();
         incomplete.client_token = String::new();
-        assert!(!DiagnosticsConfig::Enabled(incomplete).sends_events());
+        assert!(!DiagnosticsConfig::Enabled(incomplete.clone()).sends_events());
+        assert!(matches!(
+            Diagnostics::configure_with_dependencies(
+                DiagnosticsConfig::Enabled(incomplete),
+                dependencies()
+            ),
+            Err(DiagnosticsError::IncompleteConfig)
+        ));
     }
 
     #[test]
