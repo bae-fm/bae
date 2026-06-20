@@ -182,8 +182,8 @@ fn env_filter() -> Result<tracing_subscriber::EnvFilter, BridgeError> {
 // Install the global subscriber. Ignores the "already initialized" error,
 // which is the documented use-case for `try_init`.
 fn install_subscriber(subscriber: impl tracing_subscriber::util::SubscriberInitExt) {
-    if subscriber.try_init().is_err() {
-        tracing::debug!("tracing subscriber already installed");
+    if let Err(error) = subscriber.try_init() {
+        tracing::debug!(%error, "tracing subscriber already installed");
     }
 }
 
