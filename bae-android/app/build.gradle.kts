@@ -55,14 +55,15 @@ android {
         create("full") {
             dimension = "edition"
             val oauthCreds = file("src/full/assets/oauth-creds.json")
-            val redirectScheme = if (oauthCreds.exists()) {
-                Regex(""""redirect_uri"\s*:\s*"([^:"\s]+):""")
-                    .find(oauthCreds.readText())
-                    ?.groupValues
-                    ?.getOrNull(1)
-            } else {
-                null
-            }
+            val redirectScheme =
+                if (oauthCreds.exists()) {
+                    Regex(""""redirect_uri"\s*:\s*"([^:"\s]+):""")
+                        .find(oauthCreds.readText())
+                        ?.groupValues
+                        ?.getOrNull(1)
+                } else {
+                    null
+                }
             manifestPlaceholders["oauthRedirectScheme"] =
                 redirectScheme ?: "fm.bae.oauth.unconfigured"
         }
@@ -158,6 +159,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
