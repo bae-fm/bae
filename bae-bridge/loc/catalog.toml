@@ -740,26 +740,6 @@ pl = "{file_no} z {total} plików"
 cs = "{file_no} z {total} souborů"
 hr = "{file_no} od {total} datoteka"
 
-[messages."core.identify.barcode.looking_up"]
-comment = "Identify: which barcode is being looked up, of how many."
-args = { position = "Int", total = "Int" }
-value = "Looking up barcode {position} of {total}"
-
-[messages."core.identify.barcode.looking_up".translations]
-es = "Buscando el código de barras {position} de {total}"
-fr = "Recherche du code-barres {position} sur {total}"
-de = "Strichcode {position} von {total} wird gesucht"
-pt-BR = "Buscando o código de barras {position} de {total}"
-ja = "バーコードを照会中（{total}件中{position}件目）"
-zh-Hans = "正在查询条形码 {position}/{total}"
-ar = "جارٍ البحث عن الرمز الشريطي {position} من {total}"
-he = "מחפש ברקוד {position} מתוך {total}"
-uk = "Пошук штрихкоду {position} з {total}"
-bg = "Търсене на баркод {position} от {total}"
-pl = "Wyszukiwanie kodu kreskowego {position} z {total}"
-cs = "Vyhledávání čárového kódu {position} z {total}"
-hr = "Traženje crtičnog koda {position} od {total}"
-
 [messages."core.lookup.failure.network"]
 comment = "Metadata lookup failed: couldn't reach the provider (no network response)."
 value = "Couldn't reach the metadata provider"

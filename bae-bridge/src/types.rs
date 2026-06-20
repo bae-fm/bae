@@ -169,59 +169,6 @@ pub fn bridge_transfer_action_key(action: BridgeReleaseStorageAction) -> String 
     action.transfer_loc_key().to_string()
 }
 
-#[cfg(test)]
-mod transfer_action_tests {
-    use super::BridgeReleaseStorageAction as A;
-
-    /// Every transfer verb key (and the file-count message) must exist.
-    #[test]
-    fn keys_exist_in_catalog() {
-        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
-            .expect("catalog parses");
-        for action in [A::Pin, A::Unpin, A::Manage, A::Unmanage] {
-            assert!(
-                cat.messages.contains_key(action.transfer_loc_key()),
-                "catalog missing `{}`",
-                action.transfer_loc_key()
-            );
-        }
-        assert!(cat.messages.contains_key("core.transfer.files"));
-    }
-}
-
-#[cfg(test)]
-mod queue_summary_tests {
-    /// The queue-summary keys the UI composes from must exist in the catalog.
-    #[test]
-    fn keys_exist_in_catalog() {
-        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
-            .expect("catalog parses");
-        for key in [
-            "core.queue.uploading",
-            "core.queue.downloading",
-            "core.queue.failed",
-            "core.queue.queued",
-            "core.outbox.pending_deletes",
-            "core.outbox.bytes_progress",
-            "core.outbox.throughput",
-            "core.outbox.eta",
-        ] {
-            assert!(cat.messages.contains_key(key), "catalog missing `{key}`");
-        }
-    }
-}
-
-#[cfg(test)]
-mod release_group_tests {
-    /// The pressing-count plural key the release-group card composes from.
-    #[test]
-    fn pressings_key_exists() {
-        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
-            .expect("catalog parses");
-        assert!(cat.messages.contains_key("core.import.pressings"));
-    }
-}
-
 /// Slim per-release summary: the projection list views render one row
 /// per release (storage manager, release pickers, etc.). The fat
 /// sibling is `BridgeRelease` — composition at the resolver layer in
@@ -408,32 +355,6 @@ pub fn bridge_track_header_key(side: BridgeTrackSide) -> Option<String> {
     }
 }
 
-#[cfg(test)]
-mod track_position_tests {
-    use super::BridgeTrackSide;
-
-    /// The header keys the UI resolves (Side, Disc) must exist; the flat case
-    /// has no header word, so no key.
-    #[test]
-    fn keys_exist() {
-        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
-            .expect("catalog parses");
-        for side in [
-            BridgeTrackSide::Sided {
-                side_letter: "A".to_string(),
-            },
-            BridgeTrackSide::Disc { disc: 2 },
-        ] {
-            let key = super::bridge_track_header_key(side).expect("Sided and Disc carry keys");
-            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
-        }
-        assert!(
-            super::bridge_track_header_key(BridgeTrackSide::Flat).is_none(),
-            "flat single-disc has no header word, no key"
-        );
-    }
-}
-
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFile {
     pub id: String,
@@ -480,20 +401,6 @@ pub fn bridge_audio_channels_key(channels: i64) -> Option<String> {
     }
 }
 
-#[cfg(test)]
-mod audio_format_tests {
-    /// The channel-word keys the UI resolves must exist in the catalog.
-    #[test]
-    fn channel_keys_exist_in_catalog() {
-        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
-            .expect("catalog parses");
-        for channels in [1_i64, 2] {
-            let key = super::bridge_audio_channels_key(channels).expect("1 and 2 have words");
-            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
-        }
-    }
-}
-
 /// Localization key for a cloud provider's display name, or `None` for the
 /// brand-name providers the UI passes through verbatim (iCloud, Google Drive,
 /// Dropbox, OneDrive). `None` provider means local-only. One source of these
@@ -509,35 +416,6 @@ pub fn bridge_cloud_provider_label_key(provider: Option<BridgeCloudProvider>) ->
             | BridgeCloudProvider::Dropbox
             | BridgeCloudProvider::OneDrive,
         ) => None,
-    }
-}
-
-#[cfg(test)]
-mod cloud_provider_tests {
-    use super::BridgeCloudProvider;
-
-    /// The cloud-provider keys the UI resolves (local-only, S3) must exist; the
-    /// brand-name providers have no key (the UI hardcodes them).
-    #[test]
-    fn keys_exist_in_catalog() {
-        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
-            .expect("catalog parses");
-        for provider in [None, Some(BridgeCloudProvider::S3)] {
-            let key = super::bridge_cloud_provider_label_key(provider)
-                .expect("local-only and S3 carry keys");
-            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
-        }
-        for provider in [
-            BridgeCloudProvider::CloudKit,
-            BridgeCloudProvider::GoogleDrive,
-            BridgeCloudProvider::Dropbox,
-            BridgeCloudProvider::OneDrive,
-        ] {
-            assert!(
-                super::bridge_cloud_provider_label_key(Some(provider)).is_none(),
-                "brand-name providers pass through, no key"
-            );
-        }
     }
 }
 
@@ -731,35 +609,6 @@ pub fn bridge_invalid_reason_key(reason: BridgeInvalidReason) -> String {
     reason.loc_key().to_string()
 }
 
-#[cfg(test)]
-mod invalid_reason_tests {
-    use super::BridgeInvalidReason;
-
-    /// Every invalid-reason key must exist in the catalog.
-    #[test]
-    fn keys_exist_in_catalog() {
-        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
-            .expect("catalog parses");
-        let reasons = [
-            BridgeInvalidReason::CorruptAudioFile {
-                path: String::new(),
-            },
-            BridgeInvalidReason::CorruptImage {
-                path: String::new(),
-            },
-            BridgeInvalidReason::CueMissingAudio,
-            BridgeInvalidReason::NoValidAudio,
-        ];
-        for r in &reasons {
-            assert!(
-                cat.messages.contains_key(r.loc_key()),
-                "catalog missing `{}`",
-                r.loc_key()
-            );
-        }
-    }
-}
-
 /// A leaf folder that looks like a release but failed validation — the import
 /// view surfaces it under the Skipped tab with a warning and the reason. Mirror
 /// of `bae_core::import::InvalidCandidate`; carries no files or identify state
@@ -920,40 +769,6 @@ pub fn bridge_prepare_step_key(step: BridgePrepareStep) -> String {
 #[uniffi::export]
 pub fn bridge_import_phase_key(phase: BridgeImportPhase) -> String {
     phase.loc_key().to_string()
-}
-
-#[cfg(test)]
-mod import_step_tests {
-    use super::{BridgeImportPhase, BridgePrepareStep};
-
-    /// Every import-step key must exist in the catalog, so a renamed key fails
-    /// the build instead of rendering a raw key in the progress UI.
-    #[test]
-    fn keys_exist_in_catalog() {
-        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
-            .expect("catalog parses");
-        let prepare = [
-            BridgePrepareStep::ParsingMetadata,
-            BridgePrepareStep::WritingCoverArt,
-            BridgePrepareStep::DiscoveringFiles,
-            BridgePrepareStep::ValidatingTracks,
-            BridgePrepareStep::SavingToDatabase,
-        ];
-        for step in prepare {
-            assert!(
-                cat.messages.contains_key(step.loc_key()),
-                "catalog missing `{}`",
-                step.loc_key()
-            );
-        }
-        for phase in [BridgeImportPhase::Acquire, BridgeImportPhase::Store] {
-            assert!(
-                cat.messages.contains_key(phase.loc_key()),
-                "catalog missing `{}`",
-                phase.loc_key()
-            );
-        }
-    }
 }
 
 /// One pressing under a release-group card. The card carries the album's
@@ -1149,37 +964,6 @@ pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> Option<String>
         }
         BridgeLookupFailure::Timeout => Some("core.lookup.failure.timeout".to_string()),
         BridgeLookupFailure::Diagnostic { .. } => None,
-    }
-}
-
-#[cfg(test)]
-mod lookup_failure_tests {
-    use super::BridgeLookupFailure;
-
-    /// The keys the UI resolves (Network, Provider, Timeout) must exist in the
-    /// catalog; `Diagnostic` has no key (the UI renders a generic line plus
-    /// the opaque detail).
-    #[test]
-    fn keys_exist_in_catalog() {
-        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
-            .expect("catalog parses");
-        for failure in [
-            BridgeLookupFailure::Network,
-            BridgeLookupFailure::Provider { status: Some(503) },
-            BridgeLookupFailure::Provider { status: None },
-            BridgeLookupFailure::Timeout,
-        ] {
-            let key = super::bridge_lookup_failure_key(failure)
-                .expect("Network/Provider/Timeout carry keys");
-            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
-        }
-        assert!(
-            super::bridge_lookup_failure_key(BridgeLookupFailure::Diagnostic {
-                detail: "x".to_string()
-            })
-            .is_none(),
-            "Diagnostic has no catalog key"
-        );
     }
 }
 
@@ -1994,31 +1778,6 @@ pub enum BridgeShapeResult {
     Invalid { reason: BridgeValidationReason },
 }
 
-#[cfg(test)]
-mod validation_reason_tests {
-    use super::BridgeValidationReason;
-
-    /// Every validation reason's localization key must exist in the master
-    /// catalog, so a renamed key or a dropped catalog entry fails the build
-    /// instead of rendering a raw key in the UI.
-    #[test]
-    fn keys_exist_in_catalog() {
-        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
-            .expect("catalog parses");
-        for reason in [
-            BridgeValidationReason::EmptyAlbumTitle,
-            BridgeValidationReason::NoAlbumArtist,
-            BridgeValidationReason::InvalidYear,
-        ] {
-            assert!(
-                cat.messages.contains_key(reason.loc_key()),
-                "catalog is missing key `{}`",
-                reason.loc_key()
-            );
-        }
-    }
-}
-
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeConfig {
     pub library_id: String,
@@ -2460,54 +2219,6 @@ pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> O
             Some("core.playback.error.upload_pending".to_string())
         }
         BridgePlaybackErrorReason::Diagnostic { .. } => None,
-    }
-}
-
-#[cfg(test)]
-mod error_key_tests {
-    use super::{BridgeEntityKind, BridgeErrorCategory, BridgePlaybackErrorReason};
-
-    /// Every category line, entity "not found" line, and actionable playback
-    /// reason the UI resolves must exist in the catalog.
-    #[test]
-    fn keys_exist_in_catalog() {
-        let cat = bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml"))
-            .expect("catalog parses");
-        for category in [
-            BridgeErrorCategory::Database,
-            BridgeErrorCategory::Config,
-            BridgeErrorCategory::Internal,
-            BridgeErrorCategory::Import,
-            BridgeErrorCategory::Export,
-        ] {
-            let key = super::bridge_error_category_key(category);
-            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
-        }
-        for entity in [
-            BridgeEntityKind::Library,
-            BridgeEntityKind::Album,
-            BridgeEntityKind::Release,
-            BridgeEntityKind::Track,
-            BridgeEntityKind::File,
-        ] {
-            let key = super::bridge_entity_not_found_key(entity);
-            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
-        }
-        for reason in [
-            BridgePlaybackErrorReason::SyncDisconnected,
-            BridgePlaybackErrorReason::UploadPending,
-        ] {
-            let key = super::bridge_playback_error_reason_key(&reason)
-                .expect("actionable reasons carry keys");
-            assert!(cat.messages.contains_key(&key), "catalog missing `{key}`");
-        }
-        assert!(
-            super::bridge_playback_error_reason_key(&BridgePlaybackErrorReason::Diagnostic {
-                error: super::BridgeError::internal(""),
-            })
-            .is_none(),
-            "diagnostic reasons render through the BridgeError category path"
-        );
     }
 }
 
@@ -3269,5 +2980,327 @@ pub(crate) fn raw_release_edit_to_bridge(
                 track_number: t.track_number,
             })
             .collect(),
+    }
+}
+
+/// Airtight cross-check that the `core.*` localization catalog stays in sync
+/// with the keys the `bridge_*_key` functions produce — in both directions:
+///
+/// - `every_produced_key_exists_in_catalog`: every key a key fn can emit (plus
+///   every direct-reference key the UI uses) has a catalog entry. A renamed or
+///   dropped catalog key fails the build instead of rendering a raw key.
+/// - `no_orphan_core_keys`: every `core.*` catalog entry is produced by a key
+///   fn or listed in `DIRECT_KEYS`. A catalog key no producer references is
+///   dead and must be deleted (or, if a real UI direct-reference, added to
+///   `DIRECT_KEYS`).
+///
+/// Each keyed enum is covered by an explicit array of every variant AND an
+/// inline exhaustive `match` with no `_` arm, so adding a variant is a compile
+/// error here that forces updating the coverage.
+#[cfg(test)]
+mod loc_key_coverage {
+    use super::*;
+
+    /// `core.*` keys the UI references directly with its own args — not emitted
+    /// by any `bridge_*_key` fn. Kept in sync with the catalog by
+    /// `no_orphan_core_keys`.
+    const DIRECT_KEYS: &[&str] = &[
+        // Storage queue summary (UI composes counts).
+        "core.queue.uploading",
+        "core.queue.downloading",
+        "core.queue.failed",
+        "core.queue.queued",
+        "core.outbox.pending_deletes",
+        "core.outbox.bytes_progress",
+        "core.outbox.throughput",
+        "core.outbox.eta",
+        // Storage transfer file counter.
+        "core.transfer.files",
+        // Release-group card pressing count.
+        "core.import.pressings",
+        // Generic lookup-failure line for the keyless `Diagnostic` variant:
+        // `bridge_lookup_failure_key` returns `None`, the UI shows this line.
+        "core.lookup.failure.diagnostic",
+    ];
+
+    /// Every key the `bridge_*_key` fns can emit. For each keyed enum an
+    /// explicit array of all variants feeds an inline exhaustive `match` that
+    /// re-derives the key, asserted equal to the production fn's output — so a
+    /// new variant fails to compile here.
+    fn produced_keys() -> Vec<String> {
+        let mut keys = Vec::new();
+
+        // bridge_transfer_action_key — every variant carries a key.
+        for a in [
+            BridgeReleaseStorageAction::Manage,
+            BridgeReleaseStorageAction::Pin,
+            BridgeReleaseStorageAction::Unpin,
+            BridgeReleaseStorageAction::Unmanage,
+        ] {
+            let expected = match a {
+                BridgeReleaseStorageAction::Manage => "core.transfer.action.manage",
+                BridgeReleaseStorageAction::Pin => "core.transfer.action.pin",
+                BridgeReleaseStorageAction::Unpin => "core.transfer.action.unpin",
+                BridgeReleaseStorageAction::Unmanage => "core.transfer.action.unmanage",
+            };
+            assert_eq!(bridge_transfer_action_key(a), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_track_header_key — Flat carries no key (None).
+        for s in [
+            BridgeTrackSide::Sided {
+                side_letter: "A".to_string(),
+            },
+            BridgeTrackSide::Disc { disc: 1 },
+            BridgeTrackSide::Flat,
+        ] {
+            let expected: Option<&str> = match s {
+                BridgeTrackSide::Sided { .. } => Some("core.track.side"),
+                BridgeTrackSide::Disc { .. } => Some("core.track.disc"),
+                BridgeTrackSide::Flat => None,
+            };
+            assert_eq!(bridge_track_header_key(s).as_deref(), expected);
+            if let Some(k) = expected {
+                keys.push(k.to_string());
+            }
+        }
+
+        // bridge_audio_channels_key — only 1 and 2 carry words.
+        for (channels, expected) in [
+            (1_i64, Some("core.audio.channels.mono")),
+            (2, Some("core.audio.channels.stereo")),
+        ] {
+            assert_eq!(bridge_audio_channels_key(channels).as_deref(), expected);
+            if let Some(k) = expected {
+                keys.push(k.to_string());
+            }
+        }
+
+        // bridge_cloud_provider_label_key — None (local-only) and S3 carry
+        // keys; the brand-name providers pass through (None).
+        for p in [
+            None,
+            Some(BridgeCloudProvider::S3),
+            Some(BridgeCloudProvider::GoogleDrive),
+            Some(BridgeCloudProvider::Dropbox),
+            Some(BridgeCloudProvider::OneDrive),
+            Some(BridgeCloudProvider::CloudKit),
+        ] {
+            let expected: Option<&str> = match p {
+                None => Some("core.cloud.local_only"),
+                Some(BridgeCloudProvider::S3) => Some("core.cloud.s3_compatible"),
+                Some(
+                    BridgeCloudProvider::GoogleDrive
+                    | BridgeCloudProvider::Dropbox
+                    | BridgeCloudProvider::OneDrive
+                    | BridgeCloudProvider::CloudKit,
+                ) => None,
+            };
+            assert_eq!(bridge_cloud_provider_label_key(p).as_deref(), expected);
+            if let Some(k) = expected {
+                keys.push(k.to_string());
+            }
+        }
+
+        // bridge_invalid_reason_key — every variant carries a key.
+        for r in [
+            BridgeInvalidReason::CorruptAudioFile {
+                path: String::new(),
+            },
+            BridgeInvalidReason::CorruptImage {
+                path: String::new(),
+            },
+            BridgeInvalidReason::CueMissingAudio,
+            BridgeInvalidReason::NoValidAudio,
+        ] {
+            let expected = match r {
+                BridgeInvalidReason::CorruptAudioFile { .. } => "core.import.invalid.corrupt_audio",
+                BridgeInvalidReason::CorruptImage { .. } => "core.import.invalid.corrupt_image",
+                BridgeInvalidReason::CueMissingAudio => "core.import.invalid.cue_missing_audio",
+                BridgeInvalidReason::NoValidAudio => "core.import.invalid.no_valid_audio",
+            };
+            assert_eq!(bridge_invalid_reason_key(r.clone()), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_prepare_step_key — every variant carries a key.
+        for step in [
+            BridgePrepareStep::ParsingMetadata,
+            BridgePrepareStep::WritingCoverArt,
+            BridgePrepareStep::DiscoveringFiles,
+            BridgePrepareStep::ValidatingTracks,
+            BridgePrepareStep::SavingToDatabase,
+        ] {
+            let expected = match step {
+                BridgePrepareStep::ParsingMetadata => "core.import.prepare.parsing_metadata",
+                BridgePrepareStep::WritingCoverArt => "core.import.prepare.writing_cover_art",
+                BridgePrepareStep::DiscoveringFiles => "core.import.prepare.discovering_files",
+                BridgePrepareStep::ValidatingTracks => "core.import.prepare.validating_tracks",
+                BridgePrepareStep::SavingToDatabase => "core.import.prepare.saving_to_database",
+            };
+            assert_eq!(bridge_prepare_step_key(step), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_import_phase_key — every variant carries a key.
+        for phase in [BridgeImportPhase::Acquire, BridgeImportPhase::Store] {
+            let expected = match phase {
+                BridgeImportPhase::Acquire => "core.import.phase.acquire",
+                BridgeImportPhase::Store => "core.import.phase.store",
+            };
+            assert_eq!(bridge_import_phase_key(phase), expected);
+            keys.push(expected.to_string());
+        }
+
+        // BridgeValidationReason::loc_key — every variant carries a key.
+        for reason in [
+            BridgeValidationReason::EmptyAlbumTitle,
+            BridgeValidationReason::NoAlbumArtist,
+            BridgeValidationReason::InvalidYear,
+        ] {
+            let expected = match reason {
+                BridgeValidationReason::EmptyAlbumTitle => {
+                    "core.import.validation.empty_album_title"
+                }
+                BridgeValidationReason::NoAlbumArtist => "core.import.validation.no_album_artist",
+                BridgeValidationReason::InvalidYear => "core.import.validation.invalid_year",
+            };
+            assert_eq!(reason.loc_key(), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_lookup_failure_key — Diagnostic carries no key (None);
+        // Provider splits on whether a status code was observed.
+        for f in [
+            BridgeLookupFailure::Network,
+            BridgeLookupFailure::Provider { status: Some(503) },
+            BridgeLookupFailure::Provider { status: None },
+            BridgeLookupFailure::Timeout,
+            BridgeLookupFailure::Diagnostic {
+                detail: String::new(),
+            },
+        ] {
+            let expected: Option<&str> = match f {
+                BridgeLookupFailure::Network => Some("core.lookup.failure.network"),
+                BridgeLookupFailure::Provider { status: Some(_) } => {
+                    Some("core.lookup.failure.provider")
+                }
+                BridgeLookupFailure::Provider { status: None } => {
+                    Some("core.lookup.failure.provider_unknown")
+                }
+                BridgeLookupFailure::Timeout => Some("core.lookup.failure.timeout"),
+                BridgeLookupFailure::Diagnostic { .. } => None,
+            };
+            assert_eq!(bridge_lookup_failure_key(f.clone()).as_deref(), expected);
+            if let Some(k) = expected {
+                keys.push(k.to_string());
+            }
+        }
+
+        // bridge_error_category_key — every variant carries a key.
+        for c in [
+            BridgeErrorCategory::Database,
+            BridgeErrorCategory::Config,
+            BridgeErrorCategory::Internal,
+            BridgeErrorCategory::Import,
+            BridgeErrorCategory::Export,
+        ] {
+            let expected = match c {
+                BridgeErrorCategory::Database => "core.error.category.database",
+                BridgeErrorCategory::Config => "core.error.category.config",
+                BridgeErrorCategory::Internal => "core.error.category.internal",
+                BridgeErrorCategory::Import => "core.error.category.import",
+                BridgeErrorCategory::Export => "core.error.category.export",
+            };
+            assert_eq!(bridge_error_category_key(c), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_entity_not_found_key — every variant carries a key.
+        for e in [
+            BridgeEntityKind::Library,
+            BridgeEntityKind::Album,
+            BridgeEntityKind::Release,
+            BridgeEntityKind::Track,
+            BridgeEntityKind::File,
+        ] {
+            let expected = match e {
+                BridgeEntityKind::Library => "core.error.not_found.library",
+                BridgeEntityKind::Album => "core.error.not_found.album",
+                BridgeEntityKind::Release => "core.error.not_found.release",
+                BridgeEntityKind::Track => "core.error.not_found.track",
+                BridgeEntityKind::File => "core.error.not_found.file",
+            };
+            assert_eq!(bridge_entity_not_found_key(e), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_playback_error_reason_key — Diagnostic carries no key (None).
+        for r in [
+            BridgePlaybackErrorReason::SyncDisconnected,
+            BridgePlaybackErrorReason::UploadPending,
+            BridgePlaybackErrorReason::Diagnostic {
+                error: BridgeError::internal(""),
+            },
+        ] {
+            let expected: Option<&str> = match r {
+                BridgePlaybackErrorReason::SyncDisconnected => {
+                    Some("core.playback.error.sync_disconnected")
+                }
+                BridgePlaybackErrorReason::UploadPending => {
+                    Some("core.playback.error.upload_pending")
+                }
+                BridgePlaybackErrorReason::Diagnostic { .. } => None,
+            };
+            assert_eq!(bridge_playback_error_reason_key(&r).as_deref(), expected);
+            if let Some(k) = expected {
+                keys.push(k.to_string());
+            }
+        }
+
+        keys
+    }
+
+    fn catalog() -> bae_loc::Catalog {
+        bae_loc::Catalog::from_toml(include_str!("../loc/catalog.toml")).expect("catalog parses")
+    }
+
+    /// Missing-key direction: every produced key and every direct-reference key
+    /// has a catalog entry.
+    #[test]
+    fn every_produced_key_exists_in_catalog() {
+        let cat = catalog();
+        for key in produced_keys()
+            .iter()
+            .map(String::as_str)
+            .chain(DIRECT_KEYS.iter().copied())
+        {
+            assert!(
+                cat.messages.contains_key(key),
+                "catalog missing `{key}` — a key fn or DIRECT_KEYS produces it but the entry is gone"
+            );
+        }
+    }
+
+    /// Orphan direction: every `core.*` catalog entry is produced by a key fn
+    /// or listed in `DIRECT_KEYS`.
+    #[test]
+    fn no_orphan_core_keys() {
+        let cat = catalog();
+        let mut accounted: std::collections::HashSet<String> =
+            produced_keys().into_iter().collect();
+        accounted.extend(DIRECT_KEYS.iter().map(|k| k.to_string()));
+
+        for key in cat.messages.keys() {
+            if !key.starts_with("core.") {
+                continue;
+            }
+            assert!(
+                accounted.contains(key),
+                "catalog key `{key}` has no producer — delete it or add a producer \
+                 (a bridge_*_key fn) or list it in DIRECT_KEYS"
+            );
+        }
     }
 }
