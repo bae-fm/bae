@@ -352,33 +352,32 @@ private struct QueueDropDelegate: DropDelegate {
     }
 }
 
-#if DEBUG
-    extension QueueView {
-        /// Preview builder — fixes the image resolver and the action callbacks
-        /// to inert defaults so a preview states only its queue state.
-        static func preview(
-            isActive: Bool,
-            nowPlayingTitle: String?,
-            nowPlayingArtist: String?,
-            items: [QueueItem]
-        ) -> QueueView {
-            QueueView(
-                isActive: isActive,
-                nowPlayingTitle: nowPlayingTitle,
-                nowPlayingArtist: nowPlayingArtist,
-                nowPlayingPath: nil,
-                items: items,
-                resolveImagePath: { _ in nil },
-                onClose: {},
-                onClear: {},
-                onSkipTo: { _ in },
-                onRemove: { _ in },
-                onReorder: { _, _ in },
-                onInsertTracks: { _, _ in }
-            )
-        }
+extension QueueView {
+    /// Preview builder — fixes the image resolver and the action callbacks
+    /// to inert defaults so a preview states only its queue state.
+    @MainActor
+    static func preview(
+        isActive: Bool,
+        nowPlayingTitle: String?,
+        nowPlayingArtist: String?,
+        items: [QueueItem]
+    ) -> QueueView {
+        QueueView(
+            isActive: isActive,
+            nowPlayingTitle: nowPlayingTitle,
+            nowPlayingArtist: nowPlayingArtist,
+            nowPlayingPath: nil,
+            items: items,
+            resolveImagePath: { _ in nil },
+            onClose: {},
+            onClear: {},
+            onSkipTo: { _ in },
+            onRemove: { _ in },
+            onReorder: { _, _ in },
+            onInsertTracks: { _, _ in }
+        )
     }
-#endif
+}
 
 // MARK: - Previews
 

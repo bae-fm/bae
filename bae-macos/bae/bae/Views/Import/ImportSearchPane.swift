@@ -821,35 +821,34 @@ struct DiscogsKeyPopover: View {
 
 // MARK: - Previews
 
-#if DEBUG
-    extension ImportSearchPane {
-        /// Preview builder — fixes the form bindings and action callbacks to inert
-        /// defaults so a preview states only the result situation it exercises.
-        static func preview(
-            state: ImportSearchState,
-            searchArtist: String = "",
-            searchAlbum: String = "",
-        ) -> ImportSearchPane {
-            ImportSearchPane(
-                state: state,
-                activeTab: .constant(.general),
-                activeSource: .constant(.musicBrainz),
-                searchArtist: .constant(searchArtist),
-                searchAlbum: .constant(searchAlbum),
-                searchCatalog: .constant(""),
-                searchBarcode: .constant(""),
-                onSearch: {},
-                onOpenSettings: {},
-                onSearchManually: {},
-                onViewMatches: {},
-                onAddAsUnknown: {},
-                onToggleSignal: { _ in },
-                onRerun: {},
-                onSelect: { _ in },
-            )
-        }
+extension ImportSearchPane {
+    /// Preview builder — fixes the form bindings and action callbacks to inert
+    /// defaults so a preview states only the result situation it exercises.
+    @MainActor
+    static func preview(
+        state: ImportSearchState,
+        searchArtist: String = "",
+        searchAlbum: String = "",
+    ) -> ImportSearchPane {
+        ImportSearchPane(
+            state: state,
+            activeTab: .constant(.general),
+            activeSource: .constant(.musicBrainz),
+            searchArtist: .constant(searchArtist),
+            searchAlbum: .constant(searchAlbum),
+            searchCatalog: .constant(""),
+            searchBarcode: .constant(""),
+            onSearch: {},
+            onOpenSettings: {},
+            onSearchManually: {},
+            onViewMatches: {},
+            onAddAsUnknown: {},
+            onToggleSignal: { _ in },
+            onRerun: {},
+            onSelect: { _ in },
+        )
     }
-#endif
+}
 
 #Preview("Main Pane - Exact Matches") {
     ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
