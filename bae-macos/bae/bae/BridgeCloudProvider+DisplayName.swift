@@ -44,10 +44,11 @@ func localizedCloudProviderName(provider: BridgeCloudProvider?) -> String {
     guard let key = bridgeCloudProviderLabelKey(provider: provider) else {
         // No catalog key means a brand-name provider (proper noun); its
         // passthrough name is correct. `provider` is non-nil here because nil
-        // maps to the local-only key above, so force-unwrap surfaces a logic
-        // error rather than rendering a blank label.
-        // swiftlint:disable:next force_unwrapping
-        return provider!.displayName
+        // maps to the local-only key above.
+        guard let provider else {
+            preconditionFailure("nil provider must map to the local-only key")
+        }
+        return provider.displayName
     }
     return NSLocalizedString(key, tableName: "Core", bundle: .main, comment: "")
 }

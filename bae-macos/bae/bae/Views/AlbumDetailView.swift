@@ -1365,35 +1365,36 @@ private class ExportFormatDelegate: NSObject {
         private var store = LibraryStore()
 
         var body: some View {
-            // swiftlint:disable:next redundant_discardable_let
-            let _ = seedIfNeeded()
-            if let summary = store.albumSummaries["a-04"],
-                let selected = store.releaseDetails[selectedReleaseId]
-            {
-                PreviewData.albumExpansionContent(
-                    summary: summary,
-                    selectedRelease: selected,
-                    // Live cursor so selecting a release in the picker cycles the
-                    // preview to that release's detail.
-                    releaseCursor: Binding(
-                        get: {
-                            PreviewData.releaseCursor(
-                                releaseIds: summary.releaseIds,
-                                preferring: selectedReleaseId
-                            )
-                        },
-                        set: { selectedReleaseId = $0.current.id },
-                    ),
-                    currentTrackId: "t-d2-3",
-                    isPlaying: true,
-                )
-                .padding()
-                .frame(width: 1100, height: 700, alignment: .top)
-                .background(Theme.background)
-                .environment(UiStore())
-                .environment(store)
-                .environment(MediaPaths.stub)
+            Group {
+                if let summary = store.albumSummaries["a-04"],
+                    let selected = store.releaseDetails[selectedReleaseId]
+                {
+                    PreviewData.albumExpansionContent(
+                        summary: summary,
+                        selectedRelease: selected,
+                        // Live cursor so selecting a release in the picker cycles
+                        // the preview to that release's detail.
+                        releaseCursor: Binding(
+                            get: {
+                                PreviewData.releaseCursor(
+                                    releaseIds: summary.releaseIds,
+                                    preferring: selectedReleaseId
+                                )
+                            },
+                            set: { selectedReleaseId = $0.current.id },
+                        ),
+                        currentTrackId: "t-d2-3",
+                        isPlaying: true,
+                    )
+                    .padding()
+                    .frame(width: 1100, height: 700, alignment: .top)
+                    .background(Theme.background)
+                    .environment(UiStore())
+                    .environment(store)
+                    .environment(MediaPaths.stub)
+                }
             }
+            .onAppear { seedIfNeeded() }
         }
 
         @MainActor
