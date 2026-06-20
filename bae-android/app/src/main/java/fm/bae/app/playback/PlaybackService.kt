@@ -1,13 +1,14 @@
 package fm.bae.app.playback
 
 import android.app.PendingIntent
-import android.util.Log
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import fm.bae.app.AppSessionHolder
+import fm.bae.app.BaeLogger
 import fm.bae.app.mainActivityIntent
 
 private const val TAG = "bae.PlaybackService"
+private val logger = BaeLogger(TAG)
 private const val SESSION_ACTIVITY_REQUEST_CODE = 1
 
 /**
@@ -33,7 +34,7 @@ class PlaybackService : MediaSessionService() {
             // begun — BaeCorePlayer.ensurePlaybackService starts us. If the
             // library was closed between that start and now, there's nothing to
             // host.
-            Log.e(TAG, "onCreate with no open session; stopping")
+            logger.error("onCreate with no open session; stopping")
             stopSelf()
             return
         }

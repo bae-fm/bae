@@ -13,7 +13,13 @@ val baeVersionName = System.getenv("BAE_VERSION") ?: "0.0-dev"
 val baeVersionCode = (System.getenv("BAE_VERSION_CODE") ?: "1").toInt()
 val baeGitCommit = System.getenv("BAE_GIT_COMMIT") ?: "dev"
 val baeCovenRev = System.getenv("BAE_COVEN_REV") ?: "dev"
+val baeEnvironment = System.getenv("BAE_ENVIRONMENT") ?: ""
+val baeDatadogSite = System.getenv("BAE_DATADOG_SITE") ?: ""
+val baeDatadogClientToken = System.getenv("BAE_DATADOG_CLIENT_TOKEN") ?: ""
 val releaseKeystore = System.getenv("ANDROID_KEYSTORE_FILE")
+
+fun buildConfigString(value: String): String =
+    "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
 android {
     namespace = "fm.bae.app"
@@ -28,6 +34,9 @@ android {
 
         buildConfigField("String", "BAE_GIT_COMMIT", "\"$baeGitCommit\"")
         buildConfigField("String", "BAE_COVEN_REV", "\"$baeCovenRev\"")
+        buildConfigField("String", "BAE_ENVIRONMENT", buildConfigString(baeEnvironment))
+        buildConfigField("String", "BAE_DATADOG_SITE", buildConfigString(baeDatadogSite))
+        buildConfigField("String", "BAE_DATADOG_CLIENT_TOKEN", buildConfigString(baeDatadogClientToken))
 
         // The launcher label. The baeium flavor overrides it to "baeium" so the two
         // editions are distinguishable once both are installed.
@@ -54,6 +63,7 @@ android {
         // without credentials. OAuthRedirectActivity binds it in the manifest.
         create("full") {
             dimension = "edition"
+            buildConfigField("String", "BAE_EDITION", "\"bae\"")
             val oauthCreds = file("src/full/assets/oauth-creds.json")
             val redirectScheme =
                 if (oauthCreds.exists()) {
@@ -75,6 +85,7 @@ android {
         // the build never depends on an oauth-creds.json.
         create("baeium") {
             dimension = "edition"
+            buildConfigField("String", "BAE_EDITION", "\"baeium\"")
             manifestPlaceholders["oauthRedirectScheme"] = "fm.bae.oauth.unconfigured"
             // baeium installs alongside the full bae build as a distinct app:
             // applicationId fm.bae.app.baeium (the namespace / R package stays

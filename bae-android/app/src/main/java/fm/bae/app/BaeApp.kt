@@ -1,13 +1,13 @@
 package fm.bae.app
 
 import android.app.Application
-import android.util.Log
 import io.crates.keyring.Keyring
 import uniffi.bae_bridge.initKeyring
 import uniffi.bae_bridge.setCaCertDir
 import uniffi.bae_bridge.setDataDir
 
 private const val TAG = "bae.BaeApp"
+private val logger = BaeLogger(TAG)
 
 class BaeApp : Application() {
     var oauthLinking: OAuthLinker? = null
@@ -18,6 +18,8 @@ class BaeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        BaeDiagnostics.configure()
+        logger.info("application launched")
         // Android app processes have no $HOME, which bae-core needs to locate
         // its data root (`~/.bae`). Point it at our private files dir before any
         // library access (discover/restore/initApp) so those don't fail with
@@ -43,7 +45,7 @@ class BaeApp : Application() {
             oauthLinking?.register()
         } catch (e: Exception) {
             oauthLinkingError = e.toString()
-            Log.e(TAG, "Failed to register OAuth client creds", e)
+            logger.error("Failed to register OAuth client creds", e)
         }
     }
 }

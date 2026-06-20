@@ -164,13 +164,13 @@ private struct ZoomableGalleryImage: View {
         }
         catch is CancellationError {
             logger.debug(
-                "gallery thumbnail load cancelled: \(source.description, privacy: .public)"
+                "gallery thumbnail load cancelled: \(source.description)"
             )
             return
         }
         catch {
             logger.warning(
-                "Failed to decode gallery image (\(source.description, privacy: .public)): \(error)"
+                "Failed to decode gallery image (\(source.description)): \(error)"
             )
             failed = true
         }
@@ -186,7 +186,7 @@ private struct ZoomableGalleryImage: View {
             )
             guard !Task.isCancelled else {
                 logger.debug(
-                    "full-res gallery load cancelled after decode: \(source.description, privacy: .public)"
+                    "full-res gallery load cancelled after decode: \(source.description)"
                 )
                 return
             }
@@ -194,13 +194,13 @@ private struct ZoomableGalleryImage: View {
         }
         catch is CancellationError {
             logger.debug(
-                "full-res gallery load cancelled: \(source.description, privacy: .public)"
+                "full-res gallery load cancelled: \(source.description)"
             )
             return
         }
         catch {
             logger.warning(
-                "Failed to decode full-res gallery image (\(source.description, privacy: .public)): \(error)"
+                "Failed to decode full-res gallery image (\(source.description)): \(error)"
             )
         }
     }
@@ -238,12 +238,12 @@ private struct RemoteGalleryImage: View {
             catch is CancellationError {
                 // The viewer was dismissed mid-fetch; leave state as-is.
                 logger.debug(
-                    "gallery image fetch cancelled: \(fileId, privacy: .public)"
+                    "gallery image fetch cancelled: \(fileId)"
                 )
             }
             catch {
                 logger.warning(
-                    "Failed to load gallery image \(fileId, privacy: .public): \(error)"
+                    "Failed to load gallery image \(fileId): \(error)"
                 )
                 failed = true
             }

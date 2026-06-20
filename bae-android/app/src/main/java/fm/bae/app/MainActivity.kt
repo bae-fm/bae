@@ -5,13 +5,13 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import fm.bae.app.ui.ContentView
 
 private const val TAG = "bae.MainActivity"
+private val logger = BaeLogger(TAG)
 
 internal fun mainActivityIntent(context: Context): Intent =
     Intent(context, MainActivity::class.java).apply {
@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
     // is a no-op after the first decision, so it's safe to fire on every launch.
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            Log.i(TAG, "POST_NOTIFICATIONS granted=$granted")
+            logger.info("POST_NOTIFICATIONS granted=$granted")
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {

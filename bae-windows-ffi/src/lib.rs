@@ -8,15 +8,74 @@
 //!
 //! This is the binding foundation — methods are added as the WinUI app needs them.
 
-use std::ffi::{c_char, CStr, CString};
+use std::{
+    ffi::{c_char, CStr, CString},
+    sync::{OnceLock, RwLock},
+};
 
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::app::{bootstrap, RunningApp};
 use bae_core::db::{AlbumSortCriterion, AlbumSortField, SortDirection};
+use bae_core::diagnostics::{
+    AppDiagnosticMetadata, DatadogDiagnosticsConfig, DiagnosticLevel, Diagnostics,
+    DiagnosticsConfig,
+};
 use bae_core::ui::UiBusEvent;
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::{prelude::*, util::SubscriberInitExt};
 
 mod loc;
+
+static DIAGNOSTICS: OnceLock<RwLock<Diagnostics>> = OnceLock::new();
+static LOGGING_INSTALLED: OnceLock<()> = OnceLock::new();
+
+fn diagnostics_cell() -> &'static RwLock<Diagnostics> {
+    DIAGNOSTICS.get_or_init(|| RwLock::new(Diagnostics::noop()))
+}
+
+fn current_diagnostics() -> Diagnostics {
+    diagnostics_cell()
+        .read()
+        .expect("diagnostics lock poisoned")
+        .clone()
+}
+
+fn replace_diagnostics(diagnostics: Diagnostics) {
+    *diagnostics_cell()
+        .write()
+        .expect("diagnostics lock poisoned") = diagnostics;
+}
+
+fn windows_env_filter() -> Result<tracing_subscriber::EnvFilter, String> {
+    match std::env::var("RUST_LOG") {
+        Err(std::env::VarError::NotPresent) => Ok(tracing_subscriber::EnvFilter::new("info")),
+        Err(std::env::VarError::NotUnicode(_)) => Err("RUST_LOG is not valid Unicode".to_string()),
+        Ok(value) => tracing_subscriber::EnvFilter::try_new(&value)
+            .map_err(|e| format!("RUST_LOG={value:?} is malformed: {e}")),
+    }
+}
+
+fn install_logging(diagnostics: Diagnostics) -> Result<(), String> {
+    if LOGGING_INSTALLED.get().is_some() {
+        return Ok(());
+    }
+
+    let filter = windows_env_filter()?;
+    let subscriber = tracing_subscriber::registry()
+        .with(filter)
+        .with(bae_core::diagnostics::tracing_layer(diagnostics))
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_line_number(true)
+                .with_target(false)
+                .with_file(true),
+        );
+    if let Err(error) = subscriber.try_init() {
+        tracing::debug!(%error, "tracing subscriber already installed");
+    }
+    let _ = LOGGING_INSTALLED.set(());
+    Ok(())
+}
 
 /// Allocate an owned C string for a catalog key result, or null when the value
 /// has no key (the C# falls back to a passthrough / generic line). The result
@@ -158,6 +217,39 @@ unsafe fn cstr(ptr: *const c_char) -> Option<String> {
     CStr::from_ptr(ptr).to_str().ok().map(str::to_owned)
 }
 
+/// Read a required borrowed C string into an owned `String`.
+///
+/// # Safety
+/// `ptr` must be a valid NUL-terminated UTF-8 C string.
+unsafe fn required_cstr(ptr: *const c_char, name: &str) -> Result<String, String> {
+    optional_cstr(ptr, name)?.ok_or_else(|| format!("{name} is required"))
+}
+
+/// Read an optional borrowed C string into an owned `String`.
+///
+/// # Safety
+/// `ptr` must be null or a valid NUL-terminated UTF-8 C string.
+unsafe fn optional_cstr(ptr: *const c_char, name: &str) -> Result<Option<String>, String> {
+    if ptr.is_null() {
+        return Ok(None);
+    }
+    CStr::from_ptr(ptr)
+        .to_str()
+        .map(|value| Some(value.to_owned()))
+        .map_err(|_| format!("{name} is not valid UTF-8"))
+}
+
+fn configured_value(value: Option<String>) -> Option<String> {
+    value.and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() || trimmed.starts_with("$(") {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
 /// Initialize the app for `library_id`. Returns a handle pointer, or null on
 /// failure (the error is logged). Free the result with [`bae_handle_free`].
 ///
@@ -187,6 +279,193 @@ pub unsafe extern "C" fn bae_init(
 #[no_mangle]
 pub extern "C" fn bae_startup() {
     bae_core::config::init_keyring();
+}
+
+fn app_diagnostic_metadata_from_parts(
+    service: String,
+    environment: Option<String>,
+    app_version: String,
+    edition: String,
+    git_commit: Option<String>,
+) -> Option<AppDiagnosticMetadata> {
+    Some(AppDiagnosticMetadata {
+        service,
+        environment: environment?,
+        app_version,
+        edition,
+        git_commit: git_commit?,
+    })
+}
+
+fn diagnostics_config_from_parts(
+    datadog_site: Option<String>,
+    client_token: Option<String>,
+    source: String,
+    app: Option<AppDiagnosticMetadata>,
+) -> DiagnosticsConfig {
+    let Some(app) = app else {
+        return DiagnosticsConfig::Disabled;
+    };
+
+    if app.edition != "bae" {
+        return DiagnosticsConfig::Disabled;
+    }
+
+    let (Some(datadog_site), Some(client_token)) = (datadog_site, client_token) else {
+        return DiagnosticsConfig::Disabled;
+    };
+
+    DiagnosticsConfig::Enabled(DatadogDiagnosticsConfig {
+        datadog_site,
+        client_token,
+        source,
+        app,
+    })
+}
+
+/// Configure process diagnostics. Empty/missing Datadog settings and baeium
+/// builds install no-op diagnostics. Returns null on success, else an error
+/// string. Free with [`bae_string_free`].
+///
+/// # Safety
+/// String pointers must be null where optional or valid NUL-terminated UTF-8 C
+/// strings.
+#[no_mangle]
+pub unsafe extern "C" fn bae_configure_diagnostics(
+    datadog_site: *const c_char,
+    client_token: *const c_char,
+    source: *const c_char,
+    service: *const c_char,
+    environment: *const c_char,
+    app_version: *const c_char,
+    edition: *const c_char,
+    git_commit: *const c_char,
+) -> *mut c_char {
+    let result: Result<(), String> = (|| {
+        let source = required_cstr(source, "source")?;
+        let app = app_diagnostic_metadata_from_parts(
+            required_cstr(service, "service")?,
+            configured_value(optional_cstr(environment, "environment")?),
+            required_cstr(app_version, "app_version")?,
+            required_cstr(edition, "edition")?,
+            configured_value(optional_cstr(git_commit, "git_commit")?),
+        );
+        let config = diagnostics_config_from_parts(
+            configured_value(optional_cstr(datadog_site, "datadog_site")?),
+            configured_value(optional_cstr(client_token, "client_token")?),
+            source,
+            app,
+        );
+        let diagnostics =
+            Diagnostics::configure(config).map_err(|e| format!("diagnostics setup failed: {e}"))?;
+        install_logging(diagnostics.clone())?;
+        replace_diagnostics(diagnostics);
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => std::ptr::null_mut(),
+        Err(error) => error_cstring(&error),
+    }
+}
+
+#[derive(Deserialize)]
+struct FfiDiagnosticField {
+    key: String,
+    value: String,
+}
+
+fn diagnostic_fields_from_json(fields_json: &str) -> Result<Vec<(String, String)>, String> {
+    serde_json::from_str::<Vec<FfiDiagnosticField>>(fields_json)
+        .map(|fields| {
+            fields
+                .into_iter()
+                .map(|field| (field.key, field.value))
+                .collect()
+        })
+        .map_err(|e| format!("invalid diagnostic fields JSON: {e}"))
+}
+
+fn diagnostic_level_from_str(level: &str) -> Option<DiagnosticLevel> {
+    match level {
+        "trace" => Some(DiagnosticLevel::Trace),
+        "debug" => Some(DiagnosticLevel::Debug),
+        "info" => Some(DiagnosticLevel::Info),
+        "warn" => Some(DiagnosticLevel::Warn),
+        "error" => Some(DiagnosticLevel::Error),
+        _ => None,
+    }
+}
+
+/// Emit a host-originated log event. Returns null on success, else an error
+/// string. Free with [`bae_string_free`].
+///
+/// # Safety
+/// String pointers must be valid NUL-terminated UTF-8 C strings.
+#[no_mangle]
+pub unsafe extern "C" fn bae_diagnostics_log(
+    level: *const c_char,
+    target: *const c_char,
+    message: *const c_char,
+    fields_json: *const c_char,
+) -> *mut c_char {
+    let result: Result<(), String> = (|| {
+        let level = required_cstr(level, "level")?;
+        let Some(level) = diagnostic_level_from_str(&level) else {
+            return Err(format!("unknown diagnostic level: {level}"));
+        };
+        let fields = diagnostic_fields_from_json(&required_cstr(fields_json, "fields_json")?)?;
+        current_diagnostics()
+            .log(
+                level,
+                required_cstr(target, "target")?,
+                required_cstr(message, "message")?,
+                fields,
+            )
+            .map_err(|e| e.to_string())
+    })();
+
+    match result {
+        Ok(()) => std::ptr::null_mut(),
+        Err(error) => error_cstring(&error),
+    }
+}
+
+/// Emit a host-originated telemetry event. Returns null on success, else an
+/// error string. Free with [`bae_string_free`].
+///
+/// # Safety
+/// String pointers must be valid NUL-terminated UTF-8 C strings.
+#[no_mangle]
+pub unsafe extern "C" fn bae_diagnostics_event(
+    name: *const c_char,
+    fields_json: *const c_char,
+) -> *mut c_char {
+    let result: Result<(), String> = (|| {
+        let fields = diagnostic_fields_from_json(&required_cstr(fields_json, "fields_json")?)?;
+        current_diagnostics()
+            .event(required_cstr(name, "name")?, fields)
+            .map_err(|e| e.to_string())
+    })();
+
+    match result {
+        Ok(()) => std::ptr::null_mut(),
+        Err(error) => error_cstring(&error),
+    }
+}
+
+/// Flush queued diagnostics. Returns null on success, else an error string.
+/// Free with [`bae_string_free`].
+#[no_mangle]
+pub extern "C" fn bae_flush_diagnostics() -> *mut c_char {
+    let runtime = match tokio::runtime::Runtime::new() {
+        Ok(runtime) => runtime,
+        Err(e) => return error_cstring(&format!("diagnostics flush runtime: {e}")),
+    };
+    match runtime.block_on(current_diagnostics().flush()) {
+        Ok(()) => std::ptr::null_mut(),
+        Err(e) => error_cstring(&e.to_string()),
+    }
 }
 
 /// Register the host's OAuth client credentials so coven can build authorization
@@ -3738,5 +4017,110 @@ mod tests {
         assert_eq!(ffi.thumbnail_url, "https://cover.example/thumb.jpg");
         assert_eq!(ffi.label, "Cover Source");
         assert_eq!(ffi.source, "musicbrainz");
+    }
+
+    #[test]
+    fn diagnostics_level_tags_map_to_core_levels() {
+        assert_eq!(
+            diagnostic_level_from_str("trace"),
+            Some(DiagnosticLevel::Trace)
+        );
+        assert_eq!(
+            diagnostic_level_from_str("debug"),
+            Some(DiagnosticLevel::Debug)
+        );
+        assert_eq!(
+            diagnostic_level_from_str("info"),
+            Some(DiagnosticLevel::Info)
+        );
+        assert_eq!(
+            diagnostic_level_from_str("warn"),
+            Some(DiagnosticLevel::Warn)
+        );
+        assert_eq!(
+            diagnostic_level_from_str("error"),
+            Some(DiagnosticLevel::Error)
+        );
+        assert_eq!(diagnostic_level_from_str("warning"), None);
+    }
+
+    #[test]
+    fn diagnostics_fields_json_maps_key_value_pairs() {
+        let fields = diagnostic_fields_from_json(
+            r#"[{"key":"action","value":"startup"},{"key":"count","value":"1"}]"#,
+        )
+        .expect("diagnostic fields parse");
+
+        assert_eq!(
+            fields,
+            vec![
+                ("action".to_string(), "startup".to_string()),
+                ("count".to_string(), "1".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn diagnostics_fields_json_rejects_bad_payloads() {
+        assert!(diagnostic_fields_from_json(r#"{"key":"action","value":"startup"}"#).is_err());
+        assert!(diagnostic_fields_from_json(r#"[{"key":"action"}]"#).is_err());
+    }
+
+    #[test]
+    fn windows_diagnostics_config_disables_baeium_and_missing_datadog_config() {
+        assert_eq!(
+            diagnostics_config_from_parts(
+                Some("datadoghq.com".to_string()),
+                Some("token".to_string()),
+                "windows".to_string(),
+                Some(AppDiagnosticMetadata {
+                    service: "bae".to_string(),
+                    environment: "dev".to_string(),
+                    app_version: "0.0-dev".to_string(),
+                    edition: "baeium".to_string(),
+                    git_commit: "commit".to_string(),
+                }),
+            ),
+            DiagnosticsConfig::Disabled
+        );
+        assert_eq!(
+            diagnostics_config_from_parts(
+                Some("datadoghq.com".to_string()),
+                None,
+                "windows".to_string(),
+                Some(AppDiagnosticMetadata {
+                    service: "bae".to_string(),
+                    environment: "dev".to_string(),
+                    app_version: "0.0-dev".to_string(),
+                    edition: "bae".to_string(),
+                    git_commit: "commit".to_string(),
+                }),
+            ),
+            DiagnosticsConfig::Disabled
+        );
+    }
+
+    #[test]
+    fn windows_diagnostics_config_enables_complete_bae_config() {
+        let config = diagnostics_config_from_parts(
+            Some("datadoghq.com".to_string()),
+            Some("token".to_string()),
+            "windows".to_string(),
+            Some(AppDiagnosticMetadata {
+                service: "bae".to_string(),
+                environment: "dev".to_string(),
+                app_version: "0.0-dev".to_string(),
+                edition: "bae".to_string(),
+                git_commit: "commit".to_string(),
+            }),
+        );
+
+        let DiagnosticsConfig::Enabled(config) = config else {
+            panic!("complete bae diagnostics config should be enabled");
+        };
+        assert_eq!(config.datadog_site, "datadoghq.com");
+        assert_eq!(config.client_token, "token");
+        assert_eq!(config.source, "windows");
+        assert_eq!(config.app.environment, "dev");
     }
 }

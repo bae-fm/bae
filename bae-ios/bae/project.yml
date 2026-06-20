@@ -29,7 +29,8 @@ targets:
       # — one copy serves both platforms. Each is AppKit-free and references
       # only bridge methods present on the iOS xcframework (or guards the
       # desktop-only ones behind `#if !os(iOS)`).
-      - path: ../../bae-macos/bae/bae/Logger.swift
+      - path: ../../bae-macos/bae/bae/BaeDiagnostics.swift
+      - path: ../../bae-macos/bae/bae/BaeLogger.swift
       - path: ../../bae-macos/bae/bae/Theme.swift
       # AppKit/UIKit-bridged via a `PlatformImage` typealias behind
       # `#if canImport`, so it compiles AppKit-free on iOS.
@@ -110,6 +111,10 @@ targets:
         INFOPLIST_FILE: bae/Info.plist
         SWIFT_VERSION: "6.2"
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        BAE_DATADOG_SITE: $(BAE_DATADOG_SITE)
+        BAE_DATADOG_CLIENT_TOKEN: $(BAE_DATADOG_CLIENT_TOKEN)
+        BAE_ENVIRONMENT: $(BAE_ENVIRONMENT)
+        BAE_GIT_COMMIT: $(BAE_GIT_COMMIT)
         # CODE_SIGN_ENTITLEMENTS is set in Config.xcconfig (full) and overridden
         # by the generated Features.xcconfig (baeium), not here — a setting in this
         # block lands in the pbxproj and would override the xcconfig layer the

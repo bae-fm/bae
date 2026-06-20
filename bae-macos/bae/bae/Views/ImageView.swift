@@ -73,8 +73,8 @@ struct ImageView: View {
             logger.warning(
                 """
                 Failed to load \
-                \(source.description, privacy: .public): \
-                \(error.localizedDescription, privacy: .public)
+                \(source.description): \
+                \(error.localizedDescription)
                 """
             )
             loadState = .pending(.failed)

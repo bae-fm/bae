@@ -9,7 +9,6 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Looper
-import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -18,6 +17,7 @@ import androidx.media3.common.SimpleBasePlayer
 import androidx.media3.common.util.Util
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import fm.bae.app.BaeLogger
 import fm.bae.app.data.Library
 import fm.bae.app.formatDurationMs
 import fm.bae.app.formatRemainingMs
@@ -103,6 +103,7 @@ interface PlaybackEventSink {
 }
 
 private const val TAG = "bae.BaeCorePlayer"
+private val logger = BaeLogger(TAG)
 
 internal class PlaybackSystemHooks(
     private val context: Context,
@@ -248,7 +249,7 @@ internal class PlaybackSystemHooks(
         val foreground = isAppForeground()
         val hasCurrentTrack = hasCurrentTrack()
         if (!hasCurrentTrack || !foreground) {
-            Log.d(TAG, "Not starting playback service (currentTrack=$hasCurrentTrack, foreground=$foreground)")
+            logger.debug("Not starting playback service (currentTrack=$hasCurrentTrack, foreground=$foreground)")
             return
         }
         try {
@@ -258,7 +259,7 @@ internal class PlaybackSystemHooks(
             // this call, so Android refused the background service start. A
             // service started earlier in this playback session keeps playing;
             // there's nothing to recover.
-            Log.w(TAG, "Could not start playback service from foreground", e)
+            logger.warning("Could not start playback service from foreground", e)
         }
     }
 
@@ -388,7 +389,7 @@ class BaeCorePlayer(
         ): Long {
             if (meta.trackId != playingTrackId) return C.TIME_UNSET
             if (durationMs == C.TIME_UNSET) {
-                Log.w(TAG, "itemDurationMs missing duration for current track ${meta.trackId}")
+                logger.warning("itemDurationMs missing duration for current track ${meta.trackId}")
             }
             return durationMs
         }
@@ -747,8 +748,7 @@ class BaeCorePlayer(
                 }
 
                 else -> {
-                    Log.w(
-                        TAG,
+                    logger.warning(
                         "getState missing current track $playingTrackId in playlist ${metas.map { it.trackId }}",
                     )
                     C.INDEX_UNSET
@@ -846,7 +846,7 @@ class BaeCorePlayer(
                 if (total > 0L) {
                     appHandle.seekByRatio((positionMs.toDouble() / total.toDouble()).coerceIn(0.0, 1.0))
                 } else {
-                    Log.w(TAG, "handleSeek ignored: no duration for in-track seek")
+                    logger.warning("handleSeek ignored: no duration for in-track seek")
                 }
             }
         }

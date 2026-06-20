@@ -57,7 +57,7 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
         }
         catch {
             logger.error(
-                "analyze perform failed for \(path, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                "analyze perform failed for \(path): \(error.localizedDescription)"
             )
             return BridgeArtworkAnalysis(barcodes: [], textLines: [])
         }

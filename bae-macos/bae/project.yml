@@ -37,6 +37,10 @@ targets:
         SUFeedURL: https://raw.githubusercontent.com/bae-fm/bae/appcast/appcast.xml
         SUPublicEDKey: cYiouOrDxmQrHspLwOf/XpQOQOMt3isdYDs6xEDBGs8=
         SUEnableAutomaticChecks: true
+        BaeDatadogSite: $(BAE_DATADOG_SITE)
+        BaeDatadogClientToken: $(BAE_DATADOG_CLIENT_TOKEN)
+        BaeEnvironment: $(BAE_ENVIRONMENT)
+        BaeGitCommit: $(BAE_GIT_COMMIT)
         CFBundleDocumentTypes:
           - CFBundleTypeName: Folder
             LSItemContentTypes:

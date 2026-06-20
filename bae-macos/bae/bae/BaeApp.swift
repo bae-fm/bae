@@ -435,6 +435,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
 
     func applicationDidFinishLaunching(_: Notification) {
         if !Self.isPreview {
+            BaeDiagnostics.configure(source: "macos")
+            logger.info("application launched")
             initKeyring()
             // Hand Rust the CloudKit driver once. It can't build the driver
             // itself (it needs the platform CloudKit APIs); installing it is

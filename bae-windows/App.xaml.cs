@@ -13,6 +13,9 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        BaeDiagnostics.Configure();
+        BaeDiagnostics.Logger.Info("application launched");
+
         // Register the OS credential store before any library key is read or
         // written (discovery, creation, or open).
         NativeBae.Startup();

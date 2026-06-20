@@ -490,7 +490,7 @@ extension StorageTableView {
                 // loop, never breaking because the guard above never trips.
                 guard libraryStore.releaseDetails[id] != nil else {
                     logger.warning(
-                        "Detail failed to load for expanded release \(id, privacy: .public); leaving it without file rows"
+                        "Detail failed to load for expanded release \(id); leaving it without file rows"
                     )
                     return
                 }

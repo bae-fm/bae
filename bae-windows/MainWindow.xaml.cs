@@ -4045,5 +4045,6 @@ public sealed partial class MainWindow : Window
             NativeBae.HandleFree(_handle);
             _handle = IntPtr.Zero;
         }
+        BaeDiagnostics.Flush();
     }
 }

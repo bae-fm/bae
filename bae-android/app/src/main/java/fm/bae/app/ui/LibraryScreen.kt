@@ -1,7 +1,6 @@
 package fm.bae.app.ui
 
 import android.content.Context
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,6 +64,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import kotlinx.coroutines.CancellationException
@@ -78,6 +78,7 @@ import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
 
 private const val TAG = "bae.LibraryScreen"
+private val logger = BaeLogger(TAG)
 private const val PAGE_SIZE = 60
 private const val GRID_PREFETCH_AHEAD = 12
 private const val PULL_REFRESH_SETTLE_MS = 900L
@@ -143,7 +144,7 @@ private class LibraryPage(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load first album page", e)
+            logger.error("Failed to load first album page", e)
             error = PageError(e.message ?: appContext.getString(R.string.library_load_failed), onRetry)
         } finally {
             loading = false
@@ -164,7 +165,7 @@ private class LibraryPage(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load album page at offset $offset", e)
+            logger.error("Failed to load album page at offset $offset", e)
             error = PageError(e.message ?: appContext.getString(R.string.library_load_more_failed), onRetry)
         }
     }

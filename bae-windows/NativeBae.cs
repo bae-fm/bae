@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Bae.Windows;
 
@@ -21,6 +22,57 @@ internal static class NativeBae
     /// <summary>One-time startup: register the OS credential store.</summary>
     [DllImport(Dll, EntryPoint = "bae_startup", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void Startup();
+
+    [DllImport(Dll, EntryPoint = "bae_configure_diagnostics", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ConfigureDiagnosticsPtr(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? datadogSite,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? clientToken,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string service,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? environment,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string appVersion,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string edition,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? gitCommit);
+
+    internal static string? ConfigureDiagnostics(
+        string? datadogSite,
+        string? clientToken,
+        string source,
+        string service,
+        string? environment,
+        string appVersion,
+        string edition,
+        string? gitCommit) =>
+        ResultMessage(ConfigureDiagnosticsPtr(datadogSite, clientToken, source, service, environment, appVersion, edition, gitCommit));
+
+    [DllImport(Dll, EntryPoint = "bae_diagnostics_log", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DiagnosticsLogPtr(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string level,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string target,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string message,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string fieldsJson);
+
+    internal static string? DiagnosticsLog(
+        string level,
+        string target,
+        string message,
+        IEnumerable<KeyValuePair<string, string>>? fields = null) =>
+        ResultMessage(DiagnosticsLogPtr(level, target, message, DiagnosticFieldsJson(fields)));
+
+    [DllImport(Dll, EntryPoint = "bae_diagnostics_event", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DiagnosticsEventPtr(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string name,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string fieldsJson);
+
+    internal static string? DiagnosticsEvent(
+        string name,
+        IEnumerable<KeyValuePair<string, string>>? fields = null) =>
+        ResultMessage(DiagnosticsEventPtr(name, DiagnosticFieldsJson(fields)));
+
+    [DllImport(Dll, EntryPoint = "bae_flush_diagnostics", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr FlushDiagnosticsPtr();
+
+    internal static string? FlushDiagnostics() => ResultMessage(FlushDiagnosticsPtr());
 
     [DllImport(Dll, EntryPoint = "bae_set_oauth_client_creds", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr SetOauthClientCredsPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string credsJson);
@@ -722,6 +774,13 @@ internal static class NativeBae
     internal static string? ImportCandidate(
         IntPtr handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, string userEditJson, string selectedCoverJson) =>
         ResultMessage(ImportCandidatePtr(handle, candidateKey, folderPath, chosenReleaseId, source, storageMode, userEditJson, selectedCoverJson));
+
+    private static string DiagnosticFieldsJson(IEnumerable<KeyValuePair<string, string>>? fields) =>
+        JsonSerializer.Serialize((fields ?? []).Select(field => new DiagnosticField(field.Key, field.Value)));
+
+    private sealed record DiagnosticField(
+        [property: JsonPropertyName("key")] string Key,
+        [property: JsonPropertyName("value")] string Value);
 
     /// <summary>
     /// Copy a Rust-owned UTF-8 string into managed memory and free the native one,

@@ -2,7 +2,6 @@ package fm.bae.app
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.browser.customtabs.CustomTabsIntent
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +16,7 @@ import java.io.FileNotFoundException
 import java.io.IOException
 
 private const val TAG = "bae.OAuthLinking"
+private val logger = BaeLogger(TAG)
 
 /**
  * Load the host's OAuth client creds (full edition); null when no
@@ -112,7 +112,7 @@ class OAuthLinking private constructor(
                         .bufferedReader()
                         .use { it.readText() }
                 } catch (e: FileNotFoundException) {
-                    Log.d(TAG, "assets/oauth-creds.json not bundled; OAuth linking unavailable")
+                    logger.debug("assets/oauth-creds.json not bundled; OAuth linking unavailable")
                     return null
                 } catch (e: IOException) {
                     throw IllegalStateException("Couldn't read oauth-creds.json: ${e.message}", e)

@@ -1,11 +1,12 @@
 package fm.bae.app.data
 
-import android.util.Log
+import fm.bae.app.BaeLogger
 import fm.bae.app.ErrorLines
 import fm.bae.app.playback.PlaybackEventSink
 import uniffi.bae_bridge.BridgeUiEvent
 
 private const val TAG = "bae.UiEventReducer"
+private val logger = BaeLogger(TAG)
 
 /**
  * Reduces [BridgeUiEvent]s into the [LibraryStore], [ConfigStore], and the
@@ -58,7 +59,7 @@ object UiEventReducer {
 
             // Desktop-only events (import/scan/candidate/preview) never fire
             // on mobile; log if one ever does so a future mobile-firing event is visible.
-            else -> Log.d(TAG, "ignoring ${event::class.simpleName}")
+            else -> logger.debug("ignoring ${event::class.simpleName}")
         }
     }
 

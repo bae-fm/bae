@@ -1,6 +1,5 @@
 package fm.bae.app.ui
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +49,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.formatDurationMs
@@ -63,6 +63,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeRelease
 
 private const val TAG = "bae.AlbumDetailScreen"
+private val logger = BaeLogger(TAG)
 
 private data class AlbumPlaybackState(
     val currentTrackId: String?,
@@ -112,7 +113,7 @@ fun AlbumDetailScreen(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to load album detail $albumId", e)
+                logger.error("Failed to load album detail $albumId", e)
                 loadError = e.message ?: appContext.getString(R.string.album_load_failed)
             }
         }
@@ -202,7 +203,7 @@ private fun buildAlbumDetailCallbacks(
                 try {
                     session.appHandle.addReleaseNext(it.id)
                 } catch (e: Exception) {
-                    Log.e(TAG, "addReleaseNext ${it.id} failed", e)
+                    logger.error("addReleaseNext ${it.id} failed", e)
                 }
             }
         },
@@ -211,7 +212,7 @@ private fun buildAlbumDetailCallbacks(
                 try {
                     session.appHandle.addReleaseToQueue(it.id)
                 } catch (e: Exception) {
-                    Log.e(TAG, "addReleaseToQueue ${it.id} failed", e)
+                    logger.error("addReleaseToQueue ${it.id} failed", e)
                 }
             }
         },
@@ -219,14 +220,14 @@ private fun buildAlbumDetailCallbacks(
             try {
                 session.appHandle.addNext(listOf(trackId))
             } catch (e: Exception) {
-                Log.e(TAG, "addNext $trackId failed", e)
+                logger.error("addNext $trackId failed", e)
             }
         },
         onAddTrackToQueue = { trackId ->
             try {
                 session.appHandle.addToQueue(listOf(trackId))
             } catch (e: Exception) {
-                Log.e(TAG, "addToQueue $trackId failed", e)
+                logger.error("addToQueue $trackId failed", e)
             }
         },
     )

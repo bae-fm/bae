@@ -149,7 +149,7 @@
                 }
                 catch {
                     logger.warning(
-                        "failed to remove temp file \(tempURL.path, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                        "failed to remove temp file \(tempURL.path): \(error.localizedDescription)"
                     )
                 }
             }

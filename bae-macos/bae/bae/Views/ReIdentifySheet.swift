@@ -323,7 +323,7 @@ extension ReIdentifySheet {
             }
             catch is CancellationError {
                 logger.debug(
-                    "Re-identify commit cancelled for release \(releaseId, privacy: .public)"
+                    "Re-identify commit cancelled for release \(releaseId)"
                 )
             }
             catch {
@@ -353,7 +353,7 @@ extension ReIdentifySheet {
             }
             catch is CancellationError {
                 logger.debug(
-                    "Refresh cancelled for release \(releaseId, privacy: .public)"
+                    "Refresh cancelled for release \(releaseId)"
                 )
             }
             catch {

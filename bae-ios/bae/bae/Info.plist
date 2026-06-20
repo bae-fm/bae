@@ -20,6 +20,14 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>BaeDatadogClientToken</key>
+	<string>$(BAE_DATADOG_CLIENT_TOKEN)</string>
+	<key>BaeDatadogSite</key>
+	<string>$(BAE_DATADOG_SITE)</string>
+	<key>BaeEnvironment</key>
+	<string>$(BAE_ENVIRONMENT)</string>
+	<key>BaeGitCommit</key>
+	<string>$(BAE_GIT_COMMIT)</string>
 	<key>NSCameraUsageDescription</key>
 	<string>bae uses the camera to scan a QR code from your music library.</string>
 	<key>UIBackgroundModes</key>

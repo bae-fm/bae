@@ -77,7 +77,7 @@ class PlaybackStore {
             // no longer current. Dropping it is correct — the newer load owns
             // the now-playing bar — but record it so a stuck bar is diagnosable.
             logger.debug(
-                "dropping stale loading target for \(trackId, privacy: .public); no longer the current track"
+                "dropping stale loading target for \(trackId); no longer the current track"
             )
             return
         }

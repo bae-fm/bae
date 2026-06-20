@@ -1,6 +1,6 @@
 package fm.bae.app.data
 
-import android.util.Log
+import fm.bae.app.BaeLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,6 +10,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeRelease
 
 private const val TAG = "bae.LibraryStore"
+private val logger = BaeLogger(TAG)
 
 /**
  * Normalized cache of library entities, populated by sync-driven library
@@ -101,7 +102,7 @@ class LibraryStore {
         _albumDetails.update { details ->
             val existing =
                 details[albumId] ?: run {
-                    Log.w(TAG, "ReleaseUpdated for un-interned album $albumId (release ${release.id}); dropping")
+                    logger.warning("ReleaseUpdated for un-interned album $albumId (release ${release.id}); dropping")
                     return@update details
                 }
             val releases = existing.releases.map { if (it.id == release.id) release else it }
@@ -120,7 +121,7 @@ class LibraryStore {
         _albumDetails.update { details ->
             val existing =
                 details[albumId] ?: run {
-                    Log.w(TAG, "ReleaseRemoved for un-interned album $albumId (release $releaseId); dropping")
+                    logger.warning("ReleaseRemoved for un-interned album $albumId (release $releaseId); dropping")
                     return@update details
                 }
             val releases = existing.releases.filter { it.id != releaseId }

@@ -1,6 +1,5 @@
 package fm.bae.app.ui
 
-import android.util.Log
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -43,6 +42,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Size
+import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +53,7 @@ import java.io.File
 
 private const val FULL_RES_SCALE_THRESHOLD = 1.01f
 private const val TAG = "bae.GalleryDialog"
+private val logger = BaeLogger(TAG)
 
 /**
  * Full-screen artwork viewer over a release's gallery items (cover first, then
@@ -256,7 +257,7 @@ private fun RemoteGalleryImage(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to load gallery image $fileId", e)
+                logger.error("Failed to load gallery image $fileId", e)
                 Result.failure(e)
             }
     }

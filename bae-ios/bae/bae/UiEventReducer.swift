@@ -87,7 +87,7 @@ enum UiEventReducer {
             reduceConfigAndError(event, into: context)
 
         default:
-            logger.debug("ignoring event \(String(describing: event), privacy: .public)")
+            logger.debug("ignoring event \(String(describing: event))")
         }
     }
 

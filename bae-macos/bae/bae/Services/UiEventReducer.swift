@@ -482,7 +482,7 @@ extension UiEventReducer {
         switch event {
         case .albumAdded(let album):
             logger.info(
-                "reducer: albumAdded for album \(album.album.id, privacy: .public)"
+                "reducer: albumAdded for album \(album.album.id)"
             )
             libraryStore.handleAlbumAdded(album: album)
             libraryStore.libraryShapeSubject.send(

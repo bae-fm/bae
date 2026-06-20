@@ -1,6 +1,5 @@
 package fm.bae.app.ui
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,6 +33,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.playback.NowPlaying
@@ -42,6 +42,7 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private const val TAG = "bae.QueueScreen"
+private val logger = BaeLogger(TAG)
 
 /** One row's stable identity for the list. The core queue is a list of track
  *  ids that may repeat (the same track can be enqueued twice), so the track id
@@ -101,7 +102,7 @@ fun QueueScreen(
             try {
                 session.appHandle.reorderQueue(fromPos.toUInt(), coreTo.toUInt())
             } catch (e: Exception) {
-                Log.e(TAG, "reorderQueue $fromPos -> $coreTo failed", e)
+                logger.error("reorderQueue $fromPos -> $coreTo failed", e)
             }
         }
 
@@ -162,14 +163,14 @@ private fun androidx.compose.foundation.lazy.LazyListScope.queueContent(
                                 session.appHandle.skipToQueueIndex(index.toUInt())
                                 onDismiss()
                             } catch (e: Exception) {
-                                Log.e(TAG, "skipToQueueIndex $index failed", e)
+                                logger.error("skipToQueueIndex $index failed", e)
                             }
                         },
                         onRemove = {
                             try {
                                 session.appHandle.removeFromQueue(index.toUInt())
                             } catch (e: Exception) {
-                                Log.e(TAG, "removeFromQueue $index failed", e)
+                                logger.error("removeFromQueue $index failed", e)
                             }
                         },
                     )
@@ -199,7 +200,7 @@ private fun QueueHeader(
                 try {
                     session.appHandle.clearQueue()
                 } catch (e: Exception) {
-                    Log.e(TAG, "clearQueue failed", e)
+                    logger.error("clearQueue failed", e)
                 }
             },
             enabled = !isQueueEmpty,

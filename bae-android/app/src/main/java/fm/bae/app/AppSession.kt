@@ -3,7 +3,6 @@ package fm.bae.app
 import android.content.Context
 import android.content.Intent
 import android.os.Looper
-import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import fm.bae.app.data.ConfigStore
@@ -27,6 +26,7 @@ import uniffi.bae_bridge.discoverLibraries
 import uniffi.bae_bridge.initApp
 
 private const val TAG = "bae.AppSession"
+private val logger = BaeLogger(TAG)
 
 /**
  * Position-update tick interval handed to the bridge, in milliseconds. bae-core
@@ -146,7 +146,7 @@ object AppSessionHolder {
             try {
                 discoverLibraries().firstOrNull()
             } catch (e: Exception) {
-                Log.e(TAG, "discoverLibraries failed", e)
+                logger.error("discoverLibraries failed", e)
                 null
             }
         }
@@ -171,7 +171,7 @@ object AppSessionHolder {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "forgetLibrary failed", e)
+            logger.error("forgetLibrary failed", e)
             onScreen(AppScreen.Failed(e.message ?: "Failed to remove library"))
             return
         }
@@ -242,7 +242,7 @@ object AppSessionHolder {
             // spurious Failed over the open that superseded us.
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "openLibrary failed for $libraryId", e)
+            logger.error("openLibrary failed for $libraryId", e)
             onScreen(AppScreen.Failed(e.message ?: "Failed to open library"))
         }
     }

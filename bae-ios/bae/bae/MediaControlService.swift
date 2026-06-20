@@ -129,7 +129,7 @@ final class MediaControlService: @unchecked Sendable {
         }
         catch {
             logger.error(
-                "Failed to deactivate audio session: \(error.localizedDescription, privacy: .public)"
+                "Failed to deactivate audio session: \(error.localizedDescription)"
             )
         }
     }
@@ -146,7 +146,7 @@ final class MediaControlService: @unchecked Sendable {
         }
         catch {
             logger.error(
-                "Failed to activate audio session: \(error.localizedDescription, privacy: .public)"
+                "Failed to activate audio session: \(error.localizedDescription)"
             )
         }
     }

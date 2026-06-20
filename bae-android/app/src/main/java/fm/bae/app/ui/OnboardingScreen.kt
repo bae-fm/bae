@@ -3,7 +3,6 @@ package fm.bae.app.ui
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -44,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import fm.bae.app.BaeLogger
 import fm.bae.app.OAuthLinker
 import fm.bae.app.R
 import kotlinx.coroutines.CancellationException
@@ -60,6 +60,7 @@ import uniffi.bae_bridge.decodeRestoreCode
 import uniffi.bae_bridge.restoreFromCodeOperation
 
 private const val TAG = "bae.OnboardingScreen"
+private val logger = BaeLogger(TAG)
 
 private class LinkFlow(
     val job: Job,
@@ -126,9 +127,9 @@ private class LinkLauncher(
                 try {
                     started.execute(code, oauthLinking, oauthLinkingError, context, onLinked)
                 } catch (e: BridgeException.Cancelled) {
-                    Log.d(TAG, "link flow cancelled by bridge", e)
+                    logger.debug("link flow cancelled by bridge", e)
                 } catch (e: CancellationException) {
-                    Log.d(TAG, "link flow coroutine cancelled", e)
+                    logger.debug("link flow coroutine cancelled", e)
                     throw e
                 } catch (e: Exception) {
                     error = e.toString()

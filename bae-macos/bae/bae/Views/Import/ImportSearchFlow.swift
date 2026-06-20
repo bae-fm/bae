@@ -92,7 +92,7 @@ enum ImportSearchFlow {
             }
             catch is CancellationError {
                 logger.debug(
-                    "Search cancelled for key: \(key, privacy: .public)"
+                    "Search cancelled for key: \(key)"
                 )
                 clearSearching(
                     importStore: importStore,
@@ -258,7 +258,7 @@ extension ImportSearchFlow {
             }
             catch is CancellationError {
                 logger.debug(
-                    "Add as Unknown cancelled for key: \(key, privacy: .public)"
+                    "Add as Unknown cancelled for key: \(key)"
                 )
             }
             catch {
@@ -345,7 +345,7 @@ extension ImportSearchFlow {
             }
             catch is CancellationError {
                 logger.debug(
-                    "Prefetch cancelled for key: \(key, privacy: .public)"
+                    "Prefetch cancelled for key: \(key)"
                 )
             }
             catch {

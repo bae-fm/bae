@@ -64,6 +64,25 @@
     <PackageReference Include="MessageFormat" Version="7.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BaeDatadogSite</_Parameter1>
+      <_Parameter2>$(BAE_DATADOG_SITE)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BaeDatadogClientToken</_Parameter1>
+      <_Parameter2>$(BAE_DATADOG_CLIENT_TOKEN)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BaeEnvironment</_Parameter1>
+      <_Parameter2>$(BAE_ENVIRONMENT)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BaeGitCommit</_Parameter1>
+      <_Parameter2>$(BAE_GIT_COMMIT)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <!--
     Generated localization resources.
 

@@ -373,7 +373,7 @@ extension WelcomeView {
         }
         catch {
             logger.warning(
-                "Skipping local library discovery: \(error.localizedDescription, privacy: .public)"
+                "Skipping local library discovery: \(error.localizedDescription)"
             )
             localLibraries = []
         }
@@ -389,7 +389,7 @@ extension WelcomeView {
             }
             catch {
                 logger.warning(
-                    "Skipping unreadable keychain restore entry: \(error.localizedDescription, privacy: .public)"
+                    "Skipping unreadable keychain restore entry: \(error.localizedDescription)"
                 )
             }
         }

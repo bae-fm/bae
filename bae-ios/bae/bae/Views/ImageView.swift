@@ -48,12 +48,12 @@ struct ImageView: View {
             )
         }
         catch is CancellationError {
-            logger.debug("cover load cancelled: \(path, privacy: .public)")
+            logger.debug("cover load cancelled: \(path)")
             return
         }
         catch {
             logger.warning(
-                "Failed to load cover at \(path, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                "Failed to load cover at \(path): \(error.localizedDescription)"
             )
             image = nil
         }

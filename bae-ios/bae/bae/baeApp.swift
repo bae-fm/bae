@@ -1,4 +1,5 @@
 import SwiftUI
+import os.log
 
 @main
 struct BaeApp: App {
@@ -18,6 +19,8 @@ struct BaeApp: App {
         #endif
         var launchError: String?
         do {
+            BaeDiagnostics.configure(source: "ios")
+            Logger.bae("BaeApp").info("application launched")
             // App processes on iOS have no $HOME, which bae-core needs to locate its
             // data root (`~/.bae`). Point it at our Application Support container
             // before any library access (discover/restore/initApp) so those don't
