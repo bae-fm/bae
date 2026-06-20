@@ -461,22 +461,13 @@ impl DatadogRequest {
     ) -> Result<Self, DiagnosticsError> {
         let mut headers = HeaderMap::new();
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-        headers.insert(
-            "DD-API-KEY",
-            HeaderValue::from_str(&config.client_token).map_err(DiagnosticsError::InvalidHeader)?,
-        );
-        headers.insert(
-            "DD-EVP-ORIGIN",
-            HeaderValue::from_str(&config.source).map_err(DiagnosticsError::InvalidHeader)?,
-        );
+        insert_str_header(&mut headers, "DD-API-KEY", &config.client_token)?;
+        insert_str_header(&mut headers, "DD-EVP-ORIGIN", &config.source)?;
         headers.insert(
             "DD-EVP-ORIGIN-VERSION",
             HeaderValue::from_static(DATADOG_ORIGIN_VERSION),
         );
-        headers.insert(
-            "DD-REQUEST-ID",
-            HeaderValue::from_str(&request_id).map_err(DiagnosticsError::InvalidHeader)?,
-        );
+        insert_str_header(&mut headers, "DD-REQUEST-ID", &request_id)?;
 
         Ok(Self {
             url: config.intake_url()?,
@@ -484,6 +475,18 @@ impl DatadogRequest {
             body: serde_json::to_vec(events).map_err(DiagnosticsError::Serialize)?,
         })
     }
+}
+
+fn insert_str_header(
+    headers: &mut HeaderMap,
+    name: &'static str,
+    value: &str,
+) -> Result<(), DiagnosticsError> {
+    headers.insert(
+        name,
+        HeaderValue::from_str(value).map_err(DiagnosticsError::InvalidHeader)?,
+    );
+    Ok(())
 }
 
 #[derive(Debug, thiserror::Error)]
