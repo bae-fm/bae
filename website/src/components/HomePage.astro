@@ -14,6 +14,7 @@ const localeLinks = LOCALES.map((entry) => ({
   ...entry,
   url: entry.path ? `/${entry.path}/` : '/',
 }));
+const currentLocaleLabel = localeLinks.find((entry) => entry.code === locale)?.label ?? text.languageLabel;
 
 // Landing CTAs point at the latest macOS build, resolved at build time from the
 // newest versioned release. If there's no published macOS build, the CTAs fall
@@ -93,19 +94,29 @@ const macUrl = macFullUrl ?? href('/getting-started/installation');
   .navlinks{margin-left:auto;display:flex;gap:12px;align-items:center;min-width:0;}
   .navlinks a{font-size:14.5px;color:var(--fg-dim);font-weight:500;white-space:nowrap;}
   .navlinks a:hover{color:var(--cream);}
-  .navlinks .btn.pink{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(42vw,180px);}
-  .navmenu{position:relative;flex:none;}
-  .navmenu summary{list-style:none;}
-  .navmenu summary::-webkit-details-marker{display:none;}
-  .menubtn{width:46px;height:46px;border-radius:999px;border:1.5px solid var(--line);background:rgba(255,255,255,.03);display:grid;place-items:center;cursor:pointer;color:var(--cream);transition:border-color .22s,color .22s,background .22s,box-shadow .22s;}
-  .menubtn:hover,.navmenu[open] .menubtn{border-color:var(--pink);color:var(--pink);background:rgba(247,168,196,.08);box-shadow:0 12px 30px rgba(0,0,0,.26);}
-  .menubtn:focus-visible{outline:2px solid var(--pink);outline-offset:3px;}
+  .desktoplinks{display:flex;gap:26px;align-items:center;}
+  .navlinks .btn.pink{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+  .navpopup{position:relative;flex:none;}
+  .navpopup summary{list-style:none;}
+  .navpopup summary::-webkit-details-marker{display:none;}
+  .iconbtn{height:46px;border-radius:999px;border:1.5px solid var(--line);background:rgba(255,255,255,.03);display:grid;place-items:center;cursor:pointer;color:var(--cream);transition:border-color .22s,color .22s,background .22s,box-shadow .22s;}
+  .iconbtn:hover,.navpopup[open] > .iconbtn{border-color:var(--pink);color:var(--pink);background:rgba(247,168,196,.08);box-shadow:0 12px 30px rgba(0,0,0,.26);}
+  .iconbtn:focus-visible{outline:2px solid var(--pink);outline-offset:3px;}
+  .languagebtn{display:flex;align-items:center;gap:8px;padding:0 14px;max-width:170px;}
+  .languagebtn svg{width:19px;height:19px;flex:none;}
+  .languagebtn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;font-weight:600;color:currentColor;}
+  .menubtn{width:46px;display:none;}
   .menubtn span{display:block;width:18px;height:2px;border-radius:999px;background:currentColor;box-shadow:0 -6px 0 currentColor,0 6px 0 currentColor;}
-  .navpanel{position:absolute;top:calc(100% + 12px);right:0;width:min(320px,calc(100vw - 56px));padding:12px;border:1px solid var(--line);border-radius:20px;background:rgba(22,19,39,.96);backdrop-filter:blur(18px);box-shadow:0 24px 70px rgba(0,0,0,.5);}
-  .navpanel::before{content:"";position:absolute;top:-7px;right:19px;width:12px;height:12px;transform:rotate(45deg);background:rgba(22,19,39,.96);border-left:1px solid var(--line);border-top:1px solid var(--line);}
+  .navpanel,.langpanel{position:absolute;top:calc(100% + 12px);right:0;width:min(320px,calc(100vw - 56px));padding:12px;border:1px solid var(--line);border-radius:20px;background:rgba(22,19,39,.96);backdrop-filter:blur(18px);box-shadow:0 24px 70px rgba(0,0,0,.5);}
+  .navpanel::before,.langpanel::before{content:"";position:absolute;top:-7px;right:19px;width:12px;height:12px;transform:rotate(45deg);background:rgba(22,19,39,.96);border-left:1px solid var(--line);border-top:1px solid var(--line);}
   .menulinks{display:grid;gap:4px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line);}
-  .menulinks a,.langmenu a{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:12px;padding:10px 12px;color:var(--fg-dim);font-size:14px;font-weight:600;}
-  .menulinks a:hover,.langmenu a:hover{background:rgba(255,255,255,.05);color:var(--cream);}
+  .menulinks a,.langmenu a,.languageitem{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:12px;padding:10px 12px;color:var(--fg-dim);font-size:14px;font-weight:600;}
+  .menulinks a:hover,.langmenu a:hover,.languageitem:hover{background:rgba(255,255,255,.05);color:var(--cream);}
+  .menulang summary{list-style:none;}
+  .menulang summary::-webkit-details-marker{display:none;}
+  .languageitem{cursor:pointer;}
+  .languageitem::after{content:"›";font-size:20px;line-height:1;color:var(--fg-faint);transition:transform .18s;}
+  .menulang[open] .languageitem::after{transform:rotate(90deg);}
   .langtitle{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-faint);padding:2px 12px 8px;}
   .langmenu{display:grid;grid-template-columns:1fr;gap:2px;max-height:min(52vh,390px);overflow:auto;padding-right:3px;}
   .langmenu a[aria-current="true"]{background:rgba(155,108,246,.16);color:var(--cream);}
@@ -116,6 +127,13 @@ const macUrl = macFullUrl ?? href('/getting-started/installation');
   .btn.solid:hover{background:var(--violet-deep);border-color:var(--violet-deep);color:#fff;transform:translateY(-2px);box-shadow:0 12px 30px rgba(155,108,246,.45);}
   .btn.pink{background:var(--pink);border-color:var(--pink);color:#3a2230;}
   .btn.pink:hover{background:var(--pink-deep);border-color:var(--pink-deep);color:#fff;transform:translateY(-2px);box-shadow:0 12px 30px rgba(236,106,153,.4);}
+  @media(max-width:760px){
+    .desktoplinks,.desktoplang{display:none;}
+    .menubtn{display:grid;}
+    .navlinks .btn.pink{max-width:min(42vw,180px);}
+    .menulang{border-bottom:0;}
+    .menulang .langmenu{margin-top:4px;padding:0 3px 0 0;}
+  }
   @media(max-width:560px){
     .navin{gap:12px;}
     .wrap{padding:0 16px;}
@@ -349,20 +367,40 @@ const macUrl = macFullUrl ?? href('/getting-started/installation');
 <nav id="nav"><div class="wrap navin">
   <span class="brand"><img src="/app-icon.png" alt="" width="30" height="30" decoding="async" />bae</span>
   <div class="navlinks">
+    <div class="desktoplinks">
+      <a href={href('/getting-started/installation')}>{text.navDocs}</a>
+      <a href="https://github.com/bae-fm/bae">GitHub</a>
+    </div>
     <a class="btn pink" href="#get">{text.navDownload}</a>
-    <details class="navmenu">
-      <summary class="menubtn" aria-label={`${text.navDocs}, GitHub, ${text.languageLabel}`}><span aria-hidden="true"></span></summary>
-      <div class="navpanel">
-        <div class="menulinks">
-          <a href={href('/getting-started/installation')}>{text.navDocs}</a>
-          <a href="https://github.com/bae-fm/bae">GitHub</a>
-        </div>
-        <div class="langtitle">{text.languageLabel}</div>
+    <details class="navpopup desktoplang" data-nav-popup>
+      <summary class="iconbtn languagebtn" aria-label={text.languageLabel}>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        <span>{currentLocaleLabel}</span>
+      </summary>
+      <div class="langpanel">
         <div class="langmenu">
           {localeLinks.map((entry) => (
             <a href={entry.url} data-locale-choice={entry.code} aria-current={entry.code === locale ? 'true' : undefined}>{entry.label}</a>
           ))}
         </div>
+      </div>
+    </details>
+    <details class="navpopup navmenu" data-nav-popup>
+      <summary class="iconbtn menubtn" aria-label={`${text.navDocs}, GitHub, ${text.languageLabel}`}><span aria-hidden="true"></span></summary>
+      <div class="navpanel">
+        <div class="menulinks">
+          <a href={href('/getting-started/installation')}>{text.navDocs}</a>
+          <a href="https://github.com/bae-fm/bae">GitHub</a>
+        </div>
+        <details class="menulang">
+          <summary class="languageitem">{text.languageLabel}</summary>
+          <div class="langtitle">{currentLocaleLabel}</div>
+          <div class="langmenu">
+            {localeLinks.map((entry) => (
+              <a href={entry.url} data-locale-choice={entry.code} aria-current={entry.code === locale ? 'true' : undefined}>{entry.label}</a>
+            ))}
+          </div>
+        </details>
       </div>
     </details>
   </div>
@@ -571,13 +609,18 @@ const macUrl = macFullUrl ?? href('/getting-started/installation');
     }
     var nav=document.getElementById('nav');
     function updateNav(){nav.classList.toggle('scrolled',scrollY>20);}
-    var navMenu=document.querySelector('.navmenu');
-    if(navMenu){
+    var navMenus=[].slice.call(document.querySelectorAll('[data-nav-popup]'));
+    if(navMenus.length){
       document.addEventListener('click',function(e){
-        if(navMenu.open && !navMenu.contains(e.target)) navMenu.removeAttribute('open');
+        navMenus.forEach(function(menu){
+          if(menu.open && !menu.contains(e.target)) menu.removeAttribute('open');
+        });
       });
       document.addEventListener('keydown',function(e){
-        if(e.key==='Escape' && navMenu.open) navMenu.removeAttribute('open');
+        if(e.key!=='Escape') return;
+        navMenus.forEach(function(menu){
+          if(menu.open) menu.removeAttribute('open');
+        });
       });
     }
     document.querySelectorAll('[data-locale-choice]').forEach(function(link){
