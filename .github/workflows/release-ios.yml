@@ -64,6 +64,11 @@ jobs:
     needs: calculate-version
     permissions:
       contents: read
+    env:
+      BAE_ENVIRONMENT: production
+      BAE_DATADOG_SITE: ${{ secrets.BAE_DATADOG_SITE }}
+      BAE_DATADOG_CLIENT_TOKEN: ${{ secrets.BAE_DATADOG_CLIENT_TOKEN }}
+      BAE_SENTRY_DSN: ${{ secrets.BAE_SENTRY_DSN }}
     strategy:
       # Both editions from one source: full (bae, fm.bae.bae) and baeium (
       # fm.bae.bae.baeium). Each only uploads its .ipa as an artifact; the publish
@@ -123,7 +128,9 @@ jobs:
       run: ./scripts/build-ffmpeg-ios.sh
 
     - name: Set release version
-      run: echo "BAE_VERSION=${{ needs.calculate-version.outputs.version }}" >> "$GITHUB_ENV"
+      run: |
+        echo "BAE_VERSION=${{ needs.calculate-version.outputs.version }}" >> "$GITHUB_ENV"
+        echo "BAE_GIT_COMMIT=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
 
     - name: Build Rust bridge (iOS xcframework)
       run: |
@@ -165,7 +172,33 @@ jobs:
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
           PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
           PRODUCT_NAME="$PRODUCT_NAME" \
+          DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
           archive
+
+    - name: Package dSYM
+      if: matrix.edition == 'full'
+      run: |
+        DSYM_DIR="build/bae.xcarchive/dSYMs"
+        if [[ ! -d "$DSYM_DIR" ]]; then
+          echo "archive dSYM directory not found at $DSYM_DIR" >&2
+          exit 1
+        fi
+        ditto -c -k --sequesterRsrc --keepParent "$DSYM_DIR" bae-ios.dSYM.zip
+        echo "BAE_DSYM_DIR=$DSYM_DIR" >> "$GITHUB_ENV"
+
+    - name: Upload dSYM to Sentry
+      if: matrix.edition == 'full'
+      env:
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      run: |
+        if [[ -z "${SENTRY_AUTH_TOKEN:-}" || -z "${SENTRY_ORG:-}" || -z "${SENTRY_PROJECT:-}" ]]; then
+          echo "Sentry dSYM upload skipped: SENTRY_AUTH_TOKEN, SENTRY_ORG, or SENTRY_PROJECT is unset"
+          exit 0
+        fi
+        curl -sL https://sentry.io/get-cli/ | bash
+        sentry-cli debug-files upload --org "$SENTRY_ORG" --project "$SENTRY_PROJECT" "$BAE_DSYM_DIR"
 
     - name: Package unsigned IPA
       run: |
@@ -190,6 +223,14 @@ jobs:
         path: ${{ env.IPA_NAME }}
         retention-days: 30
 
+    - name: Upload dSYM artifact
+      if: matrix.edition == 'full'
+      uses: actions/upload-artifact@v7
+      with:
+        name: bae-iOS-dSYM
+        path: bae-ios.dSYM.zip
+        retention-days: 30
+
   publish:
     name: Publish release
     needs: [calculate-version, build]
@@ -211,6 +252,12 @@ jobs:
         path: dist
         merge-multiple: true
 
+    - name: Download bae dSYM
+      uses: actions/download-artifact@v8
+      with:
+        name: bae-iOS-dSYM
+        path: dist
+
     - name: Create git tag
       run: |
         VERSION="${{ needs.calculate-version.outputs.version }}"
@@ -230,6 +277,7 @@ jobs:
         files: |
           dist/bae-ios.ipa
           dist/baeium-ios.ipa
+          dist/bae-ios.dSYM.zip
         body: |
           iOS builds are **unsigned** .ipa files for sideloading — install with
           AltStore, Sideloadly, or Xcode (they re-sign with your own Apple ID, no

@@ -63,6 +63,11 @@ jobs:
     needs: [calculate-version, ci]
     permissions:
       contents: read
+    env:
+      BAE_ENVIRONMENT: production
+      BAE_DATADOG_SITE: ${{ secrets.BAE_DATADOG_SITE }}
+      BAE_DATADOG_CLIENT_TOKEN: ${{ secrets.BAE_DATADOG_CLIENT_TOKEN }}
+      BAE_SENTRY_DSN: ${{ secrets.BAE_SENTRY_DSN }}
     strategy:
       # Build both editions from the one source: full (bae, OAuth + iCloud) and
       # baeium (S3-only). Each only uploads its signed DMG + appcast as an
@@ -121,12 +126,13 @@ jobs:
     - name: Set release version
       run: |
         VERSION="${{ needs.calculate-version.outputs.version }}"
-        echo "BAE_VERSION=$VERSION" >> $GITHUB_ENV
+        echo "BAE_VERSION=$VERSION" >> "$GITHUB_ENV"
+        echo "BAE_GIT_COMMIT=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
         sed -i '' "s/MARKETING_VERSION: .*/MARKETING_VERSION: \"$VERSION\"/" bae-macos/bae/project.yml
         MACOS_MIN=$(grep 'macOS:' bae-macos/bae/project.yml | head -1 | sed 's/.*"\(.*\)"/\1/')
         # Empty here would stamp an empty sparkle:minimumSystemVersion into the appcast.
         if [[ -z "$MACOS_MIN" ]]; then echo "could not read macOS deployment target from project.yml" >&2; exit 1; fi
-        echo "MACOS_MIN=$MACOS_MIN" >> $GITHUB_ENV
+        echo "MACOS_MIN=$MACOS_MIN" >> "$GITHUB_ENV"
         echo "Building version $VERSION (macOS $MACOS_MIN+)"
 
     - name: Build Rust bridge
@@ -168,9 +174,37 @@ jobs:
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
           PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
           PRODUCT_NAME="$PRODUCT_NAME" \
+          DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
           LIBRARY_SEARCH_PATHS="/opt/homebrew/lib /opt/bae-ffmpeg/lib ${FFMPEG_DIR}/lib" \
           build
-        echo "APP_PATH=build/Build/Products/Release/${PRODUCT_NAME}.app" >> $GITHUB_ENV
+        echo "APP_PATH=build/Build/Products/Release/${PRODUCT_NAME}.app" >> "$GITHUB_ENV"
+
+    - name: Package dSYM
+      if: matrix.edition == 'full'
+      run: |
+        mkdir -p target
+        DSYM_PATH="build/Build/Products/Release/${PRODUCT_NAME}.app.dSYM"
+        if [[ ! -d "$DSYM_PATH" ]]; then
+          echo "dSYM bundle not found at $DSYM_PATH" >&2
+          find build/Build/Products/Release -maxdepth 1 -name "*.dSYM" -print || true
+          exit 1
+        fi
+        ditto -c -k --sequesterRsrc --keepParent "$DSYM_PATH" target/bae.dSYM.zip
+        echo "BAE_DSYM_PATH=$DSYM_PATH" >> "$GITHUB_ENV"
+
+    - name: Upload dSYM to Sentry
+      if: matrix.edition == 'full'
+      env:
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      run: |
+        if [[ -z "${SENTRY_AUTH_TOKEN:-}" || -z "${SENTRY_ORG:-}" || -z "${SENTRY_PROJECT:-}" ]]; then
+          echo "Sentry dSYM upload skipped: SENTRY_AUTH_TOKEN, SENTRY_ORG, or SENTRY_PROJECT is unset"
+          exit 0
+        fi
+        curl -sL https://sentry.io/get-cli/ | bash
+        sentry-cli debug-files upload --org "$SENTRY_ORG" --project "$SENTRY_PROJECT" "$BAE_DSYM_PATH"
 
     - name: Bundle dylibs into app
       run: ./bae-macos/scripts/bundle_dylibs.sh "$APP_PATH"
@@ -197,8 +231,8 @@ jobs:
         security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
         security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-        echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
-        security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+        echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+        security import "$RUNNER_TEMP/certificate.p12" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
         security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
         security list-keychain -d user -s "$KEYCHAIN_PATH"
 
@@ -255,7 +289,7 @@ jobs:
 
         # Create temporary directory for DMG contents
         DMG_TEMP=$(mktemp -d)
-        trap "rm -rf $DMG_TEMP" EXIT
+        trap 'rm -rf "$DMG_TEMP"' EXIT
 
         # Copy app bundle to temp directory
         cp -R "$APP_PATH" "$DMG_TEMP/${PRODUCT_NAME}.app"
@@ -300,11 +334,11 @@ jobs:
         SIGNATURE=$(echo "$SPARKLE_PRIVATE_KEY" | /tmp/sparkle/bin/sign_update "$DMG_PATH" -f - -p)
         # Empty would publish an unsigned appcast entry that every client rejects.
         if [[ -z "$SIGNATURE" ]]; then echo "Sparkle sign_update produced no signature" >&2; exit 1; fi
-        echo "SPARKLE_SIGNATURE=$SIGNATURE" >> $GITHUB_ENV
+        echo "SPARKLE_SIGNATURE=$SIGNATURE" >> "$GITHUB_ENV"
 
         # Get file size for appcast
         DMG_SIZE=$(stat -f%z "$DMG_PATH")
-        echo "DMG_SIZE=$DMG_SIZE" >> $GITHUB_ENV
+        echo "DMG_SIZE=$DMG_SIZE" >> "$GITHUB_ENV"
 
     - name: Generate appcast.xml
       run: |
@@ -349,6 +383,14 @@ jobs:
           target/${{ env.APPCAST_FILE }}
         retention-days: 30
 
+    - name: Upload dSYM artifact
+      if: matrix.edition == 'full'
+      uses: actions/upload-artifact@v7
+      with:
+        name: bae-macOS-dSYM
+        path: target/bae.dSYM.zip
+        retention-days: 30
+
   publish:
     name: Publish release
     needs: [calculate-version, build]
@@ -371,6 +413,12 @@ jobs:
         path: dist
         merge-multiple: true
 
+    - name: Download bae dSYM
+      uses: actions/download-artifact@v8
+      with:
+        name: bae-macOS-dSYM
+        path: dist
+
     - name: Create git tag
       run: |
         VERSION="${{ needs.calculate-version.outputs.version }}"
@@ -391,6 +439,7 @@ jobs:
         files: |
           dist/bae-macos.dmg
           dist/baeium-macos.dmg
+          dist/bae.dSYM.zip
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

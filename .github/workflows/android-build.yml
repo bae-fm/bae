@@ -38,6 +38,18 @@ on:
         required: false
       ANDROID_KEY_PASSWORD:
         required: false
+      BAE_DATADOG_SITE:
+        required: false
+      BAE_DATADOG_CLIENT_TOKEN:
+        required: false
+      BAE_SENTRY_DSN:
+        required: false
+      SENTRY_AUTH_TOKEN:
+        required: false
+      SENTRY_ORG:
+        required: false
+      SENTRY_PROJECT:
+        required: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -72,15 +84,19 @@ jobs:
       # the full set).
       run: |
         if [ "${{ inputs.edition }}" = "baeium" ]; then
-          echo "BAE_BRIDGE_FEATURES=" >> "$GITHUB_ENV"
-          echo "GRADLE_FLAVOR=Baeium" >> "$GITHUB_ENV"
-          echo "APK_FLAVOR=baeium" >> "$GITHUB_ENV"
-          echo "EDITION_APK=baeium-android.apk" >> "$GITHUB_ENV"
+          {
+            echo "BAE_BRIDGE_FEATURES="
+            echo "GRADLE_FLAVOR=Baeium"
+            echo "APK_FLAVOR=baeium"
+            echo "EDITION_APK=baeium-android.apk"
+          } >> "$GITHUB_ENV"
         else
-          echo "BAE_BRIDGE_FEATURES=oauth-providers" >> "$GITHUB_ENV"
-          echo "GRADLE_FLAVOR=Full" >> "$GITHUB_ENV"
-          echo "APK_FLAVOR=full" >> "$GITHUB_ENV"
-          echo "EDITION_APK=bae-android.apk" >> "$GITHUB_ENV"
+          {
+            echo "BAE_BRIDGE_FEATURES=oauth-providers"
+            echo "GRADLE_FLAVOR=Full"
+            echo "APK_FLAVOR=full"
+            echo "EDITION_APK=bae-android.apk"
+          } >> "$GITHUB_ENV"
         fi
 
     - name: Setup JDK 17
@@ -135,12 +151,20 @@ jobs:
       # build; debug leaves these unset so build.gradle.kts / build.rs use their
       # dev defaults.
       if: inputs.profile == 'release'
+      env:
+        BAE_DATADOG_SITE: ${{ secrets.BAE_DATADOG_SITE }}
+        BAE_DATADOG_CLIENT_TOKEN: ${{ secrets.BAE_DATADOG_CLIENT_TOKEN }}
+        BAE_SENTRY_DSN: ${{ secrets.BAE_SENTRY_DSN }}
       run: |
         {
           echo "BAE_VERSION=${{ inputs.version }}"
           echo "BAE_VERSION_CODE=${{ inputs.version_code }}"
           echo "BAE_GIT_COMMIT=$(git rev-parse --short HEAD)"
           echo "BAE_COVEN_REV=$(scripts/coven-rev.sh)"
+          echo "BAE_ENVIRONMENT=production"
+          echo "BAE_DATADOG_SITE=$BAE_DATADOG_SITE"
+          echo "BAE_DATADOG_CLIENT_TOKEN=$BAE_DATADOG_CLIENT_TOKEN"
+          echo "BAE_SENTRY_DSN=$BAE_SENTRY_DSN"
         } >> "$GITHUB_ENV"
 
     - name: Cross-compile bae-bridge for Android
@@ -216,6 +240,20 @@ jobs:
         "$APKSIGNER" verify --verbose "$APK"
         cp "$APK" "$EDITION_APK"
         echo "Verified signed APK: $APK -> $EDITION_APK"
+
+    - name: Upload Android native symbols to Sentry
+      if: inputs.profile == 'release' && inputs.edition == 'full'
+      env:
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      run: |
+        if [[ -z "${SENTRY_AUTH_TOKEN:-}" || -z "${SENTRY_ORG:-}" || -z "${SENTRY_PROJECT:-}" ]]; then
+          echo "Sentry native symbol upload skipped: SENTRY_AUTH_TOKEN, SENTRY_ORG, or SENTRY_PROJECT is unset"
+          exit 0
+        fi
+        curl -sL https://sentry.io/get-cli/ | bash
+        sentry-cli debug-files upload --org "$SENTRY_ORG" --project "$SENTRY_PROJECT" bae-android/debug-symbols
 
     - name: Upload signed APK artifact
       if: inputs.profile == 'release'
