@@ -188,69 +188,57 @@ fn install_subscriber(subscriber: impl tracing_subscriber::util::SubscriberInitE
     }
 }
 
-#[cfg(target_os = "macos")]
-fn configure_logging(diagnostics: Diagnostics) {
-    use tracing_subscriber::prelude::*;
+macro_rules! install_logging_subscriber {
+    ($diagnostics:expr $(, $layer:expr)+ $(,)?) => {{
+        use tracing_subscriber::prelude::*;
+        install_subscriber(
+            tracing_subscriber::registry()
+                .with(env_filter())
+                .with(bae_core::diagnostics::tracing_layer($diagnostics))
+                $(.with($layer))+,
+        );
+    }};
+}
 
-    let fmt_layer = tracing_subscriber::fmt::layer()
+fn fmt_log_layer<S>() -> impl tracing_subscriber::Layer<S>
+where
+    S: tracing::Subscriber,
+    for<'a> S: tracing_subscriber::registry::LookupSpan<'a>,
+{
+    tracing_subscriber::fmt::layer()
         .with_line_number(true)
         .with_target(false)
-        .with_file(true);
+        .with_file(true)
+}
 
-    let oslog_layer = tracing_oslog::OsLogger::new("fm.bae.desktop", "default");
-
-    install_subscriber(
-        tracing_subscriber::registry()
-            .with(env_filter())
-            .with(bae_core::diagnostics::tracing_layer(diagnostics))
-            .with(fmt_layer)
-            .with(oslog_layer),
+#[cfg(target_os = "macos")]
+fn configure_logging(diagnostics: Diagnostics) {
+    install_logging_subscriber!(
+        diagnostics,
+        fmt_log_layer(),
+        tracing_oslog::OsLogger::new("fm.bae.desktop", "default"),
     );
 }
 
 #[cfg(target_os = "android")]
 fn configure_logging(diagnostics: Diagnostics) {
-    use tracing_subscriber::prelude::*;
-
-    let android_layer = tracing_android::layer("bae").unwrap();
-
-    install_subscriber(
-        tracing_subscriber::registry()
-            .with(env_filter())
-            .with(bae_core::diagnostics::tracing_layer(diagnostics))
-            .with(android_layer),
+    install_logging_subscriber!(
+        diagnostics,
+        tracing_android::layer("bae").expect("Android tracing layer initializes"),
     );
 }
 
 #[cfg(target_os = "ios")]
 fn configure_logging(diagnostics: Diagnostics) {
-    use tracing_subscriber::prelude::*;
-
-    let oslog_layer = tracing_oslog::OsLogger::new("fm.bae.app", "default");
-
-    install_subscriber(
-        tracing_subscriber::registry()
-            .with(env_filter())
-            .with(bae_core::diagnostics::tracing_layer(diagnostics))
-            .with(oslog_layer),
+    install_logging_subscriber!(
+        diagnostics,
+        tracing_oslog::OsLogger::new("fm.bae.app", "default"),
     );
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "android", target_os = "ios")))]
 fn configure_logging(diagnostics: Diagnostics) {
-    use tracing_subscriber::prelude::*;
-
-    let fmt_layer = tracing_subscriber::fmt::layer()
-        .with_line_number(true)
-        .with_target(false)
-        .with_file(true);
-
-    install_subscriber(
-        tracing_subscriber::registry()
-            .with(env_filter())
-            .with(bae_core::diagnostics::tracing_layer(diagnostics))
-            .with(fmt_layer),
-    );
+    install_logging_subscriber!(diagnostics, fmt_log_layer());
 }
 
 #[cfg(test)]

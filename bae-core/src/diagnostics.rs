@@ -348,7 +348,6 @@ struct DiagnosticsWorker {
     transport: Arc<dyn DiagnosticsTransport>,
     rx: mpsc::UnboundedReceiver<WorkerMessage>,
     buffered: VecDeque<DiagnosticEvent>,
-    last_failure: Option<String>,
 }
 
 impl DiagnosticsWorker {
@@ -364,7 +363,6 @@ impl DiagnosticsWorker {
             transport,
             rx,
             buffered: VecDeque::new(),
-            last_failure: None,
         }
     }
 
@@ -383,7 +381,7 @@ impl DiagnosticsWorker {
                         WorkerMessage::Flush(reply) => {
                             let result = self.flush_buffer().await;
                             if reply.send(result).is_err() {
-                                self.last_failure = Some("diagnostics flush receiver dropped".to_string());
+                                tracing::debug!("diagnostics flush receiver dropped");
                             }
                         }
                     }
@@ -404,9 +402,8 @@ impl DiagnosticsWorker {
     }
 
     async fn record_flush_result(&mut self) {
-        match self.flush_buffer().await {
-            Ok(()) => self.last_failure = None,
-            Err(e) => self.last_failure = Some(e.to_string()),
+        if let Err(error) = self.flush_buffer().await {
+            tracing::debug!(%error, "diagnostics flush failed");
         }
     }
 
@@ -604,12 +601,16 @@ where
     S: Subscriber,
 {
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
+        let metadata = event.metadata();
+        if metadata.target().starts_with("bae_core::diagnostics") {
+            return;
+        }
         let mut visitor = EventVisitor::new();
         event.record(&mut visitor);
-        let metadata = event.metadata();
-        let message = visitor
-            .message
-            .unwrap_or_else(|| metadata.name().to_string());
+        let message = match visitor.message {
+            Some(message) => message,
+            None => metadata.name().to_string(),
+        };
         match self.diagnostics.log(
             DiagnosticLevel::from_tracing(metadata.level()),
             metadata.target(),
@@ -798,6 +799,15 @@ mod tests {
         }
     }
 
+    fn header_value<'a>(request: &'a DatadogRequest, name: &str) -> &'a str {
+        request
+            .headers
+            .get(name)
+            .unwrap_or_else(|| panic!("{name} header is present"))
+            .to_str()
+            .unwrap_or_else(|e| panic!("{name} header is valid UTF-8: {e}"))
+    }
+
     #[test]
     fn disabled_config_does_not_send_events() {
         assert!(!DiagnosticsConfig::Disabled.sends_events());
@@ -885,33 +895,12 @@ mod tests {
             "https://browser-intake-datadoghq.com/api/v2/logs?ddsource=ios"
         );
         assert_eq!(
-            request
-                .headers
-                .get(CONTENT_TYPE)
-                .and_then(|v| v.to_str().ok()),
-            Some("application/json")
+            header_value(&request, CONTENT_TYPE.as_str()),
+            "application/json"
         );
-        assert_eq!(
-            request
-                .headers
-                .get("DD-API-KEY")
-                .and_then(|v| v.to_str().ok()),
-            Some("client-token")
-        );
-        assert_eq!(
-            request
-                .headers
-                .get("DD-EVP-ORIGIN")
-                .and_then(|v| v.to_str().ok()),
-            Some("ios")
-        );
-        assert_eq!(
-            request
-                .headers
-                .get("DD-REQUEST-ID")
-                .and_then(|v| v.to_str().ok()),
-            Some("request-id")
-        );
+        assert_eq!(header_value(&request, "DD-API-KEY"), "client-token");
+        assert_eq!(header_value(&request, "DD-EVP-ORIGIN"), "ios");
+        assert_eq!(header_value(&request, "DD-REQUEST-ID"), "request-id");
         assert!(request.headers.contains_key("DD-EVP-ORIGIN-VERSION"));
         let body: serde_json::Value =
             serde_json::from_slice(&request.body).expect("request body is JSON");
