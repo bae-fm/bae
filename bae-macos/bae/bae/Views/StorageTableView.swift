@@ -981,14 +981,9 @@ private struct StorageStateLabel: View {
                 .lineLimit(1)
         }
         else if let progress = outboxStore.progress(forRelease: release.id),
-            !progress.isIdle
+            let activity = progress.activity
         {
-            Label(
-                "Uploading (\(Int(progress.pending)))",
-                systemImage: "arrow.up.circle"
-            )
-            .foregroundStyle(.orange)
-            .lineLimit(1)
+            uploadBadge(activity, remaining: Int(progress.pending))
         }
         else {
             switch release.storageState {
@@ -999,6 +994,34 @@ private struct StorageStateLabel: View {
             case .cloudOnly:
                 Label("Cloud", systemImage: "cloud").lineLimit(1)
             }
+        }
+    }
+
+    /// The per-release upload badge: only a release with a file in flight reads
+    /// as "Uploading"; one with work still waiting reads as "Queued", and one
+    /// stalled on failures awaiting retry as "Retrying". `remaining` is the
+    /// release's total unshipped file count.
+    @ViewBuilder
+    private func uploadBadge(
+        _ activity: BridgeUploadActivity,
+        remaining: Int
+    ) -> some View {
+        switch activity {
+        case .uploading:
+            Label("Uploading (\(remaining))", systemImage: "arrow.up.circle")
+                .foregroundStyle(.orange)
+                .lineLimit(1)
+        case .queued:
+            Label("Queued (\(remaining))", systemImage: "clock")
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        case .retrying:
+            Label(
+                "Retrying (\(remaining))",
+                systemImage: "exclamationmark.triangle.fill"
+            )
+            .foregroundStyle(.red)
+            .lineLimit(1)
         }
     }
 }

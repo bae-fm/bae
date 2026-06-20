@@ -350,7 +350,7 @@ private struct OutboxSection: View {
                 }
                 header(snapshot)
                 if !collapsed {
-                    if snapshot.total.bytesTotal > 0 {
+                    if snapshot.activeBytesTotal > 0 {
                         OutboxTotalProgress(snapshot: snapshot)
                     }
                     Divider()
@@ -471,14 +471,14 @@ private struct OutboxTotalProgress: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            ProgressView(value: snapshot.total.fraction)
+            ProgressView(value: snapshot.transferFraction)
                 .progressViewStyle(.linear)
                 // Dim the bar while paused so the visual matches the "Paused"
                 // chip in the band above — paused-but-mid-progress reads as
                 // active otherwise.
                 .opacity(snapshot.paused ? 0.4 : 1)
             HStack(spacing: 8) {
-                Text(snapshot.bytesProgressText)
+                Text(snapshot.transferProgressText)
                     .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
@@ -513,7 +513,7 @@ private struct OutboxUploadRow: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
 
-            Text(op.title ?? op.cloudKey)
+            Text(op.displayName)
                 .lineLimit(1)
 
             Text(op.sizeText)

@@ -14,7 +14,9 @@ pub use download_snapshot::{DownloadOp, DownloadProgress, DownloadSnapshot, Down
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use export::{ExportFormat, MP3_EXPORT_BITRATE};
 pub use manager::*;
-pub use outbox_snapshot::{DeleteOp, OutboxSnapshot, UploadOp, UploadProgress, UploadState};
+pub use outbox_snapshot::{
+    DeleteOp, OutboxSnapshot, UploadActivity, UploadOp, UploadProgress, UploadState,
+};
 pub use upload_throughput::UploadThroughput;
 
 use crate::config::{Config, ConfigError, ConfigYaml};

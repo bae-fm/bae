@@ -1284,7 +1284,7 @@ fn convert_outbox_snapshot(
                 id: op.id,
                 file_id: op.file_id,
                 release_id: op.release_id,
-                title: op.title,
+                display_name: op.display_name,
                 cloud_key: op.cloud_key,
                 bytes_total: op.bytes_total,
                 bytes_done,
@@ -1318,6 +1318,7 @@ fn convert_outbox_snapshot(
         deletes,
         per_release,
         total: convert_upload_progress(snapshot.total),
+        active_bytes_total: snapshot.active_bytes_total,
         pending_deletes: snapshot.pending_deletes,
         paused: snapshot.paused,
         throughput_bps: snapshot.throughput_bps,
@@ -1334,6 +1335,19 @@ fn convert_upload_progress(
         failed: p.failed,
         bytes_done: p.bytes_done,
         bytes_total: p.bytes_total,
+        activity: p.activity().map(convert_upload_activity),
+    }
+}
+
+fn convert_upload_activity(
+    a: bae_core::library::UploadActivity,
+) -> crate::types::BridgeUploadActivity {
+    use crate::types::BridgeUploadActivity;
+    use bae_core::library::UploadActivity;
+    match a {
+        UploadActivity::Uploading => BridgeUploadActivity::Uploading,
+        UploadActivity::Retrying => BridgeUploadActivity::Retrying,
+        UploadActivity::Queued => BridgeUploadActivity::Queued,
     }
 }
 

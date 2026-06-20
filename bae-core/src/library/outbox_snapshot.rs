@@ -1,6 +1,6 @@
 //! The cloud-outbox processing snapshot. Single source of truth for the
-//! Storage Manager's queue panel, per-release upload badges, and (in later
-//! phases) the master progress bar.
+//! Storage Manager's queue panel, per-release upload badges, and the master
+//! progress bar.
 //!
 //! Derived from the `cloud_outbox` rows plus the in-memory map of uploads that
 //! are in flight right now (an upload is "active" only between coven's
@@ -15,6 +15,8 @@
 //! their own cached counts.
 
 use std::collections::HashMap;
+
+use tracing::debug;
 
 use crate::db::Database;
 use crate::library::upload_throughput::UploadThroughput;
@@ -48,8 +50,14 @@ pub struct UploadOp {
     /// Owning release. `None` for an orphaned file_id (release deleted but
     /// outbox entry not yet drained).
     pub release_id: Option<String>,
-    /// Album title for display. `None` for an orphaned file_id.
+    /// Album title. `None` for an orphaned file_id. Consumed by the Windows FFI
+    /// (`bae-windows-ffi`), whose upload rows label by album; the macOS/iOS/
+    /// Android bridge instead renders `display_name`.
     pub title: Option<String>,
+    /// What to show as the row's primary label: the file's original on-disk
+    /// name, or the cloud key when the backing `release_files` row is gone
+    /// (orphaned file_id). Always populated so the UI renders it directly.
+    pub display_name: String,
     pub cloud_key: String,
     pub bytes_total: u64,
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
@@ -69,9 +77,20 @@ pub struct DeleteOp {
     pub created_at: i64,
 }
 
+/// The dominant activity of a slice of the upload queue (a release's pending
+/// uploads, or the whole queue), for the storage-row badge. A slice with any
+/// file uploading reads as `Uploading`; with none uploading but some failed and
+/// awaiting retry, `Retrying`; otherwise `Queued`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UploadActivity {
+    Uploading,
+    Retrying,
+    Queued,
+}
+
 /// Upload progress as the UI cares about it: per-state counts plus
 /// bytes-done/bytes-total. Used both per-release (for storage-row badges) and
-/// as the overall total (for the master progress bar).
+/// as the overall total (for queue counts, ETA, and the summary band).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct UploadProgress {
     pub queued: u32,
@@ -91,6 +110,20 @@ impl UploadProgress {
     pub fn pending(&self) -> u32 {
         self.queued + self.active + self.failed
     }
+
+    /// The badge activity for this slice: active uploads outrank failures
+    /// awaiting retry, which outrank items still only queued. `None` when idle.
+    pub fn activity(&self) -> Option<UploadActivity> {
+        if self.active > 0 {
+            Some(UploadActivity::Uploading)
+        } else if self.failed > 0 {
+            Some(UploadActivity::Retrying)
+        } else if self.queued > 0 {
+            Some(UploadActivity::Queued)
+        } else {
+            None
+        }
+    }
 }
 
 /// Complete snapshot of the cloud outbox. One source of truth for everything
@@ -103,8 +136,14 @@ pub struct OutboxSnapshot {
     /// badge on each storage row and gates per-release storage actions.
     /// Releases with no pending work are absent from the map.
     pub per_release: HashMap<String, UploadProgress>,
-    /// Sum across all uploads — drives the master progress bar.
+    /// Sum across all uploads — drives the queue counts, ETA, and summary band.
     pub total: UploadProgress,
+    /// Total bytes of the files uploading *right now* (Active state). The master
+    /// progress bar shows `total.bytes_done` of this — the live transfer —
+    /// rather than progress against the whole backlog, which would crawl as
+    /// completed files drain from the queue and shrink both numerator and
+    /// denominator.
+    pub active_bytes_total: u64,
     pub pending_deletes: u32,
     /// True when the user has paused the upload pipeline. Drives the
     /// pause/resume toggle in the Storage Manager's bottom panel and
@@ -134,6 +173,7 @@ pub(crate) async fn build_outbox_snapshot(
     let mut deletes = Vec::new();
     let mut per_release: HashMap<String, UploadProgress> = HashMap::new();
     let mut total = UploadProgress::default();
+    let mut active_bytes_total = 0u64;
 
     for row in rows {
         match row.operation {
@@ -160,7 +200,10 @@ pub(crate) async fn build_outbox_snapshot(
                 total.bytes_done += bytes_done;
                 match state {
                     UploadState::Queued => total.queued += 1,
-                    UploadState::Active { .. } => total.active += 1,
+                    UploadState::Active { .. } => {
+                        total.active += 1;
+                        active_bytes_total += bytes_total;
+                    }
                     UploadState::Failed { .. } => total.failed += 1,
                 }
 
@@ -175,12 +218,25 @@ pub(crate) async fn build_outbox_snapshot(
                     }
                 }
 
+                let cloud_key = row.cloud_key;
+                let display_name = match row.file_name {
+                    Some(name) => name,
+                    None => {
+                        debug!(
+                            outbox_id = row.id,
+                            "orphaned outbox upload (no backing file row); \
+                             showing cloud key as the label"
+                        );
+                        cloud_key.clone()
+                    }
+                };
                 uploads.push(UploadOp {
                     id: row.id,
                     file_id: row.file_id,
                     release_id: row.release_id,
                     title: row.title,
-                    cloud_key: row.cloud_key,
+                    display_name,
+                    cloud_key,
                     bytes_total,
                     created_at: row.created_at,
                     attempt_count: row.attempt_count,
@@ -219,6 +275,7 @@ pub(crate) async fn build_outbox_snapshot(
         deletes,
         per_release,
         total,
+        active_bytes_total,
         pending_deletes,
         paused,
         throughput_bps,
@@ -229,6 +286,14 @@ pub(crate) async fn build_outbox_snapshot(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::clock::SystemClock;
+    use crate::db::{
+        Database, DbAlbum, DbArtist, DbFile, DbRelease, Pressing, ReleaseMetadataSource,
+    };
+    use crate::util::content_type::ContentType;
+    use chrono::Utc;
+    use std::sync::Arc;
+    use tempfile::TempDir;
 
     fn progress(queued: u32, active: u32, failed: u32) -> UploadProgress {
         UploadProgress {
@@ -246,5 +311,135 @@ mod tests {
         assert!(!progress(1, 0, 0).is_idle());
         assert!(!progress(0, 1, 0).is_idle());
         assert!(!progress(0, 0, 1).is_idle());
+    }
+
+    #[test]
+    fn activity_ranks_active_over_failed_over_queued() {
+        assert_eq!(progress(0, 0, 0).activity(), None);
+        assert_eq!(progress(3, 0, 0).activity(), Some(UploadActivity::Queued));
+        assert_eq!(progress(0, 0, 2).activity(), Some(UploadActivity::Retrying));
+        // Failures awaiting retry outrank items still only queued.
+        assert_eq!(progress(5, 0, 2).activity(), Some(UploadActivity::Retrying));
+        // Any active upload wins outright.
+        assert_eq!(
+            progress(5, 1, 2).activity(),
+            Some(UploadActivity::Uploading)
+        );
+    }
+
+    /// Seed a release with two files (sizes 100 and 1000) and queue both for
+    /// upload. Returns the db, the small file id, the large file id, and the
+    /// temp-dir guard (drop ends the test db).
+    async fn seed_two_queued_uploads() -> (Database, String, String, TempDir) {
+        let tmp = TempDir::new().unwrap();
+        let db = Database::new_test(
+            tmp.path().join("test.db").to_str().unwrap(),
+            Arc::new(SystemClock),
+        )
+        .await
+        .unwrap();
+
+        db.insert_artist(&DbArtist {
+            id: "artist-1".into(),
+            name: "Artist Name".into(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: Utc::now(),
+        })
+        .await
+        .unwrap();
+        db.insert_album(&DbAlbum {
+            id: "album-1".into(),
+            title: "Album Title".into(),
+            artist_id: "artist-1".into(),
+            year: None,
+            primary_release_id: None,
+            is_compilation: false,
+            created_at: Utc::now(),
+        })
+        .await
+        .unwrap();
+        db.insert_release(&DbRelease {
+            id: "rel-1".into(),
+            album_id: "album-1".into(),
+            release_name: None,
+            pressing: Pressing {
+                year: None,
+                format: None,
+                label: None,
+                catalog_number: None,
+                country: None,
+                barcode: None,
+            },
+            disc_id: None,
+            metadata_source: ReleaseMetadataSource::FileTags,
+            metadata_source_release_id: None,
+            managed: true,
+            source_folder_name: None,
+            content_hash: None,
+            created_at: Utc::now(),
+        })
+        .await
+        .unwrap();
+
+        for (id, name, size) in [
+            ("file-small", "01 Track Title.flac", 100i64),
+            ("file-large", "02 Track Title.flac", 1000i64),
+        ] {
+            db.insert_file(&DbFile {
+                id: id.into(),
+                release_id: "rel-1".into(),
+                original_filename: name.into(),
+                file_size: size,
+                content_type: ContentType::Flac,
+                cloud_path: None,
+                created_at: Utc::now(),
+            })
+            .await
+            .unwrap();
+            db.add_cloud_outbox_upload(id, &format!("storage/{id}"), None)
+                .await
+                .unwrap();
+        }
+
+        (db, "file-small".into(), "file-large".into(), tmp)
+    }
+
+    #[tokio::test]
+    async fn snapshot_labels_rows_with_per_file_names() {
+        let (db, _small, _large, _tmp) = seed_two_queued_uploads().await;
+        let snapshot = build_outbox_snapshot(&db, &HashMap::new(), &UploadThroughput::new(), false)
+            .await
+            .unwrap();
+
+        let mut names: Vec<_> = snapshot
+            .uploads
+            .iter()
+            .map(|u| u.display_name.clone())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["01 Track Title.flac", "02 Track Title.flac"]);
+    }
+
+    #[tokio::test]
+    async fn active_bytes_total_counts_only_the_uploading_file() {
+        let (db, _small, large, _tmp) = seed_two_queued_uploads().await;
+
+        // The large file is uploading right now (250 of 1000 bytes done); the
+        // small file is still queued.
+        let in_flight = HashMap::from([(large, 250u64)]);
+        let snapshot = build_outbox_snapshot(&db, &in_flight, &UploadThroughput::new(), false)
+            .await
+            .unwrap();
+
+        // The whole-queue total spans both files; the master bar's denominator
+        // is only the file actually transferring.
+        assert_eq!(snapshot.total.bytes_total, 1100);
+        assert_eq!(snapshot.active_bytes_total, 1000);
+        // bytes_done — the bar's numerator — is the in-flight file's progress.
+        assert_eq!(snapshot.total.bytes_done, 250);
+        assert_eq!(snapshot.total.active, 1);
+        assert_eq!(snapshot.total.queued, 1);
     }
 }

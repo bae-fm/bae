@@ -3182,6 +3182,7 @@ impl Database {
                     "SELECT co.id, co.operation, co.file_id, co.cloud_key, \
                                 co.created_at, co.attempt_count, co.last_error, \
                                 rf.release_id AS release_id, rf.file_size AS file_size, \
+                                rf.original_filename AS file_name, \
                                 a.title AS title \
                          FROM cloud_outbox co \
                          LEFT JOIN release_files rf ON rf.id = co.file_id \
@@ -3217,6 +3218,7 @@ impl Database {
                         last_error: row.get("last_error")?,
                         release_id: row.get("release_id")?,
                         title: row.get("title")?,
+                        file_name: row.get("file_name")?,
                         file_size: row.get("file_size")?,
                     })
                 })?;

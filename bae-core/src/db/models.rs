@@ -1179,7 +1179,7 @@ impl OutboxOpKind {
 /// the joined release id, album title, and file size. The snapshot builder
 /// uses these to construct `UploadOp` / `DeleteOp`.
 ///
-/// `release_id`, `title`, and `file_size` are `Option` because the
+/// `release_id`, `title`, `file_name`, and `file_size` are `Option` because the
 /// `release_files` join may miss an orphaned `file_id` (the row's file was
 /// deleted before the outbox drained).
 #[derive(Debug, Clone)]
@@ -1195,5 +1195,6 @@ pub struct DbOutboxRow {
     pub last_error: Option<String>,
     pub release_id: Option<String>,
     pub title: Option<String>,
+    pub file_name: Option<String>,
     pub file_size: Option<i64>,
 }

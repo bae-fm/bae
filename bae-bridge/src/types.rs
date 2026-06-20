@@ -1493,6 +1493,15 @@ pub enum BridgeUploadState {
     Failed,
 }
 
+/// The dominant activity of a slice of the upload queue, for the storage-row
+/// badge. Mirror of bae-core's `UploadActivity`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeUploadActivity {
+    Uploading,
+    Retrying,
+    Queued,
+}
+
 /// One queued upload. Mirror of bae-core's `UploadOp` across the FFI; carries
 /// raw fields the UI renders directly.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -1501,8 +1510,9 @@ pub struct BridgeUploadOp {
     pub file_id: String,
     /// Owning release id; `None` for an orphaned file.
     pub release_id: Option<String>,
-    /// Album title for display; `None` for an orphaned file.
-    pub title: Option<String>,
+    /// The row's primary label: the file's original name, or the cloud key when
+    /// the file is orphaned. Pre-resolved by bae-core; the UI renders it directly.
+    pub display_name: String,
     pub cloud_key: String,
     pub bytes_total: u64,
     pub bytes_done: u64,
@@ -1524,9 +1534,9 @@ pub struct BridgeDeleteOp {
     pub created_at: i64,
 }
 
-/// Per-state counts plus byte progress. Used both per-release (drives the
-/// "Uploading (N)" badge on each storage row and gates per-release storage
-/// actions) and as the overall total (drives the master progress bar).
+/// Per-state counts, byte progress, and a derived badge `activity`. Used
+/// per-release (the storage-row badge reads `activity`; storage-action gates
+/// read the counts) and as the overall total (queue counts, ETA, summary band).
 #[derive(Debug, Clone, Default, uniffi::Record)]
 pub struct BridgeUploadProgress {
     pub queued: u32,
@@ -1534,6 +1544,10 @@ pub struct BridgeUploadProgress {
     pub failed: u32,
     pub bytes_done: u64,
     pub bytes_total: u64,
+    /// The badge activity for this slice; `None` when idle. Per-release entries
+    /// are never idle, so theirs is always set; the overall total's is `None`
+    /// only when the whole queue is empty.
+    pub activity: Option<BridgeUploadActivity>,
 }
 
 /// A queued download's state. `Active` carries the overall release percent in
@@ -1599,6 +1613,10 @@ pub struct BridgeOutboxSnapshot {
     /// work are absent from the map.
     pub per_release: std::collections::HashMap<String, BridgeUploadProgress>,
     pub total: BridgeUploadProgress,
+    /// Total bytes of the files uploading right now. The master progress bar
+    /// shows `total.bytes_done` of this — the live transfer — rather than
+    /// progress against the whole backlog.
+    pub active_bytes_total: u64,
     pub pending_deletes: u32,
     /// True when the user has paused the upload pipeline. Drives the
     /// pause/resume toggle and suppresses throughput/ETA in the UI.
