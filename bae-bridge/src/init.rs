@@ -128,15 +128,15 @@ impl BridgeDiagnosticsConfig {
 impl BridgeDatadogDiagnosticsConfig {
     fn into_core(self) -> DiagnosticsConfig {
         let config = DatadogDiagnosticsConfig {
-            datadog_site: self.datadog_site.trim().to_string(),
-            client_token: self.client_token.trim().to_string(),
-            source: self.source.trim().to_string(),
+            datadog_site: self.datadog_site,
+            client_token: self.client_token,
+            source: self.source,
             app: AppDiagnosticMetadata {
-                service: self.app.service.trim().to_string(),
-                environment: self.app.environment.trim().to_string(),
-                app_version: self.app.app_version.trim().to_string(),
-                edition: self.app.edition.trim().to_string(),
-                git_commit: self.app.git_commit.trim().to_string(),
+                service: self.app.service,
+                environment: self.app.environment,
+                app_version: self.app.app_version,
+                edition: self.app.edition,
+                git_commit: self.app.git_commit,
             },
         };
 

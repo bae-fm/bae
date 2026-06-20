@@ -61,7 +61,24 @@ pub struct DatadogDiagnosticsConfig {
 
 impl DatadogDiagnosticsConfig {
     fn is_complete(&self) -> bool {
-        self.required_values().iter().all(|value| !value.is_empty())
+        self.required_values()
+            .iter()
+            .all(|value| !value.trim().is_empty())
+    }
+
+    fn normalized(self) -> Self {
+        Self {
+            datadog_site: self.datadog_site.trim().to_string(),
+            client_token: self.client_token.trim().to_string(),
+            source: self.source.trim().to_string(),
+            app: AppDiagnosticMetadata {
+                service: self.app.service.trim().to_string(),
+                environment: self.app.environment.trim().to_string(),
+                app_version: self.app.app_version.trim().to_string(),
+                edition: self.app.edition.trim().to_string(),
+                git_commit: self.app.git_commit.trim().to_string(),
+            },
+        }
     }
 
     fn required_values(&self) -> [&str; 8] {
@@ -206,6 +223,7 @@ impl Diagnostics {
         if !config.is_complete() {
             return Err(DiagnosticsError::IncompleteConfig);
         }
+        let config = config.normalized();
         Self::with_transport(config, dependencies, Arc::new(DatadogTransport::new()))
     }
 
@@ -606,7 +624,10 @@ where
             message,
             visitor.fields,
         ) {
-            Ok(()) | Err(DiagnosticsError::WorkerStopped) => {}
+            Ok(()) => {}
+            Err(DiagnosticsError::WorkerStopped) => {
+                tracing::debug!("diagnostics tracing layer dropped event: worker stopped");
+            }
             Err(e) => tracing::debug!("diagnostics tracing layer dropped event: {e}"),
         }
     }
@@ -644,6 +665,10 @@ impl EventVisitor {
             self.fields.push((field.name().to_string(), value));
         }
     }
+
+    fn record_display(&mut self, field: &tracing::field::Field, value: impl fmt::Display) {
+        self.push_field(field, value.to_string());
+    }
 }
 
 impl Visit for EventVisitor {
@@ -652,19 +677,19 @@ impl Visit for EventVisitor {
     }
 
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        self.push_field(field, value.to_string());
+        self.record_display(field, value);
     }
 
     fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-        self.push_field(field, value.to_string());
+        self.record_display(field, value);
     }
 
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        self.push_field(field, value.to_string());
+        self.record_display(field, value);
     }
 
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
-        self.push_field(field, value.to_string());
+        self.record_display(field, value);
     }
 }
 
@@ -818,6 +843,24 @@ mod tests {
             ),
             Err(DiagnosticsError::IncompleteConfig)
         ));
+
+        let mut whitespace = config();
+        whitespace.client_token = "   ".to_string();
+        assert!(!DiagnosticsConfig::Enabled(whitespace).sends_events());
+    }
+
+    #[test]
+    fn enabled_config_normalizes_values_before_sending() {
+        let mut config = config();
+        config.datadog_site = " datadoghq.com ".to_string();
+        config.source = " ios ".to_string();
+        config.app.service = " bae ".to_string();
+
+        let normalized = config.normalized();
+
+        assert_eq!(normalized.datadog_site, "datadoghq.com");
+        assert_eq!(normalized.source, "ios");
+        assert_eq!(normalized.app.service, "bae");
     }
 
     #[test]
