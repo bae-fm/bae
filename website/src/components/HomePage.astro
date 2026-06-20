@@ -91,7 +91,7 @@ const macUrl = macFullUrl ?? href('/getting-started/installation');
   .navin{display:flex;align-items:center;gap:26px;height:66px;}
   .brand{font-family:var(--disp);font-weight:800;font-size:24px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;flex:none;}
   .brand img{width:30px;height:30px;}
-  .navlinks{margin-left:auto;display:flex;gap:12px;align-items:center;min-width:0;}
+  .navlinks{margin-inline-start:auto;display:flex;gap:12px;align-items:center;min-width:0;}
   .navlinks a{font-size:14.5px;color:var(--fg-dim);font-weight:500;white-space:nowrap;}
   .navlinks a:hover{color:var(--cream);}
   .desktoplinks{display:flex;gap:26px;align-items:center;}
@@ -108,7 +108,9 @@ const macUrl = macFullUrl ?? href('/getting-started/installation');
   .menubtn{width:46px;display:none;}
   .menubtn span{display:block;width:18px;height:2px;border-radius:999px;background:currentColor;box-shadow:0 -6px 0 currentColor,0 6px 0 currentColor;}
   .navpanel,.langpanel{position:absolute;top:calc(100% + 12px);right:0;width:min(320px,calc(100vw - 56px));padding:12px;border:1px solid var(--line);border-radius:20px;background:rgba(22,19,39,.96);backdrop-filter:blur(18px);box-shadow:0 24px 70px rgba(0,0,0,.5);}
+  html[dir="rtl"] .navpanel,html[dir="rtl"] .langpanel{left:0;right:auto;direction:rtl;}
   .navpanel::before,.langpanel::before{content:"";position:absolute;top:-7px;right:19px;width:12px;height:12px;transform:rotate(45deg);background:rgba(22,19,39,.96);border-left:1px solid var(--line);border-top:1px solid var(--line);}
+  html[dir="rtl"] .navpanel::before,html[dir="rtl"] .langpanel::before{left:19px;right:auto;}
   .menulinks{display:grid;gap:4px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line);}
   .menulinks a,.langmenu a,.languageitem{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:12px;padding:10px 12px;color:var(--fg-dim);font-size:14px;font-weight:600;}
   .menulinks a:hover,.langmenu a:hover,.languageitem:hover{background:rgba(255,255,255,.05);color:var(--cream);}
