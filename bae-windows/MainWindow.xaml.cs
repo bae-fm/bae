@@ -3553,7 +3553,7 @@ public sealed partial class MainWindow : Window
         // Stop uploading any targeted release that's mid-transfer, keeping it
         // local-only. Resolved from the live outbox snapshot since the storage
         // row carries only a pending count.
-        var uploadingReleases = await UploadingReleases(releaseIds);
+        var uploadingReleases = await UploadingReleases(releaseIds, storageStatus);
         if (uploadingReleases.Count > 0)
         {
             var cancel = new MenuFlyoutItem { Text = Loc.Chrome("storage.cancel_upload") };
@@ -3582,7 +3582,8 @@ public sealed partial class MainWindow : Window
     // Of the given releases, those with uploads queued or in flight. Core omits
     // idle releases from the per-release map, so presence there is the signal.
     private async System.Threading.Tasks.Task<List<string>> UploadingReleases(
-        List<string> releaseIds)
+        List<string> releaseIds,
+        TextBlock storageStatus)
     {
         var json = await System.Threading.Tasks.Task.Run(
             () => NativeBae.OutboxSnapshotJson(_handle));
