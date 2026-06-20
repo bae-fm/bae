@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use bae_core::app::{bootstrap, BootstrapError, RunningApp};
 use bae_core::diagnostics::{
-    DatadogDiagnosticsConfig, DiagnosticLevel, Diagnostics, DiagnosticsConfig, DiagnosticsError,
+    AppDiagnosticMetadata, DatadogDiagnosticsConfig, DiagnosticLevel, Diagnostics,
+    DiagnosticsConfig, DiagnosticsError,
 };
 
 use crate::handle::AppHandle;
@@ -21,6 +22,11 @@ pub struct BridgeDatadogDiagnosticsConfig {
     pub datadog_site: String,
     pub client_token: String,
     pub source: String,
+    pub app: BridgeAppDiagnosticMetadata,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeAppDiagnosticMetadata {
     pub service: String,
     pub environment: String,
     pub app_version: String,
@@ -125,11 +131,13 @@ impl BridgeDatadogDiagnosticsConfig {
             datadog_site: self.datadog_site.trim().to_string(),
             client_token: self.client_token.trim().to_string(),
             source: self.source.trim().to_string(),
-            service: self.service.trim().to_string(),
-            environment: self.environment.trim().to_string(),
-            app_version: self.app_version.trim().to_string(),
-            edition: self.edition.trim().to_string(),
-            git_commit: self.git_commit.trim().to_string(),
+            app: AppDiagnosticMetadata {
+                service: self.app.service.trim().to_string(),
+                environment: self.app.environment.trim().to_string(),
+                app_version: self.app.app_version.trim().to_string(),
+                edition: self.app.edition.trim().to_string(),
+                git_commit: self.app.git_commit.trim().to_string(),
+            },
         };
 
         DiagnosticsConfig::Enabled(config)
@@ -260,11 +268,13 @@ mod tests {
                 datadog_site: "datadoghq.com".to_string(),
                 client_token: "client-token".to_string(),
                 source: "ios".to_string(),
-                service: "bae".to_string(),
-                environment: "test".to_string(),
-                app_version: "1.2.3".to_string(),
-                edition: "bae".to_string(),
-                git_commit: "abc123".to_string(),
+                app: BridgeAppDiagnosticMetadata {
+                    service: "bae".to_string(),
+                    environment: "test".to_string(),
+                    app_version: "1.2.3".to_string(),
+                    edition: "bae".to_string(),
+                    git_commit: "abc123".to_string(),
+                },
             },
         }
         .into_core();
@@ -274,7 +284,7 @@ mod tests {
             panic!("complete bridge config must enable diagnostics");
         };
         assert_eq!(config.source, "ios");
-        assert_eq!(config.edition, "bae");
+        assert_eq!(config.app.edition, "bae");
     }
 
     #[test]

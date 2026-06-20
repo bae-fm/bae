@@ -56,11 +56,7 @@ pub struct DatadogDiagnosticsConfig {
     pub datadog_site: String,
     pub client_token: String,
     pub source: String,
-    pub service: String,
-    pub environment: String,
-    pub app_version: String,
-    pub edition: String,
-    pub git_commit: String,
+    pub app: AppDiagnosticMetadata,
 }
 
 impl DatadogDiagnosticsConfig {
@@ -73,22 +69,12 @@ impl DatadogDiagnosticsConfig {
             &self.datadog_site,
             &self.client_token,
             &self.source,
-            &self.service,
-            &self.environment,
-            &self.app_version,
-            &self.edition,
-            &self.git_commit,
+            &self.app.service,
+            &self.app.environment,
+            &self.app.app_version,
+            &self.app.edition,
+            &self.app.git_commit,
         ]
-    }
-
-    fn metadata(&self) -> AppDiagnosticMetadata {
-        AppDiagnosticMetadata {
-            service: self.service.clone(),
-            environment: self.environment.clone(),
-            app_version: self.app_version.clone(),
-            edition: self.edition.clone(),
-            git_commit: self.git_commit.clone(),
-        }
     }
 
     fn intake_url(&self) -> Result<Url, DiagnosticsError> {
@@ -229,7 +215,7 @@ impl Diagnostics {
         transport: Arc<dyn DiagnosticsTransport>,
     ) -> Result<Self, DiagnosticsError> {
         let (tx, rx) = mpsc::unbounded_channel();
-        let app = config.metadata();
+        let app = config.app.clone();
         let worker = DiagnosticsWorker::new(config, dependencies.clone(), transport, rx);
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -770,11 +756,13 @@ mod tests {
             datadog_site: "datadoghq.com".to_string(),
             client_token: "client-token".to_string(),
             source: "ios".to_string(),
-            service: "bae".to_string(),
-            environment: "test".to_string(),
-            app_version: "1.2.3".to_string(),
-            edition: "bae".to_string(),
-            git_commit: "abc123".to_string(),
+            app: AppDiagnosticMetadata {
+                service: "bae".to_string(),
+                environment: "test".to_string(),
+                app_version: "1.2.3".to_string(),
+                edition: "bae".to_string(),
+                git_commit: "abc123".to_string(),
+            },
         }
     }
 
@@ -798,7 +786,7 @@ mod tests {
             message: "message".to_string(),
             timestamp: dependencies().now(),
             fields: BTreeMap::from([("operation".to_string(), "scan".to_string())]),
-            app: config().metadata(),
+            app: config().app,
         }
     }
 
