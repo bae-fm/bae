@@ -140,10 +140,14 @@ jobs:
         # The device-sync round-trip in test_multi_device_sync.rs has a
         # CI-specific parallelism race (tests pass locally at any thread
         # count). Run the whole suite serially so the race can't occur; this is
-        # slower. test_playback_cpu is skipped only because it is re-run in
-        # release mode below for accurate CPU measurement.
+        # slower. test_playback_cpu is skipped here and re-run in release mode
+        # below for accurate CPU measurement.
         cargo test -p bae-core --features bae-core/test-utils -- --test-threads=1 --skip test_playback_cpu
-        cargo test -p bae-core --release --features bae-core/test-utils --test test_playback_cpu
+        # The release CPU benchmarks must also run serially: each measures
+        # process-wide CPU over a wall-clock window, so a concurrent sibling
+        # test's work (e.g. another fixture's import decode) inflates the
+        # reading and trips the threshold.
+        cargo test -p bae-core --release --features bae-core/test-utils --test test_playback_cpu -- --test-threads=1
 
   feature-parity:
     # The split between the baeium (S3-only) build and the full build is enforced
