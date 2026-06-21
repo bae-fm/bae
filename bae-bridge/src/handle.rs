@@ -661,19 +661,6 @@ impl AppHandle {
             .map_err(BridgeError::internal)
     }
 
-    /// Stop uploading a release that's mid-`manage` and keep it local-only:
-    /// drops its queued/in-flight upload rows and deletes any blobs already
-    /// uploaded this attempt, leaving the local copy in place.
-    pub fn cancel_release_upload(&self, release_id: String) -> Result<(), BridgeError> {
-        self.runtime
-            .block_on(
-                self.app_services
-                    .library_manager()
-                    .cancel_release_upload(&release_id),
-            )
-            .map_err(BridgeError::internal)
-    }
-
     /// Cancel whatever transition a release is mid-flight — a pin (download), a
     /// managed upload, or an unmanage — leaving it in its prior state. The UI
     /// calls this from the storage row and the queue pane without knowing which

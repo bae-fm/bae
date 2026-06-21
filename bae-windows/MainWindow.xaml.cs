@@ -3366,64 +3366,84 @@ public sealed partial class MainWindow : Window
             // mini progress bar for an in-flight upload, and a Cancel that
             // dequeues it. `activeUpload` is set only for an upload that's
             // transferring right now, so its bar moves with the live byte count.
-            void AddRow(long id, string label, UploadOp? activeUpload)
+            // A queue row: a label (with an optional progress bar) and an optional
+            // trailing cancel button.
+            void AddOutboxRow(string label, ProgressBar? progress, Button? trailing)
             {
                 var itemGrid = new Grid { ColumnSpacing = 8 };
                 itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
                 var labelColumn = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-                labelColumn.Children.Add(new TextBlock
+                labelColumn.Children.Add(new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap });
+                if (progress is not null)
                 {
-                    Text = label,
-                    TextWrapping = TextWrapping.Wrap,
-                });
-                if (activeUpload is { IsActive: true, BytesTotal: > 0 })
-                {
-                    labelColumn.Children.Add(new ProgressBar
-                    {
-                        Minimum = 0,
-                        Maximum = activeUpload.BytesTotal,
-                        Value = activeUpload.BytesDone,
-                    });
+                    labelColumn.Children.Add(progress);
                 }
                 Grid.SetColumn(labelColumn, 0);
                 itemGrid.Children.Add(labelColumn);
 
-                // Uploads are stopped per-release (right-click the storage row →
-                // "Cancel Upload"), not per file. A pending delete is genuinely a
-                // single-file operation, so it keeps its per-row cancel.
-                if (activeUpload is null)
+                if (trailing is not null)
                 {
-                    var cancel = new Button { Content = Loc.Chrome("outbox.cancel_item") };
-                    cancel.Click += async (_, _) =>
-                    {
-                        storageStatus.Visibility = Visibility.Collapsed;
-                        cancel.IsEnabled = false;
-                        var error = await System.Threading.Tasks.Task.Run(() => NativeBae.CancelOutboxItem(_handle, id));
-                        if (error is not null)
-                        {
-                            storageStatus.Text = error;
-                            storageStatus.Visibility = Visibility.Visible;
-                            cancel.IsEnabled = true;
-                            return;
-                        }
-
-                        await LoadOutbox();
-                    };
-                    Grid.SetColumn(cancel, 1);
-                    itemGrid.Children.Add(cancel);
+                    Grid.SetColumn(trailing, 1);
+                    itemGrid.Children.Add(trailing);
                 }
                 outboxPanel.Children.Add(itemGrid);
             }
 
-            foreach (var upload in snapshot.Uploads)
+            // A cancel button that runs `action` off-thread, surfaces any error to
+            // the status line, and reloads the panel on success.
+            Button CancelButton(string content, Func<string?> action)
             {
-                AddRow(upload.Id, upload.Label, upload);
+                var button = new Button { Content = content };
+                button.Click += async (_, _) =>
+                {
+                    storageStatus.Visibility = Visibility.Collapsed;
+                    button.IsEnabled = false;
+                    var error = await System.Threading.Tasks.Task.Run(action);
+                    if (error is not null)
+                    {
+                        storageStatus.Text = error;
+                        storageStatus.Visibility = Visibility.Visible;
+                        button.IsEnabled = true;
+                        return;
+                    }
+
+                    await LoadOutbox();
+                };
+                return button;
             }
+
+            // Uploads: one row per release (matching the storage table) — title,
+            // aggregate progress, and a cancel that stops the release's transition.
+            // The orphaned-files bucket (no release id) has no release to cancel.
+            foreach (var group in snapshot.UploadGroups)
+            {
+                ProgressBar? progress = group.Progress is { Active: > 0, BytesTotal: > 0 }
+                    ? new ProgressBar
+                    {
+                        Minimum = 0,
+                        Maximum = group.Progress.BytesTotal,
+                        Value = group.Progress.BytesDone,
+                    }
+                    : null;
+                Button? cancel = group.ReleaseId is string releaseId
+                    ? CancelButton(
+                        Loc.Chrome("storage.cancel_upload"),
+                        () => NativeBae.CancelReleaseTransition(_handle, releaseId))
+                    : null;
+                AddOutboxRow(group.DisplayTitle, progress, cancel);
+            }
+            // A pending delete is genuinely a single-file operation, so it keeps
+            // its own per-file cancel.
             foreach (var delete in snapshot.Deletes)
             {
-                AddRow(delete.Id, delete.Label, null);
+                AddOutboxRow(
+                    delete.Label,
+                    null,
+                    CancelButton(
+                        Loc.Chrome("outbox.cancel_item"),
+                        () => NativeBae.CancelOutboxItem(_handle, delete.Id)));
             }
         }
 
@@ -3562,7 +3582,7 @@ public sealed partial class MainWindow : Window
                 foreach (var releaseId in uploadingReleases)
                 {
                     var error = await System.Threading.Tasks.Task.Run(
-                        () => NativeBae.CancelReleaseUpload(_handle, releaseId));
+                        () => NativeBae.CancelReleaseTransition(_handle, releaseId));
                     if (error is not null)
                     {
                         storageStatus.Text = error;

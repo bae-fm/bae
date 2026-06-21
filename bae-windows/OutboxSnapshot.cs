@@ -11,6 +11,11 @@ namespace Bae.Windows;
 public sealed class OutboxSnapshot
 {
     public List<UploadOp> Uploads { get; set; } = new();
+
+    /// <summary>Uploads grouped by release for the queue pane's per-release rows
+    /// (matching the storage table). Resolved by core.</summary>
+    public List<UploadReleaseGroup> UploadGroups { get; set; } = new();
+
     public List<DeleteOp> Deletes { get; set; } = new();
 
     /// <summary>True when the user paused the upload pipeline — drives the
@@ -92,6 +97,17 @@ public sealed class UploadProgress
     public uint Failed { get; set; }
     public long BytesDone { get; set; }
     public long BytesTotal { get; set; }
+}
+
+/// <summary>A release's pending uploads, grouped for the queue pane's per-release
+/// rows. <c>ReleaseId</c> is null for the orphaned-files bucket; <c>DisplayTitle</c>
+/// is the row label, resolved by core.</summary>
+public sealed class UploadReleaseGroup
+{
+    public string? ReleaseId { get; set; }
+    public string DisplayTitle { get; set; } = string.Empty;
+    public uint FileCount { get; set; }
+    public UploadProgress Progress { get; set; } = new();
 }
 
 /// <summary>One queued upload.</summary>
