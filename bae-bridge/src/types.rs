@@ -1991,6 +1991,18 @@ pub struct BridgeMember {
     pub role: BridgeMemberRole,
     /// True for the device this app is running on.
     pub is_self: bool,
+    /// Short display identity — the first 8 characters of the pubkey.
+    pub fingerprint: String,
+    /// Whether the running device may remove this one (owner-only, never self).
+    pub can_remove: bool,
+}
+
+/// The library's membership: its devices and whether the running device is an
+/// owner (the gate the UI uses to show inviting and removal controls).
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMembership {
+    pub members: Vec<BridgeMember>,
+    pub self_is_owner: bool,
 }
 
 /// A member's role. Mirrors coven's `MemberRole`. bae adds devices as `Member`;
@@ -2003,12 +2015,23 @@ pub enum BridgeMemberRole {
     Follower,
 }
 
-/// Decoded join-request code: the joining device's public key, shown to an
-/// existing member for approval before inviting it.
+/// Decoded join-request code: the joining device's public key and its
+/// fingerprint, shown to an existing member for approval before inviting it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeJoinRequestInfo {
     pub pubkey: String,
+    /// Short display identity — the first 8 characters of the pubkey.
+    pub fingerprint: String,
     pub email: Option<String>,
+}
+
+/// This device's join-request code and the fingerprint it encodes, so the
+/// joining device shows its own identity without decoding the code it generated.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeJoinRequest {
+    pub code: String,
+    /// Short display identity — the first 8 characters of this device's pubkey.
+    pub fingerprint: String,
 }
 
 /// Decoded invite code info for UI preview (before joining).
@@ -2017,6 +2040,9 @@ pub struct BridgeInviteCodeInfo {
     pub library_id: String,
     pub library_name: String,
     pub owner_pubkey: String,
+    /// Short display identity of the library owner — the first 8 characters of
+    /// the owner pubkey.
+    pub owner_fingerprint: String,
     pub cloud_provider: BridgeCloudProvider,
     pub needs_oauth: bool,
 }
@@ -2367,11 +2393,22 @@ pub(crate) fn bridge_member_role(
     }
 }
 
-pub(crate) fn bridge_member(m: bae_core::sync::sync_manager::MemberInfo) -> BridgeMember {
+fn bridge_member(m: bae_core::sync::sync_manager::MembershipMember) -> BridgeMember {
     BridgeMember {
         pubkey: m.pubkey,
         role: bridge_member_role(m.role),
         is_self: m.is_self,
+        fingerprint: m.fingerprint,
+        can_remove: m.can_remove,
+    }
+}
+
+pub(crate) fn bridge_membership(
+    membership: bae_core::sync::sync_manager::Membership,
+) -> BridgeMembership {
+    BridgeMembership {
+        members: membership.members.into_iter().map(bridge_member).collect(),
+        self_is_owner: membership.self_is_owner,
     }
 }
 

@@ -615,18 +615,16 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
-    /// The library's members (devices), with this device flagged. Reads the
-    /// membership chain from cloud storage, so it runs on a runtime worker.
-    pub async fn get_members(&self) -> Result<Vec<crate::types::BridgeMember>, BridgeError> {
+    /// The library's membership (devices, with this device flagged, and whether
+    /// the running device is an owner). Reads the membership chain from cloud
+    /// storage, so it runs on a runtime worker.
+    pub async fn get_members(&self) -> Result<crate::types::BridgeMembership, BridgeError> {
         let services = self.app_services.clone();
-        let members = self
+        let membership = self
             .spawn_on_runtime(async move { services.library_manager().get_members().await })
             .await
             .map_err(BridgeError::internal)?;
-        Ok(members
-            .into_iter()
-            .map(crate::types::bridge_member)
-            .collect())
+        Ok(crate::types::bridge_membership(membership))
     }
 
     /// Approve a joining device by its public key (from its join-request code),

@@ -43,29 +43,28 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.pubkeyFingerprint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberRole
+import uniffi.bae_bridge.BridgeMembership
 
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
 
 /**
- * Loads and holds the library's members (devices) and tracks whether this
- * device is the owner. Owner-ness is derived from the list — the one member that
- * is both this device and an owner. Reading the chain hits cloud storage, so the
- * load runs off the main thread; the screen refreshes after every approve or
- * remove so the list reflects the new membership.
+ * Loads and holds the library's membership: its devices and whether this device
+ * is the owner (the gate for inviting and removing). Reading the chain hits cloud
+ * storage, so the load runs off the main thread; the screen refreshes after every
+ * approve or remove so the list reflects the new membership.
  */
 private class MembersModel(
     private val session: OpenLibrary,
     private val appContext: Context,
 ) {
-    var members by mutableStateOf<List<BridgeMember>>(emptyList())
+    var membership by mutableStateOf<BridgeMembership?>(null)
         private set
     var loading by mutableStateOf(true)
         private set
@@ -76,14 +75,11 @@ private class MembersModel(
     var actionError by mutableStateOf<String?>(null)
         private set
 
-    val selfIsOwner: Boolean
-        get() = members.any { it.isSelf && it.role == BridgeMemberRole.OWNER }
-
     suspend fun load() {
         loading = true
         error = null
         try {
-            members = withContext(Dispatchers.IO) { session.appHandle.getMembers() }
+            membership = withContext(Dispatchers.IO) { session.appHandle.getMembers() }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -102,7 +98,7 @@ private class MembersModel(
             throw e
         } catch (e: Exception) {
             logger.error(
-                "Failed to remove member ${pubkeyFingerprint(member.pubkey)}",
+                "Failed to remove member ${member.fingerprint}",
                 e,
             )
             actionError = e.message ?: appContext.getString(R.string.members_remove_failed)
@@ -169,14 +165,15 @@ private fun MembersBody(
     onAddDevice: () -> Unit,
     onRemove: (BridgeMember) -> Unit,
 ) {
+    val membership = model.membership
     when {
-        model.loading && model.members.isEmpty() -> {
+        model.loading && membership == null -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         }
 
-        model.error != null && model.members.isEmpty() -> {
+        model.error != null && membership == null -> {
             Column(
                 modifier = Modifier.fillMaxSize().padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -189,10 +186,9 @@ private fun MembersBody(
             }
         }
 
-        else -> {
+        membership != null -> {
             MembersList(
-                members = model.members,
-                selfIsOwner = model.selfIsOwner,
+                membership = membership,
                 onAddDevice = onAddDevice,
                 onRemove = onRemove,
             )
@@ -221,8 +217,7 @@ private fun MembersTopBar(onBack: () -> Unit) {
 
 @Composable
 private fun MembersList(
-    members: List<BridgeMember>,
-    selfIsOwner: Boolean,
+    membership: BridgeMembership,
     onAddDevice: () -> Unit,
     onRemove: (BridgeMember) -> Unit,
 ) {
@@ -238,14 +233,13 @@ private fun MembersList(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        items(members, key = { it.pubkey }) { member ->
+        items(membership.members, key = { it.pubkey }) { member ->
             MemberRow(
                 member = member,
-                canRemove = selfIsOwner && !member.isSelf,
                 onRemove = { onRemove(member) },
             )
         }
-        if (selfIsOwner) {
+        if (membership.selfIsOwner) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(onClick = onAddDevice) {
@@ -259,7 +253,6 @@ private fun MembersList(
 @Composable
 private fun MemberRow(
     member: BridgeMember,
-    canRemove: Boolean,
     onRemove: () -> Unit,
 ) {
     Row(
@@ -269,7 +262,7 @@ private fun MemberRow(
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = pubkeyFingerprint(member.pubkey),
+                    text = member.fingerprint,
                     style = MaterialTheme.typography.bodyMedium,
                     fontFamily = FontFamily.Monospace,
                 )
@@ -283,7 +276,7 @@ private fun MemberRow(
                 )
             }
         }
-        if (canRemove) {
+        if (member.canRemove) {
             TextButton(
                 onClick = onRemove,
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -311,7 +304,7 @@ private fun RemoveDeviceDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.members_remove_confirm_title)) },
         text = {
-            Text(stringResource(R.string.members_remove_confirm_body, pubkeyFingerprint(member.pubkey)))
+            Text(stringResource(R.string.members_remove_confirm_body, member.fingerprint))
         },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(stringResource(R.string.members_remove)) }

@@ -1836,12 +1836,16 @@ impl LibraryManager {
             .generate_restore_code()
     }
 
-    /// The library's current members (devices), with this device flagged.
-    pub async fn get_members(&self) -> Result<Vec<crate::sync::sync_manager::MemberInfo>, String> {
-        self.sync_manager_inner()
+    /// The library's membership: its devices (with this device flagged, each
+    /// member's fingerprint, and whether it can be removed) and whether the
+    /// running device is an owner.
+    pub async fn get_members(&self) -> Result<crate::sync::sync_manager::Membership, String> {
+        let members = self
+            .sync_manager_inner()
             .ok_or_else(|| "Sync not configured".to_string())?
             .get_members()
-            .await
+            .await?;
+        Ok(crate::sync::sync_manager::Membership::from_members(members))
     }
 
     /// Approve a device into the library by its public key, wrapping the library

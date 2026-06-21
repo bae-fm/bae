@@ -63,7 +63,7 @@ struct WelcomeView: View {
     /// key, generated on appear and shown for an existing member to scan or
     /// paste. `nil` while generating; `.failure` if generation fails.
     @State
-    private var joinRequest: Result<GeneratedJoinCode, Error>?
+    private var joinRequest: Result<BridgeJoinRequest, Error>?
     /// The in-flight (re)generation of this device's join code, owned so a retry
     /// supersedes the previous attempt and the view's disappear cancels it.
     @State
@@ -876,13 +876,6 @@ extension WelcomeView {
 // MARK: - Join flow
 
 extension WelcomeView {
-    /// This device's generated join code plus a short fingerprint of its public
-    /// key, shown so the approving device can confirm it matches.
-    private struct GeneratedJoinCode {
-        let code: String
-        let fingerprint: String
-    }
-
     fileprivate var joinView: some View {
         VStack(spacing: 0) {
             Text("Join a library")
@@ -1047,7 +1040,7 @@ extension WelcomeView {
             )
             LabeledContent(
                 "Owner",
-                value: MemberFormat.fingerprint(info.ownerPubkey)
+                value: info.ownerFingerprint
             )
             #if BAE_OAUTH_PROVIDERS
                 if info.needsOauth {
@@ -1118,12 +1111,7 @@ extension WelcomeView {
         joinRequest = nil
         do {
             let generated = try await DetachedWork.run {
-                let code = try generateJoinRequest()
-                let pubkey = try decodeJoinRequest(code: code).pubkey
-                return GeneratedJoinCode(
-                    code: code,
-                    fingerprint: MemberFormat.fingerprint(pubkey)
-                )
+                try generateJoinRequest()
             }
             joinRequest = .success(generated)
         }

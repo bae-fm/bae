@@ -13,7 +13,7 @@ struct MembersSettingsTab: View {
     var sync
 
     @State
-    private var members: [BridgeMember]?
+    private var membership: BridgeMembership?
     @State
     private var loadError: String?
     @State
@@ -27,16 +27,10 @@ struct MembersSettingsTab: View {
     @State
     private var showApprove = false
 
-    /// Whether this device may approve and remove other devices. Only an owner
-    /// can; a member device shows the list read-only.
-    private var selfIsOwner: Bool {
-        members?.contains { $0.isSelf && $0.role == .owner } ?? false
-    }
-
     var body: some View {
         Form {
             Section("Devices") {
-                switch members {
+                switch membership {
                 case nil:
                     if let loadError {
                         Text(loadError)
@@ -47,11 +41,10 @@ struct MembersSettingsTab: View {
                         ProgressView()
                             .frame(maxWidth: .infinity)
                     }
-                case .some(let list):
-                    ForEach(list, id: \.pubkey) { member in
+                case .some(let membership):
+                    ForEach(membership.members, id: \.pubkey) { member in
                         MemberRow(
                             member: member,
-                            canRemove: selfIsOwner && !member.isSelf,
                             onRemove: { removeConfirm = member },
                         )
                     }
@@ -64,7 +57,7 @@ struct MembersSettingsTab: View {
                     .font(.callout)
             }
 
-            if selfIsOwner {
+            if membership?.selfIsOwner == true {
                 Section {
                     Button("Add a device...") {
                         actionError = nil
@@ -114,8 +107,7 @@ struct MembersSettingsTab: View {
         loadTask?.cancel()
         loadTask = Task { @MainActor in
             do {
-                let loaded = try await sync.getMembers()
-                members = loaded
+                membership = try await sync.getMembers()
             }
             catch is CancellationError {
                 logger.debug("member list load cancelled")
@@ -126,7 +118,7 @@ struct MembersSettingsTab: View {
                 )
                 // Keep a previously loaded list visible if there is one; only
                 // fall back to the inline error when there's nothing to show.
-                if members == nil {
+                if membership == nil {
                     loadError = error.localizedDescription
                 }
                 else {
@@ -162,13 +154,12 @@ struct MembersSettingsTab: View {
 /// on every other device.
 private struct MemberRow: View {
     let member: BridgeMember
-    let canRemove: Bool
     let onRemove: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(MemberFormat.fingerprint(member.pubkey))
+                Text(member.fingerprint)
                     .font(.system(.body, design: .monospaced))
                 // Always in the layout (hidden when not self) so the row height
                 // doesn't change between self and other rows.
@@ -188,8 +179,8 @@ private struct MemberRow: View {
                     .font(.callout)
             }
             .buttonStyle(.borderless)
-            .opacity(canRemove ? 1 : 0)
-            .allowsHitTesting(canRemove)
+            .opacity(member.canRemove ? 1 : 0)
+            .allowsHitTesting(member.canRemove)
         }
     }
 }
