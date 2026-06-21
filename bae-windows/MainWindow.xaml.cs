@@ -84,6 +84,7 @@ public sealed partial class MainWindow : Window
     // Reloads the storage dialog's outbox panel and storage rows; set while that
     // dialog is open so OutboxChanged refreshes them live, null when closed.
     private Action? _refreshOutbox;
+    private Action? _refreshDownloads;
 
     // Re-reads bae_settings into the open settings dialog's labels; set while that
     // dialog is open so ConfigChanged (provider connect/disconnect, sync readiness,
@@ -1010,6 +1011,9 @@ public sealed partial class MainWindow : Window
                 break;
             case "OutboxChanged":
                 _refreshOutbox?.Invoke();
+                break;
+            case "DownloadQueueChanged":
+                _refreshDownloads?.Invoke();
                 break;
             case "ConfigChanged":
                 _refreshSettings?.Invoke();
@@ -3272,6 +3276,106 @@ public sealed partial class MainWindow : Window
         // Cloud outbox: the upload/delete queue with a summary band, a Retry-now
         // button, and per-item Cancel. Hidden (empty panel) when nothing is queued.
         // Reloaded after retry/cancel so the panel reflects the new queue state.
+        var downloadsPanel = new StackPanel { Spacing = 4 };
+        async System.Threading.Tasks.Task LoadDownloads()
+        {
+            downloadsPanel.Children.Clear();
+            var json = await System.Threading.Tasks.Task.Run(() => NativeBae.DownloadSnapshotJson(_handle));
+            var snapshot = json is null
+                ? null
+                : JsonSerializer.Deserialize<DownloadSnapshot>(json, JsonOptions);
+            if (snapshot is null)
+            {
+                storageStatus.Text = Loc.Chrome("storage.read_failed");
+                storageStatus.Visibility = Visibility.Visible;
+                return;
+            }
+
+            // Hidden when the pin queue is idle, like the outbox panel.
+            if (snapshot.Downloads.Count == 0)
+            {
+                return;
+            }
+
+            string StateLabel(DownloadOp op) => op.State switch
+            {
+                "active" => Loc.Chrome("download.state.downloading", "percent", op.Percent ?? 0),
+                "failed" => Loc.Chrome("download.state.failed"),
+                _ => Loc.Chrome("download.state.queued"),
+            };
+
+            // Header: a label (or "paused"), Retry (only with failures), and a
+            // pause/resume toggle — mirroring the outbox panel's band.
+            var band = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            band.Children.Add(new TextBlock
+            {
+                Text = snapshot.Paused ? Loc.Chrome("download.paused") : Loc.Chrome("download.title"),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            var retry = new Button
+            {
+                Content = Loc.Chrome("outbox.retry_now"),
+                IsEnabled = snapshot.Total.Failed > 0,
+            };
+            retry.Click += async (_, _) =>
+            {
+                retry.IsEnabled = false;
+                await System.Threading.Tasks.Task.Run(() => NativeBae.RetryDownloads(_handle));
+                await LoadDownloads();
+            };
+            band.Children.Add(retry);
+            var paused = snapshot.Paused;
+            var pause = new Button { Content = paused ? Loc.Chrome("outbox.resume") : Loc.Chrome("outbox.pause") };
+            pause.Click += async (_, _) =>
+            {
+                pause.IsEnabled = false;
+                await System.Threading.Tasks.Task.Run(() => NativeBae.SetDownloadsPaused(_handle, !paused));
+                await LoadDownloads();
+            };
+            band.Children.Add(pause);
+            downloadsPanel.Children.Add(band);
+
+            // One row per release: title, "N files · size · state", and a cancel.
+            foreach (var op in snapshot.Downloads)
+            {
+                var itemGrid = new Grid { ColumnSpacing = 8 };
+                itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var labelColumn = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+                labelColumn.Children.Add(new TextBlock { Text = op.Title, TextWrapping = TextWrapping.Wrap });
+                labelColumn.Children.Add(new TextBlock
+                {
+                    Text = $"{Loc.Chrome("storage.files", "count", op.FileCount)} · {Loc.Bytes(op.TotalSize)} · {StateLabel(op)}",
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                });
+                Grid.SetColumn(labelColumn, 0);
+                itemGrid.Children.Add(labelColumn);
+
+                var releaseId = op.ReleaseId;
+                var cancel = new Button { Content = Loc.Chrome("action.cancel") };
+                cancel.Click += async (_, _) =>
+                {
+                    storageStatus.Visibility = Visibility.Collapsed;
+                    cancel.IsEnabled = false;
+                    var error = await System.Threading.Tasks.Task.Run(
+                        () => NativeBae.CancelReleaseTransition(_handle, releaseId));
+                    if (error is not null)
+                    {
+                        storageStatus.Text = error;
+                        storageStatus.Visibility = Visibility.Visible;
+                        cancel.IsEnabled = true;
+                        return;
+                    }
+
+                    await LoadDownloads();
+                };
+                Grid.SetColumn(cancel, 1);
+                itemGrid.Children.Add(cancel);
+                downloadsPanel.Children.Add(itemGrid);
+            }
+        }
+
         var outboxPanel = new StackPanel { Spacing = 4 };
         async System.Threading.Tasks.Task LoadOutbox()
         {
@@ -3456,10 +3560,12 @@ public sealed partial class MainWindow : Window
             }
         }
 
+        await LoadDownloads();
         await LoadOutbox();
 
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(storageStatus);
+        content.Children.Add(downloadsPanel);
         content.Children.Add(outboxPanel);
         content.Children.Add(listPanel);
 
@@ -3478,6 +3584,13 @@ public sealed partial class MainWindow : Window
             _ = LoadOutbox();
             _ = LoadStorageRows();
         };
+        // Refresh the Downloads pane live as pins progress and the storage rows
+        // with them (a row's badge/state changes as a pin completes).
+        _refreshDownloads = () =>
+        {
+            _ = LoadDownloads();
+            _ = LoadStorageRows();
+        };
         // A library change (ReleaseUpdated → LibraryChanged) that isn't an outbox
         // change still alters a release's storage state — refresh the rows for it too.
         _refreshStorageRows = () => _ = LoadStorageRows();
@@ -3488,6 +3601,7 @@ public sealed partial class MainWindow : Window
         finally
         {
             _refreshOutbox = null;
+            _refreshDownloads = null;
             _refreshStorageRows = null;
         }
     }

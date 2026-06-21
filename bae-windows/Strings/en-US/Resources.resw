@@ -200,4 +200,9 @@
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Sync: not connected</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>ready</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>Sync: {provider}{account} — {state}</value></data>
+  <data name="download.title" xml:space="preserve"><value>downloads</value></data>
+  <data name="download.paused" xml:space="preserve"><value>paused</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>downloading {percent}%</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
 </root>

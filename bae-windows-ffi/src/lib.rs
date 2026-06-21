@@ -1758,20 +1758,40 @@ pub unsafe extern "C" fn bae_outbox_snapshot(handle: *const BaeHandle) -> *mut c
     }
 }
 
-/// One queued download (a release being pinned), as the storage row needs it:
-/// just the release id, so the row context menu can tell a pinning release from
-/// an idle one and offer to cancel it. The download (pin) queue has no Windows
-/// pane, so nothing else is rendered from it yet.
+/// One queued download (a whole release being pinned), as the Downloads pane
+/// renders it: title, file count and size, and the state — "queued", "active"
+/// (with `percent`), or "failed" (with `error`).
 #[derive(Serialize)]
 struct FfiDownloadOp {
     release_id: String,
+    title: String,
+    file_count: i64,
+    total_size: i64,
+    /// "queued", "active", or "failed".
+    state: String,
+    /// Overall release percent — present only while `state` is "active".
+    percent: Option<u8>,
+    /// The failure message when `state` is "failed".
+    error: Option<String>,
 }
 
-/// The in-memory download (pin) queue snapshot: the releases currently queued or
-/// downloading. The storage row reads this to detect a pinning release.
+/// Per-state counts for the download queue, for the pane header's summary and
+/// the retry gate.
+#[derive(Serialize)]
+struct FfiDownloadProgress {
+    queued: u32,
+    active: u32,
+    failed: u32,
+}
+
+/// The in-memory download (pin) queue snapshot the Downloads pane renders, and
+/// which the storage row reads to detect a pinning release.
 #[derive(Serialize)]
 struct FfiDownloadSnapshot {
     downloads: Vec<FfiDownloadOp>,
+    total: FfiDownloadProgress,
+    /// True when the user paused the download queue.
+    paused: bool,
 }
 
 /// The download (pin) queue snapshot as JSON, or null on error. Free with
@@ -1781,6 +1801,7 @@ struct FfiDownloadSnapshot {
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
 #[no_mangle]
 pub unsafe extern "C" fn bae_download_snapshot(handle: *const BaeHandle) -> *mut c_char {
+    use bae_core::library::DownloadState;
     let Some(handle) = handle.as_ref() else {
         tracing::error!("bae_download_snapshot: null handle");
         return std::ptr::null_mut();
@@ -1790,11 +1811,60 @@ pub unsafe extern "C" fn bae_download_snapshot(handle: *const BaeHandle) -> *mut
         downloads: snapshot
             .downloads
             .iter()
-            .map(|op| FfiDownloadOp {
-                release_id: op.release_id.clone(),
+            .map(|op| {
+                let (state, percent, error) = match &op.state {
+                    DownloadState::Queued => ("queued", None, None),
+                    DownloadState::Active { percent } => ("active", Some(*percent), None),
+                    DownloadState::Failed { error } => ("failed", None, Some(error.clone())),
+                };
+                FfiDownloadOp {
+                    release_id: op.release_id.clone(),
+                    title: op.title.clone(),
+                    file_count: op.file_count,
+                    total_size: op.total_size,
+                    state: state.to_string(),
+                    percent,
+                    error,
+                }
             })
             .collect(),
+        total: FfiDownloadProgress {
+            queued: snapshot.total.queued,
+            active: snapshot.total.active,
+            failed: snapshot.total.failed,
+        },
+        paused: snapshot.paused,
     })
+}
+
+/// Pause or resume the download (pin) queue. While paused, the worker waits.
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_set_downloads_paused(handle: *const BaeHandle, paused: bool) {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_set_downloads_paused: null handle");
+        return;
+    };
+    handle
+        .0
+        .services
+        .library_manager()
+        .set_downloads_paused(paused);
+}
+
+/// Retry failed downloads now (clears their failure and re-queues them).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_retry_downloads(handle: *const BaeHandle) {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_retry_downloads: null handle");
+        return;
+    };
+    handle.0.services.library_manager().retry_downloads();
 }
 
 /// Retry the cloud outbox now (clears backoff and triggers a sync). Returns null
@@ -2176,6 +2246,8 @@ enum FfiEvent {
     ScanFinished,
     /// The cloud upload/delete outbox changed; the storage screen re-reads it.
     OutboxChanged,
+    /// The download (pin) queue changed; the Downloads pane re-reads it.
+    DownloadQueueChanged,
     /// Library config changed (cloud provider connected/disconnected, sync
     /// readiness, library rename, Discogs token). The settings screen re-reads
     /// `bae_settings` so its fields reflect the change without a reopen.
@@ -2441,6 +2513,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
         UiBusEvent::ScanCandidateRemoved { key } => FfiEvent::CandidateRemoved { key: key.clone() },
         UiBusEvent::ScanFinished => FfiEvent::ScanFinished,
         UiBusEvent::OutboxChanged { .. } => FfiEvent::OutboxChanged,
+        UiBusEvent::DownloadQueueChanged { .. } => FfiEvent::DownloadQueueChanged,
         UiBusEvent::ConfigChanged { .. } => FfiEvent::ConfigChanged,
         UiBusEvent::CandidateIdentifyStateChanged {
             key,
