@@ -1118,15 +1118,18 @@ pub unsafe extern "C" fn bae_restore_from_code(
     json_cstring(&out)
 }
 
-/// This device's join-request code — its public key — to hand to an existing
-/// member for approval. Returns the code as a C string, or null on error
-/// (logged). The joining device has no library yet, so this needs no handle; it
-/// only requires the keyring initialized ([`bae_startup`]). Free with
-/// [`bae_string_free`].
+/// This device's join-request code and the fingerprint it encodes, to hand to an
+/// existing member for approval. Returns JSON `{code, fingerprint}` as a C
+/// string, or null on error (logged). The joining device has no library yet, so
+/// this needs no handle; it only requires the keyring initialized
+/// ([`bae_startup`]). Free with [`bae_string_free`].
 #[no_mangle]
 pub extern "C" fn bae_generate_join_request() -> *mut c_char {
-    match bae_core::sync::join_code::generate_join_request(None) {
-        Ok(code) => error_cstring(&code),
+    match bae_core::sync::sync_manager::generate_join_request() {
+        Ok(request) => json_cstring(&FfiJoinRequest {
+            code: request.code,
+            fingerprint: request.fingerprint,
+        }),
         Err(e) => {
             tracing::error!("bae_generate_join_request failed: {e}");
             std::ptr::null_mut()
@@ -1134,17 +1137,26 @@ pub extern "C" fn bae_generate_join_request() -> *mut c_char {
     }
 }
 
-/// A decoded join-request code: the joining device's public key and an optional
-/// contact email it included.
+/// This device's join-request code and the fingerprint of the public key it
+/// carries.
+#[derive(Serialize)]
+struct FfiJoinRequest {
+    code: String,
+    fingerprint: String,
+}
+
+/// A decoded join-request code: the joining device's public key, its
+/// fingerprint, and an optional contact email it included.
 #[derive(Serialize)]
 struct FfiJoinRequestInfo {
     pubkey: String,
+    fingerprint: String,
     email: Option<String>,
 }
 
 /// Decode a join-request code to preview the joining device before approving it,
-/// as JSON `{pubkey, email}`, or null when the code is malformed. No handle —
-/// runs on the approving device before any membership change. Free with
+/// as JSON `{pubkey, fingerprint, email}`, or null when the code is malformed. No
+/// handle — runs on the approving device before any membership change. Free with
 /// [`bae_string_free`].
 ///
 /// # Safety
@@ -1155,9 +1167,10 @@ pub unsafe extern "C" fn bae_decode_join_request(code: *const c_char) -> *mut c_
         tracing::error!("bae_decode_join_request: null or non-UTF-8 code");
         return std::ptr::null_mut();
     };
-    match bae_core::sync::join_code::decode_join_request(&code) {
+    match bae_core::sync::sync_manager::decode_join_request(&code) {
         Ok(req) => json_cstring(&FfiJoinRequestInfo {
-            pubkey: req.public_key,
+            pubkey: req.pubkey,
+            fingerprint: req.fingerprint,
             email: req.email,
         }),
         Err(e) => {
@@ -1173,6 +1186,9 @@ struct FfiInviteCodeInfo {
     library_id: String,
     library_name: String,
     owner_pubkey: String,
+    /// Short display identity of the library owner — the first 8 characters of
+    /// the owner pubkey.
+    owner_fingerprint: String,
     provider: String,
     /// Whether joining this library needs an OAuth sign-in (Google Drive,
     /// Dropbox, OneDrive). The joining device runs `bae_oauth_authorize` for the
@@ -1182,9 +1198,9 @@ struct FfiInviteCodeInfo {
 }
 
 /// Decode an invite code into its `{library_id, library_name, owner_pubkey,
-/// provider, needs_oauth}` (without joining), as JSON, or null when the code is
-/// malformed. Free with [`bae_string_free`]. No handle — runs before
-/// [`bae_init`].
+/// owner_fingerprint, provider, needs_oauth}` (without joining), as JSON, or null
+/// when the code is malformed. Free with [`bae_string_free`]. No handle — runs
+/// before [`bae_init`].
 ///
 /// # Safety
 /// `code` must be a valid NUL-terminated UTF-8 C string.
@@ -1194,11 +1210,12 @@ pub unsafe extern "C" fn bae_decode_invite_code(code: *const c_char) -> *mut c_c
         tracing::error!("bae_decode_invite_code: null or non-UTF-8 code");
         return std::ptr::null_mut();
     };
-    match bae_core::sync::join_code::decode_invite_code_info(&code) {
+    match bae_core::sync::sync_manager::decode_invite_code_info(&code) {
         Ok(info) => json_cstring(&FfiInviteCodeInfo {
             library_id: info.library_id,
             library_name: info.library_name,
             owner_pubkey: info.owner_pubkey,
+            owner_fingerprint: info.owner_fingerprint,
             provider: cloud_provider_name(&info.cloud_provider).to_string(),
             needs_oauth: info.needs_oauth,
         }),
@@ -3517,11 +3534,23 @@ struct FfiMember {
     /// is rendered if a future build or another platform writes one.
     role: String,
     is_self: bool,
+    /// Short display identity — the first 8 characters of the pubkey.
+    fingerprint: String,
+    /// Whether the running device may remove this one (owner-only, never self).
+    can_remove: bool,
 }
 
-/// The library's current members (devices) as a JSON array of
-/// `{pubkey, role, is_self}`, or null on error (e.g. sync isn't connected;
-/// logged). Free with [`bae_string_free`].
+/// The library's membership: its devices and whether the running device is an
+/// owner (the gate for inviting and removing).
+#[derive(Serialize)]
+struct FfiMembership {
+    members: Vec<FfiMember>,
+    self_is_owner: bool,
+}
+
+/// The library's membership as JSON `{members: [{pubkey, role, is_self,
+/// fingerprint, can_remove}], self_is_owner}`, or null on error (e.g. sync isn't
+/// connected; logged). Free with [`bae_string_free`].
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
@@ -3532,25 +3561,31 @@ pub unsafe extern "C" fn bae_get_members(handle: *const BaeHandle) -> *mut c_cha
         return std::ptr::null_mut();
     };
     let app = &handle.0;
-    let members = match app
+    let membership = match app
         .runtime
         .block_on(app.services.library_manager().get_members())
     {
-        Ok(members) => members,
+        Ok(membership) => membership,
         Err(e) => {
             tracing::error!("bae_get_members failed: {e}");
             return std::ptr::null_mut();
         }
     };
-    let members: Vec<FfiMember> = members
+    let members = membership
+        .members
         .into_iter()
         .map(|member| FfiMember {
             pubkey: member.pubkey,
             role: member.role.as_str().to_string(),
             is_self: member.is_self,
+            fingerprint: member.fingerprint,
+            can_remove: member.can_remove,
         })
         .collect();
-    json_cstring(&members)
+    json_cstring(&FfiMembership {
+        members,
+        self_is_owner: membership.self_is_owner,
+    })
 }
 
 /// Approve a device into the library by its public key (hex), wrapping the

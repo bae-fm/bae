@@ -122,7 +122,7 @@ struct ApproveDeviceSheet: View {
             VStack(spacing: 4) {
                 Text("Approve this device?")
                     .font(.headline)
-                Text(MemberFormat.fingerprint(info.pubkey))
+                Text(info.fingerprint)
                     .font(.system(.body, design: .monospaced))
                 if let email = info.email {
                     Text(email)

@@ -37,11 +37,9 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OAuthLinker
 import fm.bae.app.R
-import fm.bae.app.pubkeyFingerprint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import uniffi.bae_bridge.decodeJoinRequest
 import uniffi.bae_bridge.generateJoinRequest
 
 private const val TAG = "bae.JoinLibraryScreen"
@@ -71,9 +69,9 @@ fun JoinLibraryScreen(
 
     LaunchedEffect(Unit) {
         try {
-            val code = withContext(Dispatchers.IO) { generateJoinRequest() }
-            requestCode = code
-            fingerprint = pubkeyFingerprint(withContext(Dispatchers.IO) { decodeJoinRequest(code) }.pubkey)
+            val request = withContext(Dispatchers.IO) { generateJoinRequest() }
+            requestCode = request.code
+            fingerprint = request.fingerprint
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

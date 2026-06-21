@@ -69,7 +69,7 @@ struct OnboardingView: View {
     /// key, generated on appear and shown for an existing member to scan or
     /// paste. `nil` while generating; `.failure` if generation fails.
     @State
-    private var joinRequest: Result<GeneratedJoinCode, Error>?
+    private var joinRequest: Result<BridgeJoinRequest, Error>?
     @State
     private var genTask: Task<Void, Never>?
     @State
@@ -300,13 +300,6 @@ struct OnboardingView: View {
 // MARK: - Join flow
 
 extension OnboardingView {
-    /// This device's generated join code plus a short fingerprint of its public
-    /// key, shown so the approving device can confirm it matches.
-    fileprivate struct GeneratedJoinCode {
-        let code: String
-        let fingerprint: String
-    }
-
     fileprivate var joinView: some View {
         NavigationStack {
             List {
@@ -427,7 +420,7 @@ extension OnboardingView {
             )
             LabeledContent(
                 "Owner",
-                value: MemberFormat.fingerprint(info.ownerPubkey)
+                value: info.ownerFingerprint
             )
             #if !BAE_OAUTH_PROVIDERS
             if info.needsOauth {
@@ -464,13 +457,8 @@ extension OnboardingView {
         joinRequest = nil
         do {
             let generated = try await withTaskCancellationHandler {
-                let detached = Task.detached { () throws -> GeneratedJoinCode in
-                    let code = try generateJoinRequest()
-                    let pubkey = try decodeJoinRequest(code: code).pubkey
-                    return GeneratedJoinCode(
-                        code: code,
-                        fingerprint: MemberFormat.fingerprint(pubkey)
-                    )
+                let detached = Task.detached { () throws -> BridgeJoinRequest in
+                    try generateJoinRequest()
                 }
                 return try await detached.value
             } onCancel: {

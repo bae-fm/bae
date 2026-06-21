@@ -90,7 +90,8 @@ use bae_core::library::{CancellationToken, JoinFromCodeError, RestoreFromCodeErr
 use crate::types::bridge_cloud_provider_to_core;
 use crate::types::{
     bridge_cloud_provider, BridgeCloudProvider, BridgeError, BridgeInviteCodeInfo,
-    BridgeJoinRequestInfo, BridgeLibrary, BridgeRestoreCodeInfo, BridgeRestoreSource,
+    BridgeJoinRequest, BridgeJoinRequestInfo, BridgeLibrary, BridgeRestoreCodeInfo,
+    BridgeRestoreSource,
 };
 
 #[cfg(feature = "cloudkit")]
@@ -408,22 +409,28 @@ impl RestoreFromCodeOperation {
 // Membership: joining a library and managing devices
 // =============================================================================
 
-/// Generate this device's join-request code — its public key — to hand to an
-/// existing member for approval. Safe to call before any library exists on this
-/// device (the joining device has no library yet); it only needs the keyring
-/// initialized.
+/// Generate this device's join-request code and the fingerprint it encodes, to
+/// hand to an existing member for approval. Safe to call before any library
+/// exists on this device (the joining device has no library yet); it only needs
+/// the keyring initialized.
 #[uniffi::export]
-pub fn generate_join_request() -> Result<String, BridgeError> {
-    bae_core::sync::join_code::generate_join_request(None)
-        .map_err(|e| BridgeError::config(format!("Failed to generate join request: {e}")))
+pub fn generate_join_request() -> Result<BridgeJoinRequest, BridgeError> {
+    let request = bae_core::sync::sync_manager::generate_join_request()
+        .map_err(|e| BridgeError::config(format!("Failed to generate join request: {e}")))?;
+    Ok(BridgeJoinRequest {
+        code: request.code,
+        fingerprint: request.fingerprint,
+    })
 }
 
 /// Decode a join-request code to preview the joining device before approving it.
 #[uniffi::export]
 pub fn decode_join_request(code: String) -> Result<BridgeJoinRequestInfo, BridgeError> {
-    let req = bae_core::sync::join_code::decode_join_request(&code).map_err(BridgeError::config)?;
+    let req =
+        bae_core::sync::sync_manager::decode_join_request(&code).map_err(BridgeError::config)?;
     Ok(BridgeJoinRequestInfo {
-        pubkey: req.public_key,
+        pubkey: req.pubkey,
+        fingerprint: req.fingerprint,
         email: req.email,
     })
 }
@@ -431,12 +438,13 @@ pub fn decode_join_request(code: String) -> Result<BridgeJoinRequestInfo, Bridge
 /// Decode an invite code string and return info for UI preview (before joining).
 #[uniffi::export]
 pub fn decode_invite_code(code: String) -> Result<BridgeInviteCodeInfo, BridgeError> {
-    let info =
-        bae_core::sync::join_code::decode_invite_code_info(&code).map_err(BridgeError::config)?;
+    let info = bae_core::sync::sync_manager::decode_invite_code_info(&code)
+        .map_err(BridgeError::config)?;
     Ok(BridgeInviteCodeInfo {
         library_id: info.library_id,
         library_name: info.library_name,
         owner_pubkey: info.owner_pubkey,
+        owner_fingerprint: info.owner_fingerprint,
         cloud_provider: bridge_cloud_provider(&info.cloud_provider),
         needs_oauth: info.needs_oauth,
     })

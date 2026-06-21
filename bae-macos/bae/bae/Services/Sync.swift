@@ -19,9 +19,10 @@ final class Sync: Sendable, Observable {
     let saveSyncConfig:
         @Sendable (_ configData: BridgeSaveSyncConfig) async throws -> Void
     let generateRestoreCode: @Sendable () throws -> String
-    /// The library's devices, with this device flagged. Reads the membership
-    /// chain from cloud storage, so it runs off the main thread.
-    let getMembers: @Sendable () async throws -> [BridgeMember]
+    /// The library's membership: its devices (with this device flagged) and
+    /// whether the running device is an owner. Reads the membership chain from
+    /// cloud storage, so it runs off the main thread.
+    let getMembers: @Sendable () async throws -> BridgeMembership
     /// Approve a joining device by its public key (from its join-request code),
     /// returning the invite code to hand back to that device.
     let inviteMember: @Sendable (_ publicKeyHex: String) async throws -> String
@@ -73,7 +74,7 @@ final class Sync: Sendable, Observable {
                 _ in
             },
         generateRestoreCode: @escaping @Sendable () throws -> String = { "" },
-        getMembers: @escaping @Sendable () async throws -> [BridgeMember] = {
+        getMembers: @escaping @Sendable () async throws -> BridgeMembership = {
             throw StubError.notImplemented
         },
         inviteMember: @escaping @Sendable (String) async throws -> String = {

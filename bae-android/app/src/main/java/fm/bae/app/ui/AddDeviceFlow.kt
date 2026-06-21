@@ -44,7 +44,6 @@ import androidx.core.content.ContextCompat
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.pubkeyFingerprint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -58,7 +57,7 @@ private val logger = BaeLogger(TAG)
 private class AddDeviceActions(
     val onScan: () -> Unit,
     val onPaste: () -> Unit,
-    val onConfirm: (String) -> Unit,
+    val onConfirm: (AddDeviceStep.Confirm) -> Unit,
     val onDismiss: () -> Unit,
 )
 
@@ -111,22 +110,22 @@ private class AddDeviceModel(
         error = null
         try {
             val request = decodeJoinRequest(code)
-            step = AddDeviceStep.Confirm(request.pubkey, pubkeyFingerprint(request.pubkey))
+            step = AddDeviceStep.Confirm(request.pubkey, request.fingerprint)
         } catch (e: Exception) {
             logger.error("Failed to decode join request", e)
             error = e.message ?: appContext.getString(R.string.members_add_decode_failed)
         }
     }
 
-    suspend fun approve(pubkey: String) {
+    suspend fun approve(device: AddDeviceStep.Confirm) {
         step = AddDeviceStep.Inviting
         val inviteCode =
             try {
-                withContext(Dispatchers.IO) { session.appHandle.inviteMember(pubkey) }
+                withContext(Dispatchers.IO) { session.appHandle.inviteMember(device.pubkey) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                logger.error("Failed to invite member ${pubkeyFingerprint(pubkey)}", e)
+                logger.error("Failed to invite member ${device.fingerprint}", e)
                 error = e.message ?: appContext.getString(R.string.members_invite_failed)
                 step = AddDeviceStep.Capture
                 return
@@ -188,7 +187,7 @@ fun AddDeviceSheet(
                     pasteInput = ""
                     showPasteDialog = true
                 },
-                onConfirm = { pubkey -> scope.launch { model.approve(pubkey) } },
+                onConfirm = { device -> scope.launch { model.approve(device) } },
                 onDismiss = onDismiss,
             ),
     )
@@ -346,7 +345,7 @@ private fun AddDeviceConfirmButton(
         }
 
         is AddDeviceStep.Confirm -> {
-            TextButton(onClick = { actions.onConfirm(step.pubkey) }) {
+            TextButton(onClick = { actions.onConfirm(step) }) {
                 Text(stringResource(R.string.members_add_approve))
             }
         }

@@ -857,7 +857,7 @@ public sealed partial class MainWindow : Window
             {
                 ["name"] = info.LibraryName,
                 ["provider"] = ProviderDisplayName(info.Provider),
-                ["fingerprint"] = MemberFormat.Fingerprint(info.OwnerPubkey),
+                ["fingerprint"] = info.OwnerFingerprint,
             });
             invitePreview.Visibility = Visibility.Visible;
             Revalidate();
@@ -944,14 +944,17 @@ public sealed partial class MainWindow : Window
         await dialog.ShowAsync();
     }
 
-    // Fill the join screen's device-code section: generate the join-request code,
-    // decode it for the fingerprint, and render the code display. Runs the
-    // blocking FFI off the UI thread.
+    // Fill the join screen's device-code section: generate the join-request code
+    // and its fingerprint, then render the code display. Runs the blocking FFI off
+    // the UI thread.
     private async System.Threading.Tasks.Task GenerateJoinCode(StackPanel host)
     {
-        var code = await System.Threading.Tasks.Task.Run(() => NativeBae.GenerateJoinRequest());
+        var requestJson = await System.Threading.Tasks.Task.Run(() => NativeBae.GenerateJoinRequest());
+        var request = requestJson is null
+            ? null
+            : JsonSerializer.Deserialize<JoinRequest>(requestJson, JsonOptions);
         host.Children.Clear();
-        if (code is null)
+        if (request is null)
         {
             host.Children.Add(new TextBlock
             {
@@ -962,24 +965,16 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        host.Children.Add(BuildCodeDisplay(code));
+        host.Children.Add(BuildCodeDisplay(request.Code));
 
-        // The fingerprint is the first eight hex of this device's public key,
-        // which the join-request code carries — decode it to show the same short
-        // form the approving device sees.
-        var infoJson = NativeBae.DecodeJoinRequest(code);
-        var info = infoJson is null
-            ? null
-            : JsonSerializer.Deserialize<JoinRequestInfo>(infoJson, JsonOptions);
-        if (info is not null)
+        // The same short form the approving device sees, so the user can confirm
+        // they're pairing the right device.
+        host.Children.Add(new TextBlock
         {
-            host.Children.Add(new TextBlock
-            {
-                Text = Loc.Chrome("join.fingerprint", "fingerprint", MemberFormat.Fingerprint(info.Pubkey)),
-                FontFamily = new FontFamily("Consolas"),
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-            });
-        }
+            Text = Loc.Chrome("join.fingerprint", "fingerprint", request.Fingerprint),
+            FontFamily = new FontFamily("Consolas"),
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        });
     }
 
     // Owner-side approve flow: a single dialog whose body swaps between steps —
@@ -1070,7 +1065,7 @@ public sealed partial class MainWindow : Window
             });
             body.Children.Add(new TextBlock
             {
-                Text = MemberFormat.Fingerprint(info.Pubkey),
+                Text = info.Fingerprint,
                 FontFamily = new FontFamily("Consolas"),
             });
             if (!string.IsNullOrEmpty(info.Email))
@@ -4777,10 +4772,10 @@ public sealed partial class MainWindow : Window
         var json = await System.Threading.Tasks.Task.Run(() => NativeBae.GetMembersJson(_handle));
         host.Children.Clear();
 
-        var members = json is null
+        var membership = json is null
             ? null
-            : JsonSerializer.Deserialize<List<Member>>(json, JsonOptions);
-        if (members is null)
+            : JsonSerializer.Deserialize<Membership>(json, JsonOptions);
+        if (membership is null)
         {
             host.Children.Add(new TextBlock
             {
@@ -4791,15 +4786,12 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        // This device may manage membership only if it is itself an owner.
-        var selfIsOwner = members.Any(member => member.IsSelf && member.Role == "owner");
-
-        foreach (var member in members)
+        foreach (var member in membership.Members)
         {
-            host.Children.Add(BuildMemberRow(member, selfIsOwner, host, onAddDevice));
+            host.Children.Add(BuildMemberRow(member, host, onAddDevice));
         }
 
-        if (selfIsOwner)
+        if (membership.SelfIsOwner)
         {
             var add = new Button { Content = Loc.Chrome("members.add") };
             add.Click += (_, _) => onAddDevice();
@@ -4811,14 +4803,14 @@ public sealed partial class MainWindow : Window
     // two-step Remove for the owner on every other device. Removing rotates the
     // library key, so it confirms inline (a second click) — a nested ContentDialog
     // can't open over the settings dialog.
-    private FrameworkElement BuildMemberRow(Member member, bool selfIsOwner, StackPanel host, Action onAddDevice)
+    private FrameworkElement BuildMemberRow(Member member, StackPanel host, Action onAddDevice)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
 
         var labels = new StackPanel { Spacing = 0 };
         labels.Children.Add(new TextBlock
         {
-            Text = MemberFormat.Fingerprint(member.Pubkey),
+            Text = member.Fingerprint,
             FontFamily = new FontFamily("Consolas"),
         });
         if (member.IsSelf)
@@ -4839,7 +4831,7 @@ public sealed partial class MainWindow : Window
         });
 
         // The owner can remove any device but its own.
-        if (selfIsOwner && !member.IsSelf)
+        if (member.CanRemove)
         {
             var remove = new Button { Content = Loc.Chrome("members.remove") };
             var status = new TextBlock

@@ -237,10 +237,10 @@ internal static class NativeBae
     private static extern IntPtr GenerateJoinRequestPtr();
 
     /// <summary>
-    /// This device's join-request code — its public key — to hand to an existing
-    /// member for approval, or null on error. The joining device has no library
-    /// yet, so this needs no handle; it only requires <see cref="Startup"/>.
-    /// Copies and frees.
+    /// This device's join-request code and the fingerprint it encodes, as JSON
+    /// (<c>{code, fingerprint}</c>), to hand to an existing member for approval,
+    /// or null on error. The joining device has no library yet, so this needs no
+    /// handle; it only requires <see cref="Startup"/>. Copies and frees.
     /// </summary>
     internal static string? GenerateJoinRequest() => CopyAndFree(GenerateJoinRequestPtr());
 
@@ -248,8 +248,8 @@ internal static class NativeBae
     private static extern IntPtr DecodeJoinRequestPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string code);
 
     /// <summary>
-    /// Decode a join-request code to its info JSON (<c>{pubkey, email}</c>), or
-    /// null if malformed. Copies and frees.
+    /// Decode a join-request code to its info JSON (<c>{pubkey, fingerprint,
+    /// email}</c>), or null if malformed. Copies and frees.
     /// </summary>
     internal static string? DecodeJoinRequest(string code) => CopyAndFree(DecodeJoinRequestPtr(code));
 
@@ -258,8 +258,8 @@ internal static class NativeBae
 
     /// <summary>
     /// Decode an invite code to its info JSON (<c>{library_id, library_name,
-    /// owner_pubkey, provider, needs_oauth}</c>), or null if malformed. Copies and
-    /// frees.
+    /// owner_pubkey, owner_fingerprint, provider, needs_oauth}</c>), or null if
+    /// malformed. Copies and frees.
     /// </summary>
     internal static string? DecodeInviteCode(string code) => CopyAndFree(DecodeInviteCodePtr(code));
 
@@ -667,9 +667,9 @@ internal static class NativeBae
     private static extern IntPtr GetMembersPtr(IntPtr handle);
 
     /// <summary>
-    /// The library's members (devices) as a JSON array of <c>{pubkey, role,
-    /// is_self}</c>, or null on error. Blocks on a cloud read — call off the UI
-    /// thread. Copies and frees.
+    /// The library's membership as JSON <c>{members: [{pubkey, role, is_self,
+    /// fingerprint, can_remove}], self_is_owner}</c>, or null on error. Blocks on
+    /// a cloud read — call off the UI thread. Copies and frees.
     /// </summary>
     internal static string? GetMembersJson(IntPtr handle) => CopyAndFree(GetMembersPtr(handle));
 

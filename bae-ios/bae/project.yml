@@ -75,10 +75,6 @@ targets:
       - path: ../../bae-macos/bae/bae/Services/Store/SearchResults.swift
       - path: ../../bae-macos/bae/bae/Views/UnlockView.swift
       - path: ../../bae-macos/bae/bae/Views/PlayPauseControl.swift
-      # Platform-agnostic public-key display helper shared with the membership
-      # UI (onboarding join flow + Members settings). One copy serves both
-      # platforms.
-      - path: ../../bae-macos/bae/bae/Views/MemberFormat.swift
     preBuildScripts:
       - name: Build Rust Bridge
         basedOnDependencyAnalysis: false
