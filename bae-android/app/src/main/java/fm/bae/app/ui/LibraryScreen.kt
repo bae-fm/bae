@@ -207,14 +207,24 @@ fun LibraryScreen(
 ) {
     var selectedAlbumId by remember { mutableStateOf<String?>(null) }
     var showSettings by remember { mutableStateOf(false) }
+    var showMembers by remember { mutableStateOf(false) }
     val selected = selectedAlbumId
     when {
         selected != null -> {
             AlbumDetailScreen(session = session, albumId = selected, onBack = { selectedAlbumId = null })
         }
 
+        showMembers -> {
+            MembersScreen(session = session, onBack = { showMembers = false })
+        }
+
         showSettings -> {
-            SettingsScreen(session = session, onBack = { showSettings = false }, onLeaveLibrary = onLeaveLibrary)
+            SettingsScreen(
+                session = session,
+                onBack = { showSettings = false },
+                onManageDevices = { showMembers = true },
+                onLeaveLibrary = onLeaveLibrary,
+            )
         }
 
         else -> {
