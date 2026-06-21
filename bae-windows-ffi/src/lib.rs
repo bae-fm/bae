@@ -1758,6 +1758,45 @@ pub unsafe extern "C" fn bae_outbox_snapshot(handle: *const BaeHandle) -> *mut c
     }
 }
 
+/// One queued download (a release being pinned), as the storage row needs it:
+/// just the release id, so the row context menu can tell a pinning release from
+/// an idle one and offer to cancel it. The download (pin) queue has no Windows
+/// pane, so nothing else is rendered from it yet.
+#[derive(Serialize)]
+struct FfiDownloadOp {
+    release_id: String,
+}
+
+/// The in-memory download (pin) queue snapshot: the releases currently queued or
+/// downloading. The storage row reads this to detect a pinning release.
+#[derive(Serialize)]
+struct FfiDownloadSnapshot {
+    downloads: Vec<FfiDownloadOp>,
+}
+
+/// The download (pin) queue snapshot as JSON, or null on error. Free with
+/// [`bae_string_free`].
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_download_snapshot(handle: *const BaeHandle) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_download_snapshot: null handle");
+        return std::ptr::null_mut();
+    };
+    let snapshot = handle.0.services.library_manager().download_snapshot();
+    json_cstring(&FfiDownloadSnapshot {
+        downloads: snapshot
+            .downloads
+            .iter()
+            .map(|op| FfiDownloadOp {
+                release_id: op.release_id.clone(),
+            })
+            .collect(),
+    })
+}
+
 /// Retry the cloud outbox now (clears backoff and triggers a sync). Returns null
 /// on success, or an error-message C string (free with [`bae_string_free`]).
 ///

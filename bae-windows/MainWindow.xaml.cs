@@ -54,6 +54,14 @@ public sealed partial class MainWindow : Window
 
     private IntPtr _handle;
 
+    // Releases whose unmanage is running right now. Unmanage is a blocking
+    // foreground transfer (unlike pin, which enqueues, or upload, which lives in
+    // the outbox), so it has no queue snapshot to read — we track it here while
+    // RunStorageActionForReleases awaits, letting the storage row offer to cancel
+    // it. UI-thread only (added/removed around the await, read when building the
+    // menu).
+    private readonly HashSet<string> _unmanagingReleases = new();
+
     // Held for the subscription's lifetime so the GC doesn't collect the delegate
     // while native code holds a pointer to it.
     private NativeBae.EventCallback? _eventCallback;
@@ -3550,6 +3558,39 @@ public sealed partial class MainWindow : Window
     {
         var menu = new MenuFlyout();
 
+        // A release with a transition in flight offers only "Cancel" — the
+        // storage actions (pin/unmanage/…) would race it. Each transition
+        // surfaces differently: an upload sits in the outbox snapshot, a pin in
+        // the download queue snapshot, and an unmanage (a blocking foreground
+        // transfer with no queue) is tracked locally while it runs. Core
+        // dispatches to whichever is running.
+        var transitioning = new HashSet<string>(
+            await UploadingReleases(releaseIds, storageStatus));
+        transitioning.UnionWith(await DownloadingReleases(releaseIds));
+        transitioning.UnionWith(releaseIds.Where(_unmanagingReleases.Contains));
+        if (transitioning.Count > 0)
+        {
+            var cancel = new MenuFlyoutItem { Text = Loc.Chrome("action.cancel") };
+            cancel.Click += async (_, _) =>
+            {
+                foreach (var releaseId in transitioning)
+                {
+                    var error = await System.Threading.Tasks.Task.Run(
+                        () => NativeBae.CancelReleaseTransition(_handle, releaseId));
+                    if (error is not null)
+                    {
+                        storageStatus.Text = error;
+                        storageStatus.Visibility = Visibility.Visible;
+                        return;
+                    }
+                }
+
+                await reload();
+            };
+            menu.Items.Add(cancel);
+            return menu;
+        }
+
         foreach (var action in IntersectedStorageActions(releaseIds, rowsById))
         {
             var act = action;
@@ -3568,32 +3609,6 @@ public sealed partial class MainWindow : Window
                 }
             };
             menu.Items.Add(item);
-        }
-
-        // Stop uploading any targeted release that's mid-transfer, keeping it
-        // local-only. Resolved from the live outbox snapshot since the storage
-        // row carries only a pending count.
-        var uploadingReleases = await UploadingReleases(releaseIds, storageStatus);
-        if (uploadingReleases.Count > 0)
-        {
-            var cancel = new MenuFlyoutItem { Text = Loc.Chrome("storage.cancel_upload") };
-            cancel.Click += async (_, _) =>
-            {
-                foreach (var releaseId in uploadingReleases)
-                {
-                    var error = await System.Threading.Tasks.Task.Run(
-                        () => NativeBae.CancelReleaseTransition(_handle, releaseId));
-                    if (error is not null)
-                    {
-                        storageStatus.Text = error;
-                        storageStatus.Visibility = Visibility.Visible;
-                        return;
-                    }
-                }
-
-                await reload();
-            };
-            menu.Items.Add(cancel);
         }
 
         return menu;
@@ -3622,6 +3637,29 @@ public sealed partial class MainWindow : Window
         return releaseIds.Where(snapshot.PerRelease.ContainsKey).ToList();
     }
 
+    // Of the given releases, those queued or downloading in the pin queue.
+    private async System.Threading.Tasks.Task<List<string>> DownloadingReleases(
+        List<string> releaseIds)
+    {
+        var json = await System.Threading.Tasks.Task.Run(
+            () => NativeBae.DownloadSnapshotJson(_handle));
+        var snapshot = json is null
+            ? null
+            : JsonSerializer.Deserialize<DownloadSnapshot>(json, JsonOptions);
+        if (snapshot is null)
+        {
+            // The pin queue is in-memory and read is infallible bar a dropped
+            // handle, so this is an app-state fault, not a user-facing read
+            // error — log it and offer no pin-cancel rather than a toast.
+            BaeDiagnostics.Logger.Warning(
+                "couldn't read the download snapshot; pin-cancel unavailable");
+            return new List<string>();
+        }
+
+        var pinning = snapshot.Downloads.Select(op => op.ReleaseId).ToHashSet();
+        return releaseIds.Where(pinning.Contains).ToList();
+    }
+
     // Run a storage transition on every release in the selection off the UI
     // thread. "unmanage" asks once for a destination folder, then moves each
     // release into it. Returns null on success (or a cancelled picker), else the
@@ -3642,19 +3680,35 @@ public sealed partial class MainWindow : Window
             }
 
             var path = folder.Path;
-            return await System.Threading.Tasks.Task.Run(() =>
+            // Mark these releases as unmanaging so a right-click can cancel them
+            // while the blocking transfer runs; cleared when it returns.
+            foreach (var releaseId in releaseIds)
+            {
+                _unmanagingReleases.Add(releaseId);
+            }
+            try
+            {
+                return await System.Threading.Tasks.Task.Run(() =>
+                {
+                    foreach (var releaseId in releaseIds)
+                    {
+                        var error = NativeBae.UnmanageRelease(_handle, releaseId, path);
+                        if (error is not null)
+                        {
+                            return error;
+                        }
+                    }
+
+                    return (string?)null;
+                });
+            }
+            finally
             {
                 foreach (var releaseId in releaseIds)
                 {
-                    var error = NativeBae.UnmanageRelease(_handle, releaseId, path);
-                    if (error is not null)
-                    {
-                        return error;
-                    }
+                    _unmanagingReleases.Remove(releaseId);
                 }
-
-                return (string?)null;
-            });
+            }
         }
 
         return await System.Threading.Tasks.Task.Run(() =>
