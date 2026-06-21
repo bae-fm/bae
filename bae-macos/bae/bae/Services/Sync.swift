@@ -34,9 +34,9 @@ final class Sync: Sendable, Observable {
         @Sendable (_ libraryId: String, _ newName: String) throws -> Void
     /// Cancel one queued outbox entry by id (dequeues it; the local file stays).
     let cancelOutboxItem: @Sendable (_ id: Int64) throws -> Void
-    /// Stop uploading a release and keep it local-only: drops its queued and
-    /// in-flight uploads and deletes any blobs already uploaded this attempt.
-    let cancelReleaseUpload: @Sendable (_ releaseId: String) throws -> Void
+    /// Cancel whatever transition a release is mid-flight — pin, upload, or
+    /// unmanage — leaving it in its prior state. A no-op if nothing's running.
+    let cancelReleaseTransition: @Sendable (_ releaseId: String) throws -> Void
     /// Pause or resume the cloud-upload pipeline. In-flight uploads finish; the
     /// queue stops draining until resumed.
     let setSyncPaused: @Sendable (_ paused: Bool) -> Void
@@ -75,7 +75,7 @@ final class Sync: Sendable, Observable {
             throw StubError.notImplemented
         },
         cancelOutboxItem: @escaping @Sendable (Int64) throws -> Void = { _ in },
-        cancelReleaseUpload: @escaping @Sendable (String) throws -> Void = {
+        cancelReleaseTransition: @escaping @Sendable (String) throws -> Void = {
             _ in
         },
         setSyncPaused: @escaping @Sendable (Bool) -> Void = { _ in },
@@ -94,7 +94,7 @@ final class Sync: Sendable, Observable {
         self.triggerSync = triggerSync
         self.renameLibrary = renameLibrary
         self.cancelOutboxItem = cancelOutboxItem
-        self.cancelReleaseUpload = cancelReleaseUpload
+        self.cancelReleaseTransition = cancelReleaseTransition
         self.setSyncPaused = setSyncPaused
         self.lockActiveLibrary = lockActiveLibrary
     }
@@ -134,8 +134,8 @@ final class Sync: Sendable, Observable {
                 try handle.renameLibrary(libraryId: $0, name: $1)
             },
             cancelOutboxItem: { try handle.cancelOutboxItem(id: $0) },
-            cancelReleaseUpload: {
-                try handle.cancelReleaseUpload(releaseId: $0)
+            cancelReleaseTransition: {
+                try handle.cancelReleaseTransition(releaseId: $0)
             },
             setSyncPaused: { handle.setSyncPaused(paused: $0) },
             triggerSync: { handle.triggerSync() },
