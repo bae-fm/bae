@@ -156,6 +156,10 @@ pub fn map_file_tags_to_db(
         managed: false,
         source_folder_name: None,
         content_hash: None,
+        // Album loudness is measured in `build_audio_formats` and written to the
+        // release row in the finalize transaction, not here.
+        album_loudness_lufs: None,
+        album_peak_linear: None,
         created_at: now,
     };
 

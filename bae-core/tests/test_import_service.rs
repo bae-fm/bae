@@ -553,6 +553,222 @@ async fn import_produces_audio_format_records() {
     );
 }
 
+/// Interleaved-stereo 1 kHz sine at `amplitude` (fraction of full scale).
+///
+/// When `spikes` is set, a single full-scale sample is injected every 0.1 s.
+/// These raise the measured true peak to ~1.0 without moving the integrated
+/// loudness (they're far too sparse to form a gating block), which is exactly
+/// the high-crest-factor signal needed to make the playback peak clamp engage:
+/// a quiet track that nonetheless can't be boosted past full scale. A pure sine
+/// can never demonstrate the clamp, because its peak and RMS scale together.
+///
+/// Samples are scaled to the 16-bit range because the FLAC encoder writes S16.
+/// A small deterministic dither keeps the stream from compressing below the
+/// import's FLAC truncation check (file must be >= 10% of raw PCM); the dither
+/// sits ~60 dB down, moving neither the loudness nor the peak.
+fn sine(amplitude: f64, sample_rate: u32, secs: f64, spikes: bool) -> Vec<i32> {
+    use std::f64::consts::PI;
+    let n = (sample_rate as f64 * secs) as usize;
+    let spike_period = (sample_rate as f64 * 0.1) as usize;
+    let full_scale = i16::MAX as i32;
+    let mut rng: u32 = 0x1234_5678;
+    let mut dither = || {
+        rng = rng.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        ((rng >> 16) as i32 & 0x3F) - 32
+    };
+    let mut out = Vec::with_capacity(n * 2);
+    for i in 0..n {
+        let s = if spikes && i % spike_period == 0 {
+            full_scale
+        } else {
+            let t = i as f64 / sample_rate as f64;
+            ((2.0 * PI * 1000.0 * t).sin() * amplitude * i16::MAX as f64) as i32 + dither()
+        };
+        out.push(s);
+        out.push(s);
+    }
+    out
+}
+
+/// Write a synthetic 16-bit stereo FLAC of `samples` to `path`.
+fn write_flac(path: &Path, samples: &[i32], sample_rate: u32) {
+    let bytes = bae_core::audio_codec::encode_to_flac(
+        samples,
+        sample_rate,
+        2,
+        16,
+        &std::sync::atomic::AtomicBool::new(false),
+    )
+    .expect("encode synthetic FLAC");
+    fs::write(path, bytes).unwrap();
+}
+
+/// Loudness normalization, end to end: import two tracks of deliberately
+/// different loudness, confirm the stored per-track measurements differ, and
+/// confirm the gain each track derives at playback reflects its own loudness
+/// (the quieter track is boosted more) with the peak clamp engaging on a quiet
+/// track that nonetheless peaks near full scale.
+///
+/// This is the load-bearing test for the feature: it exercises the real import
+/// measurement path (`ImportService` → `measure_loudness`) and the real playback
+/// derivation (`ResolvedTrackAudio::replay_gain_linear`), not reconstructions.
+#[tokio::test]
+#[serial]
+async fn loudness_measured_at_import_drives_playback_gain() {
+    use bae_core::config::ReplayGainMode;
+
+    support::tracing_init();
+
+    let release = discogs_release("Loudness Album", &["Quiet Track", "Loud Track"]);
+    let release_id_key = seed_discogs_test_release(release);
+    let f = ImportFixture::new().await;
+
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    let sr = 44_100;
+    // Quiet track: a low-amplitude sine (so it wants a boost toward the target)
+    // with sparse full-scale spikes that push its true peak to ~1.0 — the
+    // crest factor that makes the playback clamp engage. Loud track: a steady
+    // half-scale sine, clearly louder and pulled down toward the target.
+    write_flac(
+        &album_dir.join("01 Quiet Track.flac"),
+        &sine(0.03, sr, 4.0, true),
+        sr,
+    );
+    write_flac(
+        &album_dir.join("02 Loud Track.flac"),
+        &sine(0.5, sr, 4.0, false),
+        sr,
+    );
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    f.handle
+        .send_command(ImportCommand::Folder {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Unmanaged,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            },
+            user_edit: None,
+        })
+        .unwrap();
+
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+
+    // ── Stored measurements differ and reflect the two tracks' loudness ──
+    let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
+    assert_eq!(tracks.len(), 2);
+    let quiet = tracks.iter().find(|t| t.title == "Quiet Track").unwrap();
+    let loud = tracks.iter().find(|t| t.title == "Loud Track").unwrap();
+
+    let quiet_fmt =
+        f.db.find_audio_format_by_track_id(&quiet.id)
+            .await
+            .unwrap()
+            .unwrap();
+    let loud_fmt =
+        f.db.find_audio_format_by_track_id(&loud.id)
+            .await
+            .unwrap()
+            .unwrap();
+
+    let quiet_lufs = quiet_fmt
+        .track_loudness_lufs
+        .expect("quiet track measured a loudness");
+    let loud_lufs = loud_fmt
+        .track_loudness_lufs
+        .expect("loud track measured a loudness");
+    assert!(
+        loud_lufs > quiet_lufs + 10.0,
+        "loud track ({loud_lufs} LUFS) should be clearly louder than quiet ({quiet_lufs} LUFS)"
+    );
+    // The quiet track's late full-scale burst pushes its peak near 1.0; the
+    // steady half-scale loud track peaks near 0.5.
+    let quiet_peak = quiet_fmt
+        .track_peak_linear
+        .expect("quiet track measured a peak");
+    let loud_peak = loud_fmt
+        .track_peak_linear
+        .expect("loud track measured a peak");
+    assert!(
+        quiet_peak > 0.9,
+        "quiet track's burst should peak near full scale: {quiet_peak}"
+    );
+    assert!(
+        loud_peak < 0.7,
+        "loud track's steady sine should peak near 0.5: {loud_peak}"
+    );
+
+    // Album loudness was written to the release row from the combined meters.
+    // EBU R128 album loudness is the gated integration over both tracks, so the
+    // louder track dominates: the album sits in [quiet, loud] and lands near the
+    // loud track, never below the quiet one.
+    let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
+    let album_lufs = release
+        .album_loudness_lufs
+        .expect("album loudness measured");
+    assert!(
+        album_lufs.is_finite() && album_lufs >= quiet_lufs && album_lufs <= loud_lufs + 0.01,
+        "album loudness {album_lufs} should fall within [{quiet_lufs}, {loud_lufs}]"
+    );
+    let album_peak = release.album_peak_linear.expect("album peak measured");
+    assert!(
+        (album_peak - quiet_peak).abs() < 1e-6,
+        "album peak {album_peak} should be the max of the tracks' peaks ({quiet_peak})"
+    );
+
+    // ── Playback gain reflects each track's own loudness (mode = Track) ──
+    let quiet_audio = f
+        .handle
+        .library_manager
+        .resolve_track_audio(&quiet.id)
+        .await
+        .unwrap();
+    let loud_audio = f
+        .handle
+        .library_manager
+        .resolve_track_audio(&loud.id)
+        .await
+        .unwrap();
+
+    let quiet_gain = quiet_audio.replay_gain_linear(ReplayGainMode::Track);
+    let loud_gain = loud_audio.replay_gain_linear(ReplayGainMode::Track);
+
+    // Off is always unity, regardless of measurements.
+    assert_eq!(quiet_audio.replay_gain_linear(ReplayGainMode::Off), 1.0);
+
+    // The quieter track wants more boost; the louder track is attenuated toward
+    // the target. So the quiet track's gain exceeds the loud track's.
+    assert!(
+        quiet_gain > loud_gain,
+        "quiet track gain {quiet_gain} should exceed loud track gain {loud_gain}"
+    );
+    // The loud track at ~-9 LUFS is pulled DOWN toward -18 (gain < 1, no clamp).
+    assert!(
+        loud_gain < 1.0,
+        "loud track should be attenuated toward the target: {loud_gain}"
+    );
+
+    // ── Peak clamp engages for the quiet, near-full-scale track ──
+    // Unclamped, the quiet track's gain would be 10^((-18 - L)/20), a large
+    // boost. With a peak ~1.0 the clamp caps it at ~1/peak ≈ 1.0, so the applied
+    // gain must equal the clamp, NOT the (much larger) loudness-only gain.
+    let unclamped = 10f64.powf((-18.0 - quiet_lufs) / 20.0) as f32;
+    let clamp = (1.0 / quiet_peak) as f32;
+    assert!(
+        unclamped > clamp + 0.5,
+        "test setup: quiet track's unclamped gain {unclamped} must exceed its clamp {clamp} so the clamp is observable"
+    );
+    assert!(
+        (quiet_gain - clamp).abs() < 0.05,
+        "quiet track's applied gain {quiet_gain} should be the peak clamp {clamp}, not the unclamped {unclamped}"
+    );
+}
+
 /// 5. Two sequential imports both succeed and produce separate albums.
 #[tokio::test]
 #[serial]

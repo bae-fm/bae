@@ -127,9 +127,13 @@ impl AudioOutput for CpalAudioOutput {
                         return;
                     }
 
-                    // Apply volume in-place, zero any unfilled tail
+                    // Apply volume + this track's replay gain in-place as one
+                    // combined factor; zero any unfilled tail. Mute (`vol == 0`)
+                    // still zeroes the output. The peak cap was already applied
+                    // when the gain was derived, so no clamp is needed here.
+                    let combined = source_guard.current_replay_gain_linear() * vol;
                     for sample in &mut data[..read] {
-                        *sample *= vol;
+                        *sample *= combined;
                     }
                     data[read..].fill(0.0);
 

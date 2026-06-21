@@ -75,6 +75,8 @@ fn create_test_release(album_id: &str) -> DbRelease {
         managed: true,
         source_folder_name: None,
         content_hash: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
         created_at: Utc::now(),
     }
 }

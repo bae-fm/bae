@@ -108,6 +108,8 @@ async fn create_pinned_release(mgr: &LibraryManager, filenames: &[&str]) -> Stri
         managed: false,
         source_folder_name: None,
         content_hash: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
         created_at: now,
     };
     let release_id = release.id.clone();
@@ -317,6 +319,8 @@ async fn create_unmanaged_release(
         managed: true,
         source_folder_name: None,
         content_hash: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
         created_at: now,
     };
     let release_id = release.id.clone();
@@ -618,6 +622,8 @@ async fn create_cloud_only_release(
         managed: true,
         source_folder_name: None,
         content_hash: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
         created_at: now,
     };
     let release_id = release.id.clone();

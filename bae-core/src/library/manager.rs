@@ -707,6 +707,13 @@ pub struct ResolvedTrackAudio {
     /// import; `None` when the track runs to EOF / a whole-file track). Playback
     /// buffers the rest of the current track up to here instead of a fixed window.
     pub end_byte: Option<u64>,
+    /// Raw loudness/peak measurements (LUFS + linear peak) for this track and its
+    /// album, as stored at import. `None` = not measured. Playback derives the
+    /// replay gain from these against a constant target; nothing here is a gain.
+    pub track_loudness_lufs: Option<f64>,
+    pub track_peak_linear: Option<f64>,
+    pub album_loudness_lufs: Option<f64>,
+    pub album_peak_linear: Option<f64>,
 }
 
 impl ResolvedTrackAudio {
@@ -735,9 +742,53 @@ impl ResolvedTrackAudio {
             start_sample: meta.audio_format.start_sample as u64,
             end_sample: meta.audio_format.end_sample.map(|s| s as u64),
             end_byte: meta.audio_format.end_byte.map(|b| b as u64),
+            track_loudness_lufs: meta.audio_format.track_loudness_lufs,
+            track_peak_linear: meta.audio_format.track_peak_linear,
+            album_loudness_lufs: meta.release.album_loudness_lufs,
+            album_peak_linear: meta.release.album_peak_linear,
         }
     }
+
+    /// Linear playback gain for this track under `mode`. `1.0` = no change.
+    ///
+    /// The gain is a view of (stored measurements, mode, target) — never stored.
+    /// `Off` plays at unity. `Track`/`Album` pick that level's `(loudness, peak)`,
+    /// falling back to the other level when the preferred one wasn't measured,
+    /// and to unity when neither was (NULL measurements, or a silent track). For
+    /// the chosen level the gain brings the measured loudness to the target, then
+    /// is capped at `1.0/peak` so a boosted track can't clip.
+    pub fn replay_gain_linear(&self, mode: crate::config::ReplayGainMode) -> f32 {
+        use crate::config::ReplayGainMode;
+
+        let track = self.track_loudness_lufs.zip(self.track_peak_linear);
+        let album = self.album_loudness_lufs.zip(self.album_peak_linear);
+
+        let chosen = match mode {
+            ReplayGainMode::Off => None,
+            ReplayGainMode::Track => track.or(album),
+            ReplayGainMode::Album => album.or(track),
+        };
+
+        let Some((loudness_lufs, peak_linear)) = chosen else {
+            return 1.0;
+        };
+
+        let gain = 10f64.powf((REPLAY_GAIN_TARGET_LUFS - loudness_lufs) / 20.0);
+        // Cap the gain so the loudest true-peak sample can't exceed full scale.
+        // A non-positive peak (no usable peak) imposes no cap.
+        let max_safe = if peak_linear > 0.0 {
+            1.0 / peak_linear
+        } else {
+            f64::INFINITY
+        };
+        gain.min(max_safe) as f32
+    }
 }
+
+/// Target playback loudness the replay gain aims each track/album at, in LUFS.
+/// A constant in this change; becomes a user setting alongside the picker.
+/// -18 LUFS is a common reference for quiet-listening normalization.
+const REPLAY_GAIN_TARGET_LUFS: f64 = -18.0;
 
 /// Resolved context for starting playback of a track: everything the
 /// playback service needs to set up the queue without chasing back into
@@ -5412,6 +5463,8 @@ mod tests {
             managed: true,
             source_folder_name: None,
             content_hash: None,
+            album_loudness_lufs: None,
+            album_peak_linear: None,
             created_at: Utc::now(),
         }
     }

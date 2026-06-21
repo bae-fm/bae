@@ -35,6 +35,11 @@ pub struct TrackFmt {
     pub duration_ms: u64,
     pub pregap_ms: Option<i64>,
     pub position_offset: Duration,
+    /// Linear replay gain for this track, folded into the audio callback's
+    /// volume multiply. `1.0` = no change. Per-track and swapped at the gapless
+    /// boundary, so the loudness shifts discontinuously there — which is
+    /// correct: each track carries its own normalization.
+    pub replay_gain_linear: f32,
 }
 
 /// Payload of the boundary signal. Carries the finishing track's identity +
@@ -183,6 +188,14 @@ impl PlaybackSource {
     pub fn channels(&self) -> u32 {
         self.current.channels()
     }
+
+    /// The current track's linear replay gain, read every callback to fold into
+    /// the volume multiply. After a mid-buffer boundary crossing this returns
+    /// the incoming track's gain (the same `current_fmt` the position path
+    /// reads), so the new track's normalization takes effect at the boundary.
+    pub fn current_replay_gain_linear(&self) -> f32 {
+        self.current_fmt.replay_gain_linear
+    }
 }
 
 #[cfg(test)]
@@ -196,6 +209,7 @@ mod tests {
             duration_ms: 1000,
             pregap_ms: None,
             position_offset: Duration::ZERO,
+            replay_gain_linear: 1.0,
         }
     }
 

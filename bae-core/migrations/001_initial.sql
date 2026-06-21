@@ -72,6 +72,15 @@ CREATE TABLE IF NOT EXISTS releases (
     -- same rip in any parent folder hashes the same. Used to recognize an
     -- already-imported folder and to pick the overwrite target on re-import.
     content_hash TEXT,
+    -- Album-level loudness measured at import (EBU R128 integrated loudness over
+    -- all tracks combined), in LUFS. NULL = not measured (a measurement failure,
+    -- or imported before measurement existed). Playback derives a gain from this
+    -- and a constant target; the stored value is the raw measurement, never a gain.
+    album_loudness_lufs REAL,
+    -- Album-level true peak as a LINEAR ratio (1.0 = 0 dBTP), the max across all
+    -- tracks. NULL = not measured. Playback caps the album gain at 1.0/peak to
+    -- prevent clipping.
+    album_peak_linear REAL,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE
@@ -185,6 +194,16 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     start_sample INTEGER NOT NULL,
     end_sample INTEGER,
     end_byte INTEGER,
+    -- Per-track loudness measured at import (EBU R128 integrated loudness over
+    -- this track's sample window), in LUFS. NULL = not measured (decode/measure
+    -- failure, or a near-silent track that has no usable loudness). Playback
+    -- derives a gain from this and a constant target; the stored value is the
+    -- raw measurement, never a gain.
+    track_loudness_lufs REAL,
+    -- Per-track true peak as a LINEAR ratio (1.0 = 0 dBTP), the max across
+    -- channels. NULL = not measured. Playback caps the track gain at 1.0/peak
+    -- to prevent clipping.
+    track_peak_linear REAL,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE

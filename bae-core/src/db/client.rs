@@ -356,6 +356,8 @@ impl Database {
             managed: row.get("managed").unwrap(),
             source_folder_name: row.get("source_folder_name").unwrap(),
             content_hash: row.get("content_hash").unwrap(),
+            album_loudness_lufs: row.get("album_loudness_lufs").unwrap(),
+            album_peak_linear: row.get("album_peak_linear").unwrap(),
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at").unwrap())
                 .unwrap()
                 .with_timezone(&Utc),
@@ -3259,6 +3261,8 @@ fn row_to_audio_format(row: &Row) -> coven::rusqlite::Result<DbAudioFormat> {
         start_sample: row.get("start_sample")?,
         end_sample: row.get("end_sample")?,
         end_byte: row.get("end_byte")?,
+        track_loudness_lufs: row.get("track_loudness_lufs")?,
+        track_peak_linear: row.get("track_peak_linear")?,
         created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
             .unwrap()
             .with_timezone(&Utc),
@@ -3343,8 +3347,10 @@ fn insert_release_row(conn: &Connection, release: &DbRelease, reg: &str) -> Resu
             disc_id, metadata_source, metadata_source_release_id,
             format, label, catalog_number, country, barcode,
             managed,
-            source_folder_name, content_hash, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            source_folder_name, content_hash,
+            album_loudness_lufs, album_peak_linear,
+            _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             release.id,
@@ -3362,6 +3368,8 @@ fn insert_release_row(conn: &Connection, release: &DbRelease, reg: &str) -> Resu
             release.managed,
             release.source_folder_name,
             release.content_hash,
+            release.album_loudness_lufs,
+            release.album_peak_linear,
             reg,
             release.created_at.to_rfc3339(),
         ],
@@ -3447,8 +3455,8 @@ fn insert_audio_format_row(
     conn.execute(
         r#"
         INSERT INTO audio_formats (
-            id, track_id, content_type, pregap_ms, sample_rate, bits_per_sample, channels, file_id, start_sample, end_sample, end_byte, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, track_id, content_type, pregap_ms, sample_rate, bits_per_sample, channels, file_id, start_sample, end_sample, end_byte, track_loudness_lufs, track_peak_linear, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             af.id,
@@ -3462,6 +3470,8 @@ fn insert_audio_format_row(
             af.start_sample,
             af.end_sample,
             af.end_byte,
+            af.track_loudness_lufs,
+            af.track_peak_linear,
             reg,
             af.created_at.to_rfc3339(),
         ],

@@ -407,6 +407,7 @@ impl PlaybackPreparedTrack {
             duration_ms: self.duration.as_millis() as u64,
             pregap_ms: self.pregap_ms,
             position_offset,
+            replay_gain_linear: self.replay_gain_linear,
         }
     }
 
@@ -451,6 +452,10 @@ struct PlaybackPreparedTrack {
     /// whole file). The decoder hands `end_byte` to its reader as the read-ahead
     /// ceiling so the fill buffers the rest of the current track.
     end_byte: Option<u64>,
+    /// Linear playback gain folded into the audio callback's volume multiply.
+    /// Derived once here from the replay-gain mode and the stored loudness/peak
+    /// measurements; `1.0` = no change (Off, or no usable measurement).
+    replay_gain_linear: f32,
 }
 
 /// Finalize a PlaybackPreparedTrack from resolved audio, display info, and buffer.
@@ -459,6 +464,7 @@ fn finalize_playback_track(
     track_info: PlaybackTrackInfo,
     buffer: SharedSparseBuffer,
     buffer_shared: bool,
+    replay_gain_mode: crate::config::ReplayGainMode,
 ) -> PlaybackPreparedTrack {
     let duration = resolved
         .duration_ms
@@ -470,6 +476,8 @@ fn finalize_playback_track(
             );
             std::time::Duration::from_secs(300)
         });
+
+    let replay_gain_linear = resolved.replay_gain_linear(replay_gain_mode);
 
     PlaybackPreparedTrack {
         track_info,
@@ -484,6 +492,7 @@ fn finalize_playback_track(
         start_sample: resolved.start_sample,
         end_sample: resolved.end_sample,
         end_byte: resolved.end_byte,
+        replay_gain_linear,
     }
 }
 
@@ -540,8 +549,16 @@ async fn prepare_track_for_playback(
         buffer
     };
 
+    // Read the replay-gain mode once here and pass it down (DI: one read at the
+    // top, not a static lookup buried in `finalize_playback_track`).
+    let replay_gain_mode = library_manager.get_config().replay_gain_mode;
+
     Ok(finalize_playback_track(
-        resolved, track_info, buffer, is_shared,
+        resolved,
+        track_info,
+        buffer,
+        is_shared,
+        replay_gain_mode,
     ))
 }
 
@@ -2446,6 +2463,8 @@ impl PlaybackService {
             duration_ms: duration.as_millis() as u64,
             pregap_ms: None,
             position_offset: seek_to.unwrap_or(std::time::Duration::ZERO),
+            // Preview plays an unimported file (no stored measurements) at unity.
+            replay_gain_linear: 1.0,
         };
         let (preview_boundary_tx, _preview_boundary_rx) = tokio_mpsc::unbounded_channel();
         let source = Arc::new(Mutex::new(PlaybackSource::new(

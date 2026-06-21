@@ -278,6 +278,14 @@ pub struct DbRelease {
     /// it (the files didn't change). Used to recognize an already-imported
     /// folder and to pick the overwrite target on re-import.
     pub content_hash: Option<String>,
+    /// Album-level integrated loudness (EBU R128) in LUFS, measured at import
+    /// over all tracks combined. `None` = not measured. Playback derives a gain
+    /// from this against a constant target; the raw measurement is stored, never
+    /// a gain.
+    pub album_loudness_lufs: Option<f64>,
+    /// Album-level true peak as a linear ratio (1.0 = 0 dBTP), the max across
+    /// tracks. `None` = not measured. Playback caps the album gain at `1.0/peak`.
+    pub album_peak_linear: Option<f64>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -438,6 +446,15 @@ pub struct DbAudioFormat {
     /// Playback buffers the rest of the current track up to here, ahead of the
     /// playhead, rather than a fixed window.
     pub end_byte: Option<i64>,
+    /// Per-track integrated loudness (EBU R128) in LUFS, measured at import over
+    /// this track's sample window. `None` = not measured (decode/measure failure
+    /// or a near-silent track with no usable loudness). Playback derives a gain
+    /// from this against a constant target; the raw measurement is stored.
+    pub track_loudness_lufs: Option<f64>,
+    /// Per-track true peak as a linear ratio (1.0 = 0 dBTP), the max across
+    /// channels. `None` = not measured. Playback caps the track gain at
+    /// `1.0/peak`.
+    pub track_peak_linear: Option<f64>,
     pub created_at: DateTime<Utc>,
 }
 impl DbAlbumArtist {
@@ -578,6 +595,8 @@ impl DbRelease {
             managed: true,
             source_folder_name: None,
             content_hash: None,
+            album_loudness_lufs: None,
+            album_peak_linear: None,
             created_at: now,
         }
     }
@@ -613,6 +632,8 @@ impl DbRelease {
             managed: false,
             source_folder_name: None,
             content_hash: None,
+            album_loudness_lufs: None,
+            album_peak_linear: None,
             created_at: now,
         }
     }
@@ -657,6 +678,8 @@ impl DbRelease {
             managed: false,
             source_folder_name: None,
             content_hash: None,
+            album_loudness_lufs: None,
+            album_peak_linear: None,
             created_at: now,
         }
     }
@@ -800,6 +823,8 @@ impl DbAudioFormat {
             start_sample,
             end_sample,
             end_byte: None,
+            track_loudness_lufs: None,
+            track_peak_linear: None,
             created_at: now,
         }
     }

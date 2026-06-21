@@ -79,6 +79,12 @@ dotenvy = "0.15"
 discid = "0.5"
 lofty = "0.23"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+# Loudness + true-peak measurement at import (src/loudness.rs). Pure Rust, no
+# system libs. Desktop-only: import decodes audio only on these targets, and the
+# playback gain is derived from the stored measurements with plain arithmetic
+# (no ebur128 at playback). true_peak returns a linear ratio (1.0 = 0 dBTP),
+# which is stored verbatim as `*_peak_linear`.
+ebur128 = "0.1.10"
 
 # cpal drives the audio sink on desktop and iOS (its CoreAudio/AudioUnit backend
 # covers both). Android uses AAudio (the `ndk` dep above) instead, so cpal is off

@@ -189,6 +189,30 @@ pub enum DiscogsValidation {
     Rejected,
 }
 
+/// How loudness normalization is applied at playback.
+///
+/// - `Off` — no normalization; tracks play at their stored level (unity gain).
+/// - `Track` — normalize each track to the target using its own loudness.
+/// - `Album` — normalize whole albums to the target using album loudness, so
+///   the loudness relationship between an album's tracks is preserved.
+///
+/// The gain is derived at playback from the stored loudness measurements and a
+/// constant target; this only selects which measurement (track vs album) drives
+/// it. Defaults to `Off`. Set by editing `config.yaml`; there is no UI picker
+/// yet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReplayGainMode {
+    Off,
+    Track,
+    Album,
+}
+
+/// The serde default for `ConfigYaml.replay_gain_mode`. Enums carry no
+/// `#[derive(Default)]` in this project, so the default is named explicitly.
+fn default_replay_gain_mode() -> ReplayGainMode {
+    ReplayGainMode::Off
+}
+
 /// Whether a usable Discogs API key is configured. Folds the no-key case and
 /// the validation state into the four states a UI shows, so each binding
 /// doesn't re-derive the precedence.
@@ -298,6 +322,9 @@ pub struct ConfigYaml {
     /// Used to detect wrong key without attempting decryption.
     #[serde(default)]
     pub encryption_key_fingerprint: Option<String>,
+    /// How loudness normalization is applied at playback. Defaults to `Off`.
+    #[serde(default = "default_replay_gain_mode")]
+    pub replay_gain_mode: ReplayGainMode,
     /// Cloud home provider + per-provider settings. Flattened so the on-disk
     /// keys sit at the top level. bae uses coven's type — same fields, extracted
     /// from bae — instead of a parallel copy it would map back and forth.
@@ -320,6 +347,7 @@ impl ConfigYaml {
                 cloud_home: self.cloud_home,
             },
             discogs: self.discogs,
+            replay_gain_mode: self.replay_gain_mode,
         }
     }
 }
@@ -333,6 +361,7 @@ impl From<&Config> for ConfigYaml {
             discogs: config.discogs,
             encryption_key_stored: config.encryption_key_stored,
             encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
+            replay_gain_mode: config.replay_gain_mode,
             cloud_home: config.cloud_home.clone(),
         }
     }
@@ -362,6 +391,8 @@ pub struct Config {
     /// configured. `Some` doubles as the hint that a key is in the keyring, so
     /// settings render without a keyring read.
     pub discogs: Option<DiscogsValidation>,
+    /// How loudness normalization is applied at playback. Defaults to `Off`.
+    pub replay_gain_mode: ReplayGainMode,
 }
 
 impl std::ops::Deref for Config {
@@ -577,6 +608,7 @@ impl Config {
                 library_name,
             ),
             discogs: None,
+            replay_gain_mode: default_replay_gain_mode(),
         }
     }
 

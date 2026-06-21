@@ -18,6 +18,11 @@ pub mod keys;
 pub mod library;
 pub mod library_dir;
 pub mod library_name;
+// Loudness measurement uses `ebur128`, a desktop-only dependency (import decodes
+// audio only on these targets; playback derives the gain from the stored
+// measurements with plain arithmetic and needs no ebur128).
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+pub mod loudness;
 pub mod musicbrainz;
 pub mod network;
 pub mod oauth;

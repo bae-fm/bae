@@ -36,7 +36,7 @@ use {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use tokio::sync::{broadcast, mpsc};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// Keyed by each file's absolute path — unique identity, no collisions even when
 /// two files share a bare filename across subfolders (e.g. CD1/CDImage.ape and
@@ -1573,12 +1573,27 @@ impl ImportService {
         }
 
         // Audio formats, cover image, and finalize are identical across strategies.
-        let audio_formats = Self::build_audio_formats(
+        let mut audio_formats = Self::build_audio_formats(
             tracks_to_files,
             &file_ids,
             self.library_manager.clock().as_ref(),
             self.library_manager.ids().as_ref(),
         )?;
+
+        // Measure loudness from the source decode — bae stores originals verbatim
+        // (no transcode), so source samples == stored samples. The bytes are
+        // present locally in every storage mode at this point (a managed pin has
+        // copied to `storage/`; cloud-only / unmanaged still reference the
+        // originals); uploads queue only after finalize. Per-track NULLs and an
+        // album NULL are legitimate "not measured" results, each logged at the
+        // skip point inside `measure_loudness`.
+        #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+        {
+            let (album_loudness, album_peak) =
+                Self::measure_loudness(&mut audio_formats, tracks_to_files).await;
+            db_release.album_loudness_lufs = album_loudness;
+            db_release.album_peak_linear = album_peak;
+        }
 
         let local_cover_image = if !remote_cover_set {
             self.build_cover_image_record(&db_release.id, discovered_files, cover_image_path)?
@@ -1916,6 +1931,114 @@ impl ImportService {
         }
 
         Ok(audio_formats)
+    }
+
+    /// Measure each track's loudness + true peak and the album's combined
+    /// loudness, attaching the per-track measurements to `audio_formats` and
+    /// returning the album-level `(loudness_lufs, peak_linear)`.
+    ///
+    /// Each track's window is decoded and measured on a blocking thread (FFmpeg
+    /// decode is blocking CPU work); the per-file source bytes are read once and
+    /// shared across that file's tracks (the tracks of a CUE image). Decoding
+    /// per track window — not the whole image at once — bounds transient PCM
+    /// memory to one track at a time.
+    ///
+    /// A track whose decode/measure fails, or that is too quiet to have a usable
+    /// loudness, keeps NULL loudness/peak and still imports; the skip is logged
+    /// at `warn!`/`debug!` with the file path. A measurement failure never
+    /// aborts the import.
+    #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+    async fn measure_loudness(
+        audio_formats: &mut [crate::db::DbAudioFormat],
+        tracks_to_files: &[TrackFile],
+    ) -> (Option<f64>, Option<f64>) {
+        use ebur128::EbuR128;
+
+        // Source bytes per file, read once and shared across that file's tracks
+        // (every CUE track of one image points at the same bytes). An unreadable
+        // file yields `None`, so its tracks are skipped (logged) rather than
+        // measured against missing bytes.
+        let mut file_bytes: HashMap<PathBuf, Option<Arc<Vec<u8>>>> = HashMap::new();
+        for tf in tracks_to_files {
+            let path = tf.file_path().to_path_buf();
+            file_bytes.entry(path.clone()).or_insert_with(|| {
+                match std::fs::read(&path) {
+                    Ok(bytes) => Some(Arc::new(bytes)),
+                    Err(e) => {
+                        warn!("loudness: cannot read {path:?} to measure: {e}; its tracks stay unmeasured");
+                        None
+                    }
+                }
+            });
+        }
+
+        // Spawn one blocking decode+measure per track; collect by index so the
+        // album combine is order-independent and the per-track write is exact.
+        let mut tasks = Vec::with_capacity(audio_formats.len());
+        for (idx, (af, tf)) in audio_formats.iter().zip(tracks_to_files).enumerate() {
+            let path = tf.file_path().to_path_buf();
+            let Some(bytes) = file_bytes.get(&path).and_then(|b| b.clone()) else {
+                continue;
+            };
+            let start_sample = af.start_sample as u64;
+            let end_sample = af.end_sample.map(|s| s as u64);
+            // The source's value range bit depth: `decode_audio` returns i32
+            // samples scaled to the source's bits (16-bit values for 16-bit
+            // FLAC, 24-bit for 24-bit), so the loudness measure must shift them
+            // up to full i32. The stored `bits_per_sample` is the authoritative
+            // source depth (NULL for lossy codecs, where the decoded container
+            // depth is used instead).
+            let source_bits = af.bits_per_sample.map(|b| b as u32);
+            tasks.push(tokio::task::spawn_blocking(move || {
+                let decoded = match crate::audio_codec::decode_audio(
+                    &bytes,
+                    Some(start_sample),
+                    end_sample,
+                ) {
+                    Ok(d) => d,
+                    Err(e) => {
+                        warn!("loudness: decode failed for {path:?}: {e}; track stays unmeasured");
+                        return (idx, None);
+                    }
+                };
+                let sample_bits = source_bits.unwrap_or(decoded.bits_per_sample);
+                match crate::loudness::measure_track(
+                    &decoded.samples,
+                    decoded.channels,
+                    decoded.sample_rate,
+                    sample_bits,
+                ) {
+                    Ok((meter, Some(m))) => (idx, Some((meter, m.loudness_lufs, m.peak_linear))),
+                    Ok((_, None)) => {
+                        debug!("loudness: {path:?} has no usable loudness (silent); unmeasured");
+                        (idx, None)
+                    }
+                    Err(e) => {
+                        warn!("loudness: measure failed for {path:?}: {e}; track stays unmeasured");
+                        (idx, None)
+                    }
+                }
+            }));
+        }
+
+        let mut meters: Vec<EbuR128> = Vec::new();
+        let mut track_peaks: Vec<f64> = Vec::new();
+        for task in tasks {
+            match task.await {
+                Ok((idx, Some((meter, loudness_lufs, peak_linear)))) => {
+                    audio_formats[idx].track_loudness_lufs = Some(loudness_lufs);
+                    audio_formats[idx].track_peak_linear = Some(peak_linear);
+                    meters.push(meter);
+                    track_peaks.push(peak_linear);
+                }
+                Ok((_, None)) => {}
+                Err(e) => warn!("loudness: measurement task panicked: {e}; track stays unmeasured"),
+            }
+        }
+
+        let album_loudness = crate::loudness::album_loudness(&meters);
+        let album_peak = crate::loudness::album_peak(&track_peaks);
+        (album_loudness, album_peak)
     }
 }
 
@@ -2408,6 +2531,8 @@ mod tests {
             managed: true,
             source_folder_name: None,
             content_hash: None,
+            album_loudness_lufs: None,
+            album_peak_linear: None,
             created_at: now,
         };
         let track = crate::db::DbTrack {
@@ -2618,6 +2743,8 @@ mod tests {
             managed: true,
             source_folder_name: None,
             content_hash: None,
+            album_loudness_lufs: None,
+            album_peak_linear: None,
             created_at: now,
         };
         let track = crate::db::DbTrack {

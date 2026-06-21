@@ -176,6 +176,8 @@ async fn create_album_and_release(
         managed: unmanaged_path.is_none(),
         source_folder_name: None,
         content_hash: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
         created_at: now,
     };
     db.insert_release(&release).await.unwrap();
@@ -457,6 +459,8 @@ async fn test_read_release_file_bytes_rejects_short_read() {
         managed: true,
         source_folder_name: None,
         content_hash: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
         created_at: Utc::now(),
     };
     // This device pins the release: reads come from the staged `storage/` copy.
@@ -1255,6 +1259,8 @@ async fn create_named_unmanaged_release(
         managed: false,
         source_folder_name: None,
         content_hash: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
         created_at: now,
     };
     db.insert_release(&release).await.unwrap();

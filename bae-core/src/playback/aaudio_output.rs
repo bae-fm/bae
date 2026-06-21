@@ -265,10 +265,14 @@ impl AudioOutput for AAudioOutput {
                     continue;
                 }
 
-                // Apply volume in-place over the filled region.
+                // Apply volume + this track's replay gain in-place over the
+                // filled region as one combined factor. Mute (`vol == 0`) still
+                // zeroes output. The peak cap was applied when the gain was
+                // derived, so no clamp is needed here.
                 let vol = volume.load(Ordering::Relaxed) as f32 / 10000.0;
+                let combined = source_guard.current_replay_gain_linear() * vol;
                 for sample in &mut buf[..read] {
-                    *sample *= vol;
+                    *sample *= combined;
                 }
 
                 if last_position_update.elapsed() >= position_update_interval {
