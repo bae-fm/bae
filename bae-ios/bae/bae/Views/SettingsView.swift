@@ -15,6 +15,8 @@ struct SettingsView: View {
 
     @State
     private var confirmLeave = false
+    @State
+    private var showRecoveryCode = false
 
     var body: some View {
         NavigationStack {
@@ -72,6 +74,34 @@ struct SettingsView: View {
                     }
                 }
 
+                // Managing members and revealing the recovery code both need a
+                // live sync session this run (the membership chain lives in the
+                // library's cloud storage), so gate on syncReady — runtime status
+                // — not merely a configured provider.
+                if configStore.syncReady {
+                    Section {
+                        NavigationLink {
+                            MembersView()
+                        } label: {
+                            Text("Members")
+                        }
+                    } footer: {
+                        Text(
+                            "Devices that share this library. Approve a new device, or remove one."
+                        )
+                    }
+
+                    Section {
+                        Button("Show recovery code\u{2026}") {
+                            showRecoveryCode = true
+                        }
+                    } footer: {
+                        Text(
+                            "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access — keep it secret."
+                        )
+                    }
+                }
+
                 Section {
                     Button(role: .destructive) {
                         confirmLeave = true
@@ -104,6 +134,12 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("Your library in the cloud is untouched.")
+            }
+            .sheet(isPresented: $showRecoveryCode) {
+                RecoveryCodeView(
+                    generate: sync.generateRestoreCode,
+                    onDismiss: { showRecoveryCode = false }
+                )
             }
         }
     }

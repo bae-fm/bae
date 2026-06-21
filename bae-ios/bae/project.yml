@@ -60,6 +60,10 @@ targets:
       # through the generated Core string table. Both AppKit-free.
       - path: ../../bae-macos/bae/bae/Services/DisplayError.swift
       - path: ../../bae-macos/bae/bae/BridgeError+Localized.swift
+      # Locale rendering of a cloud provider's name. Foundation-only (a Core
+      # string table + bridge label-key fn); shared with the membership invite
+      # preview and any sync-provider display.
+      - path: ../../bae-macos/bae/bae/BridgeCloudProvider+DisplayName.swift
       - path: ../../bae-macos/bae/bae/Services/Store/Config.swift
       - path: ../../bae-macos/bae/bae/Services/Store/AlbumSummary.swift
       - path: ../../bae-macos/bae/bae/Services/Store/ReleaseSummary.swift
@@ -71,6 +75,10 @@ targets:
       - path: ../../bae-macos/bae/bae/Services/Store/SearchResults.swift
       - path: ../../bae-macos/bae/bae/Views/UnlockView.swift
       - path: ../../bae-macos/bae/bae/Views/PlayPauseControl.swift
+      # Platform-agnostic public-key display helper shared with the membership
+      # UI (onboarding join flow + Members settings). One copy serves both
+      # platforms.
+      - path: ../../bae-macos/bae/bae/Views/MemberFormat.swift
     preBuildScripts:
       - name: Build Rust Bridge
         basedOnDependencyAnalysis: false
