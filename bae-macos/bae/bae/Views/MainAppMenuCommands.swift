@@ -141,7 +141,7 @@ struct MainAppMenuCommands: Commands {
     /// one is marked; the rest are switch targets.
     let libraries: [BridgeLibrary]
     /// Present the welcome flow at the given mode (`nil` = the default chooser,
-    /// `.restore` = restore-from-code).
+    /// `.restore` = restore-from-code, `.join` = join-a-library).
     let onNewLibrary: (WelcomeView.Mode?) -> Void
     let onOpenLibrary: (BridgeLibrary) -> Void
     /// Switch to the library `offset` positions from the active one (wraps).
@@ -159,6 +159,7 @@ struct MainAppMenuCommands: Commands {
         CommandGroup(after: .newItem) {
             Button("New Library...") { onNewLibrary(nil) }
                 .keyboardShortcut("n", modifiers: [.command, .option])
+            Button("Join a Library...") { onNewLibrary(.join) }
             Button("Restore from Code...") { onNewLibrary(.restore) }
 
             Menu("Open Library") {

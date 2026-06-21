@@ -1,10 +1,10 @@
-import CoreImage.CIFilterBuiltins
 import SwiftUI
 
-/// QR-code + textual code + copy button for pairing another device against
-/// this library. `result` carries the loading/loaded/error state as
-/// `Result<String, Error>?`: `nil` is loading, `.success(code)` shows the
-/// code, `.failure(err)` shows the error message. It's a binding because the
+/// QR-code + textual code + copy button for the library's recovery code — the
+/// bearer code that grants full access on a new device when no existing device
+/// is available to approve a join. `result` carries the loading/loaded/error
+/// state as `Result<String, Error>?`: `nil` is loading, `.success(code)` shows
+/// the code, `.failure(err)` shows the error message. It's a binding because the
 /// presenter computes the code off-main after the sheet is already up — the
 /// sheet has to re-render when that write lands, not show a stale snapshot.
 struct CodeShareSheet: View {
@@ -15,7 +15,7 @@ struct CodeShareSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Connect another device")
+                Text("Recovery code")
                     .font(.headline)
                 Spacer()
                 Button("Done") { onDismiss() }
@@ -36,7 +36,7 @@ struct CodeShareSheet: View {
                 VStack(spacing: 16) {
                     Spacer()
 
-                    if let qrImage = generateQRCode(from: code) {
+                    if let qrImage = QRCode.image(from: code) {
                         Image(nsImage: qrImage)
                             .interpolation(.none)
                             .resizable()
@@ -51,12 +51,12 @@ struct CodeShareSheet: View {
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity)
 
-                    Button("Copy Code") {
+                    Button("Copy code") {
                         SystemActions.copyToPasteboard(code)
                     }
 
                     Text(
-                        "Scan this QR code or paste the code on another device to sync this library there."
+                        "Anyone with this code has full access to your library. Keep it secret. Use it only to restore on a new device when you have no other device available."
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -76,26 +76,6 @@ struct CodeShareSheet: View {
                 .padding()
             }
         }
-        .frame(width: 400, height: 420)
-    }
-
-    private func generateQRCode(from string: String) -> NSImage? {
-        let filter = CIFilter.qrCodeGenerator()
-        filter.message = Data(string.utf8)
-        filter.correctionLevel = "M"
-
-        guard let ciImage = filter.outputImage else {
-            return nil
-        }
-
-        let scale = 10.0
-        let scaled = ciImage.transformed(
-            by: CGAffineTransform(scaleX: scale, y: scale)
-        )
-
-        let rep = NSCIImageRep(ciImage: scaled)
-        let nsImage = NSImage(size: rep.size)
-        nsImage.addRepresentation(rep)
-        return nsImage
+        .frame(width: 400, height: 440)
     }
 }

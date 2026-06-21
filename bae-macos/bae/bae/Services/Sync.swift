@@ -19,6 +19,14 @@ final class Sync: Sendable, Observable {
     let saveSyncConfig:
         @Sendable (_ configData: BridgeSaveSyncConfig) async throws -> Void
     let generateRestoreCode: @Sendable () throws -> String
+    /// The library's devices, with this device flagged. Reads the membership
+    /// chain from cloud storage, so it runs off the main thread.
+    let getMembers: @Sendable () async throws -> [BridgeMember]
+    /// Approve a joining device by its public key (from its join-request code),
+    /// returning the invite code to hand back to that device.
+    let inviteMember: @Sendable (_ publicKeyHex: String) async throws -> String
+    /// Remove a device from the library and rotate the library key.
+    let removeMember: @Sendable (_ publicKeyHex: String) async throws -> Void
     /// Warning text for the disconnect-sync confirmation: `nil` when no
     /// releases will become unplayable, otherwise a pre-formatted sentence
     /// the UI appends to the base "this will stop syncing" message.
@@ -65,6 +73,17 @@ final class Sync: Sendable, Observable {
                 _ in
             },
         generateRestoreCode: @escaping @Sendable () throws -> String = { "" },
+        getMembers: @escaping @Sendable () async throws -> [BridgeMember] = {
+            throw StubError.notImplemented
+        },
+        inviteMember: @escaping @Sendable (String) async throws -> String = {
+            _ in
+            throw StubError.notImplemented
+        },
+        removeMember: @escaping @Sendable (String) async throws -> Void = {
+            _ in
+            throw StubError.notImplemented
+        },
         disconnectWarningMessage: @escaping @Sendable () throws -> String? = {
             nil
         },
@@ -89,6 +108,9 @@ final class Sync: Sendable, Observable {
         self.connectCloudkit = connectCloudkit
         self.saveSyncConfig = saveSyncConfig
         self.generateRestoreCode = generateRestoreCode
+        self.getMembers = getMembers
+        self.inviteMember = inviteMember
+        self.removeMember = removeMember
         self.disconnectWarningMessage = disconnectWarningMessage
         self.retryOutbox = retryOutbox
         self.triggerSync = triggerSync
@@ -128,6 +150,9 @@ final class Sync: Sendable, Observable {
             },
             saveSyncConfig: { try await handle.saveSyncConfig(configData: $0) },
             generateRestoreCode: { try handle.generateRestoreCode() },
+            getMembers: { try await handle.getMembers() },
+            inviteMember: { try await handle.inviteMember(publicKeyHex: $0) },
+            removeMember: { try await handle.removeMember(publicKeyHex: $0) },
             disconnectWarningMessage: { try handle.disconnectWarningMessage() },
             retryOutbox: { try handle.retryOutbox() },
             renameLibrary: {
