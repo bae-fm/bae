@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>オフライン用にピン留め</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>ライブラリから移動…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>ローカルコピーを削除</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>アップロードをキャンセル</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, other {# 個のファイル}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>ストレージを読み込めませんでした</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>ストレージを読み込めませんでした</value></data>

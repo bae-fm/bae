@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>Закріпити для офлайн-доступу</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>Перемістити з бібліотеки…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Вилучити локальну копію</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>Скасувати вивантаження</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# файл} few {# файли} many {# файлів} other {# файлу}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>не вдалося завантажити сховище</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>не вдалося прочитати сховище</value></data>

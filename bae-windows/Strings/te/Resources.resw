@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>Pin for offline</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>Move out of లైబ్రరీ…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Remove local copy</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>Cancel upload</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# files}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>couldn't load నిల్వ</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>couldn't read నిల్వ</value></data>

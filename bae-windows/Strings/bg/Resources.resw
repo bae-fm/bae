@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>Закачане за офлайн</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>Преместване извън библиотеката…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Премахване на локалното копие</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>Отмяна на качването</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# файл} other {# файла}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>хранилището не може да бъде заредено</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>хранилището не може да бъде прочетено</value></data>

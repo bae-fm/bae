@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>Prikvači za izvanmrežni rad</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>Premjesti iz fonoteke…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Ukloni lokalnu kopiju</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>Otkaži prijenos</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# datoteka} few {# datoteke} other {# datoteka}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>nije moguće učitati pohranu</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>nije moguće pročitati pohranu</value></data>

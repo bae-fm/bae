@@ -3370,13 +3370,9 @@ public sealed partial class MainWindow : Window
                 }
             }
 
-            // One row per queued operation: its label, an optional per-file
-            // mini progress bar for an in-flight upload, and a Cancel that
-            // dequeues it. `activeUpload` is set only for an upload that's
-            // transferring right now, so its bar moves with the live byte count.
-            // A queue row: a label (with an optional progress bar) and an optional
-            // trailing cancel button.
-            void AddOutboxRow(string label, ProgressBar? progress, Button? trailing)
+            // A queue row: a label (with an optional progress bar), an optional
+            // trailing button, and an optional right-click menu.
+            void AddOutboxRow(string label, ProgressBar? progress, Button? trailing, MenuFlyout? contextMenu)
             {
                 var itemGrid = new Grid { ColumnSpacing = 8 };
                 itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -3396,35 +3392,44 @@ public sealed partial class MainWindow : Window
                     Grid.SetColumn(trailing, 1);
                     itemGrid.Children.Add(trailing);
                 }
+                if (contextMenu is not null)
+                {
+                    itemGrid.ContextFlyout = contextMenu;
+                }
                 outboxPanel.Children.Add(itemGrid);
             }
 
-            // A cancel button that runs `action` off-thread, surfaces any error to
-            // the status line, and reloads the panel on success.
-            Button CancelButton(string content, Func<string?> action)
+            // Runs `action` off-thread, surfaces any error to the status line, and
+            // reloads the panel on success — shared by the row button and menu.
+            async System.Threading.Tasks.Task RunCancel(Func<string?> action)
             {
-                var button = new Button { Content = content };
-                button.Click += async (_, _) =>
+                storageStatus.Visibility = Visibility.Collapsed;
+                var error = await System.Threading.Tasks.Task.Run(action);
+                if (error is not null)
                 {
-                    storageStatus.Visibility = Visibility.Collapsed;
-                    button.IsEnabled = false;
-                    var error = await System.Threading.Tasks.Task.Run(action);
-                    if (error is not null)
-                    {
-                        storageStatus.Text = error;
-                        storageStatus.Visibility = Visibility.Visible;
-                        button.IsEnabled = true;
-                        return;
-                    }
+                    storageStatus.Text = error;
+                    storageStatus.Visibility = Visibility.Visible;
+                    return;
+                }
 
-                    await LoadOutbox();
-                };
-                return button;
+                await LoadOutbox();
+            }
+
+            // A right-click "Cancel" menu, matching the storage table's per-release
+            // cancel. Used for the upload release rows.
+            MenuFlyout CancelFlyout(Func<string?> action)
+            {
+                var menu = new MenuFlyout();
+                var item = new MenuFlyoutItem { Text = Loc.Chrome("action.cancel") };
+                item.Click += async (_, _) => await RunCancel(action);
+                menu.Items.Add(item);
+                return menu;
             }
 
             // Uploads: one row per release (matching the storage table) — title,
-            // aggregate progress, and a cancel that stops the release's transition.
-            // The orphaned-files bucket (no release id) has no release to cancel.
+            // aggregate progress, and a right-click "Cancel" that stops the
+            // release's transition. The orphaned-files bucket (no release id) has
+            // no release to cancel.
             foreach (var group in snapshot.UploadGroups)
             {
                 ProgressBar? progress = group.Progress is { Active: > 0, BytesTotal: > 0 }
@@ -3435,23 +3440,19 @@ public sealed partial class MainWindow : Window
                         Value = group.Progress.BytesDone,
                     }
                     : null;
-                Button? cancel = group.ReleaseId is string releaseId
-                    ? CancelButton(
-                        Loc.Chrome("storage.cancel_upload"),
-                        () => NativeBae.CancelReleaseTransition(_handle, releaseId))
+                MenuFlyout? menu = group.ReleaseId is string releaseId
+                    ? CancelFlyout(() => NativeBae.CancelReleaseTransition(_handle, releaseId))
                     : null;
-                AddOutboxRow(group.DisplayTitle, progress, cancel);
+                AddOutboxRow(group.DisplayTitle, progress, trailing: null, contextMenu: menu);
             }
             // A pending delete is genuinely a single-file operation, so it keeps
-            // its own per-file cancel.
+            // its own per-file cancel button.
             foreach (var delete in snapshot.Deletes)
             {
-                AddOutboxRow(
-                    delete.Label,
-                    null,
-                    CancelButton(
-                        Loc.Chrome("outbox.cancel_item"),
-                        () => NativeBae.CancelOutboxItem(_handle, delete.Id)));
+                var cancel = new Button { Content = Loc.Chrome("outbox.cancel_item") };
+                var id = delete.Id;
+                cancel.Click += async (_, _) => await RunCancel(() => NativeBae.CancelOutboxItem(_handle, id));
+                AddOutboxRow(delete.Label, null, trailing: cancel, contextMenu: null);
             }
         }
 

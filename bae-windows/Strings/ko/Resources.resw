@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>오프라인용으로 고정</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>라이브러리 밖으로 이동…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>로컬 복사본 제거</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>업로드 취소</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, other {#개 파일}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>저장소를 불러올 수 없음</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>저장소를 읽을 수 없음</value></data>

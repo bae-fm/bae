@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>Für Offline anheften</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>Aus Bibliothek verschieben …</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Lokale Kopie entfernen</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>Upload abbrechen</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# Datei} other {# Dateien}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>Speicher konnte nicht geladen werden</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>Speicher konnte nicht gelesen werden</value></data>
