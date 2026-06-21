@@ -1686,13 +1686,14 @@ struct FfiUploadProgress {
 }
 
 /// A release's pending uploads, grouped for the queue pane's per-release rows.
-/// `release_id`/`title` are null for the orphaned-files bucket.
+/// `release_id` is null for the orphaned-files bucket; `display_title` is the
+/// row's label, resolved by core.
 #[derive(Serialize)]
 struct FfiUploadReleaseGroup {
     release_id: Option<String>,
-    title: Option<String>,
+    display_title: String,
+    file_count: u32,
     progress: FfiUploadProgress,
-    uploads: Vec<FfiUploadOp>,
 }
 
 /// The cloud outbox snapshot: per-item lists, per-release counts, overall
@@ -1748,9 +1749,9 @@ fn outbox_snapshot_to_ffi(snapshot: &bae_core::library::OutboxSnapshot) -> FfiOu
         .iter()
         .map(|g| FfiUploadReleaseGroup {
             release_id: g.release_id.clone(),
-            title: g.title.clone(),
+            display_title: g.display_title.clone(),
+            file_count: g.file_count,
             progress: upload_progress_to_ffi(&g.progress),
-            uploads: g.uploads.iter().map(upload_op_to_ffi).collect(),
         })
         .collect();
     let deletes = snapshot

@@ -438,10 +438,17 @@ private struct OutboxSection: View {
     private func itemList(_ snapshot: BridgeOutboxSnapshot) -> some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                ForEach(snapshot.uploads, id: \.id) { op in
-                    OutboxUploadRow(op: op)
+                // Uploads are grouped per release (matching the storage table);
+                // right-click a release to cancel its transition.
+                ForEach(snapshot.uploadGroups, id: \.releaseId) { group in
+                    OutboxReleaseRow(group: group) {
+                        if let releaseId = group.releaseId {
+                            cancelTransition(releaseId)
+                        }
+                    }
                     Divider()
                 }
+                // Deletes stay per-file — a delete is a single-file operation.
                 ForEach(snapshot.deletes, id: \.id) { op in
                     OutboxDeleteRow(op: op) { cancel(op.id) }
                     Divider()
@@ -450,7 +457,19 @@ private struct OutboxSection: View {
         }
     }
 
-    /// Remove a queued upload or delete, surfacing any failure.
+    /// Cancel a release's in-progress transition, surfacing any failure.
+    private func cancelTransition(_ releaseId: String) {
+        do { try sync.cancelReleaseTransition(releaseId) }
+        catch {
+            uiStore.showError(
+                String(
+                    localized: "Failed to cancel: \(error.localizedDescription)"
+                )
+            )
+        }
+    }
+
+    /// Remove a queued delete, surfacing any failure.
     private func cancel(_ id: Int64) {
         do { try sync.cancelOutboxItem(id) }
         catch {
@@ -502,8 +521,13 @@ private struct OutboxTotalProgress: View {
     }
 }
 
-private struct OutboxUploadRow: View {
-    let op: BridgeUploadOp
+/// One queue-pane row per release (matching the storage table): the release
+/// title, its file count and total size, and an aggregate state badge.
+/// Right-click to cancel the release's transition. The orphaned-files bucket
+/// (no release id) renders without a cancel — there's no release to act on.
+private struct OutboxReleaseRow: View {
+    let group: BridgeUploadReleaseGroup
+    let onCancel: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -511,10 +535,10 @@ private struct OutboxUploadRow: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
 
-            Text(op.displayName)
+            Text(group.displayTitle)
                 .lineLimit(1)
 
-            Text(op.sizeText)
+            Text("\(Int(group.fileCount)) files · \(sizeText)")
                 .font(.caption)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -524,34 +548,42 @@ private struct OutboxUploadRow: View {
             stateBadge
                 .font(.caption)
                 .frame(width: 130, alignment: .leading)
-
-            Text(queuedRelativeLabel(op.createdAt))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 90, alignment: .trailing)
         }
         .padding(.horizontal)
         .padding(.vertical, 6)
-        // Always attached; nil/empty when there's no error, so the row's
-        // structure doesn't change as its state flips.
-        .help(op.lastError ?? "")
+        .contentShape(Rectangle())
+        .contextMenu {
+            if group.releaseId != nil {
+                Button("Cancel", role: .destructive, action: onCancel)
+            }
+        }
+    }
+
+    private var sizeText: String {
+        Int64(group.progress.bytesTotal).formatted(.byteCount(style: .file))
     }
 
     @ViewBuilder
     private var stateBadge: some View {
-        switch op.state {
+        let remaining = Int(group.progress.pending)
+        switch group.progress.activity {
         case .queued:
-            Label("Queued", systemImage: "clock")
+            Label("Queued (\(remaining))", systemImage: "clock")
                 .foregroundStyle(.secondary)
-        case .active:
-            Label("Uploading", systemImage: "arrow.up.circle.fill")
-                .foregroundStyle(.orange)
-        case .failed:
+        case .uploading:
             Label(
-                "Retrying (\(op.attemptCount))",
+                "Uploading (\(remaining))",
+                systemImage: "arrow.up.circle.fill"
+            )
+            .foregroundStyle(.orange)
+        case .retrying:
+            Label(
+                "Retrying (\(remaining))",
                 systemImage: "exclamationmark.triangle.fill"
             )
             .foregroundStyle(.red)
+        case .none:
+            EmptyView()
         }
     }
 }

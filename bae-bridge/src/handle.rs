@@ -1306,9 +1306,9 @@ fn convert_outbox_snapshot(
         .into_iter()
         .map(|g| BridgeUploadReleaseGroup {
             release_id: g.release_id,
-            title: g.title,
+            display_title: g.display_title,
+            file_count: g.file_count,
             progress: convert_upload_progress(g.progress),
-            uploads: g.uploads.into_iter().map(convert_upload_op).collect(),
         })
         .collect();
 

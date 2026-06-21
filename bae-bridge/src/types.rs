@@ -1603,14 +1603,14 @@ pub struct BridgeDownloadSnapshot {
 }
 
 /// A release's pending uploads, grouped for the queue pane's per-release rows.
-/// Mirror of bae-core's `UploadReleaseGroup`. `release_id`/`title` are `None` for
-/// the orphaned-files bucket.
+/// Mirror of bae-core's `UploadReleaseGroup`. `release_id` is `None` for the
+/// orphaned-files bucket; `display_title` is the row's label, resolved by core.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadReleaseGroup {
     pub release_id: Option<String>,
-    pub title: Option<String>,
+    pub display_title: String,
+    pub file_count: u32,
     pub progress: BridgeUploadProgress,
-    pub uploads: Vec<BridgeUploadOp>,
 }
 
 /// The cloud-outbox processing snapshot the Storage Manager renders. The
