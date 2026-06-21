@@ -63,6 +63,14 @@
       variations. Loc.cs wraps it.
     -->
     <PackageReference Include="MessageFormat" Version="7.0.0" />
+    <!--
+      QR generation (join-request / invite / recovery codes shown as a QR image)
+      and scanning (camera capture decoded to a code). QRCoder renders to a PNG
+      byte array (PngByteQRCode), avoiding System.Drawing; ZXing.Net decodes a
+      captured camera frame's pixels to the embedded string.
+    -->
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <PackageReference Include="ZXing.Net" Version="0.16.9" />
   </ItemGroup>
 
   <ItemGroup>

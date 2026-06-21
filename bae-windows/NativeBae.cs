@@ -233,6 +233,50 @@ internal static class NativeBae
     internal static string? RestoreFromCode(string code, string? oauthTokenJson) =>
         CopyAndFree(RestoreFromCodePtr(code, oauthTokenJson));
 
+    [DllImport(Dll, EntryPoint = "bae_generate_join_request", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr GenerateJoinRequestPtr();
+
+    /// <summary>
+    /// This device's join-request code — its public key — to hand to an existing
+    /// member for approval, or null on error. The joining device has no library
+    /// yet, so this needs no handle; it only requires <see cref="Startup"/>.
+    /// Copies and frees.
+    /// </summary>
+    internal static string? GenerateJoinRequest() => CopyAndFree(GenerateJoinRequestPtr());
+
+    [DllImport(Dll, EntryPoint = "bae_decode_join_request", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DecodeJoinRequestPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string code);
+
+    /// <summary>
+    /// Decode a join-request code to its info JSON (<c>{pubkey, email}</c>), or
+    /// null if malformed. Copies and frees.
+    /// </summary>
+    internal static string? DecodeJoinRequest(string code) => CopyAndFree(DecodeJoinRequestPtr(code));
+
+    [DllImport(Dll, EntryPoint = "bae_decode_invite_code", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DecodeInviteCodePtr([MarshalAs(UnmanagedType.LPUTF8Str)] string code);
+
+    /// <summary>
+    /// Decode an invite code to its info JSON (<c>{library_id, library_name,
+    /// owner_pubkey, provider, needs_oauth}</c>), or null if malformed. Copies and
+    /// frees.
+    /// </summary>
+    internal static string? DecodeInviteCode(string code) => CopyAndFree(DecodeInviteCodePtr(code));
+
+    [DllImport(Dll, EntryPoint = "bae_join_from_code", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr JoinFromCodePtr(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string code,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? oauthTokenJson);
+
+    /// <summary>
+    /// Join a shared library from an invite code; returns a result JSON
+    /// (<c>{library_id, error}</c>). For OAuth providers pass the token JSON from
+    /// <see cref="OAuthAuthorize"/>; for credential providers pass null. Blocks on
+    /// a cloud pull — call off the UI thread. Copies and frees.
+    /// </summary>
+    internal static string? JoinFromCode(string code, string? oauthTokenJson) =>
+        CopyAndFree(JoinFromCodePtr(code, oauthTokenJson));
+
     [DllImport(Dll, EntryPoint = "bae_restore_from_cloud", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr RestoreFromCloudPtr(
         [MarshalAs(UnmanagedType.LPUTF8Str)] string libraryId,
@@ -618,6 +662,42 @@ internal static class NativeBae
 
     /// <summary>This library's restore code, or null on error. Copies and frees.</summary>
     internal static string? GenerateRestoreCode(IntPtr handle) => CopyAndFree(GenerateRestoreCodePtr(handle));
+
+    [DllImport(Dll, EntryPoint = "bae_get_members", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr GetMembersPtr(IntPtr handle);
+
+    /// <summary>
+    /// The library's members (devices) as a JSON array of <c>{pubkey, role,
+    /// is_self}</c>, or null on error. Blocks on a cloud read — call off the UI
+    /// thread. Copies and frees.
+    /// </summary>
+    internal static string? GetMembersJson(IntPtr handle) => CopyAndFree(GetMembersPtr(handle));
+
+    [DllImport(Dll, EntryPoint = "bae_invite_member", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr InviteMemberPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string publicKeyHex);
+
+    /// <summary>
+    /// Approve a device into the library by its public key (hex); returns the
+    /// invite code to hand back to the joining device, or null on error. Blocks on
+    /// the cloud write — call off the UI thread. Copies and frees.
+    /// </summary>
+    internal static string? InviteMember(IntPtr handle, string publicKeyHex) =>
+        CopyAndFree(InviteMemberPtr(handle, publicKeyHex));
+
+    [DllImport(Dll, EntryPoint = "bae_remove_member", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr RemoveMemberPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string publicKeyHex);
+
+    /// <summary>
+    /// Remove a device from the library by its public key (hex), rotating the
+    /// library key; null on success, else the error. Blocks on the cloud write —
+    /// call off the UI thread.
+    /// </summary>
+    internal static string? RemoveMember(IntPtr handle, string publicKeyHex) =>
+        ResultMessage(RemoveMemberPtr(handle, publicKeyHex));
 
     [DllImport(Dll, EntryPoint = "bae_release_edit_seed", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr ReleaseEditSeedPtr(

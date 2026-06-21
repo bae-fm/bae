@@ -1118,6 +1118,162 @@ pub unsafe extern "C" fn bae_restore_from_code(
     json_cstring(&out)
 }
 
+/// This device's join-request code — its public key — to hand to an existing
+/// member for approval. Returns the code as a C string, or null on error
+/// (logged). The joining device has no library yet, so this needs no handle; it
+/// only requires the keyring initialized ([`bae_startup`]). Free with
+/// [`bae_string_free`].
+#[no_mangle]
+pub extern "C" fn bae_generate_join_request() -> *mut c_char {
+    match bae_core::sync::join_code::generate_join_request(None) {
+        Ok(code) => error_cstring(&code),
+        Err(e) => {
+            tracing::error!("bae_generate_join_request failed: {e}");
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// A decoded join-request code: the joining device's public key and an optional
+/// contact email it included.
+#[derive(Serialize)]
+struct FfiJoinRequestInfo {
+    pubkey: String,
+    email: Option<String>,
+}
+
+/// Decode a join-request code to preview the joining device before approving it,
+/// as JSON `{pubkey, email}`, or null when the code is malformed. No handle —
+/// runs on the approving device before any membership change. Free with
+/// [`bae_string_free`].
+///
+/// # Safety
+/// `code` must be a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_decode_join_request(code: *const c_char) -> *mut c_char {
+    let Some(code) = cstr(code) else {
+        tracing::error!("bae_decode_join_request: null or non-UTF-8 code");
+        return std::ptr::null_mut();
+    };
+    match bae_core::sync::join_code::decode_join_request(&code) {
+        Ok(req) => json_cstring(&FfiJoinRequestInfo {
+            pubkey: req.public_key,
+            email: req.email,
+        }),
+        Err(e) => {
+            tracing::error!("bae_decode_join_request failed: {e}");
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// What an invite code decodes to, before committing to a join.
+#[derive(Serialize)]
+struct FfiInviteCodeInfo {
+    library_id: String,
+    library_name: String,
+    owner_pubkey: String,
+    provider: String,
+    /// Whether joining this library needs an OAuth sign-in (Google Drive,
+    /// Dropbox, OneDrive). The joining device runs `bae_oauth_authorize` for the
+    /// provider and passes the token JSON to [`bae_join_from_code`] — mirrors
+    /// [`FfiRestoreCodeInfo::needs_oauth`].
+    needs_oauth: bool,
+}
+
+/// Decode an invite code into its `{library_id, library_name, owner_pubkey,
+/// provider, needs_oauth}` (without joining), as JSON, or null when the code is
+/// malformed. Free with [`bae_string_free`]. No handle — runs before
+/// [`bae_init`].
+///
+/// # Safety
+/// `code` must be a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_decode_invite_code(code: *const c_char) -> *mut c_char {
+    let Some(code) = cstr(code) else {
+        tracing::error!("bae_decode_invite_code: null or non-UTF-8 code");
+        return std::ptr::null_mut();
+    };
+    match bae_core::sync::join_code::decode_invite_code_info(&code) {
+        Ok(info) => json_cstring(&FfiInviteCodeInfo {
+            library_id: info.library_id,
+            library_name: info.library_name,
+            owner_pubkey: info.owner_pubkey,
+            provider: cloud_provider_name(&info.cloud_provider).to_string(),
+            needs_oauth: info.needs_oauth,
+        }),
+        Err(e) => {
+            tracing::error!("bae_decode_invite_code failed: {e}");
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// Join a shared library from an invite code. For OAuth providers (Google Drive,
+/// Dropbox, OneDrive) the caller first runs `bae_oauth_authorize` and passes the
+/// resulting token JSON as `oauth_token_json` (the joining device authorizes its
+/// own cloud account); for credential providers it passes null. Pulls the
+/// library from the cloud, then returns `{library_id, error}` as JSON for the
+/// caller to [`bae_init`]. Mirrors [`bae_restore_from_code`]. No handle — runs
+/// before [`bae_init`]. Free with [`bae_string_free`].
+///
+/// # Safety
+/// `code` must be a valid NUL-terminated UTF-8 C string; `oauth_token_json` must
+/// be null or a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_join_from_code(
+    code: *const c_char,
+    oauth_token_json: *const c_char,
+) -> *mut c_char {
+    let Some(code) = cstr(code) else {
+        return json_cstring(&FfiRestoreResult {
+            library_id: None,
+            error: Some("invalid invite code".to_string()),
+        });
+    };
+    let oauth_tokens = match cstr(oauth_token_json) {
+        Some(json) => match serde_json::from_str::<bae_core::oauth::OAuthTokens>(&json) {
+            Ok(tokens) => Some(tokens),
+            Err(e) => {
+                return json_cstring(&FfiRestoreResult {
+                    library_id: None,
+                    error: Some(format!("invalid oauth token json: {e}")),
+                });
+            }
+        },
+        None => None,
+    };
+    let runtime = match tokio::runtime::Runtime::new() {
+        Ok(runtime) => runtime,
+        Err(e) => {
+            tracing::error!("bae_join_from_code: runtime: {e}");
+            return json_cstring(&FfiRestoreResult {
+                library_id: None,
+                error: Some("couldn't start the join runtime".to_string()),
+            });
+        }
+    };
+    let result = runtime.block_on(bae_core::library::join_from_code(
+        &code,
+        oauth_tokens,
+        // cloudkit_ops: Windows has no CloudKit provider, so there is never a
+        // driver to pass (matches bae_restore_from_code).
+        None,
+        |status| tracing::info!("join: {status}"),
+    ));
+    let out = match result {
+        Ok(config) => FfiRestoreResult {
+            library_id: Some(config.library_id.clone()),
+            error: None,
+        },
+        Err(e) => FfiRestoreResult {
+            library_id: None,
+            error: Some(e),
+        },
+    };
+    json_cstring(&out)
+}
+
 /// A manually-entered cloud source to restore from, when there's no restore code
 /// — the user types every connection detail, including the secrets a shareable
 /// code can't carry. Decoded from the `source_json` of [`bae_restore_from_cloud`].
@@ -3349,6 +3505,117 @@ pub unsafe extern "C" fn bae_generate_restore_code(handle: *const BaeHandle) -> 
             tracing::error!("bae_generate_restore_code failed: {e}");
             std::ptr::null_mut()
         }
+    }
+}
+
+/// One device in the library's membership list.
+#[derive(Serialize)]
+struct FfiMember {
+    pubkey: String,
+    /// Lowercase wire role: "owner" / "member" / "follower". bae adds devices as
+    /// "member" and the founder is "owner"; "follower" never originates here but
+    /// is rendered if a future build or another platform writes one.
+    role: String,
+    is_self: bool,
+}
+
+/// The library's current members (devices) as a JSON array of
+/// `{pubkey, role, is_self}`, or null on error (e.g. sync isn't connected;
+/// logged). Free with [`bae_string_free`].
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_get_members(handle: *const BaeHandle) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_get_members: null handle");
+        return std::ptr::null_mut();
+    };
+    let app = &handle.0;
+    let members = match app
+        .runtime
+        .block_on(app.services.library_manager().get_members())
+    {
+        Ok(members) => members,
+        Err(e) => {
+            tracing::error!("bae_get_members failed: {e}");
+            return std::ptr::null_mut();
+        }
+    };
+    let members: Vec<FfiMember> = members
+        .into_iter()
+        .map(|member| FfiMember {
+            pubkey: member.pubkey,
+            role: member.role.as_str().to_string(),
+            is_self: member.is_self,
+        })
+        .collect();
+    json_cstring(&members)
+}
+
+/// Approve a device into the library by its public key (hex), wrapping the
+/// library key to it and signing a membership entry. Returns the invite code to
+/// hand back to the joining device as a C string, or null on error (logged).
+/// bae adds every device as a member; the founding device is the owner. Blocks
+/// on the cloud write — call off the UI thread. Free with [`bae_string_free`].
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
+/// `public_key_hex` must be a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_invite_member(
+    handle: *const BaeHandle,
+    public_key_hex: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_invite_member: null handle");
+        return std::ptr::null_mut();
+    };
+    let Some(public_key_hex) = cstr(public_key_hex) else {
+        tracing::error!("bae_invite_member: null or non-UTF-8 public_key_hex");
+        return std::ptr::null_mut();
+    };
+    let app = &handle.0;
+    match app.runtime.block_on(
+        app.services
+            .library_manager()
+            .invite_member(&public_key_hex),
+    ) {
+        Ok(code) => error_cstring(&code),
+        Err(e) => {
+            tracing::error!("bae_invite_member failed: {e}");
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// Remove a device from the library by its public key (hex) and rotate the
+/// library key so the removed device can no longer read new data. Returns null
+/// on success, or an error-message C string (free with [`bae_string_free`]).
+/// Blocks on the cloud write — call off the UI thread.
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
+/// `public_key_hex` must be a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_remove_member(
+    handle: *const BaeHandle,
+    public_key_hex: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        return error_cstring("no app handle");
+    };
+    let Some(public_key_hex) = cstr(public_key_hex) else {
+        return error_cstring("invalid remove-member argument");
+    };
+    let app = &handle.0;
+    match app.runtime.block_on(
+        app.services
+            .library_manager()
+            .remove_member(&public_key_hex),
+    ) {
+        Ok(()) => std::ptr::null_mut(),
+        Err(e) => error_cstring(&e),
     }
 }
 

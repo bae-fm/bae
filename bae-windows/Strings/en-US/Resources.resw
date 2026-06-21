@@ -51,6 +51,10 @@
   <data name="cover.remote_sources" xml:space="preserve"><value>Remote sources</value></data>
   <data name="cover.section_title" xml:space="preserve"><value>Cover</value></data>
   <data name="cover.show_failed" xml:space="preserve"><value>couldn't show remote covers: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>back</value></data>
+  <data name="action.copy" xml:space="preserve"><value>copy</value></data>
+  <data name="action.done" xml:space="preserve"><value>done</value></data>
+  <data name="action.scan" xml:space="preserve"><value>scan…</value></data>
   <data name="error.playback_title" xml:space="preserve"><value>playback error</value></data>
   <data name="error.title" xml:space="preserve"><value>error</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>couldn't load the gallery</value></data>
@@ -86,6 +90,20 @@
   <data name="import.storage.managed" xml:space="preserve"><value>Managed</value></data>
   <data name="import.title" xml:space="preserve"><value>import</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>view in library</value></data>
+  <data name="join.title" xml:space="preserve"><value>join a library</value></data>
+  <data name="join.intro" xml:space="preserve"><value>add this device to a library you already have on another device.</value></data>
+  <data name="join.this_device_code" xml:space="preserve"><value>this device's code</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>on a device already in your library, open settings → devices → add a device and scan or paste this.</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>this device: {fingerprint}</value></data>
+  <data name="join.generate_failed" xml:space="preserve"><value>couldn't generate this device's code</value></data>
+  <data name="join.invite_label" xml:space="preserve"><value>invite code</value></data>
+  <data name="join.invite_hint" xml:space="preserve"><value>once that device approves this one, enter the invite code it shows.</value></data>
+  <data name="join.invite_placeholder" xml:space="preserve"><value>paste invite code</value></data>
+  <data name="join.invalid_invite" xml:space="preserve"><value>invalid invite code</value></data>
+  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · owner {fingerprint}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>join</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>joining {name}…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>couldn't join the library</value></data>
   <data name="libraries.active" xml:space="preserve"><value>{name}  ·  active</value></data>
   <data name="libraries.new" xml:space="preserve"><value>new library</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>rename</value></data>
@@ -107,6 +125,26 @@
   <data name="menu.play_next" xml:space="preserve"><value>Play Next</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>Set as primary release</value></data>
   <data name="menu.set_primary_done" xml:space="preserve"><value>set as primary release</value></data>
+  <data name="members.title" xml:space="preserve"><value>devices</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>this device</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>owner</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>member</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>follower</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>couldn't load devices</value></data>
+  <data name="members.add" xml:space="preserve"><value>add a device…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>remove</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>this device will lose access and the library key will be rotated. click remove again to confirm.</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>add a device</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>on the new device, open join a library and show its code. scan it here, or paste it below.</value></data>
+  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>paste the device's code</value></data>
+  <data name="members.approve.decode" xml:space="preserve"><value>decode</value></data>
+  <data name="members.approve.invalid_request" xml:space="preserve"><value>invalid device code</value></data>
+  <data name="members.approve.confirm_title" xml:space="preserve"><value>approve this device?</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>it will be added to your library and able to sync. you'll get a code to enter on it.</value></data>
+  <data name="members.approve.confirm" xml:space="preserve"><value>approve</value></data>
+  <data name="members.approve.in_progress" xml:space="preserve"><value>approving device…</value></data>
+  <data name="members.approve.failed" xml:space="preserve"><value>couldn't approve this device</value></data>
+  <data name="members.approve.invited_hint" xml:space="preserve"><value>enter this code on the new device.</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>delete</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>cancel</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>couldn't load the outbox</value></data>
@@ -151,9 +189,11 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Library: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>lock library</value></data>
-  <data name="settings.restore_code.label" xml:space="preserve"><value>restore code (enter on another device)</value></data>
-  <data name="settings.restore_code.show" xml:space="preserve"><value>show restore code</value></data>
-  <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(unavailable — is sync connected?)</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>recovery</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>your recovery code restores this library on a new device when you have no other device available to approve it. anyone with it has full access — keep it secret.</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>recovery code</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>show recovery code…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(unavailable — is sync connected?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>connect S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>connecting to S3…</value></data>
   <data name="settings.storage.browsable" xml:space="preserve"><value>browsable — stored unencrypted</value></data>
@@ -190,6 +230,7 @@
   <data name="track.export.flac" xml:space="preserve"><value>FLAC (lossless)</value></data>
   <data name="track.export.mp3" xml:space="preserve"><value>MP3 (320 kbps)</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>choose a library</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>join a library</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>create library</value></data>
   <data name="welcome.no_library" xml:space="preserve"><value>no library yet</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>your libraries</value></data>

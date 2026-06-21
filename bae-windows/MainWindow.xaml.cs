@@ -573,6 +573,16 @@ public sealed partial class MainWindow : Window
         };
         restoreButton.Click += async (_, _) => await RestoreFromCode(codeBox.Text ?? string.Empty);
 
+        // Join a library that already exists on another device: this device shows
+        // its join-request code, an existing owner approves it, and the invite
+        // code it returns brings the library down here.
+        var joinButton = new Button
+        {
+            Content = Loc.Chrome("welcome.join_library"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        joinButton.Click += async (_, _) => await ShowJoinLibrary();
+
         // Restore by entering the cloud location and credentials directly, when
         // there's no restore code (the code can't carry secrets like S3 keys).
         var restoreCloudButton = new Button
@@ -585,6 +595,7 @@ public sealed partial class MainWindow : Window
         _welcome.Children.Add(createButton);
         _welcome.Children.Add(codeBox);
         _welcome.Children.Add(restoreButton);
+        _welcome.Children.Add(joinButton);
         _welcome.Children.Add(restoreCloudButton);
         EmptyState.Children.Add(_welcome);
     }
@@ -656,6 +667,485 @@ public sealed partial class MainWindow : Window
 
         DismissWelcome();
         OpenLibrary(result.LibraryId);
+    }
+
+    // Copy text to the system clipboard (a shared code the user hands to another
+    // device).
+    private static void CopyToClipboard(string text)
+    {
+        var package = new DataPackage();
+        package.SetText(text);
+        Clipboard.SetContent(package);
+    }
+
+    // A code-display block: the QR image (when it renders), the code as selectable
+    // monospaced text, and a Copy button. Shared by the join screen (this device's
+    // code), the approve flow (the invite code), and the recovery reveal.
+    private static StackPanel BuildCodeDisplay(string code)
+    {
+        var panel = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center };
+
+        var qr = QrCode.Image(code);
+        if (qr is not null)
+        {
+            panel.Children.Add(new Image
+            {
+                Source = qr,
+                Width = 180,
+                Height = 180,
+                Stretch = Stretch.Uniform,
+            });
+        }
+
+        panel.Children.Add(new TextBox
+        {
+            Text = code,
+            IsReadOnly = true,
+            TextWrapping = TextWrapping.Wrap,
+            FontFamily = new FontFamily("Consolas"),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        });
+
+        var copy = new Button
+        {
+            Content = Loc.Chrome("action.copy"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        copy.Click += (_, _) => CopyToClipboard(code);
+        panel.Children.Add(copy);
+
+        return panel;
+    }
+
+    // Join a library that already lives on another device. This device generates
+    // its join-request code (its public key) and shows it as a QR + text + short
+    // fingerprint; an existing owner approves it (in their Settings → Devices) and
+    // reads back an invite code, which the user pastes or scans here. Decoding the
+    // invite runs the OAuth sign-in when the provider needs it, then JoinFromCode
+    // pulls the library down. Mirrors RestoreFromCode's non-cancellable flow.
+    private async System.Threading.Tasks.Task ShowJoinLibrary()
+    {
+        var content = new StackPanel { Spacing = 12, MinWidth = 360 };
+        content.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("join.intro"),
+            TextWrapping = TextWrapping.Wrap,
+        });
+
+        // This device's code section, filled once it's generated below.
+        content.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("join.this_device_code"),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        });
+        var deviceCodeHost = new StackPanel { Spacing = 8 };
+        deviceCodeHost.Children.Add(new ProgressRing { IsActive = true, Width = 20, Height = 20 });
+        content.Children.Add(deviceCodeHost);
+        content.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("join.show_to_member"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        });
+
+        // Invite-code section.
+        content.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("join.invite_label"),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        });
+        content.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("join.invite_hint"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        });
+        var inviteBox = new TextBox
+        {
+            PlaceholderText = Loc.Chrome("join.invite_placeholder"),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        var scanButton = new Button { Content = Loc.Chrome("action.scan") };
+        var inviteRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        inviteRow.Children.Add(inviteBox);
+        inviteRow.Children.Add(scanButton);
+        content.Children.Add(inviteRow);
+
+        var invitePreview = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed,
+        };
+        content.Children.Add(invitePreview);
+
+        var status = new TextBlock
+        {
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed,
+        };
+        content.Children.Add(status);
+
+        var joinButton = new Button
+        {
+            Content = Loc.Chrome("join.confirm"),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            IsEnabled = false,
+        };
+        content.Children.Add(joinButton);
+
+        var dialog = new ContentDialog
+        {
+            Title = Loc.Chrome("join.title"),
+            Content = new ScrollViewer { Content = content, MaxHeight = 560 },
+            CloseButtonText = Loc.Chrome("action.cancel"),
+            XamlRoot = Content.XamlRoot,
+        };
+
+        // The decoded invite and the OAuth token (when the provider needed one):
+        // both feed the Join click and gate the button.
+        InviteCodeInfo? decoded = null;
+        string? oauthTokenJson = null;
+
+        void ShowStatus(string message)
+        {
+            status.Text = message;
+            status.Visibility = Visibility.Visible;
+        }
+
+        void ClearStatus()
+        {
+            status.Text = string.Empty;
+            status.Visibility = Visibility.Collapsed;
+        }
+
+        // The button is ready once a valid invite is decoded and — for an OAuth
+        // provider — the sign-in has produced a token.
+        void Revalidate()
+        {
+            joinButton.IsEnabled = decoded is not null && (!decoded.NeedsOauth || oauthTokenJson is not null);
+        }
+
+        // Decode the typed/scanned invite and preview the library it joins. The
+        // decode is a fast in-memory parse, so it runs on the UI thread; OAuth
+        // sign-in is deferred to the Join click so the user isn't sent to the
+        // browser just for typing.
+        void DecodeInvite(string code)
+        {
+            decoded = null;
+            oauthTokenJson = null;
+            invitePreview.Visibility = Visibility.Collapsed;
+            ClearStatus();
+            Revalidate();
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                return;
+            }
+
+            var infoJson = NativeBae.DecodeInviteCode(code);
+            var info = infoJson is null
+                ? null
+                : JsonSerializer.Deserialize<InviteCodeInfo>(infoJson, JsonOptions);
+            if (info is null)
+            {
+                ShowStatus(Loc.Chrome("join.invalid_invite"));
+                return;
+            }
+
+            decoded = info;
+            invitePreview.Text = Loc.Chrome("join.invite_for", new Dictionary<string, object?>
+            {
+                ["name"] = info.LibraryName,
+                ["provider"] = ProviderDisplayName(info.Provider),
+                ["fingerprint"] = MemberFormat.Fingerprint(info.OwnerPubkey),
+            });
+            invitePreview.Visibility = Visibility.Visible;
+            Revalidate();
+        }
+
+        inviteBox.TextChanged += (_, _) => DecodeInvite(inviteBox.Text?.Trim() ?? string.Empty);
+        scanButton.Click += async (_, _) =>
+        {
+            var scanned = await QrScanner.ScanFromFileAsync(WinRT.Interop.WindowNative.GetWindowHandle(this));
+            if (scanned is not null)
+            {
+                inviteBox.Text = scanned.Trim();
+            }
+        };
+
+        joinButton.Click += async (_, _) =>
+        {
+            if (decoded is null)
+            {
+                return;
+            }
+
+            var info = decoded;
+            ClearStatus();
+
+            // OAuth providers (Google Drive, Dropbox, OneDrive) need a sign-in
+            // first: the joining device authorizes its own cloud account, exactly
+            // as RestoreFromCode does.
+            if (info.NeedsOauth)
+            {
+                if (!NativeBae.AvailableCloudProviders().Contains(info.Provider))
+                {
+                    ShowStatus(Loc.Chrome("cloud.unsupported_provider", "provider", ProviderDisplayName(info.Provider)));
+                    return;
+                }
+                if (!OAuthCreds.Available)
+                {
+                    ShowStatus(OAuthCreds.RegistrationError ?? Loc.Chrome("cloud.signin.not_configured"));
+                    return;
+                }
+
+                joinButton.IsEnabled = false;
+                status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                ShowStatus(Loc.Chrome("cloud.signin.in_progress", "provider", ProviderDisplayName(info.Provider)));
+                var oauthJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.Provider));
+                var oauth = oauthJson is null ? null : JsonSerializer.Deserialize<OAuthResult>(oauthJson, JsonOptions);
+                if (oauth?.Token is null)
+                {
+                    status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
+                    ShowStatus(oauth?.Error ?? Loc.Chrome("cloud.signin.failed"));
+                    Revalidate();
+                    return;
+                }
+                oauthTokenJson = oauth.Token;
+            }
+
+            joinButton.IsEnabled = false;
+            status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+            ShowStatus(Loc.Chrome("join.in_progress", "name", info.LibraryName));
+            var code = inviteBox.Text?.Trim() ?? string.Empty;
+            var token = oauthTokenJson;
+            var resultJson = await System.Threading.Tasks.Task.Run(() => NativeBae.JoinFromCode(code, token));
+            var result = resultJson is null
+                ? null
+                : JsonSerializer.Deserialize<RestoreResult>(resultJson, JsonOptions);
+            if (result?.LibraryId is null)
+            {
+                status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
+                ShowStatus(result?.Error ?? Loc.Chrome("join.failed"));
+                joinButton.IsEnabled = true;
+                return;
+            }
+
+            dialog.Hide();
+            DismissWelcome();
+            OpenLibrary(result.LibraryId);
+        };
+
+        // Generate this device's join-request code off the UI thread, then render
+        // it (QR + text + Copy) and its fingerprint. A failure leaves the device
+        // section showing only an error — the invite half is unaffected.
+        _ = GenerateJoinCode(deviceCodeHost);
+
+        await dialog.ShowAsync();
+    }
+
+    // Fill the join screen's device-code section: generate the join-request code,
+    // decode it for the fingerprint, and render the code display. Runs the
+    // blocking FFI off the UI thread.
+    private async System.Threading.Tasks.Task GenerateJoinCode(StackPanel host)
+    {
+        var code = await System.Threading.Tasks.Task.Run(() => NativeBae.GenerateJoinRequest());
+        host.Children.Clear();
+        if (code is null)
+        {
+            host.Children.Add(new TextBlock
+            {
+                Text = Loc.Chrome("join.generate_failed"),
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
+                TextWrapping = TextWrapping.Wrap,
+            });
+            return;
+        }
+
+        host.Children.Add(BuildCodeDisplay(code));
+
+        // The fingerprint is the first eight hex of this device's public key,
+        // which the join-request code carries — decode it to show the same short
+        // form the approving device sees.
+        var infoJson = NativeBae.DecodeJoinRequest(code);
+        var info = infoJson is null
+            ? null
+            : JsonSerializer.Deserialize<JoinRequestInfo>(infoJson, JsonOptions);
+        if (info is not null)
+        {
+            host.Children.Add(new TextBlock
+            {
+                Text = Loc.Chrome("join.fingerprint", "fingerprint", MemberFormat.Fingerprint(info.Pubkey)),
+                FontFamily = new FontFamily("Consolas"),
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            });
+        }
+    }
+
+    // Owner-side approve flow: a single dialog whose body swaps between steps —
+    // capture (scan or paste the new device's join-request code) → confirm (its
+    // fingerprint) → invited (the invite code to enter on the new device). Approve
+    // wraps the library key to the device and signs a membership entry; the invite
+    // code it returns is the new device's way in. Mirrors macOS's ApproveDeviceSheet.
+    private async System.Threading.Tasks.Task ShowApproveDevice()
+    {
+        var body = new StackPanel { Spacing = 12, MinWidth = 360 };
+        var dialog = new ContentDialog
+        {
+            Title = Loc.Chrome("members.approve.title"),
+            Content = new ScrollViewer { Content = body, MaxHeight = 560 },
+            CloseButtonText = Loc.Chrome("action.done"),
+            XamlRoot = Content.XamlRoot,
+        };
+
+        void ShowCapture()
+        {
+            body.Children.Clear();
+            body.Children.Add(new TextBlock
+            {
+                Text = Loc.Chrome("members.approve.capture_hint"),
+                TextWrapping = TextWrapping.Wrap,
+            });
+
+            var pasteBox = new TextBox
+            {
+                PlaceholderText = Loc.Chrome("members.approve.paste_placeholder"),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+            };
+            var decode = new Button { Content = Loc.Chrome("members.approve.decode") };
+            var scan = new Button { Content = Loc.Chrome("action.scan") };
+            var captureRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            captureRow.Children.Add(pasteBox);
+            captureRow.Children.Add(decode);
+            captureRow.Children.Add(scan);
+            body.Children.Add(captureRow);
+
+            var error = new TextBlock
+            {
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
+                TextWrapping = TextWrapping.Wrap,
+                Visibility = Visibility.Collapsed,
+            };
+            body.Children.Add(error);
+
+            void TryDecode(string code)
+            {
+                if (string.IsNullOrWhiteSpace(code))
+                {
+                    return;
+                }
+
+                var infoJson = NativeBae.DecodeJoinRequest(code);
+                var info = infoJson is null
+                    ? null
+                    : JsonSerializer.Deserialize<JoinRequestInfo>(infoJson, JsonOptions);
+                if (info is null)
+                {
+                    error.Text = Loc.Chrome("members.approve.invalid_request");
+                    error.Visibility = Visibility.Visible;
+                    return;
+                }
+
+                ShowConfirm(info);
+            }
+
+            decode.Click += (_, _) => TryDecode(pasteBox.Text?.Trim() ?? string.Empty);
+            scan.Click += async (_, _) =>
+            {
+                var scanned = await QrScanner.ScanFromFileAsync(WinRT.Interop.WindowNative.GetWindowHandle(this));
+                if (scanned is not null)
+                {
+                    TryDecode(scanned.Trim());
+                }
+            };
+        }
+
+        void ShowConfirm(JoinRequestInfo info)
+        {
+            body.Children.Clear();
+            body.Children.Add(new TextBlock
+            {
+                Text = Loc.Chrome("members.approve.confirm_title"),
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            });
+            body.Children.Add(new TextBlock
+            {
+                Text = MemberFormat.Fingerprint(info.Pubkey),
+                FontFamily = new FontFamily("Consolas"),
+            });
+            if (!string.IsNullOrEmpty(info.Email))
+            {
+                body.Children.Add(new TextBlock
+                {
+                    Text = info.Email,
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                });
+            }
+            body.Children.Add(new TextBlock
+            {
+                Text = Loc.Chrome("members.approve.confirm_hint"),
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            });
+
+            var error = new TextBlock
+            {
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
+                TextWrapping = TextWrapping.Wrap,
+                Visibility = Visibility.Collapsed,
+            };
+
+            var back = new Button { Content = Loc.Chrome("action.back") };
+            back.Click += (_, _) => ShowCapture();
+            var approve = new Button
+            {
+                Content = Loc.Chrome("members.approve.confirm"),
+                Style = Application.Current.Resources["AccentButtonStyle"] as Style,
+            };
+            approve.Click += async (_, _) =>
+            {
+                approve.IsEnabled = false;
+                back.IsEnabled = false;
+                error.Visibility = Visibility.Collapsed;
+                error.Text = Loc.Chrome("members.approve.in_progress");
+                error.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                error.Visibility = Visibility.Visible;
+
+                var pubkey = info.Pubkey;
+                var code = await System.Threading.Tasks.Task.Run(() => NativeBae.InviteMember(_handle, pubkey));
+                if (code is null)
+                {
+                    error.Text = Loc.Chrome("members.approve.failed");
+                    error.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
+                    error.Visibility = Visibility.Visible;
+                    approve.IsEnabled = true;
+                    back.IsEnabled = true;
+                    return;
+                }
+
+                ShowInvited(code);
+            };
+
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            buttons.Children.Add(back);
+            buttons.Children.Add(approve);
+            body.Children.Add(buttons);
+            body.Children.Add(error);
+        }
+
+        void ShowInvited(string code)
+        {
+            body.Children.Clear();
+            body.Children.Add(new TextBlock
+            {
+                Text = Loc.Chrome("members.approve.invited_hint"),
+                TextWrapping = TextWrapping.Wrap,
+            });
+            body.Children.Add(BuildCodeDisplay(code));
+        }
+
+        ShowCapture();
+        await dialog.ShowAsync();
     }
 
     // Restore a library by entering its cloud location and credentials directly,
@@ -4141,22 +4631,52 @@ public sealed partial class MainWindow : Window
         content.Children.Add(oauthButtons);
         content.Children.Add(s3Form);
 
-        // Restore code: enter it on another device to restore this library.
-        var restoreCode = new TextBox
+        // Devices (membership): list the library's devices with their role and a
+        // "this device" marker. The owner can add a device (which opens the
+        // approve flow) or remove one (which rotates the library key). The list
+        // loads off the UI thread; the add-device button only renders for an owner.
+        var addDeviceRequested = false;
+        content.Children.Add(new TextBlock
         {
-            Header = Loc.Chrome("settings.restore_code.label"),
+            Text = Loc.Chrome("members.title"),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        });
+        var membersHost = new StackPanel { Spacing = 8 };
+        membersHost.Children.Add(new ProgressRing { IsActive = true, Width = 20, Height = 20 });
+        content.Children.Add(membersHost);
+
+        // Recovery: the restore code is now a recovery secret only — it restores
+        // this library on a new device when there's no other device available to
+        // approve it. Anyone with it has full access, so it's revealed on demand,
+        // behind a warning, never shown by default.
+        content.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("settings.recovery.title"),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        });
+        content.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("settings.recovery.intro"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        });
+        var recoveryCode = new TextBox
+        {
+            Header = Loc.Chrome("settings.recovery.label"),
             IsReadOnly = true,
             TextWrapping = TextWrapping.Wrap,
+            FontFamily = new FontFamily("Consolas"),
             Visibility = Visibility.Collapsed,
         };
-        var showRestoreCode = new Button { Content = Loc.Chrome("settings.restore_code.show") };
-        showRestoreCode.Click += (_, _) =>
+        var showRecoveryCode = new Button { Content = Loc.Chrome("settings.recovery.show") };
+        showRecoveryCode.Click += async (_, _) =>
         {
-            restoreCode.Text = NativeBae.GenerateRestoreCode(_handle) ?? Loc.Chrome("settings.restore_code.unavailable");
-            restoreCode.Visibility = Visibility.Visible;
+            recoveryCode.Text = await System.Threading.Tasks.Task.Run(() => NativeBae.GenerateRestoreCode(_handle))
+                ?? Loc.Chrome("settings.recovery.unavailable");
+            recoveryCode.Visibility = Visibility.Visible;
         };
-        content.Children.Add(showRestoreCode);
-        content.Children.Add(restoreCode);
+        content.Children.Add(showRecoveryCode);
+        content.Children.Add(recoveryCode);
 
         // Lock this library: forget its encryption key on this device. Sync stops
         // and the library reopens to the unlock prompt; local files stay.
@@ -4176,6 +4696,16 @@ public sealed partial class MainWindow : Window
             lockRequested = true;
             dialog.Hide();
         };
+
+        // Now that the dialog exists, load the device list into its placeholder.
+        // The add-device button (owner-only) arms the approve flow and closes the
+        // settings dialog — a nested ContentDialog can't open over it, so the
+        // approve flow runs after this one returns (mirroring the lock dance).
+        _ = LoadMembersInto(membersHost, () =>
+        {
+            addDeviceRequested = true;
+            dialog.Hide();
+        });
 
         // Re-read the (FFI-pre-computed) settings into the live labels so a
         // ConfigChanged event — or a connect/disconnect in this dialog — updates
@@ -4224,7 +4754,137 @@ public sealed partial class MainWindow : Window
             }
 
             OpenLibrary(s.LibraryId);
+            return;
         }
+
+        // Add-a-device closed settings to open the approve flow (no nested
+        // dialogs). Run it, then reopen settings so the refreshed device list
+        // shows the newly-approved device.
+        if (addDeviceRequested)
+        {
+            await ShowApproveDevice();
+            OnSettingsClick(sender, e);
+        }
+    }
+
+    // Load the library's devices into a host panel: one row per device (short
+    // fingerprint + role + "this device" marker), and — for an owner — an
+    // "Add a device…" button plus a Remove control on each other device. Runs the
+    // blocking FFI off the UI thread. <paramref name="onAddDevice"/> arms the
+    // approve flow (which the caller runs once the settings dialog closes).
+    private async System.Threading.Tasks.Task LoadMembersInto(StackPanel host, Action onAddDevice)
+    {
+        var json = await System.Threading.Tasks.Task.Run(() => NativeBae.GetMembersJson(_handle));
+        host.Children.Clear();
+
+        var members = json is null
+            ? null
+            : JsonSerializer.Deserialize<List<Member>>(json, JsonOptions);
+        if (members is null)
+        {
+            host.Children.Add(new TextBlock
+            {
+                Text = Loc.Chrome("members.load_failed"),
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
+                TextWrapping = TextWrapping.Wrap,
+            });
+            return;
+        }
+
+        // This device may manage membership only if it is itself an owner.
+        var selfIsOwner = members.Any(member => member.IsSelf && member.Role == "owner");
+
+        foreach (var member in members)
+        {
+            host.Children.Add(BuildMemberRow(member, selfIsOwner, host, onAddDevice));
+        }
+
+        if (selfIsOwner)
+        {
+            var add = new Button { Content = Loc.Chrome("members.add") };
+            add.Click += (_, _) => onAddDevice();
+            host.Children.Add(add);
+        }
+    }
+
+    // One device row: fingerprint + role badge + "this device" marker, plus a
+    // two-step Remove for the owner on every other device. Removing rotates the
+    // library key, so it confirms inline (a second click) — a nested ContentDialog
+    // can't open over the settings dialog.
+    private FrameworkElement BuildMemberRow(Member member, bool selfIsOwner, StackPanel host, Action onAddDevice)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+
+        var labels = new StackPanel { Spacing = 0 };
+        labels.Children.Add(new TextBlock
+        {
+            Text = MemberFormat.Fingerprint(member.Pubkey),
+            FontFamily = new FontFamily("Consolas"),
+        });
+        if (member.IsSelf)
+        {
+            labels.Children.Add(new TextBlock
+            {
+                Text = Loc.Chrome("members.this_device"),
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            });
+        }
+        row.Children.Add(labels);
+
+        row.Children.Add(new TextBlock
+        {
+            Text = MemberFormat.RoleLabel(member.Role),
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+
+        // The owner can remove any device but its own.
+        if (selfIsOwner && !member.IsSelf)
+        {
+            var remove = new Button { Content = Loc.Chrome("members.remove") };
+            var status = new TextBlock
+            {
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
+                TextWrapping = TextWrapping.Wrap,
+                Visibility = Visibility.Collapsed,
+            };
+            var armed = false;
+            remove.Click += async (_, _) =>
+            {
+                if (!armed)
+                {
+                    status.Text = Loc.Chrome("members.remove_confirm");
+                    status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    status.Visibility = Visibility.Visible;
+                    armed = true;
+                    return;
+                }
+
+                remove.IsEnabled = false;
+                var pubkey = member.Pubkey;
+                var error = await System.Threading.Tasks.Task.Run(() => NativeBae.RemoveMember(_handle, pubkey));
+                if (error is not null)
+                {
+                    status.Text = error;
+                    status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
+                    status.Visibility = Visibility.Visible;
+                    remove.IsEnabled = true;
+                    armed = false;
+                    return;
+                }
+
+                // Reload the list in place so the removed device disappears.
+                await LoadMembersInto(host, onAddDevice);
+            };
+            row.Children.Add(remove);
+
+            var rowWithStatus = new StackPanel { Spacing = 4 };
+            rowWithStatus.Children.Add(row);
+            rowWithStatus.Children.Add(status);
+            return rowWithStatus;
+        }
+
+        return row;
     }
 
     private void OnClosed(object sender, WindowEventArgs args)
