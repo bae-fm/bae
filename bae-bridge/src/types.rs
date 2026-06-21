@@ -1602,12 +1602,25 @@ pub struct BridgeDownloadSnapshot {
     pub paused: bool,
 }
 
+/// A release's pending uploads, grouped for the queue pane's per-release rows.
+/// Mirror of bae-core's `UploadReleaseGroup`. `release_id`/`title` are `None` for
+/// the orphaned-files bucket.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeUploadReleaseGroup {
+    pub release_id: Option<String>,
+    pub title: Option<String>,
+    pub progress: BridgeUploadProgress,
+    pub uploads: Vec<BridgeUploadOp>,
+}
+
 /// The cloud-outbox processing snapshot the Storage Manager renders. The
 /// counts, per-release aggregates, one-line `summary`, throughput, and ETA
 /// are computed in bae-core; the UI renders them verbatim.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutboxSnapshot {
     pub uploads: Vec<BridgeUploadOp>,
+    /// `uploads` grouped by release for the queue pane's per-release rows.
+    pub upload_groups: Vec<BridgeUploadReleaseGroup>,
     pub deletes: Vec<BridgeDeleteOp>,
     /// Per-release aggregate, keyed by release id. Releases with no pending
     /// work are absent from the map.

@@ -126,11 +126,27 @@ impl UploadProgress {
     }
 }
 
+/// A release's pending uploads, grouped for the queue pane so it renders one row
+/// per release (matching the storage table) instead of a flat per-file list.
+/// `release_id`/`title` are `None` for the orphaned-files bucket (a release row
+/// whose backing release is gone). `progress` is the group's aggregate; the
+/// queue pane reads it for the per-release row and can expand `uploads` to files.
+#[derive(Debug, Clone)]
+pub struct UploadReleaseGroup {
+    pub release_id: Option<String>,
+    pub title: Option<String>,
+    pub progress: UploadProgress,
+    pub uploads: Vec<UploadOp>,
+}
+
 /// Complete snapshot of the cloud outbox. One source of truth for everything
 /// upload-related the UI renders.
 #[derive(Debug, Clone, Default)]
 pub struct OutboxSnapshot {
     pub uploads: Vec<UploadOp>,
+    /// `uploads` grouped by release, in first-seen order — the per-release rows
+    /// the queue pane renders.
+    pub upload_groups: Vec<UploadReleaseGroup>,
     pub deletes: Vec<DeleteOp>,
     /// Per-release aggregate, keyed by release id. Drives the "Uploading (N)"
     /// badge on each storage row and gates per-release storage actions.
@@ -270,8 +286,38 @@ pub(crate) async fn build_outbox_snapshot(
     } else {
         Some(bytes_remaining / throughput_bps)
     };
+
+    // Group the flat uploads by release (first-seen order) for the queue pane's
+    // per-release rows. The orphaned-files bucket (release_id `None`) groups
+    // together. Each group's `progress` is accumulated from its own files.
+    let mut upload_groups: Vec<UploadReleaseGroup> = Vec::new();
+    let mut group_index: HashMap<Option<String>, usize> = HashMap::new();
+    for op in &uploads {
+        let idx = *group_index.entry(op.release_id.clone()).or_insert_with(|| {
+            upload_groups.push(UploadReleaseGroup {
+                release_id: op.release_id.clone(),
+                title: op.title.clone(),
+                progress: UploadProgress::default(),
+                uploads: Vec::new(),
+            });
+            upload_groups.len() - 1
+        });
+        let group = &mut upload_groups[idx];
+        group.progress.bytes_total += op.bytes_total;
+        match &op.state {
+            UploadState::Queued => group.progress.queued += 1,
+            UploadState::Active { bytes_done } => {
+                group.progress.active += 1;
+                group.progress.bytes_done += bytes_done;
+            }
+            UploadState::Failed { .. } => group.progress.failed += 1,
+        }
+        group.uploads.push(op.clone());
+    }
+
     Ok(OutboxSnapshot {
         uploads,
+        upload_groups,
         deletes,
         per_release,
         total,
@@ -420,6 +466,25 @@ mod tests {
             .collect();
         names.sort();
         assert_eq!(names, ["01 Track Title.flac", "02 Track Title.flac"]);
+    }
+
+    #[tokio::test]
+    async fn upload_groups_group_a_releases_files_with_aggregate_progress() {
+        let (db, _small, _large, _tmp) = seed_two_queued_uploads().await;
+        let snapshot = build_outbox_snapshot(&db, &HashMap::new(), &UploadThroughput::new(), false)
+            .await
+            .unwrap();
+
+        // The release's two files collapse to one group carrying both.
+        assert_eq!(snapshot.upload_groups.len(), 1);
+        let group = &snapshot.upload_groups[0];
+        assert_eq!(group.release_id.as_deref(), Some("rel-1"));
+        assert_eq!(group.title.as_deref(), Some("Album Title"));
+        assert_eq!(group.uploads.len(), 2);
+        // Aggregate progress: both queued, summed bytes (100 + 1000).
+        assert_eq!(group.progress.queued, 2);
+        assert_eq!(group.progress.active, 0);
+        assert_eq!(group.progress.bytes_total, 1100);
     }
 
     #[tokio::test]
