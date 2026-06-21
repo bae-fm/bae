@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>无法读取发件箱</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>继续</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>立即重试</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>上传中 · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, other {# 次尝试}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>失败</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>上传</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>活动中</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>失败</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>已排队</value></data>
   <data name="queue.clear" xml:space="preserve"><value>清空队列</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>从队列移除</value></data>
   <data name="queue.title" xml:space="preserve"><value>队列</value></data>

@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>تعذّرت قراءة صندوق الصادر</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>استئناف</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>إعادة المحاولة الآن</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>جارٍ الرفع · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, zero {# محاولة} one {محاولة واحدة} two {محاولتان} few {# محاولات} many {# محاولة} other {# محاولة}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>فشل</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>رفع</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>نشط</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>فشل</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>في قائمة الانتظار</value></data>
   <data name="queue.clear" xml:space="preserve"><value>مسح قائمة الانتظار</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>إزالة من قائمة الانتظار</value></data>
   <data name="queue.title" xml:space="preserve"><value>قائمة الانتظار</value></data>

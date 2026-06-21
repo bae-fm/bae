@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>לא ניתן לקרוא את תיבת היוצא</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>המשך</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>נסה שוב כעת</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>מעלה · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, one {ניסיון #} two {# ניסיונות} many {# ניסיונות} other {# ניסיונות}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>נכשל</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>העלאה</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>פעיל</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>נכשל</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>בתור</value></data>
   <data name="queue.clear" xml:space="preserve"><value>נקה תור</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>הסר מהתור</value></data>
   <data name="queue.title" xml:space="preserve"><value>תור</value></data>

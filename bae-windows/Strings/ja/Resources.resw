@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>送信箱を読み込めませんでした</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>再開</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>今すぐ再試行</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>アップロード中 · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, other {# 回試行}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>失敗</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>アップロード</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>使用中</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>失敗</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>待機中</value></data>
   <data name="queue.clear" xml:space="preserve"><value>キューをクリア</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>キューから削除</value></data>
   <data name="queue.title" xml:space="preserve"><value>キュー</value></data>

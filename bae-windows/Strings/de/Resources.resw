@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>Postausgang konnte nicht gelesen werden</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>fortsetzen</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>jetzt erneut versuchen</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>wird hochgeladen · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, one {# Versuch} other {# Versuche}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>fehlgeschlagen</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>hochladen</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>aktiv</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>fehlgeschlagen</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>in Warteschlange</value></data>
   <data name="queue.clear" xml:space="preserve"><value>Warteschlange leeren</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Aus Warteschlange entfernen</value></data>
   <data name="queue.title" xml:space="preserve"><value>Warteschlange</value></data>

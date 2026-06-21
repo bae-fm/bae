@@ -1645,29 +1645,6 @@ pub unsafe extern "C" fn bae_unmanage_release(
     }
 }
 
-/// One queued upload, as the outbox panel renders it.
-#[derive(Serialize)]
-struct FfiUploadOp {
-    id: i64,
-    /// Album title for an upload that still resolves to a release; null for an
-    /// orphaned file.
-    title: Option<String>,
-    /// Owning release id; null for an orphaned file.
-    release_id: Option<String>,
-    cloud_key: String,
-    /// Total bytes for this file; the C# formats it for the locale.
-    bytes_total: u64,
-    bytes_done: u64,
-    attempt_count: i64,
-    /// "queued", "active", or "failed".
-    state: String,
-    /// The last failure message when `state` is "failed". This is an opaque,
-    /// log-only diagnostic string from the cloud layer (an exception's text),
-    /// not a localized line — the C# shows it verbatim in a copyable disclosure,
-    /// like macOS's `BridgeError::Diagnostic` detail.
-    last_error: Option<String>,
-}
-
 /// One queued cloud delete.
 #[derive(Serialize)]
 struct FfiDeleteOp {
@@ -1701,7 +1678,6 @@ struct FfiUploadReleaseGroup {
 /// band and formats throughput/ETA/bytes for the locale.
 #[derive(Serialize)]
 struct FfiOutboxSnapshot {
-    uploads: Vec<FfiUploadOp>,
     upload_groups: Vec<FfiUploadReleaseGroup>,
     deletes: Vec<FfiDeleteOp>,
     per_release: std::collections::HashMap<String, FfiUploadProgress>,
@@ -1722,28 +1698,7 @@ fn upload_progress_to_ffi(p: &bae_core::library::UploadProgress) -> FfiUploadPro
     }
 }
 
-fn upload_op_to_ffi(op: &bae_core::library::UploadOp) -> FfiUploadOp {
-    use bae_core::library::UploadState;
-    let (state, last_error, bytes_done) = match &op.state {
-        UploadState::Queued => ("queued", None, 0),
-        UploadState::Active { bytes_done } => ("active", None, *bytes_done),
-        UploadState::Failed { last_error } => ("failed", Some(last_error.clone()), 0),
-    };
-    FfiUploadOp {
-        id: op.id,
-        title: op.title.clone(),
-        release_id: op.release_id.clone(),
-        cloud_key: op.cloud_key.clone(),
-        bytes_total: op.bytes_total,
-        bytes_done,
-        attempt_count: op.attempt_count,
-        state: state.to_string(),
-        last_error,
-    }
-}
-
 fn outbox_snapshot_to_ffi(snapshot: &bae_core::library::OutboxSnapshot) -> FfiOutboxSnapshot {
-    let uploads = snapshot.uploads.iter().map(upload_op_to_ffi).collect();
     let upload_groups = snapshot
         .upload_groups
         .iter()
@@ -1768,7 +1723,6 @@ fn outbox_snapshot_to_ffi(snapshot: &bae_core::library::OutboxSnapshot) -> FfiOu
         .map(|(k, v)| (k.clone(), upload_progress_to_ffi(v)))
         .collect();
     FfiOutboxSnapshot {
-        uploads,
         upload_groups,
         deletes,
         per_release,

@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>nelze přečíst odchozí frontu</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>pokračovat</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>zopakovat hned</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>nahrávání · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, one {# pokus} few {# pokusy} many {# pokusu} other {# pokusů}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>selhalo</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>nahrát</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>aktivní</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>selhalo</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>ve frontě</value></data>
   <data name="queue.clear" xml:space="preserve"><value>vymazat frontu</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Odebrat z fronty</value></data>
   <data name="queue.title" xml:space="preserve"><value>fronta</value></data>

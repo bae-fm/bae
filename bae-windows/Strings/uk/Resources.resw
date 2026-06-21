@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>не вдалося прочитати чергу надсилання</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>продовжити</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>повторити зараз</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>вивантаження · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, one {# спроба} few {# спроби} many {# спроб} other {# спроби}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>помилка</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>вивантажити</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>активна</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>помилка</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>у черзі</value></data>
   <data name="queue.clear" xml:space="preserve"><value>очистити чергу</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Вилучити з черги</value></data>
   <data name="queue.title" xml:space="preserve"><value>черга</value></data>

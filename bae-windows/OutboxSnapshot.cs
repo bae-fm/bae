@@ -10,8 +10,6 @@ namespace Bae.Windows;
 /// </summary>
 public sealed class OutboxSnapshot
 {
-    public List<UploadOp> Uploads { get; set; } = new();
-
     /// <summary>Uploads grouped by release for the queue pane's per-release rows
     /// (matching the storage table). Resolved by core.</summary>
     public List<UploadReleaseGroup> UploadGroups { get; set; } = new();
@@ -108,84 +106,6 @@ public sealed class UploadReleaseGroup
     public string DisplayTitle { get; set; } = string.Empty;
     public uint FileCount { get; set; }
     public UploadProgress Progress { get; set; } = new();
-}
-
-/// <summary>One queued upload.</summary>
-public sealed class UploadOp
-{
-    public long Id { get; set; }
-
-    /// <summary>Owning release id; null for an orphaned file. The storage row
-    /// context menu reads this to find a release's queued uploads to cancel.</summary>
-    public string? ReleaseId { get; set; }
-
-    /// <summary>Album title when the upload still resolves to a release; null for an
-    /// orphaned file.</summary>
-    public string? Title { get; set; }
-    public string CloudKey { get; set; } = string.Empty;
-    public long AttemptCount { get; set; }
-
-    /// <summary>Bytes of this file that have reached the cloud so far; advances
-    /// mid-upload while <see cref="State"/> is "active".</summary>
-    public long BytesDone { get; set; }
-
-    /// <summary>Total bytes for this file (the encrypted payload size); formatted
-    /// for the locale by <see cref="SizeLabel"/>.</summary>
-    public long BytesTotal { get; set; }
-
-    /// <summary>"queued", "active", or "failed".</summary>
-    public string State { get; set; } = string.Empty;
-
-    /// <summary>The last failure message when <see cref="State"/> is "failed".
-    /// This is an opaque, log-only diagnostic string from the cloud layer (an
-    /// exception's text), shown verbatim in a copyable disclosure — never
-    /// translated, like a diagnostic error's detail.</summary>
-    public string? LastError { get; set; }
-
-    /// <summary>The total size formatted for the locale, e.g. "12.4 MB".</summary>
-    [JsonIgnore]
-    public string SizeLabel => Loc.Bytes(BytesTotal);
-
-    /// <summary>True while this upload is in flight — drives the per-file mini
-    /// progress bar.</summary>
-    [JsonIgnore]
-    public bool IsActive => State == "active";
-
-    /// <summary>Byte progress as a 0...1 fraction for the active-row mini bar.</summary>
-    [JsonIgnore]
-    public double Fraction => BytesTotal > 0 ? (double)BytesDone / BytesTotal : 0;
-
-    /// <summary>The list row: title-or-key, localized state, size, and attempt
-    /// count. An active upload shows its live byte fraction.</summary>
-    [JsonIgnore]
-    public string Label
-    {
-        get
-        {
-            var name = string.IsNullOrEmpty(Title) ? CloudKey : Title;
-            string detail;
-            if (State == "failed" && !string.IsNullOrEmpty(LastError))
-            {
-                // The failure word is chrome; LastError is the opaque detail.
-                detail = $"{Loc.Chrome("outbox.upload.failed")}: {LastError}";
-            }
-            else if (IsActive && BytesTotal > 0)
-            {
-                detail = Loc.Chrome(
-                    "outbox.upload.active_percent",
-                    "percent", (int)(Fraction * 100));
-            }
-            else
-            {
-                detail = Loc.Chrome($"outbox.upload.state.{State}");
-            }
-            var size = BytesTotal > 0 ? $" · {SizeLabel}" : string.Empty;
-            var attempts = AttemptCount > 0
-                ? $" · {Loc.Chrome("outbox.upload.attempts", "count", AttemptCount)}"
-                : string.Empty;
-            return $"{name} — {Loc.Chrome("outbox.upload.kind")} · {detail}{size}{attempts}";
-        }
-    }
 }
 
 /// <summary>One queued cloud delete.</summary>

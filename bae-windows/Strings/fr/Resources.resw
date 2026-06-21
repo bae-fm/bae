@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>impossible de lire la file d'envoi</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>reprendre</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>réessayer maintenant</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>envoi · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, one {# tentative} other {# tentatives}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>échec</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>envoyer</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>active</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>échec</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>en file</value></data>
   <data name="queue.clear" xml:space="preserve"><value>vider la file</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Retirer de la file</value></data>
   <data name="queue.title" xml:space="preserve"><value>file</value></data>

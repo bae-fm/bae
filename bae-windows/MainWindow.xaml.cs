@@ -3284,7 +3284,7 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            if (snapshot.Uploads.Count == 0 && snapshot.Deletes.Count == 0)
+            if (snapshot.UploadGroups.Count == 0 && snapshot.Deletes.Count == 0)
             {
                 return;
             }

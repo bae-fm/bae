@@ -341,7 +341,7 @@ private struct OutboxSection: View {
 
     var body: some View {
         let snapshot = outboxStore.snapshot
-        if !snapshot.uploads.isEmpty || !snapshot.deletes.isEmpty {
+        if !snapshot.uploadGroups.isEmpty || !snapshot.deletes.isEmpty {
             Divider()
             VStack(spacing: 0) {
                 if !collapsed {

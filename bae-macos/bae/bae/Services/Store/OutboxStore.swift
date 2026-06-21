@@ -34,7 +34,6 @@ class OutboxStore {
     /// and serves as the fallback if that read fails.
     static var emptySnapshot: BridgeOutboxSnapshot {
         BridgeOutboxSnapshot(
-            uploads: [],
             uploadGroups: [],
             deletes: [],
             perRelease: [:],
