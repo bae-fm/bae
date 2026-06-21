@@ -6,16 +6,16 @@
     <description>Most recent updates to bae</description>
     <language>en</language>
     <item>
-      <title>Version 0.4</title>
-      <pubDate>Sat, 20 Jun 2026 04:52:24 +0000</pubDate>
-      <sparkle:version>10</sparkle:version>
-      <sparkle:shortVersionString>0.4</sparkle:shortVersionString>
+      <title>Version 0.5</title>
+      <pubDate>Sun, 21 Jun 2026 13:36:30 +0000</pubDate>
+      <sparkle:version>13</sparkle:version>
+      <sparkle:shortVersionString>0.5</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/bae-fm/bae/releases/download/macos-v0.4/bae-macos.dmg"
-        length="22961445"
+        url="https://github.com/bae-fm/bae/releases/download/macos-v0.5/bae-macos.dmg"
+        length="24302762"
         type="application/octet-stream"
-        sparkle:edSignature="h9yMyjeLep5MQlaU426uFDsqWldLDZUiC/7hAS9BMGqSFDVHCeg+Y6B2/Lo8DnS4t0xxQgb7wV5EtBFcAZm7Aw=="
+        sparkle:edSignature="sAuFjxCzf0mcGD2d5JnhT1XSsoH4MVQzEs8gw8px6FlTX8QLSIHhSukdin4x6t0MZuIbneCSysEPdMD+m2YsBQ=="
       />
     </item>
   </channel>
