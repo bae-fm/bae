@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>Fixar para offline</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>Mover para fora da biblioteca…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Remover cópia local</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>Cancelar upload</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# arquivo} other {# arquivos}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>não foi possível carregar o armazenamento</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>não foi possível ler o armazenamento</value></data>

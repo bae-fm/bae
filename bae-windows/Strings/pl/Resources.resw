@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>Przypnij do trybu offline</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>Przenieś poza bibliotekę…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Usuń kopię lokalną</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>Anuluj wysyłanie</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# plik} few {# pliki} many {# plików} other {# pliku}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>nie udało się wczytać magazynu</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>nie udało się odczytać magazynu</value></data>

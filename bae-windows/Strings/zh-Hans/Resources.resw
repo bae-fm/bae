@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>固定以离线使用</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>移出库…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>移除本地副本</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>取消上传</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, other {# 个文件}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>无法加载存储</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>无法读取存储</value></data>

@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>Épingler hors ligne</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>Déplacer hors de la bibliothèque…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Supprimer la copie locale</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>Annuler l'envoi</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# fichier} other {# fichiers}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>impossible de charger le stockage</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>impossible de lire le stockage</value></data>

@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>Připnout pro offline</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>Přesunout z knihovny…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Odebrat místní kopii</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>Zrušit nahrávání</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# soubor} few {# soubory} many {# souboru} other {# souborů}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>nelze načíst úložiště</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>nelze přečíst úložiště</value></data>

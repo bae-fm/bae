@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>נעץ לזמינות לא מקוונת</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>העבר מחוץ לספרייה…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>הסר עותק מקומי</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>בטל העלאה</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {קובץ #} two {# קבצים} many {# קבצים} other {# קבצים}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>לא ניתן לטעון את האחסון</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>לא ניתן לקרוא את האחסון</value></data>

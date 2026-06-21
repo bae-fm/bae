@@ -176,7 +176,6 @@
   <data name="storage.action.pin" xml:space="preserve"><value>Fijar para sin conexión</value></data>
   <data name="storage.action.unmanage" xml:space="preserve"><value>Sacar de la biblioteca…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Quitar copia local</value></data>
-  <data name="storage.cancel_upload" xml:space="preserve"><value>Cancelar subida</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# archivo} other {# archivos}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>no se pudo cargar el almacenamiento</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>no se pudo leer el almacenamiento</value></data>
