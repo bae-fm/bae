@@ -268,6 +268,15 @@ jobs:
         find "$APP_PATH/Contents/Frameworks" -name "*.dylib" -exec \
           codesign --force --sign "$IDENTITY" --options runtime {} \;
 
+        # Sign every other embedded framework (e.g. Sentry) with hardened
+        # runtime. Sparkle is signed above — it has nested XPC/Autoupdate/
+        # Updater.app that must be signed inside-out first, so skip its outer
+        # wrapper here. An unsigned nested framework makes notarization Invalid.
+        for fw in "$APP_PATH/Contents/Frameworks"/*.framework; do
+          [[ "$fw" == *"/Sparkle.framework" ]] && continue
+          [[ -d "$fw" ]] && codesign --force --sign "$IDENTITY" --options runtime "$fw"
+        done
+
         # Expand $(AppIdentifierPrefix) in the edition's entitlements (full:
         # bae.entitlements with iCloud container; baeium: bae-baeium.entitlements,
         # keychain only).
