@@ -449,6 +449,18 @@ internal static class NativeBae
     /// error. Copies into managed memory and frees the native string.</summary>
     internal static string? DownloadSnapshotJson(IntPtr handle) => CopyAndFree(DownloadSnapshotPtr(handle));
 
+    [DllImport(Dll, EntryPoint = "bae_set_downloads_paused", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void SetDownloadsPausedNative(IntPtr handle, [MarshalAs(UnmanagedType.I1)] bool paused);
+
+    /// <summary>Pause or resume the download (pin) queue.</summary>
+    internal static void SetDownloadsPaused(IntPtr handle, bool paused) => SetDownloadsPausedNative(handle, paused);
+
+    [DllImport(Dll, EntryPoint = "bae_retry_downloads", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void RetryDownloadsNative(IntPtr handle);
+
+    /// <summary>Retry failed downloads now (re-queues them).</summary>
+    internal static void RetryDownloads(IntPtr handle) => RetryDownloadsNative(handle);
+
     [DllImport(Dll, EntryPoint = "bae_retry_outbox", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr RetryOutboxPtr(IntPtr handle);
 
