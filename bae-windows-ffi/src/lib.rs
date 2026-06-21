@@ -1862,15 +1862,15 @@ pub unsafe extern "C" fn bae_cancel_outbox_item(handle: *const BaeHandle, id: i6
     }
 }
 
-/// Stop uploading a release and keep it local-only: drops its queued and
-/// in-flight uploads and deletes any blobs already uploaded this attempt.
-/// Returns null on success, else an owned error string to free with
-/// `bae_free_string`.
+/// Cancel whatever transition a release is mid-flight — a pin (download), a
+/// managed upload, or an unmanage — leaving it in its prior state. A no-op if
+/// nothing is in progress. Returns null on success, else an owned error string
+/// to free with `bae_free_string`.
 ///
 /// # Safety
 /// `handle` must be a live `BaeHandle`; `release_id` a valid C string.
 #[no_mangle]
-pub unsafe extern "C" fn bae_cancel_release_upload(
+pub unsafe extern "C" fn bae_cancel_release_transition(
     handle: *const BaeHandle,
     release_id: *const c_char,
 ) -> *mut c_char {
@@ -1884,7 +1884,7 @@ pub unsafe extern "C" fn bae_cancel_release_upload(
     match app.runtime.block_on(
         app.services
             .library_manager()
-            .cancel_release_upload(&release_id),
+            .cancel_release_transition(&release_id),
     ) {
         Ok(()) => std::ptr::null_mut(),
         Err(e) => error_cstring(&e.to_string()),
