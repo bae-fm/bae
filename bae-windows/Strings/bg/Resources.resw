@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>изходящата опашка не може да бъде прочетена</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>продължаване</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>повторен опит сега</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>качване · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, one {# опит} other {# опита}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>неуспешно</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>качване</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>активна</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>неуспешно</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>в опашката</value></data>
   <data name="queue.clear" xml:space="preserve"><value>изчистване на опашката</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Премахване от опашката</value></data>
   <data name="queue.title" xml:space="preserve"><value>опашка</value></data>

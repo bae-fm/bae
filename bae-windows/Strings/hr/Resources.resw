@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>nije moguće pročitati izlazni red</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>nastavi</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>pokušaj sada</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>prijenos · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, one {# pokušaj} few {# pokušaja} other {# pokušaja}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>neuspjelo</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>prijenos</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>aktivno</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>neuspjelo</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>na čekanju</value></data>
   <data name="queue.clear" xml:space="preserve"><value>očisti red</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Ukloni iz reda</value></data>
   <data name="queue.title" xml:space="preserve"><value>red</value></data>

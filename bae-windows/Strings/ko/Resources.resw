@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>보낼 항목을 읽을 수 없음</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>재개</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>지금 다시 시도</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>업로드 중 · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, other {#회 시도}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>실패</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>업로드</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>활성</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>실패</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>대기 중</value></data>
   <data name="queue.clear" xml:space="preserve"><value>대기열 지우기</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>대기열에서 제거</value></data>
   <data name="queue.title" xml:space="preserve"><value>대기열</value></data>

@@ -114,13 +114,6 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>couldn't read the outbox</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>resume</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>retry now</value></data>
-  <data name="outbox.upload.active_percent" xml:space="preserve"><value>uploading · {percent}%</value></data>
-  <data name="outbox.upload.attempts" xml:space="preserve"><value>{count, plural, one {# attempt} other {# attempts}}</value></data>
-  <data name="outbox.upload.failed" xml:space="preserve"><value>failed</value></data>
-  <data name="outbox.upload.kind" xml:space="preserve"><value>upload</value></data>
-  <data name="outbox.upload.state.active" xml:space="preserve"><value>active</value></data>
-  <data name="outbox.upload.state.failed" xml:space="preserve"><value>failed</value></data>
-  <data name="outbox.upload.state.queued" xml:space="preserve"><value>queued</value></data>
   <data name="queue.clear" xml:space="preserve"><value>clear queue</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>रांगेतून काढा</value></data>
   <data name="queue.title" xml:space="preserve"><value>queue</value></data>

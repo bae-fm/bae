@@ -1483,16 +1483,6 @@ pub enum BridgeUiEvent {
     ErrorCleared,
 }
 
-/// An upload's current processing state. `Failed` carries the error in
-/// the item's `last_error`. `Active` carries the bytes uploaded so far
-/// (always 0 today; populated once sub-file progress lands in coven).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeUploadState {
-    Queued,
-    Active,
-    Failed,
-}
-
 /// The dominant activity of a slice of the upload queue, for the storage-row
 /// badge. Mirror of bae-core's `UploadActivity`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -1500,28 +1490,6 @@ pub enum BridgeUploadActivity {
     Uploading,
     Retrying,
     Queued,
-}
-
-/// One queued upload. Mirror of bae-core's `UploadOp` across the FFI; carries
-/// raw fields the UI renders directly.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeUploadOp {
-    pub id: i64,
-    pub file_id: String,
-    /// Owning release id; `None` for an orphaned file.
-    pub release_id: Option<String>,
-    /// The row's primary label: the file's original name, or the cloud key when
-    /// the file is orphaned. Pre-resolved by bae-core; the UI renders it directly.
-    pub display_name: String,
-    pub cloud_key: String,
-    pub bytes_total: u64,
-    pub bytes_done: u64,
-    /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
-    pub created_at: i64,
-    pub attempt_count: i64,
-    pub state: BridgeUploadState,
-    /// The most recent error, present only when `state` is `Failed`.
-    pub last_error: Option<String>,
 }
 
 /// One pending cloud delete.
@@ -1618,8 +1586,7 @@ pub struct BridgeUploadReleaseGroup {
 /// are computed in bae-core; the UI renders them verbatim.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutboxSnapshot {
-    pub uploads: Vec<BridgeUploadOp>,
-    /// `uploads` grouped by release for the queue pane's per-release rows.
+    /// Pending uploads grouped by release for the queue pane's per-release rows.
     pub upload_groups: Vec<BridgeUploadReleaseGroup>,
     pub deletes: Vec<BridgeDeleteOp>,
     /// Per-release aggregate, keyed by release id. Releases with no pending
