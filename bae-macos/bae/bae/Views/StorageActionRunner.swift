@@ -83,19 +83,18 @@ final class StorageActionRunner {
         pendingManage = nil
     }
 
-    /// Stop uploading each release and keep it local-only: core drops the
-    /// release's queued and in-flight uploads and deletes any blobs already
-    /// uploaded this attempt.
-    func cancelUploads(releaseIds: [String]) {
+    /// Cancel each release's in-progress transition (pin / upload / unmanage),
+    /// leaving it in its prior state — core dispatches to whichever is running.
+    func cancelTransitions(releaseIds: [String]) {
         for id in releaseIds {
             do {
-                try sync.cancelReleaseUpload(id)
+                try sync.cancelReleaseTransition(id)
             }
             catch {
                 uiStore.showError(
                     String(
                         localized:
-                            "Failed to cancel upload: \(error.localizedDescription)"
+                            "Failed to cancel: \(error.localizedDescription)"
                     )
                 )
                 return

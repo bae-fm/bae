@@ -738,19 +738,21 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         let targets = menuTargets(forClicked: item)
         guard !targets.isEmpty else { return }
 
-        // A release uploading right now can't be managed/pinned/unmanaged (those
-        // race the observer that completes the transition), so the only action it
-        // offers is stopping the upload — in every tab, not just "Uploading".
-        let uploading = targets.filter {
-            outboxStore.isUploading(forRelease: $0)
+        // A release mid-transition (uploading, pinning, or unmanaging) can't be
+        // managed/pinned/unmanaged (those race the transition), so the only
+        // action it offers is cancelling — in every tab. Uploads live in the
+        // outbox; foreground transfers (pin/unpin/unmanage) set `transfer`.
+        let transitioning = targets.filter { id in
+            outboxStore.isUploading(forRelease: id)
+                || libraryStore.releaseSummaries[id]?.transfer != nil
         }
-        if !uploading.isEmpty {
+        if !transitioning.isEmpty {
             addMenuItem(
                 to: menu,
-                title: String(localized: "Cancel Upload"),
-                action: #selector(cancelUploadsAction(_:)),
+                title: String(localized: "Cancel"),
+                action: #selector(cancelTransitionsAction(_:)),
                 symbol: "xmark.circle",
-                representedObject: uploading
+                representedObject: transitioning
             )
             return
         }
@@ -819,12 +821,12 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
     }
 
     @objc
-    private func cancelUploadsAction(_ sender: NSMenuItem) {
+    private func cancelTransitionsAction(_ sender: NSMenuItem) {
         guard let releaseIds = sender.representedObject as? [String] else {
-            logger.error("Cancel-upload menu item carried no release ids")
+            logger.error("Cancel menu item carried no release ids")
             return
         }
-        runner.cancelUploads(releaseIds: releaseIds)
+        runner.cancelTransitions(releaseIds: releaseIds)
     }
 
     /// Storage actions every targeted release allows, preserving the order the

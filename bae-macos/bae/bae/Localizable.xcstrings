@@ -9146,197 +9146,6 @@
         }
       }
     },
-    "Cancel Upload": {
-      "comment": "Storage table context menu: cancel an in-flight upload",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancelar subida"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Annuler l'envoi"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Upload abbrechen"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancelar upload"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "アップロードをキャンセル"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "取消上传"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إلغاء الرفع"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "בטל העלאה"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Скасувати вивантаження"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Отмяна на качването"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anuluj wysyłanie"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zrušit nahrávání"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otkaži prijenos"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "업로드 취소"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel Upload"
-          }
-        }
-      }
-    },
     "Cancel this download": {
       "comment": "Download row: tooltip for the cancel button",
       "localizations": {
@@ -25381,199 +25190,7 @@
         }
       }
     },
-    "Failed to cancel upload: %@": {
-      "comment": "Storage action runner: error cancelling an upload; %@ is the error description",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudo cancelar la subida: %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Échec de l'annulation de l'envoi : %@"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Upload konnte nicht abgebrochen werden: %@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Falha ao cancelar o upload: %@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "アップロードのキャンセルに失敗しました: %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "取消上传失败：%@"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "فشل إلغاء الرفع: %@"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ביטול ההעלאה נכשל: %@"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Не вдалося скасувати вивантаження: %@"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Качването не може да бъде отменено: %@"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nie udało się anulować wysyłania: %@"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nepodařilo se zrušit nahrávání: %@"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otkazivanje prijenosa nije uspjelo: %@"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "업로드를 취소할 수 없음: %@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to cancel upload: %@"
-          }
-        }
-      }
-    },
     "Failed to cancel: %@": {
-      "comment": "Storage Manager: error when cancelling an outbox item fails; %@ is the error description",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -25583,181 +25200,181 @@
         },
         "es": {
           "stringUnit": {
-            "state": "translated",
-            "value": "No se pudo cancelar: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "fr": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Échec de l'annulation : %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "de": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Abbrechen fehlgeschlagen: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "pt-BR": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Falha ao cancelar: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "キャンセルに失敗しました: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
-            "state": "translated",
-            "value": "取消失败：%@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "ar": {
           "stringUnit": {
-            "state": "translated",
-            "value": "فشل الإلغاء: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "he": {
           "stringUnit": {
-            "state": "translated",
-            "value": "הביטול נכשל: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Не вдалося скасувати: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "bg": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Отмяната не бе успешна: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "pl": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Nie udało się anulować: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "cs": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Nepodařilo se zrušit: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "hr": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Otkazivanje nije uspjelo: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "ko": {
           "stringUnit": {
-            "state": "translated",
-            "value": "취소할 수 없음: %@"
+            "state": "new",
+            "value": "Failed to cancel: %@"
           }
         },
         "zh-Hant": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "it": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "tr": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "vi": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "nl": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "hi": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "bn": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "ta": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "te": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "mr": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "ur": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "gu": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "kn": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "ml": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "pa": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         },
         "th": {
           "stringUnit": {
-            "state": "translated",
+            "state": "new",
             "value": "Failed to cancel: %@"
           }
         }
