@@ -442,6 +442,13 @@ internal static class NativeBae
     /// Copies into managed memory and frees the native string.</summary>
     internal static string? OutboxSnapshotJson(IntPtr handle) => CopyAndFree(OutboxSnapshotPtr(handle));
 
+    [DllImport(Dll, EntryPoint = "bae_download_snapshot", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DownloadSnapshotPtr(IntPtr handle);
+
+    /// <summary>The download (pin) queue snapshot as a JSON string, or null on
+    /// error. Copies into managed memory and frees the native string.</summary>
+    internal static string? DownloadSnapshotJson(IntPtr handle) => CopyAndFree(DownloadSnapshotPtr(handle));
+
     [DllImport(Dll, EntryPoint = "bae_retry_outbox", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr RetryOutboxPtr(IntPtr handle);
 
