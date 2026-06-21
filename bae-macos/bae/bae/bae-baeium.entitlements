@@ -20,6 +20,8 @@
          group, so a distinct name keeps the cloud keychain working. -->
     <key>com.apple.security.network.client</key>
     <true/>
+    <key>com.apple.security.device.camera</key>
+    <true/>
     <key>keychain-access-groups</key>
     <array>
         <string>$(AppIdentifierPrefix)fm.bae.desktop.baeium</string>

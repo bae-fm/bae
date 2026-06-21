@@ -72,7 +72,7 @@ struct LibrarySettingsTab: View {
             }
 
             if isConnected {
-                ConnectDeviceSection(generate: sync.generateRestoreCode)
+                RecoveryCodeSection(generate: sync.generateRestoreCode)
             }
         }
         .formStyle(.grouped)
@@ -166,12 +166,14 @@ struct LibrarySettingsTab: View {
     }
 }
 
-/// The "Devices" section: a "Connect another device..." button that opens a
-/// sheet showing a pairing code to scan or paste on another device. The sheet's
-/// `.task` owns the generation lifecycle: it fires on appear and is
-/// cancelled automatically when the sheet dismisses (which propagates
-/// through `withTaskCancellationHandler` to the off-main worker).
-private struct ConnectDeviceSection: View {
+/// The "Recovery" section: reveals the library's recovery code on demand. The
+/// recovery code is a bearer credential — anyone holding it gains full access —
+/// so it's kept behind a button and labelled as sensitive, used only to restore
+/// on a new device when no existing device is available to approve a join. The
+/// sheet's `.task` owns the generation lifecycle: it fires on appear and is
+/// cancelled automatically when the sheet dismisses (which propagates through
+/// `withTaskCancellationHandler` to the off-main worker).
+private struct RecoveryCodeSection: View {
     let generate: @Sendable () throws -> String
 
     @State
@@ -180,8 +182,13 @@ private struct ConnectDeviceSection: View {
     private var result: Result<String, Error>?
 
     var body: some View {
-        Section("Devices") {
-            Button("Connect another device...") {
+        Section("Recovery") {
+            Text(
+                "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access — keep it secret."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            Button("Show recovery code...") {
                 result = nil
                 show = true
             }
@@ -198,20 +205,15 @@ private struct ConnectDeviceSection: View {
     private func runGenerate() async {
         let generate = generate
         do {
-            let detached = Task.detached { try generate() }
-            let code = try await withTaskCancellationHandler {
-                try await detached.value
-            } onCancel: {
-                detached.cancel()
-            }
+            let code = try await DetachedWork.run { try generate() }
             result = .success(code)
         }
         catch is CancellationError {
-            logger.debug("pairing code generation cancelled")
+            logger.debug("recovery code generation cancelled")
         }
         catch {
             logger.error(
-                "Failed to generate pairing code: \(error.localizedDescription)"
+                "Failed to generate recovery code: \(error.localizedDescription)"
             )
             result = .failure(error)
         }

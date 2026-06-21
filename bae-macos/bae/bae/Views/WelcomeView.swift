@@ -9,6 +9,7 @@ struct WelcomeView: View {
     enum Mode {
         case choose
         case restore
+        case join
     }
 
     @State
@@ -56,6 +57,32 @@ struct WelcomeView: View {
     private var isAuthorizing = false
     @State
     private var showManualForm = false
+
+    // Join-a-library flow
+    /// This device's join-request code and a short fingerprint of its public
+    /// key, generated on appear and shown for an existing member to scan or
+    /// paste. `nil` while generating; `.failure` if generation fails.
+    @State
+    private var joinRequest: Result<GeneratedJoinCode, Error>?
+    /// The in-flight (re)generation of this device's join code, owned so a retry
+    /// supersedes the previous attempt and the view's disappear cancels it.
+    @State
+    private var genTask: Task<Void, Never>?
+    @State
+    private var inviteCodeInput = ""
+    /// The decode of the current invite-code input: `nil` when empty,
+    /// `.success(info)` for a valid code, `.failure(error)` for an unparseable
+    /// one.
+    @State
+    private var decodedInvite: Result<BridgeInviteCodeInfo, Error>?
+    @State
+    private var isJoining = false
+    /// The in-flight join, owned so a superseding join and the view's disappear
+    /// can cancel it.
+    @State
+    private var joinTask: Task<Void, Never>?
+    @State
+    private var showInviteScanner = false
 
     // Manual restore form fields
     @State
@@ -124,6 +151,8 @@ struct WelcomeView: View {
             chooseView
         case .restore:
             restoreView
+        case .join:
+            joinView
         }
     }
 }
@@ -173,6 +202,11 @@ extension WelcomeView {
                     .buttonStyle(.bordered)
                     .disabled(isCreating || isRestoring)
                 }
+                Button(action: { mode = .join }) {
+                    Text("Join a library")
+                }
+                .buttonStyle(.bordered)
+                .disabled(isCreating || isRestoring)
                 Button(action: { mode = .restore }) {
                     Text("Restore from cloud")
                 }
@@ -837,4 +871,318 @@ extension WelcomeView {
         }
     #endif
 
+}
+
+// MARK: - Join flow
+
+extension WelcomeView {
+    /// This device's generated join code plus a short fingerprint of its public
+    /// key, shown so the approving device can confirm it matches.
+    private struct GeneratedJoinCode {
+        let code: String
+        let fingerprint: String
+    }
+
+    fileprivate var joinView: some View {
+        VStack(spacing: 0) {
+            Text("Join a library")
+                .font(.title2.bold())
+                .padding(.top, 24)
+                .padding(.bottom, 4)
+            Text(
+                "Add this device to a library you already have on another device."
+            )
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .padding(.bottom, 16)
+
+            Form {
+                Section("This device's code") {
+                    joinRequestRow
+                }
+                Section("Invite code") {
+                    inviteCodeRow
+                }
+            }
+            .formStyle(.grouped)
+            .scrollDisabled(true)
+
+            if let error {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.callout)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+            }
+            if isJoining {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Joining library...")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.bottom, 12)
+            }
+            HStack(spacing: 12) {
+                Button("Back") {
+                    mode = .choose
+                    error = nil
+                }
+                .buttonStyle(.bordered)
+                .disabled(isJoining)
+                Button("Join") { doJoin() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isJoining || !joinReady)
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(.bottom, 24)
+        }
+        .padding(.horizontal)
+        // Entering the join flow fresh: clear any OAuth token connected in
+        // another mode so it can't leak across flows, then generate the code.
+        .task {
+            oauthTokenJson = nil
+            error = nil
+            await generateJoinCode()
+        }
+        .onDisappear {
+            genTask?.cancel()
+            joinTask?.cancel()
+        }
+        .sheet(isPresented: $showInviteScanner) {
+            InviteScannerSheet(
+                onScan: { code in
+                    inviteCodeInput = code
+                    showInviteScanner = false
+                },
+                onDismiss: { showInviteScanner = false },
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var joinRequestRow: some View {
+        switch joinRequest {
+        case nil:
+            ProgressView()
+                .frame(maxWidth: .infinity)
+        case .success(let generated):
+            VStack(spacing: 12) {
+                Text(
+                    "On a device already in your library, open Settings → Members → Add a device and scan or paste this."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+                if let qrImage = QRCode.image(from: generated.code) {
+                    Image(nsImage: qrImage)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 160, height: 160)
+                }
+
+                Text(generated.code)
+                    .font(.system(.caption, design: .monospaced))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity)
+
+                // The approving device shows this same fingerprint; matching them
+                // confirms the right device is being added.
+                Text("This device: \(generated.fingerprint)")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+
+                Button("Copy code") {
+                    SystemActions.copyToPasteboard(generated.code)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+        case .failure(let genError):
+            VStack(spacing: 8) {
+                Text(genError.localizedDescription)
+                    .foregroundStyle(.red)
+                    .font(.callout)
+                Button("Try again") {
+                    genTask?.cancel()
+                    genTask = Task { await generateJoinCode() }
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var inviteCodeRow: some View {
+        Text(
+            "Once that device approves this one, enter the invite code it shows."
+        )
+        .font(.caption)
+        .foregroundStyle(.secondary)
+
+        HStack(spacing: 8) {
+            TextField("Paste invite code", text: $inviteCodeInput)
+                .font(.system(.body, design: .monospaced))
+            Button("Scan") { showInviteScanner = true }
+        }
+        .onChange(of: inviteCodeInput) { _, newInput in
+            oauthTokenJson = nil
+            let trimmed = newInput.trimmingCharacters(in: .whitespaces)
+            decodedInvite =
+                trimmed.isEmpty
+                ? nil
+                : Result { try decodeInviteCode(code: newInput) }
+        }
+
+        if case .success(let info) = decodedInvite {
+            LabeledContent("Library", value: info.libraryName)
+            LabeledContent(
+                "Provider",
+                value: info.cloudProvider.displayName
+            )
+            LabeledContent(
+                "Owner",
+                value: MemberFormat.fingerprint(info.ownerPubkey)
+            )
+            #if BAE_OAUTH_PROVIDERS
+                if info.needsOauth {
+                    inviteOauthRow(provider: info.cloudProvider)
+                }
+            #else
+                if info.needsOauth {
+                    Text(
+                        "This library uses a provider this build can't connect to."
+                    )
+                    .foregroundStyle(.red)
+                    .font(.callout)
+                }
+            #endif
+        }
+        else if case .failure(let decodeError) = decodedInvite {
+            Text(decodeError.localizedDescription)
+                .foregroundStyle(.red)
+                .font(.callout)
+        }
+    }
+
+    #if BAE_OAUTH_PROVIDERS
+        private func inviteOauthRow(
+            provider: BridgeCloudProvider
+        ) -> some View {
+            HStack {
+                if oauthTokenJson != nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Connected")
+                        .foregroundStyle(.secondary)
+                }
+                else if isAuthorizing {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Authorizing...")
+                        .foregroundStyle(.secondary)
+                    Button("Cancel") {
+                        oauthCancel()
+                        isAuthorizing = false
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.callout)
+                }
+                else {
+                    Button("Connect \(provider.displayName)") {
+                        doOAuthAuthorize(provider: provider)
+                    }
+                }
+            }
+        }
+    #endif
+
+    /// Whether the Join button should be enabled: a valid invite code, plus
+    /// OAuth done if the provider needs it.
+    private var joinReady: Bool {
+        guard case .success(let info) = decodedInvite else {
+            return false
+        }
+        if info.needsOauth {
+            return oauthTokenJson != nil
+        }
+        return true
+    }
+
+    private func generateJoinCode() async {
+        joinRequest = nil
+        do {
+            let generated = try await DetachedWork.run {
+                let code = try generateJoinRequest()
+                let pubkey = try decodeJoinRequest(code: code).pubkey
+                return GeneratedJoinCode(
+                    code: code,
+                    fingerprint: MemberFormat.fingerprint(pubkey)
+                )
+            }
+            joinRequest = .success(generated)
+        }
+        catch is CancellationError {
+            logger.debug("join request generation cancelled")
+        }
+        catch {
+            logger.error(
+                "Failed to generate join request: \(error.localizedDescription)"
+            )
+            joinRequest = .failure(error)
+        }
+    }
+
+    /// Join the library from the current invite code. The join runs through a
+    /// cancellable operation: a superseding join (or the view disappearing)
+    /// cancels the in-flight one through the operation's own token, so the bridge
+    /// stops its blocking work rather than running to completion on a stale
+    /// library. The post-await cancellation check guards the success path so a
+    /// superseded join neither opens its stale library nor clears `isJoining`
+    /// out from under the join that replaced it.
+    private func doJoin() {
+        let code = inviteCodeInput
+        let token = oauthTokenJson
+        joinTask?.cancel()
+        isJoining = true
+        error = nil
+        joinTask = Task {
+            let operation: JoinFromCodeOperation
+            do {
+                operation = try joinFromCodeOperation(
+                    code: code,
+                    oauthTokenJson: token
+                )
+            }
+            catch {
+                isJoining = false
+                self.error = error.localizedDescription
+                return
+            }
+            do {
+                let detached = Task.detached { try operation.join() }
+                let joined = try await withTaskCancellationHandler {
+                    try await detached.value
+                } onCancel: {
+                    operation.cancel()
+                    detached.cancel()
+                }
+                try Task.checkCancellation()
+                isJoining = false
+                onLibraryReady(joined)
+            }
+            catch is CancellationError {
+                logger.debug("Join superseded by a newer join; skipping")
+            }
+            catch {
+                isJoining = false
+                self.error = error.localizedDescription
+            }
+        }
+    }
 }

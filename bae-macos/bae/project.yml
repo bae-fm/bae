@@ -45,6 +45,7 @@ targets:
         BaeEnvironment: $(BAE_ENVIRONMENT)
         BaeGitCommit: $(BAE_GIT_COMMIT)
         BaeSentryDsn: $(BAE_SENTRY_DSN)
+        NSCameraUsageDescription: bae uses the camera to scan a device's code when adding it to your library.
         CFBundleDocumentTypes:
           - CFBundleTypeName: Folder
             LSItemContentTypes:
