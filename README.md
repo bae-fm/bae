@@ -9,15 +9,6 @@ A music library manager that uses decentralized identity and end-to-end encrypti
 
 You pick releases from MusicBrainz or Discogs, point bae at your files, and it handles storage, playback, and organization. Everything in the cloud is encrypted. The storage provider sees opaque blobs. All trust lives in cryptography, not in the storage backend.
 
-## Editions: baeium and bae
-
-This repository is the canonical Apache-2.0 source. Which app it builds is a compile-time choice — there is no separate fork.
-
-- **baeium** — no proprietary parts: S3-compatible storage only. No OAuth cloud providers (Google Drive / Dropbox / OneDrive), no iCloud/CloudKit, no telemetry. Every line is Apache-2.0, so it builds and runs with nothing proprietary — this is what ships to F-Droid and what you build for a self-hosted, dependency-free app. Select it with `BAE_BRIDGE_FEATURES=` (empty); a plain `cargo build` and the Android `baeium` flavor produce it too.
-- **bae** — the full product (open core): the *same* source built with `BAE_BRIDGE_FEATURES=oauth-providers,cloudkit`, which turns on the OAuth storage providers and iCloud sync, and is where any proprietary additions (telemetry) live, kept in a separate private overlay. This is the default the `build-*.sh` scripts and the release pipeline use.
-
-The OAuth and CloudKit code is present in the tree but compiled out of baeium — it is all Apache-2.0 (the OAuth backends live in [coven](https://github.com/bae-fm/coven); the rest is thin per-platform glue), so nothing proprietary is required to build or run baeium. The boundary is enforced by the compiler: cargo features → Swift `#if` → Android `full`/`baeium` flavors. The iCloud Keychain (which keeps your library's encryption keys in sync across your Apple devices) works in both editions — it needs only the keychain entitlement, which baeium keeps; only the iCloud-*container* entitlement, which requires a paid Apple Developer account, is dropped.
-
 ## How it works
 
 **Import and play.** Import from local folders (file-per-track or CUE/FLAC). Match to a MusicBrainz or Discogs release for metadata, cover art, credits, label info. Browse and play with native audio, CUE pregap support, and media key integration.
@@ -139,4 +130,4 @@ RUST_LOG=bae::import=debug # Debug specific submodule
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+Currently unlicensed — all rights reserved while licensing is being decided. See [LICENSE](LICENSE).

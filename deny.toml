@@ -43,6 +43,9 @@ allow = [
     "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.8
+# bae's own workspace crates are unpublished (`publish = false`) and not yet
+# licensed; skip them so the allow-list above only gates third-party deps.
+private = { ignore = true }
 
 [bans]
 # Warn on duplicate versions of the same crate — duplicates bloat binaries and

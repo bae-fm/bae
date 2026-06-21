@@ -3,7 +3,8 @@ name = "bae-core"
 version = "0.0.0-dev"
 authors = ["dima"]
 edition = "2021"
-license = "Apache-2.0"
+license = "LicenseRef-UNLICENSED"
+publish = false
 build = "build.rs"
 
 [lib]

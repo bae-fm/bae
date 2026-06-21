@@ -2,7 +2,8 @@
 name = "bae-bridge"
 version = "0.1.0"
 edition = "2021"
-license = "Apache-2.0"
+license = "LicenseRef-UNLICENSED"
+publish = false
 
 [package.metadata.cargo-machete]
 # libsqlite3-sys is a link/build dependency (bundled SQLite with the session
