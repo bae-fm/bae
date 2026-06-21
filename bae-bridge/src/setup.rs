@@ -84,13 +84,13 @@ use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use bae_core::config::Config;
-use bae_core::library::{CancellationToken, RestoreFromCodeError};
+use bae_core::library::{CancellationToken, JoinFromCodeError, RestoreFromCodeError};
 
 #[cfg(feature = "oauth-providers")]
 use crate::types::bridge_cloud_provider_to_core;
 use crate::types::{
-    bridge_cloud_provider, BridgeCloudProvider, BridgeError, BridgeLibrary, BridgeRestoreCodeInfo,
-    BridgeRestoreSource,
+    bridge_cloud_provider, BridgeCloudProvider, BridgeError, BridgeInviteCodeInfo,
+    BridgeJoinRequestInfo, BridgeLibrary, BridgeRestoreCodeInfo, BridgeRestoreSource,
 };
 
 #[cfg(feature = "cloudkit")]
@@ -394,6 +394,153 @@ impl RestoreFromCodeOperation {
         on_worker(move || async move {
             let config =
                 restore_from_code_config(code, oauth_tokens, cloudkit_ops, Some(cancel)).await?;
+
+            Ok(local_library_active(&config))
+        })
+    }
+
+    pub fn cancel(&self) {
+        self.cancel.cancel();
+    }
+}
+
+// =============================================================================
+// Membership: joining a library and managing devices
+// =============================================================================
+
+/// Generate this device's join-request code — its public key — to hand to an
+/// existing member for approval. Safe to call before any library exists on this
+/// device (the joining device has no library yet); it only needs the keyring
+/// initialized.
+#[uniffi::export]
+pub fn generate_join_request() -> Result<String, BridgeError> {
+    bae_core::sync::join_code::generate_join_request(None)
+        .map_err(|e| BridgeError::config(format!("Failed to generate join request: {e}")))
+}
+
+/// Decode a join-request code to preview the joining device before approving it.
+#[uniffi::export]
+pub fn decode_join_request(code: String) -> Result<BridgeJoinRequestInfo, BridgeError> {
+    let req = bae_core::sync::join_code::decode_join_request(&code).map_err(BridgeError::config)?;
+    Ok(BridgeJoinRequestInfo {
+        pubkey: req.public_key,
+        email: req.email,
+    })
+}
+
+/// Decode an invite code string and return info for UI preview (before joining).
+#[uniffi::export]
+pub fn decode_invite_code(code: String) -> Result<BridgeInviteCodeInfo, BridgeError> {
+    let info =
+        bae_core::sync::join_code::decode_invite_code_info(&code).map_err(BridgeError::config)?;
+    Ok(BridgeInviteCodeInfo {
+        library_id: info.library_id,
+        library_name: info.library_name,
+        owner_pubkey: info.owner_pubkey,
+        cloud_provider: bridge_cloud_provider(&info.cloud_provider),
+        needs_oauth: info.needs_oauth,
+    })
+}
+
+fn join_error_to_bridge(error: JoinFromCodeError) -> BridgeError {
+    match error {
+        JoinFromCodeError::Cancelled => BridgeError::Cancelled,
+        JoinFromCodeError::Join(error) => {
+            BridgeError::internal(format!("Failed to join library: {error}"))
+        }
+    }
+}
+
+async fn join_from_code_config(
+    code: String,
+    oauth_tokens: Option<bae_core::oauth::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::cloudkit::CloudKitOps>>,
+    cancel: Option<CancellationToken>,
+) -> Result<Config, BridgeError> {
+    match cancel {
+        Some(cancel) => bae_core::library::join_from_code_cancellable(
+            &code,
+            oauth_tokens,
+            cloudkit_ops,
+            cancel,
+            |status| info!("{}", status),
+        )
+        .await
+        .map_err(join_error_to_bridge),
+        None => bae_core::library::join_from_code(&code, oauth_tokens, cloudkit_ops, |status| {
+            info!("{}", status)
+        })
+        .await
+        .map_err(|e| join_error_to_bridge(JoinFromCodeError::Join(e))),
+    }
+}
+
+/// Join a shared library from an invite code string.
+///
+/// For OAuth providers, the caller must first run the OAuth flow (`oauth_authorize`
+/// on desktop, or `oauth_begin`/`oauth_complete` on mobile) and pass the token
+/// JSON as `oauth_token_json`.
+#[uniffi::export]
+pub fn join_from_code(
+    code: String,
+    oauth_token_json: Option<String>,
+) -> Result<BridgeLibrary, BridgeError> {
+    on_worker(move || async move {
+        let oauth_tokens = oauth_token_json
+            .map(|json| parse_oauth_tokens(&json))
+            .transpose()?;
+
+        let config = join_from_code_config(code, oauth_tokens, get_cloudkit_ops(), None).await?;
+
+        Ok(local_library_active(&config))
+    })
+}
+
+#[derive(uniffi::Object)]
+pub struct JoinFromCodeOperation {
+    code: String,
+    oauth_tokens: Option<bae_core::oauth::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::cloudkit::CloudKitOps>>,
+    cancel: CancellationToken,
+    started: Mutex<bool>,
+}
+
+#[uniffi::export]
+pub fn join_from_code_operation(
+    code: String,
+    oauth_token_json: Option<String>,
+) -> Result<Arc<JoinFromCodeOperation>, BridgeError> {
+    let oauth_tokens = oauth_token_json
+        .map(|json| parse_oauth_tokens(&json))
+        .transpose()?;
+    Ok(Arc::new(JoinFromCodeOperation {
+        code,
+        oauth_tokens,
+        cloudkit_ops: get_cloudkit_ops(),
+        cancel: CancellationToken::new(),
+        started: Mutex::new(false),
+    }))
+}
+
+#[uniffi::export]
+impl JoinFromCodeOperation {
+    pub fn join(&self) -> Result<BridgeLibrary, BridgeError> {
+        {
+            let mut started = self.started.lock().expect("join started mutex poisoned");
+            if *started {
+                return Err(BridgeError::internal(
+                    "join operation already started".to_string(),
+                ));
+            }
+            *started = true;
+        }
+        let code = self.code.clone();
+        let oauth_tokens = self.oauth_tokens.clone();
+        let cloudkit_ops = self.cloudkit_ops.clone();
+        let cancel = self.cancel.clone();
+        on_worker(move || async move {
+            let config =
+                join_from_code_config(code, oauth_tokens, cloudkit_ops, Some(cancel)).await?;
 
             Ok(local_library_active(&config))
         })

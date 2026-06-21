@@ -1785,6 +1785,42 @@ impl LibraryManager {
             .generate_restore_code()
     }
 
+    /// The library's current members (devices), with this device flagged.
+    pub async fn get_members(&self) -> Result<Vec<crate::sync::sync_manager::MemberInfo>, String> {
+        self.sync_manager_inner()
+            .ok_or_else(|| "Sync not configured".to_string())?
+            .get_members()
+            .await
+    }
+
+    /// Approve a device into the library by its public key, wrapping the library
+    /// key to it and signing a membership entry. Returns the invite code to hand
+    /// back to the joining device. bae adds every device as a `Member`; the
+    /// founding device is the `Owner`.
+    pub async fn invite_member(&self, public_key_hex: &str) -> Result<String, String> {
+        self.sync_manager_inner()
+            .ok_or_else(|| "Sync not configured".to_string())?
+            .invite_member(
+                public_key_hex,
+                crate::sync::sync_manager::MemberRole::Member,
+            )
+            .await
+    }
+
+    /// Remove a device from the library and rotate the library key so the removed
+    /// device can no longer read new data. Records the rotated key's fingerprint
+    /// in this device's config.
+    pub async fn remove_member(&self, public_key_hex: &str) -> Result<(), String> {
+        let fingerprint = self
+            .sync_manager_inner()
+            .ok_or_else(|| "Sync not configured".to_string())?
+            .remove_member(public_key_hex)
+            .await?;
+        self.config_handle
+            .record_encryption_key_fingerprint(fingerprint)
+            .map_err(|e| e.to_string())
+    }
+
     // =========================================================================
     // File paths / storage
     // =========================================================================

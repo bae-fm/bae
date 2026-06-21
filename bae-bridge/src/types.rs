@@ -1983,6 +1983,44 @@ pub struct BridgeRestoreCodeInfo {
     pub needs_oauth: bool,
 }
 
+/// A device in the library's membership chain.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMember {
+    /// Hex-encoded Ed25519 public key — the device's stable identity.
+    pub pubkey: String,
+    pub role: BridgeMemberRole,
+    /// True for the device this app is running on.
+    pub is_self: bool,
+}
+
+/// A member's role. Mirrors coven's `MemberRole`. bae adds devices as `Member`;
+/// the founding device is `Owner`. `Follower` (read-only) exists in coven's model
+/// but bae does not create it — it is mapped through so the conversion stays total.
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Enum)]
+pub enum BridgeMemberRole {
+    Owner,
+    Member,
+    Follower,
+}
+
+/// Decoded join-request code: the joining device's public key, shown to an
+/// existing member for approval before inviting it.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeJoinRequestInfo {
+    pub pubkey: String,
+    pub email: Option<String>,
+}
+
+/// Decoded invite code info for UI preview (before joining).
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeInviteCodeInfo {
+    pub library_id: String,
+    pub library_name: String,
+    pub owner_pubkey: String,
+    pub cloud_provider: BridgeCloudProvider,
+    pub needs_oauth: bool,
+}
+
 /// Per-provider form fields for validating a manual restore configuration.
 #[derive(Debug, uniffi::Enum)]
 pub enum BridgeRestoreFormFields {
@@ -2315,6 +2353,25 @@ pub(crate) fn bridge_cloud_provider(p: &bae_core::config::CloudProvider) -> Brid
         CloudProvider::Dropbox => BridgeCloudProvider::Dropbox,
         CloudProvider::OneDrive => BridgeCloudProvider::OneDrive,
         CloudProvider::CloudKit => BridgeCloudProvider::CloudKit,
+    }
+}
+
+pub(crate) fn bridge_member_role(
+    role: bae_core::sync::sync_manager::MemberRole,
+) -> BridgeMemberRole {
+    use bae_core::sync::sync_manager::MemberRole;
+    match role {
+        MemberRole::Owner => BridgeMemberRole::Owner,
+        MemberRole::Member => BridgeMemberRole::Member,
+        MemberRole::Follower => BridgeMemberRole::Follower,
+    }
+}
+
+pub(crate) fn bridge_member(m: bae_core::sync::sync_manager::MemberInfo) -> BridgeMember {
+    BridgeMember {
+        pubkey: m.pubkey,
+        role: bridge_member_role(m.role),
+        is_self: m.is_self,
     }
 }
 

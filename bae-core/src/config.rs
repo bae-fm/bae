@@ -148,7 +148,7 @@ pub fn install_test_keyring() {
 }
 
 /// Cloud home provider selection. bae uses coven's enum directly — same
-/// variants, same serialization, same `needs_email` — rather than maintaining a
+/// variants, same serialization, same `needs_oauth` — rather than maintaining a
 /// duplicate it would have to keep mapping back and forth.
 pub use coven::config::CloudProvider;
 

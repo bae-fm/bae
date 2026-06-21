@@ -19,7 +19,8 @@ use crate::library::{LibraryEvent, UploadThroughput};
 use crate::sync::blob_plan::{BaeBlobPlan, ReleaseUploadObserver};
 
 // coven owns the sync manager; bae uses it directly.
-pub use coven::sync::sync_manager::SyncManager;
+pub use coven::sync::membership::MemberRole;
+pub use coven::sync::sync_manager::{MemberInfo, SyncManager};
 
 /// S3 configuration data for save_s3_config.
 pub struct S3ConfigData {

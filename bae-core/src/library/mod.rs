@@ -87,9 +87,9 @@ fn make_blob_plan(library_dir: &LibraryDir) -> Box<dyn coven::blob::BlobPlan> {
     ))
 }
 
-/// coven's restore returns the recovered Config; wrap it in bae's Config
+/// coven's restore/join returns the recovered Config; wrap it in bae's Config
 /// (which adds Discogs fields) and persist it.
-fn save_restored(coven_config: coven::config::Config) -> Result<Config, String> {
+fn save_coven_library(coven_config: coven::config::Config) -> Result<Config, String> {
     let config = Config::from_coven(coven_config);
     config.save_to_config_yaml().map_err(|e| e.to_string())?;
     Ok(config)
@@ -123,7 +123,7 @@ pub async fn restore_from_cloud(
     )
     .await
     .map_err(|e| e.to_string())?;
-    save_restored(coven_config)
+    save_coven_library(coven_config)
 }
 
 /// Restore a library from a restore code. Wraps coven's `restore_from_code`.
@@ -191,7 +191,7 @@ async fn restore_from_code_with_cancel(
         restore.await.map_err(restore_error)?
     };
 
-    save_restored(coven_config).map_err(RestoreFromCodeError::Restore)
+    save_coven_library(coven_config).map_err(RestoreFromCodeError::Restore)
 }
 
 fn cancelled_restore(
@@ -199,23 +199,115 @@ fn cancelled_restore(
     library_dir_existed: bool,
 ) -> RestoreFromCodeError {
     if !library_dir_existed {
-        remove_cancelled_restore_dir(library_dir);
+        remove_cancelled_library_dir(library_dir);
     }
     RestoreFromCodeError::Cancelled
 }
 
-fn remove_cancelled_restore_dir(library_dir: &std::path::Path) {
+/// Remove the library directory a cancelled restore/join left partially built.
+/// Only called when the directory did not exist before the operation, so this
+/// never deletes a pre-existing library.
+fn remove_cancelled_library_dir(library_dir: &std::path::Path) {
     match std::fs::remove_dir_all(library_dir) {
         Ok(()) => {}
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => debug!(
             path = %library_dir.display(),
-            "cancelled restore directory already absent"
+            "cancelled library directory already absent"
         ),
         Err(e) => warn!(
             path = %library_dir.display(),
-            "failed to remove cancelled restore directory: {e}"
+            "failed to remove cancelled library directory: {e}"
         ),
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum JoinFromCodeError {
+    #[error("join cancelled")]
+    Cancelled,
+    #[error("{0}")]
+    Join(String),
+}
+
+fn join_error(error: impl ToString) -> JoinFromCodeError {
+    JoinFromCodeError::Join(error.to_string())
+}
+
+/// Join a shared library from an invite code. Wraps coven's
+/// `join_from_invite_code`, supplying bae's app dir, clock, id source, and blob
+/// plan. For an OAuth provider the caller fetches `oauth_tokens` first (the
+/// joining device authorizes its own cloud account), exactly as restore does.
+pub async fn join_from_code(
+    code: &str,
+    oauth_tokens: Option<crate::oauth::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::cloudkit::CloudKitOps>>,
+    on_status: impl Fn(&str),
+) -> Result<Config, String> {
+    join_from_code_with_cancel(code, oauth_tokens, cloudkit_ops, None, on_status)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+pub async fn join_from_code_cancellable(
+    code: &str,
+    oauth_tokens: Option<crate::oauth::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::cloudkit::CloudKitOps>>,
+    cancel: CancellationToken,
+    on_status: impl Fn(&str),
+) -> Result<Config, JoinFromCodeError> {
+    join_from_code_with_cancel(code, oauth_tokens, cloudkit_ops, Some(cancel), on_status).await
+}
+
+async fn join_from_code_with_cancel(
+    code: &str,
+    oauth_tokens: Option<crate::oauth::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::cloudkit::CloudKitOps>>,
+    cancel: Option<CancellationToken>,
+    on_status: impl Fn(&str),
+) -> Result<Config, JoinFromCodeError> {
+    let app_dir = crate::config::bae_dir().map_err(join_error)?;
+    let cancel = if let Some(cancel) = cancel {
+        let info = crate::sync::join_code::decode_invite_code_info(code).map_err(join_error)?;
+        let library_dir = library_dir_path(&app_dir, &info.library_id);
+        let library_dir_existed = library_dir.try_exists().map_err(join_error)?;
+        Some((cancel, library_dir, library_dir_existed))
+    } else {
+        None
+    };
+    let synced_tables = crate::sync::synced_tables();
+
+    let join = crate::sync::join::join_from_invite_code(
+        code,
+        &app_dir,
+        &synced_tables,
+        oauth_tokens,
+        cloudkit_ops,
+        std::sync::Arc::new(crate::clock::SystemClock),
+        std::sync::Arc::new(crate::id_provider::UuidProvider),
+        make_blob_plan,
+        on_status,
+    );
+    let coven_config = if let Some((cancel, library_dir, library_dir_existed)) = cancel {
+        if cancel.is_cancelled() {
+            return Err(cancelled_join(&library_dir, library_dir_existed));
+        }
+        tokio::pin!(join);
+        tokio::select! {
+            result = &mut join => result.map_err(join_error)?,
+            _ = cancel.cancelled() => return Err(cancelled_join(&library_dir, library_dir_existed)),
+        }
+    } else {
+        join.await.map_err(join_error)?
+    };
+
+    save_coven_library(coven_config).map_err(JoinFromCodeError::Join)
+}
+
+fn cancelled_join(library_dir: &std::path::Path, library_dir_existed: bool) -> JoinFromCodeError {
+    if !library_dir_existed {
+        remove_cancelled_library_dir(library_dir);
+    }
+    JoinFromCodeError::Cancelled
 }
 
 #[derive(Debug, thiserror::Error)]

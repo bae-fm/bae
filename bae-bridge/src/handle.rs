@@ -615,6 +615,47 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
+    /// The library's members (devices), with this device flagged. Reads the
+    /// membership chain from cloud storage, so it runs on a runtime worker.
+    pub async fn get_members(&self) -> Result<Vec<crate::types::BridgeMember>, BridgeError> {
+        let services = self.app_services.clone();
+        let members = self
+            .spawn_on_runtime(async move { services.library_manager().get_members().await })
+            .await
+            .map_err(BridgeError::internal)?;
+        Ok(members
+            .into_iter()
+            .map(crate::types::bridge_member)
+            .collect())
+    }
+
+    /// Approve a joining device by its public key (from its join-request code),
+    /// returning the invite code to hand back to that device.
+    pub async fn invite_member(&self, public_key_hex: String) -> Result<String, BridgeError> {
+        let services = self.app_services.clone();
+        self.spawn_on_runtime(async move {
+            services
+                .library_manager()
+                .invite_member(&public_key_hex)
+                .await
+        })
+        .await
+        .map_err(BridgeError::internal)
+    }
+
+    /// Remove a device from the library and rotate the library key.
+    pub async fn remove_member(&self, public_key_hex: String) -> Result<(), BridgeError> {
+        let services = self.app_services.clone();
+        self.spawn_on_runtime(async move {
+            services
+                .library_manager()
+                .remove_member(&public_key_hex)
+                .await
+        })
+        .await
+        .map_err(BridgeError::internal)
+    }
+
     /// Forget the active local library on this device: delete its key, clear the
     /// active pointer, and remove its data directory (the owner's cloud copy is
     /// untouched). The caller must drop this handle right after — the database

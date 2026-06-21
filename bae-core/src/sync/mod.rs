@@ -2,7 +2,8 @@
 //! `SyncManager` wrapper layered on top.
 
 // The sync substrate lives in coven; these resolve `crate::sync::<m>` unchanged.
-pub use coven::sync::{cloud_storage, outbox, restore, restore_code};
+pub use coven::join_code;
+pub use coven::sync::{cloud_storage, join, outbox, restore, restore_code};
 
 // Blob-key construction at bae's call sites: `CloudSyncStorage::blob_key` keyed
 // by a `BlobPathScheme`. An opaque home is `Hashed` (keyed by the id), a
