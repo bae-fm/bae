@@ -128,15 +128,16 @@ impl UploadProgress {
 
 /// A release's pending uploads, grouped for the queue pane so it renders one row
 /// per release (matching the storage table) instead of a flat per-file list.
-/// `release_id`/`title` are `None` for the orphaned-files bucket (a release row
-/// whose backing release is gone). `progress` is the group's aggregate; the
-/// queue pane reads it for the per-release row and can expand `uploads` to files.
+/// `release_id` is `None` for the orphaned-files bucket (files whose backing
+/// release is gone). `display_title` is what the row labels itself with — the
+/// album title, or the file's own name for an orphan — resolved here so the UI
+/// renders it directly. `progress` and `file_count` are the group's aggregates.
 #[derive(Debug, Clone)]
 pub struct UploadReleaseGroup {
     pub release_id: Option<String>,
-    pub title: Option<String>,
+    pub display_title: String,
+    pub file_count: u32,
     pub progress: UploadProgress,
-    pub uploads: Vec<UploadOp>,
 }
 
 /// Complete snapshot of the cloud outbox. One source of truth for everything
@@ -294,15 +295,28 @@ pub(crate) async fn build_outbox_snapshot(
     let mut group_index: HashMap<Option<String>, usize> = HashMap::new();
     for op in &uploads {
         let idx = *group_index.entry(op.release_id.clone()).or_insert_with(|| {
+            // The album title, or the file's own label for an orphan (a release
+            // deleted mid-upload, so the row has no album to name it by).
+            let display_title = match &op.title {
+                Some(title) => title.clone(),
+                None => {
+                    debug!(
+                        file_id = %op.file_id,
+                        "outbox upload group has no album title (orphaned); labelling by file name"
+                    );
+                    op.display_name.clone()
+                }
+            };
             upload_groups.push(UploadReleaseGroup {
                 release_id: op.release_id.clone(),
-                title: op.title.clone(),
+                display_title,
+                file_count: 0,
                 progress: UploadProgress::default(),
-                uploads: Vec::new(),
             });
             upload_groups.len() - 1
         });
         let group = &mut upload_groups[idx];
+        group.file_count += 1;
         group.progress.bytes_total += op.bytes_total;
         match &op.state {
             UploadState::Queued => group.progress.queued += 1,
@@ -312,7 +326,6 @@ pub(crate) async fn build_outbox_snapshot(
             }
             UploadState::Failed { .. } => group.progress.failed += 1,
         }
-        group.uploads.push(op.clone());
     }
 
     Ok(OutboxSnapshot {
@@ -479,8 +492,8 @@ mod tests {
         assert_eq!(snapshot.upload_groups.len(), 1);
         let group = &snapshot.upload_groups[0];
         assert_eq!(group.release_id.as_deref(), Some("rel-1"));
-        assert_eq!(group.title.as_deref(), Some("Album Title"));
-        assert_eq!(group.uploads.len(), 2);
+        assert_eq!(group.display_title, "Album Title");
+        assert_eq!(group.file_count, 2);
         // Aggregate progress: both queued, summed bytes (100 + 1000).
         assert_eq!(group.progress.queued, 2);
         assert_eq!(group.progress.active, 0);
