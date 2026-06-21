@@ -15,7 +15,8 @@ pub use download_snapshot::{DownloadOp, DownloadProgress, DownloadSnapshot, Down
 pub use export::{ExportFormat, MP3_EXPORT_BITRATE};
 pub use manager::*;
 pub use outbox_snapshot::{
-    DeleteOp, OutboxSnapshot, UploadActivity, UploadOp, UploadProgress, UploadState,
+    DeleteOp, OutboxSnapshot, UploadActivity, UploadOp, UploadProgress, UploadReleaseGroup,
+    UploadState,
 };
 pub use upload_throughput::UploadThroughput;
 

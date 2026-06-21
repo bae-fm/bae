@@ -1293,33 +1293,22 @@ async fn pump_ui_events(
 fn convert_outbox_snapshot(
     snapshot: bae_core::library::OutboxSnapshot,
 ) -> crate::types::BridgeOutboxSnapshot {
-    use crate::types::{BridgeDeleteOp, BridgeOutboxSnapshot, BridgeUploadOp, BridgeUploadState};
-    use bae_core::library::UploadState;
+    use crate::types::{BridgeDeleteOp, BridgeOutboxSnapshot, BridgeUploadReleaseGroup};
 
     let uploads = snapshot
         .uploads
         .into_iter()
-        .map(|op| {
-            let (state, last_error, bytes_done) = match op.state {
-                UploadState::Queued => (BridgeUploadState::Queued, None, 0),
-                UploadState::Active { bytes_done } => (BridgeUploadState::Active, None, bytes_done),
-                UploadState::Failed { last_error } => {
-                    (BridgeUploadState::Failed, Some(last_error), 0)
-                }
-            };
-            BridgeUploadOp {
-                id: op.id,
-                file_id: op.file_id,
-                release_id: op.release_id,
-                display_name: op.display_name,
-                cloud_key: op.cloud_key,
-                bytes_total: op.bytes_total,
-                bytes_done,
-                created_at: op.created_at,
-                attempt_count: op.attempt_count,
-                state,
-                last_error,
-            }
+        .map(convert_upload_op)
+        .collect();
+
+    let upload_groups = snapshot
+        .upload_groups
+        .into_iter()
+        .map(|g| BridgeUploadReleaseGroup {
+            release_id: g.release_id,
+            title: g.title,
+            progress: convert_upload_progress(g.progress),
+            uploads: g.uploads.into_iter().map(convert_upload_op).collect(),
         })
         .collect();
 
@@ -1342,6 +1331,7 @@ fn convert_outbox_snapshot(
 
     BridgeOutboxSnapshot {
         uploads,
+        upload_groups,
         deletes,
         per_release,
         total: convert_upload_progress(snapshot.total),
@@ -1350,6 +1340,32 @@ fn convert_outbox_snapshot(
         paused: snapshot.paused,
         throughput_bps: snapshot.throughput_bps,
         eta_seconds: snapshot.eta_seconds,
+    }
+}
+
+/// `last_error` is lifted out of the `Failed` variant into a flat field beside
+/// the three-state enum so the UI doesn't switch on associated data.
+fn convert_upload_op(op: bae_core::library::UploadOp) -> crate::types::BridgeUploadOp {
+    use crate::types::{BridgeUploadOp, BridgeUploadState};
+    use bae_core::library::UploadState;
+
+    let (state, last_error, bytes_done) = match op.state {
+        UploadState::Queued => (BridgeUploadState::Queued, None, 0),
+        UploadState::Active { bytes_done } => (BridgeUploadState::Active, None, bytes_done),
+        UploadState::Failed { last_error } => (BridgeUploadState::Failed, Some(last_error), 0),
+    };
+    BridgeUploadOp {
+        id: op.id,
+        file_id: op.file_id,
+        release_id: op.release_id,
+        display_name: op.display_name,
+        cloud_key: op.cloud_key,
+        bytes_total: op.bytes_total,
+        bytes_done,
+        created_at: op.created_at,
+        attempt_count: op.attempt_count,
+        state,
+        last_error,
     }
 }
 

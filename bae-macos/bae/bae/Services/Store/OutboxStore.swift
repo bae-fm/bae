@@ -35,6 +35,7 @@ class OutboxStore {
     static var emptySnapshot: BridgeOutboxSnapshot {
         BridgeOutboxSnapshot(
             uploads: [],
+            uploadGroups: [],
             deletes: [],
             perRelease: [:],
             total: BridgeUploadProgress(
