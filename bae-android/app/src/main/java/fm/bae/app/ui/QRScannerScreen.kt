@@ -45,6 +45,7 @@ private const val ANALYSIS_HEIGHT = 720
 fun QRScannerScreen(
     onScanned: (String) -> Unit,
     onDismiss: () -> Unit,
+    instructions: String = stringResource(R.string.qr_scanner_instructions),
 ) {
     val context = LocalContext.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
@@ -75,7 +76,11 @@ fun QRScannerScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
-        QRScannerOverlay(modifier = Modifier.align(Alignment.BottomCenter), onDismiss = onDismiss)
+        QRScannerOverlay(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            instructions = instructions,
+            onDismiss = onDismiss,
+        )
     }
 
     DisposableEffect(Unit) {
@@ -153,6 +158,7 @@ private fun createQRPreviewView(
 @Composable
 private fun QRScannerOverlay(
     modifier: Modifier,
+    instructions: String,
     onDismiss: () -> Unit,
 ) {
     Column(
@@ -160,7 +166,7 @@ private fun QRScannerOverlay(
         modifier = modifier.padding(32.dp),
     ) {
         Text(
-            text = stringResource(R.string.qr_scanner_instructions),
+            text = instructions,
             style = MaterialTheme.typography.bodySmall,
             color = Color.White,
             modifier = Modifier.background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp)).padding(8.dp),

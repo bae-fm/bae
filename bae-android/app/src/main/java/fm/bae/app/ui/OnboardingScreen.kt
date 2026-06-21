@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -53,10 +54,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
+import uniffi.bae_bridge.JoinFromCodeOperation
 import uniffi.bae_bridge.RestoreFromCodeOperation
+import uniffi.bae_bridge.decodeInviteCode
 import uniffi.bae_bridge.decodeRestoreCode
+import uniffi.bae_bridge.joinFromCodeOperation
 import uniffi.bae_bridge.restoreFromCodeOperation
 
 private const val TAG = "bae.OnboardingScreen"
@@ -77,11 +82,7 @@ private class LinkFlow(
         val info = decodeRestoreCode(code)
         val oauthTokenJson =
             if (info.needsOauth) {
-                val oauthError =
-                    oauthLinkingError
-                        ?: if (oauthLinking == null) context.getString(R.string.onboarding_oauth_unconfigured) else null
-                if (oauthError != null) throw IllegalStateException(oauthError)
-                oauthLinking!!.authorize(context, info.cloudProvider)
+                resolveOauthToken(oauthLinking, oauthLinkingError, context, info.cloudProvider)
             } else {
                 null
             }
@@ -95,6 +96,59 @@ private class LinkFlow(
         restoreOperation?.cancel()
         job.cancel()
     }
+}
+
+/**
+ * One in-progress join attempt: decode the invite code, run OAuth if the
+ * library's provider needs it, then join from the code on a background thread.
+ * Mirrors [LinkFlow] exactly — the only difference is which bridge code it
+ * decodes (an invite code, not a restore code) and that it joins as a new
+ * member rather than restoring this device's own library. The blocking
+ * `join()` bridge call can't be interrupted by coroutine cancellation, so
+ * [cancel] also cancels the operation's own token.
+ */
+private class JoinFlow(
+    val job: Job,
+) {
+    var joinOperation: JoinFromCodeOperation? = null
+
+    suspend fun execute(
+        code: String,
+        oauthLinking: OAuthLinker?,
+        oauthLinkingError: String?,
+        context: Context,
+        onJoined: (BridgeLibrary) -> Unit,
+    ) {
+        val info = decodeInviteCode(code)
+        val oauthTokenJson =
+            if (info.needsOauth) {
+                resolveOauthToken(oauthLinking, oauthLinkingError, context, info.cloudProvider)
+            } else {
+                null
+            }
+        val operation = joinFromCodeOperation(code = code, oauthTokenJson = oauthTokenJson)
+        joinOperation = operation
+        val libraryInfo = withContext(Dispatchers.IO) { operation.join() }
+        onJoined(libraryInfo)
+    }
+
+    fun cancel() {
+        joinOperation?.cancel()
+        job.cancel()
+    }
+}
+
+private suspend fun resolveOauthToken(
+    oauthLinking: OAuthLinker?,
+    oauthLinkingError: String?,
+    context: Context,
+    provider: BridgeCloudProvider,
+): String {
+    val oauthError =
+        oauthLinkingError
+            ?: if (oauthLinking == null) context.getString(R.string.onboarding_oauth_unconfigured) else null
+    if (oauthError != null) throw IllegalStateException(oauthError)
+    return oauthLinking!!.authorize(context, provider)
 }
 
 /**
@@ -148,13 +202,130 @@ private class LinkLauncher(
     }
 }
 
+/**
+ * The join twin of [LinkLauncher]: holds the in-progress join attempt and its
+ * UI state. Identical attempt/supersede/cleanup discipline; it drives a
+ * [JoinFlow] instead of a [LinkFlow].
+ */
+class JoinLauncher(
+    private val scope: CoroutineScope,
+    private val context: Context,
+    private val onJoined: (BridgeLibrary) -> Unit,
+) {
+    var error by mutableStateOf<String?>(null)
+    private var flow by mutableStateOf<JoinFlow?>(null)
+    val isJoining: Boolean get() = flow != null
+
+    fun join(
+        code: String,
+        oauthLinking: OAuthLinker?,
+        oauthLinkingError: String?,
+    ) {
+        error = null
+        flow?.cancel()
+        lateinit var started: JoinFlow
+        val launched =
+            scope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    started.execute(code, oauthLinking, oauthLinkingError, context, onJoined)
+                } catch (e: BridgeException.Cancelled) {
+                    logger.debug("join flow cancelled by bridge", e)
+                } catch (e: CancellationException) {
+                    logger.debug("join flow coroutine cancelled", e)
+                    throw e
+                } catch (e: Exception) {
+                    error = e.toString()
+                } finally {
+                    if (flow === started) flow = null
+                }
+            }
+        started = JoinFlow(launched)
+        flow = started
+        launched.start()
+    }
+
+    fun cancel() {
+        flow?.cancel()
+        flow = null
+    }
+}
+
 private class OnboardingIdleCallbacks(
     val onScanQR: () -> Unit,
     val onShowPasteDialog: () -> Unit,
     val onPasteInputChange: (String) -> Unit,
     val onConnect: (String) -> Unit,
     val onDismissPaste: () -> Unit,
+    val onJoinLibrary: () -> Unit,
 )
+
+/** Which onboarding code the QR scanner is currently capturing. */
+private enum class ScanTarget {
+    RESTORE_CODE,
+    INVITE_CODE,
+}
+
+/**
+ * Returns a callback that opens the scanner for a [ScanTarget], requesting camera
+ * permission first when it isn't already held. Requesting a scan clears the
+ * target's prior error via [setError]; [onOpen] runs once the camera is available
+ * (synchronously when permission is held, or after the grant); [setError] receives
+ * the camera-permission-required message, tagged with its target, on denial.
+ */
+@Composable
+private fun rememberScanRequest(
+    setError: (ScanTarget, String?) -> Unit,
+    onOpen: (ScanTarget) -> Unit,
+): (ScanTarget) -> Unit {
+    val context = LocalContext.current
+    // The target a pending camera-permission request is for; read in the grant
+    // callback to know which scanner to open and which target an error is for.
+    var pendingScanTarget by remember { mutableStateOf<ScanTarget?>(null) }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            val target = pendingScanTarget
+            pendingScanTarget = null
+            if (target != null) {
+                if (granted) {
+                    onOpen(target)
+                } else {
+                    setError(target, context.getString(R.string.onboarding_camera_permission_required))
+                }
+            } else {
+                logger.warning("camera permission result arrived with no pending scan target")
+            }
+        }
+    val hasCameraPermission =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+    return { target ->
+        setError(target, null)
+        if (hasCameraPermission) {
+            onOpen(target)
+        } else {
+            pendingScanTarget = target
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+}
+
+@Composable
+private fun OnboardingScanner(
+    target: ScanTarget,
+    onScanned: (ScanTarget, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val instructions =
+        when (target) {
+            ScanTarget.RESTORE_CODE -> stringResource(R.string.qr_scanner_instructions)
+            ScanTarget.INVITE_CODE -> stringResource(R.string.qr_scanner_invite_instructions)
+        }
+    QRScannerScreen(
+        onScanned = { code -> onScanned(target, code) },
+        onDismiss = onDismiss,
+        instructions = instructions,
+    )
+}
 
 @Composable
 fun OnboardingScreen(
@@ -165,41 +336,53 @@ fun OnboardingScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val launcher = remember { LinkLauncher(scope, context, onLinked) }
-    var showScanner by remember { mutableStateOf(false) }
+    val joinLauncher = remember { JoinLauncher(scope, context, onLinked) }
+    var showJoin by remember { mutableStateOf(false) }
+    // Non-null while the scanner is open, identifying which code it captures.
+    var scanTarget by remember { mutableStateOf<ScanTarget?>(null) }
 
-    val cameraPermissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
-                showScanner = true
-            } else {
-                launcher.error = context.getString(R.string.onboarding_camera_permission_required)
-            }
-        }
-    val hasCameraPermission =
-        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-            PackageManager.PERMISSION_GRANTED
-    val onRequestScan = {
-        launcher.error = null
-        if (hasCameraPermission) {
-            showScanner = true
-        } else {
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
+    val onRequestScan =
+        rememberScanRequest(
+            setError = { target, message ->
+                if (target == ScanTarget.INVITE_CODE) joinLauncher.error = message else launcher.error = message
+            },
+            onOpen = { scanTarget = it },
+        )
 
     when {
-        showScanner -> {
-            QRScannerScreen(
-                onScanned = { code ->
-                    showScanner = false
-                    launcher.link(code, oauthLinking, oauthLinkingError)
+        scanTarget != null -> {
+            OnboardingScanner(
+                target = scanTarget!!,
+                onScanned = { target, code ->
+                    scanTarget = null
+                    when (target) {
+                        ScanTarget.RESTORE_CODE -> launcher.link(code, oauthLinking, oauthLinkingError)
+                        ScanTarget.INVITE_CODE -> joinLauncher.join(code, oauthLinking, oauthLinkingError)
+                    }
                 },
-                onDismiss = { showScanner = false },
+                onDismiss = { scanTarget = null },
             )
         }
 
         launcher.isLinking -> {
-            LinkingScreen(onCancel = { launcher.cancel() })
+            OnboardingProgress(linking = true) { launcher.cancel() }
+        }
+
+        joinLauncher.isJoining -> {
+            OnboardingProgress(linking = false) { joinLauncher.cancel() }
+        }
+
+        showJoin -> {
+            JoinLibraryScreen(
+                joinLauncher = joinLauncher,
+                oauthLinking = oauthLinking,
+                oauthLinkingError = oauthLinkingError,
+                onRequestScan = { onRequestScan(ScanTarget.INVITE_CODE) },
+                onBack = {
+                    joinLauncher.error = null
+                    showJoin = false
+                },
+            )
         }
 
         else -> {
@@ -207,7 +390,8 @@ fun OnboardingScreen(
                 launcher = launcher,
                 oauthLinking = oauthLinking,
                 oauthLinkingError = oauthLinkingError,
-                onRequestScan = onRequestScan,
+                onRequestScan = { onRequestScan(ScanTarget.RESTORE_CODE) },
+                onJoinLibrary = { showJoin = true },
             )
         }
     }
@@ -219,6 +403,7 @@ private fun OnboardingIdleScreen(
     oauthLinking: OAuthLinker?,
     oauthLinkingError: String?,
     onRequestScan: () -> Unit,
+    onJoinLibrary: () -> Unit,
 ) {
     var showPasteDialog by remember { mutableStateOf(false) }
     var pasteInput by remember { mutableStateOf("") }
@@ -240,6 +425,7 @@ private fun OnboardingIdleScreen(
                     launcher.link(code, oauthLinking, oauthLinkingError)
                 },
                 onDismissPaste = { showPasteDialog = false },
+                onJoinLibrary = onJoinLibrary,
             ),
     )
 }
@@ -269,11 +455,15 @@ private fun OnboardingIdleContent(
         )
         Spacer(modifier = Modifier.height(32.dp))
         val buttonWidth = Modifier.width(200.dp)
-        Button(onClick = callbacks.onScanQR, modifier = buttonWidth) {
+        Button(onClick = callbacks.onJoinLibrary, modifier = buttonWidth) {
+            Text(stringResource(R.string.onboarding_join_library))
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(onClick = callbacks.onScanQR, modifier = buttonWidth) {
             Text(stringResource(R.string.onboarding_scan_qr))
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Button(onClick = callbacks.onShowPasteDialog, modifier = buttonWidth) {
+        OutlinedButton(onClick = callbacks.onShowPasteDialog, modifier = buttonWidth) {
             Text(stringResource(R.string.onboarding_paste_code))
         }
         if (error != null) {
@@ -284,28 +474,44 @@ private fun OnboardingIdleContent(
     }
     if (showPasteDialog) {
         PasteCodeDialog(
+            text =
+                PasteDialogText(
+                    title = stringResource(R.string.onboarding_paste_code),
+                    instructions = stringResource(R.string.onboarding_paste_code_instructions),
+                    placeholder = stringResource(R.string.onboarding_restore_code_placeholder),
+                    confirmLabel = stringResource(R.string.onboarding_connect),
+                ),
             pasteInput = pasteInput,
             onInputChange = callbacks.onPasteInputChange,
-            onConnect = callbacks.onConnect,
+            onConfirm = callbacks.onConnect,
             onDismiss = callbacks.onDismissPaste,
         )
     }
 }
 
+/** The fixed wording of a [PasteCodeDialog], distinct per code it accepts. */
+class PasteDialogText(
+    val title: String,
+    val instructions: String,
+    val placeholder: String,
+    val confirmLabel: String,
+)
+
 @Composable
-private fun PasteCodeDialog(
+fun PasteCodeDialog(
+    text: PasteDialogText,
     pasteInput: String,
     onInputChange: (String) -> Unit,
-    onConnect: (String) -> Unit,
+    onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.onboarding_paste_code)) },
+        title = { Text(text.title) },
         text = {
             Column {
                 Text(
-                    text = stringResource(R.string.onboarding_paste_code_instructions),
+                    text = text.instructions,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -313,7 +519,7 @@ private fun PasteCodeDialog(
                 OutlinedTextField(
                     value = pasteInput,
                     onValueChange = onInputChange,
-                    placeholder = { Text(stringResource(R.string.onboarding_restore_code_placeholder)) },
+                    placeholder = { Text(text.placeholder) },
                     modifier = Modifier.fillMaxWidth(),
                     textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
@@ -323,8 +529,8 @@ private fun PasteCodeDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConnect(pasteInput.trim()) }, enabled = pasteInput.trim().isNotEmpty()) {
-                Text(stringResource(R.string.onboarding_connect))
+            TextButton(onClick = { onConfirm(pasteInput.trim()) }, enabled = pasteInput.trim().isNotEmpty()) {
+                Text(text.confirmLabel)
             }
         },
         dismissButton = {
@@ -333,19 +539,47 @@ private fun PasteCodeDialog(
     )
 }
 
+/**
+ * The waiting screen for a running attempt: connecting to restore this device's
+ * own library when [linking], or joining an existing library otherwise.
+ */
 @Composable
-private fun LinkingScreen(onCancel: () -> Unit) {
+private fun OnboardingProgress(
+    linking: Boolean,
+    onCancel: () -> Unit,
+) {
+    if (linking) {
+        ProgressScreen(
+            R.string.onboarding_connecting_title,
+            R.string.onboarding_connecting_body,
+            onCancel,
+        )
+    } else {
+        ProgressScreen(
+            R.string.onboarding_joining_title,
+            R.string.onboarding_joining_body,
+            onCancel,
+        )
+    }
+}
+
+@Composable
+private fun ProgressScreen(
+    @StringRes titleRes: Int,
+    @StringRes bodyRes: Int,
+    onCancel: () -> Unit,
+) {
     OnboardingContainer {
         CircularProgressIndicator()
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = stringResource(R.string.onboarding_connecting_title),
+            text = stringResource(titleRes),
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.onboarding_connecting_body),
+            text = stringResource(bodyRes),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
