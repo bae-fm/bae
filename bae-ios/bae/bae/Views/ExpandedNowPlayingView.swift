@@ -1,10 +1,13 @@
 import SwiftUI
 
-/// Full-screen now-playing player, presented as a `.fullScreenCover` from the
-/// compact `NowPlayingBar` when its cover / title area is tapped. Reads the same
-/// single source as the bar — the shared `PlaybackStore`, driven by core's
-/// `BridgeUiEvent`s — and sends transport / seek / repeat / volume / mute
-/// through `Playback` (all non-throwing fire-and-forget).
+/// Full-screen now-playing player, presented as a `.sheet` (swipe down to
+/// dismiss) from the compact `NowPlayingBar` when its cover / title area is
+/// tapped. The player fills the first screen and the upcoming queue sits below it
+/// in the same scroll, so a swipe up scrolls into the queue and a swipe down from
+/// the top dismisses (the sheet and the list coordinate that handoff). Reads the
+/// shared `PlaybackStore` — driven by core's `BridgeUiEvent`s — and sends
+/// transport / seek / repeat / volume / mute through `Playback` and queue
+/// mutations through `Queue` (all non-throwing fire-and-forget).
 ///
 /// Pure iterate-and-render: the seek labels arrive pre-formatted on the position
 /// subject; this view formats nothing.
@@ -13,13 +16,13 @@ struct ExpandedNowPlayingView: View {
     private var playbackStore
     @Environment(Playback.self)
     private var playback
+    @Environment(Queue.self)
+    private var queue
     @Environment(MediaPaths.self)
     private var mediaPaths
     @Environment(\.dismiss)
     private var dismiss
 
-    @State
-    private var showQueue = false
     /// While the user drags the volume slider, follow the finger from this local
     /// value; the round-tripped `playbackStore.volume` would otherwise snap the
     /// thumb back mid-drag. `nil` means "not dragging".
@@ -27,62 +30,72 @@ struct ExpandedNowPlayingView: View {
     private var dragVolume: Float?
 
     var body: some View {
-        // When the track clears (e.g. playback stops) the cover collapses back
-        // to the bar; there's nothing to show full-screen.
+        // When the track clears (e.g. playback stops) the bar collapses and takes
+        // this sheet down with it; there's nothing to show.
         if let track = playbackStore.nowPlaying.track {
-            VStack(spacing: 24) {
-                HStack {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.title3)
-                    }
-                    .accessibilityLabel("Collapse")
-                    Spacer(minLength: 0)
+            List {
+                Section {
+                    player(track: track)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                 }
-
-                ImageView(
-                    path: track.coverImageId
-                        .flatMap(mediaPaths.imagePathIfExists),
-                    pointSize: 320
-                )
-                .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(track.trackTitle)
-                        .font(.title2.weight(.bold))
-                        .lineLimit(1)
-                    Text(track.artistNames)
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                ProgressBar(
-                    positionSubject: playbackStore.playbackPositionSubject,
-                    onSeek: { playback.seekByRatio($0) }
-                )
-
-                transport
-
-                controls
-
-                volume
+                upNext
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
-            .frame(maxHeight: .infinity, alignment: .top)
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .background(Theme.background)
             .buttonStyle(.plain)
             .foregroundStyle(.primary)
-            .sheet(isPresented: $showQueue) {
-                QueueView()
-            }
         }
+    }
+
+    private func player(track: NowPlayingTrack) -> some View {
+        VStack(spacing: 24) {
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.title3)
+                }
+                .accessibilityLabel("Collapse")
+                Spacer(minLength: 0)
+            }
+
+            ImageView(
+                path: track.coverImageId
+                    .flatMap(mediaPaths.imagePathIfExists),
+                pointSize: 320
+            )
+            .aspectRatio(1, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(track.trackTitle)
+                    .font(.title2.weight(.bold))
+                    .lineLimit(1)
+                Text(track.artistNames)
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            ProgressBar(
+                positionSubject: playbackStore.playbackPositionSubject,
+                onSeek: { playback.seekByRatio($0) }
+            )
+
+            transport
+
+            repeatControl
+
+            volume
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
     }
 
     private var transport: some View {
@@ -111,29 +124,23 @@ struct ExpandedNowPlayingView: View {
         }
     }
 
-    private var controls: some View {
-        HStack(spacing: 48) {
-            Button {
-                playback.cycleRepeatMode()
-            } label: {
-                // Dimmed when off; accented when on (repeat-one glyph for track).
-                Image(
-                    systemName: playbackStore.repeatMode == .track
-                        ? "repeat.1" : "repeat"
-                )
-                .foregroundStyle(
-                    playbackStore.repeatMode == .none
-                        ? Color.secondary : Theme.accent
-                )
-            }
-            .accessibilityLabel("Repeat mode")
-            Button {
-                showQueue = true
-            } label: {
-                Image(systemName: "list.bullet")
-            }
-            .accessibilityLabel("Queue")
+    // Repeat-mode toggle. The queue is embedded below the player now, so there's
+    // no separate button to open it as a sheet.
+    private var repeatControl: some View {
+        Button {
+            playback.cycleRepeatMode()
+        } label: {
+            // Dimmed when off; accented when on (repeat-one glyph for track).
+            Image(
+                systemName: playbackStore.repeatMode == .track
+                    ? "repeat.1" : "repeat"
+            )
+            .foregroundStyle(
+                playbackStore.repeatMode == .none
+                    ? Color.secondary : Theme.accent
+            )
         }
+        .accessibilityLabel("Repeat mode")
     }
 
     private var volume: some View {
@@ -165,6 +172,26 @@ struct ExpandedNowPlayingView: View {
                 }
             )
             .accessibilityLabel("Volume")
+        }
+    }
+
+    // The upcoming queue, embedded below the player so a swipe up scrolls into it.
+    // Tapping a row skips to it (without dismissing — the player follows the new
+    // track); swiping a row removes it. Drag-to-reorder and Clear stay in the
+    // dedicated queue sheet (the bar's queue button), which needs an edit mode
+    // this list omits. The current track isn't in `queueItems` — it's the player
+    // above. The section is dropped when empty so no bare "Up Next" header shows.
+    @ViewBuilder
+    private var upNext: some View {
+        if !playbackStore.queueItems.isEmpty {
+            Section("Up Next") {
+                upNextRows(
+                    items: playbackStore.queueItems,
+                    queue: queue,
+                    isEditing: false,
+                    onSkipped: {}
+                )
+            }
         }
     }
 }

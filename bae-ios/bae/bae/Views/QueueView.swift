@@ -1,4 +1,7 @@
 import SwiftUI
+import os.log
+
+private let logger = Logger.bae("Queue")
 
 /// The play queue, presented as a sheet: the currently-playing track, then a
 /// reorderable "Up Next" list. Reads the authoritative now-playing and queue
@@ -83,47 +86,65 @@ struct QueueView: View {
         }
         else {
             Section("Up Next") {
-                // Positional identity: the queue may hold the same track twice,
-                // so `QueueItem.id` (== trackId) isn't unique. Keying on the
-                // enumerated offset makes each row's identity its queue index —
-                // which is exactly what onMove/onDelete report back to core.
-                ForEach(
-                    Array(playbackStore.queueItems.enumerated()),
-                    id: \.offset
-                ) { index, item in
-                    Button {
-                        // While editing, a row tap belongs to reorder/delete,
-                        // not skip — don't jump tracks and dismiss mid-edit.
-                        guard !editMode.isEditing else { return }
-                        queue.skipToQueueIndex(UInt32(index))
-                        dismiss()
-                    } label: {
-                        QueueRow(
-                            item: item,
-                            coverPath: item.coverImageId.flatMap(
-                                mediaPaths.imagePathIfExists
-                            )
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-                .onMove { source, destination in
-                    guard let from = source.first else {
-                        return
-                    }
-                    // SwiftUI's destination is a gap index in the original array
-                    // (item still present) — the same convention core's reorder
-                    // expects, so map straight through with no offset.
-                    queue.reorderQueue(UInt32(from), UInt32(destination))
-                }
-                .onDelete { offsets in
-                    guard let index = offsets.first else {
-                        return
-                    }
-                    queue.removeFromQueue(UInt32(index))
-                }
+                // Edit mode surfaces reorder handles here; a row tap is gated to
+                // skip only when not editing, and skipping dismisses the sheet.
+                upNextRows(
+                    items: playbackStore.queueItems,
+                    queue: queue,
+                    isEditing: editMode.isEditing,
+                    onSkipped: { dismiss() }
+                )
             }
         }
+    }
+}
+
+/// The "Up Next" rows — shared by the queue sheet and the expanded player's
+/// embedded queue so the index conventions can't drift. Tapping a row skips to
+/// it (unless `isEditing`, when the tap belongs to reorder/delete) and then runs
+/// `onSkipped`; swiping deletes; `.onMove` reorders. `.onMove` is inert without
+/// an active edit mode, so the embedded queue (which has none) shows no reorder
+/// handles while still getting tap-to-skip and swipe-to-delete.
+@MainActor
+@ViewBuilder
+func upNextRows(
+    items: [QueueItem],
+    queue: Queue,
+    isEditing: Bool,
+    onSkipped: @escaping () -> Void
+) -> some View {
+    // Positional identity: the queue may hold the same track twice, so
+    // `QueueItem.id` (== trackId) isn't unique. Keying on the enumerated offset
+    // makes each row's identity its queue index — exactly what skip/move/delete
+    // report back to core.
+    ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+        Button {
+            guard !isEditing else { return }
+            queue.skipToQueueIndex(UInt32(index))
+            onSkipped()
+        } label: {
+            QueueRow(item: item)
+        }
+        .buttonStyle(.plain)
+    }
+    .onMove { source, destination in
+        guard let from = source.first else {
+            // SwiftUI always hands onMove a non-empty source; an empty set is a
+            // framework anomaly, so surface it rather than silently dropping it.
+            logger.warning("onMove fired with an empty source index set")
+            return
+        }
+        // SwiftUI's destination is a gap index in the original array (item still
+        // present) — the same convention core's reorder expects, so map straight
+        // through with no offset.
+        queue.reorderQueue(UInt32(from), UInt32(destination))
+    }
+    .onDelete { offsets in
+        guard let index = offsets.first else {
+            logger.warning("onDelete fired with an empty offset set")
+            return
+        }
+        queue.removeFromQueue(UInt32(index))
     }
 }
 
@@ -151,15 +172,22 @@ private struct NowPlayingRow: View {
     }
 }
 
-private struct QueueRow: View {
+/// One "Up Next" row — shared by the queue sheet and the expanded now-playing
+/// view's embedded queue. Resolves its own cover path so the lookup (and its
+/// dependency on `MediaPaths`) stays at the leaf.
+struct QueueRow: View {
+    @Environment(MediaPaths.self)
+    private var mediaPaths
     let item: QueueItem
-    let coverPath: String?
 
     var body: some View {
         HStack(spacing: 12) {
-            ImageView(path: coverPath, pointSize: 44)
-                .frame(width: 44, height: 44)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+            ImageView(
+                path: item.coverImageId.flatMap(mediaPaths.imagePathIfExists),
+                pointSize: 44
+            )
+            .frame(width: 44, height: 44)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(.body)
