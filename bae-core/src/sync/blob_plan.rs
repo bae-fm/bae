@@ -314,8 +314,17 @@ impl ReleaseUploadObserver {
                     self.db.mark_managed_pinned(&release.id).await
                 } else {
                     // Read + act on the delete-source intent BEFORE the flip,
-                    // which drops the unmanaged source row this reads from.
-                    self.delete_unmanaged_source_if_requested(&release).await;
+                    // which drops the unmanaged source row this reads from. If
+                    // that fails, do NOT flip — leave the release Unmanaged (its
+                    // valid prior state) to retry, rather than dropping the
+                    // source row and the unacted delete intent with it.
+                    if let Err(e) = self.delete_unmanaged_source_if_requested(&release).await {
+                        warn!(
+                            "Deferred-delete of originals failed for {}; staying unmanaged to retry: {e}",
+                            release.id
+                        );
+                        return false;
+                    }
                     self.db.mark_managed_cloud_only(&release.id).await
                 };
                 if let Err(e) = flip {
@@ -344,27 +353,30 @@ impl ReleaseUploadObserver {
     /// completes and BEFORE the managed flip drops the unmanaged source row this
     /// reads its path + intent from. The flip itself drops the row, so there's
     /// no separate intent-clear step.
-    async fn delete_unmanaged_source_if_requested(&self, release: &crate::db::DbRelease) {
+    ///
+    /// Fails loud (`Err`) when it can't read the intent or the file list — the
+    /// caller must then NOT flip, leaving the release in its valid Unmanaged
+    /// state to retry, rather than dropping the source row (and the delete
+    /// intent) for a delete that never happened. Removing an individual original
+    /// is best-effort: the blob is already durable in the cloud, so a leftover
+    /// original is unreferenced clutter (logged), not wrong release state, and
+    /// must not block the flip.
+    async fn delete_unmanaged_source_if_requested(
+        &self,
+        release: &crate::db::DbRelease,
+    ) -> Result<(), String> {
         let source = match self.db.get_unmanaged_source(&release.id).await {
             Ok(Some(source)) if source.delete_after_upload => source,
-            Ok(_) => return,
-            Err(e) => {
-                warn!("Failed to read unmanaged source for {}: {e}", release.id);
-                return;
-            }
+            Ok(_) => return Ok(()),
+            Err(e) => return Err(format!("read unmanaged source for {}: {e}", release.id)),
         };
         let unmanaged_path = source.path.as_str();
 
-        let files = match self.db.get_files_for_release(&release.id).await {
-            Ok(files) => files,
-            Err(e) => {
-                warn!(
-                    "Failed to load files to delete originals for {}: {e}",
-                    release.id
-                );
-                return;
-            }
-        };
+        let files = self
+            .db
+            .get_files_for_release(&release.id)
+            .await
+            .map_err(|e| format!("load files to delete originals for {}: {e}", release.id))?;
 
         for file in &files {
             let path = std::path::Path::new(unmanaged_path).join(&file.original_filename);
@@ -378,6 +390,7 @@ impl ReleaseUploadObserver {
         }
         // No intent-clear needed: the caller's managed flip drops the whole
         // unmanaged source row next.
+        Ok(())
     }
 }
 

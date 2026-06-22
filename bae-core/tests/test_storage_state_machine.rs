@@ -964,11 +964,15 @@ async fn every_transition_lands_in_a_valid_state() {
         assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Unmanaged);
     }
 
-    // Import-cloud-only (#105): identical landing — an unmanaged source while
-    // its upload is pending. (`unmanage` is the public source-recording path.)
+    // Import-cloud-only: lands identically to an unmanaged import — an unmanaged
+    // source while its upload is still pending (the issue #105 landing). This
+    // asserts only that the landing tuple is a valid Unmanaged state; the
+    // behavioral repro through the real `ImportService` lives in
+    // `test_pending_upload_source.rs`. `test_set_unmanaged_source` writes the
+    // same row the import finalize transaction does.
     {
         let rel = insert_bare_release(&mgr, false).await;
-        mgr.unmanage_release_storage(&rel, "/src").await.unwrap();
+        db.test_set_unmanaged_source(&rel, "/src").await.unwrap();
         assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Unmanaged);
     }
 

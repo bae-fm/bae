@@ -289,15 +289,10 @@ async fn do_pin(
         return Err("Release has no files".into());
     }
 
-    let already_pinned = {
-        let cache = mgr.get_release_file_cache(release_id).await?;
-        let pinned: std::collections::HashSet<&str> = cache
-            .iter()
-            .filter(|e| e.pinned)
-            .map(|e| e.file_id.as_str())
-            .collect();
-        files.iter().all(|f| pinned.contains(f.id.as_str()))
-    };
+    let already_pinned = crate::album_detail::all_files_pinned(
+        files.iter().map(|f| f.id.as_str()),
+        &mgr.get_release_file_cache(release_id).await?,
+    );
     if already_pinned {
         return Err("Release is already pinned locally".into());
     }
@@ -530,15 +525,10 @@ async fn do_unpin(
     }
 
     let files = mgr.get_files_for_release(release_id).await?;
-    let is_pinned = {
-        let cache = mgr.get_release_file_cache(release_id).await?;
-        let pinned: std::collections::HashSet<&str> = cache
-            .iter()
-            .filter(|e| e.pinned)
-            .map(|e| e.file_id.as_str())
-            .collect();
-        !files.is_empty() && files.iter().all(|f| pinned.contains(f.id.as_str()))
-    };
+    let is_pinned = crate::album_detail::all_files_pinned(
+        files.iter().map(|f| f.id.as_str()),
+        &mgr.get_release_file_cache(release_id).await?,
+    );
     if !is_pinned {
         return Err("Release is not pinned locally".into());
     }

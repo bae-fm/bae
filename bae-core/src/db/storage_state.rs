@@ -17,7 +17,8 @@
 
 use chrono::{DateTime, Utc};
 use coven::database::DbError;
-use coven::rusqlite::{params, Connection, OptionalExtension};
+use coven::rusqlite::{params, Connection, OptionalExtension, Row};
+use tracing::warn;
 
 use super::client::Database;
 use super::models::{DbFileCacheEntry, DbUnmanagedSource};
@@ -265,15 +266,7 @@ impl Database {
                  JOIN release_files rf ON rf.id = fc.file_id \
                  WHERE rf.release_id = ?",
             )?;
-            let rows = stmt.query_map(params![release_id], |row| {
-                let last: String = row.get("last_accessed_at")?;
-                Ok(DbFileCacheEntry {
-                    file_id: row.get("file_id")?,
-                    pinned: row.get("pinned")?,
-                    size_bytes: row.get("size_bytes")?,
-                    last_accessed_at: parse_rfc3339(&last),
-                })
-            })?;
+            let rows = stmt.query_map(params![release_id], parse_cache_entry_row)?;
             rows.collect::<coven::rusqlite::Result<Vec<_>>>()
                 .map_err(DbError::from)
         })
@@ -291,15 +284,7 @@ impl Database {
                 "SELECT file_id, pinned, size_bytes, last_accessed_at \
                  FROM file_cache WHERE file_id = ?",
                 params![file_id],
-                |row| {
-                    let last: String = row.get("last_accessed_at")?;
-                    Ok(DbFileCacheEntry {
-                        file_id: row.get("file_id")?,
-                        pinned: row.get("pinned")?,
-                        size_bytes: row.get("size_bytes")?,
-                        last_accessed_at: parse_rfc3339(&last),
-                    })
-                },
+                parse_cache_entry_row,
             )
             .optional()
             .map_err(DbError::from)
@@ -386,12 +371,31 @@ impl Database {
     }
 }
 
-/// Parse an RFC3339 timestamp stored in `file_cache.last_accessed_at`, falling
-/// back to the epoch on a malformed value (a corrupt local cache row is not
-/// worth aborting a read over; `last_accessed` only orders eviction, which
-/// arrives in a later PR).
+/// Parse an RFC3339 timestamp stored in `file_cache.last_accessed_at`. The
+/// column is always written by [`upsert_file_cache_row`] as `to_rfc3339`, so a
+/// malformed value is local-DB corruption — rare and abnormal. `last_accessed`
+/// only orders eviction (a later PR), so a corrupt one isn't worth aborting a
+/// read over: log it and treat it as the epoch (evict-first ordering, so a bad
+/// row re-fetches from the cloud rather than lingering). The `warn!` keeps the
+/// corruption diagnosable rather than silently masked.
 fn parse_rfc3339(s: &str) -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339(s)
-        .map(|dt| dt.with_timezone(&Utc))
-        .unwrap_or_else(|_| DateTime::<Utc>::UNIX_EPOCH)
+    match DateTime::parse_from_rfc3339(s) {
+        Ok(dt) => dt.with_timezone(&Utc),
+        Err(e) => {
+            warn!(value = %s, "corrupt file_cache.last_accessed_at, treating as epoch: {e}");
+            DateTime::<Utc>::UNIX_EPOCH
+        }
+    }
+}
+
+/// Read a [`DbFileCacheEntry`] from a `file_cache` row. Shared by the
+/// per-release and single-file getters so the column mapping lives once.
+fn parse_cache_entry_row(row: &Row) -> coven::rusqlite::Result<DbFileCacheEntry> {
+    let last: String = row.get("last_accessed_at")?;
+    Ok(DbFileCacheEntry {
+        file_id: row.get("file_id")?,
+        pinned: row.get("pinned")?,
+        size_bytes: row.get("size_bytes")?,
+        last_accessed_at: parse_rfc3339(&last),
+    })
 }

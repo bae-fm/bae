@@ -78,6 +78,25 @@ pub fn storage_state(has_unmanaged_source: bool, all_files_pinned: bool) -> Rele
     }
 }
 
+/// Whether every one of a release's files (by id) has a pinned `file_cache`
+/// entry in `cache` — the Rust-side "fully pinned" predicate, the single
+/// definition the detail resolver and the pin/unpin transitions share (the
+/// summary queries compute the same in SQL). A release with no files is never
+/// fully pinned. Takes file ids (not a concrete file type) so callers holding
+/// either `DbFile` or `FileDetail` rows use it without converting.
+pub fn all_files_pinned<'a>(
+    file_ids: impl IntoIterator<Item = &'a str>,
+    cache: &[crate::db::DbFileCacheEntry],
+) -> bool {
+    let pinned: std::collections::HashSet<&str> = cache
+        .iter()
+        .filter(|e| e.pinned)
+        .map(|e| e.file_id.as_str())
+        .collect();
+    let mut ids = file_ids.into_iter().peekable();
+    ids.peek().is_some() && ids.all(|id| pinned.contains(id))
+}
+
 /// A storage transition the user can trigger from the release "Storage…"
 /// sheet. The core computes which are available; the UI renders them and
 /// never re-derives availability.

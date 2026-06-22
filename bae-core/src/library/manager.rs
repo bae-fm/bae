@@ -1923,7 +1923,7 @@ impl LibraryManager {
             .is_some()
         {
             let storage_path = file.local_storage_path(&self.library_dir);
-            if tokio::fs::try_exists(&storage_path).await.unwrap_or(false) {
+            if tokio::fs::try_exists(&storage_path).await? {
                 return Ok(Some(storage_path));
             }
         }
@@ -3478,13 +3478,6 @@ pub(crate) fn resolve_release(
 ) -> ReleaseDetail {
     let release = raw.release;
     let unmanaged_source = raw.unmanaged_source;
-    // File ids that have a pinned cache row on this device.
-    let pinned_file_ids: std::collections::HashSet<&str> = raw
-        .file_cache
-        .iter()
-        .filter(|e| e.pinned)
-        .map(|e| e.file_id.as_str())
-        .collect();
     // File ids that have any cache row on this device (a cache hit candidate).
     let cached_file_ids: std::collections::HashSet<&str> =
         raw.file_cache.iter().map(|e| e.file_id.as_str()).collect();
@@ -3682,12 +3675,10 @@ pub(crate) fn resolve_release(
 
     // A release reads as Pinned when it has files and every one is pinned-cached
     // here; an unmanaged source reads as Unmanaged; otherwise CloudOnly.
-    let all_files_pinned = !files.is_empty()
-        && files
-            .iter()
-            .all(|f| pinned_file_ids.contains(f.id.as_str()));
-    let storage_state =
-        crate::album_detail::storage_state(unmanaged_source.is_some(), all_files_pinned);
+    let storage_state = crate::album_detail::storage_state(
+        unmanaged_source.is_some(),
+        crate::album_detail::all_files_pinned(files.iter().map(|f| f.id.as_str()), &raw.file_cache),
+    );
 
     let summary = build_release_summary(
         release.id.clone(),

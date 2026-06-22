@@ -182,17 +182,14 @@ fn parse_album_summary_row(row: &Row) -> Result<DbAlbumSummary, DbError> {
     })
 }
 
-/// SELECT-list fragment computing this device's two storage-state facts for a
-/// `releases r` query, read back via [`storage_state_facts`]:
-///   - `has_unmanaged_source`: a `release_unmanaged_source` row exists.
-///   - `all_files_pinned`: the release has files AND every one has a pinned
-///     `file_cache` row (so it reads as the Pinned state). The correlated
-///     subquery counts the release's files missing a pinned cache row; zero of
-///     those plus at least one file means fully pinned.
-const STORAGE_STATE_SELECT: &str = "EXISTS ( \
-        SELECT 1 FROM release_unmanaged_source us WHERE us.release_id = r.id \
-    ) AS has_unmanaged_source, \
-    ( \
+/// SQL boolean: release `r` has files AND every one has a pinned `file_cache`
+/// row — i.e. it reads as the Pinned state. The correlated subquery counts the
+/// release's files missing a pinned cache row; zero of those plus at least one
+/// file means fully pinned. The SINGLE definition of "fully pinned" in SQL —
+/// [`storage_state_select`] and [`Database::get_cloud_only_release_count`] both
+/// build on it so the predicate can't drift. (The Rust-side equivalent for
+/// already-loaded rows is [`crate::album_detail::all_files_pinned`].)
+const ALL_FILES_PINNED_EXPR: &str = "( \
         ( SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id ) > 0 \
         AND NOT EXISTS ( \
             SELECT 1 FROM release_files rf \
@@ -202,10 +199,23 @@ const STORAGE_STATE_SELECT: &str = "EXISTS ( \
                   WHERE fc.file_id = rf.id AND fc.pinned = 1 \
               ) \
         ) \
-    ) AS all_files_pinned";
+    )";
+
+/// SELECT-list fragment computing this device's two storage-state facts for a
+/// `releases r` query, read back via [`storage_state_facts`]:
+///   - `has_unmanaged_source`: a `release_unmanaged_source` row exists.
+///   - `all_files_pinned`: [`ALL_FILES_PINNED_EXPR`].
+fn storage_state_select() -> String {
+    format!(
+        "EXISTS ( \
+            SELECT 1 FROM release_unmanaged_source us WHERE us.release_id = r.id \
+        ) AS has_unmanaged_source, \
+        {ALL_FILES_PINNED_EXPR} AS all_files_pinned"
+    )
+}
 
 /// Read `(has_unmanaged_source, all_files_pinned)` from a row carrying the
-/// [`STORAGE_STATE_SELECT`] columns.
+/// [`storage_state_select`] columns.
 fn storage_state_facts(row: &Row) -> coven::rusqlite::Result<(bool, bool)> {
     Ok((
         row.get("has_unmanaged_source")?,
@@ -1006,6 +1016,7 @@ impl Database {
     /// `tail` is the trailing clause that differs per caller: an `ORDER BY` for
     /// the all-releases list, a `WHERE r.id = ?1` for a single-release lookup.
     fn release_storage_summary_query(tail: &str) -> String {
+        let storage_state_select = storage_state_select();
         format!(
             "SELECT \
             r.id AS release_id, \
@@ -1013,7 +1024,7 @@ impl Database {
             a.title AS album_title, \
             r.format, \
             r.managed, \
-            {STORAGE_STATE_SELECT}, \
+            {storage_state_select}, \
             COALESCE( \
                 a.primary_release_id, \
                 (SELECT r2.id FROM releases r2 WHERE r2.album_id = a.id ORDER BY r2.created_at LIMIT 1) \
@@ -1100,28 +1111,18 @@ impl Database {
     /// user how many releases will become unplayable when the cloud provider is
     /// removed.
     pub async fn get_cloud_only_release_count(&self) -> Result<u64, DbError> {
+        // Managed releases that aren't fully pinned here — reuse the single
+        // "fully pinned" SQL definition so it can't drift from the storage-state
+        // query.
+        let query = format!(
+            "SELECT COUNT(*) FROM releases r WHERE r.managed = 1 AND NOT {ALL_FILES_PINNED_EXPR}"
+        );
         self.inner
             .coven_db
             .call(move |conn| {
-                conn.query_row(
-                    "SELECT COUNT(*) FROM releases r \
-                     WHERE r.managed = 1 \
-                     AND NOT ( \
-                         ( SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id ) > 0 \
-                         AND NOT EXISTS ( \
-                             SELECT 1 FROM release_files rf \
-                             WHERE rf.release_id = r.id \
-                               AND NOT EXISTS ( \
-                                   SELECT 1 FROM file_cache fc \
-                                   WHERE fc.file_id = rf.id AND fc.pinned = 1 \
-                               ) \
-                         ) \
-                     )",
-                    [],
-                    |row| row.get::<_, i64>(0),
-                )
-                .map(|c| c as u64)
-                .map_err(DbError::from)
+                conn.query_row(&query, [], |row| row.get::<_, i64>(0))
+                    .map(|c| c as u64)
+                    .map_err(DbError::from)
             })
             .await
     }
@@ -1180,6 +1181,7 @@ impl Database {
             ""
         };
         let where_clause = storage_filter_where(filter);
+        let storage_state_select = storage_state_select();
 
         let query = format!(
             "SELECT \
@@ -1187,7 +1189,7 @@ impl Database {
                 r.album_id, \
                 r.format AS release_format, \
                 r.managed, \
-                {STORAGE_STATE_SELECT}, \
+                {storage_state_select}, \
                 COALESCE(( \
                     SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
                 ), 0) AS file_count, \

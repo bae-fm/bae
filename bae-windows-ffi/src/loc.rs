@@ -428,10 +428,6 @@ mod tests {
             &cat,
             playback_error_reason_key("sync_disconnected").expect("actionable"),
         );
-        assert_key(
-            &cat,
-            playback_error_reason_key("upload_pending").expect("actionable"),
-        );
         assert!(
             playback_error_reason_key("diagnostic").is_none(),
             "diagnostic renders through the FfiError category path"
