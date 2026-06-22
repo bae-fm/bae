@@ -18,6 +18,14 @@ struct GalleryView: View {
     private var dismiss
     @State
     private var selection = 0
+    /// Downward drag for swipe-to-dismiss: the viewer follows the finger and, on
+    /// release, dismisses once it's past the threshold (or a fast flick) and
+    /// otherwise springs back. Only downward — an upward drag stays at rest, and
+    /// horizontal drags belong to the pager.
+    @State
+    private var dragOffset: CGFloat = 0
+
+    private static let dismissThreshold: CGFloat = 150
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -28,20 +36,29 @@ struct GalleryView: View {
                         .tag(index)
                 }
             }
-            .tabViewStyle(
-                .page(indexDisplayMode: items.count > 1 ? .automatic : .never)
-            )
-            // The current item's label (e.g. "Cover", "Back.jpg") so multi-image
-            // galleries aren't a blind swipe-through. Sits above the page dots
-            // and doesn't intercept swipes. `selection` is TabView-bounded and
-            // the gallery is never shown empty, so the subscript is safe; core
-            // always sets a non-empty label ("Cover" or the filename).
-            Text(items[selection].label)
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.85))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .padding(.bottom, 44)
-                .allowsHitTesting(false)
+            // Edge-to-edge so the photo fills the whole screen; the built-in page
+            // dots are dropped (they'd land under the home indicator) in favor of
+            // the safe-area "n / N" counter below.
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .ignoresSafeArea()
+            // The current item's label (e.g. "Cover", "Back.jpg") plus, for a
+            // multi-image gallery, its position — so it isn't a blind
+            // swipe-through. Sits in the safe area and doesn't intercept swipes.
+            // `selection` is TabView-bounded and the gallery is never shown empty,
+            // so the subscript is safe; core always sets a non-empty label.
+            VStack(spacing: 2) {
+                Text(items[selection].label)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.85))
+                if items.count > 1 {
+                    Text("\(selection + 1) / \(items.count)")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .padding(.bottom, 24)
+            .allowsHitTesting(false)
             Button {
                 dismiss()
             } label: {
@@ -51,6 +68,35 @@ struct GalleryView: View {
                     .padding()
             }
         }
+        .offset(y: dragOffset)
+        .simultaneousGesture(dismissDrag)
+    }
+
+    // Vertical-dominant downward swipe to dismiss, run alongside the pager's
+    // horizontal swipe (simultaneousGesture) so it never steals a page turn. The
+    // offset tracks the finger; release past the threshold — or on a fast flick —
+    // dismisses, otherwise it springs back.
+    private var dismissDrag: some Gesture {
+        DragGesture(minimumDistance: 10)
+            .onChanged { value in
+                let translation = value.translation
+                guard translation.height > 0,
+                    translation.height > abs(translation.width)
+                else { return }
+                dragOffset = translation.height
+            }
+            .onEnded { value in
+                let flickedAway =
+                    value.predictedEndTranslation.height > Self.dismissThreshold * 2
+                if value.translation.height > Self.dismissThreshold || flickedAway {
+                    dismiss()
+                }
+                else {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        dragOffset = 0
+                    }
+                }
+            }
     }
 }
 
