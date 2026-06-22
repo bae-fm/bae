@@ -168,14 +168,7 @@ impl Database {
     /// `managed = true`, leaving the `file_cache` rows in place. The upload
     /// observer's pinned branch.
     pub(crate) async fn mark_managed_pinned(&self, release_id: &str) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        let reg = self.register_stamp();
-        self.with_conn(move |conn| {
-            let tx = conn.unchecked_transaction()?;
-            set_managed_row(&tx, &release_id, true, &reg)?;
-            tx.commit().map_err(DbError::from)
-        })
-        .await
+        self.mark_managed(release_id, false).await
     }
 
     /// Finish a managed transition to cloud-only: mark `managed = true` and drop
@@ -183,12 +176,22 @@ impl Database {
     /// copy). The upload observer's cloud-only branch — it deletes the originals
     /// first iff `delete_after_upload` was set.
     pub(crate) async fn mark_managed_cloud_only(&self, release_id: &str) -> Result<(), DbError> {
+        self.mark_managed(release_id, true).await
+    }
+
+    /// Shared body of the two managed flips: set `managed = true` in one
+    /// transaction, optionally dropping the unmanaged source row (cloud-only) or
+    /// leaving it absent already (pinned). Kept private so the two observer
+    /// branches stay distinct named transitions at the call site.
+    async fn mark_managed(&self, release_id: &str, drop_source: bool) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let reg = self.register_stamp();
         self.with_conn(move |conn| {
             let tx = conn.unchecked_transaction()?;
             set_managed_row(&tx, &release_id, true, &reg)?;
-            delete_unmanaged_source_row(&tx, &release_id)?;
+            if drop_source {
+                delete_unmanaged_source_row(&tx, &release_id)?;
+            }
             tx.commit().map_err(DbError::from)
         })
         .await

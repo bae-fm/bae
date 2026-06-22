@@ -1511,6 +1511,24 @@ impl LibraryManager {
         }
     }
 
+    /// Emit `ReleaseUpdated` for a release identified by id alone, looking up its
+    /// album. The storage transitions use this after a state change. A DB error
+    /// looking up the release is logged, not swallowed — the transition already
+    /// committed, so the only loss is a missed UI refresh (it catches up on the
+    /// next event), but the failure stays visible.
+    async fn emit_release_updated_by_id(&self, release_id: &str) {
+        match self.database.find_release_by_id(release_id).await {
+            Ok(Some(release)) => {
+                self.emit_release_updated(&release.album_id, release_id)
+                    .await
+            }
+            Ok(None) => {
+                warn!("emit_release_updated_by_id: release {release_id} not found, skipping event")
+            }
+            Err(e) => warn!("emit_release_updated_by_id: DB error for release {release_id}: {e}"),
+        }
+    }
+
     pub async fn emit_release_removed(&self, album_id: &str, release_id: &str) {
         // Ship the parent album's post-removal summary so the reducer interns it
         // rather than reading the old release list to patch it — a read-to-write
@@ -2099,10 +2117,7 @@ impl LibraryManager {
         let entries: Vec<(String, i64)> =
             files.iter().map(|f| (f.id.clone(), f.file_size)).collect();
         self.database.set_pinned_cache(release_id, &entries).await?;
-        if let Ok(Some(release)) = self.database.find_release_by_id(release_id).await {
-            self.emit_release_updated(&release.album_id, release_id)
-                .await;
-        }
+        self.emit_release_updated_by_id(release_id).await;
         Ok(())
     }
 
@@ -2112,10 +2127,7 @@ impl LibraryManager {
     /// here.
     pub async fn unpin_release_locally(&self, release_id: &str) -> Result<(), LibraryError> {
         self.database.unpin(release_id).await?;
-        if let Ok(Some(release)) = self.database.find_release_by_id(release_id).await {
-            self.emit_release_updated(&release.album_id, release_id)
-                .await;
-        }
+        self.emit_release_updated_by_id(release_id).await;
         Ok(())
     }
 
@@ -2128,11 +2140,7 @@ impl LibraryManager {
         path: &str,
     ) -> Result<(), LibraryError> {
         self.database.unmanage(release_id, path).await?;
-
-        if let Ok(Some(release)) = self.database.find_release_by_id(release_id).await {
-            self.emit_release_updated(&release.album_id, release_id)
-                .await;
-        }
+        self.emit_release_updated_by_id(release_id).await;
         Ok(())
     }
 

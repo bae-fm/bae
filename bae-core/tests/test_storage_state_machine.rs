@@ -957,19 +957,11 @@ async fn every_transition_lands_in_a_valid_state() {
         None,
     );
 
-    // Import-unmanaged: managed=false + an unmanaged source.
-    {
-        let rel = insert_bare_release(&mgr, false).await;
-        db.test_set_unmanaged_source(&rel, "/src").await.unwrap();
-        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Unmanaged);
-    }
-
-    // Import-cloud-only: lands identically to an unmanaged import — an unmanaged
-    // source while its upload is still pending (the issue #105 landing). This
-    // asserts only that the landing tuple is a valid Unmanaged state; the
-    // behavioral repro through the real `ImportService` lives in
-    // `test_pending_upload_source.rs`. `test_set_unmanaged_source` writes the
-    // same row the import finalize transaction does.
+    // Import-unmanaged: managed=false + an unmanaged source. A cloud-only import
+    // lands in this same valid Unmanaged tuple (it records an unmanaged source
+    // and queues uploads); its end-to-end behavior through the real
+    // `ImportService` — playable in place until the upload flips it to
+    // CloudOnly — is covered in `test_pending_upload_source.rs`.
     {
         let rel = insert_bare_release(&mgr, false).await;
         db.test_set_unmanaged_source(&rel, "/src").await.unwrap();
