@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -27,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -39,6 +42,7 @@ import fm.bae.app.R
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.QueueItem
 import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private const val TAG = "bae.QueueScreen"
@@ -48,7 +52,7 @@ private val logger = BaeLogger(TAG)
  *  ids that may repeat (the same track can be enqueued twice), so the track id
  *  alone is not a unique key; the occurrence index disambiguates duplicates and
  *  keeps the key stable for a given entry across re-hydrations and drags. */
-private data class KeyedQueueItem(
+internal data class KeyedQueueItem(
     val key: String,
     val item: QueueItem,
 )
@@ -79,13 +83,46 @@ fun QueueScreen(
     session: OpenLibrary,
     onDismiss: () -> Unit,
 ) {
-    val queue by session.playback.queue.collectAsState()
     val nowPlaying by session.playback.nowPlaying.collectAsState()
-
     val listState = rememberLazyListState()
-    // Local optimistic order so a dragged row follows the finger. Seeded from the
-    // authoritative flow, but NOT while a drag is in progress — re-seeding mid-
-    // drag would clobber the optimistic move and snap the row back.
+    val (order, reorderState) = rememberReorderableQueue(session, listState)
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = 24.dp),
+    ) {
+        item(key = "header") { QueueHeader(session = session, isQueueEmpty = order.isEmpty()) }
+        nowPlaying?.let { np ->
+            item(key = "nowplaying") {
+                SectionLabel(stringResource(R.string.queue_section_now_playing))
+                NowPlayingRow(np)
+            }
+        }
+        queueContent(
+            session = session,
+            order = order,
+            reorderState = reorderState,
+            hasNowPlaying = nowPlaying != null,
+            onSkipped = onDismiss,
+        )
+    }
+}
+
+/**
+ * The optimistic queue order plus its reorderable list state, shared by the queue
+ * sheet and the expanded player's embedded queue so the index conventions stay in
+ * one place. The order is seeded from the authoritative flow but NOT while a drag
+ * is in progress — re-seeding mid-drag would clobber the optimistic move and snap
+ * the row back. A drop maps the dragged/target keys to positions and calls core's
+ * reorder (gap-index convention: a forward move passes `toPos + 1`).
+ */
+@Composable
+internal fun rememberReorderableQueue(
+    session: OpenLibrary,
+    listState: LazyListState,
+): Pair<SnapshotStateList<KeyedQueueItem>, ReorderableLazyListState> {
+    val queue by session.playback.queue.collectAsState()
     val order = remember { mutableStateListOf<KeyedQueueItem>() }
     val reorderState =
         rememberReorderableLazyListState(listState) { from, to ->
@@ -95,9 +132,6 @@ fun QueueScreen(
             val toPos = order.indexOfFirst { it.key == to.key }
             if (fromPos < 0 || toPos < 0) return@rememberReorderableLazyListState
             order.add(toPos, order.removeAt(fromPos))
-            // Core's reorder treats `to` as a gap index: a forward move inserts at
-            // `to - 1`, so pass `toPos + 1` to land the item where the drag dropped
-            // it. A backward move maps straight through.
             val coreTo = if (toPos > fromPos) toPos + 1 else toPos
             try {
                 session.appHandle.reorderQueue(fromPos.toUInt(), coreTo.toUInt())
@@ -112,40 +146,27 @@ fun QueueScreen(
             order.addAll(keyed(queue))
         }
     }
-
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = 24.dp),
-    ) {
-        item(key = "header") { QueueHeader(session = session, isQueueEmpty = order.isEmpty()) }
-        queueContent(
-            session = session,
-            order = order,
-            reorderState = reorderState,
-            nowPlaying = nowPlaying,
-            onDismiss = onDismiss,
-        )
-    }
+    return order to reorderState
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.queueContent(
+// The "Up Next" list (header + reorderable rows, or an empty message) — shared by
+// the queue sheet and the expanded player's embedded queue so the reorder / skip /
+// remove index conventions stay in one place. The caller owns the now-playing
+// header above this (the sheet shows a Now Playing row; the player shows the full
+// transport), passing `hasNowPlaying` only to word the empty state. `onSkipped`
+// runs after a tap-to-skip — the sheet passes its dismiss; the embedded player
+// passes `null` because it stays put on skip.
+internal fun LazyListScope.queueContent(
     session: OpenLibrary,
     order: List<KeyedQueueItem>,
-    reorderState: sh.calvin.reorderable.ReorderableLazyListState,
-    nowPlaying: NowPlaying?,
-    onDismiss: () -> Unit,
+    reorderState: ReorderableLazyListState,
+    hasNowPlaying: Boolean,
+    onSkipped: (() -> Unit)?,
 ) {
-    nowPlaying?.let { np ->
-        item(key = "nowplaying") {
-            SectionLabel(stringResource(R.string.queue_section_now_playing))
-            NowPlayingRow(np)
-        }
-    }
     if (order.isEmpty()) {
         item(key = "empty") {
             Text(
-                text = stringResource(if (nowPlaying != null) R.string.queue_nothing_up_next else R.string.queue_empty),
+                text = stringResource(if (hasNowPlaying) R.string.queue_nothing_up_next else R.string.queue_empty),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth().padding(32.dp),
             )
@@ -161,7 +182,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.queueContent(
                         onClick = {
                             try {
                                 session.appHandle.skipToQueueIndex(index.toUInt())
-                                onDismiss()
+                                onSkipped?.invoke()
                             } catch (e: Exception) {
                                 logger.error("skipToQueueIndex $index failed", e)
                             }

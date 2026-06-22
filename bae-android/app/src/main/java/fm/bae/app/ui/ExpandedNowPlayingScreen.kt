@@ -2,18 +2,21 @@ package fm.bae.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Repeat
@@ -27,7 +30,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -35,31 +37,33 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.C
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
 
 /**
- * Full-screen now-playing player, presented as a full-bleed [Dialog] from the
- * compact [NowPlayingBar] when its track area is tapped. Renders the same single
- * source as the bar — the session's [fm.bae.app.playback.BaeCorePlayer] (a pure
- * projection of bae-core's playback) — and sends transport/seek through that
- * player and volume/mute/repeat through the bridge (all non-throwing).
+ * Full-screen now-playing player, presented as a [ModalBottomSheet] (swipe down
+ * to dismiss) from the compact [NowPlayingBar] when its track area is tapped. The
+ * player fills the first screen and the upcoming queue sits below it in the same
+ * scroll, so a swipe up scrolls into the queue and a swipe down from the top
+ * dismisses (the sheet and the list coordinate that handoff via nested scroll).
+ * Renders the session's [fm.bae.app.playback.BaeCorePlayer] (a pure projection of
+ * bae-core's playback) and sends transport/seek through that player and
+ * volume/mute/repeat through the bridge (all non-throwing).
  *
  * Pure iterate-and-render: the seek labels and the software-decode flag are
  * pre-derived by core; this screen formats nothing.
  */
 @OptIn(ExperimentalMaterial3Api::class)
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun ExpandedNowPlayingScreen(
     session: OpenLibrary,
@@ -67,74 +71,91 @@ fun ExpandedNowPlayingScreen(
 ) {
     val player = session.playback
     val nowPlaying by player.nowPlaying.collectAsState()
-    val position by player.position.collectAsState()
-    val repeatMode by player.repeatMode.collectAsState()
-    val volume by player.volume.collectAsState()
-    val isMuted by player.isMuted.collectAsState()
-
     val track = nowPlaying ?: return
 
-    var queueOpen by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
-    if (queueOpen) {
-        ModalBottomSheet(
-            onDismissRequest = { queueOpen = false },
-            sheetState = sheetState,
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val listState = rememberLazyListState()
+    val (order, reorderState) = rememberReorderableQueue(session, listState)
+    // The sheet handles the top inset; pad the scroll's bottom past the navigation
+    // bar so the last queue row clears it.
+    val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // A swipe dismisses via the sheet's own animation; the chevron animates the
+    // sheet out first, then tears it down — onDismiss alone would drop it abruptly.
+    val scope = rememberCoroutineScope()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = bottomInset + 16.dp),
         ) {
-            QueueScreen(session = session, onDismiss = { queueOpen = false })
+            item(key = "player") {
+                ExpandedPlayer(
+                    session = session,
+                    track = track,
+                    onCollapse = {
+                        scope.launch { sheetState.hide() }.invokeOnCompletion {
+                            if (!sheetState.isVisible) onDismiss()
+                        }
+                    },
+                )
+            }
+            // The player above already shows the current track, so the embedded
+            // queue is just the up-next list; a row tap skips without closing the
+            // player (`onSkipped = null`).
+            queueContent(
+                session = session,
+                order = order,
+                reorderState = reorderState,
+                hasNowPlaying = true,
+                onSkipped = null,
+            )
         }
     }
+}
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .safeDrawingPadding()
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-            ) {
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.ExpandMore, contentDescription = stringResource(R.string.collapse))
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                CoverImage(
-                    path = track.coverPath,
-                    cornerRadius = 8.dp,
-                    iconPadding = 64.dp,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                ExpandedTrackInfo(title = track.title, artist = track.artist)
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                ExpandedSeekSection(position = position, player = player)
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ExpandedTransportRow(player = player)
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ExpandedSecondaryControls(
-                    session = session,
-                    repeatMode = repeatMode,
-                    onOpenQueue = { queueOpen = true },
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                ExpandedVolumeRow(session = session, isMuted = isMuted, volume = volume)
-            }
+@Composable
+private fun ExpandedPlayer(
+    session: OpenLibrary,
+    track: fm.bae.app.playback.NowPlaying,
+    onCollapse: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
+        IconButton(onClick = onCollapse) {
+            Icon(Icons.Filled.ExpandMore, contentDescription = stringResource(R.string.collapse))
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        CoverImage(
+            path = track.coverPath,
+            cornerRadius = 8.dp,
+            iconPadding = 64.dp,
+            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        ExpandedTrackInfo(title = track.title, artist = track.artist)
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        ExpandedSeekSection(player = session.playback)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ExpandedTransportRow(player = session.playback)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ExpandedSecondaryControls(session = session)
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        ExpandedVolumeRow(session = session)
     }
 }
 
@@ -162,10 +183,8 @@ private fun ExpandedTrackInfo(
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-private fun ExpandedSeekSection(
-    position: fm.bae.app.playback.PlaybackPosition,
-    player: fm.bae.app.playback.BaeCorePlayer,
-) {
+private fun ExpandedSeekSection(player: fm.bae.app.playback.BaeCorePlayer) {
+    val position by player.position.collectAsState()
     // While dragging, follow the finger; the progress events would otherwise snap
     // the thumb back mid-drag. Null means "not dragging". Same pattern as the bar.
     var dragRatio by remember { mutableStateOf<Float?>(null) }
@@ -176,7 +195,7 @@ private fun ExpandedSeekSection(
         onValueChangeFinished = {
             dragRatio?.let { ratio ->
                 val duration = player.duration
-                if (duration != androidx.media3.common.C.TIME_UNSET && duration > 0L) {
+                if (duration != C.TIME_UNSET && duration > 0L) {
                     player.seekTo((ratio * duration).toLong())
                 }
             }
@@ -235,11 +254,8 @@ private fun ExpandedTransportRow(player: fm.bae.app.playback.BaeCorePlayer) {
 }
 
 @Composable
-private fun ExpandedSecondaryControls(
-    session: OpenLibrary,
-    repeatMode: BridgeRepeatMode,
-    onOpenQueue: () -> Unit,
-) {
+private fun ExpandedSecondaryControls(session: OpenLibrary) {
+    val repeatMode by session.playback.repeatMode.collectAsState()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
@@ -260,19 +276,13 @@ private fun ExpandedSecondaryControls(
                     },
             )
         }
-        Spacer(modifier = Modifier.width(24.dp))
-        IconButton(onClick = onOpenQueue) {
-            Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.queue))
-        }
     }
 }
 
 @Composable
-private fun ExpandedVolumeRow(
-    session: OpenLibrary,
-    isMuted: Boolean,
-    volume: Float,
-) {
+private fun ExpandedVolumeRow(session: OpenLibrary) {
+    val volume by session.playback.volume.collectAsState()
+    val isMuted by session.playback.isMuted.collectAsState()
     // Mute toggle + level slider. While dragging, follow the finger from a local
     // value (cleared on release); the VolumeChanged events would otherwise snap the
     // thumb back mid-drag, same as the seek slider above. Both bridge calls are
