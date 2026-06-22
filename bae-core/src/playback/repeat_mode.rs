@@ -1,14 +1,10 @@
-/// Repeat mode for playback
+/// Repeat mode for playback.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum RepeatMode {
-    None,
+    /// No repeat — play through and stop.
+    Off,
+    /// Pin the current track.
     Track,
-    Album,
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for RepeatMode {
-    fn default() -> Self {
-        RepeatMode::None
-    }
+    /// Loop the whole context (the release being played from).
+    Context,
 }

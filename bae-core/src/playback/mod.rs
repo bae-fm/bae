@@ -1,6 +1,7 @@
 #[cfg(target_os = "android")]
 pub mod aaudio_output;
 pub mod audio_output;
+mod context;
 #[cfg(not(target_os = "android"))]
 pub mod cpal_output;
 pub mod data_source;
@@ -20,10 +21,11 @@ pub use audio_output::{wait_for_samples, CaptureAudioOutput};
 pub use audio_output::{
     AudioError, AudioOutput, AudioState, AudioStream, CompletionEvent, PositionEvent,
 };
+pub use context::ContextStart;
 pub use decoded_pcm::DecodedPcm;
 pub use error::PlaybackError;
 pub use progress::{PlaybackProgress, PreviewState};
-pub use queue::{NextTrack, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
+pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
 pub use repeat_mode::RepeatMode;
 pub use service::{
     LoadingTrack, PlaybackHandle, PlaybackService, PlaybackSnapshot, PlaybackState,

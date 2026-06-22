@@ -2572,9 +2572,9 @@ fn candidate_audio_paths(
 fn repeat_mode_name(mode: &bae_core::playback::RepeatMode) -> &'static str {
     use bae_core::playback::RepeatMode;
     match mode {
-        RepeatMode::None => "none",
+        RepeatMode::Off => "none",
         RepeatMode::Track => "track",
-        RepeatMode::Album => "album",
+        RepeatMode::Context => "album",
     }
 }
 

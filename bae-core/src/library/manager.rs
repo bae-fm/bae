@@ -782,13 +782,12 @@ const REPLAY_GAIN_TARGET_LUFS: f64 = -18.0;
 /// playback service needs to set up the queue without chasing back into
 /// the library for neighbouring track IDs.
 ///
-/// `previous_track_id` is the track immediately before the selected track
-/// in the release (by `side, track_number, id`), or `None` if it is the
-/// first track. `tracks_after` holds every track ID after the selected
-/// track in the same order.
+/// The release a directly-selected track plays from: the full track order (by
+/// `side, track_number, id`) and the selected track's index into it. The
+/// playback service seeds a context from this.
 pub struct PlayContext {
-    pub previous_track_id: Option<String>,
-    pub tracks_after: Vec<String>,
+    pub track_ids: Vec<String>,
+    pub index: usize,
 }
 
 /// Tag fields to embed on an exported track file.
@@ -3749,7 +3748,7 @@ impl LibraryManager {
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {}", track_id)))?;
         let release_id = track.release_id;
         let track_ids = self.database.get_track_ids_for_release(&release_id).await?;
-        let position = track_ids
+        let index = track_ids
             .iter()
             .position(|id| id == track_id)
             .ok_or_else(|| {
@@ -3758,12 +3757,7 @@ impl LibraryManager {
                     track_id, release_id
                 ))
             })?;
-        let previous_track_id = position.checked_sub(1).map(|i| track_ids[i].clone());
-        let tracks_after = track_ids.into_iter().skip(position + 1).collect::<Vec<_>>();
-        Ok(PlayContext {
-            previous_track_id,
-            tracks_after,
-        })
+        Ok(PlayContext { track_ids, index })
     }
 
     /// Return the subset of `ids` that still exist in the tracks table.

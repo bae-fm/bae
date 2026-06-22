@@ -447,17 +447,17 @@ pub enum BridgeRepeatMode {
 impl BridgeRepeatMode {
     pub fn to_core(self) -> bae_core::playback::RepeatMode {
         match self {
-            Self::None => bae_core::playback::RepeatMode::None,
+            Self::None => bae_core::playback::RepeatMode::Off,
             Self::Track => bae_core::playback::RepeatMode::Track,
-            Self::Album => bae_core::playback::RepeatMode::Album,
+            Self::Album => bae_core::playback::RepeatMode::Context,
         }
     }
 
     pub fn from_core(mode: bae_core::playback::RepeatMode) -> Self {
         match mode {
-            bae_core::playback::RepeatMode::None => Self::None,
+            bae_core::playback::RepeatMode::Off => Self::None,
             bae_core::playback::RepeatMode::Track => Self::Track,
-            bae_core::playback::RepeatMode::Album => Self::Album,
+            bae_core::playback::RepeatMode::Context => Self::Album,
         }
     }
 }

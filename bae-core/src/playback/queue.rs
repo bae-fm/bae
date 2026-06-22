@@ -4,6 +4,7 @@ use tracing::warn;
 
 use super::RepeatMode;
 use crate::id_provider::IdRef;
+use crate::playback::context::{ContextStart, PlaybackContext};
 
 /// Per-instance identity for an enqueued track. Distinct from `track_id`: the
 /// same track enqueued twice yields two entries with two ids, each removable,
@@ -19,46 +20,64 @@ pub struct QueueEntry {
     pub track_id: String,
 }
 
-/// What to do when advancing to the next track
-pub enum NextTrack {
-    /// Repeat the current track (RepeatMode::Track)
+/// What to do when advancing to the next track.
+#[derive(Debug)]
+pub enum NextEntry {
+    /// Repeat the current track (`RepeatMode::Track`).
     RepeatCurrent(String),
-    /// Play the next track from the queue
+    /// Play this track next (drained from the manual lane or the context).
     Play(String),
-    /// Queue is empty but RepeatMode::Album is set — caller should rebuild the queue
-    RepeatAlbumNeeded,
-    /// Queue is empty, nothing to play
+    /// Nothing left to play.
     Stop,
 }
 
-/// What to do when going to the previous track
+/// What to do when going to the previous track.
 pub enum PreviousAction {
-    /// Go back to the previous track
+    /// Go back to this track.
     PlayPrevious(String),
-    /// Restart the current track (past 3s threshold or no previous track)
+    /// Restart the current track (past the 3s threshold, or nothing before it).
     RestartCurrent,
 }
 
-/// Pure data structure for managing a playback queue.
-///
-/// Handles queue CRUD and next/previous decision logic without any I/O.
-/// Each enqueued track is wrapped in a `QueueEntry` carrying a unique
-/// `QueueEntryId`; mutations key on that id, not on a position or `track_id`.
+/// Where an operable id sits: the manual lane, or a position in the context.
+enum EntryLocation {
+    Manual(usize),
+    Context(usize),
+}
+
+/// The insert index for a reorder, after the source entry at `from` has been
+/// removed from a lane of post-removal length `len`: `before = None` appends at
+/// the end; a `before` position past `from` shifts down by one.
+fn before_insert_index(before_pos: Option<usize>, from: usize, len: usize) -> usize {
+    match before_pos {
+        Some(pos) if pos > from => pos - 1,
+        Some(pos) => pos,
+        None => len,
+    }
+}
+
+/// Pure data structure for the playback queue: a **manual lane** (explicitly
+/// enqueued tracks, drained first) and a **context** (the release being played
+/// from, traversed by a cursor). The current instance is whichever lane produced
+/// it. Holds no I/O — the service feeds it track ids it fetched.
 pub struct PlaybackQueue {
-    queue: VecDeque<QueueEntry>,
-    current_track_id: Option<String>,
-    previous_track_id: Option<String>,
-    repeat_mode: RepeatMode,
+    /// Explicitly enqueued instances (Play Next / Add to Queue), drained first.
+    manual: VecDeque<QueueEntry>,
+    /// The release being played from, or `None` when nothing is.
+    context: Option<PlaybackContext>,
+    /// The now-playing instance, from whichever lane produced it.
+    current: Option<QueueEntry>,
+    repeat: RepeatMode,
     ids: IdRef,
 }
 
 impl PlaybackQueue {
     pub fn new(ids: IdRef) -> Self {
         Self {
-            queue: VecDeque::new(),
-            current_track_id: None,
-            previous_track_id: None,
-            repeat_mode: RepeatMode::None,
+            manual: VecDeque::new(),
+            context: None,
+            current: None,
+            repeat: RepeatMode::Off,
             ids,
         }
     }
@@ -71,221 +90,371 @@ impl PlaybackQueue {
         }
     }
 
-    /// Locate an entry by its id.
-    fn position_of(&self, id: &QueueEntryId) -> Option<usize> {
-        self.queue.iter().position(|e| &e.id == id)
+    /// Locate an operable id in the manual lane or the context.
+    fn locate(&self, id: &QueueEntryId) -> Option<EntryLocation> {
+        if let Some(pos) = self.manual.iter().position(|e| &e.id == id) {
+            return Some(EntryLocation::Manual(pos));
+        }
+        if let Some(ctx) = self.context.as_ref() {
+            if let Some(pos) = ctx.entries.iter().position(|e| &e.id == id) {
+                return Some(EntryLocation::Context(pos));
+            }
+        }
+        None
     }
 
-    /// Add track IDs to the end of the queue, minting a fresh entry id each.
+    // -- Manual lane mutations -------------------------------------------------
+
+    /// Add track ids to the end of the manual lane, minting a fresh id each.
     pub fn add_to_queue(&mut self, track_ids: Vec<String>) {
         for track_id in track_ids {
             let entry = self.mint(track_id);
-            self.queue.push_back(entry);
+            self.manual.push_back(entry);
         }
     }
 
-    /// Add track IDs to the front of the queue (play next), minting ids.
+    /// Add track ids to the front of the manual lane (play next), minting ids.
     pub fn add_next(&mut self, track_ids: Vec<String>) {
         for track_id in track_ids.into_iter().rev() {
             let entry = self.mint(track_id);
-            self.queue.push_front(entry);
+            self.manual.push_front(entry);
         }
     }
 
-    /// Insert track IDs at a specific position in the queue, minting ids.
+    /// Insert track ids at a position in the manual lane, minting ids.
     pub fn insert_at(&mut self, index: usize, track_ids: Vec<String>) {
-        let pos = index.min(self.queue.len());
+        let pos = index.min(self.manual.len());
         for (i, track_id) in track_ids.into_iter().enumerate() {
             let entry = self.mint(track_id);
-            self.queue.insert(pos + i, entry);
+            self.manual.insert(pos + i, entry);
         }
     }
 
-    /// Remove the entry with the given id. Returns the removed entry, or logs a
-    /// warning and no-ops when the id is not in the queue.
+    /// Clear the manual lane. The context (the release being played from) is
+    /// left intact — matching "Clear" leaving "Continue Playing".
+    pub fn clear(&mut self) {
+        self.manual.clear();
+    }
+
+    // -- Context ---------------------------------------------------------------
+
+    /// Make a release's tracks the playing context: build their order under
+    /// `start`, set the cursor, and make the cursor entry current. Clears the
+    /// manual lane (a fresh playback session). Returns the track to play. The
+    /// caller passes a non-empty release (and an in-range `Index`); the context
+    /// is therefore non-empty with a valid cursor.
+    pub fn play_release(&mut self, track_ids: Vec<String>, start: ContextStart) -> String {
+        self.manual.clear();
+        let entries = track_ids.into_iter().map(|t| self.mint(t)).collect();
+        let context = PlaybackContext::new(entries, start);
+        let track = context.current().track_id.clone();
+        self.current = Some(context.current().clone());
+        self.context = Some(context);
+        track
+    }
+
+    /// Play a single track with no surrounding context — nothing is queued after
+    /// it. Used when a track's release can't be loaded; clears the manual lane.
+    pub fn play_single(&mut self, track_id: String) {
+        self.manual.clear();
+        self.context = None;
+        self.current = Some(self.mint(track_id));
+    }
+
+    // -- id-based operations across both lanes ---------------------------------
+
+    /// Remove the entry with the given id from whichever lane holds it. The
+    /// context cursor stays on the same playing track (a removal before it shifts
+    /// it down; a removal at it leaves it on the track that shifted into place,
+    /// clamped in bounds); emptying the context drops it. Removing the entry that
+    /// is currently playing clears `current`. Unknown id logs and no-ops.
     pub fn remove(&mut self, id: &QueueEntryId) -> Option<QueueEntry> {
-        match self.position_of(id) {
-            Some(pos) => self.queue.remove(pos),
+        let removed = match self.locate(id) {
+            Some(EntryLocation::Manual(pos)) => Some(
+                self.manual
+                    .remove(pos)
+                    .expect("locate reported a manual entry"),
+            ),
+            Some(EntryLocation::Context(pos)) => {
+                let ctx = self
+                    .context
+                    .as_mut()
+                    .expect("locate reported a context entry");
+                let removed = ctx.entries.remove(pos);
+                if pos < ctx.cursor {
+                    ctx.cursor -= 1;
+                }
+                if ctx.entries.is_empty() {
+                    self.context = None;
+                } else {
+                    // A removal at or after the cursor can leave it past the end.
+                    ctx.cursor = ctx.cursor.min(ctx.entries.len() - 1);
+                }
+                Some(removed)
+            }
             None => {
                 warn!("remove: queue entry id not found: {}", id.0);
+                None
+            }
+        };
+        if let Some(ref removed) = removed {
+            if self.current.as_ref().is_some_and(|c| c.id == removed.id) {
+                self.current = None;
+            }
+        }
+        removed
+    }
+
+    /// Move the entry `id` to sit immediately before `before`; `before = None`
+    /// moves it to the end of its lane. Reordering is within one lane — the
+    /// manual lane or the context order — so `id` and `before` must be in the
+    /// same lane; otherwise this logs and no-ops. (Reordering the context order
+    /// mutates the order initially set by the release/shuffle; the cursor stays
+    /// on the same playing track.)
+    pub fn reorder(&mut self, id: &QueueEntryId, before: Option<&QueueEntryId>) {
+        match self.locate(id) {
+            Some(EntryLocation::Manual(from)) => {
+                let before_pos = match before {
+                    Some(before_id) => match self.manual.iter().position(|e| &e.id == before_id) {
+                        Some(pos) => Some(pos),
+                        None => {
+                            warn!("reorder: before id not in the manual lane: {}", before_id.0);
+                            return;
+                        }
+                    },
+                    None => None,
+                };
+                // `from` is in bounds; reorder-before-self falls through to a
+                // remove-and-reinsert at the same position — a correct no-op.
+                let entry = self
+                    .manual
+                    .remove(from)
+                    .expect("reorder: located index in bounds");
+                let insert_at = before_insert_index(before_pos, from, self.manual.len());
+                self.manual.insert(insert_at, entry);
+            }
+            Some(EntryLocation::Context(from)) => {
+                let ctx = self
+                    .context
+                    .as_mut()
+                    .expect("locate reported a context entry");
+                let before_pos = match before {
+                    Some(before_id) => match ctx.entries.iter().position(|e| &e.id == before_id) {
+                        Some(pos) => Some(pos),
+                        None => {
+                            warn!("reorder: before id not in the context: {}", before_id.0);
+                            return;
+                        }
+                    },
+                    None => None,
+                };
+                // Keep the cursor on the same playing track across the move.
+                let cursor_id = ctx.current().id.clone();
+                let entry = ctx.entries.remove(from);
+                let insert_at = before_insert_index(before_pos, from, ctx.entries.len());
+                ctx.entries.insert(insert_at, entry);
+                ctx.cursor = ctx
+                    .entries
+                    .iter()
+                    .position(|e| e.id == cursor_id)
+                    .expect("reorder: the cursor entry is still present after reinsert");
+            }
+            None => warn!("reorder: queue entry id not found: {}", id.0),
+        }
+    }
+
+    /// Skip to the entry with the given id and make it current. A manual-lane
+    /// target drains the entries ahead of it in the manual lane; a context target
+    /// moves the cursor to it. Unknown id logs and no-ops; returns the entry now
+    /// playing.
+    pub fn skip_to(&mut self, id: &QueueEntryId) -> Option<QueueEntry> {
+        match self.locate(id) {
+            Some(EntryLocation::Manual(pos)) => {
+                for _ in 0..pos {
+                    self.manual.pop_front();
+                }
+                let entry = self
+                    .manual
+                    .pop_front()
+                    .expect("locate reported a manual entry");
+                self.current = Some(entry.clone());
+                Some(entry)
+            }
+            Some(EntryLocation::Context(pos)) => {
+                self.play_context_at(pos);
+                self.current.clone()
+            }
+            None => {
+                warn!("skip_to: queue entry id not found: {}", id.0);
                 None
             }
         }
     }
 
-    /// Move the entry `id` to sit immediately before `before`. `before = None`
-    /// moves it to the end of the queue. A missing source id, or a missing
-    /// `before` target, logs a warning and no-ops.
-    pub fn reorder(&mut self, id: &QueueEntryId, before: Option<&QueueEntryId>) {
-        let from = match self.position_of(id) {
-            Some(pos) => pos,
-            None => {
-                warn!("reorder: queue entry id not found: {}", id.0);
-                return;
+    /// Remove every entry whose track id is in the set, from the manual lane and
+    /// the context (a deleted track leaves everywhere it sits). Clears `current`
+    /// if it matches. Keeps the cursor pointing at the same context track by
+    /// counting how many removed entries sat before it.
+    pub fn remove_by_ids(&mut self, ids: &HashSet<String>) {
+        self.manual.retain(|entry| !ids.contains(&entry.track_id));
+        if let Some(ctx) = self.context.as_mut() {
+            // The cursor is in range (a present context is non-empty with a valid
+            // cursor), so `..cursor` is a valid slice.
+            let before_cursor = ctx.entries[..ctx.cursor]
+                .iter()
+                .filter(|e| ids.contains(&e.track_id))
+                .count();
+            ctx.entries.retain(|entry| !ids.contains(&entry.track_id));
+            if ctx.entries.is_empty() {
+                self.context = None;
+            } else {
+                ctx.cursor = ctx
+                    .cursor
+                    .saturating_sub(before_cursor)
+                    .min(ctx.entries.len() - 1);
             }
-        };
-
-        // Resolve the insertion target before removing, so the destination id
-        // is validated against the current queue.
-        let before_pos = match before {
-            Some(before_id) => match self.position_of(before_id) {
-                Some(pos) => Some(pos),
-                None => {
-                    warn!("reorder: before entry id not found: {}", before_id.0);
-                    return;
-                }
-            },
-            None => None,
-        };
-
-        // `from` came from `position_of`, so it is in bounds and `remove` cannot
-        // miss. Reordering an entry to before itself isn't special-cased: it
-        // falls through to a remove-and-reinsert at the same position, which is a
-        // correct no-op.
-        let entry = self
-            .queue
-            .remove(from)
-            .expect("reorder: position_of returned an in-bounds index");
-
-        // After removal, indices past `from` shift down by one.
-        let insert_at = match before_pos {
-            Some(pos) if pos > from => pos - 1,
-            Some(pos) => pos,
-            None => self.queue.len(),
-        };
-        self.queue.insert(insert_at, entry);
+        }
+        if let Some(ref current) = self.current {
+            if ids.contains(&current.track_id) {
+                self.current = None;
+            }
+        }
     }
 
-    /// Clear the queue.
-    pub fn clear(&mut self) {
-        self.queue.clear();
+    // -- Advance / retreat -----------------------------------------------------
+
+    /// Move the context cursor to `cursor`, make that entry current, and return
+    /// its track id. The context is present and `cursor` is in range.
+    fn play_context_at(&mut self, cursor: usize) -> String {
+        let ctx = self
+            .context
+            .as_mut()
+            .expect("play_context_at: context present");
+        ctx.cursor = cursor;
+        let entry = ctx.current().clone();
+        let track = entry.track_id.clone();
+        self.current = Some(entry);
+        track
     }
 
-    /// Skip to the entry with the given id: drains every entry ahead of it and
-    /// pops it off. Returns the entry to play, or logs a warning and no-ops
-    /// when the id is not in the queue.
-    pub fn skip_to(&mut self, id: &QueueEntryId) -> Option<QueueEntry> {
-        let pos = match self.position_of(id) {
-            Some(pos) => pos,
-            None => {
-                warn!("skip_to: queue entry id not found: {}", id.0);
+    /// Decide the next track: repeat-track pins the current; otherwise drain the
+    /// manual lane, then advance the context cursor, then (under `Context` repeat)
+    /// loop the context from its start, else stop. Mutates `current` and the
+    /// cursor to reflect what now plays.
+    pub fn next_entry(&mut self) -> NextEntry {
+        if self.repeat == RepeatMode::Track {
+            if let Some(ref cur) = self.current {
+                return NextEntry::RepeatCurrent(cur.track_id.clone());
+            }
+        }
+
+        if let Some(track) = self.advance_to_front() {
+            return NextEntry::Play(track);
+        }
+
+        // The manual lane and the context tail are both exhausted. Under
+        // `Context` repeat, loop the (non-empty) context from its start.
+        if self.repeat == RepeatMode::Context && self.context.is_some() {
+            return NextEntry::Play(self.play_context_at(0));
+        }
+
+        NextEntry::Stop
+    }
+
+    /// Advance directly to the upcoming front and make it current, bypassing
+    /// repeat-track and the context-repeat loop — used by the preload path, where
+    /// the front track is already buffered. Pops the manual front or advances the
+    /// context cursor. Returns the track now playing, or `None` if nothing is
+    /// queued ahead.
+    pub fn advance_to_front(&mut self) -> Option<String> {
+        if let Some(entry) = self.manual.pop_front() {
+            let track = entry.track_id.clone();
+            self.current = Some(entry);
+            return Some(track);
+        }
+        let next = {
+            let ctx = self.context.as_ref()?;
+            if ctx.cursor + 1 < ctx.entries.len() {
+                ctx.cursor + 1
+            } else {
                 return None;
             }
         };
+        Some(self.play_context_at(next))
+    }
 
-        for _ in 0..pos {
-            self.queue.pop_front();
+    /// Decide the previous action. Within 3s of the start, step the context cursor
+    /// back (multi-step over the traversed order); otherwise restart the current
+    /// track. When the current track is a manual item, the cursor entry is the
+    /// context track that preceded it, so stepping back lands there.
+    pub fn previous_action(&mut self, position_ms: u64) -> PreviousAction {
+        if position_ms >= 3000 {
+            return PreviousAction::RestartCurrent;
         }
-
-        self.queue.pop_front()
-    }
-
-    /// Get the current queue contents as a Vec of entries.
-    pub fn entries(&self) -> Vec<QueueEntry> {
-        self.queue.iter().cloned().collect()
-    }
-
-    /// Set the current track, moving the old current to previous.
-    pub fn set_current(&mut self, track_id: String) {
-        if let Some(old) = self.current_track_id.take() {
-            self.previous_track_id = Some(old);
-        }
-        self.current_track_id = Some(track_id);
-    }
-
-    /// Determine what to do next (called on AutoAdvance or Next).
-    /// Does NOT mutate the queue beyond popping the played entry — caller pops
-    /// from queue if needed.
-    pub fn next_track(&mut self) -> NextTrack {
-        if self.repeat_mode == RepeatMode::Track {
-            if let Some(ref id) = self.current_track_id {
-                return NextTrack::RepeatCurrent(id.clone());
+        let target = {
+            let Some(ctx) = self.context.as_ref() else {
+                return PreviousAction::RestartCurrent;
+            };
+            // A present context is non-empty with a valid cursor, so the cursor
+            // entry is real. If the current track is that cursor entry, step back
+            // one; if it's a manual item, the cursor entry is the context track
+            // that preceded it, so land there.
+            let current_is_cursor = self.current.as_ref().map(|c| &c.id) == Some(&ctx.current().id);
+            if current_is_cursor {
+                match ctx.cursor.checked_sub(1) {
+                    Some(t) => t,
+                    None => return PreviousAction::RestartCurrent,
+                }
+            } else {
+                ctx.cursor
             }
-        }
-
-        if let Some(next) = self.queue.pop_front() {
-            if let Some(old) = self.current_track_id.take() {
-                self.previous_track_id = Some(old);
-            }
-            NextTrack::Play(next.track_id)
-        } else if self.repeat_mode == RepeatMode::Album {
-            NextTrack::RepeatAlbumNeeded
-        } else {
-            NextTrack::Stop
-        }
+        };
+        PreviousAction::PlayPrevious(self.play_context_at(target))
     }
 
-    /// Determine what to do for "previous" action.
-    pub fn previous_action(&self, position_ms: u64) -> PreviousAction {
-        if position_ms < 3000 {
-            if let Some(ref prev_id) = self.previous_track_id {
-                return PreviousAction::PlayPrevious(prev_id.clone());
-            }
+    // -- Projection / accessors ------------------------------------------------
+
+    /// The flat upcoming list the UI renders: the manual lane, then the
+    /// not-yet-played tail of the context.
+    pub fn upcoming(&self) -> Vec<QueueEntry> {
+        let mut out: Vec<QueueEntry> = self.manual.iter().cloned().collect();
+        if let Some(ctx) = self.context.as_ref() {
+            out.extend(ctx.upcoming().iter().cloned());
         }
-        PreviousAction::RestartCurrent
+        out
+    }
+
+    /// Whether anything is queued to play after the current track (ignoring
+    /// repeat) — i.e. there is an upcoming front.
+    pub fn has_upcoming(&self) -> bool {
+        self.front().is_some()
+    }
+
+    /// Whether stepping back is possible: a context track sits before the cursor.
+    pub fn has_previous(&self) -> bool {
+        self.context.as_ref().is_some_and(|ctx| ctx.cursor > 0)
+    }
+
+    /// The first upcoming track id, for preload — without consuming it.
+    pub fn front(&self) -> Option<&str> {
+        if let Some(entry) = self.manual.front() {
+            return Some(entry.track_id.as_str());
+        }
+        self.context
+            .as_ref()
+            .and_then(|ctx| ctx.upcoming().first().map(|e| e.track_id.as_str()))
     }
 
     pub fn set_repeat_mode(&mut self, mode: RepeatMode) {
-        self.repeat_mode = mode;
+        self.repeat = mode;
     }
 
     pub fn repeat_mode(&self) -> RepeatMode {
-        self.repeat_mode
+        self.repeat
     }
 
     pub fn current_track_id(&self) -> Option<&str> {
-        self.current_track_id.as_deref()
-    }
-
-    pub fn previous_track_id(&self) -> Option<&str> {
-        self.previous_track_id.as_deref()
-    }
-
-    pub fn set_previous_track_id(&mut self, track_id: Option<String>) {
-        self.previous_track_id = track_id;
-    }
-
-    /// Replace the entire queue contents with freshly minted entries for the
-    /// given track ids.
-    pub fn replace(&mut self, track_ids: VecDeque<String>) {
-        self.queue = track_ids.into_iter().map(|t| self.mint(t)).collect();
-    }
-
-    /// Pop the front entry's track id off the queue.
-    pub fn pop_front(&mut self) -> Option<String> {
-        self.queue.pop_front().map(|e| e.track_id)
-    }
-
-    /// Peek at the front entry's track id.
-    pub fn front(&self) -> Option<&str> {
-        self.queue.front().map(|e| e.track_id.as_str())
-    }
-
-    /// Number of tracks in the queue.
-    pub fn len(&self) -> usize {
-        self.queue.len()
-    }
-
-    /// Whether the queue is empty.
-    pub fn is_empty(&self) -> bool {
-        self.queue.is_empty()
-    }
-
-    /// Remove all entries whose track id is in the given set (a deleted track is
-    /// removed everywhere it sits in the queue). Also clears `current_track_id`
-    /// and `previous_track_id` if they match.
-    pub fn remove_by_ids(&mut self, ids: &HashSet<String>) {
-        self.queue.retain(|entry| !ids.contains(&entry.track_id));
-        if let Some(ref current) = self.current_track_id {
-            if ids.contains(current) {
-                self.current_track_id = None;
-            }
-        }
-        if let Some(ref prev) = self.previous_track_id {
-            if ids.contains(prev) {
-                self.previous_track_id = None;
-            }
-        }
+        self.current.as_ref().map(|e| e.track_id.as_str())
     }
 }
 
@@ -299,48 +468,54 @@ mod tests {
         PlaybackQueue::new(Arc::new(SequentialIdProvider::new("entry")))
     }
 
-    /// Collect the queue's track ids in order — the per-instance ids vary, so
-    /// most behavioral assertions are about which tracks sit where.
-    fn track_ids(q: &PlaybackQueue) -> Vec<String> {
-        q.entries().into_iter().map(|e| e.track_id).collect()
+    /// The upcoming projection's track ids in order — the per-instance ids vary,
+    /// so most assertions are about which tracks sit where.
+    fn upcoming_tracks(q: &PlaybackQueue) -> Vec<String> {
+        q.upcoming().into_iter().map(|e| e.track_id).collect()
     }
 
+    fn manual_ids(q: &PlaybackQueue) -> Vec<QueueEntryId> {
+        q.manual.iter().map(|e| e.id.clone()).collect()
+    }
+
+    fn rel(tracks: &[&str]) -> Vec<String> {
+        tracks.iter().map(|s| s.to_string()).collect()
+    }
+
+    // -- manual lane -----------------------------------------------------------
+
     #[test]
-    fn test_add_to_queue() {
+    fn test_add_to_queue_fills_manual_lane() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into(), "c".into()]);
-        assert_eq!(track_ids(&q), vec!["a", "b", "c"]);
+        q.add_to_queue(rel(&["a", "b", "c"]));
+        assert_eq!(upcoming_tracks(&q), vec!["a", "b", "c"]);
     }
 
     #[test]
     fn test_add_to_queue_mints_distinct_ids() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "a".into()]);
-        let entries = q.entries();
-        assert_eq!(entries.len(), 2);
-        assert_ne!(
-            entries[0].id, entries[1].id,
-            "duplicate tracks get distinct ids"
-        );
-        assert_eq!(entries[0].track_id, entries[1].track_id);
+        q.add_to_queue(rel(&["a", "a"]));
+        let ids = manual_ids(&q);
+        assert_eq!(ids.len(), 2);
+        assert_ne!(ids[0], ids[1], "duplicate tracks get distinct ids");
     }
 
     #[test]
     fn test_add_next_preserves_order() {
         let mut q = queue();
-        q.add_to_queue(vec!["x".into()]);
-        q.add_next(vec!["a".into(), "b".into()]);
-        assert_eq!(track_ids(&q), vec!["a", "b", "x"]);
+        q.add_to_queue(rel(&["x"]));
+        q.add_next(rel(&["a", "b"]));
+        assert_eq!(upcoming_tracks(&q), vec!["a", "b", "x"]);
     }
 
     #[test]
     fn test_remove_by_entry_id() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into(), "c".into()]);
-        let b_id = q.entries()[1].id.clone();
+        q.add_to_queue(rel(&["a", "b", "c"]));
+        let b_id = manual_ids(&q)[1].clone();
         let removed = q.remove(&b_id);
         assert_eq!(removed.map(|e| e.track_id), Some("b".into()));
-        assert_eq!(track_ids(&q), vec!["a", "c"]);
+        assert_eq!(upcoming_tracks(&q), vec!["a", "c"]);
     }
 
     /// The load-bearing dup test: the same track enqueued twice, removing one
@@ -348,334 +523,344 @@ mod tests {
     #[test]
     fn test_remove_one_duplicate_keeps_the_other() {
         let mut q = queue();
-        q.add_to_queue(vec!["dup".into(), "dup".into()]);
-        let entries = q.entries();
-        let first_id = entries[0].id.clone();
-        let second_id = entries[1].id.clone();
+        q.add_to_queue(rel(&["dup", "dup"]));
+        let ids = manual_ids(&q);
+        let removed = q.remove(&ids[0]).expect("first instance removed");
+        assert_eq!(removed.id, ids[0]);
 
-        let removed = q.remove(&first_id).expect("first instance removed");
-        assert_eq!(removed.id, first_id);
-        assert_eq!(removed.track_id, "dup");
-
-        let remaining = q.entries();
+        let remaining = manual_ids(&q);
         assert_eq!(remaining.len(), 1, "exactly one instance remains");
-        assert_eq!(
-            remaining[0].id, second_id,
-            "the other instance's id survives"
-        );
-        assert_eq!(remaining[0].track_id, "dup");
+        assert_eq!(remaining[0], ids[1], "the other instance's id survives");
     }
 
     #[test]
     fn test_remove_unknown_id_is_noop() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into()]);
+        q.add_to_queue(rel(&["a"]));
         assert_eq!(q.remove(&QueueEntryId("nope".into())), None);
-        assert_eq!(track_ids(&q), vec!["a"]);
+        assert_eq!(upcoming_tracks(&q), vec!["a"]);
     }
 
     #[test]
     fn test_reorder_forward() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into(), "c".into(), "d".into()]);
-        let ids: Vec<_> = q.entries().into_iter().map(|e| e.id).collect();
-        // Move "a" before "c": expect b, a, c, d.
+        q.add_to_queue(rel(&["a", "b", "c", "d"]));
+        let ids = manual_ids(&q);
         q.reorder(&ids[0], Some(&ids[2]));
-        assert_eq!(track_ids(&q), vec!["b", "a", "c", "d"]);
+        assert_eq!(upcoming_tracks(&q), vec!["b", "a", "c", "d"]);
     }
 
     #[test]
     fn test_reorder_to_end() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into(), "c".into(), "d".into()]);
-        let ids: Vec<_> = q.entries().into_iter().map(|e| e.id).collect();
-        // Move "a" to the end (before = None).
+        q.add_to_queue(rel(&["a", "b", "c", "d"]));
+        let ids = manual_ids(&q);
         q.reorder(&ids[0], None);
-        assert_eq!(track_ids(&q), vec!["b", "c", "d", "a"]);
+        assert_eq!(upcoming_tracks(&q), vec!["b", "c", "d", "a"]);
     }
 
     #[test]
     fn test_reorder_backward() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into(), "c".into(), "d".into()]);
-        let ids: Vec<_> = q.entries().into_iter().map(|e| e.id).collect();
-        // Move "c" before "a": expect c, a, b, d.
+        q.add_to_queue(rel(&["a", "b", "c", "d"]));
+        let ids = manual_ids(&q);
         q.reorder(&ids[2], Some(&ids[0]));
-        assert_eq!(track_ids(&q), vec!["c", "a", "b", "d"]);
+        assert_eq!(upcoming_tracks(&q), vec!["c", "a", "b", "d"]);
     }
 
     #[test]
     fn test_reorder_before_self_is_noop() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into(), "c".into()]);
-        let ids: Vec<_> = q.entries().into_iter().map(|e| e.id).collect();
+        q.add_to_queue(rel(&["a", "b", "c"]));
+        let ids = manual_ids(&q);
         q.reorder(&ids[1], Some(&ids[1]));
-        assert_eq!(track_ids(&q), vec!["a", "b", "c"]);
+        assert_eq!(upcoming_tracks(&q), vec!["a", "b", "c"]);
     }
 
     #[test]
     fn test_reorder_unknown_source_is_noop() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into()]);
+        q.add_to_queue(rel(&["a", "b"]));
         q.reorder(&QueueEntryId("nope".into()), None);
-        assert_eq!(track_ids(&q), vec!["a", "b"]);
+        assert_eq!(upcoming_tracks(&q), vec!["a", "b"]);
     }
 
     #[test]
-    fn test_reorder_unknown_before_is_noop() {
+    fn test_clear_empties_manual_keeps_context() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into()]);
-        let a_id = q.entries()[0].id.clone();
-        q.reorder(&a_id, Some(&QueueEntryId("nope".into())));
-        assert_eq!(track_ids(&q), vec!["a", "b"]);
-    }
-
-    #[test]
-    fn test_clear() {
-        let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into()]);
+        q.play_release(rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
+        q.add_to_queue(rel(&["m1", "m2"]));
         q.clear();
-        assert!(q.entries().is_empty());
+        // Manual gone; context tail (t2, t3) survives.
+        assert_eq!(upcoming_tracks(&q), vec!["t2", "t3"]);
     }
 
     #[test]
-    fn test_skip_to_by_entry_id() {
+    fn test_skip_to_manual_drains_prefix() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into(), "c".into(), "d".into()]);
-        let c_id = q.entries()[2].id.clone();
+        q.add_to_queue(rel(&["a", "b", "c", "d"]));
+        let c_id = manual_ids(&q)[2].clone();
         let entry = q.skip_to(&c_id);
         assert_eq!(entry.map(|e| e.track_id), Some("c".into()));
-        assert_eq!(track_ids(&q), vec!["d"]);
+        assert_eq!(upcoming_tracks(&q), vec!["d"]);
+        assert_eq!(q.current_track_id(), Some("c"));
     }
 
     #[test]
     fn test_skip_to_unknown_id_is_noop() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into()]);
+        q.add_to_queue(rel(&["a"]));
         assert_eq!(q.skip_to(&QueueEntryId("nope".into())), None);
-        assert_eq!(track_ids(&q), vec!["a"]);
+        assert_eq!(upcoming_tracks(&q), vec!["a"]);
+    }
+
+    // -- context ---------------------------------------------------------------
+
+    #[test]
+    fn test_play_release_sets_current_and_upcoming() {
+        let mut q = queue();
+        let first = q.play_release(rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
+        assert_eq!(first, "t1");
+        assert_eq!(q.current_track_id(), Some("t1"));
+        assert_eq!(upcoming_tracks(&q), vec!["t2", "t3"]);
     }
 
     #[test]
-    fn test_set_current_moves_to_previous() {
+    fn test_play_release_start_index() {
         let mut q = queue();
-        q.set_current("track1".into());
-        assert_eq!(q.current_track_id(), Some("track1"));
-        assert_eq!(q.previous_track_id(), None);
-
-        q.set_current("track2".into());
-        assert_eq!(q.current_track_id(), Some("track2"));
-        assert_eq!(q.previous_track_id(), Some("track1"));
+        let first = q.play_release(rel(&["t1", "t2", "t3"]), ContextStart::Index(1));
+        assert_eq!(first, "t2");
+        assert_eq!(upcoming_tracks(&q), vec!["t3"]);
     }
 
     #[test]
-    fn test_next_track_from_queue() {
+    fn test_play_release_shuffled_keeps_all_tracks() {
         let mut q = queue();
-        q.set_current("current".into());
-        q.add_to_queue(vec!["next1".into(), "next2".into()]);
-        match q.next_track() {
-            NextTrack::Play(id) => assert_eq!(id, "next1"),
-            _ => panic!("Expected Play"),
-        }
-        assert_eq!(q.previous_track_id(), Some("current"));
-        assert_eq!(track_ids(&q), vec!["next2"]);
+        q.play_release(rel(&["t1", "t2", "t3", "t4"]), ContextStart::Shuffled);
+        let mut all: Vec<String> = vec![q.current_track_id().unwrap().to_string()];
+        all.extend(upcoming_tracks(&q));
+        all.sort();
+        assert_eq!(all, vec!["t1", "t2", "t3", "t4"]);
     }
 
     #[test]
-    fn test_next_track_repeat_current() {
+    fn test_manual_drains_before_context() {
         let mut q = queue();
-        q.set_current("track1".into());
+        q.play_release(rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.add_to_queue(rel(&["m1"]));
+        // current = t1; next drains manual (m1) before advancing the context.
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
+        assert!(matches!(q.next_entry(), NextEntry::Stop));
+    }
+
+    #[test]
+    fn test_context_advances_by_cursor() {
+        let mut q = queue();
+        q.play_release(rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t3"));
+        assert!(matches!(q.next_entry(), NextEntry::Stop));
+    }
+
+    #[test]
+    fn test_context_repeat_loops_from_stored_order() {
+        // The queue holds the context order, so looping reuses it: the queue has
+        // no library access, so it structurally cannot re-fetch.
+        let mut q = queue();
+        q.play_release(rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.set_repeat_mode(RepeatMode::Context);
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
+        // Exhausted under Context repeat → loop from the start of the same order.
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t1"));
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
+    }
+
+    #[test]
+    fn test_repeat_track_pins_current() {
+        let mut q = queue();
+        q.play_release(rel(&["t1", "t2"]), ContextStart::Index(0));
         q.set_repeat_mode(RepeatMode::Track);
-        match q.next_track() {
-            NextTrack::RepeatCurrent(id) => assert_eq!(id, "track1"),
-            _ => panic!("Expected RepeatCurrent"),
-        }
+        assert!(matches!(q.next_entry(), NextEntry::RepeatCurrent(t) if t == "t1"));
     }
 
     #[test]
-    fn test_next_track_repeat_album_needed() {
+    fn test_previous_steps_cursor_back_multiple() {
         let mut q = queue();
-        q.set_repeat_mode(RepeatMode::Album);
-        match q.next_track() {
-            NextTrack::RepeatAlbumNeeded => {}
-            _ => panic!("Expected RepeatAlbumNeeded"),
-        }
+        q.play_release(rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
+        q.next_entry(); // t2
+        q.next_entry(); // t3
+        assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t2"));
+        assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t1"));
+        // At the context start, Previous restarts.
+        assert!(matches!(
+            q.previous_action(1000),
+            PreviousAction::RestartCurrent
+        ));
     }
 
     #[test]
-    fn test_previous_action_restart_when_past_3s() {
+    fn test_previous_past_3s_restarts() {
+        let mut q = queue();
+        q.play_release(rel(&["t1", "t2"]), ContextStart::Index(1));
+        assert!(matches!(
+            q.previous_action(5000),
+            PreviousAction::RestartCurrent
+        ));
+    }
+
+    #[test]
+    fn test_skip_to_context_tail_moves_cursor() {
+        let mut q = queue();
+        q.play_release(rel(&["t1", "t2", "t3", "t4"]), ContextStart::Index(0));
+        let t3_id = q.upcoming()[1].id.clone(); // upcoming = [t2, t3, t4]
+        let entry = q.skip_to(&t3_id);
+        assert_eq!(entry.map(|e| e.track_id), Some("t3".into()));
+        assert_eq!(q.current_track_id(), Some("t3"));
+        assert_eq!(upcoming_tracks(&q), vec!["t4"]);
+    }
+
+    #[test]
+    fn test_remove_context_tail_entry() {
+        let mut q = queue();
+        q.play_release(rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
+        let t2_id = q.upcoming()[0].id.clone();
+        let removed = q.remove(&t2_id);
+        assert_eq!(removed.map(|e| e.track_id), Some("t2".into()));
+        assert_eq!(upcoming_tracks(&q), vec!["t3"]);
+    }
+
+    #[test]
+    fn test_reorder_context_tail_keeps_cursor() {
+        let mut q = queue();
+        q.play_release(rel(&["t1", "t2", "t3", "t4"]), ContextStart::Index(0));
+        let up = q.upcoming(); // [t2, t3, t4]
+        let t2_id = up[0].id.clone();
+        let t3_id = up[1].id.clone();
+        // Move t3 before t2 → upcoming becomes [t3, t2, t4].
+        q.reorder(&t3_id, Some(&t2_id));
+        assert_eq!(upcoming_tracks(&q), vec!["t3", "t2", "t4"]);
+        assert_eq!(
+            q.current_track_id(),
+            Some("t1"),
+            "the cursor stays on the playing track"
+        );
+    }
+
+    #[test]
+    fn test_reorder_cross_lane_is_noop() {
+        let mut q = queue();
+        q.play_release(rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.add_to_queue(rel(&["m1"]));
+        let manual_id = manual_ids(&q)[0].clone();
+        let context_id = q
+            .upcoming()
+            .into_iter()
+            .find(|e| e.track_id == "t2")
+            .unwrap()
+            .id;
+        // Manual source, context target → no-op (can't cross lanes).
+        q.reorder(&manual_id, Some(&context_id));
+        assert_eq!(upcoming_tracks(&q), vec!["m1", "t2"]);
+    }
+
+    #[test]
+    fn test_repeat_mode_default_is_off() {
         let q = queue();
-        match q.previous_action(5000) {
-            PreviousAction::RestartCurrent => {}
-            _ => panic!("Expected RestartCurrent"),
-        }
-    }
-
-    #[test]
-    fn test_previous_action_go_back() {
-        let mut q = queue();
-        q.set_current("track1".into());
-        q.set_current("track2".into());
-        match q.previous_action(1000) {
-            PreviousAction::PlayPrevious(id) => assert_eq!(id, "track1"),
-            _ => panic!("Expected PlayPrevious"),
-        }
-    }
-
-    #[test]
-    fn test_previous_action_restart_when_no_previous() {
-        let mut q = queue();
-        q.set_current("track1".into());
-        match q.previous_action(1000) {
-            PreviousAction::RestartCurrent => {}
-            _ => panic!("Expected RestartCurrent"),
-        }
-    }
-
-    #[test]
-    fn test_repeat_mode_default() {
-        let q = queue();
-        assert_eq!(q.repeat_mode(), RepeatMode::None);
+        assert_eq!(q.repeat_mode(), RepeatMode::Off);
     }
 
     #[test]
     fn test_insert_at_middle() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into(), "c".into()]);
-        q.insert_at(1, vec!["x".into(), "y".into()]);
-        assert_eq!(track_ids(&q), vec!["a", "x", "y", "b", "c"]);
-    }
-
-    #[test]
-    fn test_insert_at_beginning() {
-        let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into()]);
-        q.insert_at(0, vec!["x".into()]);
-        assert_eq!(track_ids(&q), vec!["x", "a", "b"]);
-    }
-
-    #[test]
-    fn test_insert_at_end() {
-        let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into()]);
-        q.insert_at(2, vec!["x".into()]);
-        assert_eq!(track_ids(&q), vec!["a", "b", "x"]);
+        q.add_to_queue(rel(&["a", "b", "c"]));
+        q.insert_at(1, rel(&["x", "y"]));
+        assert_eq!(upcoming_tracks(&q), vec!["a", "x", "y", "b", "c"]);
     }
 
     #[test]
     fn test_insert_at_beyond_end_clamps() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into()]);
-        q.insert_at(999, vec!["x".into()]);
-        assert_eq!(track_ids(&q), vec!["a", "x"]);
+        q.add_to_queue(rel(&["a"]));
+        q.insert_at(999, rel(&["x"]));
+        assert_eq!(upcoming_tracks(&q), vec!["a", "x"]);
     }
 
-    #[test]
-    fn test_replace() {
-        let mut q = queue();
-        q.add_to_queue(vec!["old".into()]);
-        let mut new_queue = VecDeque::new();
-        new_queue.push_back("new1".into());
-        new_queue.push_back("new2".into());
-        q.replace(new_queue);
-        assert_eq!(track_ids(&q), vec!["new1", "new2"]);
-    }
+    // -- remove_by_ids (library deletion) --------------------------------------
 
     #[test]
-    fn test_remove_by_ids_removes_matching_tracks() {
+    fn test_remove_by_ids_clears_manual_and_context() {
         let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "b".into(), "c".into(), "d".into()]);
-        let ids: HashSet<String> = ["b", "d"].iter().map(|s| s.to_string()).collect();
-        q.remove_by_ids(&ids);
-        assert_eq!(track_ids(&q), vec!["a", "c"]);
-    }
-
-    #[test]
-    fn test_remove_by_ids_removes_every_instance_of_a_track() {
-        let mut q = queue();
-        q.add_to_queue(vec!["a".into(), "dup".into(), "b".into(), "dup".into()]);
+        q.play_release(rel(&["t1", "dup", "t3"]), ContextStart::Index(0));
+        q.add_to_queue(rel(&["dup", "m2"]));
         let ids: HashSet<String> = ["dup"].iter().map(|s| s.to_string()).collect();
         q.remove_by_ids(&ids);
-        assert_eq!(track_ids(&q), vec!["a", "b"]);
+        // Manual "dup" gone (m2 stays); context "dup" gone (t1, t3 stay).
+        assert_eq!(upcoming_tracks(&q), vec!["m2", "t3"]);
     }
 
     #[test]
-    fn test_remove_by_ids_clears_current_track() {
+    fn test_remove_by_ids_keeps_cursor_on_same_track() {
         let mut q = queue();
-        q.set_current("track1".into());
-        q.add_to_queue(vec!["a".into()]);
-        let ids: HashSet<String> = ["track1"].iter().map(|s| s.to_string()).collect();
+        q.play_release(rel(&["gone", "t2", "t3"]), ContextStart::Index(1));
+        // current = t2 (cursor 1). Deleting t1 (before cursor) keeps current at t2.
+        let ids: HashSet<String> = ["gone"].iter().map(|s| s.to_string()).collect();
+        q.remove_by_ids(&ids);
+        assert_eq!(q.current_track_id(), Some("t2"));
+        assert_eq!(upcoming_tracks(&q), vec!["t3"]);
+    }
+
+    #[test]
+    fn test_remove_by_ids_clears_current_when_deleted() {
+        let mut q = queue();
+        q.play_release(rel(&["t1", "t2"]), ContextStart::Index(0));
+        let ids: HashSet<String> = ["t1"].iter().map(|s| s.to_string()).collect();
         q.remove_by_ids(&ids);
         assert_eq!(q.current_track_id(), None);
-        assert_eq!(track_ids(&q), vec!["a"]);
     }
 
     #[test]
-    fn test_remove_by_ids_clears_previous_track() {
+    fn test_remove_by_ids_deleting_current_last_entry_keeps_cursor_valid() {
         let mut q = queue();
-        q.set_current("track1".into());
-        q.set_current("track2".into());
-        assert_eq!(q.previous_track_id(), Some("track1"));
-        let ids: HashSet<String> = ["track1"].iter().map(|s| s.to_string()).collect();
+        // current = t2 at the last position (cursor == len-1).
+        q.play_release(rel(&["t1", "t2"]), ContextStart::Index(1));
+        let ids: HashSet<String> = ["t2"].iter().map(|s| s.to_string()).collect();
         q.remove_by_ids(&ids);
-        assert_eq!(q.previous_track_id(), None);
-        assert_eq!(q.current_track_id(), Some("track2"));
+        assert_eq!(
+            q.current_track_id(),
+            None,
+            "the deleted playing track clears current"
+        );
+        // The cursor must not be stranded at == len: Previous must not panic.
+        assert!(matches!(
+            q.previous_action(1000),
+            PreviousAction::PlayPrevious(t) if t == "t1"
+        ));
     }
 
     #[test]
-    fn test_remove_by_ids_no_match_is_noop() {
-        let mut q = queue();
-        q.set_current("current".into());
-        q.add_to_queue(vec!["a".into(), "b".into()]);
-        let ids: HashSet<String> = ["x", "y"].iter().map(|s| s.to_string()).collect();
-        q.remove_by_ids(&ids);
-        assert_eq!(track_ids(&q), vec!["a", "b"]);
-        assert_eq!(q.current_track_id(), Some("current"));
-    }
-
-    #[test]
-    fn test_remove_by_ids_removes_all() {
-        let mut q = queue();
-        q.set_current("current".into());
-        q.add_to_queue(vec!["a".into(), "b".into()]);
-        let ids: HashSet<String> = ["a", "b", "current"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
-        q.remove_by_ids(&ids);
-        assert!(q.entries().is_empty());
-        assert_eq!(q.current_track_id(), None);
-    }
-
-    #[test]
-    fn test_next_track_repeat_track_without_current_falls_through() {
-        // RepeatMode::Track only repeats when there IS a current track. With
-        // none set, it must fall through to the normal advance.
-        let mut q = queue();
-        q.set_repeat_mode(RepeatMode::Track);
-        q.add_to_queue(vec!["a".into(), "b".into()]);
-        match q.next_track() {
-            NextTrack::Play(id) => assert_eq!(id, "a"),
-            _ => panic!("expected Play"),
-        }
-        // And with an empty queue (still no current) it stops rather than repeating.
-        let mut q = queue();
-        q.set_repeat_mode(RepeatMode::Track);
-        assert!(matches!(q.next_track(), NextTrack::Stop));
-    }
-
-    #[test]
-    fn test_front_peeks_without_removing() {
+    fn test_front_peeks_without_consuming() {
         let mut q = queue();
         assert_eq!(q.front(), None);
-        q.add_to_queue(vec!["a".into(), "b".into()]);
+        q.add_to_queue(rel(&["a", "b"]));
         assert_eq!(q.front(), Some("a"));
-        assert_eq!(q.len(), 2, "front must not consume the queue");
+        assert_eq!(
+            upcoming_tracks(&q),
+            vec!["a", "b"],
+            "front must not consume"
+        );
     }
 
     #[test]
-    fn test_pop_front_empty_returns_none() {
+    fn test_has_upcoming_and_has_previous() {
         let mut q = queue();
-        assert_eq!(q.pop_front(), None);
+        assert!(!q.has_upcoming());
+        assert!(!q.has_previous());
+        q.play_release(rel(&["t1", "t2"]), ContextStart::Index(0));
+        assert!(q.has_upcoming());
+        assert!(!q.has_previous());
+        q.next_entry(); // → t2
+        assert!(!q.has_upcoming());
+        assert!(q.has_previous());
     }
 }

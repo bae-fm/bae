@@ -3646,7 +3646,7 @@ async fn test_restore_populates_last_position_display() {
         position_ms: 0,
         queue: vec![],
         volume: 0.8,
-        repeat_mode: bae_core::playback::RepeatMode::None,
+        repeat_mode: bae_core::playback::RepeatMode::Off,
         is_muted: false,
     };
     library_manager.save_playback_state(&snapshot);
