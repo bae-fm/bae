@@ -145,7 +145,7 @@ mod tests {
     }
 
     /// The synced set must be exactly the tables carrying an `_updated_at` LWW
-    /// clock — no more, no fewer. A device-local table (e.g. `release_local_copy`)
+    /// clock — no more, no fewer. A device-local table (e.g. `file_cache`)
     /// that grew an `_updated_at` would start leaking per-device state across
     /// devices; a new synced table left off the registration would silently
     /// never propagate. Either drift breaks this test.
@@ -217,21 +217,21 @@ mod tests {
         assert_eq!(ancestors, BTreeSet::from(["albums", "artists"]));
     }
 
-    /// The whole point of the storage-state split: per-device copy state lives in
-    /// `release_local_copy`, which must never sync.
+    /// The whole point of the storage-state split: per-device copy state lives
+    /// in the two device-local stores, which must never sync.
     #[test]
-    fn release_local_copy_is_device_local() {
+    fn device_storage_tables_are_device_local() {
         let tables = migration_tables();
-        let (_, body) = tables
-            .iter()
-            .find(|(n, _)| n == "release_local_copy")
-            .expect("release_local_copy table exists");
-        assert!(
-            !has_lww_clock(body),
-            "release_local_copy must have no `_updated_at` (device-local, never synced)"
-        );
-        assert!(synced_tables()
-            .iter()
-            .all(|t| t.name() != "release_local_copy"));
+        for name in ["release_unmanaged_source", "file_cache"] {
+            let (_, body) = tables
+                .iter()
+                .find(|(n, _)| n == name)
+                .unwrap_or_else(|| panic!("{name} table exists"));
+            assert!(
+                !has_lww_clock(body),
+                "{name} must have no `_updated_at` (device-local, never synced)"
+            );
+            assert!(synced_tables().iter().all(|t| t.name() != name));
+        }
     }
 }

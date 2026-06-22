@@ -511,13 +511,11 @@ async fn prepare_track_for_playback(
 
     // Tracks sharing a source file (the tracks of a CUE image) share one buffer.
     // Key a readable source by its local path, a cloud-only source by its file
-    // id; a source with no readable bytes (upload pending, or unreachable) is
-    // never cached -- it falls through to the reader, which reports the error.
+    // id — both forms are cacheable under the uniform resolution rule.
     use crate::library::manager::ReadableFileSource;
     let cache_key: Option<String> = match &resolved.source {
         ReadableFileSource::Local(path) => Some(path.to_string_lossy().into_owned()),
         ReadableFileSource::CloudOnly => Some(resolved.file_id.clone()),
-        ReadableFileSource::Unreachable | ReadableFileSource::UploadPendingSourceMissing => None,
     };
 
     let cached = cache_key.as_ref().and_then(|key| {

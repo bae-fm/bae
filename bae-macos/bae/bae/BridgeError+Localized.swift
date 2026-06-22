@@ -52,12 +52,12 @@ extension BridgeError {
 }
 
 extension BridgePlaybackErrorReason {
-    /// The localized, user-facing line for this playback failure. The two
-    /// actionable cloud-only cases resolve their own keyed line; everything
-    /// else renders through the shared `BridgeError` path.
+    /// The localized, user-facing line for this playback failure. The
+    /// actionable cloud-only case resolves its own keyed line; everything else
+    /// renders through the shared `BridgeError` path.
     var localizedLine: String {
         switch self {
-        case .syncDisconnected, .uploadPending:
+        case .syncDisconnected:
             // bridgePlaybackErrorReasonKey returns nil only for Diagnostic,
             // excluded above; the guard is belt-and-suspenders.
             guard let key = bridgePlaybackErrorReasonKey(reason: self) else {
@@ -75,7 +75,7 @@ extension BridgePlaybackErrorReason {
         switch self {
         case .diagnostic(let error):
             return error.detail
-        case .syncDisconnected, .uploadPending:
+        case .syncDisconnected:
             return nil
         }
     }

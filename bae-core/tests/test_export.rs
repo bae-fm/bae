@@ -94,8 +94,8 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Flip to cloud-only: managed, no local-copy row.
-    f.db.set_release_managed_cloud_only(&release_id)
+    // Flip to cloud-only: managed, no unmanaged source, no cache.
+    f.db.test_mark_managed_cloud_only(&release_id)
         .await
         .unwrap();
 

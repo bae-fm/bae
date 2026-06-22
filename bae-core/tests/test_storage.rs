@@ -157,18 +157,22 @@ async fn test_unmanaged_import() {
         .expect("query")
         .expect("release should exist");
     assert!(!release.managed, "Unmanaged import should not be managed");
-    let local_copy = database
-        .get_release_local_copy(&release_id)
+    let source = database
+        .get_unmanaged_source(&release_id)
         .await
         .expect("query")
-        .expect("unmanaged import should record a local copy");
+        .expect("unmanaged import should record an unmanaged source");
     assert!(
-        local_copy.unmanaged_path.is_some(),
-        "Unmanaged import should set unmanaged_path on the local copy"
+        !source.path.is_empty(),
+        "Unmanaged import should set the source path"
     );
     assert!(
-        !local_copy.pinned_locally,
-        "Unmanaged import should not be pinned locally"
+        database
+            .get_release_file_cache(&release_id)
+            .await
+            .expect("query")
+            .is_empty(),
+        "Unmanaged import should record no cache rows"
     );
 
     info!("Release is correctly unmanaged");
@@ -401,16 +405,16 @@ async fn run_import_with_cover_test() {
         !release.managed,
         "Import without cloud home should be unmanaged"
     );
-    let local_copy = database
-        .get_release_local_copy(&release_id)
+    let source = database
+        .get_unmanaged_source(&release_id)
         .await
         .expect("query")
-        .expect("unmanaged import should record a local copy");
+        .expect("unmanaged import should record an unmanaged source");
     assert!(
-        local_copy.unmanaged_path.is_some(),
-        "Import without cloud home should set unmanaged_path on the local copy"
+        !source.path.is_empty(),
+        "Import without cloud home should set the unmanaged source path"
     );
-    info!("Release has an unmanaged local copy");
+    info!("Release has an unmanaged source");
 
     let releases = library_manager
         .get_releases_for_album(&release.album_id)
@@ -694,11 +698,14 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
         .await
         .expect("Failed to get release")
         .expect("release should exist");
-    let local_copy = database
-        .get_release_local_copy(&release_id)
+    let source = database
+        .get_unmanaged_source(&release_id)
         .await
         .expect("query");
-    info!("managed: {}, local_copy: {:?}", release.managed, local_copy);
+    info!(
+        "managed: {}, unmanaged_source: {:?}",
+        release.managed, source
+    );
     let tracks = library_manager
         .get_tracks(&release_id)
         .await
@@ -808,12 +815,11 @@ async fn test_unmanaged_import_not_in_temp_dir() {
         .expect("query release")
         .expect("release should exist");
     let unmanaged_path = database
-        .get_release_local_copy(&release_id)
+        .get_unmanaged_source(&release_id)
         .await
-        .expect("query local copy")
-        .expect("unmanaged library import should record a local copy")
-        .unmanaged_path
-        .expect("unmanaged library import should have unmanaged_path");
+        .expect("query unmanaged source")
+        .expect("unmanaged library import should record an unmanaged source")
+        .path;
 
     // The unmanaged_path must NOT be in the system temp directory — it must
     // point at the folder the user imported in place.

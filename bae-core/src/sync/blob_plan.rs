@@ -144,9 +144,9 @@ impl BlobPlan for BaeBlobPlan {
     }
 }
 
-/// Tracks the outbox upload lifecycle for the UI and clears a release's
-/// `unmanaged_path` once all its storage files have uploaded (transitioning it
-/// from "importing from an external path" to fully managed).
+/// Tracks the outbox upload lifecycle for the UI and drops a release's
+/// unmanaged source row once all its files have uploaded (transitioning it from
+/// "referencing the user's originals in place" to fully managed).
 ///
 /// `in_flight` maps each currently-uploading `file_id` to the live count of
 /// encrypted bytes that have reached the cloud for it, shared with the
@@ -285,34 +285,38 @@ impl ReleaseUploadObserver {
             }
             return false;
         }
-        let local_copy = match self.db.get_release_local_copy(&release.id).await {
-            Ok(copy) => copy,
-            Err(e) => {
-                warn!("Failed to load local copy for {}: {e}", release.id);
-                return false;
-            }
-        };
         match self.db.has_pending_uploads_for_release(&release.id).await {
             Ok(true) => false, // More files still to upload.
             Ok(false) => {
                 // Last upload landed: the cloud now holds a durable copy of every
                 // file, so the release can flip to managed. A pin keeps this
-                // device's verified `storage/` copy (flag-only flip); a cloud-only
-                // release drops it — and first deletes the originals if a
-                // Manage → CloudOnly asked to (they were the upload source, unsafe
-                // to delete until now).
-                let pinned = local_copy.as_ref().is_some_and(|c| c.pinned_locally);
+                // device's verified `storage/` cache (flag-only flip); a
+                // cloud-only release drops its unmanaged source — and first
+                // deletes the originals if a Manage → CloudOnly asked to (they
+                // were the upload source, unsafe to delete until now).
+                //
+                // The pinned-vs-cloud-only branch keys off whether the release
+                // has any pinned cache rows (the pin path) vs an unmanaged source
+                // row (import-cloud-only / Manage-cloud-only).
+                let pinned = match self.db.get_release_file_cache(&release.id).await {
+                    Ok(cache) => cache.iter().any(|e| e.pinned),
+                    Err(e) => {
+                        warn!("Failed to load file cache for {}: {e}", release.id);
+                        return false;
+                    }
+                };
                 let kind = if pinned { "pinned" } else { "cloud-only" };
                 info!(
                     "All files uploaded for release {}, marking managed ({kind})",
                     release.id
                 );
                 let flip = if pinned {
-                    self.db.set_release_managed_pinned(&release.id).await
+                    self.db.mark_managed_pinned(&release.id).await
                 } else {
-                    self.delete_unmanaged_source_if_requested(&release, local_copy.as_ref())
-                        .await;
-                    self.db.set_release_managed_cloud_only(&release.id).await
+                    // Read + act on the delete-source intent BEFORE the flip,
+                    // which drops the unmanaged source row this reads from.
+                    self.delete_unmanaged_source_if_requested(&release).await;
+                    self.db.mark_managed_cloud_only(&release.id).await
                 };
                 if let Err(e) = flip {
                     warn!("Failed to mark {} managed ({kind}): {e}", release.id);
@@ -335,33 +339,21 @@ impl ReleaseUploadObserver {
 
 impl ReleaseUploadObserver {
     /// If a Manage → CloudOnly transition asked to delete the originals,
-    /// remove the source files at `unmanaged_path/{original_filename}` now that
-    /// the cloud holds a durable copy, then clear the intent flag. Called only
-    /// after the release's last upload completes and only while this device's
-    /// local copy still records the unmanaged source path.
-    async fn delete_unmanaged_source_if_requested(
-        &self,
-        release: &crate::db::DbRelease,
-        local_copy: Option<&crate::db::DbReleaseLocalCopy>,
-    ) {
-        let Some(unmanaged_path) = local_copy.and_then(|c| c.unmanaged_path.as_deref()) else {
-            return;
-        };
-        match self
-            .db
-            .get_release_delete_unmanaged_source_on_upload(&release.id)
-            .await
-        {
-            Ok(false) => return,
-            Ok(true) => {}
+    /// remove the source files at `path/{original_filename}` now that the cloud
+    /// holds a durable copy. Called only after the release's last upload
+    /// completes and BEFORE the managed flip drops the unmanaged source row this
+    /// reads its path + intent from. The flip itself drops the row, so there's
+    /// no separate intent-clear step.
+    async fn delete_unmanaged_source_if_requested(&self, release: &crate::db::DbRelease) {
+        let source = match self.db.get_unmanaged_source(&release.id).await {
+            Ok(Some(source)) if source.delete_after_upload => source,
+            Ok(_) => return,
             Err(e) => {
-                warn!(
-                    "Failed to read delete-source intent for {}: {e}",
-                    release.id
-                );
+                warn!("Failed to read unmanaged source for {}: {e}", release.id);
                 return;
             }
-        }
+        };
+        let unmanaged_path = source.path.as_str();
 
         let files = match self.db.get_files_for_release(&release.id).await {
             Ok(files) => files,
@@ -384,17 +376,8 @@ impl ReleaseUploadObserver {
                 Err(e) => warn!("Failed to delete source original {}: {e}", path.display()),
             }
         }
-
-        if let Err(e) = self
-            .db
-            .set_release_delete_unmanaged_source_on_upload(&release.id, false)
-            .await
-        {
-            warn!(
-                "Failed to clear delete-source intent for {}: {e}",
-                release.id
-            );
-        }
+        // No intent-clear needed: the caller's managed flip drops the whole
+        // unmanaged source row next.
     }
 }
 

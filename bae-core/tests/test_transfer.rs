@@ -34,16 +34,17 @@ fn tracing_init() {
         .try_init();
 }
 
-/// This device's storage state for a release, derived from `releases.managed`
-/// and its `release_local_copy` row — the post-transition assertion target now
-/// that the two raw columns live in separate tables.
+/// This device's storage state for a release, resolved from the two
+/// device-local stores — the post-transition assertion target.
 async fn storage_state(
     mgr: &LibraryManager,
     release_id: &str,
 ) -> bae_core::album_detail::ReleaseStorageState {
-    let release = mgr.get_release_by_id(release_id).await.unwrap().unwrap();
-    let local_copy = mgr.get_release_local_copy(release_id).await.unwrap();
-    bae_core::album_detail::storage_state(release.managed, local_copy.as_ref())
+    mgr.find_release_storage_summary(release_id)
+        .await
+        .unwrap()
+        .unwrap()
+        .storage_state
 }
 
 /// Set up a database and library manager in a temp directory
@@ -132,11 +133,14 @@ async fn create_unmanaged_files(
     result
 }
 
-/// Create a test album + release in the DB, return (album_id, release_id)
+/// Create a test album + release in the DB, return (album_id, release_id).
+/// `pinned` documents the caller's intent (the pin is staged afterwards by
+/// `create_pinned_local_files`, since the Pinned state derives from every file
+/// being pinned-cached); it does not itself write any storage rows.
 async fn create_album_and_release(
     db: &Database,
     unmanaged_path: Option<&str>,
-    pinned_locally: bool,
+    pinned: bool,
 ) -> (String, String) {
     let now = Utc::now();
 
@@ -182,25 +186,17 @@ async fn create_album_and_release(
     };
     db.insert_release(&release).await.unwrap();
 
-    // Record this device's local copy: an unmanaged in-place path, or a
-    // managed pin. A managed-unpinned release keeps no local-copy row.
+    // Record this device's unmanaged source for an in-place release. A pinned
+    // managed release's pin is recorded by `create_pinned_local_files` (which
+    // pins the actual files) or by the caller after it inserts files — the
+    // Pinned state derives from every file being pinned-cached, so a fileless
+    // release can't read Pinned here. A managed-unpinned release keeps neither.
     if let Some(path) = unmanaged_path {
-        db.upsert_release_local_copy(&bae_core::db::DbReleaseLocalCopy {
-            release_id: release.id.clone(),
-            unmanaged_path: Some(path.to_string()),
-            pinned_locally: false,
-        })
-        .await
-        .unwrap();
-    } else if pinned_locally {
-        db.upsert_release_local_copy(&bae_core::db::DbReleaseLocalCopy {
-            release_id: release.id.clone(),
-            unmanaged_path: None,
-            pinned_locally: true,
-        })
-        .await
-        .unwrap();
+        db.test_set_unmanaged_source(&release.id, path)
+            .await
+            .unwrap();
     }
+    let _ = pinned;
 
     (album.id, release.id)
 }
@@ -238,6 +234,12 @@ async fn create_pinned_local_files(
 
         result.push((name.to_string(), data.to_vec()));
     }
+
+    // Pin the real files (the placeholder pin from `create_album_and_release`
+    // covered only the placeholder row). Every file now has a pinned cache row,
+    // so the release reads Pinned.
+    let all_files = mgr.get_files_for_release(release_id).await.unwrap();
+    mgr.set_pinned_cache(release_id, &all_files).await.unwrap();
 
     result
 }
@@ -374,8 +376,10 @@ async fn test_pin_rejects_already_pinned() {
     tokio::fs::create_dir_all(&library_path).await.unwrap();
 
     let (db, mgr) = setup_db(&temp, &library_path).await;
-    // Already pinned
+    // Already pinned (managed release with every file pinned-cached).
     let (_album_id, release_id) = create_album_and_release(&db, None, true).await;
+    let library_dir = LibraryDir::new(library_path.clone());
+    create_pinned_local_files(&mgr, &release_id, &library_dir).await;
 
     let service = TransferService::new(mgr);
     let rx = service.pin_release_task(release_id.clone()).0;
@@ -426,8 +430,9 @@ async fn test_read_release_file_bytes_rejects_short_read() {
     tokio::fs::create_dir_all(&library_path).await.unwrap();
 
     let (db, mgr) = setup_db(&temp, &library_path).await;
-    // Cloud release, pinned locally — resolves a local storage path.
-    let (album_id, release_id) = create_album_and_release(&db, None, true).await;
+    // Cloud release; the file below is pinned-cached so reads resolve to its
+    // local `storage/` copy.
+    let (_album_id, release_id) = create_album_and_release(&db, None, true).await;
 
     let library_dir = LibraryDir::new(library_path.clone());
 
@@ -448,29 +453,12 @@ async fn test_read_release_file_bytes_rejects_short_read() {
     tokio::fs::write(&storage_path, actual).await.unwrap();
     mgr.add_file(&db_file).await.unwrap();
 
-    let _release = DbRelease {
-        id: release_id.clone(),
-        album_id,
-        release_name: None,
-        pressing: Pressing::blank(),
-        disc_id: None,
-        metadata_source: ReleaseMetadataSource::FileTags,
-        metadata_source_release_id: None,
-        managed: true,
-        source_folder_name: None,
-        content_hash: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: Utc::now(),
-    };
-    // This device pins the release: reads come from the staged `storage/` copy.
-    let local_copy = bae_core::db::DbReleaseLocalCopy {
-        release_id: release_id.clone(),
-        unmanaged_path: None,
-        pinned_locally: true,
-    };
+    // This device pins the file: reads come from the staged `storage/` copy.
+    mgr.set_pinned_cache(&release_id, std::slice::from_ref(&db_file))
+        .await
+        .unwrap();
 
-    let result = read_release_file_bytes(Some(&local_copy), &db_file, &mgr).await;
+    let result = read_release_file_bytes(&db_file, &mgr).await;
     assert!(
         result.is_err(),
         "short read must fail the length check, got {result:?}"
@@ -718,13 +706,12 @@ async fn test_unmanage_from_pinned_writes_then_queues_deletes() {
         storage_state(&mgr, &release_id).await,
         ReleaseStorageState::Unmanaged
     );
-    let local_copy = mgr
-        .get_release_local_copy(&release_id)
+    let source = mgr
+        .get_unmanaged_source(&release_id)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(local_copy.unmanaged_path.as_deref(), new_path.to_str());
-    assert!(!local_copy.pinned_locally);
+    assert_eq!(Some(source.path.as_str()), new_path.to_str());
 
     // Managed-copy deletes queued: local storage/ deferred + cloud outbox.
     let pending = read_pending_deletions(&library_path).await;
@@ -909,12 +896,11 @@ async fn test_round_trip_unmanaged_pinned_unmanaged() {
         ReleaseStorageState::Unmanaged
     );
     let back = mgr
-        .get_release_local_copy(&release_id)
+        .get_unmanaged_source(&release_id)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(back.unmanaged_path.as_deref(), back_dir.to_str());
-    assert!(!back.pinned_locally);
+    assert_eq!(Some(back.path.as_str()), back_dir.to_str());
 
     // Bytes survived the round trip.
     for (name, data) in &originals {
@@ -923,14 +909,13 @@ async fn test_round_trip_unmanaged_pinned_unmanaged() {
     }
 }
 
-/// The deferred-delete intent (`delete_unmanaged_source_on_upload`) lives on the
-/// `release_local_copy` row but is owned by the dedicated set/get path, not the
-/// `DbReleaseLocalCopy` struct. A whole-row upsert of that struct must not reset
-/// the intent — otherwise a local-copy write landing mid-upload during a
-/// Manage → CloudOnly-with-delete transition would silently drop the request to
-/// delete the originals.
+/// The deferred-delete intent (`release_unmanaged_source.delete_after_upload`)
+/// is owned by the dedicated set path, not the source-path writer. Re-recording
+/// the source (a `test_set_unmanaged_source` landing mid-upload during a
+/// Manage → CloudOnly-with-delete transition) must not reset the intent —
+/// otherwise the request to delete the originals would be silently dropped.
 #[tokio::test]
-async fn upsert_local_copy_preserves_delete_unmanaged_source_intent() {
+async fn recording_source_preserves_delete_after_upload_intent() {
     tracing_init();
     let temp = TempDir::new().unwrap();
     let lib = TempDir::new().unwrap();
@@ -939,30 +924,29 @@ async fn upsert_local_copy_preserves_delete_unmanaged_source_intent() {
     let (_album_id, release_id) =
         create_album_and_release(&db, Some("/some/origin/folder"), false).await;
 
-    // Set the deferred-delete intent on this device's local-copy row.
-    db.set_release_delete_unmanaged_source_on_upload(&release_id, true)
+    // Set the deferred-delete intent on this device's source row.
+    db.set_delete_after_upload(&release_id, true).await.unwrap();
+    assert!(
+        db.get_unmanaged_source(&release_id)
+            .await
+            .unwrap()
+            .unwrap()
+            .delete_after_upload
+    );
+
+    // Re-record the same source (the source-path writer carries no intent).
+    db.test_set_unmanaged_source(&release_id, "/some/origin/folder")
         .await
         .unwrap();
-    assert!(db
-        .get_release_delete_unmanaged_source_on_upload(&release_id)
-        .await
-        .unwrap());
 
-    // Re-upsert the same row from a fresh struct (which carries no intent).
-    db.upsert_release_local_copy(&bae_core::db::DbReleaseLocalCopy {
-        release_id: release_id.clone(),
-        unmanaged_path: Some("/some/origin/folder".to_string()),
-        pinned_locally: false,
-    })
-    .await
-    .unwrap();
-
-    // The intent must survive the row upsert.
+    // The intent must survive the source re-record.
     assert!(
-        db.get_release_delete_unmanaged_source_on_upload(&release_id)
+        db.get_unmanaged_source(&release_id)
             .await
-            .unwrap(),
-        "upsert_release_local_copy reset the deferred-delete intent"
+            .unwrap()
+            .unwrap()
+            .delete_after_upload,
+        "re-recording the source reset the deferred-delete intent"
     );
 }
 
@@ -1264,13 +1248,9 @@ async fn create_named_unmanaged_release(
         created_at: now,
     };
     db.insert_release(&release).await.unwrap();
-    db.upsert_release_local_copy(&bae_core::db::DbReleaseLocalCopy {
-        release_id: release.id.clone(),
-        unmanaged_path: Some(unmanaged_path.to_string()),
-        pinned_locally: false,
-    })
-    .await
-    .unwrap();
+    db.test_set_unmanaged_source(&release.id, unmanaged_path)
+        .await
+        .unwrap();
 
     (album.id, release.id)
 }

@@ -329,7 +329,7 @@ async fn each_release_propagates_when_its_own_upload_flips_managed() {
     // re1's audio finishes; the observer flips it managed (cloud-only — no local
     // copy), through the same DB transition the live observer calls. re2 is still
     // uploading.
-    db_a.set_release_managed_cloud_only("re1").await.unwrap();
+    db_a.test_mark_managed_cloud_only("re1").await.unwrap();
     sync_cycle(&db_a, &storage_a, "device-a", &lib_a).await;
 
     // Device B pulls: it gets re1 (and its album/artist/track) but NOT re2 —
@@ -362,7 +362,7 @@ async fn each_release_propagates_when_its_own_upload_flips_managed() {
     );
 
     // re2's audio finishes and flips it managed; now it reaches B too.
-    db_a.set_release_managed_cloud_only("re2").await.unwrap();
+    db_a.test_mark_managed_cloud_only("re2").await.unwrap();
     sync_cycle(&db_a, &storage_a, "device-a", &lib_a).await;
     sync_cycle(&db_b, &storage_b, "device-b", &lib_b).await;
     assert_eq!(

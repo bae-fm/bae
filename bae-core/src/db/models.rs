@@ -264,8 +264,8 @@ pub struct DbRelease {
     /// `metadata_source = FileTags`.
     pub metadata_source_release_id: Option<String>,
     /// Shared, synced fact: is this release's audio in the cloud home.
-    /// Device-local storage truth (whether *this* device holds the bytes,
-    /// and where) lives in `release_local_copy` / [`DbReleaseLocalCopy`].
+    /// Device-local storage truth (whether *this* device holds the bytes, and
+    /// where) lives in `release_unmanaged_source` / `file_cache`.
     pub managed: bool,
     /// Name of the source folder this release was imported from (just the final
     /// path component, not the full path). Used to detect likely duplicates when
@@ -289,22 +289,35 @@ pub struct DbRelease {
     pub created_at: DateTime<Utc>,
 }
 
-/// One `release_local_copy` row — DEVICE-LOCAL truth that this device holds a
-/// local copy of a release's audio. Not synced (the table carries no
-/// `_updated_at` and is not a registered synced table), so each device owns its
-/// own rows.
-///
-/// The XOR invariant mirrors the table CHECK: an unmanaged in-place import sets
-/// `unmanaged_path`; a managed pin sets `pinned_locally`. The two never hold at
-/// once. A release with no row has no local copy on this device.
+/// One `release_unmanaged_source` row — DEVICE-LOCAL truth that this device
+/// holds an unmanaged release's own files in place, in a folder the user owns.
+/// The bytes at `path/original_filename` are the *only* copy (not a cache). Not
+/// synced (no `_updated_at`, not a registered synced table), so each device owns
+/// its own rows. Present iff this device references the release in place; only
+/// meaningful while `releases.managed = false`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DbReleaseLocalCopy {
+pub struct DbUnmanagedSource {
     pub release_id: String,
-    /// Folder the in-place unmanaged files live in on this device
-    /// (path = `unmanaged_path/original_filename`). `None` for a managed pin.
-    pub unmanaged_path: Option<String>,
-    /// True when this device pins a managed release's bytes under `storage/`.
-    pub pinned_locally: bool,
+    /// Folder the in-place files live in on this device; a file is at
+    /// `path/original_filename`.
+    pub path: String,
+    /// Deferred-delete intent for this device's Manage → CloudOnly transition:
+    /// the source files are the upload source and can't be deleted until the
+    /// upload lands. The upload observer consults this on the last finished
+    /// upload, deletes the originals, then drops the row.
+    pub delete_after_upload: bool,
+}
+
+/// One `file_cache` row — DEVICE-LOCAL, per file: a local cache copy of a
+/// managed blob at `storage/<file_id>`. A row plus the file on disk is a cache
+/// hit; `pinned` marks the entry eviction-exempt. Not synced — each device owns
+/// its own cache.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DbFileCacheEntry {
+    pub file_id: String,
+    pub pinned: bool,
+    pub size_bytes: i64,
+    pub last_accessed_at: DateTime<Utc>,
 }
 
 /// Where `releases.metadata_source` came from.
@@ -379,10 +392,11 @@ pub struct DbTrack {
 /// - Files are part of a specific release (e.g., "2016 Remaster" has different files than "1973 Original")
 /// - Some files are metadata (cover.jpg, .cue sheets) not associated with any track
 ///
-/// File location is determined by this device's `release_local_copy` row:
-/// - `unmanaged_path` set: `unmanaged_path/original_filename`
-/// - `pinned_locally`: local managed storage via `storage_path()`
-/// - no row: cloud-only via `storage_path()` (managed) or unreachable
+/// File location on this device follows one uniform rule (see
+/// `LibraryManager::resolve_readable_file_source`):
+/// - release has an unmanaged source: `path/original_filename`
+/// - else a `file_cache` hit (`storage/<file_id>` on disk): that storage path
+/// - else: cloud-only (managed) — addressed by the file's cloud key
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbFile {
     pub id: String,
@@ -683,34 +697,8 @@ impl DbRelease {
             created_at: now,
         }
     }
-
-    /// Storage state on this device, derived from the shared `managed` fact
-    /// and this device's `release_local_copy` row (if any).
-    pub fn storage_state(
-        &self,
-        local_copy: Option<&DbReleaseLocalCopy>,
-    ) -> crate::album_detail::ReleaseStorageState {
-        crate::album_detail::storage_state(self.managed, local_copy)
-    }
 }
 
-impl DbReleaseLocalCopy {
-    /// Resolve the local file path this device holds for `file`:
-    /// `unmanaged_path/original_filename` for an in-place import, or the
-    /// managed `storage/` path for a pin. A row always resolves to a path
-    /// (the XOR invariant guarantees exactly one branch fires).
-    pub fn local_file_path(
-        &self,
-        file: &DbFile,
-        library_dir: &crate::library_dir::LibraryDir,
-    ) -> std::path::PathBuf {
-        if let Some(ref unmanaged_path) = self.unmanaged_path {
-            std::path::Path::new(unmanaged_path).join(&file.original_filename)
-        } else {
-            file.local_storage_path(library_dir)
-        }
-    }
-}
 impl DbTrack {
     #[cfg(test)]
     pub fn new_test(
@@ -1054,9 +1042,13 @@ pub struct DbReleaseStorageSummary {
     pub primary_release_id: Option<String>,
     /// Shared `releases.managed` fact.
     pub managed: bool,
-    /// This device's `release_local_copy` row, if any. The resolver derives
-    /// `storage_state` from `managed` plus this.
-    pub local_copy: Option<DbReleaseLocalCopy>,
+    /// Whether this device holds a `release_unmanaged_source` row. Computed in
+    /// SQL; the resolver derives `storage_state` from `managed` plus this and
+    /// `all_files_pinned`.
+    pub has_unmanaged_source: bool,
+    /// Whether the release has files AND every file has a `pinned = 1`
+    /// `file_cache` row on this device. Computed in SQL.
+    pub all_files_pinned: bool,
     pub file_count: i64,
     pub total_size: i64,
 }
@@ -1098,9 +1090,14 @@ pub struct DbAlbumDetail {
 #[derive(Debug, Clone)]
 pub struct DbReleaseDetail {
     pub release: DbRelease,
-    /// This device's `release_local_copy` row, if any. The resolver derives
-    /// `storage_state` and local file paths from `release.managed` plus this.
-    pub local_copy: Option<DbReleaseLocalCopy>,
+    /// This device's `release_unmanaged_source` row, if any. The resolver
+    /// derives `storage_state` and local file paths from `release.managed` plus
+    /// this and `file_cache`.
+    pub unmanaged_source: Option<DbUnmanagedSource>,
+    /// This device's `file_cache` rows for the release's files. A row plus the
+    /// file on disk is a cache hit; the resolver derives `all_files_pinned` and
+    /// per-file local image paths from these.
+    pub file_cache: Vec<DbFileCacheEntry>,
     pub tracks: Vec<DbTrackWithArtists>,
     pub files: Vec<DbFile>,
     /// Audio-format rows for this release's tracks. Each carries the codec,
@@ -1133,9 +1130,13 @@ pub struct DbReleaseSummary {
     pub format: Option<String>,
     /// Shared `releases.managed` fact.
     pub managed: bool,
-    /// This device's `release_local_copy` row, if any. The resolver derives
-    /// `storage_state` from `managed` plus this.
-    pub local_copy: Option<DbReleaseLocalCopy>,
+    /// Whether this device holds a `release_unmanaged_source` row. Computed in
+    /// SQL; the resolver derives `storage_state` from `managed` plus this and
+    /// `all_files_pinned`.
+    pub has_unmanaged_source: bool,
+    /// Whether the release has files AND every file has a `pinned = 1`
+    /// `file_cache` row on this device. Computed in SQL.
+    pub all_files_pinned: bool,
     pub file_count: i64,
     pub total_size: i64,
 }

@@ -1398,13 +1398,18 @@ impl ImportService {
         }
 
         // Strategy-specific byte placement and Store-phase progress reporting.
-        // Each arm records this device's local copy (a managed pin or an in-place
-        // unmanaged path; a managed cloud-only import keeps no local copy). A
-        // managed import lands `managed = false` and only reaches `managed = true`
-        // once its uploads finish (via `ReleaseUploadObserver`), so another device
-        // never sees the release before its audio is in the cloud. An unmanaged import
-        // stays `managed = false` for good.
-        let mut local_copy: Option<crate::db::DbReleaseLocalCopy> = None;
+        // Each arm records this device's storage rows: a pin import stages
+        // `storage/` copies and a pinned `file_cache` row per file; an unmanaged
+        // import and a cloud-only import both reference the originals in place
+        // and record an `unmanaged_source` (the cloud-only import additionally
+        // queues uploads — issue #105: a cloud-only import IS a real unmanaged
+        // import that kicks off cloud upload). A managed import lands
+        // `managed = false` and reaches `managed = true` only once its uploads
+        // finish (via `ReleaseUploadObserver`), so another device never sees the
+        // release before its audio is in the cloud; an unmanaged import stays
+        // `managed = false` for good.
+        let mut unmanaged_source: Option<crate::db::DbUnmanagedSource> = None;
+        let mut pinned_cache: Vec<crate::db::DbFileCacheEntry> = Vec::new();
         match storage_mode {
             StorageMode::Managed { pin: true } => {
                 let storage = self.create_storage();
@@ -1484,12 +1489,19 @@ impl ImportService {
                         file_size,
                     );
                 }
-                // The pinned local copy; `managed` flips true once uploads finish.
-                local_copy = Some(crate::db::DbReleaseLocalCopy {
-                    release_id: db_release.id.clone(),
-                    unmanaged_path: None,
-                    pinned_locally: true,
-                });
+                // A pinned `file_cache` row per file (the staged `storage/`
+                // copies); `managed` flips true once uploads finish. The
+                // finalize transaction stamps `last_accessed_at`.
+                let now = self.library_manager.clock().now();
+                pinned_cache = discovered_files
+                    .iter()
+                    .map(|file| crate::db::DbFileCacheEntry {
+                        file_id: file_ids[&file.path].clone(),
+                        pinned: true,
+                        size_bytes: file.size as i64,
+                        last_accessed_at: now,
+                    })
+                    .collect();
             }
             StorageMode::Managed { pin: false } => {
                 // No local storage write; emit release-level progress per file so the
@@ -1509,33 +1521,23 @@ impl ImportService {
                         file.relative_path,
                     );
                 }
-                // Managed cloud-only: no local copy on this device; `managed`
-                // flips true once uploads finish.
+                // Cloud-only is a real unmanaged import that also queues uploads
+                // (#105): record the originals as the unmanaged source so the
+                // release is playable in place while uploads land. The observer
+                // drops this source row when it flips `managed = true`. No cache
+                // rows — the bytes stay where the user put them.
+                unmanaged_source = Some(crate::db::DbUnmanagedSource {
+                    release_id: db_release.id.clone(),
+                    path: common_source_root(discovered_files)?,
+                    delete_after_upload: false,
+                });
             }
             StorageMode::Unmanaged => {
-                // Record unmanaged_path from the files' common parent directory.
-                let unmanaged_root = {
-                    let mut ancestor: Option<&Path> = None;
-                    for file in discovered_files.iter() {
-                        let parent = file
-                            .path
-                            .parent()
-                            .ok_or_else(|| format!("File has no parent: {:?}", file.path))?;
-                        ancestor = Some(match ancestor {
-                            None => parent,
-                            Some(a) => common_ancestor(a, parent),
-                        });
-                    }
-                    ancestor.ok_or_else(|| "No files to determine unmanaged path".to_string())?
-                };
-                let unmanaged_path = unmanaged_root
-                    .to_str()
-                    .ok_or_else(|| format!("Cannot convert path to string: {:?}", unmanaged_root))?
-                    .to_string();
-                local_copy = Some(crate::db::DbReleaseLocalCopy {
+                // Record the unmanaged source from the files' common parent dir.
+                unmanaged_source = Some(crate::db::DbUnmanagedSource {
                     release_id: db_release.id.clone(),
-                    unmanaged_path: Some(unmanaged_path),
-                    pinned_locally: false,
+                    path: common_source_root(discovered_files)?,
+                    delete_after_upload: false,
                 });
 
                 // Per-track progress jumps to 100% immediately — files are referenced in
@@ -1673,7 +1675,8 @@ impl ImportService {
                 cover_rel_id,
                 import_id,
                 identities,
-                local_copy.as_ref(),
+                unmanaged_source.as_ref(),
+                &pinned_cache,
                 &cloud_uploads,
             )
             .await
@@ -2283,6 +2286,30 @@ pub(crate) fn common_ancestor<'a>(a: &'a Path, b: &Path) -> &'a Path {
             None => return longest,
         }
     }
+}
+
+/// The folder an unmanaged source's files live in: the common parent directory
+/// of every discovered file's parent. Shared by the unmanaged and cloud-only
+/// import arms — both reference the user's originals in place, so both record an
+/// `unmanaged_source` rooted here. Errors if there are no files or a path can't
+/// be made a string.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn common_source_root(discovered_files: &[DiscoveredFile]) -> Result<String, String> {
+    let mut ancestor: Option<&Path> = None;
+    for file in discovered_files.iter() {
+        let parent = file
+            .path
+            .parent()
+            .ok_or_else(|| format!("File has no parent: {:?}", file.path))?;
+        ancestor = Some(match ancestor {
+            None => parent,
+            Some(a) => common_ancestor(a, parent),
+        });
+    }
+    let root = ancestor.ok_or_else(|| "No files to determine unmanaged path".to_string())?;
+    root.to_str()
+        .map(str::to_string)
+        .ok_or_else(|| format!("Cannot convert path to string: {root:?}"))
 }
 
 /// Fetch + parse + detail-build a release. Mirrors the handle's

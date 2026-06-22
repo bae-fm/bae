@@ -39,20 +39,22 @@ pub async fn resolve_release_identity(
         .await
         .map_err(|e| format!("Failed to load tracks: {e}"))?
         .len() as u32;
-    let local_copy = library_manager
-        .get_release_local_copy(release_id)
-        .await
-        .map_err(|e| format!("Failed to load local copy: {e}"))?;
-
     // Resolve local paths for every release file. Cloud-only files
     // without a local copy are skipped — the disc-ID phase silently
     // bails to `None` for those, which `resolve_release_identity`'s
     // contract permits and the service treats as `DiscidUnavailable`.
-    let local_paths: Vec<PathBuf> = files
-        .iter()
-        .filter_map(|f| library_manager.resolve_local_file_path(local_copy.as_ref(), f))
-        .filter(|p| p.exists())
-        .collect();
+    let mut local_paths: Vec<PathBuf> = Vec::new();
+    for f in &files {
+        if let Some(p) = library_manager
+            .resolve_readable_local_path(f)
+            .await
+            .map_err(|e| format!("Failed to resolve local path: {e}"))?
+        {
+            if p.exists() {
+                local_paths.push(p);
+            }
+        }
+    }
 
     let log_paths: Vec<PathBuf> = local_paths
         .iter()
@@ -102,11 +104,6 @@ pub async fn resolve_release_artwork_paths(
         .get_files_for_release(release_id)
         .await
         .map_err(|e| format!("Failed to load release files: {e}"))?;
-    let local_copy = library_manager
-        .get_release_local_copy(release_id)
-        .await
-        .map_err(|e| format!("Failed to load local copy: {e}"))?;
-
     let mut paths: Vec<PathBuf> = Vec::new();
 
     // Cover image, stored at `library_dir/images/{release_id}` for
@@ -122,7 +119,11 @@ pub async fn resolve_release_artwork_paths(
         if !file.content_type.is_image() {
             continue;
         }
-        if let Some(p) = library_manager.resolve_local_file_path(local_copy.as_ref(), file) {
+        if let Some(p) = library_manager
+            .resolve_readable_local_path(file)
+            .await
+            .map_err(|e| format!("Failed to resolve local path: {e}"))?
+        {
             if p.exists() {
                 paths.push(p);
             }
@@ -317,11 +318,7 @@ mod tests {
         };
         database.insert_release(&release).await.unwrap();
         database
-            .upsert_release_local_copy(&crate::db::DbReleaseLocalCopy {
-                release_id: release.id.clone(),
-                unmanaged_path: Some(unmanaged_dir.to_string_lossy().into_owned()),
-                pinned_locally: false,
-            })
+            .test_set_unmanaged_source(&release.id, &unmanaged_dir.to_string_lossy())
             .await
             .unwrap();
 

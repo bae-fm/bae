@@ -1,11 +1,12 @@
 //! Release storage transitions — moving a release between Unmanaged, Pinned,
 //! and CloudOnly.
 //!
-//! - `pin_release`: downloads from cloud (or copies from unmanaged path), writes
-//!   to `storage/ab/cd/{file_id}`, sets `pinned_locally = true`.
-//! - `unpin_release`: queues local copies for deferred deletion, sets
-//!   `pinned_locally = false`. Rejected unless a cloud home exists and no
-//!   upload is still pending (the cloud copy must be durable, not intended).
+//! - `pin_release`: downloads from cloud (or copies from the unmanaged source),
+//!   writes to `storage/ab/cd/{file_id}`, and pins each file's `file_cache` row.
+//! - `unpin_release`: clears the `pinned` flag on the release's `file_cache`
+//!   rows (the cache copies stay, now evictable). Rejected unless a cloud home
+//!   exists and no upload is still pending (the cloud copy must be durable, not
+//!   intended).
 //! - `manage_release`: uploads an Unmanaged release to the cloud home, landing
 //!   it at Pinned or CloudOnly.
 //! - `unmanage_release`: copies a managed release back out to a user folder and
@@ -16,19 +17,16 @@
 //! delete (cloud-outbox or local pending-deletion) is queued. On any per-file
 //! failure the transition aborts and queues nothing.
 
-use crate::db::{DbFile, DbReleaseLocalCopy};
+use crate::db::DbFile;
 use crate::library::LibraryManager;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-use super::cleanup::PendingDeletion;
-
-/// Read one release file's bytes from wherever it currently lives: this
-/// device's local copy (managed `storage/` copy or an unmanaged original),
-/// the original source of a still-pending cloud upload, or otherwise a cloud
-/// read through the home's at-rest cipher. Verifies `bytes.len() == file.file_size`
-/// so a short or zero read aborts the caller before any delete is queued (SAFETY
-/// INVARIANT).
+/// Read one release file's bytes from wherever it currently lives under the
+/// uniform rule: this device's local copy (the unmanaged source's in-place file
+/// or a `storage/` cache hit), or otherwise a cloud read through the home's
+/// at-rest cipher. Verifies `bytes.len() == file.file_size` so a short or zero
+/// read aborts the caller before any delete is queued (SAFETY INVARIANT).
 ///
 /// The cipher applies only on the cloud path — a local read is always verbatim.
 /// An opaque home decrypts the blob under the library master key; a browsable
@@ -36,26 +34,14 @@ use super::cleanup::PendingDeletion;
 /// locked library — a broken invariant for a managed release (which always has
 /// an unlocked library), surfaced as an error rather than masked.
 pub async fn read_release_file_bytes(
-    local_copy: Option<&DbReleaseLocalCopy>,
     file: &DbFile,
     mgr: &LibraryManager,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
     use crate::library::manager::ReadableFileSource;
 
-    let source = mgr.resolve_readable_file_source(local_copy, file).await?;
+    let source = mgr.resolve_readable_file_source(file).await?;
     let bytes = match source {
         ReadableFileSource::Local(local_path) => tokio::fs::read(&local_path).await?,
-        ReadableFileSource::UploadPendingSourceMissing => {
-            // A queued upload whose source file is gone: the cloud object may
-            // not exist yet, so a cloud read would 404 with a raw storage key.
-            // Report the in-flight upload instead.
-            return Err(format!(
-                "File {} is still uploading — its source is gone and the cloud copy isn't \
-                 available yet",
-                file.id
-            )
-            .into());
-        }
         ReadableFileSource::CloudOnly => {
             let cloud_home = mgr.get_cloud_home().ok_or_else(|| {
                 format!(
@@ -81,9 +67,6 @@ pub async fn read_release_file_bytes(
                 source_size,
             );
             reader.read(0, source_size).await?
-        }
-        ReadableFileSource::Unreachable => {
-            return Err(format!("File {} has no readable location", file.id).into());
         }
     };
 
@@ -295,20 +278,28 @@ async fn do_pin(
         .get_release_by_id(release_id)
         .await?
         .ok_or("Release not found")?;
-    let local_copy = mgr.get_release_local_copy(release_id).await?;
 
     if !release.managed {
         return Err("Cannot pin a local-library release".into());
-    }
-
-    if local_copy.as_ref().is_some_and(|c| c.pinned_locally) {
-        return Err("Release is already pinned locally".into());
     }
 
     let files = mgr.get_files_for_release(release_id).await?;
 
     if files.is_empty() {
         return Err("Release has no files".into());
+    }
+
+    let already_pinned = {
+        let cache = mgr.get_release_file_cache(release_id).await?;
+        let pinned: std::collections::HashSet<&str> = cache
+            .iter()
+            .filter(|e| e.pinned)
+            .map(|e| e.file_id.as_str())
+            .collect();
+        files.iter().all(|f| pinned.contains(f.id.as_str()))
+    };
+    if already_pinned {
+        return Err("Release is already pinned locally".into());
     }
 
     let _ = tx.send(TransferProgress::Started {
@@ -336,10 +327,7 @@ async fn do_pin(
         };
         report_progress(0);
 
-        match mgr
-            .resolve_readable_file_source(local_copy.as_ref(), file)
-            .await?
-        {
+        match mgr.resolve_readable_file_source(file).await? {
             ReadableFileSource::Local(source_path) => {
                 // A local copy already holds the bytes; stream it from disk into
                 // storage (length-verified below) without buffering in memory.
@@ -371,14 +359,6 @@ async fn do_pin(
                     .into());
                 }
             }
-            ReadableFileSource::UploadPendingSourceMissing => {
-                return Err(format!(
-                    "File {} has a queued upload whose source is gone — its cloud object may not \
-                     exist yet",
-                    file.id
-                )
-                .into());
-            }
             ReadableFileSource::CloudOnly => {
                 let cloud_home = mgr
                     .get_cloud_home()
@@ -394,19 +374,12 @@ async fn do_pin(
                 download_cloud_file_chunked(cloud_home, cipher, file, &dest, &report_progress)
                     .await?;
             }
-            ReadableFileSource::Unreachable => {
-                return Err(format!(
-                    "Cannot pin file {}: its source is gone and it was never uploaded",
-                    file.id
-                )
-                .into());
-            }
         }
 
         report_progress(100);
     }
 
-    mgr.pin_release_locally(release_id).await?;
+    mgr.set_pinned_cache(release_id, &files).await?;
 
     info!("Pin complete for release {}", release_id);
 
@@ -551,27 +524,34 @@ async fn do_unpin(
         .get_release_by_id(release_id)
         .await?
         .ok_or("Release not found")?;
-    let local_copy = mgr.get_release_local_copy(release_id).await?;
 
     if !release.managed {
         return Err("Cannot unpin a local-library release".into());
     }
 
-    if !local_copy.as_ref().is_some_and(|c| c.pinned_locally) {
+    let files = mgr.get_files_for_release(release_id).await?;
+    let is_pinned = {
+        let cache = mgr.get_release_file_cache(release_id).await?;
+        let pinned: std::collections::HashSet<&str> = cache
+            .iter()
+            .filter(|e| e.pinned)
+            .map(|e| e.file_id.as_str())
+            .collect();
+        !files.is_empty() && files.iter().all(|f| pinned.contains(f.id.as_str()))
+    };
+    if !is_pinned {
         return Err("Release is not pinned locally".into());
     }
 
-    // Dropping the local copy is safe only when the cloud holds a durable
-    // copy: a cloud home must exist AND no upload may still be pending (a
-    // pending upload means the cloud copy is merely intended, not confirmed).
+    // Unpinning is safe only when the cloud holds a durable copy: a cloud home
+    // must exist AND no upload may still be pending (a pending upload means the
+    // cloud copy is merely intended, not confirmed).
     if mgr.get_cloud_home().is_none() {
         return Err("Cannot unpin without a cloud home".into());
     }
     if mgr.count_pending_uploads_for_release(release_id).await? != 0 {
         return Err("Cannot unpin while an upload is still pending".into());
     }
-
-    let files = mgr.get_files_for_release(release_id).await?;
 
     let _ = tx.send(TransferProgress::Started {
         release_id: release_id.to_string(),
@@ -580,20 +560,9 @@ async fn do_unpin(
 
     info!("Unpinning release {} ({} files)", release_id, files.len());
 
-    // Queue local copies for deferred deletion
-    let pending: Vec<PendingDeletion> = files
-        .iter()
-        .map(|f| PendingDeletion::Local {
-            path: mgr.local_storage_path_for_file(f).display().to_string(),
-        })
-        .collect();
-
-    if !pending.is_empty() {
-        if let Err(e) = mgr.append_pending_deletions(&pending).await {
-            warn!("Failed to queue deferred deletions: {}", e);
-        }
-    }
-
+    // Unpin clears the pinned flag; the `storage/` cache copies stay as
+    // evictable cache entries (eviction reclaims their space later). No delete
+    // is queued here.
     mgr.unpin_release_locally(release_id).await?;
 
     info!("Unpin complete for release {}", release_id);
@@ -625,15 +594,15 @@ async fn do_manage(
         .get_release_by_id(release_id)
         .await?
         .ok_or("Release not found")?;
-    let local_copy = mgr.get_release_local_copy(release_id).await?;
 
     if release.managed {
         return Err("Release is already managed".into());
     }
-    let unmanaged_path = local_copy
-        .as_ref()
-        .and_then(|c| c.unmanaged_path.clone())
-        .ok_or("Unmanaged release has no local copy on this device")?;
+    let unmanaged_path = mgr
+        .get_unmanaged_source(release_id)
+        .await?
+        .map(|s| s.path)
+        .ok_or("Unmanaged release has no source on this device")?;
 
     if mgr.get_cloud_home().is_none() {
         return Err("Cannot manage without a cloud home".into());
@@ -678,7 +647,7 @@ async fn do_manage(
             send_file_progress(tx, release_id, i, files.len(), &file.original_filename, 0);
 
             // Verified read from the unmanaged original.
-            let data = read_release_file_bytes(local_copy.as_ref(), file, mgr).await?;
+            let data = read_release_file_bytes(file, mgr).await?;
 
             let tx_clone = tx.clone();
             let rid = release_id.to_string();
@@ -716,11 +685,11 @@ async fn do_manage(
         }
 
         // The verified `storage/` copies are this device's durable local copy.
-        // Pin it and clear `unmanaged_path` BEFORE enqueueing uploads, so when
-        // the upload observer fires on the last upload it sees a pinned copy and
-        // flips the release to managed-pinned (keeping the copy) rather than
-        // cloud-only. `managed` stays false until then.
-        mgr.pin_release_locally(release_id).await?;
+        // Pin them and drop the unmanaged source BEFORE enqueueing uploads, so
+        // when the upload observer fires on the last upload it sees a pinned
+        // cache (no source) and flips the release to managed-pinned (keeping the
+        // copy) rather than cloud-only. `managed` stays false until then.
+        mgr.set_pinned_cache(release_id, &files).await?;
 
         // Now enqueue uploads that read the staged `storage/` copies. The key
         // is the readable path on a browsable home (computed + stored on the
@@ -791,8 +760,7 @@ async fn do_manage(
         // only copy on upload failure. Persist the intent; the upload observer
         // deletes them after the last upload lands, then clears `unmanaged_path`.
         if delete_unmanaged_source {
-            mgr.set_release_delete_unmanaged_source_on_upload(release_id, true)
-                .await?;
+            mgr.set_delete_after_upload(release_id, true).await?;
         }
 
         mgr.trigger_sync();
@@ -828,7 +796,6 @@ async fn do_unmanage(
         .get_release_by_id(release_id)
         .await?
         .ok_or("Release not found")?;
-    let local_copy = mgr.get_release_local_copy(release_id).await?;
 
     if !release.managed {
         return Err("Release is already unmanaged".into());
@@ -840,10 +807,10 @@ async fn do_unmanage(
     }
 
     // Capture the pre-transition state for the later managed-copy deletes: the
-    // cloud keys and (if pinned) the `storage/` paths are precomputed from the
-    // still-managed release so they stay correct after the release flips to
-    // unmanaged.
-    let was_pinned = local_copy.as_ref().is_some_and(|c| c.pinned_locally);
+    // cloud keys and (if any `storage/` cache copies exist) their paths are
+    // precomputed from the still-managed release so they stay correct after the
+    // release flips to unmanaged.
+    let had_cached = !mgr.get_release_file_cache(release_id).await?.is_empty();
 
     let _ = tx.send(TransferProgress::Started {
         release_id: release_id.to_string(),
@@ -871,9 +838,9 @@ async fn do_unmanage(
 
         send_file_progress(tx, release_id, i, files.len(), &file.original_filename, 0);
 
-        // Verified read: `storage/` if Pinned, else cloud download + decrypt.
-        // A missing or short blob aborts here, before any delete.
-        let data = read_release_file_bytes(local_copy.as_ref(), file, mgr).await?;
+        // Verified read: a `storage/` cache hit if present, else cloud download
+        // + decrypt. A missing or short blob aborts here, before any delete.
+        let data = read_release_file_bytes(file, mgr).await?;
 
         let dest = dest_dir.join(&file.original_filename);
         tokio::fs::write(&dest, &data).await?;
@@ -908,8 +875,8 @@ async fn do_unmanage(
     // Every file is now durable at `new_path`. Flip the release to Unmanaged,
     // THEN queue the managed-copy deletes (cloud outbox + cancel pending uploads
     // + local `storage/` deletions) using the precomputed file set.
-    mgr.set_release_unmanaged_path(release_id, new_path).await?;
-    mgr.queue_storage_deletions(&files, was_pinned).await;
+    mgr.unmanage_release_storage(release_id, new_path).await?;
+    mgr.queue_storage_deletions(&files, had_cached).await;
 
     info!("Unmanage complete for release {}", release_id);
 

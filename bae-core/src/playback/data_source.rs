@@ -157,14 +157,11 @@ impl AudioDataReader for LocalReader {
 
 /// Create the appropriate audio reader based on where the track data lives.
 ///
-/// Reads a local file when `source` resolves one (this device's copy, or a
-/// still-pending upload's original). A pending upload whose source is gone
-/// errors before any cloud read — the object may not exist yet. A `CloudOnly`
-/// source is a managed track's cloud-only object: read it through the home's
-/// at-rest cipher (decrypt on an opaque home, verbatim on a browsable one), or
-/// report sync disconnected if no cloud home is configured. An `Unreachable`
-/// source is an unmanaged track whose local file is gone — there is nowhere to
-/// read it.
+/// Reads a local file when `source` resolves one (the unmanaged source's
+/// in-place file, or a `storage/` cache hit). A `CloudOnly` source is a managed
+/// track's cloud-only object: read it through the home's at-rest cipher (decrypt
+/// on an opaque home, verbatim on a browsable one), or report sync disconnected
+/// if no cloud home is configured.
 pub fn create_audio_reader(
     source: crate::library::manager::ReadableFileSource,
     file_id: &str,
@@ -180,7 +177,6 @@ pub fn create_audio_reader(
             let read_config = make_read_config(local_path.display().to_string());
             Ok(Box::new(LocalReader::new(read_config)))
         }
-        ReadableFileSource::UploadPendingSourceMissing => Err(PlaybackError::UploadPending),
         ReadableFileSource::CloudOnly => {
             // A managed track's audio is a cloud-only object sealed under the
             // home's at-rest cipher: read it through that cipher where the read
@@ -200,11 +196,6 @@ pub fn create_audio_reader(
             } else {
                 Err(PlaybackError::SyncDisconnected)
             }
-        }
-        ReadableFileSource::Unreachable => {
-            // An unmanaged track's audio never leaves the user's disk, so a
-            // missing local source is simply gone — never a cloud read.
-            Err(PlaybackError::not_found("playable file location", file_id))
         }
     }
 }

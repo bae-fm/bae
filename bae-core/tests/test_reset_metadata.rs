@@ -543,7 +543,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
     let (lm, db, tmp) = setup().await;
 
     // Create real audio files inside an unmanaged folder so the release
-    // can resolve them via `local_file_path`.
+    // resolves them locally via its unmanaged source.
     let audio_dir = tmp.path().join("source-folder");
     std::fs::create_dir_all(&audio_dir).unwrap();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
@@ -583,13 +583,9 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
-    db.upsert_release_local_copy(&bae_core::db::DbReleaseLocalCopy {
-        release_id: release.id.clone(),
-        unmanaged_path: Some(audio_dir.to_str().unwrap().to_string()),
-        pinned_locally: false,
-    })
-    .await
-    .unwrap();
+    db.test_set_unmanaged_source(&release.id, audio_dir.to_str().unwrap())
+        .await
+        .unwrap();
     db.insert_track(&t1).await.unwrap();
     db.insert_track(&t2).await.unwrap();
 

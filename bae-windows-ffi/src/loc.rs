@@ -263,7 +263,6 @@ pub fn entity_not_found_key(entity: &str) -> Option<&'static str> {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum FfiPlaybackErrorReason {
     SyncDisconnected,
-    UploadPending,
     Diagnostic { error: FfiError },
 }
 
@@ -272,7 +271,6 @@ impl FfiPlaybackErrorReason {
         use bae_core::ui::PlaybackErrorReason;
         match reason {
             PlaybackErrorReason::SyncDisconnected => Self::SyncDisconnected,
-            PlaybackErrorReason::UploadPending => Self::UploadPending,
             PlaybackErrorReason::Diagnostic { error } => Self::Diagnostic {
                 error: FfiError::from_core(error),
             },
@@ -286,7 +284,6 @@ impl FfiPlaybackErrorReason {
 pub fn playback_error_reason_key(kind: &str) -> Option<&'static str> {
     match kind {
         "sync_disconnected" => Some("core.playback.error.sync_disconnected"),
-        "upload_pending" => Some("core.playback.error.upload_pending"),
         _ => None,
     }
 }

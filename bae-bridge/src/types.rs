@@ -2231,9 +2231,6 @@ pub enum BridgePlaybackErrorReason {
     /// A managed cloud-only track isn't downloaded and sync is disconnected —
     /// the user reconnects to play it.
     SyncDisconnected,
-    /// A managed track's cloud upload is still queued — the user waits for it
-    /// to finish.
-    UploadPending,
     /// Any other failure. Carries the underlying `BridgeError`; the UI renders
     /// its generic per-category line plus the opaque, log-only detail.
     Diagnostic { error: BridgeError },
@@ -2276,9 +2273,6 @@ pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> O
     match reason {
         BridgePlaybackErrorReason::SyncDisconnected => {
             Some("core.playback.error.sync_disconnected".to_string())
-        }
-        BridgePlaybackErrorReason::UploadPending => {
-            Some("core.playback.error.upload_pending".to_string())
         }
         BridgePlaybackErrorReason::Diagnostic { .. } => None,
     }
@@ -2341,7 +2335,6 @@ pub(crate) fn bridge_playback_error_reason(
     use bae_core::ui::PlaybackErrorReason;
     match reason {
         PlaybackErrorReason::SyncDisconnected => BridgePlaybackErrorReason::SyncDisconnected,
-        PlaybackErrorReason::UploadPending => BridgePlaybackErrorReason::UploadPending,
         PlaybackErrorReason::Diagnostic { error } => BridgePlaybackErrorReason::Diagnostic {
             error: bridge_error(error),
         },
@@ -3331,7 +3324,6 @@ mod loc_key_coverage {
         // bridge_playback_error_reason_key — Diagnostic carries no key (None).
         for r in [
             BridgePlaybackErrorReason::SyncDisconnected,
-            BridgePlaybackErrorReason::UploadPending,
             BridgePlaybackErrorReason::Diagnostic {
                 error: BridgeError::internal(""),
             },
@@ -3339,9 +3331,6 @@ mod loc_key_coverage {
             let expected: Option<&str> = match r {
                 BridgePlaybackErrorReason::SyncDisconnected => {
                     Some("core.playback.error.sync_disconnected")
-                }
-                BridgePlaybackErrorReason::UploadPending => {
-                    Some("core.playback.error.upload_pending")
                 }
                 BridgePlaybackErrorReason::Diagnostic { .. } => None,
             };

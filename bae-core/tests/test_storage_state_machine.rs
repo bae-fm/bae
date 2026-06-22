@@ -48,15 +48,17 @@ async fn setup(tmp: &TempDir) -> LibraryManager {
     )
 }
 
-/// This device's storage state for a release, derived from `releases.managed`
-/// and its `release_local_copy` row.
+/// This device's storage state for a release, derived from the storage summary
+/// the manager resolves from the two device-local stores.
 async fn storage_state(
     mgr: &LibraryManager,
     release_id: &str,
 ) -> bae_core::album_detail::ReleaseStorageState {
-    let release = mgr.get_release_by_id(release_id).await.unwrap().unwrap();
-    let local_copy = mgr.get_release_local_copy(release_id).await.unwrap();
-    bae_core::album_detail::storage_state(release.managed, local_copy.as_ref())
+    mgr.find_release_storage_summary(release_id)
+        .await
+        .unwrap()
+        .unwrap()
+        .storage_state
 }
 
 /// This device's raw `releases.managed` flag for a release.
@@ -117,9 +119,8 @@ async fn create_pinned_release(mgr: &LibraryManager, filenames: &[&str]) -> Stri
     mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
         .await
         .unwrap();
-    // Pin this device's local copy (managed stays false until the uploads land).
-    mgr.pin_release_locally(&release_id).await.unwrap();
 
+    let mut files = Vec::new();
     for filename in filenames {
         let file = DbFile::new(
             &release_id,
@@ -138,7 +139,12 @@ async fn create_pinned_release(mgr: &LibraryManager, filenames: &[&str]) -> Stri
         mgr.add_cloud_outbox_upload(&file.id, &cloud_key, None)
             .await
             .unwrap();
+        files.push(file);
     }
+
+    // Pin this device's cache copies (managed stays false until the uploads
+    // land). The `storage/` copies are already staged above.
+    mgr.set_pinned_cache(&release_id, &files).await.unwrap();
 
     release_id
 }
@@ -327,9 +333,9 @@ async fn create_unmanaged_release(
     mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
         .await
         .unwrap();
-    // Unmanaged in place: mark managed=false and record this device's local
-    // copy at the source directory.
-    mgr.set_release_unmanaged_path(&release_id, &source_dir.to_string_lossy())
+    // Unmanaged in place: mark managed=false and record this device's
+    // unmanaged source at the source directory.
+    mgr.unmanage_release_storage(&release_id, &source_dir.to_string_lossy())
         .await
         .unwrap();
 
@@ -682,12 +688,12 @@ async fn test_unmanage_from_cloud_only_downloads_then_queues_deletes() {
         storage_state(&mgr, &release_id).await,
         bae_core::album_detail::ReleaseStorageState::Unmanaged
     );
-    let local_copy = mgr
-        .get_release_local_copy(&release_id)
+    let source = mgr
+        .get_unmanaged_source(&release_id)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(local_copy.unmanaged_path.as_deref(), new_path.to_str());
+    assert_eq!(Some(source.path.as_str()), new_path.to_str());
     let deletes = mgr.get_pending_cloud_deletes().await.unwrap();
     assert_eq!(deletes.len(), files.len());
 }
@@ -811,4 +817,209 @@ async fn emit_all_albums_updated_flips_storage_actions_on_cloud_home_transition(
         actions_for(&after, &release_id).contains(&ReleaseStorageAction::Manage),
         "cloud home present → Manage available"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Transition coverage: the sabotage check that encapsulation is load-bearing.
+//
+// Every storage transition lands the release in one of the THREE valid states
+// (Unmanaged / Pinned / CloudOnly). The invalid tuple (managed = false, no
+// unmanaged source, not pinned — issue #105's "nowhere to read") is
+// unrepresentable: no transition produces it. We drive every transition and
+// assert the resolved state is always valid, AND that the raw stores never hold
+// the forbidden tuple. Uses public + test-utils transition entry points only.
+// ---------------------------------------------------------------------------
+
+/// Assert the release's raw stores never form the invalid tuple, and return its
+/// resolved state (always one of the three valid variants).
+async fn assert_valid_state(
+    mgr: &LibraryManager,
+    db: &bae_core::db::Database,
+    release_id: &str,
+) -> bae_core::album_detail::ReleaseStorageState {
+    use bae_core::album_detail::ReleaseStorageState;
+    let managed = mgr
+        .get_release_by_id(release_id)
+        .await
+        .unwrap()
+        .unwrap()
+        .managed;
+    let has_source = db.get_unmanaged_source(release_id).await.unwrap().is_some();
+    let files = mgr.get_files_for_release(release_id).await.unwrap();
+    let cache = db.get_release_file_cache(release_id).await.unwrap();
+    let pinned: std::collections::HashSet<&str> = cache
+        .iter()
+        .filter(|e| e.pinned)
+        .map(|e| e.file_id.as_str())
+        .collect();
+    let all_pinned = !files.is_empty() && files.iter().all(|f| pinned.contains(f.id.as_str()));
+
+    // The forbidden tuple must never occur: a release the device can't read.
+    assert!(
+        !(!managed && !has_source && !all_pinned),
+        "invalid storage tuple for {release_id}: managed=false, no source, not pinned \
+         (issue #105 — nowhere to read)"
+    );
+
+    let state = mgr
+        .find_release_storage_summary(release_id)
+        .await
+        .unwrap()
+        .unwrap()
+        .storage_state;
+    assert!(
+        matches!(
+            state,
+            ReleaseStorageState::Unmanaged
+                | ReleaseStorageState::Pinned
+                | ReleaseStorageState::CloudOnly
+        ),
+        "resolved state must be one of the three valid variants, got {state:?}"
+    );
+    state
+}
+
+/// Insert an album + release + one file, returning the release id. `managed`
+/// sets the initial shared flag.
+async fn insert_bare_release(mgr: &LibraryManager, managed: bool) -> String {
+    let now = Utc::now();
+    let artist_id = format!("tc-artist-{}", Uuid::new_v4());
+    mgr.insert_artist(&bae_core::db::DbArtist {
+        id: artist_id.clone(),
+        name: "Artist".to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: now,
+    })
+    .await
+    .unwrap();
+    let album = DbAlbum {
+        id: Uuid::new_v4().to_string(),
+        title: "Album".to_string(),
+        artist_id,
+        year: Some(2024),
+        primary_release_id: None,
+        is_compilation: false,
+        created_at: now,
+    };
+    let release = DbRelease {
+        id: Uuid::new_v4().to_string(),
+        album_id: album.id.clone(),
+        release_name: None,
+        pressing: Pressing::blank(),
+        disc_id: None,
+        metadata_source: ReleaseMetadataSource::FileTags,
+        metadata_source_release_id: None,
+        managed,
+        source_folder_name: None,
+        content_hash: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
+        created_at: now,
+    };
+    mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
+        .await
+        .unwrap();
+    let file = DbFile::new(
+        &release.id,
+        "track.flac",
+        10,
+        ContentType::Flac,
+        Uuid::new_v4().to_string(),
+        now,
+    );
+    mgr.add_file(&file).await.unwrap();
+    release.id
+}
+
+#[tokio::test]
+async fn every_transition_lands_in_a_valid_state() {
+    use bae_core::album_detail::ReleaseStorageState::*;
+
+    let tmp = TempDir::new().unwrap();
+    let library_dir = LibraryDir::new(tmp.path());
+    let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
+    let db = bae_core::db::Database::new_test(
+        tmp.path().join("test.db").to_str().unwrap(),
+        std::sync::Arc::new(bae_core::clock::SystemClock),
+    )
+    .await
+    .unwrap();
+    let mgr = LibraryManager::new(
+        db.clone(),
+        library_dir,
+        config_handle,
+        key_service,
+        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        tokio::runtime::Handle::current(),
+        None,
+    );
+
+    // Import-unmanaged: managed=false + an unmanaged source.
+    {
+        let rel = insert_bare_release(&mgr, false).await;
+        db.test_set_unmanaged_source(&rel, "/src").await.unwrap();
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Unmanaged);
+    }
+
+    // Import-cloud-only (#105): identical landing — an unmanaged source while
+    // its upload is pending. (`unmanage` is the public source-recording path.)
+    {
+        let rel = insert_bare_release(&mgr, false).await;
+        mgr.unmanage_release_storage(&rel, "/src").await.unwrap();
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Unmanaged);
+    }
+
+    // Import-pin: a pinned cache, no source.
+    {
+        let rel = insert_bare_release(&mgr, false).await;
+        db.test_pin_all_files(&rel).await.unwrap();
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Pinned);
+    }
+
+    // Manage → pinned (observer flip): set pinned cache (drops any source) then
+    // mark managed-pinned.
+    {
+        let rel = insert_bare_release(&mgr, false).await;
+        db.test_set_unmanaged_source(&rel, "/src").await.unwrap();
+        let files = mgr.get_files_for_release(&rel).await.unwrap();
+        mgr.set_pinned_cache(&rel, &files).await.unwrap(); // pin drops the source
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Pinned);
+        db.test_mark_managed_pinned(&rel).await.unwrap(); // observer flip
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Pinned);
+    }
+
+    // Manage → cloud-only (observer flip): an unmanaged source, then the managed
+    // flip drops it.
+    {
+        let rel = insert_bare_release(&mgr, false).await;
+        db.test_set_unmanaged_source(&rel, "/src").await.unwrap();
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Unmanaged);
+        db.test_mark_managed_cloud_only(&rel).await.unwrap();
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, CloudOnly);
+    }
+
+    // Pin (CloudOnly → Pinned) then Unpin (→ CloudOnly): a managed release.
+    {
+        let rel = insert_bare_release(&mgr, true).await;
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, CloudOnly);
+        let files = mgr.get_files_for_release(&rel).await.unwrap();
+        mgr.set_pinned_cache(&rel, &files).await.unwrap();
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Pinned);
+        mgr.unpin_release_locally(&rel).await.unwrap();
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, CloudOnly);
+    }
+
+    // Unmanage (managed → Unmanaged): drops cache, sets source, managed=false.
+    {
+        let rel = insert_bare_release(&mgr, true).await;
+        let files = mgr.get_files_for_release(&rel).await.unwrap();
+        mgr.set_pinned_cache(&rel, &files).await.unwrap();
+        db.test_mark_managed_pinned(&rel).await.unwrap();
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Pinned);
+        mgr.unmanage_release_storage(&rel, "/out").await.unwrap();
+        assert_eq!(assert_valid_state(&mgr, &db, &rel).await, Unmanaged);
+    }
 }

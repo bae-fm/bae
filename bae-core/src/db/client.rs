@@ -182,27 +182,35 @@ fn parse_album_summary_row(row: &Row) -> Result<DbAlbumSummary, DbError> {
     })
 }
 
-/// SELECT-list fragment for the device-local `release_local_copy` row joined
-/// onto a `releases r` query via [`RELEASE_LOCAL_COPY_JOIN`]. `lc_present` is
-/// the row marker (NULL when the LEFT JOIN found no row); the other two are the
-/// copy's fields. Callers reassemble these via [`parse_release_local_copy`].
-const RELEASE_LOCAL_COPY_SELECT: &str = "lc.release_id AS lc_present, \
-    lc.unmanaged_path AS lc_unmanaged_path, \
-    lc.pinned_locally AS lc_pinned_locally";
+/// SELECT-list fragment computing this device's two storage-state facts for a
+/// `releases r` query, read back via [`storage_state_facts`]:
+///   - `has_unmanaged_source`: a `release_unmanaged_source` row exists.
+///   - `all_files_pinned`: the release has files AND every one has a pinned
+///     `file_cache` row (so it reads as the Pinned state). The correlated
+///     subquery counts the release's files missing a pinned cache row; zero of
+///     those plus at least one file means fully pinned.
+const STORAGE_STATE_SELECT: &str = "EXISTS ( \
+        SELECT 1 FROM release_unmanaged_source us WHERE us.release_id = r.id \
+    ) AS has_unmanaged_source, \
+    ( \
+        ( SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id ) > 0 \
+        AND NOT EXISTS ( \
+            SELECT 1 FROM release_files rf \
+            WHERE rf.release_id = r.id \
+              AND NOT EXISTS ( \
+                  SELECT 1 FROM file_cache fc \
+                  WHERE fc.file_id = rf.id AND fc.pinned = 1 \
+              ) \
+        ) \
+    ) AS all_files_pinned";
 
-/// LEFT JOIN clause pairing with [`RELEASE_LOCAL_COPY_SELECT`].
-const RELEASE_LOCAL_COPY_JOIN: &str = "LEFT JOIN release_local_copy lc ON lc.release_id = r.id";
-
-/// Reassemble the [`DbReleaseLocalCopy`] from a row carrying the
-/// [`RELEASE_LOCAL_COPY_SELECT`] columns. `None` when the LEFT JOIN found no
-/// row (this device holds no local copy).
-fn parse_release_local_copy(row: &Row) -> Option<DbReleaseLocalCopy> {
-    let release_id: Option<String> = row.get("lc_present").unwrap();
-    release_id.map(|release_id| DbReleaseLocalCopy {
-        release_id,
-        unmanaged_path: row.get("lc_unmanaged_path").unwrap(),
-        pinned_locally: row.get("lc_pinned_locally").unwrap(),
-    })
+/// Read `(has_unmanaged_source, all_files_pinned)` from a row carrying the
+/// [`STORAGE_STATE_SELECT`] columns.
+fn storage_state_facts(row: &Row) -> coven::rusqlite::Result<(bool, bool)> {
+    Ok((
+        row.get("has_unmanaged_source")?,
+        row.get("all_files_pinned")?,
+    ))
 }
 
 struct DatabaseInner {
@@ -287,8 +295,19 @@ impl Database {
     /// Stamp a synced row's `_updated_at` from coven's HLC register. Every
     /// INSERT/UPDATE of a synced table binds this, so the host and coven's sync
     /// layer resolve row conflicts off one shared clock.
-    fn register_stamp(&self) -> String {
+    pub(super) fn register_stamp(&self) -> String {
         self.inner.stamper.stamp()
+    }
+
+    /// Run `f` on coven's owned connection thread. The seam the `storage_state`
+    /// transition module uses to drive its transactions without reaching for the
+    /// private `coven_db` field.
+    pub(super) async fn with_conn<T, F>(&self, f: F) -> Result<T, DbError>
+    where
+        T: Send + 'static,
+        F: FnOnce(&coven::rusqlite::Connection) -> Result<T, DbError> + Send + 'static,
+    {
+        self.inner.coven_db.call(f).await
     }
 
     /// Open the database at `path`, running coven's bookkeeping migration plus
@@ -994,7 +1013,7 @@ impl Database {
             a.title AS album_title, \
             r.format, \
             r.managed, \
-            {RELEASE_LOCAL_COPY_SELECT}, \
+            {STORAGE_STATE_SELECT}, \
             COALESCE( \
                 a.primary_release_id, \
                 (SELECT r2.id FROM releases r2 WHERE r2.album_id = a.id ORDER BY r2.created_at LIMIT 1) \
@@ -1015,7 +1034,6 @@ impl Database {
             ), 0) AS total_size \
         FROM releases r \
         JOIN albums a ON a.id = r.album_id \
-        {RELEASE_LOCAL_COPY_JOIN} \
         {tail}"
         )
     }
@@ -1025,6 +1043,7 @@ impl Database {
     fn row_to_release_storage_summary(
         row: &Row,
     ) -> coven::rusqlite::Result<DbReleaseStorageSummary> {
+        let (has_unmanaged_source, all_files_pinned) = storage_state_facts(row)?;
         Ok(DbReleaseStorageSummary {
             release_id: row.get("release_id")?,
             album_id: row.get("album_id")?,
@@ -1033,7 +1052,8 @@ impl Database {
             format: row.get("format")?,
             primary_release_id: row.get("primary_release_id")?,
             managed: row.get("managed")?,
-            local_copy: parse_release_local_copy(row),
+            has_unmanaged_source,
+            all_files_pinned,
             file_count: row.get("file_count")?,
             total_size: row.get("total_size")?,
         })
@@ -1075,9 +1095,10 @@ impl Database {
     }
 
     /// Count releases whose audio this device can reach only through cloud
-    /// sync: managed, with no `release_local_copy` row on this device. Used by
-    /// the disconnect flow to warn the user how many releases will become
-    /// unplayable when the cloud provider is removed.
+    /// sync: managed, with no full pinned cache on this device (a fully pinned
+    /// release stays playable offline). Used by the disconnect flow to warn the
+    /// user how many releases will become unplayable when the cloud provider is
+    /// removed.
     pub async fn get_cloud_only_release_count(&self) -> Result<u64, DbError> {
         self.inner
             .coven_db
@@ -1085,7 +1106,17 @@ impl Database {
                 conn.query_row(
                     "SELECT COUNT(*) FROM releases r \
                      WHERE r.managed = 1 \
-                     AND NOT EXISTS (SELECT 1 FROM release_local_copy lc WHERE lc.release_id = r.id)",
+                     AND NOT ( \
+                         ( SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id ) > 0 \
+                         AND NOT EXISTS ( \
+                             SELECT 1 FROM release_files rf \
+                             WHERE rf.release_id = r.id \
+                               AND NOT EXISTS ( \
+                                   SELECT 1 FROM file_cache fc \
+                                   WHERE fc.file_id = rf.id AND fc.pinned = 1 \
+                               ) \
+                         ) \
+                     )",
                     [],
                     |row| row.get::<_, i64>(0),
                 )
@@ -1156,7 +1187,7 @@ impl Database {
                 r.album_id, \
                 r.format AS release_format, \
                 r.managed, \
-                {RELEASE_LOCAL_COPY_SELECT}, \
+                {STORAGE_STATE_SELECT}, \
                 COALESCE(( \
                     SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
                 ), 0) AS file_count, \
@@ -1181,7 +1212,6 @@ impl Database {
                 ), '[]') AS release_ids_json \
             FROM releases r \
             JOIN albums a ON a.id = r.album_id \
-            {RELEASE_LOCAL_COPY_JOIN} \
             {artist_sort_join} \
             {where_clause} \
             ORDER BY {order_by} \
@@ -1195,12 +1225,14 @@ impl Database {
                 let mut rows = stmt.query(params![limit as i64, offset as i64])?;
                 let mut storage_rows = Vec::new();
                 while let Some(row) = rows.next()? {
+                    let (has_unmanaged_source, all_files_pinned) = storage_state_facts(row)?;
                     let release = DbReleaseSummary {
                         id: row.get("release_id")?,
                         album_id: row.get("album_id")?,
                         format: row.get("release_format")?,
                         managed: row.get("managed")?,
-                        local_copy: parse_release_local_copy(row),
+                        has_unmanaged_source,
+                        all_files_pinned,
                         file_count: row.get("file_count")?,
                         total_size: row.get("total_size")?,
                     };
@@ -1342,11 +1374,13 @@ impl Database {
         let files = self.get_files_for_release(&release.id).await?;
         let audio_formats = self.get_audio_formats_for_release(&release.id).await?;
         let identities = self.get_release_identities(&release.id).await?;
-        let local_copy = self.get_release_local_copy(&release.id).await?;
+        let unmanaged_source = self.get_unmanaged_source(&release.id).await?;
+        let file_cache = self.get_release_file_cache(&release.id).await?;
 
         Ok(DbReleaseDetail {
             release,
-            local_copy,
+            unmanaged_source,
+            file_cache,
             tracks,
             files,
             audio_formats,
@@ -1626,9 +1660,13 @@ impl Database {
         primary_release_id: Option<(&str, &str)>, // (album_id, release_id)
         import_id: &str,
         identities: &[crate::import::ReleaseIdentity],
-        // This device's local copy of the import: `Some` for an in-place
-        // unmanaged import or a managed pin, `None` for managed cloud-only.
-        local_copy: Option<&DbReleaseLocalCopy>,
+        // This device's unmanaged source for the import: `Some` for an in-place
+        // unmanaged import OR a cloud-only import (whose originals are the
+        // upload source until the observer flips it managed). `None` for a pin.
+        unmanaged_source: Option<&DbUnmanagedSource>,
+        // This device's pinned cache rows: one per file for a pin import, empty
+        // otherwise. Each is a `storage/<file_id>` copy staged at import.
+        pinned_cache: &[DbFileCacheEntry],
         // Cloud-upload intents, one per file for managed imports (empty for
         // unmanaged). Committed inside this transaction so the release
         // either lands with its uploads queued or doesn't land at all.
@@ -1653,7 +1691,8 @@ impl Database {
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let import_id = import_id.to_string();
         let identities = identities.to_vec();
-        let local_copy = local_copy.cloned();
+        let unmanaged_source = unmanaged_source.cloned();
+        let pinned_cache = pinned_cache.to_vec();
         let cloud_uploads = cloud_uploads.to_vec();
 
         let now_dt = self.inner.clock.now();
@@ -1686,12 +1725,6 @@ impl Database {
                 //     so a release never carries two rows for the same source.
                 for identity in &identities {
                     insert_release_identity_row(&tx, &release.id, identity, &reg, &now)?;
-                }
-
-                // 2c. Record this device's local copy (in-place unmanaged import or a
-                //     managed pin). Absent for a managed cloud-only import.
-                if let Some(local_copy) = &local_copy {
-                    upsert_release_local_copy_row(&tx, local_copy)?;
                 }
 
                 // 3. Insert tracks. DbTracks live inside `tracks_to_files`; their
@@ -1737,6 +1770,18 @@ impl Database {
                     };
                     insert_file_row(&tx, &file, &reg)?;
                 }
+
+                // 6b. Record this device's storage rows (unmanaged source for an
+                //     unmanaged / cloud-only import, or pinned cache for a pin),
+                //     routed through the storage-state module that owns these
+                //     tables. After the file rows above, since `file_cache`
+                //     references `release_files(id)`.
+                super::storage_state::write_import_storage_rows(
+                    &tx,
+                    unmanaged_source.as_ref(),
+                    &pinned_cache,
+                    &now,
+                )?;
 
                 // 7. Insert audio formats
                 for af in &audio_formats {
@@ -2462,190 +2507,6 @@ impl Database {
                 )
                 .optional()
                 .map_err(DbError::from)
-            })
-            .await
-    }
-
-    /// This device's `release_local_copy` row, if any. `None` means this
-    /// device holds no local copy (stream from cloud if managed, else the
-    /// release isn't reachable here).
-    pub async fn get_release_local_copy(
-        &self,
-        release_id: &str,
-    ) -> Result<Option<DbReleaseLocalCopy>, DbError> {
-        let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT release_id, unmanaged_path, pinned_locally \
-                     FROM release_local_copy WHERE release_id = ?",
-                    params![release_id],
-                    |row| {
-                        Ok(DbReleaseLocalCopy {
-                            release_id: row.get("release_id")?,
-                            unmanaged_path: row.get("unmanaged_path")?,
-                            pinned_locally: row.get("pinned_locally")?,
-                        })
-                    },
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
-    }
-
-    /// Insert or replace this device's `release_local_copy` row.
-    pub async fn upsert_release_local_copy(
-        &self,
-        copy: &DbReleaseLocalCopy,
-    ) -> Result<(), DbError> {
-        let copy = copy.clone();
-        self.inner
-            .coven_db
-            .call(move |conn| upsert_release_local_copy_row(conn, &copy))
-            .await
-    }
-
-    /// Drop this device's `release_local_copy` row (it no longer holds a
-    /// local copy). A missing row is a no-op.
-    pub async fn delete_release_local_copy(&self, release_id: &str) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute(
-                    "DELETE FROM release_local_copy WHERE release_id = ?",
-                    params![release_id],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
-    }
-
-    /// Finish a Manage → Pinned transition: mark the shared `managed` fact true
-    /// and pin this device's local copy (a verified copy now lives under
-    /// `storage/`). Atomic so the two never diverge.
-    pub async fn set_release_managed_pinned(&self, release_id: &str) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
-                set_release_managed_row(&tx, &release_id, true, &reg)?;
-                upsert_release_local_copy_row(
-                    &tx,
-                    &DbReleaseLocalCopy {
-                        release_id: release_id.clone(),
-                        unmanaged_path: None,
-                        pinned_locally: true,
-                    },
-                )?;
-                tx.commit().map_err(DbError::from)
-            })
-            .await
-    }
-
-    /// Finish a Manage → CloudOnly transition: mark the shared `managed` fact
-    /// true and drop this device's local copy (the originals are gone / no
-    /// longer the live copy). Atomic so the two never diverge.
-    pub async fn set_release_managed_cloud_only(&self, release_id: &str) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
-                set_release_managed_row(&tx, &release_id, true, &reg)?;
-                tx.execute(
-                    "DELETE FROM release_local_copy WHERE release_id = ?",
-                    params![release_id],
-                )?;
-                tx.commit().map_err(DbError::from)
-            })
-            .await
-    }
-
-    /// Unmanage: mark the shared `managed` fact false and record this device's
-    /// local copy at `path` (the files moved back out in place). Atomic.
-    pub async fn set_release_unmanaged_path(
-        &self,
-        release_id: &str,
-        path: &str,
-    ) -> Result<(), DbError> {
-        let (release_id, path) = (release_id.to_string(), path.to_string());
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
-                set_release_managed_row(&tx, &release_id, false, &reg)?;
-                upsert_release_local_copy_row(
-                    &tx,
-                    &DbReleaseLocalCopy {
-                        release_id: release_id.clone(),
-                        unmanaged_path: Some(path),
-                        pinned_locally: false,
-                    },
-                )?;
-                tx.commit().map_err(DbError::from)
-            })
-            .await
-    }
-
-    /// Set the deferred-delete intent for a Manage → CloudOnly transition on
-    /// this device's `release_local_copy` row. The upload observer reads this
-    /// when the last upload lands, deletes the originals, then drops the row.
-    /// The row always exists when this is called: the intent is only set while
-    /// the release is unmanaged (an `unmanaged_path` local copy), and cleared
-    /// before the row is dropped, so a missing row is a bug, not a no-op.
-    pub async fn set_release_delete_unmanaged_source_on_upload(
-        &self,
-        release_id: &str,
-        delete: bool,
-    ) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let affected = conn.execute(
-                    "UPDATE release_local_copy SET delete_unmanaged_source_on_upload = ? \
-                         WHERE release_id = ?",
-                    params![delete, release_id],
-                )?;
-                if affected == 0 {
-                    return Err(DbError(format!(
-                        "release_local_copy row missing for release {release_id}"
-                    )));
-                }
-                Ok(())
-            })
-            .await
-    }
-
-    /// Read the deferred-delete intent from this device's `release_local_copy`
-    /// row. The upload observer consults this on the last finished upload, while
-    /// the row still records the unmanaged source path. No row means this device
-    /// holds no local copy, hence nothing to delete — reads as `false`.
-    pub async fn get_release_delete_unmanaged_source_on_upload(
-        &self,
-        release_id: &str,
-    ) -> Result<bool, DbError> {
-        let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let flag: Option<bool> = conn
-                    .query_row(
-                        "SELECT delete_unmanaged_source_on_upload FROM release_local_copy \
-                         WHERE release_id = ?",
-                        params![release_id],
-                        |row| row.get(0),
-                    )
-                    .optional()?;
-                Ok(flag.unwrap_or(false))
             })
             .await
     }
@@ -3635,45 +3496,6 @@ fn insert_release_identity_row(
             reg,
             now,
         ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-/// Set the shared `releases.managed` fact (bumping `_updated_at` so the change
-/// syncs). Shared by the transactional transition methods.
-fn set_release_managed_row(
-    conn: &Connection,
-    release_id: &str,
-    managed: bool,
-    reg: &str,
-) -> Result<(), DbError> {
-    conn.execute(
-        "UPDATE releases SET managed = ?, _updated_at = ? WHERE id = ?",
-        params![managed, reg, release_id],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-/// Insert or replace a `release_local_copy` row. Shared by the standalone
-/// upsert and the transactional transition methods. The table is device-local
-/// (no `_updated_at`, never synced), so there's no clock to bump.
-fn upsert_release_local_copy_row(
-    conn: &Connection,
-    copy: &DbReleaseLocalCopy,
-) -> Result<(), DbError> {
-    // ON CONFLICT (not INSERT OR REPLACE) so an existing row's
-    // `delete_unmanaged_source_on_upload` survives: that column is the
-    // deferred-delete intent, owned solely by set/get_release_delete_unmanaged_
-    // source_on_upload, and a whole-row replace here would silently reset it.
-    conn.execute(
-        "INSERT INTO release_local_copy (release_id, unmanaged_path, pinned_locally) \
-         VALUES (?, ?, ?) \
-         ON CONFLICT (release_id) DO UPDATE SET \
-             unmanaged_path = excluded.unmanaged_path, \
-             pinned_locally = excluded.pinned_locally",
-        params![copy.release_id, copy.unmanaged_path, copy.pinned_locally],
     )
     .map(|_| ())
     .map_err(DbError::from)

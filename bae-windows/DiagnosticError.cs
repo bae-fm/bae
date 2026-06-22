@@ -58,13 +58,13 @@ public sealed class DiagnosticError
 /// <summary>
 /// Why playback couldn't start or continue, mirroring the FFI's
 /// <c>FfiPlaybackErrorReason</c> (and the bridge's
-/// <c>BridgePlaybackErrorReason</c>). The two actionable cloud-only cases are
-/// keyed; every in-core failure rides in <see cref="Error"/> and renders
-/// through the diagnostic-error path.
+/// <c>BridgePlaybackErrorReason</c>). The actionable cloud-only case is keyed;
+/// every in-core failure rides in <see cref="Error"/> and renders through the
+/// diagnostic-error path.
 /// </summary>
 public sealed class PlaybackErrorReason
 {
-    /// <summary>"sync_disconnected" / "upload_pending" / "diagnostic".</summary>
+    /// <summary>"sync_disconnected" / "diagnostic".</summary>
     public string Kind { get; set; } = "diagnostic";
 
     /// <summary>The structured diagnostic for the "diagnostic" case.</summary>

@@ -411,19 +411,16 @@ async fn unmanaged_folder_import() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Verify release in DB: unmanaged (not managed), with this device's local
-    // copy recording the in-place import path.
+    // Verify release in DB: unmanaged (not managed), with this device's
+    // unmanaged source recording the in-place import path.
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert!(!release.managed);
-    let local_copy =
-        f.db.get_release_local_copy(&release_id)
+    let source =
+        f.db.get_unmanaged_source(&release_id)
             .await
             .unwrap()
             .unwrap();
-    assert_eq!(
-        local_copy.unmanaged_path.as_deref(),
-        Some(album_dir.to_str().unwrap())
-    );
+    assert_eq!(Some(source.path.as_str()), album_dir.to_str());
 
     // Verify tracks
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();

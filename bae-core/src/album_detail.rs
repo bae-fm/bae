@@ -36,53 +36,45 @@
 //! stay here; only the words "Side"/"Disc" are the UI's, resolved from catalog
 //! keys.
 
-use crate::db::{DbAlbum, DbReleaseLocalCopy};
+use crate::db::DbAlbum;
 
-/// Where a release's files live on *this device*, derived from this device's
-/// `release_local_copy` row and the shared `releases.managed` fact.
+/// Where a release's files live on *this device*, derived from the two
+/// device-local stores (`release_unmanaged_source`, `file_cache`) and the shared
+/// `releases.managed` fact by [`storage_state`].
 ///
-/// A verified local copy (`pinned_locally`) reads as `Pinned` regardless of cloud
-/// status — it is this device's copy whether or not its audio has finished
-/// uploading, so a pin reads `Pinned` throughout its upload (during which
-/// `managed` is still false). With no pinned copy, a `managed` release (audio in
-/// the cloud) is `CloudOnly` and an unmanaged one is `Unmanaged` (files in place
-/// at `unmanaged_path`).
-///
-/// The local-copy row's XOR invariant (`unmanaged_path` set XOR `pinned_locally`)
-/// keeps a single row from being both an in-place import and a pin; the three
-/// variants below cover every combination of (`managed`, local copy).
+/// An unmanaged source (the user's own files, in place) reads as `Unmanaged`. A
+/// fully pinned cache (every file has a pinned `storage/` copy) reads as
+/// `Pinned` regardless of cloud status — the pin survives the upload, so it
+/// reads `Pinned` throughout, even while `managed` is still false. Otherwise a
+/// release is `CloudOnly` (managed, audio in the cloud, no full pin here).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseStorageState {
-    /// Not managed, and this device holds the files at an `unmanaged_path`.
+    /// This device holds the release's own files in place (an unmanaged source).
     Unmanaged,
-    /// This device holds a verified local copy under `storage/` (a pin). Once its
+    /// Every file has a pinned `storage/` cache copy on this device. Once its
     /// audio finishes uploading the release is also managed; until then it still
     /// reads Pinned locally.
     Pinned,
-    /// Managed (audio in the cloud) with no local copy on this device.
+    /// Managed (audio in the cloud) with no full pin on this device.
     CloudOnly,
 }
 
-/// Derive the storage state from this device's `release_local_copy` row and the
-/// shared `managed` fact. Pure: the no-cloud-home overlay ("everything is
-/// Unmanaged") and the uploading overlay belong to
-/// [`available_storage_actions`], not here.
+/// Derive the storage state from the two device-local stores and the shared
+/// `managed` fact. Pure: the no-cloud-home overlay ("everything is Unmanaged")
+/// and the uploading overlay belong to [`available_storage_actions`], not here.
 ///
-/// A verified local copy (`pinned_locally`) reads as `Pinned` — that is the
-/// device's local storage, true whether or not the sync gate (`managed`) has
-/// flipped on yet, so a pin reads as Pinned throughout its upload, not just
-/// after. With no pinned copy, a `managed` release is `CloudOnly` and an
-/// unmanaged one is `Unmanaged` (its files stay in place at `unmanaged_path`).
-pub fn storage_state(
-    managed: bool,
-    local_copy: Option<&DbReleaseLocalCopy>,
-) -> ReleaseStorageState {
-    if local_copy.is_some_and(|c| c.pinned_locally) {
-        ReleaseStorageState::Pinned
-    } else if managed {
-        ReleaseStorageState::CloudOnly
-    } else {
+/// - `has_unmanaged_source` (the user's files in place) → `Unmanaged`.
+/// - `all_files_pinned` (the release has files and every one is pinned-cached
+///   here) → `Pinned`, true whether or not the sync gate (`managed`) has flipped
+///   yet, so a pin reads `Pinned` throughout its upload.
+/// - otherwise (managed, no full pin) → `CloudOnly`.
+pub fn storage_state(has_unmanaged_source: bool, all_files_pinned: bool) -> ReleaseStorageState {
+    if has_unmanaged_source {
         ReleaseStorageState::Unmanaged
+    } else if all_files_pinned {
+        ReleaseStorageState::Pinned
+    } else {
+        ReleaseStorageState::CloudOnly
     }
 }
 
@@ -224,7 +216,7 @@ pub struct ReleaseSummary {
     /// Audio format (e.g. "FLAC", "MP3"). `None` if unknown.
     pub format: Option<String>,
     /// Where this release's files live on this device, derived from
-    /// `releases.managed` and this device's `release_local_copy` row.
+    /// the two device-local stores (`release_unmanaged_source`, `file_cache`) and `releases.managed`.
     pub storage_state: ReleaseStorageState,
     /// Storage transitions available for this release right now, computed by
     /// the core from `storage_state` and whether a cloud home exists. The UI
@@ -342,7 +334,7 @@ pub struct AlbumSummary {
 /// Resolved per-release storage summary for the Storage Manager view.
 /// Produced by `LibraryManager` from `DbReleaseStorageSummary`: derives
 /// `storage_state` from `releases.managed` and this device's
-/// `release_local_copy` row. The UI formats `total_size` for the locale.
+/// the two device-local stores and `releases.managed`. The UI formats `total_size` for the locale.
 #[derive(Debug, Clone)]
 pub struct ReleaseStorageSummary {
     pub release_id: String,
@@ -355,7 +347,7 @@ pub struct ReleaseStorageSummary {
     /// least one release.
     pub primary_release_id: String,
     /// Where this release's files live on this device, derived from
-    /// `releases.managed` and this device's `release_local_copy` row.
+    /// the two device-local stores (`release_unmanaged_source`, `file_cache`) and `releases.managed`.
     pub storage_state: ReleaseStorageState,
     /// The storage transitions this release allows now, gated on cloud-home
     /// only. The in-flight-uploads gate lives in the UI: it suppresses these
@@ -459,34 +451,15 @@ mod tests {
     use ReleaseStorageAction::*;
     use ReleaseStorageState::*;
 
-    fn unmanaged_copy() -> DbReleaseLocalCopy {
-        DbReleaseLocalCopy {
-            release_id: "rel".to_string(),
-            unmanaged_path: Some("/music/album".to_string()),
-            pinned_locally: false,
-        }
-    }
-
-    fn pinned_copy() -> DbReleaseLocalCopy {
-        DbReleaseLocalCopy {
-            release_id: "rel".to_string(),
-            unmanaged_path: None,
-            pinned_locally: true,
-        }
-    }
-
     #[test]
     fn storage_state_derivation() {
-        // Not managed, no pinned copy ⇒ Unmanaged.
-        assert_eq!(storage_state(false, Some(&unmanaged_copy())), Unmanaged);
-        assert_eq!(storage_state(false, None), Unmanaged);
-        // Managed + pinned local copy ⇒ Pinned.
-        assert_eq!(storage_state(true, Some(&pinned_copy())), Pinned);
-        // Managed, no local copy ⇒ CloudOnly.
-        assert_eq!(storage_state(true, None), CloudOnly);
-        // A pinned local copy reads as Pinned even before the sync gate flips on
-        // (e.g. a pin still uploading) — it is this device's verified copy.
-        assert_eq!(storage_state(false, Some(&pinned_copy())), Pinned);
+        // An unmanaged source ⇒ Unmanaged (whatever else is set).
+        assert_eq!(storage_state(true, false), Unmanaged);
+        // No source, not fully pinned ⇒ CloudOnly (managed, audio in cloud).
+        assert_eq!(storage_state(false, false), CloudOnly);
+        // No source, fully pinned ⇒ Pinned — true even before the sync gate
+        // flips on (a pin still uploading), it is this device's verified copy.
+        assert_eq!(storage_state(false, true), Pinned);
     }
 
     #[test]
