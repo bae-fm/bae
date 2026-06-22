@@ -509,6 +509,31 @@ async fn project_discogs_from_cache(
     .map_err(LibraryError::Import)
 }
 
+/// Resolve a release file's readable LOCAL path under the uniform rule, or
+/// `None` when the only copy is in the cloud: the unmanaged source's in-place
+/// file, else a `file_cache` hit whose `storage/<file_id>` is present on disk.
+/// The single resolver; the [`LibraryManager::resolve_readable_local_path`]
+/// method and the free-function consumers (file-tag reset) both go through it so
+/// none re-derives the rule. `None` does NOT consult the cloud.
+pub(crate) async fn resolve_readable_local_path(
+    database: &Database,
+    library_dir: &LibraryDir,
+    file: &DbFile,
+) -> Result<Option<PathBuf>, LibraryError> {
+    if let Some(source) = database.get_unmanaged_source(&file.release_id).await? {
+        return Ok(Some(
+            std::path::Path::new(&source.path).join(&file.original_filename),
+        ));
+    }
+    if database.get_file_cache_entry(&file.id).await?.is_some() {
+        let storage_path = file.local_storage_path(library_dir);
+        if tokio::fs::try_exists(&storage_path).await? {
+            return Ok(Some(storage_path));
+        }
+    }
+    Ok(None)
+}
+
 /// Project the embedded tags of a release's local audio files into a
 /// `ParsedAlbum`. Mirrors the Unknown import path's call to
 /// `map_file_tags_to_db`. Errors out if any audio file is unreachable on
@@ -522,25 +547,22 @@ async fn project_file_tags(
     ids: IdRef,
 ) -> Result<crate::import::ParsedAlbum, LibraryError> {
     let files = database.get_files_for_release(&release.id).await?;
-    let unmanaged_source = database.get_unmanaged_source(&release.id).await?;
     let mut audio_paths = Vec::new();
     for file in &files {
         if !file.content_type.is_audio() {
             continue;
         }
-        // File tags are read from the file in place; resolve under the uniform
-        // rule (unmanaged source, else a `storage/` cache hit). A cloud-only
-        // file has no local bytes to read tags from.
-        let path = if let Some(source) = unmanaged_source.as_ref() {
-            std::path::Path::new(&source.path).join(&file.original_filename)
-        } else if database.get_file_cache_entry(&file.id).await?.is_some() {
-            file.local_storage_path(library_dir)
-        } else {
-            return Err(LibraryError::Import(format!(
-                "audio file '{}' is cloud-only — pin the release locally before resetting from file tags",
-                file.original_filename
-            )));
-        };
+        // File tags are read from the file in place; resolve through the single
+        // local-path resolver. A cloud-only file has no local bytes to read tags
+        // from.
+        let path = resolve_readable_local_path(database, library_dir, file)
+            .await?
+            .ok_or_else(|| {
+                LibraryError::Import(format!(
+                    "audio file '{}' is cloud-only — pin the release locally before resetting from file tags",
+                    file.original_filename
+                ))
+            })?;
         audio_paths.push(path);
     }
     if audio_paths.is_empty() {
@@ -1929,23 +1951,7 @@ impl LibraryManager {
         &self,
         file: &DbFile,
     ) -> Result<Option<PathBuf>, LibraryError> {
-        if let Some(source) = self.database.get_unmanaged_source(&file.release_id).await? {
-            return Ok(Some(
-                std::path::Path::new(&source.path).join(&file.original_filename),
-            ));
-        }
-        if self
-            .database
-            .get_file_cache_entry(&file.id)
-            .await?
-            .is_some()
-        {
-            let storage_path = file.local_storage_path(&self.library_dir);
-            if tokio::fs::try_exists(&storage_path).await? {
-                return Ok(Some(storage_path));
-            }
-        }
-        Ok(None)
+        resolve_readable_local_path(&self.database, &self.library_dir, file).await
     }
 
     /// Resolve where a release file's bytes can be read on this device under the

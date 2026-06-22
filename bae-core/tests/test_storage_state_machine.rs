@@ -847,12 +847,8 @@ async fn assert_valid_state(
     let has_source = db.get_unmanaged_source(release_id).await.unwrap().is_some();
     let files = mgr.get_files_for_release(release_id).await.unwrap();
     let cache = db.get_release_file_cache(release_id).await.unwrap();
-    let pinned: std::collections::HashSet<&str> = cache
-        .iter()
-        .filter(|e| e.pinned)
-        .map(|e| e.file_id.as_str())
-        .collect();
-    let all_pinned = !files.is_empty() && files.iter().all(|f| pinned.contains(f.id.as_str()));
+    let all_pinned =
+        bae_core::album_detail::all_files_pinned(files.iter().map(|f| f.id.as_str()), &cache);
 
     // The forbidden tuple must never occur: a release the device can't read.
     assert!(

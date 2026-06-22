@@ -295,16 +295,30 @@ impl ReleaseUploadObserver {
                 // deletes the originals if a Manage → CloudOnly asked to (they
                 // were the upload source, unsafe to delete until now).
                 //
-                // The pinned-vs-cloud-only branch keys off whether the release
-                // has any pinned cache rows (the pin path) vs an unmanaged source
-                // row (import-cloud-only / Manage-cloud-only).
-                let pinned = match self.db.get_release_file_cache(&release.id).await {
-                    Ok(cache) => cache.iter().any(|e| e.pinned),
+                // The pinned-vs-cloud-only branch keys off whether every file is
+                // pinned-cached here (the canonical Pinned predicate; the pin
+                // path) vs an unmanaged source row (import-cloud-only /
+                // Manage-cloud-only). At the flip these are mutually exclusive by
+                // construction, but deriving it through `all_files_pinned` keeps
+                // the one definition rather than a weaker local `any` check.
+                let files = match self.db.get_files_for_release(&release.id).await {
+                    Ok(files) => files,
+                    Err(e) => {
+                        warn!("Failed to load files for {}: {e}", release.id);
+                        return false;
+                    }
+                };
+                let cache = match self.db.get_release_file_cache(&release.id).await {
+                    Ok(cache) => cache,
                     Err(e) => {
                         warn!("Failed to load file cache for {}: {e}", release.id);
                         return false;
                     }
                 };
+                let pinned = crate::album_detail::all_files_pinned(
+                    files.iter().map(|f| f.id.as_str()),
+                    &cache,
+                );
                 let kind = if pinned { "pinned" } else { "cloud-only" };
                 info!(
                     "All files uploaded for release {}, marking managed ({kind})",
