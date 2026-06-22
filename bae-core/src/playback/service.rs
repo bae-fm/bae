@@ -1458,7 +1458,12 @@ impl PlaybackService {
                     self.stop_preview_without_resume();
                     self.main_was_playing_before_preview = false;
                     let start = if shuffle {
-                        ContextStart::Shuffled
+                        // The shuffle seed is read once here, at the command
+                        // boundary, and carried into the context so the order is
+                        // reproducible and `Context` repeat can re-derive it.
+                        ContextStart::Shuffled {
+                            seed: rand::random(),
+                        }
                     } else {
                         // None means "from the first track"; an out-of-range index
                         // is a bad caller value, so clamp to the start and log it.

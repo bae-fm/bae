@@ -4,7 +4,7 @@ use tracing::warn;
 
 use super::RepeatMode;
 use crate::id_provider::IdRef;
-use crate::playback::context::{ContextStart, PlaybackContext};
+use crate::playback::context::{shuffled_traversal, ContextStart, PlaybackContext, Traversal};
 
 /// Per-instance identity for an enqueued track. Distinct from `track_id`: the
 /// same track enqueued twice yields two entries with two ids, each removable,
@@ -143,10 +143,18 @@ impl PlaybackQueue {
     /// manual lane (a fresh playback session). Returns the track to play. The
     /// caller passes a non-empty release (and an in-range `Index`); the context
     /// is therefore non-empty with a valid cursor.
-    pub fn play_release(&mut self, track_ids: Vec<String>, start: ContextStart) -> String {
+    pub fn play_release(&mut self, mut track_ids: Vec<String>, start: ContextStart) -> String {
         self.manual.clear();
-        let entries = track_ids.into_iter().map(|t| self.mint(t)).collect();
-        let context = PlaybackContext::new(entries, start);
+        let (cursor, traversal) = match start {
+            ContextStart::Index(index) => (index, Traversal::Sequential),
+            ContextStart::Shuffled { seed } => (0, shuffled_traversal(&mut track_ids, seed)),
+        };
+        let entries: Vec<QueueEntry> = track_ids.into_iter().map(|t| self.mint(t)).collect();
+        let context = PlaybackContext {
+            entries,
+            cursor,
+            traversal,
+        };
         let track = context.current().track_id.clone();
         self.current = Some(context.current().clone());
         self.context = Some(context);
@@ -353,12 +361,28 @@ impl PlaybackQueue {
         }
 
         // The manual lane and the context tail are both exhausted. Under
-        // `Context` repeat, loop the (non-empty) context from its start.
+        // `Context` repeat, loop the (non-empty) context from its start, re-
+        // deriving a shuffled order with a fresh seed so each pass differs.
         if self.repeat == RepeatMode::Context && self.context.is_some() {
+            self.rederive_context();
             return NextEntry::Play(self.play_context_at(0));
         }
 
         NextEntry::Stop
+    }
+
+    /// Re-derive the context's order for a fresh repeat pass: a shuffled context
+    /// re-permutes its entries with the next seed so the loop is a different
+    /// order; a sequential one is left as-is. The cursor is reset to the start by
+    /// the `play_context_at(0)` that follows.
+    fn rederive_context(&mut self) {
+        let ctx = self
+            .context
+            .as_mut()
+            .expect("rederive_context: context present");
+        if let Traversal::Shuffled { seed } = ctx.traversal {
+            ctx.traversal = shuffled_traversal(&mut ctx.entries, seed.wrapping_add(1));
+        }
     }
 
     /// Advance directly to the upcoming front and make it current, bypassing
@@ -472,6 +496,14 @@ mod tests {
     /// so most assertions are about which tracks sit where.
     fn upcoming_tracks(q: &PlaybackQueue) -> Vec<String> {
         q.upcoming().into_iter().map(|e| e.track_id).collect()
+    }
+
+    /// The full play order from the current track onward: the current track then
+    /// the upcoming projection.
+    fn full_order(q: &PlaybackQueue) -> Vec<String> {
+        let mut order = vec![q.current_track_id().unwrap().to_string()];
+        order.extend(upcoming_tracks(q));
+        order
     }
 
     fn manual_ids(q: &PlaybackQueue) -> Vec<QueueEntryId> {
@@ -636,11 +668,59 @@ mod tests {
     #[test]
     fn test_play_release_shuffled_keeps_all_tracks() {
         let mut q = queue();
-        q.play_release(rel(&["t1", "t2", "t3", "t4"]), ContextStart::Shuffled);
-        let mut all: Vec<String> = vec![q.current_track_id().unwrap().to_string()];
-        all.extend(upcoming_tracks(&q));
+        q.play_release(
+            rel(&["t1", "t2", "t3", "t4"]),
+            ContextStart::Shuffled { seed: 7 },
+        );
+        let mut all = full_order(&q);
         all.sort();
         assert_eq!(all, vec!["t1", "t2", "t3", "t4"]);
+    }
+
+    #[test]
+    fn test_play_release_shuffled_is_deterministic_for_a_seed() {
+        let order = |seed| {
+            let mut q = queue();
+            q.play_release(
+                rel(&["t1", "t2", "t3", "t4", "t5"]),
+                ContextStart::Shuffled { seed },
+            );
+            full_order(&q)
+        };
+        assert_eq!(order(42), order(42), "same seed yields the same order");
+    }
+
+    /// A repeating shuffled context loops a freshly re-derived order each pass,
+    /// not the same order every time. Both passes' orders are read from the queue
+    /// (no re-implementation of the shuffle) and are deterministic for a fixed
+    /// seed.
+    #[test]
+    fn test_context_repeat_shuffled_loops_a_re_derived_order() {
+        let mut q = queue();
+        q.play_release(
+            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            ContextStart::Shuffled { seed: 1 },
+        );
+        q.set_repeat_mode(RepeatMode::Context);
+        let first_pass = full_order(&q);
+        // Advance to the end of the pass, then one more advance loops it.
+        for _ in 0..first_pass.len() - 1 {
+            q.next_entry();
+        }
+        match q.next_entry() {
+            NextEntry::Play(_) => {}
+            other => panic!("expected a looped Play, got {other:?}"),
+        }
+        let second_pass = full_order(&q);
+
+        let (mut a, mut b) = (first_pass.clone(), second_pass.clone());
+        a.sort();
+        b.sort();
+        assert_eq!(a, b, "the loop replays exactly the same tracks");
+        assert_ne!(
+            first_pass, second_pass,
+            "but in a freshly re-derived order each pass"
+        );
     }
 
     #[test]
