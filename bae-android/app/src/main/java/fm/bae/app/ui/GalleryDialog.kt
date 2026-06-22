@@ -5,11 +5,19 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -33,6 +41,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -52,15 +61,19 @@ import uniffi.bae_bridge.BridgeGalleryItem
 import java.io.File
 
 private const val FULL_RES_SCALE_THRESHOLD = 1.01f
+private const val DISMISS_THRESHOLD_DP = 150f
+private const val DRAG_FADE_DISTANCE_MULTIPLIER = 2f
+private const val DRAG_BACKDROP_FADE = 0.7f
 private const val TAG = "bae.GalleryDialog"
 private val logger = BaeLogger(TAG)
 
 /**
  * Full-screen artwork viewer over a release's gallery items (cover first, then
- * every image file the release has). Swipeable when there's more than one. An
- * item already on disk renders from its [BridgeGalleryItem.localPath]; a
- * cloud-only item (no local path) is fetched on demand via [loadImage], keyed by
- * the item's id. Each page pinch-zooms and snaps back when you release.
+ * every image file the release has). Swipeable when there's more than one, and a
+ * downward swipe dismisses it. An item already on disk renders from its
+ * [BridgeGalleryItem.localPath]; a cloud-only item (no local path) is fetched on
+ * demand via [loadImage], keyed by the item's id. Each page pinch-zooms and snaps
+ * back when you release.
  */
 @Composable
 fun GalleryDialog(
@@ -73,54 +86,126 @@ fun GalleryDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         val pagerState = rememberPagerState(pageCount = { items.size })
-        Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                    val item = items[page]
-                    val localPath = item.localPath
-                    if (localPath != null) {
-                        // The full identifier (with any `#v=<mtime>` suffix) is the
-                        // cache key; [coverFile] strips it to the on-disk path.
-                        ZoomableGalleryImage(
-                            data = coverFile(localPath),
-                            cacheKey = localPath,
-                            contentDescription = item.label,
+        val scope = rememberCoroutineScope()
+        var offsetY by remember { mutableFloatStateOf(0f) }
+        val dismissThresholdPx = with(LocalDensity.current) { DISMISS_THRESHOLD_DP.dp.toPx() }
+        // Fade the backdrop toward the dismiss threshold as the viewer is dragged
+        // down, so the photo appears to lift away over the app behind it.
+        val dragProgress = (offsetY / (dismissThresholdPx * DRAG_FADE_DISTANCE_MULTIPLIER)).coerceIn(0f, 1f)
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color.Black.copy(alpha = 1f - dragProgress * DRAG_BACKDROP_FADE),
+        ) {
+            // The outer (untranslated) box owns the vertical swipe-to-dismiss; the
+            // inner box carries the drag offset, so the gesture's coordinate space
+            // stays put. The vertical drag and the pager's horizontal swipe each
+            // wait on their own axis' touch slop, so neither steals the other; a
+            // pinch-zoom consumes its events first, so it doesn't dismiss either.
+            Box(
+                modifier =
+                    Modifier.fillMaxSize().pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                offsetY = (offsetY + dragAmount).coerceAtLeast(0f)
+                                change.consume()
+                            },
+                            onDragEnd = {
+                                if (offsetY > dismissThresholdPx) {
+                                    onDismiss()
+                                } else {
+                                    scope.launch { animate(offsetY, 0f) { value, _ -> offsetY = value } }
+                                }
+                            },
+                            onDragCancel = {
+                                scope.launch { animate(offsetY, 0f) { value, _ -> offsetY = value } }
+                            },
                         )
-                    } else {
-                        RemoteGalleryImage(
-                            fileId = item.id,
-                            label = item.label,
-                            loadImage = loadImage,
-                        )
+                    },
+            ) {
+                Box(modifier = Modifier.fillMaxSize().graphicsLayer { translationY = offsetY }) {
+                    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                        GalleryPage(item = items[page], loadImage = loadImage)
                     }
-                }
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.close),
-                        tint = Color.White,
-                    )
-                }
-                // Current item's label (e.g. "Cover", "Back.jpg") + page counter,
-                // so multi-image galleries aren't a blind swipe-through.
-                Column(
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    // Core always sets a non-empty label ("Cover" or the file's
-                    // original filename), so render it unconditionally.
-                    Text(text = items[pagerState.currentPage].label, color = Color.White)
-                    if (items.size > 1) {
-                        Text(
-                            text = "${pagerState.currentPage + 1} / ${items.size}",
-                            color = Color.White.copy(alpha = 0.7f),
-                        )
-                    }
+                    GalleryCloseButton(onDismiss = onDismiss)
+                    GalleryCaption(items = items, pagerState = pagerState)
                 }
             }
+        }
+    }
+}
+
+/**
+ * One gallery page: an on-disk item renders from its path; a cloud-only item
+ * fetches its bytes on demand.
+ */
+@Composable
+private fun GalleryPage(
+    item: BridgeGalleryItem,
+    loadImage: suspend (fileId: String) -> ByteArray,
+) {
+    val localPath = item.localPath
+    if (localPath != null) {
+        // The full identifier (with any `#v=<mtime>` suffix) is the cache key;
+        // [coverFile] strips it to the on-disk path.
+        ZoomableGalleryImage(
+            data = coverFile(localPath),
+            cacheKey = localPath,
+            contentDescription = item.label,
+        )
+    } else {
+        RemoteGalleryImage(fileId = item.id, label = item.label, loadImage = loadImage)
+    }
+}
+
+/** Close button, inset out of the status bar and any display cutout. */
+@Composable
+private fun BoxScope.GalleryCloseButton(onDismiss: () -> Unit) {
+    IconButton(
+        onClick = onDismiss,
+        modifier =
+            Modifier
+                .align(Alignment.TopEnd)
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                ).padding(8.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Close,
+            contentDescription = stringResource(R.string.close),
+            tint = Color.White,
+        )
+    }
+}
+
+/**
+ * Current item's label (e.g. "Cover", "Back.jpg") and, for a multi-image gallery,
+ * its position — inset above the navigation bar so it isn't a blind swipe-through.
+ * Reads [PagerState.currentPage] here at the leaf so only the caption recomposes
+ * on a page turn, not the parent.
+ */
+@Composable
+private fun BoxScope.GalleryCaption(
+    items: List<BridgeGalleryItem>,
+    pagerState: PagerState,
+) {
+    val currentPage = pagerState.currentPage
+    Column(
+        modifier =
+            Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+                ).padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // Core always sets a non-empty label ("Cover" or the file's original
+        // filename), so render it unconditionally.
+        Text(text = items[currentPage].label, color = Color.White)
+        if (items.size > 1) {
+            Text(
+                text = "${currentPage + 1} / ${items.size}",
+                color = Color.White.copy(alpha = 0.7f),
+            )
         }
     }
 }
