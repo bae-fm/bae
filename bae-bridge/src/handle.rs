@@ -1,6 +1,7 @@
 use std::future::Future;
 
 use bae_core::library::AppServices;
+use bae_core::playback::QueueEntryId;
 #[cfg(feature = "desktop")]
 use bae_core::signals::ExtractionSource;
 use tracing::info;
@@ -381,24 +382,28 @@ impl AppHandle {
             .insert_in_queue(track_ids, index as usize);
     }
 
-    pub fn remove_from_queue(&self, index: u32) {
+    pub fn remove_entry(&self, entry_id: String) {
         self.app_services
             .playback()
-            .remove_from_queue(index as usize);
+            .remove_entry(QueueEntryId(entry_id));
     }
 
-    pub fn reorder_queue(&self, from_index: u32, to_index: u32) {
+    /// Move the entry `entry_id` to sit immediately before `before_entry_id`.
+    /// `before_entry_id == None` moves it to the end of the queue.
+    pub fn reorder_entry(&self, entry_id: String, before_entry_id: Option<String>) {
         self.app_services
             .playback()
-            .reorder_queue(from_index as usize, to_index as usize);
+            .reorder_entry(QueueEntryId(entry_id), before_entry_id.map(QueueEntryId));
     }
 
     pub fn clear_queue(&self) {
         self.app_services.playback().clear_queue();
     }
 
-    pub fn skip_to_queue_index(&self, index: u32) {
-        self.app_services.playback().skip_to(index as usize);
+    pub fn skip_to_entry(&self, entry_id: String) {
+        self.app_services
+            .playback()
+            .skip_to_entry(QueueEntryId(entry_id));
     }
 
     // =========================================================================
@@ -1515,6 +1520,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             items: items
                 .into_iter()
                 .map(|i| BridgeQueueItem {
+                    entry_id: i.entry_id,
                     track_id: i.track_id,
                     title: i.title,
                     artist_names: i.artist_names,

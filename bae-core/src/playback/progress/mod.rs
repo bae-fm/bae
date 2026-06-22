@@ -37,9 +37,10 @@ pub enum PlaybackProgress {
         track_id: String,
         progress: f64,
     },
-    /// Queue was updated — contains current queue state
+    /// Queue was updated — contains current queue state as per-instance entries
+    /// (id + track id), in order.
     QueueUpdated {
-        tracks: Vec<String>,
+        entries: Vec<crate::playback::QueueEntry>,
         has_next: bool,
         has_previous: bool,
     },

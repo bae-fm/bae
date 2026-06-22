@@ -22,7 +22,7 @@
 //! 8. Send `Seeked` progress event
 
 use super::RepeatMode;
-use super::{NextTrack, PlaybackQueue, PreviousAction};
+use super::{NextTrack, PlaybackQueue, PreviousAction, QueueEntryId};
 use crate::audio_codec::StreamingDecodeError;
 use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
@@ -156,16 +156,19 @@ pub enum PlaybackCommand {
     AddReleaseToQueue(String),
     AddReleaseNext(String),
     InsertInQueue(Vec<String>, usize),
-    RemoveFromQueue(usize),
+    /// Remove the queue entry with this per-instance id.
+    RemoveFromQueue(QueueEntryId),
+    /// Move the entry `entry_id` to sit immediately before `before`.
+    /// `before = None` moves it to the end of the queue.
     ReorderQueue {
-        from: usize,
-        to: usize,
+        entry_id: QueueEntryId,
+        before: Option<QueueEntryId>,
     },
     ClearQueue,
     SetRepeatMode(RepeatMode),
     CycleRepeatMode,
-    /// Skip to a specific position in the queue (manual action, skip pregap)
-    SkipTo(usize),
+    /// Skip to the queue entry with this per-instance id (manual action, skip pregap)
+    SkipTo(QueueEntryId),
     /// Preview a local audio file (toggle: same path stops, different path switches).
     PreviewPlay(String),
     /// Stop any active preview.
@@ -313,11 +316,14 @@ impl PlaybackHandle {
             PlaybackCommand::InsertInQueue(track_ids, index),
         );
     }
-    pub fn remove_from_queue(&self, index: usize) {
-        dispatch_command(&self.command_tx, PlaybackCommand::RemoveFromQueue(index));
+    pub fn remove_entry(&self, entry_id: QueueEntryId) {
+        dispatch_command(&self.command_tx, PlaybackCommand::RemoveFromQueue(entry_id));
     }
-    pub fn reorder_queue(&self, from: usize, to: usize) {
-        dispatch_command(&self.command_tx, PlaybackCommand::ReorderQueue { from, to });
+    pub fn reorder_entry(&self, entry_id: QueueEntryId, before: Option<QueueEntryId>) {
+        dispatch_command(
+            &self.command_tx,
+            PlaybackCommand::ReorderQueue { entry_id, before },
+        );
     }
     pub fn clear_queue(&self) {
         dispatch_command(&self.command_tx, PlaybackCommand::ClearQueue);
@@ -367,8 +373,8 @@ impl PlaybackHandle {
     pub fn get_last_position_display(&self) -> Option<PositionDisplay> {
         self.last_position_display.lock().unwrap().clone()
     }
-    pub fn skip_to(&self, index: usize) {
-        dispatch_command(&self.command_tx, PlaybackCommand::SkipTo(index));
+    pub fn skip_to_entry(&self, entry_id: QueueEntryId) {
+        dispatch_command(&self.command_tx, PlaybackCommand::SkipTo(entry_id));
     }
     /// Preview a local audio file. Same path toggles off, different path switches.
     pub fn preview_play(&self, path: String) {
@@ -1256,12 +1262,13 @@ impl PlaybackService {
                         }
                     },
                 };
+                let queue_ids = library_manager.ids().clone();
                 let mut service = PlaybackService {
                     library_manager,
                     command_tx: command_tx.clone(),
                     command_rx,
                     progress_tx,
-                    playback_queue: PlaybackQueue::new(),
+                    playback_queue: PlaybackQueue::new(queue_ids),
                     current_position_shared: Arc::new(std::sync::Mutex::new(None)),
                     audio_output,
                     stream: None,
@@ -1766,11 +1773,11 @@ impl PlaybackService {
                     self.emit_queue_items_added(count);
                     self.on_queue_mutated().await;
                 }
-                PlaybackCommand::RemoveFromQueue(index) => {
-                    if let Some(removed_track_id) = self.playback_queue.remove(index) {
+                PlaybackCommand::RemoveFromQueue(entry_id) => {
+                    if let Some(removed) = self.playback_queue.remove(&entry_id) {
                         if self
                             .current_track_id()
-                            .map(|id| id == removed_track_id)
+                            .map(|id| id == removed.track_id)
                             .unwrap_or(false)
                         {
                             self.stop().await;
@@ -1780,8 +1787,8 @@ impl PlaybackService {
                         }
                     }
                 }
-                PlaybackCommand::ReorderQueue { from, to } => {
-                    self.playback_queue.reorder(from, to);
+                PlaybackCommand::ReorderQueue { entry_id, before } => {
+                    self.playback_queue.reorder(&entry_id, before.as_ref());
                     self.on_queue_mutated().await;
                 }
                 PlaybackCommand::ClearQueue => {
@@ -1811,17 +1818,17 @@ impl PlaybackService {
                     );
                     self.emit_queue_update();
                 }
-                PlaybackCommand::SkipTo(index) => {
-                    if let Some(track_id) = self.playback_queue.skip_to(index) {
+                PlaybackCommand::SkipTo(entry_id) => {
+                    if let Some(entry) = self.playback_queue.skip_to(&entry_id) {
                         info!(
-                            "SkipTo: jumping to queue position {}, track {}",
-                            index, track_id
+                            "SkipTo: jumping to queue entry {}, track {}",
+                            entry.id.0, entry.track_id
                         );
 
                         self.clear_next_track_state();
                         self.emit_queue_update();
-                        self.playback_queue.set_current(track_id.clone());
-                        self.play_track(&track_id, false, false).await;
+                        self.playback_queue.set_current(entry.track_id.clone());
+                        self.play_track(&entry.track_id, false, false).await;
                     }
                 }
                 PlaybackCommand::PreviewPlay(path) => {
@@ -2034,7 +2041,7 @@ impl PlaybackService {
         info!("Streaming playback started for track: {}", track_id);
 
         // Preload next track
-        if let Some(next_id) = self.playback_queue.front().cloned() {
+        if let Some(next_id) = self.playback_queue.front().map(str::to_string) {
             self.preload_next_track(&next_id).await;
         }
     }
@@ -2151,7 +2158,7 @@ impl PlaybackService {
             None => return,
         };
         let queue_front = match self.playback_queue.front() {
-            Some(id) => id.clone(),
+            Some(id) => id.to_string(),
             None => {
                 self.clear_next_track_state();
                 return;
@@ -2271,7 +2278,7 @@ impl PlaybackService {
         self.emit_current_state();
 
         // Preload (and stage, if same-format) the following track.
-        if let Some(following) = self.playback_queue.front().cloned() {
+        if let Some(following) = self.playback_queue.front().map(str::to_string) {
             self.preload_next_track(&following).await;
         }
     }
@@ -2282,7 +2289,7 @@ impl PlaybackService {
     /// same advance-by-one sequence, and three copies drift.
     fn advance_queue_to(&mut self, track_id: &str) {
         self.playback_queue.set_current(track_id.to_string());
-        if self.playback_queue.front().map(|s| s.as_str()) == Some(track_id) {
+        if self.playback_queue.front() == Some(track_id) {
             self.playback_queue.pop_front();
         }
         self.emit_queue_update();
@@ -2370,7 +2377,7 @@ impl PlaybackService {
         self.emit_current_state();
 
         // Preload next track if available
-        if let Some(next_track_id) = self.playback_queue.front().cloned() {
+        if let Some(next_track_id) = self.playback_queue.front().map(str::to_string) {
             self.preload_next_track(&next_track_id).await;
         }
     }
@@ -3041,7 +3048,7 @@ impl PlaybackService {
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::QueueUpdated {
-                tracks: self.playback_queue.tracks(),
+                entries: self.playback_queue.entries(),
                 has_next,
                 has_previous,
             },
@@ -3071,7 +3078,12 @@ impl PlaybackService {
         Some(PlaybackSnapshot {
             track_id,
             position_ms,
-            queue: self.playback_queue.tracks(),
+            queue: self
+                .playback_queue
+                .entries()
+                .into_iter()
+                .map(|e| e.track_id)
+                .collect(),
             volume: if self.is_muted {
                 self.pre_mute_volume
             } else {

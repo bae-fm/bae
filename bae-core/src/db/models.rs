@@ -14,9 +14,10 @@
 //!
 //! `LibraryManager` in `crate::library::manager` is the resolver: it takes
 //! these raw types and produces the display-ready `AlbumDetail`,
-//! `ReleaseDetail`, `AlbumSummary`, `QueueItem`, `ReleaseStorageSummary`,
-//! and `SearchResults` that live in `crate::album_detail` (and the sibling
-//! `crate::queue`). Those are what the bridge and event payloads carry.
+//! `ReleaseDetail`, `AlbumSummary`, `ReleaseStorageSummary`, and
+//! `SearchResults` that live in `crate::album_detail`. Those are what the
+//! bridge and event payloads carry. (The queue's `crate::queue::QueueItem` is
+//! built directly by `db::get_queue_items` — it has no raw counterpart here.)
 
 use crate::import::MetadataSource;
 use crate::util::content_type::ContentType;
@@ -150,19 +151,6 @@ pub struct DbAlbumSummary {
     /// User-chosen primary release. `None` if unset — the resolver in
     /// `LibraryManager` falls back to the first release.
     pub primary_release_id: Option<String>,
-}
-
-/// Raw queue-item aggregate: a track row joined with album/artist context in
-/// the shape the resolver expects. No formatting — the resolver in
-/// `LibraryManager` produces the display-ready `crate::queue::QueueItem`.
-#[derive(Debug, Clone)]
-pub struct DbQueueItem {
-    pub track_id: String,
-    pub title: String,
-    pub artist_names: String,
-    pub duration_ms: Option<i64>,
-    pub album_title: String,
-    pub cover_image_id: Option<String>,
 }
 
 /// Probe whether the candidate at `release_id` (from a search result) is

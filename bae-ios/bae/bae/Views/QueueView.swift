@@ -6,8 +6,8 @@ private let logger = Logger.bae("Queue")
 /// The play queue, presented as a sheet: the currently-playing track, then a
 /// reorderable "Up Next" list. Reads the authoritative now-playing and queue
 /// off the shared `PlaybackStore`; mutations go straight to the `Queue` service
-/// (`clearQueue` / `removeFromQueue` / `reorderQueue` / `skipToQueueIndex`) and
-/// reflect back as a `QueueUpdated` event that re-populates `queueItems`.
+/// (`clearQueue` / `removeEntry` / `reorderEntry` / `skipToEntry`) and reflect
+/// back as a `QueueUpdated` event that re-populates `queueItems`.
 ///
 /// The view iterates and renders only — `durationLabel` is pre-formatted and the
 /// queue arrives pre-ordered. The current track is never in `queueItems`; it
@@ -113,14 +113,14 @@ func upNextRows(
     isEditing: Bool,
     onSkipped: @escaping () -> Void
 ) -> some View {
-    // Positional identity: the queue may hold the same track twice, so
-    // `QueueItem.id` (== trackId) isn't unique. Keying on the enumerated offset
-    // makes each row's identity its queue index — exactly what skip/move/delete
-    // report back to core.
-    ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+    // Each item carries a unique per-instance `entryId`, so rows key on
+    // `QueueItem.id` (== entryId) even when the same track is queued twice.
+    // onMove/onDelete report array positions, which we resolve back to the entry
+    // id of the affected row.
+    ForEach(items) { item in
         Button {
             guard !isEditing else { return }
-            queue.skipToQueueIndex(UInt32(index))
+            queue.skipToEntry(item.entryId)
             onSkipped()
         } label: {
             QueueRow(item: item)
@@ -135,16 +135,18 @@ func upNextRows(
             return
         }
         // SwiftUI's destination is a gap index in the original array (item still
-        // present) — the same convention core's reorder expects, so map straight
-        // through with no offset.
-        queue.reorderQueue(UInt32(from), UInt32(destination))
+        // present): the moved entry lands before the item currently at that gap,
+        // or at the end when the gap is past the last row.
+        let beforeEntryId =
+            destination < items.count ? items[destination].entryId : nil
+        queue.reorderEntry(items[from].entryId, beforeEntryId)
     }
     .onDelete { offsets in
         guard let index = offsets.first else {
             logger.warning("onDelete fired with an empty offset set")
             return
         }
-        queue.removeFromQueue(UInt32(index))
+        queue.removeEntry(items[index].entryId)
     }
 }
 

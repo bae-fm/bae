@@ -4,10 +4,9 @@
 //! `LibraryManager` owns `library_dir` and the database handle. The
 //! `resolve_*` helpers near the top of this file each take a `Db*` input
 //! (from `crate::db::models`) and produce its resolved counterpart (in
-//! `crate::album_detail` or the sibling `crate::queue`). Public methods
-//! return the resolved shapes — `AlbumSummary`, `QueueItem`,
-//! `ReleaseStorageSummary`, `SearchResults`, `AlbumDetail`, `ReleaseDetail`
-//! — never the raw `Db*` aggregates.
+//! `crate::album_detail`). Public methods return the resolved shapes —
+//! `AlbumSummary`, `ReleaseStorageSummary`, `SearchResults`, `AlbumDetail`,
+//! `ReleaseDetail` — never the raw `Db*` aggregates.
 //!
 //! Rule for additions: new DB-backed data flows through this layer. If you
 //! need a new resolved shape, add the raw type to `crate::db::models`, the
@@ -34,9 +33,9 @@ use crate::clock::ClockRef;
 use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::{
     Database, DbAlbum, DbAlbumArtist, DbAlbumSearchResult, DbAlbumSummary, DbArtist, DbAudioFormat,
-    DbFile, DbImport, DbLibraryImage, DbLibrarySearchResults, DbQueueItem, DbRelease,
-    DbReleaseLocalCopy, DbReleaseStorageSummary, DbReleaseSummary, DbStorageRow, DbTrack,
-    DbTrackArtist, DbTrackSearchResult, ImportOperationStatus, LibraryImageType, Pressing,
+    DbFile, DbImport, DbLibraryImage, DbLibrarySearchResults, DbRelease, DbReleaseLocalCopy,
+    DbReleaseStorageSummary, DbReleaseSummary, DbStorageRow, DbTrack, DbTrackArtist,
+    DbTrackSearchResult, ImportOperationStatus, LibraryImageType, Pressing,
     SortDirection as DbSortDirection, StorageFilter as DbStorageFilter,
     StorageSortCriterion as DbStorageSortCriterion, StorageSortField as DbStorageSortField,
 };
@@ -48,6 +47,7 @@ use crate::keys::KeyService;
 use crate::library::export::ExportService;
 use crate::library::versioned_image_path::versioned_image_identifier;
 use crate::library_dir::LibraryDir;
+use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 use crate::storage::cloud::CloudHome;
 use crate::storage::local::cleanup::{append_pending_deletions, PendingDeletion};
@@ -113,18 +113,6 @@ pub(crate) async fn playback_info_from_track_release(
         album_title,
         cover_image_id,
     })
-}
-
-/// Produces a resolved `QueueItem` from a raw `DbQueueItem`.
-fn resolve_queue_item(raw: DbQueueItem) -> QueueItem {
-    QueueItem {
-        track_id: raw.track_id,
-        title: raw.title,
-        artist_names: raw.artist_names,
-        duration_ms: raw.duration_ms,
-        album_title: raw.album_title,
-        cover_image_id: raw.cover_image_id,
-    }
 }
 
 /// Produces a resolved `ReleaseStorageSummary` from a raw
@@ -1258,10 +1246,9 @@ impl LibraryManager {
     }
 
     /// The injected id source. The import layer and the mappers mint row ids
-    /// through this so tests get a deterministic-but-unique sequence.
-    /// Only the desktop import modules call this, so it isn't compiled on
-    /// mobile (where it would otherwise be dead code).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    /// through this so tests get a deterministic-but-unique sequence; the
+    /// playback queue mints per-instance `QueueEntryId`s through it on every
+    /// platform.
     pub(crate) fn ids(&self) -> &IdRef {
         &self.ids
     }
@@ -3812,10 +3799,9 @@ impl LibraryManager {
     }
     pub async fn get_queue_items(
         &self,
-        track_ids: &[String],
+        entries: &[QueueEntry],
     ) -> Result<Vec<QueueItem>, LibraryError> {
-        let raws = self.database.get_queue_items(track_ids).await?;
-        Ok(raws.into_iter().map(resolve_queue_item).collect())
+        Ok(self.database.get_queue_items(entries).await?)
     }
     pub async fn is_source_folder_name_imported(&self, name: &str) -> Result<bool, LibraryError> {
         Ok(self.database.is_source_folder_name_imported(name).await?)

@@ -3,7 +3,10 @@
 /// <summary>One track in the play queue, from the <c>QueueUpdated</c> event JSON.</summary>
 public sealed class QueueItem
 {
-    public string TrackId { get; set; } = string.Empty;
+    /// <summary>Per-instance id: the same track queued twice yields two items
+    /// with two ids, so rows key on it and remove/reorder/skip target one
+    /// instance.</summary>
+    public string EntryId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Artist { get; set; } = string.Empty;
 

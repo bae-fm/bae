@@ -1,5 +1,7 @@
 use crate::clock::ClockRef;
 use crate::db::models::*;
+use crate::playback::QueueEntry;
+use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use coven::database::DbError;
@@ -1406,17 +1408,22 @@ impl Database {
             .await
     }
 
-    /// Enrich a list of track IDs with album/artist metadata for queue display.
-    /// Returns items in the same order as the input IDs (skipping any not found).
-    pub async fn get_queue_items(&self, track_ids: &[String]) -> Result<Vec<DbQueueItem>, DbError> {
-        if track_ids.is_empty() {
+    /// Enrich a list of queue entries with album/artist metadata for display.
+    /// Returns one `QueueItem` per entry, in the same order, each carrying the
+    /// entry's per-instance id. The same track queued twice resolves twice (the
+    /// metadata is fetched once and joined onto every entry of that track).
+    /// Entries whose track is not found are skipped.
+    pub async fn get_queue_items(&self, entries: &[QueueEntry]) -> Result<Vec<QueueItem>, DbError> {
+        if entries.is_empty() {
             return Ok(Vec::new());
         }
 
-        let track_ids = track_ids.to_vec();
+        let entries = entries.to_vec();
         self.inner
             .coven_db
             .call(move |conn| {
+                let track_ids: Vec<String> =
+                    entries.iter().map(|e| e.track_id.clone()).collect();
                 let placeholders = track_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
                 let query = format!(
                     "SELECT \
@@ -1442,15 +1449,14 @@ impl Database {
                 );
 
                 let mut stmt = conn.prepare(&query)?;
-                let mut by_id: HashMap<String, DbQueueItem> = HashMap::new();
+                let mut meta_by_track: HashMap<String, TrackQueueMeta> = HashMap::new();
                 let mut rows = stmt
                     .query(coven::rusqlite::params_from_iter(track_ids.iter()))?;
                 while let Some(row) = rows.next()? {
                     let track_id: String = row.get("track_id")?;
-                    by_id.insert(
-                        track_id.clone(),
-                        DbQueueItem {
-                            track_id,
+                    meta_by_track.insert(
+                        track_id,
+                        TrackQueueMeta {
                             title: row.get("title")?,
                             artist_names: row.get("artist_names")?,
                             duration_ms: row.get("duration_ms")?,
@@ -1460,7 +1466,7 @@ impl Database {
                     );
                 }
 
-                Ok(order_queue_items(&by_id, &track_ids))
+                Ok(resolve_queue_entries(&meta_by_track, &entries))
             })
             .await
     }
@@ -3732,27 +3738,64 @@ fn replace_track_artists(
 
 /// Resolve queue track-ids to their display rows in position order, preserving
 /// duplicates. The same track may be queued more than once, so a repeated id
-/// must resolve every time — hence `get`, not `remove` (which would consume the
-/// row on first hit and silently drop later occurrences, desyncing every
-/// downstream positional index: skip-to, reorder, remove).
-fn order_queue_items(
-    by_id: &std::collections::HashMap<String, DbQueueItem>,
-    track_ids: &[String],
-) -> Vec<DbQueueItem> {
-    track_ids
+/// Per-track display metadata: one row per distinct track in the queue, fetched
+/// once and joined onto every queue entry that plays that track. Carries no
+/// identity (no entry id, no track id) — `resolve_queue_entries` supplies those
+/// from the entries.
+struct TrackQueueMeta {
+    title: String,
+    artist_names: String,
+    duration_ms: Option<i64>,
+    album_title: String,
+    cover_image_id: Option<String>,
+}
+
+/// Join per-track metadata onto each queue entry, preserving order and
+/// duplicates. The same track id appears once in `meta_by_track` but resolves
+/// once per entry — so the metadata lookup is `get`, not `remove` (which would
+/// consume the row on first hit and silently drop later occurrences). Keying
+/// display rows on each entry's per-instance id (rather than a position) is what
+/// lets the UI target duplicate tracks independently.
+fn resolve_queue_entries(
+    meta_by_track: &std::collections::HashMap<String, TrackQueueMeta>,
+    entries: &[QueueEntry],
+) -> Vec<QueueItem> {
+    entries
         .iter()
-        .filter_map(|id| by_id.get(id).cloned())
+        .filter_map(|entry| {
+            let Some(meta) = meta_by_track.get(&entry.track_id) else {
+                // A queue entry whose track has no metadata means the queue
+                // references a track no longer in the library — an inconsistency
+                // (library deletion clears the track from the queue), not a
+                // normal skip. Drop it from the projection but surface it.
+                tracing::warn!(
+                    "queue entry {} references track {} with no metadata; dropping from the queue projection",
+                    entry.id.0,
+                    entry.track_id
+                );
+                return None;
+            };
+            Some(QueueItem {
+                entry_id: entry.id.0.clone(),
+                track_id: entry.track_id.clone(),
+                title: meta.title.clone(),
+                artist_names: meta.artist_names.clone(),
+                duration_ms: meta.duration_ms,
+                album_title: meta.album_title.clone(),
+                cover_image_id: meta.cover_image_id.clone(),
+            })
+        })
         .collect()
 }
 
 #[cfg(test)]
 mod queue_ordering_tests {
     use super::*;
+    use crate::playback::QueueEntryId;
     use std::collections::HashMap;
 
-    fn item(id: &str) -> DbQueueItem {
-        DbQueueItem {
-            track_id: id.to_string(),
+    fn meta(id: &str) -> TrackQueueMeta {
+        TrackQueueMeta {
             title: format!("Title {id}"),
             artist_names: "Artist Name".to_string(),
             duration_ms: Some(1000),
@@ -3761,26 +3804,40 @@ mod queue_ordering_tests {
         }
     }
 
-    #[test]
-    fn preserves_duplicate_queue_entries_in_order() {
-        let mut by_id = HashMap::new();
-        by_id.insert("a".to_string(), item("a"));
-        by_id.insert("b".to_string(), item("b"));
-
-        // The same track queued twice must resolve twice, in position order.
-        let ordered =
-            order_queue_items(&by_id, &["a".to_string(), "a".to_string(), "b".to_string()]);
-
-        let ids: Vec<&str> = ordered.iter().map(|i| i.track_id.as_str()).collect();
-        assert_eq!(ids, vec!["a", "a", "b"]);
+    fn entry(entry_id: &str, track_id: &str) -> QueueEntry {
+        QueueEntry {
+            id: QueueEntryId(entry_id.to_string()),
+            track_id: track_id.to_string(),
+        }
     }
 
     #[test]
-    fn skips_unknown_ids() {
-        let mut by_id = HashMap::new();
-        by_id.insert("a".to_string(), item("a"));
-        let ordered = order_queue_items(&by_id, &["a".to_string(), "missing".to_string()]);
-        assert_eq!(ordered.len(), 1);
+    fn preserves_duplicate_queue_entries_in_order_with_distinct_ids() {
+        let mut meta_by_track = HashMap::new();
+        meta_by_track.insert("a".to_string(), meta("a"));
+        meta_by_track.insert("b".to_string(), meta("b"));
+
+        // The same track queued twice resolves twice, in position order, each
+        // carrying its own entry id.
+        let resolved = resolve_queue_entries(
+            &meta_by_track,
+            &[entry("e0", "a"), entry("e1", "a"), entry("e2", "b")],
+        );
+
+        let track_ids: Vec<&str> = resolved.iter().map(|i| i.track_id.as_str()).collect();
+        assert_eq!(track_ids, vec!["a", "a", "b"]);
+        let entry_ids: Vec<&str> = resolved.iter().map(|i| i.entry_id.as_str()).collect();
+        assert_eq!(entry_ids, vec!["e0", "e1", "e2"]);
+    }
+
+    #[test]
+    fn skips_entries_whose_track_is_unknown() {
+        let mut meta_by_track = HashMap::new();
+        meta_by_track.insert("a".to_string(), meta("a"));
+        let resolved =
+            resolve_queue_entries(&meta_by_track, &[entry("e0", "a"), entry("e1", "missing")]);
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0].entry_id, "e0");
     }
 }
 

@@ -1,20 +1,22 @@
 import Foundation
 
 struct QueueItem: Identifiable, Equatable {
-    let trackId: String
+    /// Per-instance id: the same track queued twice yields two items with two
+    /// ids, so the row identity is stable and unique even for duplicates.
+    let entryId: String
     let title: String
     let durationMs: Int64?
     let albumTitle: String
     let coverImageId: String?
 
     var id: String {
-        trackId
+        entryId
     }
 
     var durationLabel: String { DurationClock.text(durationMs) }
 
     init(bridge: BridgeQueueItem) {
-        trackId = bridge.trackId
+        entryId = bridge.entryId
         title = bridge.title
         durationMs = bridge.durationMs
         albumTitle = bridge.albumTitle

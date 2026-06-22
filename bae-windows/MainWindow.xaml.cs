@@ -2592,7 +2592,15 @@ public sealed partial class MainWindow : Window
         {
             if (args.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Move)
             {
-                NativeBae.QueueReorder(_handle, (uint)args.OldStartingIndex, (uint)args.NewStartingIndex);
+                // The collection already reflects the move: the entry now sits at
+                // NewStartingIndex and lands before whatever follows it (null when
+                // it's now last = move to the end).
+                var moved = queueItems[args.NewStartingIndex];
+                var beforeIndex = args.NewStartingIndex + 1;
+                var beforeEntryId = beforeIndex < queueItems.Count
+                    ? queueItems[beforeIndex].EntryId
+                    : null;
+                NativeBae.QueueReorder(_handle, moved.EntryId, beforeEntryId);
             }
         };
 
@@ -2607,10 +2615,9 @@ public sealed partial class MainWindow : Window
         };
         list.ItemClick += (_, args) =>
         {
-            var index = queueItems.IndexOf((QueueItem)args.ClickedItem);
-            if (index >= 0)
+            if (args.ClickedItem is QueueItem clicked)
             {
-                NativeBae.QueueSkipTo(_handle, (uint)index);
+                NativeBae.QueueSkipTo(_handle, clicked.EntryId);
             }
         };
         // Right-tap a row to drop it from the queue. Removing locally too keeps the
@@ -2633,14 +2640,15 @@ public sealed partial class MainWindow : Window
             var remove = new MenuFlyoutItem { Text = Loc.Chrome("queue.remove_item") };
             remove.Click += (_, _) =>
             {
-                // Recompute: a reorder between the right-tap and the click could have
-                // moved this item.
+                // The FFI removes by entry id, so a reorder between the right-tap and
+                // the click can't target the wrong row. The local index is only to keep
+                // the open dialog's collection in sync.
                 var idx = queueItems.IndexOf(item);
                 if (idx < 0)
                 {
                     return;
                 }
-                NativeBae.QueueRemove(_handle, (uint)idx);
+                NativeBae.QueueRemove(_handle, item.EntryId);
                 queueItems.RemoveAt(idx);
             };
             menu.Items.Add(remove);

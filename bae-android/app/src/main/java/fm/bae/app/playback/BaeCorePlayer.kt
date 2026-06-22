@@ -56,8 +56,11 @@ data class PlaybackPosition(
 
 /** One queue entry the [fm.bae.app.ui.QueueScreen] renders. The UI projection
  *  of the player's internal queue metadata: [durationLabel] is pre-formatted by
- *  core, [coverPath] is already resolved to a local file path. */
+ *  core, [coverPath] is already resolved to a local file path. [entryId] is the
+ *  per-instance id the row keys on and that remove/reorder/skip target — unique
+ *  even when the same track is queued twice. */
 data class QueueItem(
+    val entryId: String,
     val trackId: String,
     val title: String,
     val artist: String,
@@ -326,6 +329,9 @@ class BaeCorePlayer(
      * what's playing, and resilient to queue/playback event ordering).
      */
     internal data class Meta(
+        /** The queue entry's per-instance id, or null for the current-track
+         *  override (which is not a queue entry — see [orderedMetas]). */
+        val entryId: String?,
         val trackId: String,
         val title: String,
         val artist: String,
@@ -620,6 +626,8 @@ class BaeCorePlayer(
         coverImageId: String?,
     ): Meta =
         Meta(
+            // The current-track override is not a queue entry, so it has no id.
+            entryId = null,
             trackId = trackId,
             title = title,
             artist = artist,
@@ -700,11 +708,20 @@ class BaeCorePlayer(
                 elapsedLabel = elapsedLabel,
                 remainingLabel = remainingLabel,
             )
-        _queue.value = entries.map { it.toQueueItem() }
+        _queue.value = entries.mapNotNull { it.toQueueItem() }
     }
 
-    private fun Meta.toQueueItem(): QueueItem =
-        QueueItem(
+    private fun Meta.toQueueItem(): QueueItem? {
+        // Only the current-track override has a null entryId, and it never sits
+        // in the up-next `entries` this maps over; a null here means a queue
+        // entry arrived without its id.
+        val entryId = entryId
+        if (entryId == null) {
+            logger.warning("queue entry $trackId has no entryId; dropping from projection")
+            return null
+        }
+        return QueueItem(
+            entryId = entryId,
             trackId = trackId,
             title = title,
             artist = artist,
@@ -712,9 +729,11 @@ class BaeCorePlayer(
             durationLabel = durationLabel,
             coverPath = coverPath,
         )
+    }
 
     private fun BridgeQueueItem.toEntry(): Meta =
         Meta(
+            entryId = entryId,
             trackId = trackId,
             title = title,
             artist = artistNames,
@@ -836,7 +855,16 @@ class BaeCorePlayer(
             }
 
             Player.COMMAND_SEEK_TO_MEDIA_ITEM -> {
-                appHandle.skipToQueueIndex(mediaItemIndex.toUInt())
+                // The Media3 playlist is the now-playing track followed by the
+                // up-next entries (orderedMetas). Resolve the tapped index to its
+                // queue-entry id; the current-track slot has none, so seeking to
+                // it is a no-op.
+                val entryId = orderedMetas(entries, currentMeta).getOrNull(mediaItemIndex)?.entryId
+                if (entryId != null) {
+                    appHandle.skipToEntry(entryId)
+                } else {
+                    logger.warning("handleSeek to media item $mediaItemIndex has no queue entry id")
+                }
             }
 
             else -> {

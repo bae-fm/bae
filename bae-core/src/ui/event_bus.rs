@@ -149,16 +149,17 @@ impl UiEventBus {
                         });
                     }
                     PlaybackProgress::QueueUpdated {
-                        tracks,
+                        entries,
                         has_next,
                         has_previous,
                     } => {
-                        // Resolve the queue's track ids to display-ready items in
-                        // core so the event payload is fully populated. Consumers
-                        // then map it directly instead of each re-querying the DB
-                        // (the macOS reducer used to; Windows didn't, so its queue
+                        // Resolve the queue's entries to display-ready items in
+                        // core so the event payload is fully populated, each row
+                        // carrying its per-instance entry id. Consumers then map
+                        // it directly instead of each re-querying the DB (the
+                        // macOS reducer used to; Windows didn't, so its queue
                         // rows rendered blank).
-                        match lm.get_queue_items(&tracks).await {
+                        match lm.get_queue_items(&entries).await {
                             Ok(items) => {
                                 bus.emit(UiBusEvent::QueueUpdated {
                                     items,
@@ -168,8 +169,8 @@ impl UiEventBus {
                             }
                             Err(e) => {
                                 tracing::warn!(
-                                    "skipping QueueUpdated: failed to resolve {} queue item(s): {e}",
-                                    tracks.len()
+                                    "skipping QueueUpdated: failed to resolve {} queue entry(ies): {e}",
+                                    entries.len()
                                 );
                             }
                         }

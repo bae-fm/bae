@@ -20,6 +20,7 @@ use bae_core::diagnostics::{
     AppDiagnosticMetadata, DatadogDiagnosticsConfig, DiagnosticLevel, Diagnostics,
     DiagnosticsConfig,
 };
+use bae_core::playback::QueueEntryId;
 use bae_core::ui::UiBusEvent;
 use serde::{Deserialize, Serialize};
 use tracing_subscriber::{prelude::*, util::SubscriberInitExt};
@@ -2261,7 +2262,10 @@ pub unsafe extern "C" fn bae_album_detail(
 /// One track in the play queue (carried by `QueueUpdated`).
 #[derive(Serialize)]
 struct FfiQueueItem {
-    track_id: String,
+    /// Per-instance id: the same track queued twice yields two items with two
+    /// ids, so the UI keys rows on it and targets remove/reorder/skip at one
+    /// instance.
+    entry_id: String,
     title: String,
     artist: String,
     /// Raw track length in milliseconds, or null when unknown. The C# formats it.
@@ -2658,7 +2662,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             items: items
                 .iter()
                 .map(|item| FfiQueueItem {
-                    track_id: item.track_id.clone(),
+                    entry_id: item.entry_id.clone(),
                     title: item.title.clone(),
                     artist: item.artist_names.clone(),
                     duration_ms: item.duration_ms,
@@ -2975,45 +2979,90 @@ pub unsafe extern "C" fn bae_previous(handle: *const BaeHandle) {
     }
 }
 
-/// Jump to the queue entry at `index`.
+/// Jump to the queue entry with `entry_id`.
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+/// `entry_id` must be a valid NUL-terminated UTF-8 C string.
 #[no_mangle]
-pub unsafe extern "C" fn bae_queue_skip_to(handle: *const BaeHandle, index: u32) {
-    if let Some(handle) = handle.as_ref() {
-        handle.0.services.playback().skip_to(index as usize);
-    }
+pub unsafe extern "C" fn bae_queue_skip_to(handle: *const BaeHandle, entry_id: *const c_char) {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_queue_skip_to: null handle");
+        return;
+    };
+    let Some(entry_id) = cstr(entry_id) else {
+        tracing::error!("bae_queue_skip_to: null or non-UTF-8 entry_id");
+        return;
+    };
+    handle
+        .0
+        .services
+        .playback()
+        .skip_to_entry(QueueEntryId(entry_id));
 }
 
-/// Remove the queue entry at `index`.
+/// Remove the queue entry with `entry_id`.
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+/// `entry_id` must be a valid NUL-terminated UTF-8 C string.
 #[no_mangle]
-pub unsafe extern "C" fn bae_queue_remove(handle: *const BaeHandle, index: u32) {
-    if let Some(handle) = handle.as_ref() {
-        handle
-            .0
-            .services
-            .playback()
-            .remove_from_queue(index as usize);
-    }
+pub unsafe extern "C" fn bae_queue_remove(handle: *const BaeHandle, entry_id: *const c_char) {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_queue_remove: null handle");
+        return;
+    };
+    let Some(entry_id) = cstr(entry_id) else {
+        tracing::error!("bae_queue_remove: null or non-UTF-8 entry_id");
+        return;
+    };
+    handle
+        .0
+        .services
+        .playback()
+        .remove_entry(QueueEntryId(entry_id));
 }
 
-/// Move the queue entry at `from` to `to`.
+/// Move the entry `entry_id` to sit immediately before `before_entry_id`.
+/// A null `before_entry_id` moves it to the end of the queue.
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+/// `entry_id` must be a valid NUL-terminated UTF-8 C string; `before_entry_id`
+/// must be null or such a string.
 #[no_mangle]
-pub unsafe extern "C" fn bae_queue_reorder(handle: *const BaeHandle, from: u32, to: u32) {
-    if let Some(handle) = handle.as_ref() {
-        handle
-            .0
-            .services
-            .playback()
-            .reorder_queue(from as usize, to as usize);
-    }
+pub unsafe extern "C" fn bae_queue_reorder(
+    handle: *const BaeHandle,
+    entry_id: *const c_char,
+    before_entry_id: *const c_char,
+) {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_queue_reorder: null handle");
+        return;
+    };
+    let Some(entry_id) = cstr(entry_id) else {
+        tracing::error!("bae_queue_reorder: null or non-UTF-8 entry_id");
+        return;
+    };
+    // A null `before_entry_id` means "move to the end"; a non-null but non-UTF-8
+    // value is malformed input, surfaced here rather than silently treated as
+    // "end" (matching the other exports that reject non-UTF-8).
+    let before = if before_entry_id.is_null() {
+        None
+    } else {
+        match cstr(before_entry_id) {
+            Some(id) => Some(QueueEntryId(id)),
+            None => {
+                tracing::error!("bae_queue_reorder: non-UTF-8 before_entry_id");
+                return;
+            }
+        }
+    };
+    handle
+        .0
+        .services
+        .playback()
+        .reorder_entry(QueueEntryId(entry_id), before);
 }
 
 /// Clear the play queue.

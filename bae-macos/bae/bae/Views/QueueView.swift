@@ -10,15 +10,17 @@ struct QueueView: View {
     let resolveImagePath: (String?) -> String?
     let onClose: () -> Void
     let onClear: () -> Void
-    let onSkipTo: (Int) -> Void
-    let onRemove: (Int) -> Void
-    let onReorder: (Int, Int) -> Void
+    let onSkipTo: (String) -> Void
+    let onRemove: (String) -> Void
+    /// Move the entry `entryId` to sit before `beforeEntryId`; `nil` moves it
+    /// to the end of the queue.
+    let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
     let onInsertTracks: ([String], Int) -> Void
 
     @State
     private var hoveredIndex: Int?
     @State
-    private var draggedTrackId: String?
+    private var draggedEntryId: String?
     @State
     private var dropInsertIndex: Int?
 
@@ -62,7 +64,7 @@ struct QueueView: View {
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 4)
                                     .opacity(
-                                        draggedTrackId == item.id ? 0.3 : 1.0
+                                        draggedEntryId == item.id ? 0.3 : 1.0
                                     )
                                 Divider().padding(.leading, 62)
                             }
@@ -71,7 +73,7 @@ struct QueueView: View {
                                 delegate: QueueDropDelegate(
                                     targetIndex: index,
                                     items: items,
-                                    draggedTrackId: $draggedTrackId,
+                                    draggedEntryId: $draggedEntryId,
                                     dropInsertIndex: $dropInsertIndex,
                                     onReorder: onReorder,
                                     onInsertTracks: onInsertTracks,
@@ -91,7 +93,7 @@ struct QueueView: View {
                                 delegate: QueueDropDelegate(
                                     targetIndex: items.count,
                                     items: items,
-                                    draggedTrackId: $draggedTrackId,
+                                    draggedEntryId: $draggedEntryId,
                                     dropInsertIndex: $dropInsertIndex,
                                     onReorder: onReorder,
                                     onInsertTracks: onInsertTracks,
@@ -181,7 +183,7 @@ struct QueueView: View {
                     RoundedRectangle(cornerRadius: 3)
                         .fill(.black.opacity(0.5))
                         .frame(width: 40, height: 40)
-                    Button(action: { onSkipTo(index) }) {
+                    Button(action: { onSkipTo(item.id) }) {
                         Image(systemName: "play.fill")
                             .font(.caption)
                             .foregroundColor(.white)
@@ -203,7 +205,7 @@ struct QueueView: View {
             Spacer()
 
             if hoveredIndex == index {
-                Button(action: { onRemove(index) }) {
+                Button(action: { onRemove(item.id) }) {
                     Image(systemName: "xmark")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -222,15 +224,15 @@ struct QueueView: View {
             hoveredIndex = isHovered ? index : nil
         }
         .onDrag {
-            draggedTrackId = item.id
+            draggedEntryId = item.id
             return NSItemProvider(object: item.id as NSString)
         }
         .onTapGesture(count: 2) {
-            onSkipTo(index)
+            onSkipTo(item.id)
         }
         .contextMenu {
             Button("Remove from Queue") {
-                onRemove(index)
+                onRemove(item.id)
             }
         }
     }
@@ -246,22 +248,23 @@ private struct QueueDropDelegate: DropDelegate {
     let targetIndex: Int
     let items: [QueueItem]
     @Binding
-    var draggedTrackId: String?
+    var draggedEntryId: String?
     @Binding
     var dropInsertIndex: Int?
-    let onReorder: (Int, Int) -> Void
+    /// Move the dragged entry to sit before `beforeEntryId`; `nil` = end.
+    let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
     let onInsertTracks: ([String], Int) -> Void
 
     /// Whether this is an internal reorder (dragged from within the queue).
     private var isInternalDrag: Bool {
-        guard let draggedId = draggedTrackId else {
+        guard let draggedId = draggedEntryId else {
             return false
         }
         return items.contains { $0.id == draggedId }
     }
 
     func dropEntered(info _: DropInfo) {
-        if let draggedId = draggedTrackId,
+        if let draggedId = draggedEntryId,
             let fromIndex = items.firstIndex(where: { $0.id == draggedId })
         {
             // Internal reorder: show insertion line relative to source
@@ -286,16 +289,20 @@ private struct QueueDropDelegate: DropDelegate {
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        if let draggedId = draggedTrackId,
+        if let draggedId = draggedEntryId,
             let fromIndex = items.firstIndex(where: { $0.id == draggedId })
         {
-            // Internal reorder
+            // Internal reorder. `toIndex` is the gap the entry lands in; the
+            // entry it lands before is whatever currently sits at that gap
+            // (nil past the end = move to the queue's end).
             let toIndex =
                 targetIndex > fromIndex ? targetIndex + 1 : targetIndex
             if toIndex != fromIndex {
-                onReorder(fromIndex, toIndex)
+                let beforeEntryId =
+                    toIndex < items.count ? items[toIndex].id : nil
+                onReorder(draggedId, beforeEntryId)
             }
-            draggedTrackId = nil
+            draggedEntryId = nil
             dropInsertIndex = nil
             return true
         }
@@ -345,7 +352,7 @@ private struct QueueDropDelegate: DropDelegate {
 
     func validateDrop(info: DropInfo) -> Bool {
         // Accept both internal drags and external drops with plain text
-        if draggedTrackId != nil {
+        if draggedEntryId != nil {
             return true
         }
         return info.hasItemsConforming(to: [UTType.plainText])

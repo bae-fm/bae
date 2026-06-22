@@ -58,10 +58,10 @@ struct NowPlayingBarContainer: View {
             onToggleMute: { playback.toggleMute() },
             onCycleRepeat: { playback.cycleRepeatMode() },
             onQueueClear: { queue.clearQueue() },
-            onQueueSkipTo: { queue.skipToQueueIndex(UInt32($0)) },
-            onQueueRemove: { queue.removeFromQueue(UInt32($0)) },
-            onQueueReorder: { from, to in
-                queue.reorderQueue(UInt32(from), UInt32(to))
+            onQueueSkipTo: { queue.skipToEntry($0) },
+            onQueueRemove: { queue.removeEntry($0) },
+            onQueueReorder: { entryId, beforeEntryId in
+                queue.reorderEntry(entryId, beforeEntryId)
             },
             onQueueInsertTracks: onQueueInsertTracks,
             onDropToQueue: onDropToQueue,
@@ -120,9 +120,9 @@ struct NowPlayingBar: View {
     let onToggleMute: () -> Void
     let onCycleRepeat: () -> Void
     let onQueueClear: () -> Void
-    let onQueueSkipTo: (Int) -> Void
-    let onQueueRemove: (Int) -> Void
-    let onQueueReorder: (Int, Int) -> Void
+    let onQueueSkipTo: (String) -> Void
+    let onQueueRemove: (String) -> Void
+    let onQueueReorder: (String, String?) -> Void
     let onQueueInsertTracks: ([String], Int) -> Void
     let onDropToQueue: ([String]) -> Void
     let onNavigateToAlbum: () -> Void

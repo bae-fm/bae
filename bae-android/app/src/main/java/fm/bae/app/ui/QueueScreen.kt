@@ -48,35 +48,19 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 private const val TAG = "bae.QueueScreen"
 private val logger = BaeLogger(TAG)
 
-/** One row's stable identity for the list. The core queue is a list of track
- *  ids that may repeat (the same track can be enqueued twice), so the track id
- *  alone is not a unique key; the occurrence index disambiguates duplicates and
- *  keeps the key stable for a given entry across re-hydrations and drags. */
-internal data class KeyedQueueItem(
-    val key: String,
-    val item: QueueItem,
-)
-
-private fun keyed(queue: List<QueueItem>): List<KeyedQueueItem> {
-    val counts = HashMap<String, Int>()
-    return queue.map { item ->
-        val n = counts.getOrDefault(item.trackId, 0)
-        counts[item.trackId] = n + 1
-        KeyedQueueItem("${item.trackId}#$n", item)
-    }
-}
-
 /**
  * The play queue, presented in a bottom sheet: the currently-playing track, then
  * a drag-reorderable "Up Next" list. Reads the authoritative queue and now-
  * playing off the [fm.bae.app.playback.BaeCorePlayer]; mutations go straight to
- * the bridge (`clearQueue`/`removeFromQueue`/`reorderQueue`/`skipToQueueIndex`)
- * and reflect back as a `QueueUpdated` event that re-hydrates the projection.
+ * the bridge (`clearQueue`/`removeEntry`/`reorderEntry`/`skipToEntry`) and
+ * reflect back as a `QueueUpdated` event that re-hydrates the projection.
+ *
+ * Each [QueueItem] carries a unique per-instance `entryId` — stable even when
+ * the same track is queued twice — so rows key on it directly and remove/
+ * reorder/skip target one instance.
  *
  * The whole sheet is one [LazyColumn] (its own scroll container) so it can't hit
  * the unbounded-height measurement a `LazyColumn` nested in a `Column` would.
- * `itemsIndexed`'s index is the position within the up-next list — i.e. the
- * exact index `removeFromQueue`/`skipToQueueIndex` expect.
  */
 @Composable
 fun QueueScreen(
@@ -111,39 +95,46 @@ fun QueueScreen(
 
 /**
  * The optimistic queue order plus its reorderable list state, shared by the queue
- * sheet and the expanded player's embedded queue so the index conventions stay in
- * one place. The order is seeded from the authoritative flow but NOT while a drag
- * is in progress — re-seeding mid-drag would clobber the optimistic move and snap
- * the row back. A drop maps the dragged/target keys to positions and calls core's
- * reorder (gap-index convention: a forward move passes `toPos + 1`).
+ * sheet and the expanded player's embedded queue so the conventions stay in one
+ * place. The order is seeded from the authoritative flow but NOT while a drag is
+ * in progress — re-seeding mid-drag would clobber the optimistic move and snap
+ * the row back. A drop maps the dragged/target entry ids to positions and calls
+ * core's reorder with the entry id of the row the moved item now precedes.
  */
 @Composable
 internal fun rememberReorderableQueue(
     session: OpenLibrary,
     listState: LazyListState,
-): Pair<SnapshotStateList<KeyedQueueItem>, ReorderableLazyListState> {
+): Pair<SnapshotStateList<QueueItem>, ReorderableLazyListState> {
     val queue by session.playback.queue.collectAsState()
-    val order = remember { mutableStateListOf<KeyedQueueItem>() }
+    val order = remember { mutableStateListOf<QueueItem>() }
     val reorderState =
         rememberReorderableLazyListState(listState) { from, to ->
-            // Map the dragged/target keys back to positions in `order` (offset-free:
-            // the non-row header items never match a row key).
-            val fromPos = order.indexOfFirst { it.key == from.key }
-            val toPos = order.indexOfFirst { it.key == to.key }
-            if (fromPos < 0 || toPos < 0) return@rememberReorderableLazyListState
-            order.add(toPos, order.removeAt(fromPos))
-            val coreTo = if (toPos > fromPos) toPos + 1 else toPos
+            // Map the dragged/target keys (entry ids) back to positions in
+            // `order` (offset-free: the non-row header items never match a row
+            // key).
+            val fromPos = order.indexOfFirst { it.entryId == from.key }
+            val toPos = order.indexOfFirst { it.entryId == to.key }
+            if (fromPos < 0 || toPos < 0) {
+                logger.debug("reorder: drag key not a queue row (from=${from.key}, to=${to.key}); ignoring")
+                return@rememberReorderableLazyListState
+            }
+            val moved = order.removeAt(fromPos)
+            order.add(toPos, moved)
+            // The moved entry lands before whatever now follows it in the
+            // optimistic order; a null `before` (it's now last) means the end.
+            val beforeEntryId = order.getOrNull(toPos + 1)?.entryId
             try {
-                session.appHandle.reorderQueue(fromPos.toUInt(), coreTo.toUInt())
+                session.appHandle.reorderEntry(moved.entryId, beforeEntryId)
             } catch (e: Exception) {
-                logger.error("reorderQueue $fromPos -> $coreTo failed", e)
+                logger.error("reorderEntry ${moved.entryId} before $beforeEntryId failed", e)
             }
         }
 
     LaunchedEffect(queue, reorderState.isAnyItemDragging) {
         if (!reorderState.isAnyItemDragging) {
             order.clear()
-            order.addAll(keyed(queue))
+            order.addAll(queue)
         }
     }
     return order to reorderState
@@ -158,7 +149,7 @@ internal fun rememberReorderableQueue(
 // passes `null` because it stays put on skip.
 internal fun LazyListScope.queueContent(
     session: OpenLibrary,
-    order: List<KeyedQueueItem>,
+    order: List<QueueItem>,
     reorderState: ReorderableLazyListState,
     hasNowPlaying: Boolean,
     onSkipped: (() -> Unit)?,
@@ -173,25 +164,25 @@ internal fun LazyListScope.queueContent(
         }
     } else {
         item(key = "uphdr") { SectionLabel(stringResource(R.string.queue_section_up_next)) }
-        itemsIndexed(order, key = { _, k -> k.key }) { index, k ->
-            ReorderableItem(reorderState, key = k.key) { isDragging ->
+        itemsIndexed(order, key = { _, item -> item.entryId }) { _, item ->
+            ReorderableItem(reorderState, key = item.entryId) { isDragging ->
                 Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
                     QueueRow(
-                        item = k.item,
+                        item = item,
                         dragHandleModifier = Modifier.draggableHandle(),
                         onClick = {
                             try {
-                                session.appHandle.skipToQueueIndex(index.toUInt())
+                                session.appHandle.skipToEntry(item.entryId)
                                 onSkipped?.invoke()
                             } catch (e: Exception) {
-                                logger.error("skipToQueueIndex $index failed", e)
+                                logger.error("skipToEntry ${item.entryId} failed", e)
                             }
                         },
                         onRemove = {
                             try {
-                                session.appHandle.removeFromQueue(index.toUInt())
+                                session.appHandle.removeEntry(item.entryId)
                             } catch (e: Exception) {
-                                logger.error("removeFromQueue $index failed", e)
+                                logger.error("removeEntry ${item.entryId} failed", e)
                             }
                         },
                     )

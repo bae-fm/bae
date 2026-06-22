@@ -25,6 +25,7 @@ import uniffi.bae_bridge.BridgeUiEvent
 class NowPlayingProjectionTest {
     private fun meta(id: String) =
         BaeCorePlayer.Meta(
+            entryId = "entry-$id",
             trackId = id,
             title = "Title $id",
             artist = "Artist Name",

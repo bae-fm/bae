@@ -23,7 +23,7 @@ pub use audio_output::{
 pub use decoded_pcm::DecodedPcm;
 pub use error::PlaybackError;
 pub use progress::{PlaybackProgress, PreviewState};
-pub use queue::{NextTrack, PlaybackQueue, PreviousAction};
+pub use queue::{NextTrack, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
 pub use repeat_mode::RepeatMode;
 pub use service::{
     LoadingTrack, PlaybackHandle, PlaybackService, PlaybackSnapshot, PlaybackState,

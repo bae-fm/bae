@@ -172,6 +172,35 @@ impl PlaybackTestFixture {
     {
         wait_for_state_on(&mut self.progress_rx, predicate, timeout_duration).await
     }
+    /// Drain progress events up to the Playing state, returning whether Playing
+    /// arrived and the entries from the most recent QueueUpdated seen (each
+    /// carrying a per-instance id). `play` rebuilds the queue with fresh ids, so
+    /// a mutation must target those — captured here, after play settles.
+    async fn wait_for_playing_capturing_queue(
+        &mut self,
+        timeout_duration: Duration,
+    ) -> (bool, Vec<bae_core::playback::QueueEntry>) {
+        let deadline = Instant::now() + timeout_duration;
+        let mut entries = Vec::new();
+        while Instant::now() < deadline {
+            match timeout(Duration::from_millis(100), self.progress_rx.recv()).await {
+                Ok(Some(PlaybackProgress::QueueUpdated {
+                    entries: latest, ..
+                })) => {
+                    entries = latest;
+                }
+                Ok(Some(PlaybackProgress::StateChanged {
+                    state: PlaybackState::Playing { .. },
+                })) => {
+                    return (true, entries);
+                }
+                Ok(Some(_)) => continue,
+                Ok(None) => break,
+                Err(_) => continue,
+            }
+        }
+        (false, entries)
+    }
     /// Wait for a position update with timeout (returns position in ms)
     async fn wait_for_position_update(&mut self, timeout_duration: Duration) -> Option<u64> {
         let deadline = Instant::now() + timeout_duration;
@@ -1717,20 +1746,20 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
     expected: &str,
     mutate: F,
 ) where
-    F: FnOnce(&bae_core::playback::PlaybackHandle),
+    F: FnOnce(&bae_core::playback::PlaybackHandle, &[bae_core::playback::QueueEntry]),
 {
     fixture.playback_handle.add_to_queue(initial_queue);
     fixture.playback_handle.play(track0.to_string());
 
-    let playing = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
+    // `play` clears the queue and repopulates it from the track's release
+    // context with fresh entry ids, so capture the entries *after* play settles:
+    // drain up to the Playing state, keeping the latest QueueUpdated.
+    let (played, entries) = fixture
+        .wait_for_playing_capturing_queue(Duration::from_secs(5))
         .await;
-    assert!(playing.is_some(), "track0 should start playing");
+    assert!(played, "track0 should start playing");
 
-    mutate(&fixture.playback_handle);
+    mutate(&fixture.playback_handle, &entries);
     fixture.playback_handle.next();
 
     let next_state = fixture
@@ -1782,7 +1811,7 @@ async fn test_add_next_displaces_preloaded_track() {
         vec![track1],
         &track0,
         &track2,
-        move |h| h.add_next(vec![t2]),
+        move |h, _entries| h.add_next(vec![t2]),
     )
     .await;
 }
@@ -1812,7 +1841,7 @@ async fn test_reorder_queue_displaces_preloaded_track() {
         vec![track1, track2.clone()],
         &track0,
         &track2,
-        |h| h.reorder_queue(1, 0),
+        |h, entries| h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone())),
     )
     .await;
 }
@@ -1843,7 +1872,7 @@ async fn test_insert_in_queue_displaces_preloaded_track() {
         vec![track1],
         &track0,
         &track2,
-        move |h| h.insert_in_queue(vec![t2], 0),
+        move |h, _entries| h.insert_in_queue(vec![t2], 0),
     )
     .await;
 }
@@ -1873,7 +1902,7 @@ async fn test_remove_from_queue_refreshes_preloaded_track() {
         vec![track1, track2.clone()],
         &track0,
         &track2,
-        |h| h.remove_from_queue(0),
+        |h, entries| h.remove_entry(entries[0].id.clone()),
     )
     .await;
 }

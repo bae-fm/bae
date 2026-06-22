@@ -1914,6 +1914,10 @@ pub enum BridgeStorageFilter {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeQueueItem {
+    /// Per-instance id: the same track queued twice yields two items with two
+    /// ids, so the UI keys each row on a stable unique identity and targets
+    /// remove/reorder/skip at one instance.
+    pub entry_id: String,
     pub track_id: String,
     pub title: String,
     pub artist_names: String,
