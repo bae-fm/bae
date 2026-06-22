@@ -33,8 +33,13 @@ struct NowPlayingBar: View {
             .sheet(isPresented: $showQueue) {
                 QueueView()
             }
-            .fullScreenCover(isPresented: $showExpanded) {
+            // A sheet (not a cover) so the player can be swiped down to dismiss
+            // and its embedded queue swiped up to scroll — the sheet and the
+            // list coordinate that handoff.
+            .sheet(isPresented: $showExpanded) {
                 ExpandedNowPlayingView()
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
             }
         }
     }
