@@ -530,6 +530,15 @@ pub(crate) async fn resolve_readable_local_path(
         if tokio::fs::try_exists(&storage_path).await? {
             return Ok(Some(storage_path));
         }
+        // A cache row asserts the file is at `storage/<file_id>`, so a missing
+        // file there is an abnormal inconsistency (the row and its backing copy
+        // should be created and removed together). Fall through to a cloud read,
+        // but surface the inconsistency rather than skip it silently.
+        warn!(
+            file_id = %file.id,
+            path = %storage_path.display(),
+            "file_cache row exists but its storage/ copy is missing; reading from cloud"
+        );
     }
     Ok(None)
 }
