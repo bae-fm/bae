@@ -45,14 +45,21 @@ pub async fn resolve_release_identity(
     // contract permits and the service treats as `DiscidUnavailable`.
     let mut local_paths: Vec<PathBuf> = Vec::new();
     for f in &files {
-        if let Some(p) = library_manager
+        match library_manager
             .resolve_readable_local_path(f)
             .await
             .map_err(|e| format!("Failed to resolve local path: {e}"))?
         {
-            if p.exists() {
-                local_paths.push(p);
-            }
+            Some(p) if p.exists() => local_paths.push(p),
+            Some(p) => tracing::debug!(
+                file_id = %f.id,
+                path = %p.display(),
+                "disc-id: skipping file whose resolved local path is not on disk"
+            ),
+            None => tracing::debug!(
+                file_id = %f.id,
+                "disc-id: skipping cloud-only file with no local copy to read a TOC from"
+            ),
         }
     }
 
@@ -119,14 +126,21 @@ pub async fn resolve_release_artwork_paths(
         if !file.content_type.is_image() {
             continue;
         }
-        if let Some(p) = library_manager
+        match library_manager
             .resolve_readable_local_path(file)
             .await
             .map_err(|e| format!("Failed to resolve local path: {e}"))?
         {
-            if p.exists() {
-                paths.push(p);
-            }
+            Some(p) if p.exists() => paths.push(p),
+            Some(p) => tracing::debug!(
+                file_id = %file.id,
+                path = %p.display(),
+                "disc-id artwork: skipping image whose resolved local path is not on disk"
+            ),
+            None => tracing::debug!(
+                file_id = %file.id,
+                "disc-id artwork: skipping cloud-only image with no local copy"
+            ),
         }
     }
 
