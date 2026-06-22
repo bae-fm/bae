@@ -1,11 +1,11 @@
 #![cfg(feature = "test-utils")]
-//! Issue #105: a cloud-only import (`Managed { pin: false }`) is playable and
-//! readable while its upload is still queued. The fix makes a cloud-only import
-//! a real unmanaged import that ALSO queues uploads: it lands with an unmanaged
-//! source pointing at the user's originals, so file resolution reads them in
-//! place until the upload lands and the observer flips the release managed
-//! (dropping the source). Before the fix it recorded NOTHING (managed = false,
-//! no source, no cache) — an unreadable, unplayable release mid-upload.
+//! A cloud-only import (`Managed { pin: false }`) is playable and readable while
+//! its upload is still queued. It lands as a real unmanaged import that ALSO
+//! queues uploads: an unmanaged source pointing at the user's originals, so file
+//! resolution reads them in place until the upload lands and the observer flips
+//! the release managed (dropping the source). A cloud-only import recording no
+//! source and no cache would be an unreadable, unplayable release mid-upload;
+//! these tests pin that it isn't.
 
 mod support;
 

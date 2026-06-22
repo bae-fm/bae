@@ -21,7 +21,7 @@ use coven::rusqlite::{params, Connection, OptionalExtension, Row};
 use tracing::warn;
 
 use super::client::Database;
-use super::models::{DbFileCacheEntry, DbUnmanagedSource};
+use super::models::{DbFile, DbFileCacheEntry, DbUnmanagedSource};
 
 // ── Private raw row writers (the ONLY code that mutates the three stores) ─────
 
@@ -149,14 +149,14 @@ impl Database {
     pub(crate) async fn set_pinned_cache(
         &self,
         release_id: &str,
-        files: &[(String, i64)],
+        files: &[DbFile],
     ) -> Result<(), DbError> {
         let (release_id, files) = (release_id.to_string(), files.to_vec());
         let now = self.clock().now().to_rfc3339();
         self.with_conn(move |conn| {
             let tx = conn.unchecked_transaction()?;
-            for (file_id, size_bytes) in &files {
-                upsert_file_cache_row(&tx, file_id, true, *size_bytes, &now)?;
+            for file in &files {
+                upsert_file_cache_row(&tx, &file.id, true, file.file_size, &now)?;
             }
             delete_unmanaged_source_row(&tx, &release_id)?;
             tx.commit().map_err(DbError::from)
@@ -377,9 +377,9 @@ impl Database {
 /// Parse an RFC3339 timestamp stored in `file_cache.last_accessed_at`. The
 /// column is always written by [`upsert_file_cache_row`] as `to_rfc3339`, so a
 /// malformed value is local-DB corruption — rare and abnormal. `last_accessed`
-/// only orders eviction (a later PR), so a corrupt one isn't worth aborting a
-/// read over: log it and treat it as the epoch (evict-first ordering, so a bad
-/// row re-fetches from the cloud rather than lingering). The `warn!` keeps the
+/// only orders cache eviction, so a corrupt one isn't worth aborting a read
+/// over: log it and treat it as the epoch (evict-first ordering, so a bad row
+/// re-fetches from the cloud rather than lingering). The `warn!` keeps the
 /// corruption diagnosable rather than silently masked.
 fn parse_rfc3339(s: &str) -> DateTime<Utc> {
     match DateTime::parse_from_rfc3339(s) {

@@ -509,38 +509,51 @@ async fn project_discogs_from_cache(
     .map_err(LibraryError::Import)
 }
 
+/// The local-path rule applied to already-resolved inputs: the unmanaged
+/// source's in-place file, else a `file_cache` hit's `storage/<file_id>` copy,
+/// else `None` (cloud-only). The single definition of the rule; the async
+/// [`resolve_readable_local_path`] (which does the DB lookups first) and the
+/// synchronous detail/gallery projection both call it so neither re-derives it.
+///
+/// A `file_cache` row is the authoritative assertion that the file is staged in
+/// `storage/` — the row and its copy are created and removed together — so this
+/// trusts the row rather than probing the disk. A violated invariant surfaces as
+/// a loud read error at the path, not a silent cloud fallback that papers over
+/// stale state.
+fn local_readable_path(
+    unmanaged_path: Option<&str>,
+    has_cache_entry: bool,
+    file_id: &str,
+    original_filename: &str,
+    library_dir: &LibraryDir,
+) -> Option<PathBuf> {
+    if let Some(path) = unmanaged_path {
+        return Some(std::path::Path::new(path).join(original_filename));
+    }
+    if has_cache_entry {
+        return Some(library_dir.join(crate::storage::local::storage_path(file_id)));
+    }
+    None
+}
+
 /// Resolve a release file's readable LOCAL path under the uniform rule, or
-/// `None` when the only copy is in the cloud: the unmanaged source's in-place
-/// file, else a `file_cache` hit whose `storage/<file_id>` is present on disk.
-/// The single resolver; the [`LibraryManager::resolve_readable_local_path`]
-/// method and the free-function consumers (file-tag reset) both go through it so
-/// none re-derives the rule. `None` does NOT consult the cloud.
+/// `None` when the only copy is in the cloud. The single resolver; the
+/// [`LibraryManager::resolve_readable_local_path`] method and the free-function
+/// consumers (file-tag reset) go through it. `None` does NOT consult the cloud.
 pub(crate) async fn resolve_readable_local_path(
     database: &Database,
     library_dir: &LibraryDir,
     file: &DbFile,
 ) -> Result<Option<PathBuf>, LibraryError> {
-    if let Some(source) = database.get_unmanaged_source(&file.release_id).await? {
-        return Ok(Some(
-            std::path::Path::new(&source.path).join(&file.original_filename),
-        ));
-    }
-    if database.get_file_cache_entry(&file.id).await?.is_some() {
-        let storage_path = file.local_storage_path(library_dir);
-        if tokio::fs::try_exists(&storage_path).await? {
-            return Ok(Some(storage_path));
-        }
-        // A cache row asserts the file is at `storage/<file_id>`, so a missing
-        // file there is an abnormal inconsistency (the row and its backing copy
-        // should be created and removed together). Fall through to a cloud read,
-        // but surface the inconsistency rather than skip it silently.
-        warn!(
-            file_id = %file.id,
-            path = %storage_path.display(),
-            "file_cache row exists but its storage/ copy is missing; reading from cloud"
-        );
-    }
-    Ok(None)
+    let source = database.get_unmanaged_source(&file.release_id).await?;
+    let has_cache_entry = database.get_file_cache_entry(&file.id).await?.is_some();
+    Ok(local_readable_path(
+        source.as_ref().map(|s| s.path.as_str()),
+        has_cache_entry,
+        &file.id,
+        &file.original_filename,
+        library_dir,
+    ))
 }
 
 /// Project the embedded tags of a release's local audio files into a
@@ -2129,9 +2142,7 @@ impl LibraryManager {
         release_id: &str,
         files: &[DbFile],
     ) -> Result<(), LibraryError> {
-        let entries: Vec<(String, i64)> =
-            files.iter().map(|f| (f.id.clone(), f.file_size)).collect();
-        self.database.set_pinned_cache(release_id, &entries).await?;
+        self.database.set_pinned_cache(release_id, files).await?;
         self.emit_release_updated_by_id(release_id).await;
         Ok(())
     }
@@ -3652,19 +3663,19 @@ pub(crate) fn resolve_release(
     let total_size: i64 = files.iter().map(|f| f.file_size).sum();
     let total_duration_ms: i64 = tracks.iter().filter_map(|t| t.duration_ms).sum();
 
-    // Build gallery: cover (if on disk) followed by image files that resolve
-    // to a local path on this device, under the uniform rule: the unmanaged
-    // source's in-place file, else a `storage/` cache hit. With neither, the
-    // image lives only in the cloud, so no local gallery path exists.
+    // Build gallery: cover (if on disk) followed by image files that resolve to
+    // a local path on this device, through the single `local_readable_path`
+    // rule. With neither an unmanaged source nor a cache hit, the image lives
+    // only in the cloud, so no local gallery path exists.
     let image_file_local_path = |f: &FileDetail| -> Option<String> {
-        let path = if let Some(source) = unmanaged_source.as_ref() {
-            std::path::Path::new(&source.path).join(&f.original_filename)
-        } else if cached_file_ids.contains(f.id.as_str()) {
-            library_dir.join(crate::storage::local::storage_path(&f.id))
-        } else {
-            return None;
-        };
-        Some(path.to_string_lossy().into_owned())
+        local_readable_path(
+            unmanaged_source.as_ref().map(|s| s.path.as_str()),
+            cached_file_ids.contains(f.id.as_str()),
+            &f.id,
+            &f.original_filename,
+            library_dir,
+        )
+        .map(|p| p.to_string_lossy().into_owned())
     };
 
     let mut gallery = Vec::new();

@@ -1,6 +1,6 @@
 #![cfg(feature = "test-utils")]
 //! `create_audio_reader` source dispatch: which reader (or error) a resolved
-//! file source maps to. The source is now just `{ Local, CloudOnly }` — a
+//! file source maps to. The source is `{ Local, CloudOnly }` — a
 //! `CloudOnly` source fetches the cloud home and master key from the
 //! `LibraryManager`, or reports `SyncDisconnected` when no home is connected.
 

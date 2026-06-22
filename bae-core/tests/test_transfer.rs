@@ -833,7 +833,7 @@ async fn test_unmanage_abort_on_write_failure_queues_no_deletes() {
 
     // Pin every file so the release reads as Pinned — the state the aborted
     // unmanage must preserve. The bytes are already staged in storage/ above;
-    // this records the pinned cache rows the new model derives Pinned from.
+    // this records the pinned cache rows Pinned is derived from.
     let all_files = mgr.get_files_for_release(&release_id).await.unwrap();
     mgr.set_pinned_cache(&release_id, &all_files).await.unwrap();
 
