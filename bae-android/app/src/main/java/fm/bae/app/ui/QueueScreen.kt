@@ -176,7 +176,10 @@ internal fun rememberReorderableQueue(
             // lane with no shuffle — a normal state, named here rather than
             // defaulted around the absent value.
             when (val context = queue.context) {
-                null -> order.contextShuffled = false
+                null -> {
+                    order.contextShuffled = false
+                }
+
                 else -> {
                     order.context.addAll(context.upcoming)
                     order.contextShuffled = context.shuffled
