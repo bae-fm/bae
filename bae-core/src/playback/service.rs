@@ -23,8 +23,8 @@
 
 use super::RepeatMode;
 use super::{
-    ContextSnapshot, ContextStart, NextEntry, PlaybackQueue, PreviousAction, QueueEntryId,
-    QueueSnapshot, Traversal,
+    repeat_to_str, ContextStart, NextEntry, PersistedPlayback, PlaybackQueue, PreviousAction,
+    QueueEntryId, QueueSnapshot, Traversal,
 };
 use crate::audio_codec::StreamingDecodeError;
 use crate::db::{DbPlaybackContext, DbPlaybackState};
@@ -1292,7 +1292,13 @@ impl PlaybackService {
                     boundary_tx,
                 };
                 match service.library_manager.load_playback_state().await {
-                    Ok(Some(state)) => service.restore(state).await,
+                    // A corrupt row is discarded by `from_row` (logged there);
+                    // we start fresh.
+                    Ok(Some(state)) => {
+                        if let Some(parsed) = PersistedPlayback::from_row(state) {
+                            service.restore(parsed).await;
+                        }
+                    }
                     Ok(None) => {}
                     Err(e) => {
                         warn!("couldn't load the saved playback state: {e}; starting fresh")
@@ -1304,72 +1310,81 @@ impl PlaybackService {
         handle
     }
 
-    /// Restore playback state from a saved snapshot.
-    /// Validates track IDs against the DB, sets volume/repeat/queue,
-    /// and if the current track is valid, starts it paused at the saved position.
+    /// Restore playback from the validated device-local resume cache.
+    ///
+    /// Atomic: every fallible step (fetching the context's tracks, validating the
+    /// queue against library deletions) runs *before* anything touches the queue
+    /// or audio. A DB error abandons the whole restore — the queue is left empty
+    /// (a fresh start), never half-populated. Only once all fetches succeed does
+    /// the commit run, and the commit is infallible — `parsed` is already
+    /// fully-valid, so no field needs defaulting.
+    ///
     /// StateChanged emissions are suppressed because the UI isn't ready yet;
     /// display state is written to the shared Arc for the UI to query later.
-    async fn restore(&mut self, state: DbPlaybackState) {
+    async fn restore(&mut self, parsed: PersistedPlayback) {
         info!(
             "Restoring playback state: track={:?}",
-            state.current_track_id
+            parsed.queue.current_track_id
         );
 
-        // Rebuild the queue: re-materialize the context from its source release's
-        // current tracks (deleted tracks fall out of `get_track_ids`), under the
-        // stored traversal, plus the manual lane and current track.
-        let context = state.context.clone().map(|ctx| ContextSnapshot {
-            source: ctx.source,
-            traversal: match ctx.shuffle_seed {
-                Some(seed) => Traversal::Shuffled { seed: seed as u64 },
-                None => Traversal::Sequential,
+        // -- All fallible work first; the queue is untouched until it succeeds. --
+
+        // Re-materialize the context from its source release's current tracks
+        // (deleted tracks fall out of `get_track_ids`). A fetch error abandons the
+        // restore; an empty result means the source release is gone, so we drop
+        // the context and restore the manual lane only.
+        let (context, context_tracks) = match &parsed.queue.context {
+            Some(cs) => match self.library_manager.get_track_ids(&cs.source).await {
+                Ok(tracks) if tracks.is_empty() => {
+                    debug!(
+                        "resume context release {} is gone; restoring the manual lane only",
+                        cs.source
+                    );
+                    (None, Vec::new())
+                }
+                Ok(tracks) => (parsed.queue.context, tracks),
+                Err(e) => {
+                    warn!("couldn't load the resume context tracks: {e}; starting fresh");
+                    return;
+                }
             },
-            cursor: ctx.cursor.max(0) as usize,
-        });
-        let mut manual: Vec<String> = serde_json::from_str(&state.manual).unwrap_or_else(|e| {
-            warn!("playback_state.manual is not valid JSON ({e}); restoring an empty manual lane");
-            Vec::new()
-        });
-        let mut current_track_id = state.current_track_id.clone();
-        let repeat = repeat_from_str(&state.repeat);
+            None => (None, Vec::new()),
+        };
 
         // Drop manual-lane tracks and a current track that were deleted from the
-        // library between sessions (the context re-fetch below already excludes
-        // deleted context tracks).
-        let mut to_check = manual.clone();
-        to_check.extend(current_track_id.clone());
-        match self
+        // library between sessions (deleted context tracks already fell out of the
+        // re-fetch above). A validation error abandons the restore.
+        let mut to_check = parsed.queue.manual.clone();
+        to_check.extend(parsed.queue.current_track_id.clone());
+        let existing = match self
             .library_manager
             .filter_existing_track_ids(&to_check)
             .await
         {
-            Ok(existing) => {
-                let dropped: Vec<&String> =
-                    to_check.iter().filter(|t| !existing.contains(*t)).collect();
-                if !dropped.is_empty() {
-                    warn!("dropping playback tracks deleted from the library: {dropped:?}");
-                }
-                manual.retain(|t| existing.contains(t));
-                current_track_id = current_track_id.filter(|t| existing.contains(t));
-            }
+            Ok(existing) => existing,
             Err(e) => {
-                warn!("couldn't validate restored tracks against deletions: {e}; restoring as-is")
+                warn!("couldn't validate restored tracks against deletions: {e}; starting fresh");
+                return;
             }
-        }
-
-        let context_tracks = match &context {
-            Some(cs) => match self.library_manager.get_track_ids(&cs.source).await {
-                Ok(tracks) => tracks,
-                Err(e) => {
-                    warn!(
-                        "couldn't load context tracks for {}: {e}; restoring without a context",
-                        cs.source
-                    );
-                    Vec::new()
-                }
-            },
-            None => Vec::new(),
         };
+        let dropped: Vec<&String> = to_check.iter().filter(|t| !existing.contains(*t)).collect();
+        if !dropped.is_empty() {
+            warn!("dropping playback tracks deleted from the library: {dropped:?}");
+        }
+        let manual: Vec<String> = parsed
+            .queue
+            .manual
+            .into_iter()
+            .filter(|t| existing.contains(t))
+            .collect();
+        let current_track_id = parsed
+            .queue
+            .current_track_id
+            .filter(|t| existing.contains(t));
+        let repeat = parsed.queue.repeat;
+
+        // -- Commit (infallible): everything below applies validated state. --
+
         self.playback_queue.restore(
             QueueSnapshot {
                 context,
@@ -1385,16 +1400,16 @@ impl PlaybackService {
         );
 
         // Volume + mute.
-        self.audio_output.set_volume(state.volume);
+        self.audio_output.set_volume(parsed.volume);
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::VolumeChanged {
-                volume: state.volume,
+                volume: parsed.volume,
             },
         );
-        if state.is_muted {
+        if parsed.is_muted {
             self.is_muted = true;
-            self.pre_mute_volume = state.volume;
+            self.pre_mute_volume = parsed.volume;
             self.audio_output.set_volume(0.0);
             emit_progress(
                 &self.progress_tx,
@@ -1414,12 +1429,14 @@ impl PlaybackService {
                 .set_state(crate::playback::audio_output::AudioState::Paused);
             self.play_track(&track_id, false, true).await;
 
-            let position_ms = state.position_ms.unwrap_or(0).max(0) as u64;
+            let position_ms = parsed.position_ms.unwrap_or(0);
             let position = std::time::Duration::from_millis(position_ms);
             if !position.is_zero() {
                 self.seek(position).await;
             }
-            // Always emit the position display so late-mounting views can query it.
+            // Always emit the position display so late-mounting views can query
+            // it. Until the live position is set, fall back to the position we
+            // just restored to — that's the value the seek landed on, not a mask.
             let actual_pos = self
                 .current_position_shared
                 .lock()
@@ -3122,29 +3139,6 @@ impl PlaybackService {
         }
         let event = PlaybackProgress::QueueItemsAdded { count };
         let _ = self.progress_tx.send(event);
-    }
-}
-
-/// Serialize `RepeatMode` for the `playback_state.repeat` column.
-fn repeat_to_str(mode: RepeatMode) -> &'static str {
-    match mode {
-        RepeatMode::Off => "off",
-        RepeatMode::Track => "track",
-        RepeatMode::Context => "context",
-    }
-}
-
-/// Parse the `playback_state.repeat` column. The column is our own write, so an
-/// unrecognized value means a corrupted local row — log it and fall back to Off.
-fn repeat_from_str(s: &str) -> RepeatMode {
-    match s {
-        "track" => RepeatMode::Track,
-        "context" => RepeatMode::Context,
-        "off" => RepeatMode::Off,
-        other => {
-            warn!("playback_state.repeat has an unrecognized value {other:?}; using Off");
-            RepeatMode::Off
-        }
     }
 }
 

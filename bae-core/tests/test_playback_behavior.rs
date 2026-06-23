@@ -3788,6 +3788,199 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     );
 }
 
+/// An imported test library with no playback service running, so a test can
+/// write a `playback_state` row and then start its own service to exercise
+/// restore without racing a fixture's service for the row.
+struct RestoreTestLibrary {
+    library_manager: LibraryManager,
+    runtime_handle: tokio::runtime::Handle,
+    track_ids: Vec<String>,
+    _temp_dir: TempDir,
+}
+
+async fn restore_test_library() -> RestoreTestLibrary {
+    tracing_init();
+    let temp_dir = TempDir::new().unwrap();
+    let db_path = temp_dir.path().join("test.db");
+    let album_dir = temp_dir.path().join("album");
+    std::fs::create_dir_all(&album_dir).unwrap();
+    let database = Database::new_test(
+        db_path.to_str().unwrap(),
+        std::sync::Arc::new(bae_core::clock::SystemClock),
+    )
+    .await
+    .unwrap();
+    let database_arc = Arc::new(database.clone());
+    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let library_manager = LibraryManager::new(
+        (*database_arc).clone(),
+        library_dir.clone(),
+        config_handle,
+        key_service,
+        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        tokio::runtime::Handle::current(),
+        None,
+    );
+    let runtime_handle = tokio::runtime::Handle::current();
+    let _ = generate_test_flac_files(&album_dir);
+    let discogs_release = create_test_album();
+    let release_id_key = seed_discogs_test_release(discogs_release);
+    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+    let import_id = uuid::Uuid::new_v4().to_string();
+    import_handle
+        .send_command(ImportCommand::Folder {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Unmanaged,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            },
+            user_edit: None,
+        })
+        .unwrap();
+    let mut progress_rx = import_handle.subscribe_import(import_id);
+    let _ = wait_for_import_complete(&mut progress_rx).await;
+    let releases = library_manager
+        .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
+        .await
+        .unwrap();
+    let tracks = library_manager.get_tracks(&releases[0].id).await.unwrap();
+    let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
+    assert!(!track_ids.is_empty(), "the test album imported some tracks");
+    std::env::set_var("MUTE_TEST_AUDIO", "1");
+    RestoreTestLibrary {
+        library_manager,
+        runtime_handle,
+        track_ids,
+        _temp_dir: temp_dir,
+    }
+}
+
+/// A resume cache whose context release is gone (its `get_track_ids` is empty)
+/// restores the manual lane only — the context drops, the surviving manual
+/// tracks and current track stay. The restored queue re-persists with no
+/// context, which is what we read back.
+#[tokio::test]
+async fn test_restore_drops_deleted_context_keeps_manual() {
+    if should_skip_audio_tests() {
+        eprintln!("Skipping: no audio device");
+        return;
+    }
+    let lib = restore_test_library().await;
+    let track_id = lib.track_ids[0].clone();
+
+    // The context points at a release id that no longer exists, so its
+    // `get_track_ids` returns empty (the deleted-release signal). The manual lane
+    // and current track are a real, surviving track.
+    let state = bae_core::db::DbPlaybackState {
+        context: Some(bae_core::db::DbPlaybackContext {
+            source: "release-that-was-deleted".to_string(),
+            shuffle_seed: None,
+            cursor: 0,
+        }),
+        manual: format!("[{:?}]", track_id),
+        repeat: "off".to_string(),
+        current_track_id: Some(track_id.clone()),
+        position_ms: Some(0),
+        volume: 0.8,
+        is_muted: false,
+    };
+    lib.library_manager
+        .save_playback_state(&state)
+        .await
+        .unwrap();
+
+    let handle = bae_core::playback::PlaybackService::start(
+        lib.library_manager.clone(),
+        lib.runtime_handle,
+        100,
+    );
+    handle.set_volume(0.0);
+
+    // Restore committed once the current (manual) track populates the late-mount
+    // display cache.
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < deadline && handle.get_last_position_display().is_none() {
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert!(
+        handle.get_last_position_display().is_some(),
+        "the surviving manual track should restore as current"
+    );
+
+    // Force the restored queue to re-persist, then read it back: the dropped
+    // context is gone and the manual track survived.
+    handle.set_repeat_mode(bae_core::playback::RepeatMode::Track);
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut row = None;
+    while Instant::now() < deadline {
+        if let Some(loaded) = lib.library_manager.load_playback_state().await.unwrap() {
+            if loaded.repeat == "track" {
+                row = Some(loaded);
+                break;
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let row = row.expect("the restored, re-persisted row");
+    assert!(
+        row.context.is_none(),
+        "the deleted context release is dropped on restore"
+    );
+    assert_eq!(
+        row.manual,
+        format!("[{:?}]", track_id),
+        "the surviving manual lane restored"
+    );
+
+    handle.stop();
+}
+
+/// A corrupt resume cache (here, manual lane that is not valid JSON) is discarded
+/// by the boundary parse: the service starts with an empty queue and never
+/// panics. The position cache stays `None` because no current track restored.
+#[tokio::test]
+async fn test_restore_corrupt_row_starts_fresh() {
+    if should_skip_audio_tests() {
+        eprintln!("Skipping: no audio device");
+        return;
+    }
+    let lib = restore_test_library().await;
+    let track_id = lib.track_ids[0].clone();
+
+    let state = bae_core::db::DbPlaybackState {
+        context: None,
+        manual: "not valid json".to_string(),
+        repeat: "off".to_string(),
+        current_track_id: Some(track_id),
+        position_ms: Some(0),
+        volume: 0.8,
+        is_muted: false,
+    };
+    lib.library_manager
+        .save_playback_state(&state)
+        .await
+        .unwrap();
+
+    let handle =
+        bae_core::playback::PlaybackService::start(lib.library_manager, lib.runtime_handle, 100);
+    handle.set_volume(0.0);
+
+    // Give restore time to run (and to NOT crash). A discarded cache restores no
+    // current track, so the display cache stays empty.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(
+        handle.get_last_position_display().is_none(),
+        "a discarded resume cache leaves nothing playing (fresh start)"
+    );
+
+    handle.stop();
+}
+
 /// Seeking a preview while paused must emit a PreviewPositionUpdate even
 /// though no position ticks fire in the paused state. Without this explicit
 /// emission, the progress NSView stays stuck at the old position until the

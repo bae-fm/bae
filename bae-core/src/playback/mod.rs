@@ -8,6 +8,7 @@ pub mod data_source;
 mod decoded_pcm;
 mod error;
 pub mod format;
+mod persisted;
 pub mod progress;
 mod queue;
 mod repeat_mode;
@@ -24,6 +25,7 @@ pub use audio_output::{
 pub use context::{ContextStart, Traversal};
 pub use decoded_pcm::DecodedPcm;
 pub use error::PlaybackError;
+pub use persisted::{repeat_to_str, PersistedPlayback};
 pub use progress::{PlaybackProgress, PreviewState};
 pub use queue::{
     ContextSnapshot, NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId,
