@@ -295,6 +295,23 @@ pub struct DbReleaseLocalCopy {
     pub pinned_locally: bool,
 }
 
+/// The single device-local `playback_state` row. Mirrors the table columns;
+/// `shuffle_seed` holds the `u64` shuffle seed reinterpreted as `i64` (SQLite's
+/// integer type) so the high bit round-trips. The playback service maps this to
+/// and from its queue snapshot + live position/volume/mute.
+#[derive(Debug, Clone)]
+pub struct DbPlaybackState {
+    pub source: Option<String>,
+    pub shuffle_seed: Option<i64>,
+    pub cursor: Option<i64>,
+    pub manual: String,
+    pub repeat: String,
+    pub current_track_id: Option<String>,
+    pub position_ms: Option<i64>,
+    pub volume: f32,
+    pub is_muted: bool,
+}
+
 /// Where `releases.metadata_source` came from.
 ///
 /// Mirrors the `metadata_source` text column. Distinct from

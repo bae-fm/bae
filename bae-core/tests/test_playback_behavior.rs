@@ -3641,15 +3641,18 @@ async fn test_restore_populates_last_position_display() {
     // Mute audio for tests and write a snapshot. No service is running yet,
     // so no one can consume the snapshot before our test service starts.
     std::env::set_var("MUTE_TEST_AUDIO", "1");
-    let snapshot = bae_core::playback::PlaybackSnapshot {
-        track_id: track_id.clone(),
-        position_ms: 0,
-        queue: vec![],
+    let state = bae_core::db::DbPlaybackState {
+        source: None,
+        shuffle_seed: None,
+        cursor: None,
+        manual: "[]".to_string(),
+        repeat: "off".to_string(),
+        current_track_id: Some(track_id.clone()),
+        position_ms: Some(0),
         volume: 0.8,
-        repeat_mode: bae_core::playback::RepeatMode::Off,
         is_muted: false,
     };
-    library_manager.save_playback_state(&snapshot);
+    library_manager.save_playback_state(&state).await;
 
     // Start the playback service — restore() runs on the audio thread before
     // run() and calls emit_position_display at its tail.

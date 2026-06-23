@@ -21,15 +21,18 @@ pub use audio_output::{wait_for_samples, CaptureAudioOutput};
 pub use audio_output::{
     AudioError, AudioOutput, AudioState, AudioStream, CompletionEvent, PositionEvent,
 };
-pub use context::ContextStart;
+pub use context::{ContextStart, Traversal};
 pub use decoded_pcm::DecodedPcm;
 pub use error::PlaybackError;
 pub use progress::{PlaybackProgress, PreviewState};
-pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
+pub use queue::{
+    ContextSnapshot, NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId,
+    QueueSnapshot,
+};
 pub use repeat_mode::RepeatMode;
 pub use service::{
-    LoadingTrack, PlaybackHandle, PlaybackService, PlaybackSnapshot, PlaybackState,
-    PlaybackTrackInfo, PositionDisplay,
+    LoadingTrack, PlaybackHandle, PlaybackService, PlaybackState, PlaybackTrackInfo,
+    PositionDisplay,
 };
 pub use source::{PlaybackSource, TrackCrossing, TrackFmt};
 pub use sparse_buffer::SharedSparseBuffer;

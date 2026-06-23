@@ -2501,6 +2501,78 @@ impl Database {
             .await
     }
 
+    /// Write the single device-local `playback_state` row (id = 'current'),
+    /// replacing any existing one. Never synced.
+    pub async fn save_playback_state(&self, state: &DbPlaybackState) -> Result<(), DbError> {
+        let state = state.clone();
+        self.inner
+            .coven_db
+            .call(move |conn| {
+                conn.execute(
+                    "INSERT OR REPLACE INTO playback_state \
+                     (id, source, shuffle_seed, cursor, manual, repeat, \
+                      current_track_id, position_ms, volume, is_muted) \
+                     VALUES ('current', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    params![
+                        state.source,
+                        state.shuffle_seed,
+                        state.cursor,
+                        state.manual,
+                        state.repeat,
+                        state.current_track_id,
+                        state.position_ms,
+                        state.volume,
+                        state.is_muted,
+                    ],
+                )
+                .map(|_| ())
+                .map_err(DbError::from)
+            })
+            .await
+    }
+
+    /// Read the device-local `playback_state` row, or `None` if none is stored.
+    pub async fn load_playback_state(&self) -> Result<Option<DbPlaybackState>, DbError> {
+        self.inner
+            .coven_db
+            .call(move |conn| {
+                conn.query_row(
+                    "SELECT source, shuffle_seed, cursor, manual, repeat, \
+                     current_track_id, position_ms, volume, is_muted \
+                     FROM playback_state WHERE id = 'current'",
+                    [],
+                    |row| {
+                        Ok(DbPlaybackState {
+                            source: row.get("source")?,
+                            shuffle_seed: row.get("shuffle_seed")?,
+                            cursor: row.get("cursor")?,
+                            manual: row.get("manual")?,
+                            repeat: row.get("repeat")?,
+                            current_track_id: row.get("current_track_id")?,
+                            position_ms: row.get("position_ms")?,
+                            volume: row.get("volume")?,
+                            is_muted: row.get("is_muted")?,
+                        })
+                    },
+                )
+                .optional()
+                .map_err(DbError::from)
+            })
+            .await
+    }
+
+    /// Delete the device-local `playback_state` row (playback stopped).
+    pub async fn clear_playback_state(&self) -> Result<(), DbError> {
+        self.inner
+            .coven_db
+            .call(move |conn| {
+                conn.execute("DELETE FROM playback_state", [])
+                    .map(|_| ())
+                    .map_err(DbError::from)
+            })
+            .await
+    }
+
     /// Insert or replace this device's `release_local_copy` row.
     pub async fn upsert_release_local_copy(
         &self,

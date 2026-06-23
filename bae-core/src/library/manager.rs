@@ -786,6 +786,7 @@ const REPLAY_GAIN_TARGET_LUFS: f64 = -18.0;
 /// `side, track_number, id`) and the selected track's index into it. The
 /// playback service seeds a context from this.
 pub struct PlayContext {
+    pub release_id: String,
     pub track_ids: Vec<String>,
     pub index: usize,
 }
@@ -2031,37 +2032,30 @@ impl LibraryManager {
     // Playback state persistence
     // =========================================================================
 
-    pub fn save_playback_state(&self, snapshot: &crate::playback::PlaybackSnapshot) {
-        let path = self.library_dir.playback_state_path();
-        match serde_json::to_string(snapshot) {
-            Ok(json) => {
-                if let Err(e) = std::fs::write(&path, json) {
-                    warn!("Failed to write playback state: {e}");
-                }
-            }
-            Err(e) => warn!("Failed to serialize playback state: {e}"),
+    /// Write the device-local playback-state row. Failure is logged, not fatal —
+    /// losing a resume point is survivable.
+    pub async fn save_playback_state(&self, state: &crate::db::DbPlaybackState) {
+        if let Err(e) = self.database.save_playback_state(state).await {
+            warn!("Failed to save playback state: {e}");
         }
     }
 
-    /// Load and delete playback state (one-shot).
-    pub fn load_playback_state(&self) -> Option<crate::playback::PlaybackSnapshot> {
-        let path = self.library_dir.playback_state_path();
-        let data = match std::fs::read_to_string(&path) {
-            Ok(data) => data,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return None,
+    /// Read the device-local playback-state row (kept, not deleted — it's
+    /// overwritten on the next playback change and cleared on stop).
+    pub async fn load_playback_state(&self) -> Option<crate::db::DbPlaybackState> {
+        match self.database.load_playback_state().await {
+            Ok(state) => state,
             Err(e) => {
-                warn!("Failed to read playback state at {}: {e}", path.display());
-                return None;
-            }
-        };
-        let _ = std::fs::remove_file(&path);
-
-        match serde_json::from_str(&data) {
-            Ok(snapshot) => Some(snapshot),
-            Err(e) => {
-                warn!("Failed to parse playback state: {e}");
+                warn!("Failed to load playback state: {e}");
                 None
             }
+        }
+    }
+
+    /// Delete the device-local playback-state row (playback stopped).
+    pub async fn clear_playback_state(&self) {
+        if let Err(e) = self.database.clear_playback_state().await {
+            warn!("Failed to clear playback state: {e}");
         }
     }
 
@@ -3757,7 +3751,11 @@ impl LibraryManager {
                     track_id, release_id
                 ))
             })?;
-        Ok(PlayContext { track_ids, index })
+        Ok(PlayContext {
+            release_id,
+            track_ids,
+            index,
+        })
     }
 
     /// Return the subset of `ids` that still exist in the tracks table.

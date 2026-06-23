@@ -25,10 +25,11 @@ pub enum ContextStart {
 /// The tracks are held as per-instance [`QueueEntry`]s so the cursor walks
 /// forward (advance) and backward (Previous) over stable row ids, and `Context`
 /// repeat loops the stored order without re-fetching it. A release is small, so
-/// the whole order is held expanded. The release id the order came from is not a
-/// field: the queue identifies tracks by `track_id` and rows by entry id, and
-/// nothing keys off which release a context is.
+/// the whole order is held expanded.
 pub struct PlaybackContext {
+    /// The release this order came from. Read by persistence to re-fetch the
+    /// tracks and re-materialize the order on restart.
+    pub source: String,
     /// The release's tracks in play order, each with a stable per-instance id.
     pub entries: Vec<QueueEntry>,
     /// Index into `entries` of the context track currently playing.

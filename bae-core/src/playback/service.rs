@@ -22,8 +22,12 @@
 //! 8. Send `Seeked` progress event
 
 use super::RepeatMode;
-use super::{ContextStart, NextEntry, PlaybackQueue, PreviousAction, QueueEntryId};
+use super::{
+    ContextSnapshot, ContextStart, NextEntry, PlaybackQueue, PreviousAction, QueueEntryId,
+    QueueSnapshot, Traversal,
+};
 use crate::audio_codec::StreamingDecodeError;
+use crate::db::DbPlaybackState;
 use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
@@ -43,17 +47,6 @@ use std::sync::{mpsc, Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::sync::oneshot;
 use tracing::{debug, error, info, trace, warn};
-
-/// Snapshot of current playback state for persistence.
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct PlaybackSnapshot {
-    pub track_id: String,
-    pub position_ms: u64,
-    pub queue: Vec<String>,
-    pub volume: f32,
-    pub repeat_mode: RepeatMode,
-    pub is_muted: bool,
-}
 
 fn log_streaming_decode_failure(context: &str, error: StreamingDecodeError) -> Option<String> {
     match error {
@@ -1298,8 +1291,8 @@ impl PlaybackService {
                     last_position_display,
                     boundary_tx,
                 };
-                if let Some(snapshot) = service.library_manager.load_playback_state() {
-                    service.restore(snapshot).await;
+                if let Some(state) = service.library_manager.load_playback_state().await {
+                    service.restore(state).await;
                 }
                 service.run().await;
             });
@@ -1312,46 +1305,87 @@ impl PlaybackService {
     /// and if the current track is valid, starts it paused at the saved position.
     /// StateChanged emissions are suppressed because the UI isn't ready yet;
     /// display state is written to the shared Arc for the UI to query later.
-    async fn restore(&mut self, snapshot: PlaybackSnapshot) {
-        info!("Restoring playback state: track={}", snapshot.track_id);
+    async fn restore(&mut self, state: DbPlaybackState) {
+        info!(
+            "Restoring playback state: track={:?}",
+            state.current_track_id
+        );
 
-        // Validate the current track and queue in one DB round-trip.
-        let mut ids_to_check = Vec::with_capacity(snapshot.queue.len() + 1);
-        ids_to_check.push(snapshot.track_id.clone());
-        ids_to_check.extend(snapshot.queue.iter().cloned());
-        let existing: HashSet<String> = match self
+        // Rebuild the queue: re-materialize the context from its source release's
+        // current tracks (deleted tracks fall out of `get_track_ids`), under the
+        // stored traversal, plus the manual lane and current track.
+        let context = state.source.clone().map(|source| ContextSnapshot {
+            source,
+            traversal: match state.shuffle_seed {
+                Some(seed) => Traversal::Shuffled { seed: seed as u64 },
+                None => Traversal::Sequential,
+            },
+            cursor: state.cursor.unwrap_or(0).max(0) as usize,
+        });
+        let mut manual: Vec<String> = serde_json::from_str(&state.manual).unwrap_or_else(|e| {
+            warn!("playback_state.manual is not valid JSON ({e}); restoring an empty manual lane");
+            Vec::new()
+        });
+        let mut current_track_id = state.current_track_id.clone();
+        let repeat = repeat_from_str(&state.repeat);
+
+        // Drop manual-lane tracks and a current track that were deleted from the
+        // library between sessions (the context re-fetch below already excludes
+        // deleted context tracks).
+        let mut to_check = manual.clone();
+        to_check.extend(current_track_id.clone());
+        match self
             .library_manager
-            .filter_existing_track_ids(&ids_to_check)
+            .filter_existing_track_ids(&to_check)
             .await
         {
-            Ok(ids) => ids.into_iter().collect(),
-            Err(e) => {
-                error!("Failed to validate restored track IDs: {e}");
-                HashSet::new()
+            Ok(existing) => {
+                manual.retain(|t| existing.contains(t));
+                current_track_id = current_track_id.filter(|t| existing.contains(t));
             }
+            Err(e) => {
+                warn!("couldn't validate restored tracks against deletions: {e}; restoring as-is")
+            }
+        }
+
+        let context_tracks = match &context {
+            Some(cs) => match self.library_manager.get_track_ids(&cs.source).await {
+                Ok(tracks) => tracks,
+                Err(e) => {
+                    warn!(
+                        "couldn't load context tracks for {}: {e}; restoring without a context",
+                        cs.source
+                    );
+                    Vec::new()
+                }
+            },
+            None => Vec::new(),
         };
+        self.playback_queue.restore(
+            QueueSnapshot {
+                context,
+                manual,
+                current_track_id,
+                repeat,
+            },
+            context_tracks,
+        );
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::RepeatModeChanged { mode: repeat },
+        );
 
-        let current_valid = existing.contains(&snapshot.track_id);
-        let valid_queue: Vec<String> = snapshot
-            .queue
-            .iter()
-            .filter(|id| existing.contains(*id))
-            .cloned()
-            .collect();
-
-        // Set volume
-        self.audio_output.set_volume(snapshot.volume);
+        // Volume + mute.
+        self.audio_output.set_volume(state.volume);
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::VolumeChanged {
-                volume: snapshot.volume,
+                volume: state.volume,
             },
         );
-
-        // Set mute state
-        if snapshot.is_muted {
+        if state.is_muted {
             self.is_muted = true;
-            self.pre_mute_volume = snapshot.volume;
+            self.pre_mute_volume = state.volume;
             self.audio_output.set_volume(0.0);
             emit_progress(
                 &self.progress_tx,
@@ -1359,53 +1393,76 @@ impl PlaybackService {
             );
         }
 
-        // Set repeat mode
-        self.playback_queue.set_repeat_mode(snapshot.repeat_mode);
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::RepeatModeChanged {
-                mode: snapshot.repeat_mode,
-            },
-        );
+        self.emit_queue_update();
 
-        // Restore the current track and its saved upcoming list as the manual
-        // lane. The flat snapshot doesn't carry which release was playing, so no
-        // release context is reconstructed — only the current track and the
-        // upcoming track ids are.
-        if current_valid {
-            self.playback_queue.play_single(snapshot.track_id.clone());
-            self.playback_queue.add_to_queue(valid_queue);
-            self.emit_queue_update();
-            // Set audio state to Paused before play_track so preserve_paused keeps it
+        // Start the current track paused at the saved position, if there is one.
+        if let Some(track_id) = self
+            .playback_queue
+            .current_track_id()
+            .map(|s| s.to_string())
+        {
             self.audio_output
                 .set_state(crate::playback::audio_output::AudioState::Paused);
-            self.play_track(&snapshot.track_id, false, true).await;
+            self.play_track(&track_id, false, true).await;
 
-            let position = std::time::Duration::from_millis(snapshot.position_ms);
-
-            // Seek to the saved position if non-zero. When seek runs it will
-            // emit via emit_position_display itself.
+            let position_ms = state.position_ms.unwrap_or(0).max(0) as u64;
+            let position = std::time::Duration::from_millis(position_ms);
             if !position.is_zero() {
                 self.seek(position).await;
             }
-
-            // Always emit the current position display so late-mounting views
-            // (e.g. the progress NSView created after launch) can query
-            // last_position_display on creation. This covers the zero-position
-            // case and the near-zero case where seek() short-circuits.
+            // Always emit the position display so late-mounting views can query it.
             let actual_pos = self
                 .current_position_shared
                 .lock()
                 .unwrap()
                 .map(|d| d.as_millis() as u64)
-                .unwrap_or(snapshot.position_ms);
-            self.emit_position_display(actual_pos, snapshot.track_id.clone());
-        } else if !valid_queue.is_empty() {
-            self.playback_queue.add_to_queue(valid_queue);
-            self.emit_queue_update();
+                .unwrap_or(position_ms);
+            self.emit_position_display(actual_pos, track_id);
         }
 
         info!("Playback state restored");
+    }
+
+    /// Build the device-local `playback_state` row from the current queue and
+    /// playback state, and save it — or clear it when playback has stopped. The
+    /// queue is device-local; this never syncs.
+    async fn persist_playback_state(&self) {
+        use crate::playback::audio_output::AudioState;
+        if self.audio_output.get_state() == AudioState::Stopped {
+            self.library_manager.clear_playback_state().await;
+            return;
+        }
+        let snap = self.playback_queue.snapshot();
+        let (source, shuffle_seed, cursor) = match snap.context {
+            Some(ctx) => (
+                Some(ctx.source),
+                match ctx.traversal {
+                    Traversal::Shuffled { seed } => Some(seed as i64),
+                    Traversal::Sequential => None,
+                },
+                Some(ctx.cursor as i64),
+            ),
+            None => (None, None, None),
+        };
+        let position_ms =
+            (*self.current_position_shared.lock().unwrap()).map(|d| d.as_millis() as i64);
+        let row = DbPlaybackState {
+            source,
+            shuffle_seed,
+            cursor,
+            manual: serde_json::to_string(&snap.manual)
+                .expect("serializing a Vec<String> to JSON cannot fail"),
+            repeat: repeat_to_str(snap.repeat).to_string(),
+            current_track_id: snap.current_track_id,
+            position_ms,
+            volume: if self.is_muted {
+                self.pre_mute_volume
+            } else {
+                self.audio_output.get_volume()
+            },
+            is_muted: self.is_muted,
+        };
+        self.library_manager.save_playback_state(&row).await;
     }
 
     async fn run(&mut self) {
@@ -1428,8 +1485,11 @@ impl PlaybackService {
                     // context, with the cursor at the chosen track.
                     match self.library_manager.get_play_context(&track_id).await {
                         Ok(context) => {
-                            self.playback_queue
-                                .play_release(context.track_ids, ContextStart::Index(context.index));
+                            self.playback_queue.play_release(
+                                context.release_id,
+                                context.track_ids,
+                                ContextStart::Index(context.index),
+                            );
                         }
                         Err(e) => {
                             warn!(
@@ -1480,7 +1540,9 @@ impl PlaybackService {
                         };
                         ContextStart::Index(index)
                     };
-                    let first_track = self.playback_queue.play_release(track_ids, start);
+                    let first_track = self
+                        .playback_queue
+                        .play_release(release_id, track_ids, start);
                     self.emit_queue_update();
                     self.play_track(&first_track, false, false).await;
                 }
@@ -1492,6 +1554,7 @@ impl PlaybackService {
                 }
                 PlaybackCommand::Stop => {
                     self.stop().await;
+                    self.persist_playback_state().await;
                 }
                 PlaybackCommand::Next => {
                     info!("Next command received");
@@ -1755,6 +1818,7 @@ impl PlaybackService {
                             PlaybackProgress::RepeatModeChanged { mode },
                         );
                         self.emit_queue_update();
+                        self.persist_playback_state().await;
                     }
                 }
                 PlaybackCommand::CycleRepeatMode => {
@@ -1769,6 +1833,7 @@ impl PlaybackService {
                         PlaybackProgress::RepeatModeChanged { mode: next },
                     );
                     self.emit_queue_update();
+                    self.persist_playback_state().await;
                 }
                 PlaybackCommand::SkipTo(entry_id) => {
                     if let Some(entry) = self.playback_queue.skip_to(&entry_id) {
@@ -1812,16 +1877,12 @@ impl PlaybackService {
                     let _ = reply.send(self.audio_output.get_volume());
                 }
                 PlaybackCommand::Shutdown(reply) => {
-                    if let Some(snapshot) = self.build_snapshot() {
-                        self.library_manager.save_playback_state(&snapshot);
-                    }
+                    self.persist_playback_state().await;
                     let _ = reply.send(());
                     break;
                 }
                 PlaybackCommand::SaveState(reply) => {
-                    if let Some(snapshot) = self.build_snapshot() {
-                        self.library_manager.save_playback_state(&snapshot);
-                    }
+                    self.persist_playback_state().await;
                     let _ = reply.send(());
                 }
             }
@@ -1994,6 +2055,9 @@ impl PlaybackService {
         if let Some(next_id) = self.playback_queue.front().map(str::to_string) {
             self.preload_next_track(&next_id).await;
         }
+
+        // Persist the now-playing state so a restart on this device resumes here.
+        self.persist_playback_state().await;
     }
     /// Preload the next track for gapless playback.
     /// This eagerly starts the decoder so samples are ready when we switch tracks.
@@ -3012,6 +3076,7 @@ impl PlaybackService {
     async fn on_queue_mutated(&mut self) {
         self.refresh_preload_for_queue_front().await;
         self.emit_queue_update();
+        self.persist_playback_state().await;
     }
 
     fn emit_queue_update(&self) {
@@ -3035,36 +3100,28 @@ impl PlaybackService {
         let event = PlaybackProgress::QueueItemsAdded { count };
         let _ = self.progress_tx.send(event);
     }
+}
 
-    /// Build a snapshot of the current playback state for persistence.
-    /// Returns None if nothing is playing or paused.
-    fn build_snapshot(&self) -> Option<PlaybackSnapshot> {
-        use crate::playback::audio_output::AudioState;
-        let state = self.audio_output.get_state();
-        if state == AudioState::Stopped {
-            return None;
+/// Serialize `RepeatMode` for the `playback_state.repeat` column.
+fn repeat_to_str(mode: RepeatMode) -> &'static str {
+    match mode {
+        RepeatMode::Off => "off",
+        RepeatMode::Track => "track",
+        RepeatMode::Context => "context",
+    }
+}
+
+/// Parse the `playback_state.repeat` column. The column is our own write, so an
+/// unrecognized value means a corrupted local row — log it and fall back to Off.
+fn repeat_from_str(s: &str) -> RepeatMode {
+    match s {
+        "track" => RepeatMode::Track,
+        "context" => RepeatMode::Context,
+        "off" => RepeatMode::Off,
+        other => {
+            warn!("playback_state.repeat has an unrecognized value {other:?}; using Off");
+            RepeatMode::Off
         }
-
-        let track_id = self.current_track_id()?.to_string();
-        let position_ms = (*self.current_position_shared.lock().unwrap())?.as_millis() as u64;
-
-        Some(PlaybackSnapshot {
-            track_id,
-            position_ms,
-            queue: self
-                .playback_queue
-                .upcoming()
-                .into_iter()
-                .map(|e| e.track_id)
-                .collect(),
-            volume: if self.is_muted {
-                self.pre_mute_volume
-            } else {
-                self.audio_output.get_volume()
-            },
-            repeat_mode: self.playback_queue.repeat_mode(),
-            is_muted: self.is_muted,
-        })
     }
 }
 

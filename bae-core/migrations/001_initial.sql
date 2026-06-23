@@ -279,3 +279,21 @@ CREATE TABLE IF NOT EXISTS attribution_names (
     pubkey_hex TEXT PRIMARY KEY,
     display_name TEXT NOT NULL
 );
+
+-- Device-local playback queue, restored after a restart on the same device.
+-- NOT synced: no `_updated_at` and absent from `synced_tables()`, the same
+-- device-local convention as coven's own bookkeeping tables. A single row
+-- (id = 'current'). `source` is the context's release id (NULL for a single
+-- track); `shuffle_seed` NULL means sequential, else shuffled with that seed.
+CREATE TABLE IF NOT EXISTS playback_state (
+    id               TEXT PRIMARY KEY,
+    source           TEXT,
+    shuffle_seed     INTEGER,
+    cursor           INTEGER,
+    manual           TEXT NOT NULL,
+    repeat           TEXT NOT NULL,
+    current_track_id TEXT,
+    position_ms      INTEGER,
+    volume           REAL NOT NULL,
+    is_muted         INTEGER NOT NULL
+);
