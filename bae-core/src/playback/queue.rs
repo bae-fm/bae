@@ -255,19 +255,26 @@ impl PlaybackQueue {
             }
             _ => None,
         };
-        // The playing track is a manual entry, the context's cursor entry, or a
-        // standalone single track.
-        self.current = snapshot.current_track_id.map(|tid| {
+        // The playing track is a manual entry or the context's cursor entry. If it
+        // is neither — the track survives but its context was dropped (the release
+        // shrank past the cursor) — resume it as a standalone track.
+        if let Some(tid) = snapshot.current_track_id {
             let from_manual = self.manual.iter().find(|e| e.track_id == tid).cloned();
             let from_context = self
                 .context
                 .as_ref()
                 .filter(|c| c.current().track_id == tid)
                 .map(|c| c.current().clone());
-            from_manual
-                .or(from_context)
-                .unwrap_or_else(|| self.mint(tid))
-        });
+            self.current = Some(from_manual.or(from_context).unwrap_or_else(|| {
+                warn!(
+                    "restored current track {tid:?} is in neither the manual lane nor the \
+                     context cursor; resuming it standalone"
+                );
+                self.mint(tid)
+            }));
+        } else {
+            self.current = None;
+        }
     }
 
     // -- id-based operations across both lanes ---------------------------------

@@ -1356,7 +1356,10 @@ impl PlaybackService {
                 }
                 Ok(tracks) => (parsed.queue.context, tracks),
                 Err(e) => {
-                    warn!("couldn't load the resume context tracks: {e}; starting fresh");
+                    warn!(
+                        "couldn't load the resume context tracks for {}: {e}; starting fresh",
+                        cs.source
+                    );
                     return;
                 }
             },
@@ -1375,7 +1378,10 @@ impl PlaybackService {
         {
             Ok(existing) => existing,
             Err(e) => {
-                warn!("couldn't validate restored tracks against deletions: {e}; starting fresh");
+                warn!(
+                    "couldn't validate restored tracks {to_check:?} against deletions: {e}; \
+                     starting fresh"
+                );
                 return;
             }
         };
@@ -1506,7 +1512,10 @@ impl PlaybackService {
             is_muted: self.is_muted,
         };
         if let Err(e) = self.library_manager.save_playback_state(&row).await {
-            warn!("couldn't persist playback state: {e}");
+            warn!(
+                "couldn't persist playback state (current track {:?}): {e}",
+                row.current_track_id
+            );
         }
     }
 

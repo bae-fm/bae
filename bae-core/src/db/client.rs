@@ -2568,10 +2568,17 @@ impl Database {
                                 cursor,
                             }),
                             (None, None) => None,
-                            (Some(_), None) | (None, Some(_)) => {
+                            (Some(source), None) => {
                                 warn!(
-                                    "discarding the playback resume cache: \
-                                     source and cursor must both be present"
+                                    "discarding the playback resume cache: source {source:?} \
+                                     present but cursor is NULL"
+                                );
+                                return Ok(None);
+                            }
+                            (None, Some(cursor)) => {
+                                warn!(
+                                    "discarding the playback resume cache: cursor {cursor} \
+                                     present but source is NULL"
                                 );
                                 return Ok(None);
                             }

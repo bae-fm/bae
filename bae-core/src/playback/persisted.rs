@@ -31,7 +31,10 @@ impl PersistedPlayback {
         let manual: Vec<String> = match serde_json::from_str(&row.manual) {
             Ok(manual) => manual,
             Err(e) => {
-                warn!("discarding the playback resume cache: manual lane is not valid JSON: {e}");
+                warn!(
+                    "discarding the playback resume cache: manual lane is not valid JSON ({e}): {:?}",
+                    row.manual
+                );
                 return None;
             }
         };
