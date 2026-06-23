@@ -1,4 +1,6 @@
-﻿namespace Bae.Windows;
+﻿using System.Collections.Generic;
+
+namespace Bae.Windows;
 
 /// <summary>One track in the play queue, from the <c>QueueUpdated</c> event JSON.</summary>
 public sealed class QueueItem
@@ -18,4 +20,14 @@ public sealed class QueueItem
 
     /// <summary>The list row; used as the default item text.</summary>
     public override string ToString() => $"{Title} — {Artist} · {DurationLabel}".Trim();
+}
+
+/// <summary>The context lane (the release being played from), from the
+/// <c>QueueUpdated</c> event JSON: its not-yet-played tail, plus whether it was
+/// ordered by shuffle (the queue dialog shows a shuffle indicator when so).
+/// Rendered as its own section, distinct from the manual "Up Next" lane.</summary>
+public sealed class PlaybackContext
+{
+    public bool Shuffled { get; set; }
+    public List<QueueItem> Upcoming { get; set; } = new();
 }

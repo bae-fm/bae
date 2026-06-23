@@ -32,6 +32,7 @@ import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgePlaybackPauseReason
+import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeSidePausePrompt
@@ -72,6 +73,26 @@ data class QueueItem(
     val coverPath: String?,
 )
 
+/** The context lane (the release being played from): its not-yet-played tail,
+ *  plus whether it was ordered by shuffle (the UI shows a shuffle indicator when
+ *  so). Rendered as a section distinct from the manual lane. */
+data class QueueContext(
+    val shuffled: Boolean,
+    val upcoming: List<QueueItem>,
+)
+
+/** The queue's two lanes the [fm.bae.app.ui.QueueScreen] renders as distinct
+ *  sections: the manual lane ("Up Next") and the [context] (or null when nothing
+ *  plays from a release). Kept separate, not flattened. */
+data class QueueProjection(
+    val manual: List<QueueItem>,
+    val context: QueueContext?,
+) {
+    companion object {
+        val EMPTY = QueueProjection(manual = emptyList(), context = null)
+    }
+}
+
 /**
  * The playback-state intake [BaeCorePlayer] exposes to [fm.bae.app.data.UiEventReducer].
  * The reducer depends on this contract, not the concrete player (which needs a
@@ -98,7 +119,8 @@ interface PlaybackEventSink {
     fun onRepeatModeChanged(mode: BridgeRepeatMode)
 
     fun onQueueUpdated(
-        items: List<BridgeQueueEntry>,
+        manual: List<BridgeQueueEntry>,
+        context: BridgePlaybackContext?,
         hasNext: Boolean,
         hasPrevious: Boolean,
     )
@@ -454,8 +476,18 @@ class BaeCorePlayer(
     private var transport: Transport = Transport.IDLE
     private var playWhenReady: Boolean = false
 
-    /** The queue, hydrated from the latest `QueueUpdated` event. */
+    /** The flat up-next playlist (manual lane then the context tail), hydrated
+     *  from the latest `QueueUpdated` event. This is the linear order the Media3
+     *  session and skip-by-index need; the in-app two-section projection reads
+     *  [manualEntries] / [contextEntries] separately. */
     private var entries: List<Meta> = emptyList()
+
+    /** The manual lane and the context tail, kept separate for the in-app
+     *  two-section projection (`publish` builds `_queue` from these). */
+    private var manualEntries: List<Meta> = emptyList()
+    private var contextEntries: List<Meta> = emptyList()
+    private var contextShuffled: Boolean = false
+    private var hasContext: Boolean = false
 
     /** Authoritative now-playing metadata from the latest Playing/Paused payload. */
     private var currentMeta: Meta? = null
@@ -490,12 +522,13 @@ class BaeCorePlayer(
     private val _position = MutableStateFlow(PlaybackPosition(0.0, "", ""))
     val position: StateFlow<PlaybackPosition> = _position.asStateFlow()
 
-    // The up-next queue projection the in-app QueueScreen renders, derived in
-    // publish() from the same `entries` the Media3 State is built from so the
-    // two can't drift. (The currently-playing track is not in this list — it
-    // rides `nowPlaying` — matching core's queue, which holds only what's next.)
-    private val _queue = MutableStateFlow<List<QueueItem>>(emptyList())
-    val queue: StateFlow<List<QueueItem>> = _queue.asStateFlow()
+    // The two-lane queue projection the in-app QueueScreen renders as distinct
+    // sections, derived in publish() from the same lanes the flat Media3 `entries`
+    // are built from so the two can't drift. (The currently-playing track is not
+    // in this projection — it rides `nowPlaying` — matching core's queue, which
+    // holds only what's next.)
+    private val _queue = MutableStateFlow(QueueProjection.EMPTY)
+    val queue: StateFlow<QueueProjection> = _queue.asStateFlow()
 
     // Repeat mode for the in-app now-playing control. Driven by core's
     // RepeatModeChanged (the same event that sets the Media3 `repeatMode`), so
@@ -682,18 +715,29 @@ class BaeCorePlayer(
 
     /**
      * Hydrate the playlist from a `QueueUpdated` event. The core resolves each
-     * item's metadata before emitting, so map the items straight to entries off
+     * item's metadata before emitting, so map both lanes straight to entries off
      * the main thread (cover ids resolve to local file paths via the image
      * resolver, which stats the disk), then re-anchor on the application looper.
+     * The flat [entries] (manual lane then the context tail) drives the Media3
+     * session and skip-by-index; the two lanes are also kept apart for the
+     * in-app two-section projection.
      */
     override fun onQueueUpdated(
-        items: List<BridgeQueueEntry>,
+        manual: List<BridgeQueueEntry>,
+        context: BridgePlaybackContext?,
         hasNext: Boolean,
         hasPrevious: Boolean,
     ) {
         scope.launch {
-            val hydrated = withContext(Dispatchers.IO) { items.map { it.toEntry() } }
-            entries = hydrated
+            val (manualMetas, contextMetas) =
+                withContext(Dispatchers.IO) {
+                    manual.map { it.toEntry() } to (context?.upcoming?.map { it.toEntry() } ?: emptyList())
+                }
+            manualEntries = manualMetas
+            contextEntries = contextMetas
+            contextShuffled = context?.shuffled ?: false
+            hasContext = context != null
+            entries = manualMetas + contextMetas
             this@BaeCorePlayer.hasNext = hasNext
             this@BaeCorePlayer.hasPrevious = hasPrevious
             publish()
@@ -720,7 +764,19 @@ class BaeCorePlayer(
                 elapsedLabel = elapsedLabel,
                 remainingLabel = remainingLabel,
             )
-        _queue.value = entries.mapNotNull { it.toQueueItem() }
+        _queue.value =
+            QueueProjection(
+                manual = manualEntries.mapNotNull { it.toQueueItem() },
+                context =
+                    if (hasContext) {
+                        QueueContext(
+                            shuffled = contextShuffled,
+                            upcoming = contextEntries.mapNotNull { it.toQueueItem() },
+                        )
+                    } else {
+                        null
+                    },
+            )
     }
 
     private fun Meta.toQueueItem(): QueueItem? {

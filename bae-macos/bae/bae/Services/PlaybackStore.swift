@@ -5,10 +5,10 @@ import os.log
 private let logger = Logger.bae("PlaybackStore")
 
 /// Mirror of core's playback state. The reducer is the sole writer:
-/// `nowPlaying`, `volume`, `isMuted`, `repeatMode`, and `queueItems` are
-/// all driven by `BridgeUiEvent` deliveries. Views read fields at the
-/// leaf and never write back — they invoke `appHandle` actions instead,
-/// and the resulting events flow back through the reducer.
+/// `nowPlaying`, `volume`, `isMuted`, `repeatMode`, `manualQueue`, and
+/// `queueContext` are all driven by `BridgeUiEvent` deliveries. Views read
+/// fields at the leaf and never write back — they invoke `appHandle` actions
+/// instead, and the resulting events flow back through the reducer.
 @Observable
 class PlaybackStore {
     var nowPlaying: NowPlaying = .stopped
@@ -16,7 +16,11 @@ class PlaybackStore {
     var volume: Float = 1.0
     var isMuted: Bool = false
     var repeatMode: RepeatMode = .off
-    var queueItems: [QueueItem] = []
+    /// The manual lane ("Up Next") — explicitly enqueued tracks, drained first.
+    var manualQueue: [QueueItem] = []
+    /// The context (the release being played from), or `nil` when nothing plays
+    /// from a release. Rendered as a section distinct from `manualQueue`.
+    var queueContext: QueuePlaybackContext?
 
     /// Current playback position. Updates at display rate during playback —
     /// far too frequent for `@Observable`; published as a Combine signal so

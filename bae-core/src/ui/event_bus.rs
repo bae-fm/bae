@@ -151,20 +151,39 @@ impl UiEventBus {
                         });
                     }
                     PlaybackProgress::QueueUpdated {
-                        entries,
+                        manual,
+                        context,
                         has_next,
                         has_previous,
                     } => {
-                        // Resolve the queue's entries to display-ready items in
-                        // core so the event payload is fully populated, each row
-                        // carrying its per-instance entry id. Consumers then map
-                        // it directly instead of each re-querying the DB (the
-                        // macOS reducer used to; Windows didn't, so its queue
-                        // rows rendered blank).
-                        match lm.get_queue_items(&entries).await {
+                        // Resolve both lanes to display-ready items in core so the
+                        // event payload is fully populated, each row carrying its
+                        // per-instance entry id. Consumers map it straight through
+                        // instead of each re-querying the DB. Resolve manual and
+                        // the context tail in ONE query (so a single failure path
+                        // covers both), then split the resolved rows back into the
+                        // two lanes by entry id — not by length, since resolution
+                        // drops any entry whose track has no metadata, which would
+                        // otherwise shift the lane boundary.
+                        let context_entries =
+                            context.as_ref().map(|c| c.upcoming.clone()).unwrap_or_default();
+                        let combined: Vec<_> =
+                            manual.iter().chain(context_entries.iter()).cloned().collect();
+                        match lm.get_queue_items(&combined).await {
                             Ok(items) => {
+                                let context_ids: std::collections::HashSet<&str> = context_entries
+                                    .iter()
+                                    .map(|e| e.id.0.as_str())
+                                    .collect();
+                                let (context_items, manual_items): (Vec<_>, Vec<_>) = items
+                                    .into_iter()
+                                    .partition(|i| context_ids.contains(i.entry_id.as_str()));
                                 bus.emit(UiBusEvent::QueueUpdated {
-                                    items,
+                                    manual: manual_items,
+                                    context: context.map(|c| crate::queue::ResolvedContext {
+                                        shuffled: c.shuffled,
+                                        upcoming: context_items,
+                                    }),
                                     has_next,
                                     has_previous,
                                 });
@@ -172,7 +191,7 @@ impl UiEventBus {
                             Err(e) => {
                                 tracing::warn!(
                                     "skipping QueueUpdated: failed to resolve {} queue entry(ies): {e}",
-                                    entries.len()
+                                    combined.len()
                                 );
                             }
                         }

@@ -37,10 +37,14 @@ pub enum PlaybackProgress {
         track_id: String,
         progress: f64,
     },
-    /// Queue was updated — contains current queue state as per-instance entries
-    /// (id + track id), in order.
+    /// Queue was updated — the two lanes kept separate: the manual lane ("Up
+    /// Next") in order, and the context (the release being played from) as its
+    /// not-yet-played tail plus its shuffled flag, or `None` when nothing plays
+    /// from a release. Each entry is a per-instance id + track id; the event bus
+    /// resolves them to display items.
     QueueUpdated {
-        entries: Vec<crate::playback::QueueEntry>,
+        manual: Vec<crate::playback::QueueEntry>,
+        context: Option<crate::playback::ContextProjection>,
         has_next: bool,
         has_previous: bool,
     },

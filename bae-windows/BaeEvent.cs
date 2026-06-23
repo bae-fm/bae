@@ -46,7 +46,10 @@ public sealed class BaeEvent
     public float Volume { get; set; }
     public bool IsMuted { get; set; }
     public string? Mode { get; set; }
-    public List<QueueItem>? Items { get; set; }
+    // The queue's two lanes (QueueUpdated): the manual lane ("Up Next") and the
+    // context (the release being played from), rendered as distinct sections.
+    public List<QueueItem>? Manual { get; set; }
+    public PlaybackContext? Context { get; set; }
     public bool HasNext { get; set; }
     public bool HasPrevious { get; set; }
 

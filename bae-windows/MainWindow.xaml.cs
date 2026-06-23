@@ -67,7 +67,11 @@ public sealed partial class MainWindow : Window
     private NativeBae.EventCallback? _eventCallback;
 
     // Latest queue snapshot from QueueUpdated; the queue dialog reads it on open.
-    private List<QueueItem> _queue = new();
+    // The two lanes are kept separate so the dialog renders them as distinct
+    // sections: the manual lane ("Up Next") and the context (the release being
+    // played from), or null when nothing plays from a release.
+    private List<QueueItem> _queueManual = new();
+    private PlaybackContext? _queueContext;
 
     // Holds the +N queue badge visible for ~1.4s after the last add; a fresh add
     // restarts it, replacing the count and resetting the timer.
@@ -353,7 +357,8 @@ public sealed partial class MainWindow : Window
         }
 
         _eventCallback = null;
-        _queue = new List<QueueItem>();
+        _queueManual = new List<QueueItem>();
+        _queueContext = null;
         // Scan candidates are per-library in-memory state; clear them on teardown
         // so the next library doesn't inherit the previous one's candidate list.
         _candidates.Clear();
@@ -1508,7 +1513,8 @@ public sealed partial class MainWindow : Window
                 _refreshSettings?.Invoke();
                 break;
             case "QueueUpdated":
-                _queue = evt.Items ?? new List<QueueItem>();
+                _queueManual = evt.Manual ?? new List<QueueItem>();
+                _queueContext = evt.Context;
                 NpPrev.IsEnabled = evt.HasPrevious;
                 NpNext.IsEnabled = evt.HasNext;
                 break;
@@ -2588,17 +2594,84 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        // A live copy so drag-reorder mutates it; the framework raises a Move on
-        // the collection, which we forward to the core as a queue reorder. Click
-        // (not selection) drives skip-to so a drag doesn't start playback.
-        var queueItems = new ObservableCollection<QueueItem>(_queue);
+        // Clear empties only the manual lane (the context survives), so it
+        // disables on an empty manual lane regardless of the context.
+        var clear = new Button
+        {
+            Content = Loc.Chrome("queue.clear"),
+            IsEnabled = _queueManual.Count > 0,
+        };
+        clear.Click += (_, _) => NativeBae.QueueClear(_handle);
+
+        var content = new StackPanel { Spacing = 8 };
+        content.Children.Add(clear);
+
+        // Two distinct sections: the manual lane ("Up Next"), then the context
+        // (the release being played from). Each is its own reorderable list —
+        // entry ids are unique across both and core no-ops a cross-lane move.
+        if (_queueManual.Count > 0)
+        {
+            content.Children.Add(QueueSectionLabel(Loc.Chrome("queue.section.up_next"), shuffled: false));
+            content.Children.Add(BuildQueueLaneList(_queueManual));
+        }
+
+        if (_queueContext is { Upcoming.Count: > 0 } ctx)
+        {
+            content.Children.Add(QueueSectionLabel(Loc.Chrome("queue.section.playing_from"), ctx.Shuffled));
+            content.Children.Add(BuildQueueLaneList(ctx.Upcoming));
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = Loc.Chrome("queue.title"),
+            Content = content,
+            CloseButtonText = Loc.Chrome("action.close"),
+            XamlRoot = Content.XamlRoot,
+        };
+        await dialog.ShowAsync();
+    }
+
+    // A section header for the queue dialog, with a shuffle glyph when the lane
+    // is shuffled (only the context lane ever is).
+    private static StackPanel QueueSectionLabel(string text, bool shuffled)
+    {
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+        };
+        row.Children.Add(new TextBlock
+        {
+            Text = text,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        });
+        if (shuffled)
+        {
+            // Segoe MDL2 Assets "Shuffle" glyph (U+E8B1).
+            var icon = new FontIcon
+            {
+                Glyph = "\uE8B1", // Segoe MDL2 Assets "Shuffle"
+                FontSize = 14,
+            };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+                icon, Loc.Chrome("queue.shuffled"));
+            row.Children.Add(icon);
+        }
+        return row;
+    }
+
+    // One lane's reorderable list: click skips, right-tap removes, drag reorders
+    // within the lane (the framework raises a Move, forwarded to core by entry id).
+    private ListView BuildQueueLaneList(IEnumerable<QueueItem> items)
+    {
+        var queueItems = new ObservableCollection<QueueItem>(items);
         queueItems.CollectionChanged += (_, args) =>
         {
             if (args.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Move)
             {
                 // The collection already reflects the move: the entry now sits at
                 // NewStartingIndex and lands before whatever follows it (null when
-                // it's now last = move to the end).
+                // it's now last = move to the lane's end).
                 var moved = queueItems[args.NewStartingIndex];
                 var beforeIndex = args.NewStartingIndex + 1;
                 var beforeEntryId = beforeIndex < queueItems.Count
@@ -2659,21 +2732,7 @@ public sealed partial class MainWindow : Window
             menu.ShowAt(element, new FlyoutShowOptions { Position = args.GetPosition(element) });
         };
 
-        var clear = new Button { Content = Loc.Chrome("queue.clear") };
-        clear.Click += (_, _) => NativeBae.QueueClear(_handle);
-
-        var content = new StackPanel { Spacing = 8 };
-        content.Children.Add(clear);
-        content.Children.Add(list);
-
-        var dialog = new ContentDialog
-        {
-            Title = Loc.Chrome("queue.title"),
-            Content = content,
-            CloseButtonText = Loc.Chrome("action.close"),
-            XamlRoot = Content.XamlRoot,
-        };
-        await dialog.ShowAsync();
+        return list;
     }
 
     private async System.Threading.Tasks.Task ShowSidePauseDialog(PlaybackPauseReason? reason)

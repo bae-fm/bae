@@ -1522,25 +1522,30 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             mode: BridgeRepeatMode::from_core(mode),
         }),
         UiBusEvent::QueueUpdated {
-            items,
+            manual,
+            context,
             has_next,
             has_previous,
-        } => Some(BridgeUiEvent::QueueUpdated {
-            items: items
-                .into_iter()
-                .map(|i| BridgeQueueEntry {
-                    entry_id: i.entry_id,
-                    track_id: i.track_id,
-                    title: i.title,
-                    artist_names: i.artist_names,
-                    duration_ms: i.duration_ms,
-                    album_title: i.album_title,
-                    cover_image_id: i.cover_image_id,
-                })
-                .collect(),
-            has_next,
-            has_previous,
-        }),
+        } => {
+            let to_entry = |i: bae_core::queue::QueueItem| BridgeQueueEntry {
+                entry_id: i.entry_id,
+                track_id: i.track_id,
+                title: i.title,
+                artist_names: i.artist_names,
+                duration_ms: i.duration_ms,
+                album_title: i.album_title,
+                cover_image_id: i.cover_image_id,
+            };
+            Some(BridgeUiEvent::QueueUpdated {
+                manual: manual.into_iter().map(to_entry).collect(),
+                context: context.map(|c| BridgePlaybackContext {
+                    shuffled: c.shuffled,
+                    upcoming: c.upcoming.into_iter().map(to_entry).collect(),
+                }),
+                has_next,
+                has_previous,
+            })
+        }
         UiBusEvent::QueueItemsAdded { count } => Some(BridgeUiEvent::QueueItemsAdded { count }),
 
         // ── Preview ────────────────────────────────────────────────

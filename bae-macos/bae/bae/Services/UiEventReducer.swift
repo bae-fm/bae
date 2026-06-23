@@ -329,10 +329,20 @@ enum UiEventReducer {
         case .repeatModeChanged(let mode):
             playbackStore.repeatMode = RepeatMode(bridge: mode)
 
-        case .queueUpdated(let items, let hasNext, let hasPrevious):
-            // The event carries display-ready items (core resolves them before
-            // emitting), so map them straight through — no DB re-query here.
-            playbackStore.queueItems = items.map(QueueItem.init(bridge:))
+        case .queueUpdated(
+            let manual,
+            let playbackContext,
+            let hasNext,
+            let hasPrevious
+        ):
+            // The event carries display-ready items in two lanes (core resolves
+            // them before emitting), so map them straight through — no DB
+            // re-query here. The manual lane and the context render as distinct
+            // sections.
+            playbackStore.manualQueue = manual.map(QueueItem.init(bridge:))
+            playbackStore.queueContext = playbackContext.map(
+                QueuePlaybackContext.init(bridge:)
+            )
             context.appService.mediaControlService.updateCommandAvailability(
                 hasNext: hasNext,
                 hasPrevious: hasPrevious

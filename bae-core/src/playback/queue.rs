@@ -20,6 +20,15 @@ pub struct QueueEntry {
     pub track_id: String,
 }
 
+/// The context lane projected for the UI: its not-yet-played tail and whether
+/// the release was ordered by shuffle (which the UI surfaces as an indicator).
+/// Kept distinct from the manual lane so the two render as separate sections.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContextProjection {
+    pub shuffled: bool,
+    pub upcoming: Vec<QueueEntry>,
+}
+
 /// What to do when advancing to the next track.
 #[derive(Debug)]
 pub enum NextEntry {
@@ -546,8 +555,28 @@ impl PlaybackQueue {
 
     // -- Projection / accessors ------------------------------------------------
 
-    /// The flat upcoming list the UI renders: the manual lane, then the
-    /// not-yet-played tail of the context.
+    /// The manual lane ("Up Next") in order — the explicitly enqueued entries,
+    /// which drain before the context.
+    pub fn manual_entries(&self) -> Vec<QueueEntry> {
+        self.manual.iter().cloned().collect()
+    }
+
+    /// The context's projection — its not-yet-played tail and whether it was
+    /// ordered by shuffle — or `None` when nothing is playing from a release.
+    /// The two lanes are kept separate (not flattened) so each UI renders the
+    /// manual lane and the context as distinct sections.
+    pub fn context_projection(&self) -> Option<ContextProjection> {
+        self.context.as_ref().map(|ctx| ContextProjection {
+            shuffled: matches!(ctx.traversal, Traversal::Shuffled { .. }),
+            upcoming: ctx.upcoming().to_vec(),
+        })
+    }
+
+    /// The flat play order from the current track onward: the manual lane, then
+    /// the not-yet-played tail of the context. Used where a single linear order
+    /// is the right shape (the unit tests' play-order assertions, the platform
+    /// media-session playlist) — not the two-section UI projection, which reads
+    /// `manual_entries` and `context_projection` separately.
     pub fn upcoming(&self) -> Vec<QueueEntry> {
         let mut out: Vec<QueueEntry> = self.manual.iter().cloned().collect();
         if let Some(ctx) = self.context.as_ref() {
@@ -1153,6 +1182,69 @@ mod tests {
             vec!["a", "b"],
             "front must not consume"
         );
+    }
+
+    /// The projection keeps the two lanes separate: the manual lane is its own
+    /// list, the context is its not-yet-played tail, and no manual entry leaks
+    /// into the context list (or vice versa). A sequential context is not
+    /// shuffled.
+    #[test]
+    fn test_projection_keeps_manual_and_context_separate() {
+        let mut q = queue();
+        q.play_release(
+            "r1".into(),
+            rel(&["t1", "t2", "t3"]),
+            ContextStart::Index(0),
+        );
+        q.add_to_queue(rel(&["m1", "m2"]));
+
+        let manual: Vec<String> = q.manual_entries().into_iter().map(|e| e.track_id).collect();
+        assert_eq!(manual, vec!["m1", "m2"], "the manual lane is its own list");
+
+        let ctx = q.context_projection().expect("a release is playing");
+        let context_tracks: Vec<String> = ctx.upcoming.into_iter().map(|e| e.track_id).collect();
+        assert_eq!(
+            context_tracks,
+            vec!["t2", "t3"],
+            "the context is only the not-yet-played tail"
+        );
+        assert!(!ctx.shuffled, "a sequential context is not shuffled");
+
+        // The lanes don't bleed into each other.
+        assert!(
+            !context_tracks.iter().any(|t| t == "m1" || t == "m2"),
+            "manual entries are not mixed into the context list"
+        );
+        assert!(
+            !manual.iter().any(|t| t == "t2" || t == "t3"),
+            "context entries are not mixed into the manual list"
+        );
+    }
+
+    /// A shuffled context carries its `shuffled` flag through the projection.
+    #[test]
+    fn test_projection_context_carries_shuffled_flag() {
+        let mut q = queue();
+        q.play_release(
+            "r1".into(),
+            rel(&["t1", "t2", "t3", "t4"]),
+            ContextStart::Shuffled { seed: 7 },
+        );
+        let ctx = q.context_projection().expect("a release is playing");
+        assert!(ctx.shuffled, "a shuffled context reports shuffled");
+    }
+
+    /// No context → no projection; the manual lane still projects on its own.
+    #[test]
+    fn test_projection_no_context_is_none() {
+        let mut q = queue();
+        q.add_to_queue(rel(&["m1", "m2"]));
+        assert!(
+            q.context_projection().is_none(),
+            "nothing is playing from a release"
+        );
+        let manual: Vec<String> = q.manual_entries().into_iter().map(|e| e.track_id).collect();
+        assert_eq!(manual, vec!["m1", "m2"]);
     }
 
     #[test]

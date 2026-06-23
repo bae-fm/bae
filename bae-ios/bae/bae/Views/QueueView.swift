@@ -43,10 +43,11 @@ struct QueueView: View {
                 }
 
                 upNext
+                playingFrom
             }
             .listStyle(.plain)
             .environment(\.editMode, $editMode)
-            .onChange(of: playbackStore.queueItems.isEmpty) { _, isEmpty in
+            .onChange(of: playbackStore.manualQueue.isEmpty) { _, isEmpty in
                 if isEmpty { editMode = .inactive }
             }
             .background(Theme.background)
@@ -54,8 +55,11 @@ struct QueueView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
+                    // Clear empties only the manual lane; the context (the release
+                    // being played from) survives, so it disables on an empty
+                    // manual lane regardless of the context.
                     Button("Clear") { queue.clearQueue() }
-                        .disabled(playbackStore.queueItems.isEmpty)
+                        .disabled(playbackStore.manualQueue.isEmpty)
                 }
                 // EditButton toggles the list into edit mode, which is what
                 // surfaces the drag-to-reorder handles (and the delete control)
@@ -72,16 +76,21 @@ struct QueueView: View {
 
     @ViewBuilder
     private var upNext: some View {
-        if playbackStore.queueItems.isEmpty {
-            Section {
-                Text(
-                    playbackStore.nowPlaying.track == nil
-                        ? String(localized: "Queue is empty")
-                        : String(localized: "Nothing up next")
-                )
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 24)
+        if playbackStore.manualQueue.isEmpty {
+            // Only show the empty message when nothing follows at all — no manual
+            // lane and no context section below. With a context present, the
+            // "Playing From" section carries the queue, so no message is needed.
+            if playbackStore.queueContext == nil {
+                Section {
+                    Text(
+                        playbackStore.nowPlaying.track == nil
+                            ? String(localized: "Queue is empty")
+                            : String(localized: "Nothing up next")
+                    )
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 24)
+                }
             }
         }
         else {
@@ -89,11 +98,36 @@ struct QueueView: View {
                 // Edit mode surfaces reorder handles here; a row tap is gated to
                 // skip only when not editing, and skipping dismisses the sheet.
                 upNextRows(
-                    items: playbackStore.queueItems,
+                    items: playbackStore.manualQueue,
                     queue: queue,
                     isEditing: editMode.isEditing,
                     onSkipped: { dismiss() }
                 )
+            }
+        }
+    }
+
+    // The context (the release being played from): its not-yet-played tail, with
+    // a shuffle indicator in the header when the order is shuffled. The rows skip/
+    // remove/reorder by entry id, the same as the manual lane.
+    @ViewBuilder
+    private var playingFrom: some View {
+        if let context = playbackStore.queueContext, !context.upcoming.isEmpty {
+            Section {
+                upNextRows(
+                    items: context.upcoming,
+                    queue: queue,
+                    isEditing: editMode.isEditing,
+                    onSkipped: { dismiss() }
+                )
+            } header: {
+                HStack(spacing: 6) {
+                    Text("Playing From")
+                    if context.shuffled {
+                        Image(systemName: "shuffle")
+                            .accessibilityLabel(Text("Shuffled"))
+                    }
+                }
             }
         }
     }

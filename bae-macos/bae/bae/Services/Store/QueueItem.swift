@@ -23,3 +23,21 @@ struct QueueItem: Identifiable, Equatable {
         coverImageId = bridge.coverImageId
     }
 }
+
+/// The context lane (the release being played from): its not-yet-played tail,
+/// plus whether it was ordered by shuffle (rendered as a shuffle indicator).
+/// Shown as its own section, distinct from the manual "Up Next" lane.
+struct QueuePlaybackContext: Equatable {
+    let shuffled: Bool
+    let upcoming: [QueueItem]
+
+    init(bridge: BridgePlaybackContext) {
+        shuffled = bridge.shuffled
+        upcoming = bridge.upcoming.map(QueueItem.init(bridge:))
+    }
+
+    init(shuffled: Bool, upcoming: [QueueItem]) {
+        self.shuffled = shuffled
+        self.upcoming = upcoming
+    }
+}

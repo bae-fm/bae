@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,7 +29,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,7 +79,9 @@ fun QueueScreen(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
-        item(key = "header") { QueueHeader(session = session, isQueueEmpty = order.isEmpty()) }
+        // Clear empties only the manual lane (the context survives), so it
+        // disables on an empty manual lane regardless of the context.
+        item(key = "header") { QueueHeader(session = session, isClearDisabled = order.manual.isEmpty()) }
         nowPlaying?.let { np ->
             item(key = "nowplaying") {
                 SectionLabel(stringResource(R.string.queue_section_now_playing))
@@ -94,36 +99,63 @@ fun QueueScreen(
 }
 
 /**
- * The optimistic queue order plus its reorderable list state, shared by the queue
- * sheet and the expanded player's embedded queue so the conventions stay in one
- * place. The order is seeded from the authoritative flow but NOT while a drag is
- * in progress — re-seeding mid-drag would clobber the optimistic move and snap
- * the row back. A drop maps the dragged/target entry ids to positions and calls
- * core's reorder with the entry id of the row the moved item now precedes.
+ * The optimistic order of one lane (the manual "Up Next" lane or the context),
+ * mutated in place on a drag. Each lane reorders independently — entry ids are
+ * unique across both, and core no-ops a cross-lane move — so the two are held
+ * apart and a drop is resolved within its own lane.
+ */
+internal class QueueOrder {
+    val manual = mutableStateListOf<QueueItem>()
+    val context = mutableStateListOf<QueueItem>()
+    var contextShuffled by mutableStateOf(false)
+
+    val isEmpty: Boolean
+        get() = manual.isEmpty() && context.isEmpty()
+
+    /** The lane (manual or context) holding the entry id, or null if neither. */
+    fun laneOf(entryId: String): SnapshotStateList<QueueItem>? =
+        when {
+            manual.any { it.entryId == entryId } -> manual
+            context.any { it.entryId == entryId } -> context
+            else -> null
+        }
+}
+
+/**
+ * The optimistic two-lane queue order plus its reorderable list state, shared by
+ * the queue sheet and the expanded player's embedded queue so the conventions
+ * stay in one place. The order is seeded from the authoritative flow but NOT while
+ * a drag is in progress — re-seeding mid-drag would clobber the optimistic move
+ * and snap the row back. A drop maps the dragged/target entry ids to positions
+ * WITHIN one lane and calls core's reorder with the entry id of the row the moved
+ * item now precedes; a cross-lane drag is ignored (core no-ops it).
  */
 @Composable
 internal fun rememberReorderableQueue(
     session: OpenLibrary,
     listState: LazyListState,
-): Pair<SnapshotStateList<QueueItem>, ReorderableLazyListState> {
+): Pair<QueueOrder, ReorderableLazyListState> {
     val queue by session.playback.queue.collectAsState()
-    val order = remember { mutableStateListOf<QueueItem>() }
+    val order = remember { QueueOrder() }
     val reorderState =
         rememberReorderableLazyListState(listState) { from, to ->
-            // Map the dragged/target keys (entry ids) back to positions in
-            // `order` (offset-free: the non-row header items never match a row
-            // key).
-            val fromPos = order.indexOfFirst { it.entryId == from.key }
-            val toPos = order.indexOfFirst { it.entryId == to.key }
-            if (fromPos < 0 || toPos < 0) {
-                logger.debug("reorder: drag key not a queue row (from=${from.key}, to=${to.key}); ignoring")
+            // Resolve both keys to their lane; a reorder stays within one lane
+            // (the section headers never match a row key, so they're skipped).
+            val lane = order.laneOf(from.key as? String ?: "")
+            if (lane == null || lane !== order.laneOf(to.key as? String ?: "")) {
+                logger.debug("reorder: drag spans lanes or key not a row (from=${from.key}, to=${to.key}); ignoring")
                 return@rememberReorderableLazyListState
             }
-            val moved = order.removeAt(fromPos)
-            order.add(toPos, moved)
-            // The moved entry lands before whatever now follows it in the
-            // optimistic order; a null `before` (it's now last) means the end.
-            val beforeEntryId = order.getOrNull(toPos + 1)?.entryId
+            val fromPos = lane.indexOfFirst { it.entryId == from.key }
+            val toPos = lane.indexOfFirst { it.entryId == to.key }
+            if (fromPos < 0 || toPos < 0) {
+                return@rememberReorderableLazyListState
+            }
+            val moved = lane.removeAt(fromPos)
+            lane.add(toPos, moved)
+            // The moved entry lands before whatever now follows it in the lane;
+            // a null `before` (it's now last) means the lane's end.
+            val beforeEntryId = lane.getOrNull(toPos + 1)?.entryId
             try {
                 session.appHandle.reorderEntry(moved.entryId, beforeEntryId)
             } catch (e: Exception) {
@@ -133,28 +165,33 @@ internal fun rememberReorderableQueue(
 
     LaunchedEffect(queue, reorderState.isAnyItemDragging) {
         if (!reorderState.isAnyItemDragging) {
-            order.clear()
-            order.addAll(queue)
+            order.manual.clear()
+            order.manual.addAll(queue.manual)
+            order.context.clear()
+            order.context.addAll(queue.context?.upcoming ?: emptyList())
+            order.contextShuffled = queue.context?.shuffled ?: false
         }
     }
     return order to reorderState
 }
 
-// The "Up Next" list (header + reorderable rows, or an empty message) — shared by
-// the queue sheet and the expanded player's embedded queue so the reorder / skip /
-// remove index conventions stay in one place. The caller owns the now-playing
-// header above this (the sheet shows a Now Playing row; the player shows the full
-// transport), passing `hasNowPlaying` only to word the empty state. `onSkipped`
-// runs after a tap-to-skip — the sheet passes its dismiss; the embedded player
-// passes `null` because it stays put on skip.
+// The two-section queue (manual "Up Next" lane + the context section, or an empty
+// message) — shared by the queue sheet and the expanded player's embedded queue so
+// the reorder / skip / remove conventions stay in one place. The caller owns the
+// now-playing header above this (the sheet shows a Now Playing row; the player
+// shows the full transport), passing `hasNowPlaying` only to word the empty state.
+// `onSkipped` runs after a tap-to-skip — the sheet passes its dismiss; the embedded
+// player passes `null` because it stays put on skip.
 internal fun LazyListScope.queueContent(
     session: OpenLibrary,
-    order: List<QueueItem>,
+    order: QueueOrder,
     reorderState: ReorderableLazyListState,
     hasNowPlaying: Boolean,
     onSkipped: (() -> Unit)?,
 ) {
-    if (order.isEmpty()) {
+    // Only show the empty message when nothing follows at all; with a context
+    // present, the "Playing From" section below carries the queue.
+    if (order.isEmpty) {
         item(key = "empty") {
             Text(
                 text = stringResource(if (hasNowPlaying) R.string.queue_nothing_up_next else R.string.queue_empty),
@@ -162,31 +199,55 @@ internal fun LazyListScope.queueContent(
                 modifier = Modifier.fillMaxWidth().padding(32.dp),
             )
         }
-    } else {
+        return
+    }
+
+    if (order.manual.isNotEmpty()) {
         item(key = "uphdr") { SectionLabel(stringResource(R.string.queue_section_up_next)) }
-        itemsIndexed(order, key = { _, item -> item.entryId }) { _, item ->
-            ReorderableItem(reorderState, key = item.entryId) { isDragging ->
-                Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
-                    QueueRow(
-                        item = item,
-                        dragHandleModifier = Modifier.draggableHandle(),
-                        onClick = {
-                            try {
-                                session.appHandle.skipToEntry(item.entryId)
-                                onSkipped?.invoke()
-                            } catch (e: Exception) {
-                                logger.error("skipToEntry ${item.entryId} failed", e)
-                            }
-                        },
-                        onRemove = {
-                            try {
-                                session.appHandle.removeEntry(item.entryId)
-                            } catch (e: Exception) {
-                                logger.error("removeEntry ${item.entryId} failed", e)
-                            }
-                        },
-                    )
-                }
+        queueRows(session, order.manual, reorderState, onSkipped)
+    }
+
+    if (order.context.isNotEmpty()) {
+        item(key = "ctxhdr") {
+            ContextSectionLabel(
+                text = stringResource(R.string.queue_section_playing_from),
+                shuffled = order.contextShuffled,
+            )
+        }
+        queueRows(session, order.context, reorderState, onSkipped)
+    }
+}
+
+// One lane's reorderable rows. Entry ids key the rows (unique across both lanes),
+// so skip/remove/reorder target one instance.
+private fun LazyListScope.queueRows(
+    session: OpenLibrary,
+    items: List<QueueItem>,
+    reorderState: ReorderableLazyListState,
+    onSkipped: (() -> Unit)?,
+) {
+    itemsIndexed(items, key = { _, item -> item.entryId }) { _, item ->
+        ReorderableItem(reorderState, key = item.entryId) { isDragging ->
+            Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
+                QueueRow(
+                    item = item,
+                    dragHandleModifier = Modifier.draggableHandle(),
+                    onClick = {
+                        try {
+                            session.appHandle.skipToEntry(item.entryId)
+                            onSkipped?.invoke()
+                        } catch (e: Exception) {
+                            logger.error("skipToEntry ${item.entryId} failed", e)
+                        }
+                    },
+                    onRemove = {
+                        try {
+                            session.appHandle.removeEntry(item.entryId)
+                        } catch (e: Exception) {
+                            logger.error("removeEntry ${item.entryId} failed", e)
+                        }
+                    },
+                )
             }
         }
     }
@@ -195,7 +256,7 @@ internal fun LazyListScope.queueContent(
 @Composable
 private fun QueueHeader(
     session: OpenLibrary,
-    isQueueEmpty: Boolean,
+    isClearDisabled: Boolean,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -215,7 +276,7 @@ private fun QueueHeader(
                     logger.error("clearQueue failed", e)
                 }
             },
-            enabled = !isQueueEmpty,
+            enabled = !isClearDisabled,
         ) {
             Text(stringResource(R.string.queue_clear))
         }
@@ -234,6 +295,35 @@ private fun SectionLabel(text: String) {
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp),
     )
+}
+
+// The context section's label, with a shuffle indicator when the release was
+// ordered by shuffle.
+@Composable
+private fun ContextSectionLabel(
+    text: String,
+    shuffled: Boolean,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (shuffled) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Icon(
+                imageVector = Icons.Filled.Shuffle,
+                contentDescription = stringResource(R.string.queue_shuffled),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
 }
 
 @Composable

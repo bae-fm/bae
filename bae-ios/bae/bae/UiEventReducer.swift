@@ -298,8 +298,9 @@ enum UiEventReducer {
         case .muteChanged(let isMuted):
             playbackStore.isMuted = isMuted
 
-        case .queueUpdated(let items, let hasNext, let hasPrevious):
-            playbackStore.queueItems = items.map(QueueItem.init(bridge:))
+        case .queueUpdated(let manual, let playbackContext, let hasNext, let hasPrevious):
+            playbackStore.manualQueue = manual.map(QueueItem.init(bridge:))
+            playbackStore.queueContext = playbackContext.map(QueuePlaybackContext.init(bridge:))
             context.mediaControlService.updateCommandAvailability(
                 hasNext: hasNext,
                 hasPrevious: hasPrevious

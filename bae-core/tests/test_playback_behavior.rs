@@ -228,9 +228,14 @@ impl PlaybackTestFixture {
         while Instant::now() < deadline {
             match timeout(Duration::from_millis(100), self.progress_rx.recv()).await {
                 Ok(Some(PlaybackProgress::QueueUpdated {
-                    entries: latest, ..
+                    manual, context, ..
                 })) => {
-                    entries = latest;
+                    // The mutation targets entries in either lane, so flatten the
+                    // two lanes into one play-order list for id lookup.
+                    entries = manual;
+                    if let Some(ctx) = context {
+                        entries.extend(ctx.upcoming);
+                    }
                 }
                 Ok(Some(PlaybackProgress::StateChanged {
                     state: PlaybackState::Playing { .. },
@@ -4163,11 +4168,12 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
     while Instant::now() < deadline {
         match timeout(Duration::from_millis(100), progress_rx.recv()).await {
             Ok(Some(PlaybackProgress::QueueUpdated {
-                entries,
+                manual,
+                context,
                 has_previous,
                 ..
             })) => {
-                queue_update = Some((entries, has_previous));
+                queue_update = Some((manual, context, has_previous));
                 break;
             }
             Ok(Some(_)) => continue,
@@ -4175,12 +4181,16 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
         }
     }
 
-    let (entries, has_previous) = queue_update.expect("restore emits a queue update");
-    let queued: Vec<&str> = entries.iter().map(|e| e.track_id.as_str()).collect();
+    let (manual, context, has_previous) = queue_update.expect("restore emits a queue update");
     assert!(
         !has_previous,
         "the context was dropped, so nothing sits before the cursor"
     );
+    assert!(
+        context.is_none(),
+        "the cursor was past the release, so the context is dropped entirely: {context:?}"
+    );
+    let queued: Vec<&str> = manual.iter().map(|e| e.track_id.as_str()).collect();
     assert!(
         queued.contains(&manual_track_id.as_str()),
         "the manual lane survives the restore: {queued:?}"

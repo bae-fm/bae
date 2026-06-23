@@ -3377,7 +3377,8 @@ impl PlaybackService {
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::QueueUpdated {
-                entries: self.playback_queue.upcoming(),
+                manual: self.playback_queue.manual_entries(),
+                context: self.playback_queue.context_projection(),
                 has_next,
                 has_previous,
             },

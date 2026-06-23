@@ -28,8 +28,8 @@ pub use error::PlaybackError;
 pub use persisted::{repeat_to_str, PersistedPlayback};
 pub use progress::{PlaybackProgress, PreviewState};
 pub use queue::{
-    ContextSnapshot, NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId,
-    QueueSnapshot,
+    ContextProjection, ContextSnapshot, NextEntry, PlaybackQueue, PreviousAction, QueueEntry,
+    QueueEntryId, QueueSnapshot,
 };
 pub use repeat_mode::RepeatMode;
 pub use service::{

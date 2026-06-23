@@ -1349,7 +1349,8 @@ pub enum BridgeUiEvent {
         mode: BridgeRepeatMode,
     },
     QueueUpdated {
-        items: Vec<BridgeQueueEntry>,
+        manual: Vec<BridgeQueueEntry>,
+        context: Option<BridgePlaybackContext>,
         has_next: bool,
         has_previous: bool,
     },
@@ -1965,6 +1966,16 @@ pub struct BridgeQueueEntry {
     pub duration_ms: Option<i64>,
     pub album_title: String,
     pub cover_image_id: Option<String>,
+}
+
+/// The context lane (the release being played from), carried by `QueueUpdated`
+/// alongside the manual lane so each UI renders the two as distinct sections:
+/// its not-yet-played tail, plus whether it was ordered by shuffle (the UI shows
+/// a shuffle indicator when so).
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePlaybackContext {
+    pub shuffled: bool,
+    pub upcoming: Vec<BridgeQueueEntry>,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]

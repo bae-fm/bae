@@ -2274,6 +2274,16 @@ struct FfiQueueItem {
     cover_image_id: Option<String>,
 }
 
+/// The context lane (the release being played from), carried by `QueueUpdated`
+/// alongside the manual lane so the UI renders the two as distinct sections:
+/// its not-yet-played tail, plus whether it was ordered by shuffle (the UI shows
+/// a shuffle indicator when so).
+#[derive(Serialize)]
+struct FfiPlaybackContext {
+    shuffled: bool,
+    upcoming: Vec<FfiQueueItem>,
+}
+
 /// One signals-toolbar badge (carried by `CandidateIdentifyState`). A flat,
 /// pre-shaped mirror of `bae_core::identify::ToolbarSignal`: the UI renders it
 /// directly. `kind`/`role`/`origin` are the snake_case wire names; `state` is a
@@ -2376,7 +2386,8 @@ enum FfiEvent {
     /// The library changed (album/release add/update/remove) — reload views.
     LibraryChanged,
     QueueUpdated {
-        items: Vec<FfiQueueItem>,
+        manual: Vec<FfiQueueItem>,
+        context: Option<FfiPlaybackContext>,
         has_next: bool,
         has_previous: bool,
     },
@@ -2689,24 +2700,29 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
         | UiBusEvent::ReleaseUpdated { .. }
         | UiBusEvent::ReleaseRemoved { .. } => FfiEvent::LibraryChanged,
         UiBusEvent::QueueUpdated {
-            items,
+            manual,
+            context,
             has_next,
             has_previous,
-        } => FfiEvent::QueueUpdated {
-            items: items
-                .iter()
-                .map(|item| FfiQueueItem {
-                    entry_id: item.entry_id.clone(),
-                    title: item.title.clone(),
-                    artist: item.artist_names.clone(),
-                    duration_ms: item.duration_ms,
-                    album_title: item.album_title.clone(),
-                    cover_image_id: item.cover_image_id.clone(),
-                })
-                .collect(),
-            has_next: *has_next,
-            has_previous: *has_previous,
-        },
+        } => {
+            let to_item = |item: &bae_core::queue::QueueItem| FfiQueueItem {
+                entry_id: item.entry_id.clone(),
+                title: item.title.clone(),
+                artist: item.artist_names.clone(),
+                duration_ms: item.duration_ms,
+                album_title: item.album_title.clone(),
+                cover_image_id: item.cover_image_id.clone(),
+            };
+            FfiEvent::QueueUpdated {
+                manual: manual.iter().map(to_item).collect(),
+                context: context.as_ref().map(|c| FfiPlaybackContext {
+                    shuffled: c.shuffled,
+                    upcoming: c.upcoming.iter().map(to_item).collect(),
+                }),
+                has_next: *has_next,
+                has_previous: *has_previous,
+            }
+        }
         UiBusEvent::VolumeChanged { volume } => FfiEvent::VolumeChanged { volume: *volume },
         UiBusEvent::MuteChanged { is_muted } => FfiEvent::MuteChanged {
             is_muted: *is_muted,

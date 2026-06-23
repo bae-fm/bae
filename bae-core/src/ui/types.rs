@@ -147,8 +147,13 @@ pub enum UiBusEvent {
     RepeatModeChanged {
         mode: crate::playback::RepeatMode,
     },
+    /// The queue's two lanes, kept separate so each UI renders them as distinct
+    /// sections: the manual lane ("Up Next") in order, and the context (the
+    /// release being played from) as its not-yet-played tail plus its shuffled
+    /// flag, or `None` when nothing plays from a release.
     QueueUpdated {
-        items: Vec<crate::queue::QueueItem>,
+        manual: Vec<crate::queue::QueueItem>,
+        context: Option<crate::queue::ResolvedContext>,
         has_next: bool,
         has_previous: bool,
     },

@@ -183,14 +183,32 @@ struct ExpandedNowPlayingView: View {
     // above. The section is dropped when empty so no bare "Up Next" header shows.
     @ViewBuilder
     private var upNext: some View {
-        if !playbackStore.queueItems.isEmpty {
+        if !playbackStore.manualQueue.isEmpty {
             Section("Up Next") {
                 upNextRows(
-                    items: playbackStore.queueItems,
+                    items: playbackStore.manualQueue,
                     queue: queue,
                     isEditing: false,
                     onSkipped: {}
                 )
+            }
+        }
+        if let context = playbackStore.queueContext, !context.upcoming.isEmpty {
+            Section {
+                upNextRows(
+                    items: context.upcoming,
+                    queue: queue,
+                    isEditing: false,
+                    onSkipped: {}
+                )
+            } header: {
+                HStack(spacing: 6) {
+                    Text("Playing From")
+                    if context.shuffled {
+                        Image(systemName: "shuffle")
+                            .accessibilityLabel(Text("Shuffled"))
+                    }
+                }
             }
         }
     }

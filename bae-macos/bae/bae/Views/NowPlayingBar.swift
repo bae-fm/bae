@@ -48,7 +48,8 @@ struct NowPlayingBarContainer: View {
             queueNowPlayingTitle: track?.trackTitle,
             queueNowPlayingArtist: track?.artistNames,
             queueNowPlayingPath: coverPath,
-            queueItems: playbackStore.queueItems,
+            queueManual: playbackStore.manualQueue,
+            queueContext: playbackStore.queueContext,
             resolveQueueImagePath: { $0.flatMap(mediaPaths.imagePathIfExists) },
             onPlayPause: { playback.togglePlayPause() },
             onNext: { playback.nextTrack() },
@@ -111,7 +112,8 @@ struct NowPlayingBar: View {
     let queueNowPlayingTitle: String?
     let queueNowPlayingArtist: String?
     let queueNowPlayingPath: String?
-    let queueItems: [QueueItem]
+    let queueManual: [QueueItem]
+    let queueContext: QueuePlaybackContext?
     let resolveQueueImagePath: (String?) -> String?
     let onPlayPause: () -> Void
     let onNext: () -> Void
@@ -280,7 +282,8 @@ struct NowPlayingBar: View {
                     nowPlayingTitle: queueNowPlayingTitle,
                     nowPlayingArtist: queueNowPlayingArtist,
                     nowPlayingPath: queueNowPlayingPath,
-                    items: queueItems,
+                    manual: queueManual,
+                    context: queueContext,
                     resolveImagePath: resolveQueueImagePath,
                     onClose: { showQueue = false },
                     onClear: { onQueueClear() },
@@ -384,7 +387,8 @@ private struct NowPlayingBarPreview: View {
     var isLoading: Bool = false
     let repeatMode: RepeatMode
     let queueIsActive: Bool
-    let queueItems: [QueueItem]
+    var queueManual: [QueueItem] = []
+    var queueContext: QueuePlaybackContext?
 
     @State
     private var showQueue = false
@@ -409,7 +413,8 @@ private struct NowPlayingBarPreview: View {
             queueNowPlayingTitle: trackTitle,
             queueNowPlayingArtist: artistNames,
             queueNowPlayingPath: nil,
-            queueItems: queueItems,
+            queueManual: queueManual,
+            queueContext: queueContext,
             resolveQueueImagePath: { _ in nil },
             onPlayPause: {},
             onNext: {},
@@ -438,7 +443,11 @@ private struct NowPlayingBarPreview: View {
         isPlaying: true,
         repeatMode: .off,
         queueIsActive: true,
-        queueItems: PreviewData.queueItems,
+        queueManual: Array(PreviewData.queueItems.prefix(2)),
+        queueContext: QueuePlaybackContext(
+            shuffled: false,
+            upcoming: Array(PreviewData.queueItems.suffix(3))
+        ),
     )
     .environment(MediaPaths.stub)
 }
@@ -450,7 +459,11 @@ private struct NowPlayingBarPreview: View {
         isPlaying: false,
         repeatMode: .context,
         queueIsActive: true,
-        queueItems: PreviewData.queueItems,
+        queueManual: Array(PreviewData.queueItems.prefix(2)),
+        queueContext: QueuePlaybackContext(
+            shuffled: true,
+            upcoming: Array(PreviewData.queueItems.suffix(3))
+        ),
     )
     .environment(MediaPaths.stub)
 }
@@ -463,7 +476,8 @@ private struct NowPlayingBarPreview: View {
         isLoading: true,
         repeatMode: .off,
         queueIsActive: true,
-        queueItems: PreviewData.queueItems,
+        queueManual: PreviewData.queueItems,
+        queueContext: nil,
     )
     .environment(MediaPaths.stub)
 }
@@ -475,7 +489,6 @@ private struct NowPlayingBarPreview: View {
         isPlaying: false,
         repeatMode: .off,
         queueIsActive: false,
-        queueItems: [],
     )
     .environment(MediaPaths.stub)
 }
