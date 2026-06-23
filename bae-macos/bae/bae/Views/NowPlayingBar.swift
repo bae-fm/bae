@@ -326,10 +326,10 @@ struct NowPlayingBar: View {
     private var repeatButton: some View {
         Button(action: onCycleRepeat) {
             switch repeatMode {
-            case .none:
+            case .off:
                 Image(systemName: "repeat")
                     .foregroundStyle(.secondary)
-            case .album:
+            case .context:
                 Image(systemName: "repeat")
                     .foregroundColor(.accentColor)
             case .track:
@@ -345,10 +345,10 @@ struct NowPlayingBar: View {
 
     private var repeatHelp: LocalizedStringKey {
         switch repeatMode {
-        case .none:
+        case .off:
             "Repeat: off"
-        case .album:
-            "Repeat: album"
+        case .context:
+            "Repeat: context"
         case .track:
             "Repeat: track"
         }
@@ -435,19 +435,19 @@ private struct NowPlayingBarPreview: View {
         trackTitle: PreviewData.nowPlayingTitle,
         artistNames: PreviewData.nowPlayingArtist,
         isPlaying: true,
-        repeatMode: .none,
+        repeatMode: .off,
         queueIsActive: true,
         queueItems: PreviewData.queueItems,
     )
     .environment(MediaPaths.stub)
 }
 
-#Preview("Paused — Repeat Album") {
+#Preview("Paused — Repeat Context") {
     NowPlayingBarPreview(
         trackTitle: PreviewData.nowPlayingTitle,
         artistNames: PreviewData.nowPlayingArtist,
         isPlaying: false,
-        repeatMode: .album,
+        repeatMode: .context,
         queueIsActive: true,
         queueItems: PreviewData.queueItems,
     )
@@ -460,7 +460,7 @@ private struct NowPlayingBarPreview: View {
         artistNames: PreviewData.nowPlayingArtist,
         isPlaying: true,
         isLoading: true,
-        repeatMode: .none,
+        repeatMode: .off,
         queueIsActive: true,
         queueItems: PreviewData.queueItems,
     )
@@ -472,7 +472,7 @@ private struct NowPlayingBarPreview: View {
         trackTitle: nil,
         artistNames: nil,
         isPlaying: false,
-        repeatMode: .none,
+        repeatMode: .off,
         queueIsActive: false,
         queueItems: [],
     )

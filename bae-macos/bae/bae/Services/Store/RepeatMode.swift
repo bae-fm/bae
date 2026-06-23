@@ -1,15 +1,15 @@
 import Foundation
 
 enum RepeatMode: Equatable {
-    case none
+    case off
     case track
-    case album
+    case context
 
     init(bridge: BridgeRepeatMode) {
         switch bridge {
-        case .none: self = .none
+        case .off: self = .off
         case .track: self = .track
-        case .album: self = .album
+        case .context: self = .context
         }
     }
 }

@@ -262,14 +262,14 @@ private fun ExpandedSecondaryControls(session: OpenLibrary) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // cycle_repeat_mode is non-throwing; core emits RepeatModeChanged which
-        // updates the repeatMode flow. NONE is dimmed; ALBUM and TRACK are accented
+        // updates the repeatMode flow. OFF is dimmed; CONTEXT and TRACK are accented
         // (TRACK uses the repeat-one glyph). Same logic as the compact bar.
         IconButton(onClick = { session.appHandle.cycleRepeatMode() }) {
             Icon(
                 imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
                 contentDescription = stringResource(R.string.repeat_mode),
                 tint =
-                    if (repeatMode == BridgeRepeatMode.NONE) {
+                    if (repeatMode == BridgeRepeatMode.OFF) {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     } else {
                         MaterialTheme.colorScheme.primary

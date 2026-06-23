@@ -2360,7 +2360,7 @@ enum FfiEvent {
     MuteChanged {
         is_muted: bool,
     },
-    /// Repeat mode changed: `none` / `track` / `album`.
+    /// Repeat mode changed: `off` / `track` / `context`.
     RepeatModeChanged {
         mode: String,
     },
@@ -2572,9 +2572,9 @@ fn candidate_audio_paths(
 fn repeat_mode_name(mode: &bae_core::playback::RepeatMode) -> &'static str {
     use bae_core::playback::RepeatMode;
     match mode {
-        RepeatMode::Off => "none",
+        RepeatMode::Off => "off",
         RepeatMode::Track => "track",
-        RepeatMode::Context => "album",
+        RepeatMode::Context => "context",
     }
 }
 
@@ -2905,7 +2905,7 @@ pub unsafe extern "C" fn bae_get_volume(handle: *const BaeHandle) -> f32 {
     app.runtime.block_on(app.services.playback().get_volume())
 }
 
-/// Cycle the repeat mode (off → repeat-track → repeat-album → off). The new mode
+/// Cycle the repeat mode (off → repeat-context → repeat-track → off). The new mode
 /// arrives as a `RepeatModeChanged` event.
 ///
 /// # Safety

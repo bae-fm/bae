@@ -439,25 +439,25 @@ pub struct BridgeAlbumDetail {
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeRepeatMode {
-    None,
+    Off,
     Track,
-    Album,
+    Context,
 }
 
 impl BridgeRepeatMode {
     pub fn to_core(self) -> bae_core::playback::RepeatMode {
         match self {
-            Self::None => bae_core::playback::RepeatMode::Off,
+            Self::Off => bae_core::playback::RepeatMode::Off,
             Self::Track => bae_core::playback::RepeatMode::Track,
-            Self::Album => bae_core::playback::RepeatMode::Context,
+            Self::Context => bae_core::playback::RepeatMode::Context,
         }
     }
 
     pub fn from_core(mode: bae_core::playback::RepeatMode) -> Self {
         match mode {
-            bae_core::playback::RepeatMode::Off => Self::None,
+            bae_core::playback::RepeatMode::Off => Self::Off,
             bae_core::playback::RepeatMode::Track => Self::Track,
-            bae_core::playback::RepeatMode::Context => Self::Album,
+            bae_core::playback::RepeatMode::Context => Self::Context,
         }
     }
 }

@@ -495,7 +495,7 @@ class BaeCorePlayer(
     // Repeat mode for the in-app now-playing control. Driven by core's
     // RepeatModeChanged (the same event that sets the Media3 `repeatMode`), so
     // the in-app button and the system controls reflect one source.
-    private val _repeatMode = MutableStateFlow(BridgeRepeatMode.NONE)
+    private val _repeatMode = MutableStateFlow(BridgeRepeatMode.OFF)
     val repeatMode: StateFlow<BridgeRepeatMode> = _repeatMode.asStateFlow()
 
     // Output volume [0,1] and mute, for the expanded now-playing controls.
@@ -652,9 +652,9 @@ class BaeCorePlayer(
     override fun onRepeatModeChanged(mode: BridgeRepeatMode) {
         media3RepeatMode =
             when (mode) {
-                BridgeRepeatMode.NONE -> Player.REPEAT_MODE_OFF
+                BridgeRepeatMode.OFF -> Player.REPEAT_MODE_OFF
                 BridgeRepeatMode.TRACK -> Player.REPEAT_MODE_ONE
-                BridgeRepeatMode.ALBUM -> Player.REPEAT_MODE_ALL
+                BridgeRepeatMode.CONTEXT -> Player.REPEAT_MODE_ALL
             }
         _repeatMode.value = mode
         publish()
@@ -885,8 +885,8 @@ class BaeCorePlayer(
         val mode =
             when (repeatMode) {
                 Player.REPEAT_MODE_ONE -> BridgeRepeatMode.TRACK
-                Player.REPEAT_MODE_ALL -> BridgeRepeatMode.ALBUM
-                else -> BridgeRepeatMode.NONE
+                Player.REPEAT_MODE_ALL -> BridgeRepeatMode.CONTEXT
+                else -> BridgeRepeatMode.OFF
             }
         appHandle.setRepeatMode(mode)
         return Futures.immediateVoidFuture()

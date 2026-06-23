@@ -1402,7 +1402,7 @@ public sealed partial class MainWindow : Window
                 NpRepeat.Content = evt.Mode switch
                 {
                     "track" => "🔂",
-                    "album" => "🔁",
+                    "context" => "🔁",
                     _ => "↻",
                 };
                 break;

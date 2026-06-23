@@ -159,14 +159,14 @@ private fun NowPlayingTransportButtons(
         Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.queue))
     }
     // cycle_repeat_mode is non-throwing; core emits RepeatModeChanged which updates
-    // the repeatMode flow. NONE is dimmed; ALBUM and TRACK are accented (TRACK uses
+    // the repeatMode flow. OFF is dimmed; CONTEXT and TRACK are accented (TRACK uses
     // the repeat-one glyph).
     IconButton(onClick = { session.appHandle.cycleRepeatMode() }) {
         Icon(
             imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
             contentDescription = stringResource(R.string.repeat_mode),
             tint =
-                if (repeatMode == BridgeRepeatMode.NONE) {
+                if (repeatMode == BridgeRepeatMode.OFF) {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 } else {
                     MaterialTheme.colorScheme.primary

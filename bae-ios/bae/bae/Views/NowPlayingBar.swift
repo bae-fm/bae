@@ -119,7 +119,7 @@ struct NowPlayingBar: View {
                     ? "repeat.1" : "repeat"
             )
             .foregroundStyle(
-                playbackStore.repeatMode == .none
+                playbackStore.repeatMode == .off
                     ? Color.secondary : Theme.accent
             )
         }

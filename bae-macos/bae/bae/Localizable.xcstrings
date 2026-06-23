@@ -54601,192 +54601,192 @@
         }
       }
     },
-    "Repeat: album": {
-      "comment": "Now-playing bar: repeat button tooltip/a11y when repeating the album",
+    "Repeat: context": {
+      "comment": "Now-playing bar: repeat button tooltip/a11y when repeating the playback context",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repeat: album"
+            "value": "Repeat: context"
           }
         },
         "es": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repetir: álbum"
           }
         },
         "fr": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Répétition : album"
           }
         },
         "de": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Wiederholen: Album"
           }
         },
         "pt-BR": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repetir: álbum"
           }
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "リピート: アルバム"
           }
         },
         "zh-Hans": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "重复：专辑"
           }
         },
         "ar": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "التكرار: الألبوم"
           }
         },
         "he": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "חזרה: אלבום"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Повтор: альбом"
           }
         },
         "bg": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Повторение: албум"
           }
         },
         "pl": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Powtarzanie: album"
           }
         },
         "cs": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Opakování: album"
           }
         },
         "hr": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Ponavljanje: album"
           }
         },
         "ko": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "반복: 앨범"
           }
         },
         "zh-Hant": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "it": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "tr": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "vi": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "nl": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "hi": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "bn": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "ta": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "te": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "mr": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "ur": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "gu": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "kn": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "ml": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "pa": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         },
         "th": {
           "stringUnit": {
-            "state": "translated",
+            "state": "needs_review",
             "value": "Repeat: album"
           }
         }

@@ -15,7 +15,7 @@ class PlaybackStore {
 
     var volume: Float = 1.0
     var isMuted: Bool = false
-    var repeatMode: RepeatMode = .none
+    var repeatMode: RepeatMode = .off
     var queueItems: [QueueItem] = []
 
     /// Current playback position. Updates at display rate during playback —

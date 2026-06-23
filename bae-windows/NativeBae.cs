@@ -967,7 +967,7 @@ internal static class NativeBae
     [DllImport(Dll, EntryPoint = "bae_get_volume", CallingConvention = CallingConvention.Cdecl)]
     internal static extern float GetVolume(IntPtr handle);
 
-    /// <summary>Cycle repeat mode (off → track → album).</summary>
+    /// <summary>Cycle repeat mode (off → context → track).</summary>
     [DllImport(Dll, EntryPoint = "bae_cycle_repeat_mode", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void CycleRepeatMode(IntPtr handle);
 
