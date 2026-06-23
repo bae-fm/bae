@@ -39,10 +39,12 @@
     <string name="queue_clear">Limpar</string>
     <string name="queue_section_now_playing">Tocando agora</string>
     <string name="queue_section_up_next">A seguir</string>
+    <string name="queue_section_playing_from">Tocando de</string>
     <string name="queue_nothing_up_next">Nada a seguir</string>
     <string name="queue_empty">A fila está vazia</string>
     <string name="queue_remove">Remover da fila</string>
     <string name="queue_drag_to_reorder">Arraste para reordenar</string>
+    <string name="queue_shuffled">Aleatório</string>
     <string name="search_failed">Falha na busca</string>
     <string name="search_no_results">Nenhum resultado para “%1$s”</string>
     <string name="search_section_albums">Álbuns</string>

@@ -117,6 +117,9 @@
   <data name="queue.clear" xml:space="preserve"><value>clear queue</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>সারি থেকে সরান</value></data>
   <data name="queue.title" xml:space="preserve"><value>queue</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>পরবর্তী</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>যা থেকে চলছে</value></data>
+  <data name="queue.shuffled" xml:space="preserve"><value>শাফল করা</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>restore code</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>restore</value></data>
   <data name="restore.failed" xml:space="preserve"><value>restore failed</value></data>

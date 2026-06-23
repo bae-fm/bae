@@ -117,6 +117,9 @@
   <data name="queue.clear" xml:space="preserve"><value>キューをクリア</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>キューから削除</value></data>
   <data name="queue.title" xml:space="preserve"><value>キュー</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>次に再生</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>再生元</value></data>
+  <data name="queue.shuffled" xml:space="preserve"><value>シャッフル</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>復元コード</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>復元</value></data>
   <data name="restore.failed" xml:space="preserve"><value>復元に失敗しました</value></data>

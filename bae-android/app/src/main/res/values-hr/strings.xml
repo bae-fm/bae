@@ -39,10 +39,12 @@
     <string name="queue_clear">Očisti</string>
     <string name="queue_section_now_playing">Trenutno svira</string>
     <string name="queue_section_up_next">Sljedeće na redu</string>
+    <string name="queue_section_playing_from">Reproducira se iz</string>
     <string name="queue_nothing_up_next">Ništa nije na redu</string>
     <string name="queue_empty">Red je prazan</string>
     <string name="queue_remove">Ukloni iz reda</string>
     <string name="queue_drag_to_reorder">Povucite za promjenu redoslijeda</string>
+    <string name="queue_shuffled">Izmiješano</string>
     <string name="search_failed">Pretraživanje nije uspjelo</string>
     <string name="search_no_results">Nema rezultata za „%1$s”</string>
     <string name="search_section_albums">Albumi</string>

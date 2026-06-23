@@ -149,6 +149,10 @@ internal fun rememberReorderableQueue(
             val fromPos = lane.indexOfFirst { it.entryId == from.key }
             val toPos = lane.indexOfFirst { it.entryId == to.key }
             if (fromPos < 0 || toPos < 0) {
+                // The lane held both keys a moment ago (laneOf matched); failing to
+                // resolve them to positions now is an unexpected race, not a normal
+                // skip — surface it before bailing rather than dropping it silently.
+                logger.warning("reorder: key not found in lane (from=${from.key}, to=${to.key}); ignoring")
                 return@rememberReorderableLazyListState
             }
             val moved = lane.removeAt(fromPos)
@@ -168,8 +172,16 @@ internal fun rememberReorderableQueue(
             order.manual.clear()
             order.manual.addAll(queue.manual)
             order.context.clear()
-            order.context.addAll(queue.context?.upcoming ?: emptyList())
-            order.contextShuffled = queue.context?.shuffled ?: false
+            // No context (nothing playing from a release) seeds an empty context
+            // lane with no shuffle — a normal state, named here rather than
+            // defaulted around the absent value.
+            when (val context = queue.context) {
+                null -> order.contextShuffled = false
+                else -> {
+                    order.context.addAll(context.upcoming)
+                    order.contextShuffled = context.shuffled
+                }
+            }
         }
     }
     return order to reorderState

@@ -117,6 +117,9 @@
   <data name="queue.clear" xml:space="preserve"><value>נקה תור</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>הסר מהתור</value></data>
   <data name="queue.title" xml:space="preserve"><value>תור</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>הבא בתור</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>מנגן מתוך</value></data>
+  <data name="queue.shuffled" xml:space="preserve"><value>אקראי</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>קוד שחזור</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>שחזר</value></data>
   <data name="restore.failed" xml:space="preserve"><value>השחזור נכשל</value></data>

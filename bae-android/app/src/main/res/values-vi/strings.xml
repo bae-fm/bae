@@ -39,10 +39,12 @@
     <string name="queue_clear">Clear</string>
     <string name="queue_section_now_playing">Đang phát</string>
     <string name="queue_section_up_next">Tiếp theo</string>
+    <string name="queue_section_playing_from">Đang phát từ</string>
     <string name="queue_nothing_up_next">Không có mục tiếp theo</string>
     <string name="queue_empty">Queue is empty</string>
     <string name="queue_remove">Remove from queue</string>
     <string name="queue_drag_to_reorder">Kéo để sắp xếp lại</string>
+    <string name="queue_shuffled">Đã trộn</string>
     <string name="search_failed">Tìm kiếm · Lỗi</string>
     <string name="search_no_results">Không có kết quả: “%1$s”</string>
     <string name="search_section_albums">Album</string>

@@ -729,13 +729,21 @@ class BaeCorePlayer(
         hasPrevious: Boolean,
     ) {
         scope.launch {
+            // No context (nothing playing from a release) resolves to an empty
+            // context lane with no shuffle — a normal state, named here rather
+            // than defaulted around the absent value.
             val (manualMetas, contextMetas) =
                 withContext(Dispatchers.IO) {
-                    manual.map { it.toEntry() } to (context?.upcoming?.map { it.toEntry() } ?: emptyList())
+                    val resolvedContext =
+                        when (context) {
+                            null -> emptyList()
+                            else -> context.upcoming.map { it.toEntry() }
+                        }
+                    manual.map { it.toEntry() } to resolvedContext
                 }
             manualEntries = manualMetas
             contextEntries = contextMetas
-            contextShuffled = context?.shuffled ?: false
+            contextShuffled = context?.shuffled == true
             hasContext = context != null
             entries = manualMetas + contextMetas
             this@BaeCorePlayer.hasNext = hasNext

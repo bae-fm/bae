@@ -165,8 +165,13 @@ impl UiEventBus {
                         // two lanes by entry id — not by length, since resolution
                         // drops any entry whose track has no metadata, which would
                         // otherwise shift the lane boundary.
-                        let context_entries =
-                            context.as_ref().map(|c| c.upcoming.clone()).unwrap_or_default();
+                        // No context (nothing playing from a release) yields no
+                        // context entries — a normal domain state, expressed by
+                        // iterating the Option rather than defaulting an absence.
+                        let context_entries: Vec<_> = context
+                            .iter()
+                            .flat_map(|c| c.upcoming.iter().cloned())
+                            .collect();
                         let combined: Vec<_> =
                             manual.iter().chain(context_entries.iter()).cloned().collect();
                         match lm.get_queue_items(&combined).await {

@@ -117,6 +117,9 @@
   <data name="queue.clear" xml:space="preserve"><value>limpar fila</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Remover da fila</value></data>
   <data name="queue.title" xml:space="preserve"><value>fila</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>A seguir</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>Tocando de</value></data>
+  <data name="queue.shuffled" xml:space="preserve"><value>Aleatório</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>código de restauração</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>restaurar</value></data>
   <data name="restore.failed" xml:space="preserve"><value>falha na restauração</value></data>

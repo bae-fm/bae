@@ -39,10 +39,12 @@
     <string name="queue_clear">മായ്ക്കുക</string>
     <string name="queue_section_now_playing">ഇപ്പോൾ പ്ലേ ചെയ്യുന്നു</string>
     <string name="queue_section_up_next">അടുത്തത്</string>
+    <string name="queue_section_playing_from">ഇതിൽ നിന്ന് പ്ലേ ചെയ്യുന്നു</string>
     <string name="queue_nothing_up_next">അടുത്തത് ഒന്നുമില്ല</string>
     <string name="queue_empty">ക്യൂ ശൂന്യം</string>
     <string name="queue_remove">ക്യൂയിൽ നിന്ന് നീക്കുക</string>
     <string name="queue_drag_to_reorder">ക്രമം മാറ്റാൻ വലിക്കുക</string>
+    <string name="queue_shuffled">ഷഫിൾ ചെയ്തു</string>
     <string name="search_failed">തിരയുക · പിശക്</string>
     <string name="search_no_results">ഫലങ്ങളില്ല: “%1$s”</string>
     <string name="search_section_albums">ആൽബങ്ങൾ</string>

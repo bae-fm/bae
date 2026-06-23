@@ -39,10 +39,12 @@
     <string name="queue_clear">クリア</string>
     <string name="queue_section_now_playing">再生中</string>
     <string name="queue_section_up_next">次に再生</string>
+    <string name="queue_section_playing_from">再生元</string>
     <string name="queue_nothing_up_next">次の項目はありません</string>
     <string name="queue_empty">キューは空です</string>
     <string name="queue_remove">キューから削除</string>
     <string name="queue_drag_to_reorder">ドラッグで並べ替え</string>
+    <string name="queue_shuffled">シャッフル</string>
     <string name="search_failed">検索に失敗しました</string>
     <string name="search_no_results">「%1$s」の結果なし</string>
     <string name="search_section_albums">アルバム</string>

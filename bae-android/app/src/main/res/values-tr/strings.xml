@@ -39,10 +39,12 @@
     <string name="queue_clear">Clear</string>
     <string name="queue_section_now_playing">Çalıyor</string>
     <string name="queue_section_up_next">Sıradaki</string>
+    <string name="queue_section_playing_from">Şuradan çalınıyor</string>
     <string name="queue_nothing_up_next">Sırada bir şey yok</string>
     <string name="queue_empty">Queue is empty</string>
     <string name="queue_remove">Remove from queue</string>
     <string name="queue_drag_to_reorder">Yeniden sıralamak için sürükle</string>
+    <string name="queue_shuffled">Karışık</string>
     <string name="search_failed">Ara · Hata</string>
     <string name="search_no_results">Sonuç yok: “%1$s”</string>
     <string name="search_section_albums">Albümler</string>

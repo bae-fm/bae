@@ -39,10 +39,12 @@
     <string name="queue_clear">Vider</string>
     <string name="queue_section_now_playing">Lecture en cours</string>
     <string name="queue_section_up_next">À suivre</string>
+    <string name="queue_section_playing_from">Lecture depuis</string>
     <string name="queue_nothing_up_next">Rien à suivre</string>
     <string name="queue_empty">La file est vide</string>
     <string name="queue_remove">Retirer de la file</string>
     <string name="queue_drag_to_reorder">Glisser pour réorganiser</string>
+    <string name="queue_shuffled">Aléatoire</string>
     <string name="search_failed">Échec de la recherche</string>
     <string name="search_no_results">Aucun résultat pour « %1$s »</string>
     <string name="search_section_albums">Albums</string>

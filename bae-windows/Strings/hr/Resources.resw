@@ -117,6 +117,9 @@
   <data name="queue.clear" xml:space="preserve"><value>očisti red</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Ukloni iz reda</value></data>
   <data name="queue.title" xml:space="preserve"><value>red</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>Sljedeće na redu</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>Reproducira se iz</value></data>
+  <data name="queue.shuffled" xml:space="preserve"><value>Izmiješano</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>kod za vraćanje</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>vrati</value></data>
   <data name="restore.failed" xml:space="preserve"><value>vraćanje nije uspjelo</value></data>

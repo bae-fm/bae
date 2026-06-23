@@ -29,7 +29,14 @@ struct QueueView: View {
     private var draggedEntryId: String?
 
     private var isEmpty: Bool {
-        manual.isEmpty && (context?.upcoming.isEmpty ?? true)
+        // No context (nothing playing from a release) contributes no rows — a
+        // normal state, named here rather than folded into a default.
+        switch context {
+        case .none:
+            return manual.isEmpty
+        case .some(let context):
+            return manual.isEmpty && context.upcoming.isEmpty
+        }
     }
 
     var body: some View {
@@ -192,9 +199,11 @@ private struct QueueSection: View {
                 index,
                 item in
                 VStack(spacing: 0) {
-                    if dropInsertIndex == index {
-                        insertionLine
-                    }
+                    // Kept in the tree and toggled by opacity so showing the drop
+                    // line doesn't change a row's size and re-lay-out the lane.
+                    insertionLine
+                        .opacity(dropInsertIndex == index ? 1 : 0)
+                        .allowsHitTesting(false)
                     queueItemRow(item, index: index)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
@@ -214,9 +223,11 @@ private struct QueueSection: View {
                     )
                 )
             }
-            if dropInsertIndex == items.count {
-                insertionLine
-            }
+            // The trailing drop line (insert at the lane's end) stays in the tree
+            // and toggles by opacity, matching the per-row lines above.
+            insertionLine
+                .opacity(dropInsertIndex == items.count ? 1 : 0)
+                .allowsHitTesting(false)
 
             // Trailing drop zone for appending — only the manual lane appends
             // external tracks; the context still accepts a reorder-to-end here.
@@ -270,17 +281,22 @@ private struct QueueSection: View {
                     .frame(width: 40, height: 40)
                     .clipShape(RoundedRectangle(cornerRadius: 3))
 
-                if hoveredIndex == index {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(.black.opacity(0.5))
-                        .frame(width: 40, height: 40)
-                    Button(action: { onSkipTo(item.id) }) {
-                        Image(systemName: "play.fill")
-                            .font(.caption)
-                            .foregroundColor(.white)
-                    }
-                    .buttonStyle(.plain)
+                // The hover play overlay stays in the tree and toggles by
+                // opacity/hit-testing so revealing it on hover doesn't resize the
+                // row and re-lay-out the whole lane.
+                let isHovered = hoveredIndex == index
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(.black.opacity(0.5))
+                    .frame(width: 40, height: 40)
+                    .opacity(isHovered ? 1 : 0)
+                Button(action: { onSkipTo(item.id) }) {
+                    Image(systemName: "play.fill")
+                        .font(.caption)
+                        .foregroundColor(.white)
                 }
+                .buttonStyle(.plain)
+                .opacity(isHovered ? 1 : 0)
+                .allowsHitTesting(isHovered)
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -295,7 +311,16 @@ private struct QueueSection: View {
 
             Spacer()
 
-            if hoveredIndex == index {
+            // Hover swaps the duration for a remove button. Both stay in the tree
+            // and toggle by opacity/hit-testing so the swap doesn't resize the row
+            // and re-lay-out the lane. (The trailing slot is the wider of the two,
+            // so neither toggle changes the row's intrinsic width.)
+            let isHovered = hoveredIndex == index
+            ZStack(alignment: .trailing) {
+                Text(item.durationLabel)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .opacity(isHovered ? 0 : 1)
                 Button(action: { onRemove(item.id) }) {
                     Image(systemName: "xmark")
                         .font(.caption)
@@ -303,11 +328,8 @@ private struct QueueSection: View {
                 }
                 .buttonStyle(.plain)
                 .help("Remove from queue")
-            }
-            else if !item.durationLabel.isEmpty {
-                Text(item.durationLabel)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                .opacity(isHovered ? 1 : 0)
+                .allowsHitTesting(isHovered)
             }
         }
         .contentShape(Rectangle())

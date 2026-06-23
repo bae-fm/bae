@@ -39,10 +39,12 @@
     <string name="queue_clear">مسح</string>
     <string name="queue_section_now_playing">قيد التشغيل الآن</string>
     <string name="queue_section_up_next">التالي</string>
+    <string name="queue_section_playing_from">يُشغّل من</string>
     <string name="queue_nothing_up_next">لا شيء تاليًا</string>
     <string name="queue_empty">قائمة الانتظار فارغة</string>
     <string name="queue_remove">إزالة من قائمة الانتظار</string>
     <string name="queue_drag_to_reorder">اسحب لإعادة الترتيب</string>
+    <string name="queue_shuffled">تم الخلط</string>
     <string name="search_failed">فشل البحث</string>
     <string name="search_no_results">لا توجد نتائج لـ ”%1$s“</string>
     <string name="search_section_albums">الألبومات</string>

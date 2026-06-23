@@ -117,6 +117,9 @@
   <data name="queue.clear" xml:space="preserve"><value>wyczyść kolejkę</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Usuń z kolejki</value></data>
   <data name="queue.title" xml:space="preserve"><value>kolejka</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>Następne w kolejce</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>Odtwarzanie z</value></data>
+  <data name="queue.shuffled" xml:space="preserve"><value>Losowo</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>kod przywracania</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>przywróć</value></data>
   <data name="restore.failed" xml:space="preserve"><value>przywracanie nie powiodło się</value></data>

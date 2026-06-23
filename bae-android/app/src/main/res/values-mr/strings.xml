@@ -39,10 +39,12 @@
     <string name="queue_clear">साफ करा</string>
     <string name="queue_section_now_playing">आता प्ले होत आहे</string>
     <string name="queue_section_up_next">पुढचे</string>
+    <string name="queue_section_playing_from">येथून वाजत आहे</string>
     <string name="queue_nothing_up_next">पुढे काही नाही</string>
     <string name="queue_empty">रांग रिकामी आहे</string>
     <string name="queue_remove">रांगेतून काढा</string>
     <string name="queue_drag_to_reorder">क्रम बदलण्यासाठी ओढा</string>
+    <string name="queue_shuffled">शफल केले</string>
     <string name="search_failed">शोधा · त्रुटी</string>
     <string name="search_no_results">निकाल नाहीत: “%1$s”</string>
     <string name="search_section_albums">अल्बम</string>

@@ -39,10 +39,12 @@
     <string name="queue_clear">মুছুন</string>
     <string name="queue_section_now_playing">এখন চলছে</string>
     <string name="queue_section_up_next">পরবর্তী</string>
+    <string name="queue_section_playing_from">যা থেকে চলছে</string>
     <string name="queue_nothing_up_next">পরবর্তী কিছু নেই</string>
     <string name="queue_empty">সারি খালি</string>
     <string name="queue_remove">সারি থেকে সরান</string>
     <string name="queue_drag_to_reorder">নতুন ক্রমে আনতে টানুন</string>
+    <string name="queue_shuffled">শাফল করা</string>
     <string name="search_failed">খুঁজুন · ত্রুটি</string>
     <string name="search_no_results">কোনো ফল নেই: “%1$s”</string>
     <string name="search_section_albums">অ্যালবাম</string>

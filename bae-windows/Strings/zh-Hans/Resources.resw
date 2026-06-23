@@ -117,6 +117,9 @@
   <data name="queue.clear" xml:space="preserve"><value>清空队列</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>从队列移除</value></data>
   <data name="queue.title" xml:space="preserve"><value>队列</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>接下来</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>来自</value></data>
+  <data name="queue.shuffled" xml:space="preserve"><value>已随机</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>恢复代码</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>恢复</value></data>
   <data name="restore.failed" xml:space="preserve"><value>恢复失败</value></data>

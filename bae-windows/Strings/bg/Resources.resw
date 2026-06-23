@@ -117,6 +117,9 @@
   <data name="queue.clear" xml:space="preserve"><value>изчистване на опашката</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Премахване от опашката</value></data>
   <data name="queue.title" xml:space="preserve"><value>опашка</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>Следва</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>Възпроизвежда се от</value></data>
+  <data name="queue.shuffled" xml:space="preserve"><value>Разбъркано</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>код за възстановяване</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>възстановяване</value></data>
   <data name="restore.failed" xml:space="preserve"><value>възстановяването не бе успешно</value></data>

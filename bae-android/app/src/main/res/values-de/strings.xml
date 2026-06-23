@@ -39,10 +39,12 @@
     <string name="queue_clear">Leeren</string>
     <string name="queue_section_now_playing">Aktuelle Wiedergabe</string>
     <string name="queue_section_up_next">Als Nächstes</string>
+    <string name="queue_section_playing_from">Wird abgespielt aus</string>
     <string name="queue_nothing_up_next">Nichts als Nächstes</string>
     <string name="queue_empty">Warteschlange ist leer</string>
     <string name="queue_remove">Aus Warteschlange entfernen</string>
     <string name="queue_drag_to_reorder">Zum Umsortieren ziehen</string>
+    <string name="queue_shuffled">Zufällig</string>
     <string name="search_failed">Suche fehlgeschlagen</string>
     <string name="search_no_results">Keine Ergebnisse für „%1$s“</string>
     <string name="search_section_albums">Alben</string>
