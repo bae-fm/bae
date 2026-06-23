@@ -161,6 +161,32 @@ impl PlaybackQueue {
 
     // -- Context ---------------------------------------------------------------
 
+    /// Build a `PlaybackContext` from a release's tracks under a traversal: a
+    /// shuffled traversal re-permutes `tracks` from its seed (the same seed
+    /// yields the same order, so a restored shuffle reproduces what was played);
+    /// a sequential one keeps source order. Mints a fresh per-instance id per
+    /// track and clamps the cursor in range. The caller passes a non-empty
+    /// release, so the context is non-empty with a valid cursor.
+    fn build_context(
+        &self,
+        source: String,
+        mut tracks: Vec<String>,
+        cursor: usize,
+        traversal: Traversal,
+    ) -> PlaybackContext {
+        if let Traversal::Shuffled { seed } = traversal {
+            shuffled_traversal(&mut tracks, seed);
+        }
+        let entries: Vec<QueueEntry> = tracks.into_iter().map(|t| self.mint(t)).collect();
+        let cursor = cursor.min(entries.len() - 1);
+        PlaybackContext {
+            source,
+            entries,
+            cursor,
+            traversal,
+        }
+    }
+
     /// Make a release's tracks the playing context: build their order under
     /// `start`, set the cursor, and make the cursor entry current. Clears the
     /// manual lane (a fresh playback session). Returns the track to play. The
@@ -169,21 +195,15 @@ impl PlaybackQueue {
     pub fn play_release(
         &mut self,
         release_id: String,
-        mut track_ids: Vec<String>,
+        track_ids: Vec<String>,
         start: ContextStart,
     ) -> String {
         self.manual.clear();
         let (cursor, traversal) = match start {
             ContextStart::Index(index) => (index, Traversal::Sequential),
-            ContextStart::Shuffled { seed } => (0, shuffled_traversal(&mut track_ids, seed)),
+            ContextStart::Shuffled { seed } => (0, Traversal::Shuffled { seed }),
         };
-        let entries: Vec<QueueEntry> = track_ids.into_iter().map(|t| self.mint(t)).collect();
-        let context = PlaybackContext {
-            source: release_id,
-            entries,
-            cursor,
-            traversal,
-        };
+        let context = self.build_context(release_id, track_ids, cursor, traversal);
         let track = context.current().track_id.clone();
         self.current = Some(context.current().clone());
         self.context = Some(context);
@@ -226,21 +246,7 @@ impl PlaybackQueue {
         self.manual = snapshot.manual.into_iter().map(|t| self.mint(t)).collect();
         self.context = match snapshot.context {
             Some(cs) if !context_tracks.is_empty() => {
-                let mut tracks = context_tracks;
-                // Re-derive the exact order: shuffled re-permutes from the same
-                // seed; sequential leaves source order.
-                let traversal = match cs.traversal {
-                    Traversal::Shuffled { seed } => shuffled_traversal(&mut tracks, seed),
-                    Traversal::Sequential => Traversal::Sequential,
-                };
-                let entries: Vec<QueueEntry> = tracks.into_iter().map(|t| self.mint(t)).collect();
-                let cursor = cs.cursor.min(entries.len() - 1);
-                Some(PlaybackContext {
-                    source: cs.source,
-                    entries,
-                    cursor,
-                    traversal,
-                })
+                Some(self.build_context(cs.source, context_tracks, cs.cursor, cs.traversal))
             }
             _ => None,
         };

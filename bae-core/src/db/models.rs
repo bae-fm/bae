@@ -295,15 +295,31 @@ pub struct DbReleaseLocalCopy {
     pub pinned_locally: bool,
 }
 
-/// The single device-local `playback_state` row. Mirrors the table columns;
-/// `shuffle_seed` holds the `u64` shuffle seed reinterpreted as `i64` (SQLite's
-/// integer type) so the high bit round-trips. The playback service maps this to
-/// and from its queue snapshot + live position/volume/mute.
+/// The playing context of a saved `playback_state` row: which release is being
+/// played, how its tracks are ordered, and where the cursor sits. Held as a
+/// substruct so "no context playing" (a single track, or nothing) is one
+/// `None` instead of three separately-nullable columns that are only ever
+/// present or absent together — see `many-fields-none-together-means-a-missing-
+/// type`. The SQLite columns stay flat (`source`, `shuffle_seed`, `cursor`);
+/// the DB client destructures this on save and reassembles it on load.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbPlaybackContext {
+    /// The release being played from.
+    pub source: String,
+    /// The `u64` shuffle seed reinterpreted as `i64` (SQLite's integer type) so
+    /// the high bit round-trips. `None` = sequential (source) order.
+    pub shuffle_seed: Option<i64>,
+    /// Index into the (ordered) tracks of the track currently playing.
+    pub cursor: i64,
+}
+
+/// The single device-local `playback_state` row. Mirrors the table columns; the
+/// playback service maps this to and from its queue snapshot + live
+/// position/volume/mute.
 #[derive(Debug, Clone)]
 pub struct DbPlaybackState {
-    pub source: Option<String>,
-    pub shuffle_seed: Option<i64>,
-    pub cursor: Option<i64>,
+    /// The playing context, or `None` for a single track / nothing playing.
+    pub context: Option<DbPlaybackContext>,
     pub manual: String,
     pub repeat: String,
     pub current_track_id: Option<String>,

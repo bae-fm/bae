@@ -1,7 +1,7 @@
 #![cfg(feature = "test-utils")]
 //! The device-local `playback_state` table: save, load, replace, clear.
 
-use bae_core::db::{Database, DbPlaybackState};
+use bae_core::db::{Database, DbPlaybackContext, DbPlaybackState};
 use tempfile::TempDir;
 
 async fn setup_db() -> (Database, TempDir) {
@@ -27,9 +27,11 @@ async fn playback_state_saves_loads_replaces_and_clears() {
     // SQLite i64 column round-trip.
     let seed: u64 = 0xFFFF_FFFF_FFFF_FFFF;
     let row = DbPlaybackState {
-        source: Some("rel-1".to_string()),
-        shuffle_seed: Some(seed as i64),
-        cursor: Some(3),
+        context: Some(DbPlaybackContext {
+            source: "rel-1".to_string(),
+            shuffle_seed: Some(seed as i64),
+            cursor: 3,
+        }),
         manual: r#"["t1","t2"]"#.to_string(),
         repeat: "context".to_string(),
         current_track_id: Some("t5".to_string()),
@@ -40,9 +42,10 @@ async fn playback_state_saves_loads_replaces_and_clears() {
     db.save_playback_state(&row).await.unwrap();
 
     let loaded = db.load_playback_state().await.unwrap().expect("a row");
-    assert_eq!(loaded.source.as_deref(), Some("rel-1"));
-    assert_eq!(loaded.shuffle_seed.map(|s| s as u64), Some(seed));
-    assert_eq!(loaded.cursor, Some(3));
+    let context = loaded.context.expect("a context");
+    assert_eq!(context.source, "rel-1");
+    assert_eq!(context.shuffle_seed.map(|s| s as u64), Some(seed));
+    assert_eq!(context.cursor, 3);
     assert_eq!(loaded.manual, r#"["t1","t2"]"#);
     assert_eq!(loaded.repeat, "context");
     assert_eq!(loaded.current_track_id.as_deref(), Some("t5"));
@@ -51,11 +54,9 @@ async fn playback_state_saves_loads_replaces_and_clears() {
     assert!(!loaded.is_muted);
 
     // Saving again replaces the single row (id = 'current') rather than appending
-    // — a no-context single track with nulls where the context fields were.
+    // — a no-context single track with nulls where the context columns were.
     let single = DbPlaybackState {
-        source: None,
-        shuffle_seed: None,
-        cursor: None,
+        context: None,
         manual: "[]".to_string(),
         repeat: "off".to_string(),
         current_track_id: Some("solo".to_string()),
@@ -65,8 +66,7 @@ async fn playback_state_saves_loads_replaces_and_clears() {
     };
     db.save_playback_state(&single).await.unwrap();
     let loaded = db.load_playback_state().await.unwrap().expect("a row");
-    assert_eq!(loaded.source, None);
-    assert_eq!(loaded.shuffle_seed, None);
+    assert_eq!(loaded.context, None);
     assert_eq!(loaded.current_track_id.as_deref(), Some("solo"));
     assert!(loaded.is_muted);
 

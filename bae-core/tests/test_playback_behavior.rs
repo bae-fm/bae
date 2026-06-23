@@ -3642,9 +3642,7 @@ async fn test_restore_populates_last_position_display() {
     // so no one can consume the snapshot before our test service starts.
     std::env::set_var("MUTE_TEST_AUDIO", "1");
     let state = bae_core::db::DbPlaybackState {
-        source: None,
-        shuffle_seed: None,
-        cursor: None,
+        context: None,
         manual: "[]".to_string(),
         repeat: "off".to_string(),
         current_track_id: Some(track_id.clone()),
@@ -3652,7 +3650,7 @@ async fn test_restore_populates_last_position_display() {
         volume: 0.8,
         is_muted: false,
     };
-    library_manager.save_playback_state(&state).await;
+    library_manager.save_playback_state(&state).await.unwrap();
 
     // Start the playback service — restore() runs on the audio thread before
     // run() and calls emit_position_display at its tail.
@@ -3757,14 +3755,15 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut persisted = None;
     while Instant::now() < deadline {
-        if let Some(row) = library_manager.load_playback_state().await {
+        if let Some(row) = library_manager.load_playback_state().await.unwrap() {
             persisted = Some(row);
             break;
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
     let row = persisted.expect("playing a release should persist the playback_state row");
-    assert_eq!(row.source.as_deref(), Some(release_id.as_str()));
+    let context = row.context.expect("playing a release persists its context");
+    assert_eq!(context.source, release_id);
     assert_eq!(row.current_track_id.as_deref(), Some(first_track.as_str()));
 
     // Stopping clears it, so a restart wouldn't re-cue a finished session.
@@ -3772,7 +3771,12 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut cleared = false;
     while Instant::now() < deadline {
-        if library_manager.load_playback_state().await.is_none() {
+        if library_manager
+            .load_playback_state()
+            .await
+            .unwrap()
+            .is_none()
+        {
             cleared = true;
             break;
         }

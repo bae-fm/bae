@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{debug, info};
 
 fn row_to_library_image(row: &Row) -> DbLibraryImage {
     DbLibraryImage {
@@ -2508,15 +2508,21 @@ impl Database {
         self.inner
             .coven_db
             .call(move |conn| {
+                // Flatten the context substruct back to the table's three
+                // nullable columns: all three NULL when no context is playing.
+                let (source, shuffle_seed, cursor) = match &state.context {
+                    Some(ctx) => (Some(&ctx.source), ctx.shuffle_seed, Some(ctx.cursor)),
+                    None => (None, None, None),
+                };
                 conn.execute(
                     "INSERT OR REPLACE INTO playback_state \
                      (id, source, shuffle_seed, cursor, manual, repeat, \
                       current_track_id, position_ms, volume, is_muted) \
                      VALUES ('current', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     params![
-                        state.source,
-                        state.shuffle_seed,
-                        state.cursor,
+                        source,
+                        shuffle_seed,
+                        cursor,
                         state.manual,
                         state.repeat,
                         state.current_track_id,
@@ -2542,10 +2548,30 @@ impl Database {
                      FROM playback_state WHERE id = 'current'",
                     [],
                     |row| {
+                        // Reassemble the context substruct: the three columns are
+                        // written together, so a present `source` carries a
+                        // `shuffle_seed` (NULL = sequential) and a `cursor`.
+                        let source: Option<String> = row.get("source")?;
+                        let shuffle_seed: Option<i64> = row.get("shuffle_seed")?;
+                        let cursor: Option<i64> = row.get("cursor")?;
+                        let context = source.map(|source| {
+                            // A present source is written with its cursor, so a
+                            // NULL cursor here is a corrupt cache row — fall back
+                            // to the start rather than dropping the context.
+                            let cursor = cursor.unwrap_or_else(|| {
+                                debug!(
+                                    "playback_state row for {source} has a NULL cursor; using 0"
+                                );
+                                0
+                            });
+                            DbPlaybackContext {
+                                source,
+                                shuffle_seed,
+                                cursor,
+                            }
+                        });
                         Ok(DbPlaybackState {
-                            source: row.get("source")?,
-                            shuffle_seed: row.get("shuffle_seed")?,
-                            cursor: row.get("cursor")?,
+                            context,
                             manual: row.get("manual")?,
                             repeat: row.get("repeat")?,
                             current_track_id: row.get("current_track_id")?,

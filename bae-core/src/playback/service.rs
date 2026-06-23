@@ -27,7 +27,7 @@ use super::{
     QueueSnapshot, Traversal,
 };
 use crate::audio_codec::StreamingDecodeError;
-use crate::db::DbPlaybackState;
+use crate::db::{DbPlaybackContext, DbPlaybackState};
 use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
@@ -1291,8 +1291,12 @@ impl PlaybackService {
                     last_position_display,
                     boundary_tx,
                 };
-                if let Some(state) = service.library_manager.load_playback_state().await {
-                    service.restore(state).await;
+                match service.library_manager.load_playback_state().await {
+                    Ok(Some(state)) => service.restore(state).await,
+                    Ok(None) => {}
+                    Err(e) => {
+                        warn!("couldn't load the saved playback state: {e}; starting fresh")
+                    }
                 }
                 service.run().await;
             });
@@ -1314,13 +1318,13 @@ impl PlaybackService {
         // Rebuild the queue: re-materialize the context from its source release's
         // current tracks (deleted tracks fall out of `get_track_ids`), under the
         // stored traversal, plus the manual lane and current track.
-        let context = state.source.clone().map(|source| ContextSnapshot {
-            source,
-            traversal: match state.shuffle_seed {
+        let context = state.context.clone().map(|ctx| ContextSnapshot {
+            source: ctx.source,
+            traversal: match ctx.shuffle_seed {
                 Some(seed) => Traversal::Shuffled { seed: seed as u64 },
                 None => Traversal::Sequential,
             },
-            cursor: state.cursor.unwrap_or(0).max(0) as usize,
+            cursor: ctx.cursor.max(0) as usize,
         });
         let mut manual: Vec<String> = serde_json::from_str(&state.manual).unwrap_or_else(|e| {
             warn!("playback_state.manual is not valid JSON ({e}); restoring an empty manual lane");
@@ -1340,6 +1344,11 @@ impl PlaybackService {
             .await
         {
             Ok(existing) => {
+                let dropped: Vec<&String> =
+                    to_check.iter().filter(|t| !existing.contains(*t)).collect();
+                if !dropped.is_empty() {
+                    warn!("dropping playback tracks deleted from the library: {dropped:?}");
+                }
                 manual.retain(|t| existing.contains(t));
                 current_track_id = current_track_id.filter(|t| existing.contains(t));
             }
@@ -1426,30 +1435,32 @@ impl PlaybackService {
     /// Build the device-local `playback_state` row from the current queue and
     /// playback state, and save it — or clear it when playback has stopped. The
     /// queue is device-local; this never syncs.
+    ///
+    /// The write is logged-best-effort, not propagated as fatal: a failed
+    /// resume-cache write only costs the resume point; playback is unaffected.
+    /// The log is the never-mask escape hatch — a write failure is recorded, not
+    /// conflated with "nothing was playing".
     async fn persist_playback_state(&self) {
         use crate::playback::audio_output::AudioState;
         if self.audio_output.get_state() == AudioState::Stopped {
-            self.library_manager.clear_playback_state().await;
+            if let Err(e) = self.library_manager.clear_playback_state().await {
+                warn!("couldn't clear playback state: {e}");
+            }
             return;
         }
         let snap = self.playback_queue.snapshot();
-        let (source, shuffle_seed, cursor) = match snap.context {
-            Some(ctx) => (
-                Some(ctx.source),
-                match ctx.traversal {
-                    Traversal::Shuffled { seed } => Some(seed as i64),
-                    Traversal::Sequential => None,
-                },
-                Some(ctx.cursor as i64),
-            ),
-            None => (None, None, None),
-        };
+        let context = snap.context.map(|ctx| DbPlaybackContext {
+            source: ctx.source,
+            shuffle_seed: match ctx.traversal {
+                Traversal::Shuffled { seed } => Some(seed as i64),
+                Traversal::Sequential => None,
+            },
+            cursor: ctx.cursor as i64,
+        });
         let position_ms =
             (*self.current_position_shared.lock().unwrap()).map(|d| d.as_millis() as i64);
         let row = DbPlaybackState {
-            source,
-            shuffle_seed,
-            cursor,
+            context,
             manual: serde_json::to_string(&snap.manual)
                 .expect("serializing a Vec<String> to JSON cannot fail"),
             repeat: repeat_to_str(snap.repeat).to_string(),
@@ -1462,7 +1473,9 @@ impl PlaybackService {
             },
             is_muted: self.is_muted,
         };
-        self.library_manager.save_playback_state(&row).await;
+        if let Err(e) = self.library_manager.save_playback_state(&row).await {
+            warn!("couldn't persist playback state: {e}");
+        }
     }
 
     async fn run(&mut self) {
