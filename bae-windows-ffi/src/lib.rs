@@ -2985,13 +2985,16 @@ pub unsafe extern "C" fn bae_previous(handle: *const BaeHandle) {
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
 /// `entry_id` must be a valid NUL-terminated UTF-8 C string.
 #[no_mangle]
-pub unsafe extern "C" fn bae_queue_skip_to(handle: *const BaeHandle, entry_id: *const c_char) {
+pub unsafe extern "C" fn bae_queue_skip_to_entry(
+    handle: *const BaeHandle,
+    entry_id: *const c_char,
+) {
     let Some(handle) = handle.as_ref() else {
-        tracing::error!("bae_queue_skip_to: null handle");
+        tracing::error!("bae_queue_skip_to_entry: null handle");
         return;
     };
     let Some(entry_id) = cstr(entry_id) else {
-        tracing::error!("bae_queue_skip_to: null or non-UTF-8 entry_id");
+        tracing::error!("bae_queue_skip_to_entry: null or non-UTF-8 entry_id");
         return;
     };
     handle
@@ -3007,13 +3010,13 @@ pub unsafe extern "C" fn bae_queue_skip_to(handle: *const BaeHandle, entry_id: *
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
 /// `entry_id` must be a valid NUL-terminated UTF-8 C string.
 #[no_mangle]
-pub unsafe extern "C" fn bae_queue_remove(handle: *const BaeHandle, entry_id: *const c_char) {
+pub unsafe extern "C" fn bae_queue_remove_entry(handle: *const BaeHandle, entry_id: *const c_char) {
     let Some(handle) = handle.as_ref() else {
-        tracing::error!("bae_queue_remove: null handle");
+        tracing::error!("bae_queue_remove_entry: null handle");
         return;
     };
     let Some(entry_id) = cstr(entry_id) else {
-        tracing::error!("bae_queue_remove: null or non-UTF-8 entry_id");
+        tracing::error!("bae_queue_remove_entry: null or non-UTF-8 entry_id");
         return;
     };
     handle
@@ -3031,17 +3034,17 @@ pub unsafe extern "C" fn bae_queue_remove(handle: *const BaeHandle, entry_id: *c
 /// `entry_id` must be a valid NUL-terminated UTF-8 C string; `before_entry_id`
 /// must be null or such a string.
 #[no_mangle]
-pub unsafe extern "C" fn bae_queue_reorder(
+pub unsafe extern "C" fn bae_queue_reorder_entry(
     handle: *const BaeHandle,
     entry_id: *const c_char,
     before_entry_id: *const c_char,
 ) {
     let Some(handle) = handle.as_ref() else {
-        tracing::error!("bae_queue_reorder: null handle");
+        tracing::error!("bae_queue_reorder_entry: null handle");
         return;
     };
     let Some(entry_id) = cstr(entry_id) else {
-        tracing::error!("bae_queue_reorder: null or non-UTF-8 entry_id");
+        tracing::error!("bae_queue_reorder_entry: null or non-UTF-8 entry_id");
         return;
     };
     // A null `before_entry_id` means "move to the end"; a non-null but non-UTF-8
@@ -3053,7 +3056,7 @@ pub unsafe extern "C" fn bae_queue_reorder(
         match cstr(before_entry_id) {
             Some(id) => Some(QueueEntryId(id)),
             None => {
-                tracing::error!("bae_queue_reorder: non-UTF-8 before_entry_id");
+                tracing::error!("bae_queue_reorder_entry: non-UTF-8 before_entry_id");
                 return;
             }
         }

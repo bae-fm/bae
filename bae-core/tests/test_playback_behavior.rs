@@ -1817,7 +1817,7 @@ async fn test_add_next_displaces_preloaded_track() {
 }
 
 #[tokio::test]
-async fn test_reorder_queue_displaces_preloaded_track() {
+async fn test_reorder_entry_displaces_preloaded_track() {
     if should_skip_audio_tests() {
         return;
     }
@@ -1878,7 +1878,7 @@ async fn test_insert_in_queue_displaces_preloaded_track() {
 }
 
 #[tokio::test]
-async fn test_remove_from_queue_refreshes_preloaded_track() {
+async fn test_remove_entry_refreshes_preloaded_track() {
     if should_skip_audio_tests() {
         return;
     }

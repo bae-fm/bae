@@ -10,7 +10,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgePlaybackErrorReason
-import uniffi.bae_bridge.BridgeQueueItem
+import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeUiEvent
 
@@ -42,7 +42,7 @@ class UiEventReducerTest {
             override fun onRepeatModeChanged(mode: BridgeRepeatMode) {}
 
             override fun onQueueUpdated(
-                items: List<BridgeQueueItem>,
+                items: List<BridgeQueueEntry>,
                 hasNext: Boolean,
                 hasPrevious: Boolean,
             ) {}

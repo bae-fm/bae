@@ -980,13 +980,13 @@ internal static class NativeBae
     internal static extern void Previous(IntPtr handle);
 
     /// <summary>Jump to the queue entry with <paramref name="entryId"/>.</summary>
-    [DllImport(Dll, EntryPoint = "bae_queue_skip_to", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport(Dll, EntryPoint = "bae_queue_skip_to_entry", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void QueueSkipTo(
         IntPtr handle,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string entryId);
 
     /// <summary>Remove the queue entry with <paramref name="entryId"/>.</summary>
-    [DllImport(Dll, EntryPoint = "bae_queue_remove", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport(Dll, EntryPoint = "bae_queue_remove_entry", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void QueueRemove(
         IntPtr handle,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string entryId);
@@ -994,7 +994,7 @@ internal static class NativeBae
     /// <summary>Move the entry <paramref name="entryId"/> to sit before
     /// <paramref name="beforeEntryId"/>; a null <paramref name="beforeEntryId"/>
     /// moves it to the end of the queue.</summary>
-    [DllImport(Dll, EntryPoint = "bae_queue_reorder", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport(Dll, EntryPoint = "bae_queue_reorder_entry", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void QueueReorder(
         IntPtr handle,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string entryId,

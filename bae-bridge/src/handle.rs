@@ -1519,7 +1519,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         } => Some(BridgeUiEvent::QueueUpdated {
             items: items
                 .into_iter()
-                .map(|i| BridgeQueueItem {
+                .map(|i| BridgeQueueEntry {
                     entry_id: i.entry_id,
                     track_id: i.track_id,
                     title: i.title,

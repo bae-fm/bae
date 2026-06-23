@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
-import uniffi.bae_bridge.BridgeQueueItem
+import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeUiEvent
 
@@ -95,7 +95,7 @@ interface PlaybackEventSink {
     fun onRepeatModeChanged(mode: BridgeRepeatMode)
 
     fun onQueueUpdated(
-        items: List<BridgeQueueItem>,
+        items: List<BridgeQueueEntry>,
         hasNext: Boolean,
         hasPrevious: Boolean,
     )
@@ -675,7 +675,7 @@ class BaeCorePlayer(
      * resolver, which stats the disk), then re-anchor on the application looper.
      */
     override fun onQueueUpdated(
-        items: List<BridgeQueueItem>,
+        items: List<BridgeQueueEntry>,
         hasNext: Boolean,
         hasPrevious: Boolean,
     ) {
@@ -731,7 +731,7 @@ class BaeCorePlayer(
         )
     }
 
-    private fun BridgeQueueItem.toEntry(): Meta =
+    private fun BridgeQueueEntry.toEntry(): Meta =
         Meta(
             entryId = entryId,
             trackId = trackId,

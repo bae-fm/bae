@@ -13,7 +13,7 @@ enum PreviewData {
     // MARK: - Queue
 
     static let queueItems: [QueueItem] = [
-        BridgeQueueItem(
+        BridgeQueueEntry(
             entryId: "e-01",
             trackId: "t-01",
             title: "Static Dreams",
@@ -22,7 +22,7 @@ enum PreviewData {
             albumTitle: "Neon Frequencies",
             coverImageId: nil
         ),
-        BridgeQueueItem(
+        BridgeQueueEntry(
             entryId: "e-02",
             trackId: "t-02",
             title: "Frequency Drift",
@@ -31,7 +31,7 @@ enum PreviewData {
             albumTitle: "Neon Frequencies",
             coverImageId: nil
         ),
-        BridgeQueueItem(
+        BridgeQueueEntry(
             entryId: "e-03",
             trackId: "t-03",
             title: "Tide Pool",
@@ -40,7 +40,7 @@ enum PreviewData {
             albumTitle: "Pacific Standard",
             coverImageId: nil
         ),
-        BridgeQueueItem(
+        BridgeQueueEntry(
             entryId: "e-04",
             trackId: "t-04",
             title: "Harbor Lights",
@@ -49,7 +49,7 @@ enum PreviewData {
             albumTitle: "Pacific Standard",
             coverImageId: nil
         ),
-        BridgeQueueItem(
+        BridgeQueueEntry(
             entryId: "e-05",
             trackId: "t-05",
             title: "Axiom",

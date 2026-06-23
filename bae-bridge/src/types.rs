@@ -1309,7 +1309,7 @@ pub enum BridgeUiEvent {
         mode: BridgeRepeatMode,
     },
     QueueUpdated {
-        items: Vec<BridgeQueueItem>,
+        items: Vec<BridgeQueueEntry>,
         has_next: bool,
         has_previous: bool,
     },
@@ -1913,8 +1913,8 @@ pub enum BridgeStorageFilter {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeQueueItem {
-    /// Per-instance id: the same track queued twice yields two items with two
+pub struct BridgeQueueEntry {
+    /// Per-instance id: the same track queued twice yields two entries with two
     /// ids, so the UI keys each row on a stable unique identity and targets
     /// remove/reorder/skip at one instance.
     pub entry_id: String,

@@ -15,7 +15,7 @@ struct QueueItem: Identifiable, Equatable {
 
     var durationLabel: String { DurationClock.text(durationMs) }
 
-    init(bridge: BridgeQueueItem) {
+    init(bridge: BridgeQueueEntry) {
         entryId = bridge.entryId
         title = bridge.title
         durationMs = bridge.durationMs
