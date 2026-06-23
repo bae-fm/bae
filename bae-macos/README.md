@@ -27,7 +27,7 @@ All commands run from the repo root.
 2. Copy outputs into the Xcode project:
 
        cp -r bae-bridge/BaeBridgeFFI.xcframework bae-macos/
-       cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/
+       cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/
 
 3. Generate the Xcode project:
 

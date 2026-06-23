@@ -2,7 +2,7 @@ import Foundation
 
 /// Resolve a bae-core message key against the generated `Core` string table.
 /// One source of the table lookup for the error/playback lines below.
-private func localizedCoreString(_ key: String) -> String {
+func localizedCoreString(_ key: String) -> String {
     NSLocalizedString(key, tableName: "Core", bundle: .main, comment: "")
 }
 

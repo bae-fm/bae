@@ -14,6 +14,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgeUiEvent
 
 /**
@@ -64,6 +65,7 @@ class AudioFocusResumeTest {
                 "Album Title",
                 null,
                 200_000uL,
+                BridgePlaybackPauseReason.Manual,
             ),
         )
 

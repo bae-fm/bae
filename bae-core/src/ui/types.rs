@@ -127,6 +127,7 @@ pub enum UiBusEvent {
         album_title: String,
         cover_image_id: Option<String>,
         duration_ms: u64,
+        reason: crate::playback::PlaybackPauseReason,
     },
     /// Position update — goes to NSView. Carries both regular ticks from the
     /// position listener and one-off updates emitted after a seek completes.

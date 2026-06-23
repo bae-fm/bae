@@ -1052,12 +1052,7 @@ private struct TrackRowView: View {
     }
 
     private var trackNumberLabel: some View {
-        if track.positionText.isEmpty {
-            Text(verbatim: "-")
-        }
-        else {
-            Text(track.positionText)
-        }
+        Text(track.positionText)
     }
 }
 

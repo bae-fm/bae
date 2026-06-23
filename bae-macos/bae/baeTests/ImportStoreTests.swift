@@ -110,29 +110,33 @@ struct ImportStoreRemovalTests {
         let store = ImportStore()
         var candidate = makeCandidate("c1")
         candidate.identifyState = .found(
-            matches: [],
+            group: ReleaseGroup(
+                bridge: BridgeReleaseGroup(
+                    id: "group-1",
+                    title: "Album Title",
+                    artist: "Artist Name",
+                    coverArt: nil,
+                    sourceLabel: "MusicBrainz",
+                    groupUrl: nil,
+                    yearMin: nil,
+                    yearMax: nil,
+                    pressings: []
+                )
+            ),
             libraryStatuses: [
                 "rel-1": makeStatus(albumId: "al-1"),
                 "rel-other": makeStatus(albumId: "al-other"),
             ],
             trackCount: 10,
-            group: GroupKey(
-                bridge: BridgeGroupKey(
-                    source: .musicBrainz,
-                    sourceGroupId: "rg-1",
-                    sourceLabel: "MusicBrainz",
-                    groupUrl: ""
-                )
-            ),
             source: .discid,
-            provenance: []
+            provenance: [:]
         )
         store.reIdentifyCandidates["c1"] = candidate
 
         store.handleReleaseRemoved(releaseId: "rel-1")
 
         guard
-            case .found(_, let statuses, _, _, _, _) =
+            case .found(_, let statuses, _, _, _) =
                 store.reIdentifyCandidates["c1"]?.identifyState
         else {
             Issue.record("identify state should remain .found")

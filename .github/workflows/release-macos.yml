@@ -138,7 +138,7 @@ jobs:
     - name: Build Rust bridge
       run: |
         ./bae-bridge/build-macos.sh --release
-        cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+        cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
 
     - name: Generate Xcode project
       working-directory: ./bae-macos/bae

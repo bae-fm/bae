@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>جارٍ التحقق…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>المكتبة: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>قفل المكتبة</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>إيقاف مؤقت بين الجانبين</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>رمز الاستعادة (أدخله على جهاز آخر)</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>إظهار رمز الاستعادة</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(غير متاح — هل المزامنة متصلة؟)</value></data>

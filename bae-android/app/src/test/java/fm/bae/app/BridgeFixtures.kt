@@ -73,6 +73,7 @@ object BridgeFixtures {
             libraryPath = "/tmp/lib",
             encryptionKeyStored = false,
             encryptionKeyFingerprint = null,
+            pauseBetweenSides = false,
             discogsTokenStatus = BridgeDiscogsTokenStatus.NOT_CONFIGURED,
             discogsUsable = false,
             sync = null,

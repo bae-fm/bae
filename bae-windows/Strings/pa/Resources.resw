@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>lock ਲਾਇਬ੍ਰੇਰੀ</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>ਸਾਈਡਾਂ ਵਿਚਕਾਰ ਰੋਕੋ</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>restore code (enter on another device)</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>show restore code</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(unavailable — is ਸਿੰਕ connected?)</value></data>

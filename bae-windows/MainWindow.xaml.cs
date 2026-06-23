@@ -1373,6 +1373,10 @@ public sealed partial class MainWindow : Window
                 NpLoading.IsActive = false;
                 NpLoading.Visibility = Visibility.Collapsed;
                 NpPlayPause.Visibility = Visibility.Visible;
+                if (evt.Type == "PlaybackPaused")
+                {
+                    _ = ShowSidePauseDialog(evt.PauseReason);
+                }
                 break;
             case "PlaybackStopped":
                 NowPlayingBar.Visibility = Visibility.Collapsed;
@@ -2670,6 +2674,34 @@ public sealed partial class MainWindow : Window
             XamlRoot = Content.XamlRoot,
         };
         await dialog.ShowAsync();
+    }
+
+    private async System.Threading.Tasks.Task ShowSidePauseDialog(PlaybackPauseReason? reason)
+    {
+        if (reason?.AlertTitle is not { } title || reason.AlertMessage is not { } message)
+        {
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = new TextBlock
+            {
+                Text = message,
+                TextWrapping = TextWrapping.Wrap,
+            },
+            CloseButtonText = Loc.Chrome("action.close"),
+            XamlRoot = Content.XamlRoot,
+        };
+        try
+        {
+            await dialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            BaeDiagnostics.Logger.Warning("Failed to show side-pause dialog", ex);
+        }
     }
 
     private ImageSource? LoadCover(string? imageId)
@@ -4371,11 +4403,12 @@ public sealed partial class MainWindow : Window
         //
         // Two text lines: `status` is the persisted state (driven only by
         // RenderDiscogs from the settings re-read, plus the in-flight "Validating…");
-        // `errorText` is local feedback for an action — a rejected key, a re-check /
-        // remove failure — cleared when the next action starts. Keeping them apart
-        // means an unrelated ConfigChanged re-render can't wipe the rejection note.
+        // `settingsErrorText` is local feedback for an action — a rejected key,
+        // a settings write failure, a re-check / remove failure — cleared when
+        // the next action starts. Keeping them apart means an unrelated
+        // ConfigChanged re-render can't wipe the rejection note.
         var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray) };
-        var errorText = new TextBlock
+        var settingsErrorText = new TextBlock
         {
             TextWrapping = TextWrapping.Wrap,
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
@@ -4387,16 +4420,16 @@ public sealed partial class MainWindow : Window
         var remove = new Button { Content = Loc.Chrome("settings.discogs.remove") };
         var discogsBusy = false;
 
-        void ShowDiscogsError(string message)
+        void ShowSettingsError(string message)
         {
-            errorText.Text = message;
-            errorText.Visibility = Visibility.Visible;
+            settingsErrorText.Text = message;
+            settingsErrorText.Visibility = Visibility.Visible;
         }
 
-        void ClearDiscogsError()
+        void ClearSettingsError()
         {
-            errorText.Text = string.Empty;
-            errorText.Visibility = Visibility.Collapsed;
+            settingsErrorText.Text = string.Empty;
+            settingsErrorText.Visibility = Visibility.Collapsed;
         }
 
         // Drive the controls from the persisted status: which buttons show, whether
@@ -4426,7 +4459,7 @@ public sealed partial class MainWindow : Window
             }
 
             discogsBusy = true;
-            ClearDiscogsError();
+            ClearSettingsError();
             status.Text = Loc.Chrome("settings.discogs.validating");
             var outcome = await System.Threading.Tasks.Task.Run(
                 () => NativeBae.SaveDiscogsToken(_handle, token));
@@ -4442,11 +4475,11 @@ public sealed partial class MainWindow : Window
                     // Nothing stored, so no ConfigChanged fires — keep the draft and
                     // surface the rejection.
                     status.Text = string.Empty;
-                    ShowDiscogsError(Loc.Chrome("settings.discogs.rejected"));
+                    ShowSettingsError(Loc.Chrome("settings.discogs.rejected"));
                     break;
                 default:
                     status.Text = string.Empty;
-                    ShowDiscogsError(Loc.Chrome("settings.discogs.save_failed"));
+                    ShowSettingsError(Loc.Chrome("settings.discogs.save_failed"));
                     break;
             }
         };
@@ -4458,14 +4491,14 @@ public sealed partial class MainWindow : Window
             }
 
             discogsBusy = true;
-            ClearDiscogsError();
+            ClearSettingsError();
             status.Text = Loc.Chrome("settings.discogs.validating");
             var error = await System.Threading.Tasks.Task.Run(
                 () => NativeBae.RevalidateDiscogsToken(_handle));
             discogsBusy = false;
             if (error is not null)
             {
-                ShowDiscogsError(error);
+                ShowSettingsError(error);
             }
             // On success a ConfigChanged re-read settles the controls and label.
         };
@@ -4476,14 +4509,14 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            ClearDiscogsError();
+            ClearSettingsError();
             // Removing clears the config flag, firing ConfigChanged — the re-read
             // restores the editable input. Nothing is patched inline here.
             var error = await System.Threading.Tasks.Task.Run(
                 () => NativeBae.DeleteDiscogsToken(_handle));
             if (error is not null)
             {
-                ShowDiscogsError(error);
+                ShowSettingsError(error);
             }
         };
 
@@ -4581,13 +4614,40 @@ public sealed partial class MainWindow : Window
 
         var content = new StackPanel { Spacing = 8, MinWidth = 360 };
         var libraryLabel = new TextBlock { Text = Loc.Chrome("settings.library_label", "name", s.LibraryName) };
+        var pauseBetweenSides = new CheckBox
+        {
+            Content = Loc.Chrome("settings.playback.pause_between_sides"),
+            IsChecked = s.PauseBetweenSides,
+        };
+        var refreshingSettings = false;
+        async System.Threading.Tasks.Task SetPauseBetweenSides(bool enabled)
+        {
+            if (refreshingSettings)
+            {
+                return;
+            }
+
+            ClearSettingsError();
+            var error = await System.Threading.Tasks.Task.Run(() => NativeBae.SetPauseBetweenSides(_handle, enabled));
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+                refreshingSettings = true;
+                pauseBetweenSides.IsChecked = !enabled;
+                refreshingSettings = false;
+            }
+        }
+
+        pauseBetweenSides.Checked += async (_, _) => await SetPauseBetweenSides(true);
+        pauseBetweenSides.Unchecked += async (_, _) => await SetPauseBetweenSides(false);
         var discogsLabel = new TextBlock { Text = Loc.Chrome("settings.discogs.label") };
         content.Children.Add(libraryLabel);
+        content.Children.Add(pauseBetweenSides);
         content.Children.Add(discogsLabel);
         content.Children.Add(tokenBox);
         content.Children.Add(buttons);
         content.Children.Add(status);
-        content.Children.Add(errorText);
+        content.Children.Add(settingsErrorText);
         RenderDiscogs(s);
         // S3-compatible provider form. The core probes the bucket before saving.
         var s3Bucket = new TextBox { Header = Loc.Chrome("s3.field.bucket") };
@@ -4729,6 +4789,9 @@ public sealed partial class MainWindow : Window
 
             syncStatus.Text = fresh.SyncStatusText;
             libraryLabel.Text = Loc.Chrome("settings.library_label", "name", fresh.LibraryName);
+            refreshingSettings = true;
+            pauseBetweenSides.IsChecked = fresh.PauseBetweenSides;
+            refreshingSettings = false;
             RenderDiscogs(fresh);
         };
 

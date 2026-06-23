@@ -2307,6 +2307,37 @@ struct FfiSignalState {
     failure: Option<loc::FfiLookupFailure>,
 }
 
+#[derive(Serialize)]
+#[serde(tag = "kind")]
+enum FfiPlaybackPauseReason {
+    Manual,
+    SideEnded { prompt: FfiSidePausePrompt },
+}
+
+#[derive(Serialize)]
+struct FfiSidePausePrompt {
+    title_key: &'static str,
+    side_letter: String,
+    message_key: &'static str,
+}
+
+fn playback_pause_reason_to_ffi(
+    reason: &bae_core::playback::PlaybackPauseReason,
+) -> FfiPlaybackPauseReason {
+    match reason {
+        bae_core::playback::PlaybackPauseReason::Manual => FfiPlaybackPauseReason::Manual,
+        bae_core::playback::PlaybackPauseReason::SideEnded(prompt) => {
+            FfiPlaybackPauseReason::SideEnded {
+                prompt: FfiSidePausePrompt {
+                    title_key: prompt.title_key,
+                    side_letter: prompt.side_letter.clone(),
+                    message_key: prompt.message_key,
+                },
+            }
+        }
+    }
+}
+
 /// A UI event pushed to the native app, as JSON `{type, ...}`. Only the events
 /// the WinUI app reacts to are mapped; the rest are dropped.
 #[derive(Serialize)]
@@ -2331,6 +2362,7 @@ enum FfiEvent {
         cover_image_id: Option<String>,
         /// Raw track length in milliseconds; the C# formats it.
         duration_ms: u64,
+        pause_reason: FfiPlaybackPauseReason,
     },
     PlaybackStopped,
     PlaybackProgress {
@@ -2607,6 +2639,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             album_title,
             cover_image_id,
             duration_ms,
+            reason,
             ..
         } => FfiEvent::PlaybackPaused {
             track_id: track_id.clone(),
@@ -2616,6 +2649,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             album_title: album_title.clone(),
             cover_image_id: cover_image_id.clone(),
             duration_ms: *duration_ms,
+            pause_reason: playback_pause_reason_to_ffi(reason),
         },
         UiBusEvent::PlaybackStopped => FfiEvent::PlaybackStopped,
         UiBusEvent::PlaybackLoading { .. } => FfiEvent::PlaybackLoading,
@@ -3275,6 +3309,8 @@ struct FfiSettings {
     sync_account: Option<String>,
     /// Whether the sync layer is initialized and ready to push/pull.
     sync_ready: bool,
+    /// Whether playback pauses between vinyl/cassette sides.
+    pause_between_sides: bool,
 }
 
 /// Current settings as JSON, or null on error. Free with [`bae_string_free`].
@@ -3309,8 +3345,34 @@ pub unsafe extern "C" fn bae_settings(handle: *const BaeHandle) -> *mut c_char {
             .map(|provider| cloud_provider_name(provider).to_string()),
         sync_account: config.cloud_account_display(),
         sync_ready: manager.is_sync_ready(),
+        pause_between_sides: config.pause_between_sides,
     };
     json_cstring(&out)
+}
+
+/// Set whether playback pauses between vinyl/cassette sides. Returns
+/// null on success, or an error-message C string (free with
+/// [`bae_string_free`]).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_set_pause_between_sides(
+    handle: *const BaeHandle,
+    enabled: bool,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        return error_cstring("no app handle");
+    };
+    match handle
+        .0
+        .services
+        .library_manager()
+        .set_pause_between_sides(enabled)
+    {
+        Ok(()) => std::ptr::null_mut(),
+        Err(error) => error_cstring(&error.to_string()),
+    }
 }
 
 /// Validate and save the Discogs API token. Validates against Discogs first,
@@ -4462,6 +4524,7 @@ mod tests {
             album_title: "Album Title".to_string(),
             cover_image_id: None,
             duration_ms: 1_000,
+            reason: bae_core::playback::PlaybackPauseReason::Manual,
         };
 
         for event in [playing, paused] {

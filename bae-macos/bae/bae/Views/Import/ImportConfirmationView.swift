@@ -636,6 +636,7 @@ struct CoverPickerView: View {
                     libraryPath: "/preview",
                     encryptionKeyStored: false,
                     encryptionKeyFingerprint: nil,
+                    pauseBetweenSides: false,
                     discogsTokenStatus: .notConfigured,
                     discogsUsable: false,
                     sync: nil

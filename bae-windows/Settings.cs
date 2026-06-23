@@ -21,6 +21,7 @@ public sealed class Settings
     public string? SyncProvider { get; set; }
     public string? SyncAccount { get; set; }
     public bool SyncReady { get; set; }
+    public bool PauseBetweenSides { get; set; }
     public bool HasCloudHome => SyncProvider is not null;
 
     /// <summary>

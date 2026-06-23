@@ -187,6 +187,7 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>couldn't save the key — something went wrong.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause between sides</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Library: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>lock library</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>recovery</value></data>

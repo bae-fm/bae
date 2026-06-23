@@ -114,7 +114,7 @@ private fun TrackPositionIndicator(
         }
     } else {
         Text(
-            text = positionLabel.ifEmpty { "-" },
+            text = positionLabel,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(40.dp),

@@ -51,6 +51,7 @@
     <string name="settings_sync">ਸਿੰਕ</string>
     <string name="settings_cloud_sync_on">ਤੁਹਾਡਾ cloud ਸਿੰਕ</string>
     <string name="settings_local_only">ਕੇਵਲ ਸਥਾਨਕ</string>
+    <string name="settings_pause_between_sides">ਸਾਈਡਾਂ ਵਿਚਕਾਰ ਰੋਕੋ</string>
     <string name="settings_synced">ਸਿੰਕ</string>
     <string name="settings_syncing">ਸਿੰਕ</string>
     <string name="settings_remove_library">ਹਟਾਓ ਲਾਇਬ੍ਰੇਰੀ · ਡਿਵਾਈਸ</string>

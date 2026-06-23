@@ -114,25 +114,21 @@ echo "Writing Swift compilation conditions: ${SWIFT_CONDITIONS:-(none)}"
 } > "$FEATURES_XCCONFIG"
 
 echo "Generating Swift bindings..."
-mkdir -p bae-bridge/swift-bindings
+SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-ios"
+mkdir -p "$SWIFT_BINDINGS_DIR"
 cargo run --bin uniffi-bindgen generate \
     --library "$CARGO_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge.a" \
     --language swift \
-    --out-dir bae-bridge/swift-bindings/
+    --out-dir "$SWIFT_BINDINGS_DIR/"
 
 echo "Generating localization String Catalog (Apple)..."
 cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-ios/bae/bae
 
-# Copy the iOS-flavored bindings into the iOS app source tree. The shared
-# `bae-bridge/swift-bindings/` dir is scratch that both this script and
-# build-macos.sh regenerate (with different cargo features — iOS omits the
-# desktop import/cd methods macOS pulls in, and BAE_BRIDGE_FEATURES selects
-# whether OAuth/CloudKit are present). The iOS app must compile against the
-# bindings whose checksum symbols the iOS xcframework actually exports, so it
-# reads from its own copy here rather than the shared dir a later macOS build
-# would clobber. Gitignored, mirroring the macOS
-# `bae-macos/bae/bae/bae_bridge.swift` copy.
-cp bae-bridge/swift-bindings/bae_bridge.swift bae-ios/bae/bae/bae_bridge.swift
+# Copy the iOS-flavored bindings into the iOS app source tree. The iOS app must
+# compile against the bindings whose checksum symbols the iOS xcframework
+# exports, so this script writes a platform-specific scratch directory instead
+# of sharing one with the macOS bridge build.
+cp "$SWIFT_BINDINGS_DIR/bae_bridge.swift" bae-ios/bae/bae/bae_bridge.swift
 
 # Merge the FFmpeg static libs into the bridge staticlib per-arch. A Rust
 # staticlib (libbae_bridge.a) does NOT bundle its C dependencies — it only
@@ -159,18 +155,18 @@ libtool -static -o "$SIM_MERGED" \
 echo "Creating iOS XCFramework..."
 rm -rf bae-ios/BaeBridgeFFI-ios.xcframework
 
-mkdir -p bae-bridge/swift-bindings/headers
-cp bae-bridge/swift-bindings/bae_bridgeFFI.h bae-bridge/swift-bindings/headers/
-cp bae-bridge/swift-bindings/bae_bridgeFFI.modulemap bae-bridge/swift-bindings/headers/module.modulemap
+mkdir -p "$SWIFT_BINDINGS_DIR/headers"
+cp "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.h" "$SWIFT_BINDINGS_DIR/headers/"
+cp "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.modulemap" "$SWIFT_BINDINGS_DIR/headers/module.modulemap"
 
 xcodebuild -create-xcframework \
     -library "$DEVICE_MERGED" \
-    -headers bae-bridge/swift-bindings/headers \
+    -headers "$SWIFT_BINDINGS_DIR/headers" \
     -library "$SIM_MERGED" \
-    -headers bae-bridge/swift-bindings/headers \
+    -headers "$SWIFT_BINDINGS_DIR/headers" \
     -output bae-ios/BaeBridgeFFI-ios.xcframework
 
 echo ""
 echo "Done ($CARGO_PROFILE). Outputs:"
 echo "  bae-ios/BaeBridgeFFI-ios.xcframework/"
-echo "  bae-bridge/swift-bindings/bae_bridge.swift"
+echo "  $SWIFT_BINDINGS_DIR/bae_bridge.swift"

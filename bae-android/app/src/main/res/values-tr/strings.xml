@@ -51,6 +51,7 @@
     <string name="settings_sync">Eşzamanlama</string>
     <string name="settings_cloud_sync_on">Bulutun Eşzamanlama</string>
     <string name="settings_local_only">Yalnızca yerel</string>
+    <string name="settings_pause_between_sides">Yüzler arasında duraklat</string>
     <string name="settings_synced">Eşzamanlandı</string>
     <string name="settings_syncing">Eşzamanlanıyor…</string>
     <string name="settings_remove_library">Kaldır Kitaplık · cihaz</string>

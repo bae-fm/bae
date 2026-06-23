@@ -51,6 +51,7 @@
     <string name="settings_sync">同步</string>
     <string name="settings_cloud_sync_on">云同步已开启</string>
     <string name="settings_local_only">仅本地</string>
+    <string name="settings_pause_between_sides">在面之间暂停</string>
     <string name="settings_synced">已同步</string>
     <string name="settings_syncing">同步中…</string>
     <string name="settings_remove_library">从此设备移除此库</string>

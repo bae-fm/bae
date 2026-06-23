@@ -51,6 +51,7 @@
     <string name="settings_sync">Sincronización</string>
     <string name="settings_cloud_sync_on">Sincronización en la nube activada</string>
     <string name="settings_local_only">Solo local</string>
+    <string name="settings_pause_between_sides">Pausar entre lados</string>
     <string name="settings_synced">Sincronizado</string>
     <string name="settings_syncing">Sincronizando…</string>
     <string name="settings_remove_library">Quitar esta biblioteca de este dispositivo</string>

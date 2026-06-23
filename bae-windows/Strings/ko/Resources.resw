@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>검증 중…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>라이브러리: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>라이브러리 잠금</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>면 사이에서 일시 정지</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>복원 코드(다른 기기에 입력)</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>복원 코드 표시</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(사용할 수 없음 — 동기화가 연결되어 있나요?)</value></data>

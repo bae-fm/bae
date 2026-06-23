@@ -51,6 +51,7 @@
     <string name="settings_sync">సింక్</string>
     <string name="settings_cloud_sync_on">మీ cloud సింక్</string>
     <string name="settings_local_only">స్థానికం మాత్రమే</string>
+    <string name="settings_pause_between_sides">సైడ్‌ల మధ్య విరామం</string>
     <string name="settings_synced">సింక్</string>
     <string name="settings_syncing">సింక్</string>
     <string name="settings_remove_library">తీసివేయి లైబ్రరీ · పరికరం</string>

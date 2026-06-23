@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -40,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
 import uniffi.bae_bridge.BridgeRepeatMode
 
 /**
@@ -79,6 +83,7 @@ fun NowPlayingBar(session: OpenLibrary) {
     if (expanded) {
         ExpandedNowPlayingScreen(session = session, onDismiss = { expanded = false })
     }
+    SidePauseAlert(track = track)
 
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -130,6 +135,32 @@ private fun RowScope.NowPlayingTrackInfo(
                 maxLines = 1,
             )
         }
+    }
+}
+
+@Composable
+fun SidePauseAlert(track: fm.bae.app.playback.NowPlaying) {
+    val context = LocalContext.current
+    var dismissedPromptId by remember { mutableStateOf<String?>(null) }
+    val prompt = track.sidePausePrompt
+    if (prompt != null && dismissedPromptId != prompt.id) {
+        AlertDialog(
+            onDismissRequest = { dismissedPromptId = prompt.id },
+            title = {
+                Text(
+                    context.coreString(
+                        prompt.titleKey,
+                        mapOf("letter" to prompt.sideLetter),
+                    ),
+                )
+            },
+            text = { Text(context.coreString(prompt.messageKey)) },
+            confirmButton = {
+                Button(onClick = { dismissedPromptId = prompt.id }) {
+                    Text(stringResource(R.string.close))
+                }
+            },
+        )
     }
 }
 

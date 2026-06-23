@@ -11,22 +11,35 @@
 //! `import/search.rs`).
 
 /// Convert a 1-indexed side number to a letter (1=A, 2=B, ..., 26=Z).
-fn side_letter(side: i32) -> char {
-    (b'A' + (side - 1) as u8) as char
+pub fn side_letter(side: i32) -> String {
+    ((b'A' + (side - 1) as u8) as char).to_string()
 }
 
 /// Determine the format kind from the release format string.
-enum FormatKind {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PhysicalSideMedium {
     Vinyl,
     Cassette,
+}
+
+enum FormatKind {
+    Sided(PhysicalSideMedium),
     Digital, // CD, digital, or anything else
 }
 
 fn detect_format(format: Option<&str>) -> FormatKind {
     match format {
-        Some(f) if f.contains("Vinyl") => FormatKind::Vinyl,
-        Some(f) if f.contains("Cassette") => FormatKind::Cassette,
+        Some(f) if f.contains("Vinyl") => FormatKind::Sided(PhysicalSideMedium::Vinyl),
+        Some(f) if f.contains("Cassette") => FormatKind::Sided(PhysicalSideMedium::Cassette),
         _ => FormatKind::Digital,
+    }
+}
+
+/// The physical medium for a release format that has sides.
+pub fn physical_side_medium(format: Option<&str>) -> Option<PhysicalSideMedium> {
+    match detect_format(format) {
+        FormatKind::Sided(medium) => Some(medium),
+        FormatKind::Digital => None,
     }
 }
 
@@ -48,20 +61,21 @@ pub fn compute_track_position(
     has_multiple_sides: bool,
 ) -> crate::album_detail::TrackPosition {
     use crate::album_detail::TrackPosition;
-    let num = track_number.unwrap_or(1);
     match detect_format(format) {
-        FormatKind::Vinyl | FormatKind::Cassette => TrackPosition::Sided {
-            side_letter: side_letter(side).to_string(),
-            number: num,
+        FormatKind::Sided(_) => TrackPosition::Sided {
+            side_letter: side_letter(side),
+            number: track_number,
         },
         FormatKind::Digital => {
             if has_multiple_sides {
                 TrackPosition::Disc {
                     disc: side,
-                    number: num,
+                    number: track_number,
                 }
             } else {
-                TrackPosition::Flat { number: num }
+                TrackPosition::Flat {
+                    number: track_number,
+                }
             }
         }
     }
@@ -113,7 +127,7 @@ mod tests {
     fn sided(letter: &str, number: i32) -> TrackPosition {
         TrackPosition::Sided {
             side_letter: letter.to_string(),
-            number,
+            number: Some(number),
         }
     }
 
@@ -130,6 +144,20 @@ mod tests {
     }
 
     #[test]
+    fn physical_side_medium_detection() {
+        assert_eq!(
+            physical_side_medium(Some("2xLP, Vinyl")),
+            Some(PhysicalSideMedium::Vinyl)
+        );
+        assert_eq!(
+            physical_side_medium(Some("Cassette")),
+            Some(PhysicalSideMedium::Cassette)
+        );
+        assert_eq!(physical_side_medium(Some("2xCD")), None);
+        assert_eq!(physical_side_medium(None), None);
+    }
+
+    #[test]
     fn test_cassette_position() {
         assert_eq!(
             compute_track_position(Some("Cassette"), 2, Some(3), true),
@@ -141,7 +169,7 @@ mod tests {
     fn test_cd_single_disc() {
         assert_eq!(
             compute_track_position(Some("CD"), 1, Some(5), false),
-            TrackPosition::Flat { number: 5 }
+            TrackPosition::Flat { number: Some(5) }
         );
     }
 
@@ -149,7 +177,10 @@ mod tests {
     fn test_cd_multi_disc() {
         assert_eq!(
             compute_track_position(Some("2xCD"), 2, Some(3), true),
-            TrackPosition::Disc { disc: 2, number: 3 }
+            TrackPosition::Disc {
+                disc: 2,
+                number: Some(3)
+            }
         );
     }
 
@@ -157,7 +188,18 @@ mod tests {
     fn test_no_format() {
         assert_eq!(
             compute_track_position(None, 1, Some(1), false),
-            TrackPosition::Flat { number: 1 }
+            TrackPosition::Flat { number: Some(1) }
+        );
+    }
+
+    #[test]
+    fn missing_track_number_stays_absent() {
+        assert_eq!(
+            compute_track_position(Some("Vinyl"), 1, None, true),
+            TrackPosition::Sided {
+                side_letter: "A".to_string(),
+                number: None
+            }
         );
     }
 
@@ -203,8 +245,8 @@ mod tests {
     fn group_by_side_single_flat_group() {
         use crate::album_detail::TrackSide;
         let tracks = vec![
-            track("1", TrackPosition::Flat { number: 1 }),
-            track("2", TrackPosition::Flat { number: 2 }),
+            track("1", TrackPosition::Flat { number: Some(1) }),
+            track("2", TrackPosition::Flat { number: Some(2) }),
         ];
         let groups = group_tracks_by_side(&tracks);
         assert_eq!(groups.len(), 1);

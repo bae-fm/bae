@@ -51,6 +51,7 @@
     <string name="settings_sync">ஒத்திசைவு</string>
     <string name="settings_cloud_sync_on">உங்கள் cloud ஒத்திசைவு</string>
     <string name="settings_local_only">உள்ளூர் மட்டும்</string>
+    <string name="settings_pause_between_sides">பக்கங்களுக்கு இடையில் இடைநிறுத்து</string>
     <string name="settings_synced">ஒத்திசைவு</string>
     <string name="settings_syncing">ஒத்திசைவு</string>
     <string name="settings_remove_library">அகற்று நூலகம் · சாதனம்</string>

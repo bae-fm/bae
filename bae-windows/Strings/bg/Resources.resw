@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Потвърждаване…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Библиотека: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>заключване на библиотеката</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Пауза между страните</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>код за възстановяване (въведете на друго устройство)</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>показване на кода за възстановяване</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(недостъпно — синхронизирането свързано ли е?)</value></data>

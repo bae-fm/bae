@@ -51,6 +51,7 @@
     <string name="settings_sync">Sync</string>
     <string name="settings_cloud_sync_on">Cloud-Sync ein</string>
     <string name="settings_local_only">Nur lokal</string>
+    <string name="settings_pause_between_sides">Zwischen Seiten pausieren</string>
     <string name="settings_synced">Synchronisiert</string>
     <string name="settings_syncing">Synchronisierung …</string>
     <string name="settings_remove_library">Diese Bibliothek von diesem Gerät entfernen</string>

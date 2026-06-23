@@ -51,6 +51,7 @@
     <string name="settings_sync">Synchronisatie</string>
     <string name="settings_cloud_sync_on">Je cloud Synchronisatie</string>
     <string name="settings_local_only">Alleen lokaal</string>
+    <string name="settings_pause_between_sides">Pauzeren tussen kanten</string>
     <string name="settings_synced">Gesynchroniseerd</string>
     <string name="settings_syncing">Synchroniseren…</string>
     <string name="settings_remove_library">Verwijderen Bibliotheek · apparaat</string>

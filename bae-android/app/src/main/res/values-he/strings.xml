@@ -51,6 +51,7 @@
     <string name="settings_sync">סנכרון</string>
     <string name="settings_cloud_sync_on">סנכרון ענן מופעל</string>
     <string name="settings_local_only">מקומי בלבד</string>
+    <string name="settings_pause_between_sides">השהיה בין צדדים</string>
     <string name="settings_synced">מסונכרן</string>
     <string name="settings_syncing">מסנכרן…</string>
     <string name="settings_remove_library">הסר ספרייה זו מהמכשיר הזה</string>

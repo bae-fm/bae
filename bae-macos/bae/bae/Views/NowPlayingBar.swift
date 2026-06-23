@@ -35,7 +35,7 @@ struct NowPlayingBarContainer: View {
             ?? track?.coverImageId.flatMap(mediaPaths.imagePathIfExists)
         NowPlayingBar(
             trackTitle: track?.trackTitle,
-            artistNames: track?.artistNames,
+            secondaryLine: np.secondaryLine,
             coverPath: coverPath,
             isPlaying: np.isPlaying,
             isLoading: np.loadingTrackId != nil,
@@ -73,6 +73,7 @@ struct NowPlayingBarContainer: View {
             queueAddPublisher: playbackStore.queueItemsAddedSubject
                 .eraseToAnyPublisher(),
         )
+        .sidePausePromptAlert()
     }
 }
 
@@ -96,7 +97,7 @@ private struct StablePopoverBehavior: NSViewRepresentable {
 
 struct NowPlayingBar: View {
     let trackTitle: String?
-    let artistNames: String?
+    let secondaryLine: String?
     let coverPath: String?
     let isPlaying: Bool
     let isLoading: Bool
@@ -179,8 +180,8 @@ struct NowPlayingBar: View {
                     .buttonStyle(.plain)
                 }
 
-                if let artist = artistNames {
-                    Text(artist)
+                if let secondaryLine {
+                    Text(secondaryLine)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -395,7 +396,7 @@ private struct NowPlayingBarPreview: View {
     var body: some View {
         NowPlayingBar(
             trackTitle: trackTitle,
-            artistNames: artistNames,
+            secondaryLine: artistNames,
             coverPath: nil,
             isPlaying: isPlaying,
             isLoading: isLoading,

@@ -9,8 +9,7 @@ private func makeTrack(_ id: String) -> NowPlayingTrack {
         artistNames: "Artist Name",
         albumId: "album-1",
         coverImageId: nil,
-        durationMs: 0,
-        durationLabel: ""
+        durationMs: 0
     )
 }
 
@@ -37,7 +36,7 @@ struct PlaybackStoreBeginLoadingTests {
     @Test("retains the paused track until the target metadata arrives")
     func retainsPausedTrack() {
         let store = PlaybackStore()
-        store.nowPlaying = .paused(makeTrack("a"))
+        store.nowPlaying = .paused(makeTrack("a"), reason: .manual)
 
         store.beginLoading(trackId: "b")
 
@@ -110,7 +109,7 @@ struct PlaybackStoreBeginLoadingTests {
     @Test("a seek while paused re-enters loading for the current track")
     func seekWhilePausedEntersLoading() {
         let store = PlaybackStore()
-        store.nowPlaying = .paused(makeTrack("a"))
+        store.nowPlaying = .paused(makeTrack("a"), reason: .manual)
 
         store.setLoadingTarget(trackId: "a", target: makeTrack("a"))
 
@@ -146,7 +145,10 @@ struct NowPlayingStateTests {
     @Test("loadingTrackId is nil when not loading")
     func loadingTrackIdNilWhenNotLoading() {
         #expect(NowPlaying.playing(makeTrack("a")).loadingTrackId == nil)
-        #expect(NowPlaying.paused(makeTrack("a")).loadingTrackId == nil)
+        #expect(
+            NowPlaying.paused(makeTrack("a"), reason: .manual).loadingTrackId
+                == nil
+        )
         #expect(NowPlaying.stopped.loadingTrackId == nil)
     }
 

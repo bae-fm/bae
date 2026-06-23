@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>מאמת…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>ספרייה: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>נעל ספרייה</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>השהיה בין צדדים</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>קוד שחזור (הזינו במכשיר אחר)</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>הצג קוד שחזור</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(לא זמין — האם הסנכרון מחובר?)</value></data>

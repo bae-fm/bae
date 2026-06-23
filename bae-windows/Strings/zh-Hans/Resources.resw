@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>校验中…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>库：{name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>锁定库</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>在面之间暂停</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>恢复代码（在另一台设备上输入）</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>显示恢复代码</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(不可用 — 同步是否已连接？)</value></data>

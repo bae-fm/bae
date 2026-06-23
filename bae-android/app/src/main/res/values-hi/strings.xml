@@ -51,6 +51,7 @@
     <string name="settings_sync">सिंक</string>
     <string name="settings_cloud_sync_on">आपका क्लाउड सिंक</string>
     <string name="settings_local_only">केवल स्थानीय</string>
+    <string name="settings_pause_between_sides">साइडों के बीच रोकें</string>
     <string name="settings_synced">सिंक</string>
     <string name="settings_syncing">सिंक</string>
     <string name="settings_remove_library">हटाएँ लाइब्रेरी · डिवाइस</string>

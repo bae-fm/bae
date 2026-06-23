@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>検証中…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>ライブラリ: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>ライブラリをロック</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>面の間で一時停止</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>復元コード（別のデバイスで入力）</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>復元コードを表示</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(利用不可 — 同期は接続されていますか？)</value></data>

@@ -78831,6 +78831,196 @@
           }
         }
       }
+    },
+    "Pause between sides": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause between sides"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

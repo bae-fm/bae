@@ -6,10 +6,14 @@ use crate::support::{
 };
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use bae_core::id_provider::{IdProvider, SequentialIdProvider};
 use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::library_dir::LibraryDir;
-use bae_core::playback::{PlaybackProgress, PlaybackState};
+use bae_core::playback::{
+    PlaybackPauseReason, PlaybackProgress, PlaybackState, RepeatMode,
+    SIDE_PAUSE_CASSETTE_MESSAGE_KEY, SIDE_PAUSE_VINYL_MESSAGE_KEY,
+};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
@@ -82,6 +86,86 @@ fn start_test_import(
         bae_core::import::cover_art::CoverArtArchiveClient::new(),
     )
 }
+
+struct ImportedReleaseSetup {
+    library_manager: LibraryManager,
+    runtime_handle: tokio::runtime::Handle,
+    track_ids: Vec<String>,
+    release_id: String,
+    album_dir: std::path::PathBuf,
+    temp_dir: TempDir,
+}
+
+async fn imported_release_setup<G, C>(
+    release: DiscogsRelease,
+    candidate_key: &str,
+    import_id: String,
+    generate_files: G,
+    configure: C,
+) -> Result<ImportedReleaseSetup, Box<dyn std::error::Error>>
+where
+    G: FnOnce(&std::path::Path),
+    C: FnOnce(&LibraryManager) -> Result<(), Box<dyn std::error::Error>>,
+{
+    tracing_init();
+    let temp_dir = TempDir::new()?;
+    let db_path = temp_dir.path().join("test.db");
+    let album_dir = temp_dir.path().join("album");
+    std::fs::create_dir_all(&album_dir)?;
+
+    let database = Database::new_test(
+        db_path.to_str().unwrap(),
+        std::sync::Arc::new(bae_core::clock::SystemClock),
+    )
+    .await?;
+    let database_arc = Arc::new(database.clone());
+    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let runtime_handle = tokio::runtime::Handle::current();
+    let library_manager = LibraryManager::new(
+        (*database_arc).clone(),
+        library_dir,
+        config_handle,
+        key_service,
+        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        runtime_handle.clone(),
+        None,
+    );
+    configure(&library_manager)?;
+
+    let release_id_key = seed_discogs_test_release(release);
+    generate_files(&album_dir);
+
+    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+    import_handle
+        .send_command(ImportCommand::Folder {
+            import_id: import_id.clone(),
+            candidate_key: candidate_key.to_string(),
+            folder: album_dir.clone(),
+            selected_cover: None,
+            storage_mode: StorageMode::Unmanaged,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            },
+            user_edit: None,
+        })
+        .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+    let mut progress_rx = import_handle.subscribe_import(import_id);
+    let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
+    let tracks = library_manager.get_tracks(&release_id).await?;
+    let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
+
+    Ok(ImportedReleaseSetup {
+        library_manager,
+        runtime_handle,
+        track_ids,
+        release_id,
+        album_dir,
+        temp_dir,
+    })
+}
+
 /// Test helper to set up playback service with imported test tracks
 struct PlaybackTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
@@ -92,63 +176,22 @@ struct PlaybackTestFixture {
 }
 impl PlaybackTestFixture {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        tracing_init();
-        let temp_dir = TempDir::new()?;
-        let db_path = temp_dir.path().join("test.db");
-        let album_dir = temp_dir.path().join("album");
-        std::fs::create_dir_all(&album_dir)?;
-        let database = Database::new_test(
-            db_path.to_str().unwrap(),
-            std::sync::Arc::new(bae_core::clock::SystemClock),
+        let import_ids = SequentialIdProvider::new("playback-fixture-import");
+        let setup = imported_release_setup(
+            create_test_album(),
+            "test",
+            import_ids.new_id(),
+            |album_dir| {
+                let _track_data = generate_test_flac_files(album_dir);
+            },
+            |_| Ok(()),
         )
         .await?;
-        let database_arc = Arc::new(database.clone());
-        let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
-        let (config_handle, key_service) = test_config_and_keys(&library_dir);
-        let library_manager = LibraryManager::new(
-            (*database_arc).clone(),
-            library_dir.clone(),
-            config_handle,
-            key_service,
-            std::sync::Arc::new(bae_core::clock::SystemClock),
-            std::sync::Arc::new(bae_core::id_provider::UuidProvider),
-            tokio::runtime::Handle::current(),
-            None,
-        );
-        let runtime_handle = tokio::runtime::Handle::current();
-        let discogs_release = create_test_album();
-        let release_id_key = seed_discogs_test_release(discogs_release);
-        let _track_data = generate_test_flac_files(&album_dir);
-        let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
-        let import_id = uuid::Uuid::new_v4().to_string();
-        import_handle
-            .send_command(ImportCommand::Folder {
-                import_id: import_id.clone(),
-                candidate_key: "test".to_string(),
-                folder: album_dir.clone(),
-                selected_cover: None,
-                storage_mode: StorageMode::Unmanaged,
-                identity_choice: IdentityChoice::Exact {
-                    release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
-                },
-                user_edit: None,
-            })
-            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
-        let mut progress_rx = import_handle.subscribe_import(import_id);
-        let (_release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
-        let albums = library_manager.get_albums(&[]).await?;
-        assert!(!albums.is_empty(), "Should have imported album");
-        let releases = library_manager
-            .get_releases_for_album(&albums[0].id)
-            .await?;
-        assert!(!releases.is_empty(), "Should have imported release");
-        let tracks = library_manager.get_tracks(&releases[0].id).await?;
-        let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
-        assert!(!track_ids.is_empty(), "Should have imported tracks");
+        assert!(!setup.track_ids.is_empty(), "Should have imported tracks");
         std::env::set_var("MUTE_TEST_AUDIO", "1");
         let playback_handle = bae_core::playback::PlaybackService::start(
-            library_manager.clone(),
-            runtime_handle,
+            setup.library_manager.clone(),
+            setup.runtime_handle,
             100,
         );
         playback_handle.set_volume(0.0);
@@ -156,9 +199,9 @@ impl PlaybackTestFixture {
         Ok(Self {
             playback_handle,
             progress_rx,
-            track_ids,
-            album_dir,
-            _temp_dir: temp_dir,
+            track_ids: setup.track_ids,
+            album_dir: setup.album_dir,
+            _temp_dir: setup.temp_dir,
         })
     }
     /// Wait for a specific state change with timeout
@@ -613,16 +656,22 @@ struct CueFlacTestFixture {
     _temp_dir: TempDir,
 }
 
+async fn next_capture_stream_from(
+    rx: &mut tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
+) -> Arc<std::sync::Mutex<Vec<f32>>> {
+    match timeout(Duration::from_secs(5), rx.recv()).await {
+        Ok(Some(buf)) => buf,
+        Ok(None) => panic!("capture stream channel closed before a stream was created"),
+        Err(_) => panic!("no capture stream created within 5s"),
+    }
+}
+
 impl CueFlacTestFixture {
     /// Awaits the next capture buffer minted by `create_stream`. Buffers are
     /// yielded in creation order; tests that exercise auto-advance, seek, or
     /// next call this once per stream they want to inspect.
     async fn next_capture_stream(&mut self) -> Arc<std::sync::Mutex<Vec<f32>>> {
-        match timeout(Duration::from_secs(5), self.capture_stream_rx.recv()).await {
-            Ok(Some(buf)) => buf,
-            Ok(None) => panic!("capture stream channel closed before a stream was created"),
-            Err(_) => panic!("no capture stream created within 5s"),
-        }
+        next_capture_stream_from(&mut self.capture_stream_rx).await
     }
 
     async fn with_capture() -> Result<Self, Box<dyn std::error::Error>> {
@@ -707,11 +756,349 @@ impl CueFlacTestFixture {
     }
 }
 
+struct SidePauseTestFixture {
+    playback_handle: bae_core::playback::PlaybackHandle,
+    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    track_ids: Vec<String>,
+    release_id: String,
+    capture_stream_rx: tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
+    _temp_dir: TempDir,
+}
+
+impl SidePauseTestFixture {
+    async fn new(
+        format: &str,
+        positions: [&str; 3],
+        pause_between_sides: bool,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let import_ids = SequentialIdProvider::new("side-pause-import");
+        let import_id = import_ids.new_id();
+        let setup = imported_release_setup(
+            create_side_pause_test_album(format, positions),
+            "side-pause",
+            import_id,
+            |album_dir| {
+                let _track_data = generate_test_flac_files(album_dir);
+            },
+            |library_manager| {
+                library_manager.set_pause_between_sides(pause_between_sides)?;
+                Ok(())
+            },
+        )
+        .await?;
+        assert_eq!(
+            setup.track_ids.len(),
+            3,
+            "side-pause fixture imports 3 tracks"
+        );
+
+        let (capture_output, capture_stream_rx) = bae_core::playback::CaptureAudioOutput::new();
+        let playback_handle = bae_core::playback::PlaybackService::start_with_output(
+            setup.library_manager.clone(),
+            setup.runtime_handle,
+            100,
+            Box::new(capture_output),
+        );
+        let progress_rx = playback_handle.subscribe_progress();
+
+        Ok(Self {
+            playback_handle,
+            progress_rx,
+            track_ids: setup.track_ids,
+            release_id: setup.release_id,
+            capture_stream_rx,
+            _temp_dir: setup.temp_dir,
+        })
+    }
+
+    async fn wait_for_state<F>(
+        &mut self,
+        predicate: F,
+        timeout_duration: Duration,
+    ) -> Option<PlaybackState>
+    where
+        F: Fn(&PlaybackState) -> bool,
+    {
+        wait_for_state_on(&mut self.progress_rx, predicate, timeout_duration).await
+    }
+
+    async fn next_capture_stream(&mut self) -> Arc<std::sync::Mutex<Vec<f32>>> {
+        next_capture_stream_from(&mut self.capture_stream_rx).await
+    }
+
+    fn play_release_from(&self, start_track_index: usize) {
+        self.playback_handle
+            .play_release(self.release_id.clone(), Some(start_track_index), false);
+    }
+
+    fn seek_to_auto_advance(&self) {
+        self.playback_handle
+            .seek(Duration::from_secs(4) + Duration::from_millis(800));
+    }
+
+    async fn wait_for_playing_track(
+        &mut self,
+        track_id: &str,
+        timeout_duration: Duration,
+        message: &str,
+    ) {
+        self.wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == track_id),
+            timeout_duration,
+        )
+        .await
+        .expect(message);
+    }
+
+    async fn play_track_and_wait(&mut self, start_track_index: usize, track_id: &str) {
+        self.play_release_from(start_track_index);
+        self.wait_for_playing_track(
+            track_id,
+            Duration::from_secs(5),
+            "track before side boundary should start",
+        )
+        .await;
+    }
+
+    async fn wait_for_side_pause(
+        &mut self,
+        expected_side_letter: &str,
+        expected_message_key: &str,
+    ) -> PlaybackState {
+        self.wait_for_state(
+            |s| {
+                matches!(
+                    s,
+                    PlaybackState::Paused {
+                        reason: PlaybackPauseReason::SideEnded(prompt),
+                        ..
+                    } if prompt.side_letter == expected_side_letter
+                        && prompt.message_key == expected_message_key
+                )
+            },
+            Duration::from_secs(10),
+        )
+        .await
+        .expect("side boundary should pause")
+    }
+
+    async fn play_to_side_pause(
+        &mut self,
+        start_track_index: usize,
+        track_id: &str,
+        expected_side_letter: &str,
+        expected_message_key: &str,
+    ) -> PlaybackState {
+        self.play_track_and_wait(start_track_index, track_id).await;
+        self.seek_to_auto_advance();
+        self.wait_for_side_pause(expected_side_letter, expected_message_key)
+            .await
+    }
+}
+
+fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRelease {
+    let mut release = create_test_album();
+    release.id = format!("side-pause-{format}");
+    release.title = format!("{format} Side Pause Fixture");
+    release.format = vec![format.to_string()];
+    for (track, position) in release.tracklist.iter_mut().zip(positions) {
+        track.position = position.to_string();
+    }
+    release
+}
+
 // ============================================================================
 // Pause state preservation tests
 // ============================================================================
 // These tests verify that Next/Previous preserve pause state while fresh Play
 // and AutoAdvance always start playing.
+
+#[tokio::test]
+async fn sided_vinyl_boundary_pauses_on_auto_advance() {
+    assert_sided_boundary_pauses(
+        "Vinyl",
+        ["A1", "A2", "B1"],
+        1,
+        "A",
+        SIDE_PAUSE_VINYL_MESSAGE_KEY,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn sided_cassette_boundary_pauses_on_auto_advance() {
+    assert_sided_boundary_pauses(
+        "Cassette",
+        ["A1", "B1", "B2"],
+        0,
+        "A",
+        SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
+    )
+    .await;
+}
+
+async fn assert_sided_boundary_pauses(
+    format: &str,
+    positions: [&str; 3],
+    start_track_index: usize,
+    expected_side_letter: &str,
+    expected_message_key: &str,
+) {
+    let mut fixture = SidePauseTestFixture::new(format, positions, true)
+        .await
+        .expect("side-pause fixture");
+    let side_track_id = fixture.track_ids[start_track_index].clone();
+
+    let paused = fixture
+        .play_to_side_pause(
+            start_track_index,
+            &side_track_id,
+            expected_side_letter,
+            expected_message_key,
+        )
+        .await;
+
+    match paused {
+        PlaybackState::Paused { track_info, .. } => {
+            assert_eq!(track_info.track_id, side_track_id);
+        }
+        other => panic!("expected side-ended pause, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn same_side_auto_advance_does_not_side_pause() {
+    let mut fixture = SidePauseTestFixture::new("Vinyl", ["A1", "A2", "B1"], true)
+        .await
+        .expect("side-pause fixture");
+    let first_side_track_id = fixture.track_ids[0].clone();
+    let same_side_track_id = fixture.track_ids[1].clone();
+
+    fixture.play_track_and_wait(0, &first_side_track_id).await;
+
+    fixture.seek_to_auto_advance();
+
+    fixture
+        .wait_for_playing_track(
+            &same_side_track_id,
+            Duration::from_secs(10),
+            "same side should keep playing",
+        )
+        .await;
+}
+
+#[tokio::test]
+async fn cd_multi_disc_auto_advance_does_not_side_pause() {
+    let mut fixture = SidePauseTestFixture::new("CD", ["1-1", "2-1", "2-2"], true)
+        .await
+        .expect("side-pause fixture");
+    let first_disc_track_id = fixture.track_ids[0].clone();
+    let next_disc_track_id = fixture.track_ids[1].clone();
+
+    fixture.play_track_and_wait(0, &first_disc_track_id).await;
+
+    fixture.seek_to_auto_advance();
+
+    fixture
+        .wait_for_playing_track(
+            &next_disc_track_id,
+            Duration::from_secs(10),
+            "CD disc boundary should keep playing",
+        )
+        .await;
+}
+
+#[tokio::test]
+async fn setting_off_auto_advances_across_sided_boundary() {
+    let mut fixture = SidePauseTestFixture::new("Vinyl", ["A1", "A2", "B1"], false)
+        .await
+        .expect("side-pause fixture");
+    let side_a_track_id = fixture.track_ids[1].clone();
+    let next_side_track_id = fixture.track_ids[2].clone();
+
+    fixture.play_track_and_wait(1, &side_a_track_id).await;
+
+    fixture.seek_to_auto_advance();
+
+    fixture
+        .wait_for_playing_track(
+            &next_side_track_id,
+            Duration::from_secs(10),
+            "setting off should keep playing across side boundary",
+        )
+        .await;
+}
+
+#[tokio::test]
+async fn repeat_track_does_not_side_pause_at_boundary() {
+    let mut fixture = SidePauseTestFixture::new("Vinyl", ["A1", "A2", "B1"], true)
+        .await
+        .expect("side-pause fixture");
+    let repeated_track_id = fixture.track_ids[1].clone();
+
+    fixture.play_track_and_wait(1, &repeated_track_id).await;
+    fixture.playback_handle.set_repeat_mode(RepeatMode::Track);
+
+    fixture.seek_to_auto_advance();
+
+    fixture
+        .wait_for_playing_track(
+            &repeated_track_id,
+            Duration::from_secs(10),
+            "repeat-track should replay the current track",
+        )
+        .await;
+}
+
+#[tokio::test]
+async fn resume_from_side_pause_starts_next_side() {
+    let mut fixture = SidePauseTestFixture::new("Vinyl", ["A1", "A2", "B1"], true)
+        .await
+        .expect("side-pause fixture");
+    let side_a_track_id = fixture.track_ids[1].clone();
+    let next_side_track_id = fixture.track_ids[2].clone();
+
+    fixture
+        .play_to_side_pause(1, &side_a_track_id, "A", SIDE_PAUSE_VINYL_MESSAGE_KEY)
+        .await;
+
+    fixture.playback_handle.resume();
+
+    fixture
+        .wait_for_playing_track(
+            &next_side_track_id,
+            Duration::from_secs(5),
+            "resume from side pause should start the next side",
+        )
+        .await;
+}
+
+#[tokio::test]
+async fn side_boundary_pause_prevents_gapless_stream_handoff() {
+    let mut fixture = SidePauseTestFixture::new("Vinyl", ["A1", "A2", "B1"], true)
+        .await
+        .expect("side-pause fixture");
+    let side_a_track_id = fixture.track_ids[1].clone();
+    let side_b_track_id = fixture.track_ids[2].clone();
+
+    fixture.play_track_and_wait(1, &side_a_track_id).await;
+    let _side_a_stream = fixture.next_capture_stream().await;
+
+    fixture.seek_to_auto_advance();
+    fixture
+        .wait_for_side_pause("A", SIDE_PAUSE_VINYL_MESSAGE_KEY)
+        .await;
+
+    fixture.playback_handle.resume();
+    let _side_b_stream = fixture.next_capture_stream().await;
+    fixture
+        .wait_for_playing_track(
+            &side_b_track_id,
+            Duration::from_secs(5),
+            "next side should start from a new stream",
+        )
+        .await;
+}
 
 #[tokio::test]
 async fn test_next_while_paused_stays_paused() {

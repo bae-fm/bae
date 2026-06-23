@@ -51,6 +51,7 @@
     <string name="settings_sync">ซิงค์</string>
     <string name="settings_cloud_sync_on">cloud ของคุณ ซิงค์</string>
     <string name="settings_local_only">เฉพาะในเครื่อง</string>
+    <string name="settings_pause_between_sides">หยุดพักระหว่างด้าน</string>
     <string name="settings_synced">ซิงค์</string>
     <string name="settings_syncing">ซิงค์</string>
     <string name="settings_remove_library">นำออก ไลบรารี · อุปกรณ์</string>

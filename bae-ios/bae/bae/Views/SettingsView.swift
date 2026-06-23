@@ -6,6 +6,8 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(ConfigStore.self)
     private var configStore
+    @Environment(AppService.self)
+    private var appService
     @Environment(AppSessionHolder.self)
     private var holder
     @Environment(Sync.self)
@@ -74,6 +76,16 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Playback") {
+                    PauseBetweenSidesToggle(
+                        configStore: configStore,
+                        appHandle: appService.appHandle,
+                        showError: { @MainActor error in
+                            configStore.showError(error)
+                        }
+                    )
+                }
+
                 // Managing members and revealing the recovery code both need a
                 // live sync session this run (the membership chain lives in the
                 // library's cloud storage), so gate on syncReady — runtime status
@@ -140,6 +152,19 @@ struct SettingsView: View {
                     generate: sync.generateRestoreCode,
                     onDismiss: { showRecoveryCode = false }
                 )
+            }
+            .alert(
+                "Error",
+                isPresented: Binding(
+                    get: { configStore.lastError != nil },
+                    set: { if !$0 { configStore.clearError() } },
+                )
+            ) {
+                Button("Close") { configStore.clearError() }
+            } message: {
+                if let error = configStore.lastError {
+                    Text(error.line)
+                }
             }
         }
     }

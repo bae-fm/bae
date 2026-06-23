@@ -81,6 +81,9 @@ public sealed class BaeEvent
     /// <summary>The structured playback-failure reason (PlaybackError).</summary>
     public PlaybackErrorReason? Reason { get; set; }
 
+    /// <summary>The structured pause reason (PlaybackPaused).</summary>
+    public PlaybackPauseReason? PauseReason { get; set; }
+
     // Sync status (SyncingChanged / SyncTimeChanged) for the toolbar indicator.
     // SyncTime is Unix epoch milliseconds of the last successful sync, or null
     // when never synced.
@@ -123,4 +126,42 @@ public sealed class ImportStep
             return key is null ? string.Empty : Loc.Core(key);
         }
     }
+}
+
+/// <summary>
+/// A structured playback pause reason, mirroring the FFI's
+/// <c>FfiPlaybackPauseReason</c>. The UI resolves alert copy from
+/// the core catalog.
+/// </summary>
+public sealed class PlaybackPauseReason
+{
+    public string Kind { get; set; } = string.Empty;
+    public SidePausePrompt? Prompt { get; set; }
+
+    public string? AlertTitle
+    {
+        get
+        {
+            if (Prompt is null)
+            {
+                return null;
+            }
+            return Loc.Core(Prompt.TitleKey, "letter", Prompt.SideLetter);
+        }
+    }
+
+    public string? AlertMessage
+    {
+        get
+        {
+            return Prompt is null ? null : Loc.Core(Prompt.MessageKey);
+        }
+    }
+}
+
+public sealed class SidePausePrompt
+{
+    public string TitleKey { get; set; } = string.Empty;
+    public string SideLetter { get; set; } = string.Empty;
+    public string MessageKey { get; set; } = string.Empty;
 }

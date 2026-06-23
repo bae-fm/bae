@@ -51,6 +51,7 @@
     <string name="settings_sync">동기화</string>
     <string name="settings_cloud_sync_on">클라우드 동기화 켜짐</string>
     <string name="settings_local_only">로컬 전용</string>
+    <string name="settings_pause_between_sides">면 사이에서 일시 정지</string>
     <string name="settings_synced">동기화됨</string>
     <string name="settings_syncing">동기화 중…</string>
     <string name="settings_remove_library">이 기기에서 이 라이브러리 제거</string>

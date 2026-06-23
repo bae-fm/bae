@@ -32,9 +32,9 @@ private func makeBridgeRelease(
     format: String? = "FLAC",
     storageState: BridgeReleaseStorageState = .cloudOnly,
     storageActions: [BridgeReleaseStorageAction] = [],
+    totalDurationMs: Int64 = 2_700_000,
     fileCount: Int64 = 0,
     totalSize: Int64 = 0,
-    totalSizeLabel: String = "0 bytes",
     coverPath: String? = nil
 ) -> BridgeRelease {
     BridgeRelease(
@@ -47,7 +47,6 @@ private func makeBridgeRelease(
         label: nil,
         catalogNumber: nil,
         country: nil,
-        compactMetadata: "",
         storageState: storageState,
         storageActions: storageActions,
         tracks: [],
@@ -55,10 +54,9 @@ private func makeBridgeRelease(
         files: [],
         imageFiles: [],
         galleryItems: [],
-        totalDurationLabel: "45:00",
+        totalDurationMs: totalDurationMs,
         fileCount: fileCount,
         totalSize: totalSize,
-        totalSizeLabel: totalSizeLabel,
         coverPath: coverPath
     )
 }
@@ -71,7 +69,6 @@ private func makeBridgeReleaseSummary(
     storageActions: [BridgeReleaseStorageAction] = [],
     fileCount: Int64 = 0,
     totalSize: Int64 = 0,
-    totalSizeLabel: String = "0 bytes",
     coverPath: String? = nil
 ) -> BridgeReleaseSummary {
     BridgeReleaseSummary(
@@ -82,7 +79,6 @@ private func makeBridgeReleaseSummary(
         storageActions: storageActions,
         fileCount: fileCount,
         totalSize: totalSize,
-        totalSizeLabel: totalSizeLabel,
         coverPath: coverPath
     )
 }
@@ -248,7 +244,6 @@ struct InternReleaseSummaryTests {
             storageState: .pinned,
             fileCount: 12,
             totalSize: 5_000_000,
-            totalSizeLabel: "5 MB",
             coverPath: "/img/release-1.jpg#v=7"
         )
 
@@ -260,7 +255,6 @@ struct InternReleaseSummaryTests {
         #expect(summary.storageState == .pinned)
         #expect(summary.fileCount == 12)
         #expect(summary.totalSize == 5_000_000)
-        #expect(summary.totalSizeLabel == "5 MB")
         #expect(summary.coverPath == "/img/release-1.jpg#v=7")
     }
 
@@ -348,7 +342,7 @@ struct InternReleaseDetailTests {
 
         let detail = store.releaseDetails["release-1"]!
         #expect(detail.displayName == "Deluxe Edition")
-        #expect(detail.totalDurationLabel == "45:00")
+        #expect(detail.totalDurationMs == 2_700_000)
         // Interning a detail also interns its wrapped summary; the slim fields
         // (here `format`) carry through from the same `BridgeRelease`.
         #expect(detail.summary.format == "FLAC")

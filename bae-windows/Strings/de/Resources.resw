@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Wird überprüft …</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Bibliothek: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>Bibliothek sperren</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Zwischen Seiten pausieren</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>Wiederherstellungscode (auf einem anderen Gerät eingeben)</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>Wiederherstellungscode anzeigen</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(nicht verfügbar — ist Sync verbunden?)</value></data>

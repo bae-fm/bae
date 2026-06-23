@@ -270,16 +270,19 @@ impl BridgeIdentityChoice {
 /// physical medium / multi-disc digital / flat single-disc); the UI composes
 /// the position string ("A1", "2-3", "5") mechanically from the fields and
 /// resolves the "Side"/"Disc" header word from `bridge_track_*` catalog keys.
-/// No prose crosses the bridge — only the side letter, disc/track numbers, and
-/// the case.
+/// No prose crosses the bridge — only the side letter, disc number, optional
+/// track number, and the case.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTrackPosition {
     /// Vinyl/cassette: header "Side {side_letter}", position "{side_letter}{number}".
-    Sided { side_letter: String, number: i32 },
+    Sided {
+        side_letter: String,
+        number: Option<i32>,
+    },
     /// Multi-disc digital: header "Disc {disc}", position "{disc}-{number}".
-    Disc { disc: i32, number: i32 },
+    Disc { disc: i32, number: Option<i32> },
     /// Single-disc digital: position "{number}", no header.
-    Flat { number: i32 },
+    Flat { number: Option<i32> },
 }
 
 impl BridgeTrackPosition {
@@ -504,6 +507,42 @@ pub enum BridgePlaybackState {
         cover_image_id: Option<String>,
         duration_ms: u64,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSidePausePrompt {
+    pub id: String,
+    pub title_key: String,
+    pub side_letter: String,
+    pub message_key: String,
+}
+
+impl BridgeSidePausePrompt {
+    pub(crate) fn from_core(prompt: bae_core::playback::PlaybackSidePausePrompt) -> Self {
+        Self {
+            id: prompt.id,
+            title_key: prompt.title_key.to_string(),
+            side_letter: prompt.side_letter,
+            message_key: prompt.message_key.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgePlaybackPauseReason {
+    Manual,
+    SideEnded { prompt: BridgeSidePausePrompt },
+}
+
+impl BridgePlaybackPauseReason {
+    pub(crate) fn from_core(reason: bae_core::playback::PlaybackPauseReason) -> Self {
+        match reason {
+            bae_core::playback::PlaybackPauseReason::Manual => Self::Manual,
+            bae_core::playback::PlaybackPauseReason::SideEnded(prompt) => Self::SideEnded {
+                prompt: BridgeSidePausePrompt::from_core(prompt),
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -1289,6 +1328,7 @@ pub enum BridgeUiEvent {
         album_title: String,
         cover_image_id: Option<String>,
         duration_ms: u64,
+        reason: BridgePlaybackPauseReason,
     },
     /// Position update — goes to NSView. Carries both regular ticks from the
     /// position listener and one-off updates emitted after a seek completes.
@@ -1783,6 +1823,7 @@ pub struct BridgeConfig {
     pub library_path: String,
     pub encryption_key_stored: bool,
     pub encryption_key_fingerprint: Option<String>,
+    pub pause_between_sides: bool,
     pub discogs_token_status: BridgeDiscogsTokenStatus,
     /// Whether Discogs can be used as a metadata source (a stored key that
     /// isn't rejected). Core decides the policy via `DiscogsTokenStatus::
@@ -3354,6 +3395,16 @@ mod loc_key_coverage {
                 keys.push(k.to_string());
             }
         }
+
+        keys.extend(
+            [
+                bae_core::playback::SIDE_PAUSE_TITLE_KEY,
+                bae_core::playback::SIDE_PAUSE_VINYL_MESSAGE_KEY,
+                bae_core::playback::SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
+            ]
+            .into_iter()
+            .map(str::to_string),
+        );
 
         keys
     }

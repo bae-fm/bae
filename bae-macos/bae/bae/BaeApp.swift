@@ -330,6 +330,7 @@ extension BaeApp {
                     .environment(\.playbackPositionPublisher, playbackPublisher)
                     .environment(\.previewProgressPublisher, previewPublisher)
                     .environment(appDelegate.uiStore)
+                    .errorAlert(appDelegate.uiStore)
             }
             else {
                 ContentUnavailableView(

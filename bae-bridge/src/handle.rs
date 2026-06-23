@@ -414,6 +414,13 @@ impl AppHandle {
         build_bridge_config(&self.app_services.library_manager().get_config())
     }
 
+    pub fn set_pause_between_sides(&self, enabled: bool) -> Result<(), BridgeError> {
+        self.app_services
+            .library_manager()
+            .set_pause_between_sides(enabled)
+            .map_err(BridgeError::config)
+    }
+
     /// Whether the encryption key is loaded — `init` successfully read it from
     /// the keyring and built the sync manager. Reflects the cached init-time
     /// result, not a fresh keyring read. `false` here for an
@@ -1488,6 +1495,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             album_title,
             cover_image_id,
             duration_ms,
+            reason,
         } => Some(BridgeUiEvent::PlaybackPaused {
             track_id,
             track_title,
@@ -1497,6 +1505,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             album_title,
             cover_image_id,
             duration_ms,
+            reason: BridgePlaybackPauseReason::from_core(reason),
         }),
         UiBusEvent::PlaybackProgress {
             position_ms,

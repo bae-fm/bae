@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Ověřování…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Knihovna: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>zamknout knihovnu</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pozastavit mezi stranami</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>kód pro obnovení (zadejte na jiném zařízení)</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>zobrazit kód pro obnovení</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(nedostupné — je synchronizace připojena?)</value></data>

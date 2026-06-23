@@ -1,6 +1,388 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Close": {
+      "comment": "Alert dismiss button",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fermer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schließen"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fechar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閉じる"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إغلاق"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סגור"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрити"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Затваряне"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamknij"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zavřít"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zatvori"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "닫기"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關閉"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiudi"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapat"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đóng"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sluiten"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "बंद करें"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বন্ধ"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "மூடு"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "మూసివేయి"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "बंद करा"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بند کریں"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "બંધ કરો"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಮುಚ್ಚು"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "അടയ്ക്കുക"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਬੰਦ ਕਰੋ"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิด"
+          }
+        }
+      }
+    },
+    "Error": {
+      "comment": "Global error alert title",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erreur"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fehler"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エラー"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "错误"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خطأ"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שגיאה"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Помилка"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Грешка"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Błąd"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chyba"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pogreška"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오류"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "錯誤"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errore"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hata"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lỗi"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fout"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "त्रुटि"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ত্রুটি"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "பிழை"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "లోపం"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "त्रुटी"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خرابی"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ભૂલ"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ದೋಷ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "പിശക്"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਗਲਤੀ"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ข้อผิดพลาด"
+          }
+        }
+      }
+    },
     "%@ by %@": {
       "comment": "Album card VoiceOver label: title by artist",
       "localizations": {
@@ -14628,6 +15010,386 @@
           "stringUnit": {
             "state": "translated",
             "value": "ซิงค์ing…"
+          }
+        }
+      }
+    },
+    "Pause between sides": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause between sides"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Pause between sides"
+          }
+        }
+      }
+    },
+    "Playback": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playback"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Playback"
           }
         }
       }

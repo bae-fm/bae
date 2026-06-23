@@ -33,15 +33,19 @@ use serde::Serialize;
 /// Wire mirror of `bae_core::album_detail::TrackPosition` (and the bridge's
 /// `BridgeTrackPosition`). `kind` tags the case; only that case's fields are
 /// set. The C# renders "A1" from `Sided`, "2-3" from `Disc`, "5" from `Flat`.
+/// A missing `number` means the source track has no per-track number.
 #[derive(Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum FfiTrackPosition {
     /// Vinyl/cassette: position "{side_letter}{number}" (e.g. "A1").
-    Sided { side_letter: String, number: i32 },
+    Sided {
+        side_letter: String,
+        number: Option<i32>,
+    },
     /// Multi-disc digital: position "{disc}-{number}" (e.g. "2-3").
-    Disc { disc: i32, number: i32 },
+    Disc { disc: i32, number: Option<i32> },
     /// Single-disc digital: position "{number}" (e.g. "5").
-    Flat { number: i32 },
+    Flat { number: Option<i32> },
 }
 
 impl FfiTrackPosition {
@@ -439,6 +443,9 @@ mod tests {
             playback_error_reason_key("diagnostic").is_none(),
             "diagnostic renders through the FfiError category path"
         );
+        assert_key(&cat, "core.playback.pause.side_ended.title");
+        assert_key(&cat, "core.playback.pause.side_ended.message.vinyl");
+        assert_key(&cat, "core.playback.pause.side_ended.message.cassette");
     }
 
     #[test]

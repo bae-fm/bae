@@ -145,7 +145,7 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge"; then
         exit 1
     }
 
-    cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+    cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
 
     if ! command -v xcodegen &> /dev/null; then
         echo "⚠️  xcodegen not installed, skipping macOS build check"
@@ -158,7 +158,9 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge"; then
         # -derivedDataPath: predictable path so periphery can find the index store with --skip-build
         run_check "xcodebuild (bae-macos)" xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-            -derivedDataPath .build/derivedData build || {
+            -derivedDataPath .build/derivedData \
+            -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
+            -disableAutomaticPackageResolution build || {
             echo "macOS app build failed"
             exit 1
         }

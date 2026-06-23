@@ -51,6 +51,7 @@
     <string name="settings_sync">同步</string>
     <string name="settings_cloud_sync_on">你的雲 同步</string>
     <string name="settings_local_only">僅限本機</string>
+    <string name="settings_pause_between_sides">在面之間暫停</string>
     <string name="settings_synced">同步</string>
     <string name="settings_syncing">同步</string>
     <string name="settings_remove_library">移除 資料庫 · 裝置</string>

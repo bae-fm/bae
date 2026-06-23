@@ -51,6 +51,7 @@
     <string name="settings_sync">સિંક</string>
     <string name="settings_cloud_sync_on">તમારો cloud સિંક</string>
     <string name="settings_local_only">ફક્ત સ્થાનિક</string>
+    <string name="settings_pause_between_sides">સાઇડ વચ્ચે વિરામ</string>
     <string name="settings_synced">સિંક</string>
     <string name="settings_syncing">સિંક</string>
     <string name="settings_remove_library">દૂર કરો લાઇબ્રેરી · ઉપકરણ</string>

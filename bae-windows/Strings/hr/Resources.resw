@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Provjera…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Fonoteka: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>zaključaj fonoteku</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauziraj između strana</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>kod za vraćanje (unesite na drugom uređaju)</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>prikaži kod za vraćanje</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(nedostupno — je li sinkronizacija povezana?)</value></data>

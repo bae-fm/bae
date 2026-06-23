@@ -25,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,6 +34,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,10 +48,14 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.localizedLine
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeException
 
 private const val TAG = "bae.SettingsScreen"
 private val logger = BaeLogger(TAG)
@@ -66,6 +72,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onManageDevices: () -> Unit,
     onLeaveLibrary: () -> Unit,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val config by session.configStore.config.collectAsState()
     val syncReady by session.configStore.syncReady.collectAsState()
@@ -74,7 +81,12 @@ fun SettingsScreen(
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         SettingsTopBar(onBack = onBack)
-        SettingsConfigSection(config = config, syncReady = syncReady)
+        SettingsConfigSection(
+            session = session,
+            config = config,
+            syncReady = syncReady,
+            ioDispatcher = ioDispatcher,
+        )
         if (config.sync != null) {
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             SettingsDevicesSection(
@@ -131,9 +143,13 @@ private fun SettingsTopBar(onBack: () -> Unit) {
 
 @Composable
 private fun SettingsConfigSection(
+    session: OpenLibrary,
     config: BridgeConfig,
     syncReady: Boolean,
+    ioDispatcher: CoroutineDispatcher,
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     Column(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -149,6 +165,35 @@ private fun SettingsConfigSection(
                 text = stringResource(if (syncReady) R.string.settings_synced else R.string.settings_syncing),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.settings_pause_between_sides),
+                modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = config.pauseBetweenSides,
+                onCheckedChange = { enabled ->
+                    scope.launch {
+                        try {
+                            withContext(ioDispatcher) {
+                                session.appHandle.setPauseBetweenSides(enabled)
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: BridgeException) {
+                            logger.error("Failed to update pause-between-sides setting", e)
+                            session.configStore.showError(context.localizedLine(e))
+                        } catch (e: Exception) {
+                            logger.error("Failed to update pause-between-sides setting", e)
+                            session.configStore.showError(e.toString())
+                        }
+                    }
+                },
             )
         }
     }

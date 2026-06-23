@@ -104,6 +104,13 @@ pub(crate) async fn playback_info_from_track_release(
         (id, names)
     };
 
+    let side = crate::util::format::physical_side_medium(release.pressing.format.as_deref()).map(
+        |medium| crate::playback::PlaybackTrackSide {
+            medium,
+            side_letter: crate::util::format::side_letter(track.side),
+        },
+    );
+
     Ok(crate::playback::PlaybackTrackInfo {
         track_id: track.id.clone(),
         track_title: track.title.clone(),
@@ -112,6 +119,8 @@ pub(crate) async fn playback_info_from_track_release(
         album_id,
         album_title,
         cover_image_id,
+        release_id: release.id.clone(),
+        side,
     })
 }
 
@@ -1636,6 +1645,12 @@ impl LibraryManager {
     /// `Config`.
     pub fn subscribe_config_changes(&self) -> tokio::sync::watch::Receiver<crate::config::Config> {
         self.config_handle.subscribe()
+    }
+
+    /// Set whether playback pauses between vinyl/cassette sides.
+    pub fn set_pause_between_sides(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
+        self.config_handle
+            .update(|c| c.pause_between_sides = enabled)
     }
 
     /// Forget this (local) library on this device: delete its master encryption

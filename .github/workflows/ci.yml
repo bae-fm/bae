@@ -73,7 +73,7 @@ jobs:
       run: |
         brew install xcodegen peripheryapp/periphery/periphery
         ./bae-bridge/build-macos.sh
-        cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+        cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
@@ -180,7 +180,7 @@ jobs:
       run: |
         brew install xcodegen
         BAE_BRIDGE_FEATURES=desktop ./bae-bridge/build-macos.sh
-        cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+        cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
@@ -191,11 +191,11 @@ jobs:
         # The baeium bridge build above must omit every feature-gated function.
         # availableCloudProviders stays (always compiled in); these must not.
         gated='oauthAuthorize|oauthBegin|oauthCancel|oauthComplete|setOauthClientCreds|signInCloudProvider|useCloudkit'
-        if grep -nE "func ($gated)" bae-bridge/swift-bindings/bae_bridge.swift; then
-          echo "::error::Baeium bridge exported a feature-gated symbol (above): the gate leaked into the S3-only build."
+        if grep -nE "func ($gated)" bae-bridge/swift-bindings-macos/bae_bridge.swift; then
+          echo "::error::baeium bridge exported a feature-gated symbol (above): the gate leaked into the S3-only build."
           exit 1
         fi
-        echo "Baeium bridge is clean: no OAuth/CloudKit bindings exported."
+        echo "baeium bridge is clean: no OAuth/CloudKit bindings exported."
 
   security:
     name: Security Audit

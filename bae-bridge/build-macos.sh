@@ -74,11 +74,14 @@ echo "Writing Swift compilation conditions: ${SWIFT_CONDITIONS:-(none)}"
 } > "$FEATURES_XCCONFIG"
 
 echo "Generating Swift bindings..."
-mkdir -p bae-bridge/swift-bindings
+SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-macos"
+mkdir -p "$SWIFT_BINDINGS_DIR"
 cargo run --bin uniffi-bindgen generate \
     --library "$CARGO_TARGET_DIR/aarch64-apple-darwin/$CARGO_PROFILE/libbae_bridge.a" \
     --language swift \
-    --out-dir bae-bridge/swift-bindings/
+    --out-dir "$SWIFT_BINDINGS_DIR/"
+
+cp "$SWIFT_BINDINGS_DIR/bae_bridge.swift" bae-macos/bae/bae/bae_bridge.swift
 
 echo "Generating localization String Catalog (Apple)..."
 cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-macos/bae/bae
@@ -86,16 +89,16 @@ cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-macos
 echo "Creating XCFramework..."
 rm -rf bae-macos/BaeBridgeFFI.xcframework
 
-mkdir -p bae-bridge/swift-bindings/headers
-cp bae-bridge/swift-bindings/bae_bridgeFFI.h bae-bridge/swift-bindings/headers/
-cp bae-bridge/swift-bindings/bae_bridgeFFI.modulemap bae-bridge/swift-bindings/headers/module.modulemap
+mkdir -p "$SWIFT_BINDINGS_DIR/headers"
+cp "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.h" "$SWIFT_BINDINGS_DIR/headers/"
+cp "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.modulemap" "$SWIFT_BINDINGS_DIR/headers/module.modulemap"
 
 xcodebuild -create-xcframework \
     -library "$CARGO_TARGET_DIR/aarch64-apple-darwin/$CARGO_PROFILE/libbae_bridge.a" \
-    -headers bae-bridge/swift-bindings/headers \
+    -headers "$SWIFT_BINDINGS_DIR/headers" \
     -output bae-macos/BaeBridgeFFI.xcframework
 
 echo ""
 echo "Done ($CARGO_PROFILE). Outputs:"
 echo "  bae-macos/BaeBridgeFFI.xcframework/"
-echo "  bae-bridge/swift-bindings/bae_bridge.swift"
+echo "  $SWIFT_BINDINGS_DIR/bae_bridge.swift"

@@ -41,12 +41,16 @@ struct NowPlayingBar: View {
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
+            .sidePausePromptAlert()
         }
     }
 
     private func transport(track: NowPlayingTrack) -> some View {
         HStack(spacing: 12) {
-            trackInfoButton(track: track)
+            trackInfoButton(
+                track: track,
+                secondaryLine: playbackStore.nowPlaying.secondaryLine
+            )
             transportButtons
         }
         .buttonStyle(.plain)
@@ -55,7 +59,10 @@ struct NowPlayingBar: View {
 
     // Cover + title/artist expand into the full-screen player; the transport
     // buttons stay outside this tap target.
-    private func trackInfoButton(track: NowPlayingTrack) -> some View {
+    private func trackInfoButton(
+        track: NowPlayingTrack,
+        secondaryLine: String?
+    ) -> some View {
         Button {
             showExpanded = true
         } label: {
@@ -71,10 +78,12 @@ struct NowPlayingBar: View {
                     Text(track.trackTitle)
                         .font(.subheadline.weight(.medium))
                         .lineLimit(1)
-                    Text(track.artistNames)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    if let secondaryLine {
+                        Text(secondaryLine)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer(minLength: 0)
             }

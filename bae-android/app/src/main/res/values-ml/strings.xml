@@ -51,6 +51,7 @@
     <string name="settings_sync">സിങ്ക്</string>
     <string name="settings_cloud_sync_on">നിങ്ങളുടെ cloud സിങ്ക്</string>
     <string name="settings_local_only">പ്രാദേശികം മാത്രം</string>
+    <string name="settings_pause_between_sides">സൈഡുകൾക്കിടയിൽ നിർത്തുക</string>
     <string name="settings_synced">സിങ്ക്</string>
     <string name="settings_syncing">സിങ്ക്</string>
     <string name="settings_remove_library">നീക്കുക ലൈബ്രറി · ഉപകരണം</string>

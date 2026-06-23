@@ -130,16 +130,20 @@ pub fn available_storage_actions(
 /// domain decision (sided physical medium vs. multi-disc digital vs. flat
 /// single-disc digital); the UI composes the position string ("A1", "2-3", "5")
 /// mechanically from the fields and resolves the "Side"/"Disc" header word from
-/// a catalog key. No prose lives here.
+/// a catalog key. A missing `number` means the source had no per-track number.
+/// No prose lives here.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrackPosition {
     /// Vinyl/cassette: header "Side A", position "A1". `side_letter` is the
     /// letter for the face (A/B/C…); `number` is the within-side track number.
-    Sided { side_letter: String, number: i32 },
+    Sided {
+        side_letter: String,
+        number: Option<i32>,
+    },
     /// Multi-disc digital (CD etc.): header "Disc 2", position "2-3".
-    Disc { disc: i32, number: i32 },
+    Disc { disc: i32, number: Option<i32> },
     /// Single-disc digital: position "5", no header.
-    Flat { number: i32 },
+    Flat { number: Option<i32> },
 }
 
 /// A track group's side discriminant — what the UI renders as the "Side A" /

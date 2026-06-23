@@ -25,11 +25,21 @@ private const val HZ_PER_KHZ = 1000.0
 fun BridgeTrackPosition.positionText(context: Context): String {
     val nf = NumberFormat.getIntegerInstance(context.currentLocale())
     return when (this) {
-        is BridgeTrackPosition.Sided -> "$sideLetter${nf.format(number)}"
-        is BridgeTrackPosition.Disc -> "${nf.format(disc)}-${nf.format(number)}"
-        is BridgeTrackPosition.Flat -> nf.format(number)
+        is BridgeTrackPosition.Sided -> {
+            if (number == null) missingTrackNumber() else "$sideLetter${nf.format(number)}"
+        }
+
+        is BridgeTrackPosition.Disc -> {
+            if (number == null) missingTrackNumber() else "${nf.format(disc)}-${nf.format(number)}"
+        }
+
+        is BridgeTrackPosition.Flat -> {
+            if (number == null) missingTrackNumber() else nf.format(number)
+        }
     }
 }
+
+private fun missingTrackNumber(): Nothing = error("track position has no track number")
 
 /**
  * The localized track-group header ("Side A" / "Disc 2"), or empty for the flat
@@ -41,13 +51,19 @@ fun BridgeTrackPosition.positionText(context: Context): String {
 fun BridgeTrackSide.sideHeaderText(context: Context): String {
     val key = bridgeTrackHeaderKey(this) ?: return ""
     return when (this) {
-        is BridgeTrackSide.Sided -> context.coreString(key, mapOf("letter" to sideLetter))
+        is BridgeTrackSide.Sided -> {
+            context.coreString(key, mapOf("letter" to sideLetter))
+        }
 
-        is BridgeTrackSide.Disc -> context.coreString(key, mapOf("disc" to disc))
+        is BridgeTrackSide.Disc -> {
+            context.coreString(key, mapOf("disc" to disc))
+        }
 
         // Unreachable: bridgeTrackHeaderKey returns null for Flat, so the
         // elvis above already returned. Kept for exhaustiveness.
-        is BridgeTrackSide.Flat -> ""
+        is BridgeTrackSide.Flat -> {
+            ""
+        }
     }
 }
 

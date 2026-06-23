@@ -570,6 +570,15 @@ internal static class NativeBae
     /// <summary>Current settings as a JSON string, or null on error.</summary>
     internal static string? SettingsJson(IntPtr handle) => CopyAndFree(SettingsPtr(handle));
 
+    [DllImport(Dll, EntryPoint = "bae_set_pause_between_sides", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SetPauseBetweenSidesPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.I1)] bool enabled);
+
+    /// <summary>Set physical-side playback pauses; null on success, else the error.</summary>
+    internal static string? SetPauseBetweenSides(IntPtr handle, bool enabled) =>
+        ResultMessage(SetPauseBetweenSidesPtr(handle, enabled));
+
     [DllImport(Dll, EntryPoint = "bae_save_discogs_token", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr SaveDiscogsTokenPtr(
         IntPtr handle,

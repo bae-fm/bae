@@ -70,7 +70,7 @@ class PlaybackStore {
         case .loading(trackId, _, let priorFallback):
             previous = priorFallback
         case .playing(let current) where current.trackId == trackId,
-            .paused(let current) where current.trackId == trackId:
+            .paused(let current, _) where current.trackId == trackId:
             previous = current
         default:
             // A fast switch moved on: the resolved target is for a track that is
@@ -87,6 +87,10 @@ class PlaybackStore {
             previous: previous
         )
     }
+
+    func pause(track: NowPlayingTrack, reason: BridgePlaybackPauseReason) {
+        nowPlaying = .paused(track, reason: reason)
+    }
 }
 
 // ── NowPlaying ─────────────────────────────────────────────────────────
@@ -98,6 +102,28 @@ struct NowPlayingTrack {
     let albumId: String
     let coverImageId: String?
     let durationMs: UInt64
+}
+
+extension BridgePlaybackPauseReason {
+    var sidePausePrompt: BridgeSidePausePrompt? {
+        guard case .sideEnded(prompt: let prompt) = self else {
+            return nil
+        }
+        return prompt
+    }
+}
+
+extension BridgeSidePausePrompt: Identifiable {
+    func title() -> String {
+        String(
+            format: localizedCoreString(titleKey),
+            sideLetter
+        )
+    }
+
+    func message() -> String {
+        localizedCoreString(messageKey)
+    }
 }
 
 enum NowPlaying {
@@ -113,7 +139,7 @@ enum NowPlaying {
         previous: NowPlayingTrack?
     )
     case playing(NowPlayingTrack)
-    case paused(NowPlayingTrack)
+    case paused(NowPlayingTrack, reason: BridgePlaybackPauseReason)
 
     var isActive: Bool {
         if case .stopped = self {
@@ -124,9 +150,31 @@ enum NowPlaying {
 
     var track: NowPlayingTrack? {
         switch self {
-        case .playing(let t), .paused(let t): t
+        case .playing(let t), .paused(let t, _): t
         case .loading(_, let target, let previous): target ?? previous
         case .stopped: nil
+        }
+    }
+
+    var secondaryLine: String? {
+        switch self {
+        case .paused(let track, let reason):
+            if let prompt = reason.sidePausePrompt {
+                return prompt.title()
+            }
+            return track.artistNames
+        case .playing(let track):
+            return track.artistNames
+        case .loading(_, let target, let previous):
+            if let target {
+                return target.artistNames
+            }
+            if let previous {
+                return previous.artistNames
+            }
+            return nil
+        case .stopped:
+            return nil
         }
     }
 

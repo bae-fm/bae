@@ -51,6 +51,7 @@
     <string name="settings_sync">Synchronizace</string>
     <string name="settings_cloud_sync_on">Synchronizace s cloudem zapnuta</string>
     <string name="settings_local_only">Pouze místně</string>
+    <string name="settings_pause_between_sides">Pozastavit mezi stranami</string>
     <string name="settings_synced">Synchronizováno</string>
     <string name="settings_syncing">Synchronizace…</string>
     <string name="settings_remove_library">Odebrat tuto knihovnu z tohoto zařízení</string>

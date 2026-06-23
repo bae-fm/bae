@@ -26,8 +26,7 @@ targets:
       # iOS app sources (includes the gitignored bae_bridge.swift bindings,
       # which build-ios.sh copies here — built with BAE_BRIDGE_FEATURES
       # (default oauth-providers,cloudkit), matching the iOS xcframework's
-      # exported symbols; the shared bae-bridge/swift-bindings/ dir is scratch a
-      # macOS build regenerates with desktop methods).
+      # exported symbols).
       - bae
       # Shared data/service/domain layer compiled directly from the macOS app
       # — one copy serves both platforms. Each is AppKit-free and references
@@ -75,15 +74,18 @@ targets:
       - path: ../../bae-macos/bae/bae/Services/Store/SearchResults.swift
       - path: ../../bae-macos/bae/bae/Views/UnlockView.swift
       - path: ../../bae-macos/bae/bae/Views/PlayPauseControl.swift
+      - path: ../../bae-macos/bae/bae/Views/PauseBetweenSidesToggle.swift
+      - path: ../../bae-macos/bae/bae/Views/SidePausePromptAlert.swift
     preBuildScripts:
       - name: Build Rust Bridge
         basedOnDependencyAnalysis: false
         script: |
           cd "$SRCROOT/../.."
           MARKER="bae-ios/BaeBridgeFFI-ios.xcframework/Info.plist"
+          BINDINGS_SOURCE="bae-bridge/swift-bindings-ios/bae_bridge.swift"
           BINDINGS="bae-ios/bae/bae/bae_bridge.swift"
           NEEDS_BUILD=0
-          if [ ! -f "$MARKER" ]; then
+          if [ ! -f "$MARKER" ] || [ ! -f "$BINDINGS_SOURCE" ]; then
             NEEDS_BUILD=1
           else
             for src in bae-bridge/src/*.rs bae-core/src/**/*.rs; do
@@ -100,8 +102,8 @@ targets:
           # Always ensure the iOS-flavored bindings are in the source tree.
           # Without this, a fresh worktree (xcframework cached, bindings file
           # absent) skips the copy and the build fails to find generated types.
-          if [ ! -f "$BINDINGS" ] || [ "bae-bridge/swift-bindings/bae_bridge.swift" -nt "$BINDINGS" ]; then
-            cp bae-bridge/swift-bindings/bae_bridge.swift "$BINDINGS"
+          if [ ! -f "$BINDINGS" ] || [ "$BINDINGS_SOURCE" -nt "$BINDINGS" ]; then
+            cp "$BINDINGS_SOURCE" "$BINDINGS"
           fi
           cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-ios/bae/bae
     dependencies:

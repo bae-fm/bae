@@ -168,8 +168,6 @@ enum UiEventReducer {
                     durationMs: durationMs
                 ),
                 albumTitle: albumTitle,
-                isPlaying: true,
-                beginsSession: true,
                 into: context
             )
 
@@ -181,9 +179,10 @@ enum UiEventReducer {
             let albumId,
             let albumTitle,
             let coverImageId,
-            let durationMs
+            let durationMs,
+            let reason
         ):
-            applyNowPlaying(
+            applyPausedNowPlaying(
                 track: NowPlayingTrack(
                     trackId: trackId,
                     trackTitle: trackTitle,
@@ -193,8 +192,7 @@ enum UiEventReducer {
                     durationMs: durationMs
                 ),
                 albumTitle: albumTitle,
-                isPlaying: false,
-                beginsSession: false,
+                reason: reason,
                 into: context
             )
 
@@ -211,24 +209,31 @@ enum UiEventReducer {
     private static func applyNowPlaying(
         track: NowPlayingTrack,
         albumTitle: String,
-        isPlaying: Bool,
-        beginsSession: Bool,
         into context: ReducerContext
     ) {
-        context.playbackStore.nowPlaying = isPlaying ? .playing(track) : .paused(track)
-        if beginsSession {
-            context.mediaControlService.beginPlaybackSession()
-        }
-        context.mediaControlService.updateNowPlaying(
-            NowPlayingMetadata(
-                trackTitle: track.trackTitle,
-                artistNames: track.artistNames,
-                albumTitle: albumTitle,
-                coverImageId: track.coverImageId,
-                durationMs: track.durationMs
-            ),
-            isPlaying: isPlaying,
-            appHandle: context.appHandle
+        context.playbackStore.nowPlaying = .playing(track)
+        context.mediaControlService.beginPlaybackSession()
+        updateMediaControls(
+            track: track,
+            albumTitle: albumTitle,
+            isPlaying: true,
+            into: context
+        )
+    }
+
+    @MainActor
+    private static func applyPausedNowPlaying(
+        track: NowPlayingTrack,
+        albumTitle: String,
+        reason: BridgePlaybackPauseReason,
+        into context: ReducerContext
+    ) {
+        context.playbackStore.pause(track: track, reason: reason)
+        updateMediaControls(
+            track: track,
+            albumTitle: albumTitle,
+            isPlaying: false,
+            into: context
         )
     }
 
@@ -238,27 +243,7 @@ enum UiEventReducer {
         let mediaControlService = context.mediaControlService
         switch event {
         case .playbackLoading(let trackId, let track):
-            // Bare event (track == nil): enter loading, keep the prior track on
-            // screen, and clear the frozen position bar. Resolved event: swap to the
-            // target so the bar updates while audio still downloads — and, on a seek,
-            // enter loading from the playing/paused state so the spinner shows.
-            if let track {
-                playbackStore.setLoadingTarget(
-                    trackId: trackId,
-                    target: NowPlayingTrack(
-                        trackId: trackId,
-                        trackTitle: track.trackTitle,
-                        artistNames: track.artistNames,
-                        albumId: track.albumId,
-                        coverImageId: track.coverImageId,
-                        durationMs: track.durationMs
-                    )
-                )
-            }
-            else {
-                playbackStore.beginLoading(trackId: trackId)
-                playbackStore.playbackPositionSubject.send(.reset)
-            }
+            applyPlaybackLoading(trackId: trackId, track: track, into: context)
             mediaControlService.beginPlaybackSession()
 
         case .playbackStopped:
@@ -349,4 +334,50 @@ enum UiEventReducer {
             break
         }
     }
+}
+
+@MainActor
+private func applyPlaybackLoading(
+    trackId: String,
+    track: BridgeLoadingTrackInfo?,
+    into context: ReducerContext
+) {
+    let playbackStore = context.playbackStore
+    if let track {
+        playbackStore.setLoadingTarget(
+            trackId: trackId,
+            target: NowPlayingTrack(
+                trackId: trackId,
+                trackTitle: track.trackTitle,
+                artistNames: track.artistNames,
+                albumId: track.albumId,
+                coverImageId: track.coverImageId,
+                durationMs: track.durationMs
+            )
+        )
+    }
+    else {
+        playbackStore.beginLoading(trackId: trackId)
+        playbackStore.playbackPositionSubject.send(.reset)
+    }
+}
+
+@MainActor
+private func updateMediaControls(
+    track: NowPlayingTrack,
+    albumTitle: String,
+    isPlaying: Bool,
+    into context: ReducerContext
+) {
+    context.mediaControlService.updateNowPlaying(
+        NowPlayingMetadata(
+            trackTitle: track.trackTitle,
+            artistNames: track.artistNames,
+            albumTitle: albumTitle,
+            coverImageId: track.coverImageId,
+            durationMs: track.durationMs
+        ),
+        isPlaying: isPlaying,
+        appHandle: context.appHandle
+    )
 }

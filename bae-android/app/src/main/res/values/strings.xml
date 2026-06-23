@@ -81,6 +81,7 @@
     <string name="settings_local_only">Local only</string>
     <string name="settings_synced">Synced</string>
     <string name="settings_syncing">Syncing…</string>
+    <string name="settings_pause_between_sides">Pause between sides</string>
     <string name="settings_devices">Devices</string>
     <string name="settings_manage_devices">Manage devices</string>
     <string name="settings_recovery_code">Recovery code</string>

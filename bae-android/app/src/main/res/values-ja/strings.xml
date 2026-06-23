@@ -51,6 +51,7 @@
     <string name="settings_sync">同期</string>
     <string name="settings_cloud_sync_on">クラウド同期オン</string>
     <string name="settings_local_only">ローカルのみ</string>
+    <string name="settings_pause_between_sides">面の間で一時停止</string>
     <string name="settings_synced">同期済み</string>
     <string name="settings_syncing">同期中…</string>
     <string name="settings_remove_library">このライブラリをこのデバイスから削除</string>

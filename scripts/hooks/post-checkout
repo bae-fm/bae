@@ -53,14 +53,16 @@ fi
 # fails when the xcframework is absent, and xcodegen globs the source tree, so it
 # drops bae_bridge.swift if the project is generated before the bindings land.
 ./bae-bridge/build-macos.sh
-cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
 (cd bae-macos/bae && xcodegen generate)
 # Match the pre-commit hook's xcodebuild flags (notably -derivedDataPath): if the
 # primed SPM packages land in a different DerivedData location, that hook's
 # xcodebuild can't find the Sparkle checkout and fails.
 (cd bae-macos/bae && xcodebuild -project bae.xcodeproj -scheme bae \
     -configuration Debug CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-    -derivedDataPath .build/derivedData build)
+    -derivedDataPath .build/derivedData \
+    -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
+    -disableAutomaticPackageResolution build)
 
 echo
 echo "Worktree ready: $worktree_root"

@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>資料庫: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>lock 資料庫</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>在面之間暫停</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>restore code (enter on another device)</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>show restore code</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(unavailable — is 同步 connected?)</value></data>

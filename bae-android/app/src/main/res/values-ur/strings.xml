@@ -51,6 +51,7 @@
     <string name="settings_sync">مطابقت پذیری</string>
     <string name="settings_cloud_sync_on">آپ کا cloud مطابقت پذیری</string>
     <string name="settings_local_only">صرف مقامی</string>
+    <string name="settings_pause_between_sides">سائیڈز کے درمیان توقف</string>
     <string name="settings_synced">مطابقت پذیری</string>
     <string name="settings_syncing">مطابقت پذیری</string>
     <string name="settings_remove_library">ہٹائیں لائبریری · آلہ</string>

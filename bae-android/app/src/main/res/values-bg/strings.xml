@@ -51,6 +51,7 @@
     <string name="settings_sync">Синхронизиране</string>
     <string name="settings_cloud_sync_on">Облачната синхронизация е включена</string>
     <string name="settings_local_only">Само локално</string>
+    <string name="settings_pause_between_sides">Пауза между страните</string>
     <string name="settings_synced">Синхронизирано</string>
     <string name="settings_syncing">Синхронизиране…</string>
     <string name="settings_remove_library">Премахване на тази библиотека от това устройство</string>

@@ -13,6 +13,7 @@ pub(crate) fn build_bridge_config(config: &bae_core::config::Config) -> BridgeCo
         library_path: config.library_dir.to_string_lossy().to_string(),
         encryption_key_stored: config.encryption_key_stored,
         encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
+        pause_between_sides: config.pause_between_sides,
         discogs_usable: discogs_status.is_usable(),
         discogs_token_status: match discogs_status {
             bae_core::config::DiscogsTokenStatus::NotConfigured => {

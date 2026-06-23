@@ -51,6 +51,7 @@
     <string name="settings_sync">সিঙ্ক</string>
     <string name="settings_cloud_sync_on">আপনার ক্লাউড সিঙ্ক</string>
     <string name="settings_local_only">শুধু স্থানীয়</string>
+    <string name="settings_pause_between_sides">সাইডের মাঝে বিরতি</string>
     <string name="settings_synced">সিঙ্ক</string>
     <string name="settings_syncing">সিঙ্ক</string>
     <string name="settings_remove_library">সরান লাইব্রেরি · ডিভাইস</string>

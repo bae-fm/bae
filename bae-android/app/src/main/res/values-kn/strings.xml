@@ -51,6 +51,7 @@
     <string name="settings_sync">ಸಿಂಕ್</string>
     <string name="settings_cloud_sync_on">ನಿಮ್ಮ cloud ಸಿಂಕ್</string>
     <string name="settings_local_only">ಸ್ಥಳೀಯ ಮಾತ್ರ</string>
+    <string name="settings_pause_between_sides">ಸೈಡ್‌ಗಳ ನಡುವೆ ವಿರಾಮ</string>
     <string name="settings_synced">ಸಿಂಕ್</string>
     <string name="settings_syncing">ಸಿಂಕ್</string>
     <string name="settings_remove_library">ತೆಗೆದುಹಾಕಿ ಲೈಬ್ರರಿ · ಸಾಧನ</string>

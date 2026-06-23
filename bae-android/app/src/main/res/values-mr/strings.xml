@@ -51,6 +51,7 @@
     <string name="settings_sync">समक्रमण</string>
     <string name="settings_cloud_sync_on">तुमचा cloud समक्रमण</string>
     <string name="settings_local_only">फक्त स्थानिक</string>
+    <string name="settings_pause_between_sides">बाजूंमध्ये थांबा</string>
     <string name="settings_synced">समक्रमण</string>
     <string name="settings_syncing">समक्रमण</string>
     <string name="settings_remove_library">काढा लायब्ररी · डिव्हाइस</string>

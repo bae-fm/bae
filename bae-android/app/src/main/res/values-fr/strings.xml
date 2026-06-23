@@ -51,6 +51,7 @@
     <string name="settings_sync">Synchronisation</string>
     <string name="settings_cloud_sync_on">Synchronisation cloud activée</string>
     <string name="settings_local_only">Local uniquement</string>
+    <string name="settings_pause_between_sides">Pause entre les faces</string>
     <string name="settings_synced">Synchronisé</string>
     <string name="settings_syncing">Synchronisation…</string>
     <string name="settings_remove_library">Supprimer cette bibliothèque de cet appareil</string>

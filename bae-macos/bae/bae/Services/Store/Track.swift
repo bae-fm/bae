@@ -1,7 +1,4 @@
 import Foundation
-import os.log
-
-private let logger = Logger.bae("Track")
 
 struct Track: Identifiable {
     let id: String
@@ -32,14 +29,24 @@ extension BridgeTrackPosition {
     var positionText: String {
         switch self {
         case .sided(let sideLetter, let number):
+            guard let number else {
+                preconditionFailure("track position has no track number")
+            }
             return "\(sideLetter)\(number.formatted())"
         case .disc(let disc, let number):
+            guard let number else {
+                preconditionFailure("track position has no track number")
+            }
             return "\(disc.formatted())-\(number.formatted())"
         case .flat(let number):
+            guard let number else {
+                preconditionFailure("track position has no track number")
+            }
             return number.formatted()
         @unknown default:
-            logger.warning("unhandled BridgeTrackPosition case in positionText")
-            return ""
+            preconditionFailure(
+                "unhandled BridgeTrackPosition case in positionText"
+            )
         }
     }
 }

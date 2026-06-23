@@ -51,6 +51,7 @@
     <string name="settings_sync">Синхронізація</string>
     <string name="settings_cloud_sync_on">Хмарну синхронізацію ввімкнено</string>
     <string name="settings_local_only">Лише локально</string>
+    <string name="settings_pause_between_sides">Пауза між сторонами</string>
     <string name="settings_synced">Синхронізовано</string>
     <string name="settings_syncing">Синхронізація…</string>
     <string name="settings_remove_library">Вилучити цю бібліотеку з цього пристрою</string>

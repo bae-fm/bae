@@ -31,8 +31,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
+import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
+import uniffi.bae_bridge.BridgeSidePausePrompt
 import uniffi.bae_bridge.BridgeUiEvent
 
 /** Now-playing snapshot the [fm.bae.app.ui.NowPlayingBar] renders. */
@@ -41,6 +43,7 @@ data class NowPlaying(
     val title: String,
     val artist: String,
     val coverPath: String?,
+    val sidePausePrompt: BridgeSidePausePrompt?,
 )
 
 /**
@@ -457,6 +460,8 @@ class BaeCorePlayer(
     /** Authoritative now-playing metadata from the latest Playing/Paused payload. */
     private var currentMeta: Meta? = null
 
+    private var sidePausePrompt: BridgeSidePausePrompt? = null
+
     /** Id of the now-playing track, or null when stopped. Mirrored into the
      *  [currentTrackId] StateFlow by [publish] for the in-app queue screen. */
     private var playingTrackId: String? = null
@@ -583,6 +588,7 @@ class BaeCorePlayer(
     ) {
         this.transport = transport
         playWhenReady = true
+        sidePausePrompt = null
         if (current != null) {
             playingTrackId = current.meta.trackId
             currentMeta = current.meta
@@ -600,6 +606,11 @@ class BaeCorePlayer(
         playWhenReady = false
         playingTrackId = event.trackId
         currentMeta = meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImageId)
+        sidePausePrompt =
+            when (val reason = event.reason) {
+                BridgePlaybackPauseReason.Manual -> null
+                is BridgePlaybackPauseReason.SideEnded -> reason.prompt
+            }
         this.durationMs = durationOrUnset(event.durationMs.toLong())
         publish()
     }
@@ -609,6 +620,7 @@ class BaeCorePlayer(
         playWhenReady = false
         playingTrackId = null
         currentMeta = null
+        sidePausePrompt = null
         anchorPositionMs = 0L
         durationMs = C.TIME_UNSET
         progress = 0.0
@@ -698,7 +710,7 @@ class BaeCorePlayer(
         val meta = currentMeta
         _nowPlaying.value =
             meta?.let {
-                NowPlaying(it.trackId, it.title, it.artist, it.coverPath)
+                NowPlaying(it.trackId, it.title, it.artist, it.coverPath, sidePausePrompt)
             }
         _isPlaying.value = transport == Transport.READY && playWhenReady
         _isLoading.value = transport == Transport.BUFFERING

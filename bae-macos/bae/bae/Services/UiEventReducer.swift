@@ -17,9 +17,8 @@ struct ReducerContext {
     let downloadStore: DownloadStore
 }
 
-/// The fields carried identically by the `playbackPlaying` and `playbackPaused`
-/// events, bundled so the two cases route to one `applyNowPlaying` helper that
-/// differs only by `isPlaying`.
+/// The fields carried by the `playbackPlaying` and `playbackPaused` events,
+/// bundled so the two cases route to one `applyNowPlaying` helper.
 private struct NowPlayingFields {
     let trackId: String
     let trackTitle: String
@@ -30,8 +29,8 @@ private struct NowPlayingFields {
     let coverImageId: String?
     let durationMs: UInt64
 
-    /// Unpacks the shared fields from a `playbackPlaying` or `playbackPaused`
-    /// event (their payloads are identical); `nil` for any other variant.
+    /// Unpacks the track fields from a `playbackPlaying` or `playbackPaused`
+    /// event; `nil` for any other variant.
     init?(event: BridgeUiEvent) {
         switch event {
         case .playbackPlaying(
@@ -52,7 +51,8 @@ private struct NowPlayingFields {
                 let albumId,
                 let albumTitle,
                 let coverImageId,
-                let durationMs
+                let durationMs,
+                _
             ):
             self.trackId = trackId
             self.trackTitle = trackTitle
@@ -92,6 +92,17 @@ private struct NowPlayingFields {
                 coverImageId: coverImageId,
                 durationMs: durationMs
             )
+    }
+
+    func nowPlayingTrack() -> NowPlayingTrack {
+        NowPlayingTrack(
+            trackId: trackId,
+            trackTitle: trackTitle,
+            artistNames: artistNames,
+            albumId: albumId,
+            coverImageId: coverImageId,
+            durationMs: durationMs
+        )
     }
 }
 
@@ -168,12 +179,22 @@ enum UiEventReducer {
         switch event {
         case .playbackPlaying:
             if let fields = NowPlayingFields(event: event) {
-                applyNowPlaying(fields, isPlaying: true, into: context)
+                applyNowPlaying(fields, into: context)
             }
 
-        case .playbackPaused:
+        case .playbackPaused(
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            let reason
+        ):
             if let fields = NowPlayingFields(event: event) {
-                applyNowPlaying(fields, isPlaying: false, into: context)
+                applyPausedNowPlaying(fields, reason: reason, into: context)
             }
 
         case .playbackLoading(let trackId, let track):
@@ -234,19 +255,31 @@ enum UiEventReducer {
     @MainActor
     private static func applyNowPlaying(
         _ fields: NowPlayingFields,
+        into context: ReducerContext
+    ) {
+        context.playbackStore.nowPlaying = .playing(fields.nowPlayingTrack())
+        updateMediaControls(fields, isPlaying: true, into: context)
+    }
+
+    @MainActor
+    private static func applyPausedNowPlaying(
+        _ fields: NowPlayingFields,
+        reason: BridgePlaybackPauseReason,
+        into context: ReducerContext
+    ) {
+        context.playbackStore.pause(
+            track: fields.nowPlayingTrack(),
+            reason: reason
+        )
+        updateMediaControls(fields, isPlaying: false, into: context)
+    }
+
+    @MainActor
+    private static func updateMediaControls(
+        _ fields: NowPlayingFields,
         isPlaying: Bool,
         into context: ReducerContext
     ) {
-        let track = NowPlayingTrack(
-            trackId: fields.trackId,
-            trackTitle: fields.trackTitle,
-            artistNames: fields.artistNames,
-            albumId: fields.albumId,
-            coverImageId: fields.coverImageId,
-            durationMs: fields.durationMs
-        )
-        context.playbackStore.nowPlaying =
-            isPlaying ? .playing(track) : .paused(track)
         context.appService.mediaControlService.updateNowPlaying(
             state: fields.bridgeState(isPlaying: isPlaying),
             appHandle: context.appService.appHandle

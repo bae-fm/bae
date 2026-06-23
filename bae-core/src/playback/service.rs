@@ -42,6 +42,7 @@ use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
 use crate::playback::source::{PlaybackSource, TrackCrossing, TrackFmt};
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::{create_track_stream_pair, TrackStream};
+use crate::util::format::PhysicalSideMedium;
 use std::collections::HashSet;
 use std::sync::{mpsc, Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
@@ -82,6 +83,15 @@ pub struct PlaybackTrackInfo {
     pub album_id: String,
     pub album_title: String,
     pub cover_image_id: Option<String>,
+    pub release_id: String,
+    pub side: Option<PlaybackTrackSide>,
+}
+
+/// Physical side metadata for a track on a side-based release.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlaybackTrackSide {
+    pub medium: PhysicalSideMedium,
+    pub side_letter: String,
 }
 
 /// The track metadata a `Loading` state carries once `prepare_track_for_playback`
@@ -93,6 +103,31 @@ pub struct PlaybackTrackInfo {
 pub struct LoadingTrack {
     pub track_info: PlaybackTrackInfo,
     pub duration_ms: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlaybackSidePausePrompt {
+    pub id: String,
+    pub title_key: &'static str,
+    pub side_letter: String,
+    pub message_key: &'static str,
+}
+
+pub const SIDE_PAUSE_TITLE_KEY: &str = "core.playback.pause.side_ended.title";
+pub const SIDE_PAUSE_VINYL_MESSAGE_KEY: &str = "core.playback.pause.side_ended.message.vinyl";
+pub const SIDE_PAUSE_CASSETTE_MESSAGE_KEY: &str = "core.playback.pause.side_ended.message.cassette";
+
+/// Why playback is paused.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PlaybackPauseReason {
+    Manual,
+    SideEnded(PlaybackSidePausePrompt),
+}
+
+#[derive(Clone)]
+struct SidePauseDecision {
+    track_id: String,
+    prompt: PlaybackSidePausePrompt,
 }
 
 /// Playback commands sent to the service
@@ -202,6 +237,7 @@ pub enum PlaybackState {
     Paused {
         track_info: PlaybackTrackInfo,
         duration_ms: u64,
+        reason: PlaybackPauseReason,
     },
     Loading {
         track_id: String,
@@ -633,6 +669,34 @@ pub struct PlaybackService {
     /// incoming track identities + the finishing track's decode stats.
     /// Bridged to `TrackCrossed`.
     boundary_tx: tokio_mpsc::UnboundedSender<TrackCrossing>,
+    pending_side_pause: Option<SidePauseDecision>,
+}
+
+fn side_pause_prompt_between(
+    current: &PlaybackTrackInfo,
+    next: &PlaybackTrackInfo,
+) -> Option<PlaybackSidePausePrompt> {
+    if current.release_id != next.release_id {
+        return None;
+    }
+    let current_side = current.side.as_ref()?;
+    let next_side = next.side.as_ref()?;
+    if current_side.side_letter == next_side.side_letter {
+        return None;
+    }
+    let message_key = match current_side.medium {
+        PhysicalSideMedium::Vinyl => SIDE_PAUSE_VINYL_MESSAGE_KEY,
+        PhysicalSideMedium::Cassette => SIDE_PAUSE_CASSETTE_MESSAGE_KEY,
+    };
+    Some(PlaybackSidePausePrompt {
+        id: format!(
+            "{}:{}:{:?}",
+            next.track_id, current_side.side_letter, current_side.medium
+        ),
+        title_key: SIDE_PAUSE_TITLE_KEY,
+        side_letter: current_side.side_letter.clone(),
+        message_key,
+    })
 }
 
 /// Construct the platform's concrete audio output. Called on the service's
@@ -818,11 +882,12 @@ impl PlaybackService {
     }
 
     /// Build a Paused state from the current prepared track and track info.
-    fn make_paused_state(&self) -> PlaybackState {
+    fn make_paused_state(&self, reason: PlaybackPauseReason) -> PlaybackState {
         let (track_info, duration_ms) = self.current_state_fields();
         PlaybackState::Paused {
             track_info,
             duration_ms,
+            reason,
         }
     }
 
@@ -830,7 +895,7 @@ impl PlaybackService {
     /// by the play, gapless-advance, and rebuild-advance paths.
     fn emit_current_state(&self) {
         let state = if self.audio_output.is_paused() {
-            self.make_paused_state()
+            self.make_paused_state(PlaybackPauseReason::Manual)
         } else {
             self.make_playing_state()
         };
@@ -1290,6 +1355,7 @@ impl PlaybackService {
                     shared_file_buffer: None,
                     last_position_display,
                     boundary_tx,
+                    pending_side_pause: None,
                 };
                 match service.library_manager.load_playback_state().await {
                     Ok(Some(state)) => match PersistedPlayback::from_row(state) {
@@ -1554,6 +1620,7 @@ impl PlaybackService {
                             self.playback_queue.play_single(track_id.clone());
                         }
                     }
+                    self.pending_side_pause = None;
                     self.emit_queue_update();
                     self.play_track(&track_id, false, false).await; // Direct selection: skip pregap, start playing
                 }
@@ -1599,6 +1666,7 @@ impl PlaybackService {
                     let first_track = self
                         .playback_queue
                         .play_release(release_id, track_ids, start);
+                    self.pending_side_pause = None;
                     self.emit_queue_update();
                     self.play_track(&first_track, false, false).await;
                 }
@@ -1612,11 +1680,19 @@ impl PlaybackService {
                     self.stop().await;
                 }
                 PlaybackCommand::Next => {
+                    let was_side_paused = self.pending_side_pause.is_some();
+                    if was_side_paused {
+                        self.pending_side_pause = None;
+                    }
                     info!("Next command received");
                     // If we have a preloaded track, use it directly
                     if let Some(preloaded_track_id) = self.next_track_id().map(|s| s.to_string()) {
                         // skip pregap, preserve paused
-                        self.advance_and_play_preloaded(&preloaded_track_id, false, true)
+                        self.advance_and_play_preloaded(
+                            &preloaded_track_id,
+                            false,
+                            !was_side_paused,
+                        )
                             .await;
                     } else {
                         // No preloaded track, use PlaybackQueue decision logic
@@ -1624,7 +1700,7 @@ impl PlaybackService {
                             NextEntry::Play(next_track) => {
                                 info!("No preloaded track, playing from queue: {}", next_track);
                                 self.emit_queue_update();
-                                self.play_track(&next_track, false, true).await;
+                                self.play_track(&next_track, false, !was_side_paused).await;
                                 // preserve paused
                             }
                             _ => {
@@ -1637,6 +1713,18 @@ impl PlaybackService {
                 }
                 PlaybackCommand::AutoAdvance => {
                     info!("AutoAdvance command received (natural transition)");
+
+                    match self.side_pause_for_queue_front().await {
+                        Ok(Some(decision)) => {
+                            self.pause_for_side_end(decision);
+                            continue;
+                        }
+                        Ok(None) => {}
+                        Err(()) => {
+                            self.stop().await;
+                            continue;
+                        }
+                    }
 
                     // If we have a preloaded track (and not in repeat-track mode), use it
                     if self.playback_queue.repeat_mode() != RepeatMode::Track {
@@ -1720,6 +1808,7 @@ impl PlaybackService {
                     }
                 }
                 PlaybackCommand::Previous => {
+                    self.pending_side_pause = None;
                     if let Some(current_track_id) = self.current_track_id().map(|s| s.to_string()) {
                         let current_position = self
                             .current_position_shared
@@ -1897,6 +1986,7 @@ impl PlaybackService {
                             entry.id.0, entry.track_id
                         );
 
+                        self.pending_side_pause = None;
                         self.clear_next_track_state();
                         self.emit_queue_update();
                         self.play_track(&entry.track_id, false, false).await;
@@ -2106,14 +2196,18 @@ impl PlaybackService {
 
         info!("Streaming playback started for track: {}", track_id);
 
-        // Preload next track
-        if let Some(next_id) = self.playback_queue.front().map(str::to_string) {
-            self.preload_next_track(&next_id).await;
-        }
+        self.preload_queue_front().await;
 
         // Persist the now-playing state so a restart on this device resumes here.
         self.persist_playback_state().await;
     }
+
+    async fn preload_queue_front(&mut self) {
+        if let Some(next_id) = self.playback_queue.front().map(str::to_string) {
+            self.preload_next_track(&next_id).await;
+        }
+    }
+
     /// Preload the next track for gapless playback.
     /// This eagerly starts the decoder so samples are ready when we switch tracks.
     async fn preload_next_track(&mut self, track_id: &str) {
@@ -2159,7 +2253,8 @@ impl PlaybackService {
             (Some(current), Some(gapless))
                 if current.sample_rate == prepared.sample_rate
                     && current.channels == prepared.channels
-                    && self.playback_queue.repeat_mode() != RepeatMode::Track =>
+                    && self.playback_queue.repeat_mode() != RepeatMode::Track
+                    && !self.should_hold_for_side_pause(current, &prepared) =>
             {
                 Some(gapless)
             }
@@ -2187,14 +2282,143 @@ impl PlaybackService {
 
         info!("Preloaded next track (streaming): {}", track_id);
     }
+
+    async fn side_pause_for_queue_front(&mut self) -> Result<Option<SidePauseDecision>, ()> {
+        if !self.side_pause_enabled() {
+            return Ok(None);
+        }
+
+        let Some(current) = self.current_track_info.clone() else {
+            error!("side-pause decision requested without current track metadata");
+            return Err(());
+        };
+
+        let Some(next_track_id) = self
+            .playback_queue
+            .next_sequential_context_track()
+            .map(str::to_string)
+        else {
+            return Ok(None);
+        };
+
+        let next_info = match self.next_prepared.as_ref() {
+            Some(prepared) if prepared.track_info.track_id == next_track_id => {
+                prepared.track_info.clone()
+            }
+            Some(prepared) => {
+                debug!(
+                    preloaded_track_id = %prepared.track_info.track_id,
+                    queue_next_track_id = %next_track_id,
+                    "side-pause decision ignoring stale preloaded next track"
+                );
+                self.playback_info_for_side_pause(&next_track_id).await?
+            }
+            None => self.playback_info_for_side_pause(&next_track_id).await?,
+        };
+
+        Ok(self
+            .side_pause_prompt_for_infos(&current, &next_info)
+            .map(|prompt| SidePauseDecision {
+                track_id: next_track_id,
+                prompt,
+            }))
+    }
+
+    async fn playback_info_for_side_pause(&self, track_id: &str) -> Result<PlaybackTrackInfo, ()> {
+        self.library_manager
+            .get_playback_track_info(track_id)
+            .await
+            .map_err(|error| {
+                error!(
+                    "failed to resolve playback metadata for side-pause decision on {track_id}: {error}"
+                );
+            })
+    }
+
+    fn should_hold_for_side_pause(
+        &self,
+        current: &PlaybackPreparedTrack,
+        next: &PlaybackPreparedTrack,
+    ) -> bool {
+        self.side_pause_prompt_for_infos(&current.track_info, &next.track_info)
+            .is_some()
+    }
+
+    fn side_pause_prompt_for_infos(
+        &self,
+        current: &PlaybackTrackInfo,
+        next: &PlaybackTrackInfo,
+    ) -> Option<PlaybackSidePausePrompt> {
+        if !self.side_pause_enabled() {
+            return None;
+        }
+        side_pause_prompt_between(current, next)
+    }
+
+    fn side_pause_enabled(&self) -> bool {
+        self.library_manager.get_config().pause_between_sides
+            && self.playback_queue.repeat_mode() != RepeatMode::Track
+    }
+
+    fn pause_for_side_end(&mut self, decision: SidePauseDecision) {
+        self.pending_side_pause = Some(decision.clone());
+        self.audio_output
+            .set_state(crate::playback::audio_output::AudioState::Paused);
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::StateChanged {
+                state: self.make_paused_state(PlaybackPauseReason::SideEnded(decision.prompt)),
+            },
+        );
+        self.emit_queue_update();
+    }
+
+    async fn resume_from_side_pause(&mut self) {
+        let Some(pending) = self.pending_side_pause.clone() else {
+            warn!("side-pause resume requested without pending side-pause state");
+            return;
+        };
+        let pending_track_id = pending.track_id;
+
+        if self.next_track_id() == Some(pending_track_id.as_str()) {
+            self.advance_and_play_preloaded(&pending_track_id, true, false)
+                .await;
+            self.pending_side_pause = None;
+            return;
+        }
+
+        let Some(front) = self.playback_queue.front().map(str::to_string) else {
+            error!("side-pause resume expected {pending_track_id}, but the queue is empty");
+            self.pending_side_pause = None;
+            return;
+        };
+        if front != pending_track_id {
+            error!("side-pause resume expected {pending_track_id}, but queue front is {front}");
+            self.pending_side_pause = None;
+            return;
+        }
+        match self.playback_queue.next_entry() {
+            NextEntry::Play(track_id) => {
+                self.pending_side_pause = None;
+                self.emit_queue_update();
+                self.play_track(&track_id, true, false).await;
+            }
+            other => {
+                error!("side-pause resume expected Play for {pending_track_id}, got {other:?}");
+                self.pending_side_pause = None;
+            }
+        }
+    }
+
     async fn pause(&mut self) {
+        self.pending_side_pause = None;
         self.audio_output
             .set_state(crate::playback::audio_output::AudioState::Paused);
         if self.current_prepared.is_some() && self.current_track_info.is_some() {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::StateChanged {
-                    state: self.make_paused_state(),
+                    state: self.make_paused_state(PlaybackPauseReason::Manual),
                 },
             );
         }
@@ -2205,6 +2429,11 @@ impl PlaybackService {
         if self.preview_path.is_some() {
             self.main_was_playing_before_preview = false;
             self.stop_preview_without_resume();
+        }
+
+        if self.pending_side_pause.is_some() {
+            self.resume_from_side_pause().await;
+            return;
         }
 
         self.audio_output
@@ -2346,10 +2575,7 @@ impl PlaybackService {
         // Tell the UI which track is now playing (StateChanged covers the transition).
         self.emit_current_state();
 
-        // Preload (and stage, if same-format) the following track.
-        if let Some(following) = self.playback_queue.front().map(str::to_string) {
-            self.preload_next_track(&following).await;
-        }
+        self.preload_queue_front().await;
 
         // The gapless boundary advanced the current track without play_track.
         self.persist_playback_state().await;
@@ -2471,10 +2697,7 @@ impl PlaybackService {
         // Send state notification
         self.emit_current_state();
 
-        // Preload next track if available
-        if let Some(next_track_id) = self.playback_queue.front().map(str::to_string) {
-            self.preload_next_track(&next_track_id).await;
-        }
+        self.preload_queue_front().await;
 
         // The preloaded advance doesn't go through play_track, so persist the
         // now-playing track here.
@@ -2493,7 +2716,7 @@ impl PlaybackService {
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::StateChanged {
-                        state: self.make_paused_state(),
+                        state: self.make_paused_state(PlaybackPauseReason::Manual),
                     },
                 );
             }
@@ -2951,6 +3174,7 @@ impl PlaybackService {
     }
 
     async fn stop(&mut self) {
+        self.pending_side_pause = None;
         // Stop any active preview first (without resuming main, since we're stopping)
         self.stop_preview_without_resume();
         self.main_was_playing_before_preview = false;
@@ -3140,6 +3364,7 @@ impl PlaybackService {
     }
     /// Emit queue update to all subscribers
     async fn on_queue_mutated(&mut self) {
+        self.pending_side_pause = None;
         self.refresh_preload_for_queue_front().await;
         self.emit_queue_update();
         self.persist_playback_state().await;

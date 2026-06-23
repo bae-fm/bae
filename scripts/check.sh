@@ -157,13 +157,15 @@ section "macOS"
 
 MACOS_BUILD_OK=false
 if check "bridge build" ./bae-bridge/build-macos.sh; then
-  cp bae-bridge/swift-bindings/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+  cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
   check "xcodegen" bash -c 'cd bae-macos/bae && xcodegen'
   MACOS_XCODE_OK=false
   if check "xcodebuild" \
       xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
         CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-        -derivedDataPath bae-macos/bae/.build/derivedData build; then
+        -derivedDataPath bae-macos/bae/.build/derivedData \
+        -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
+        -disableAutomaticPackageResolution build; then
     MACOS_BUILD_OK=true
     MACOS_XCODE_OK=true
   fi

@@ -39,6 +39,7 @@ struct Config: Equatable {
     /// `ConfigStore.syncReady` — that's runtime status, kept off this
     /// persisted-config mirror.
     let sync: BridgeSyncConfig?
+    let pauseBetweenSides: Bool
 
     var hasCloudHome: Bool { sync != nil }
 
@@ -51,6 +52,7 @@ struct Config: Equatable {
         )
         discogsUsable = bridge.discogsUsable
         sync = bridge.sync
+        pauseBetweenSides = bridge.pauseBetweenSides
     }
 
     func importStorageMode(managed: Bool, pinned: Bool) -> BridgeStorageMode {

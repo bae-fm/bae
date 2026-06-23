@@ -111,6 +111,7 @@ impl UiEventBus {
                             crate::playback::PlaybackState::Paused {
                                 track_info,
                                 duration_ms,
+                                reason,
                             } => UiBusEvent::PlaybackPaused {
                                 track_id: track_info.track_id.clone(),
                                 track_title: track_info.track_title.clone(),
@@ -120,6 +121,7 @@ impl UiEventBus {
                                 album_title: track_info.album_title.clone(),
                                 cover_image_id: track_info.cover_image_id.clone(),
                                 duration_ms: *duration_ms,
+                                reason: reason.clone(),
                             },
                         };
                         bus.emit(bus_event);

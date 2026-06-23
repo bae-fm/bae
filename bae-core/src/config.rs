@@ -325,6 +325,9 @@ pub struct ConfigYaml {
     /// How loudness normalization is applied at playback. Defaults to `Off`.
     #[serde(default = "default_replay_gain_mode")]
     pub replay_gain_mode: ReplayGainMode,
+    /// Whether playback pauses between vinyl/cassette sides.
+    #[serde(default)]
+    pub pause_between_sides: bool,
     /// Cloud home provider + per-provider settings. Flattened so the on-disk
     /// keys sit at the top level. bae uses coven's type — same fields, extracted
     /// from bae — instead of a parallel copy it would map back and forth.
@@ -348,6 +351,7 @@ impl ConfigYaml {
             },
             discogs: self.discogs,
             replay_gain_mode: self.replay_gain_mode,
+            pause_between_sides: self.pause_between_sides,
         }
     }
 }
@@ -362,6 +366,7 @@ impl From<&Config> for ConfigYaml {
             encryption_key_stored: config.encryption_key_stored,
             encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
             replay_gain_mode: config.replay_gain_mode,
+            pause_between_sides: config.pause_between_sides,
             cloud_home: config.cloud_home.clone(),
         }
     }
@@ -393,6 +398,8 @@ pub struct Config {
     pub discogs: Option<DiscogsValidation>,
     /// How loudness normalization is applied at playback. Defaults to `Off`.
     pub replay_gain_mode: ReplayGainMode,
+    /// Whether playback pauses between vinyl/cassette sides.
+    pub pause_between_sides: bool,
 }
 
 impl std::ops::Deref for Config {
@@ -609,6 +616,7 @@ impl Config {
             ),
             discogs: None,
             replay_gain_mode: default_replay_gain_mode(),
+            pause_between_sides: false,
         }
     }
 

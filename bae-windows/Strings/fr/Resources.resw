@@ -151,6 +151,7 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validation…</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Bibliothèque : {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>verrouiller la bibliothèque</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause entre les faces</value></data>
   <data name="settings.restore_code.label" xml:space="preserve"><value>code de restauration (à saisir sur un autre appareil)</value></data>
   <data name="settings.restore_code.show" xml:space="preserve"><value>afficher le code de restauration</value></data>
   <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(indisponible — la synchronisation est-elle connectée ?)</value></data>

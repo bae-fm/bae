@@ -51,6 +51,7 @@
     <string name="settings_sync">Đồng bộ</string>
     <string name="settings_cloud_sync_on">Cloud của bạn Đồng bộ</string>
     <string name="settings_local_only">Chỉ cục bộ</string>
+    <string name="settings_pause_between_sides">Tạm dừng giữa các mặt</string>
     <string name="settings_synced">Đã đồng bộ</string>
     <string name="settings_syncing">Đang đồng bộ…</string>
     <string name="settings_remove_library">Xóa Thư viện · thiết bị</string>

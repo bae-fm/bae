@@ -577,6 +577,20 @@ impl PlaybackQueue {
             .and_then(|ctx| ctx.upcoming().first().map(|e| e.track_id.as_str()))
     }
 
+    /// The only edge that can produce a physical-side pause: the next track in
+    /// the current release context while that context is sequential. Manual
+    /// queue entries and shuffled traversals are not physical side playback.
+    pub fn next_sequential_context_track(&self) -> Option<&str> {
+        if !self.manual.is_empty() {
+            return None;
+        }
+        let ctx = self.context.as_ref()?;
+        if !matches!(ctx.traversal, Traversal::Sequential) {
+            return None;
+        }
+        ctx.upcoming().first().map(|e| e.track_id.as_str())
+    }
+
     pub fn set_repeat_mode(&mut self, mode: RepeatMode) {
         self.repeat = mode;
     }
