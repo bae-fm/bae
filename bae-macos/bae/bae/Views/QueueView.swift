@@ -274,30 +274,35 @@ private struct QueueSection: View {
             .padding(.horizontal, 8)
     }
 
+    // The hover play overlay stays in the tree and toggles by opacity/hit-testing
+    // so revealing it on hover doesn't resize the row and re-lay-out the lane.
+    private func queueItemArtWithHover(_ item: QueueItem, index: Int)
+        -> some View
+    {
+        let isHovered = hoveredIndex == index
+        return ZStack {
+            queueItemArt(path: resolveImagePath(item.coverImageId))
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+
+            RoundedRectangle(cornerRadius: 3)
+                .fill(.black.opacity(0.5))
+                .frame(width: 40, height: 40)
+                .opacity(isHovered ? 1 : 0)
+            Button(action: { onSkipTo(item.id) }) {
+                Image(systemName: "play.fill")
+                    .font(.caption)
+                    .foregroundColor(.white)
+            }
+            .buttonStyle(.plain)
+            .opacity(isHovered ? 1 : 0)
+            .allowsHitTesting(isHovered)
+        }
+    }
+
     private func queueItemRow(_ item: QueueItem, index: Int) -> some View {
         HStack(spacing: 10) {
-            ZStack {
-                queueItemArt(path: resolveImagePath(item.coverImageId))
-                    .frame(width: 40, height: 40)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
-
-                // The hover play overlay stays in the tree and toggles by
-                // opacity/hit-testing so revealing it on hover doesn't resize the
-                // row and re-lay-out the whole lane.
-                let isHovered = hoveredIndex == index
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(.black.opacity(0.5))
-                    .frame(width: 40, height: 40)
-                    .opacity(isHovered ? 1 : 0)
-                Button(action: { onSkipTo(item.id) }) {
-                    Image(systemName: "play.fill")
-                        .font(.caption)
-                        .foregroundColor(.white)
-                }
-                .buttonStyle(.plain)
-                .opacity(isHovered ? 1 : 0)
-                .allowsHitTesting(isHovered)
-            }
+            queueItemArtWithHover(item, index: index)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
