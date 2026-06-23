@@ -16,46 +16,46 @@ enum PreviewData {
         BridgeQueueEntry(
             entryId: "e-01",
             trackId: "t-01",
-            title: "Static Dreams",
-            artistNames: "The Midnight Signal",
+            title: "Track Title 1",
+            artistNames: "Artist Name A",
             durationMs: 210_000,
-            albumTitle: "Neon Frequencies",
+            albumTitle: "Album Title A",
             coverImageId: nil
         ),
         BridgeQueueEntry(
             entryId: "e-02",
             trackId: "t-02",
-            title: "Frequency Drift",
-            artistNames: "The Midnight Signal",
+            title: "Track Title 2",
+            artistNames: "Artist Name A",
             durationMs: 240_000,
-            albumTitle: "Neon Frequencies",
+            albumTitle: "Album Title A",
             coverImageId: nil
         ),
         BridgeQueueEntry(
             entryId: "e-03",
             trackId: "t-03",
-            title: "Tide Pool",
-            artistNames: "Glass Harbor",
+            title: "Track Title 3",
+            artistNames: "Artist Name B",
             durationMs: 198_000,
-            albumTitle: "Pacific Standard",
+            albumTitle: "Album Title B",
             coverImageId: nil
         ),
         BridgeQueueEntry(
             entryId: "e-04",
             trackId: "t-04",
-            title: "Harbor Lights",
-            artistNames: "Glass Harbor",
+            title: "Track Title 4",
+            artistNames: "Artist Name B",
             durationMs: 225_000,
-            albumTitle: "Pacific Standard",
+            albumTitle: "Album Title B",
             coverImageId: nil
         ),
         BridgeQueueEntry(
             entryId: "e-05",
             trackId: "t-05",
-            title: "Axiom",
-            artistNames: "Velvet Mathematics",
+            title: "Track Title 5",
+            artistNames: "Artist Name C",
             durationMs: 187_000,
-            albumTitle: "Proof by Induction",
+            albumTitle: "Album Title C",
             coverImageId: nil
         ),
     ]
