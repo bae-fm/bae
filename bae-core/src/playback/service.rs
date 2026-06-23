@@ -1292,13 +1292,16 @@ impl PlaybackService {
                     boundary_tx,
                 };
                 match service.library_manager.load_playback_state().await {
-                    // A corrupt row is discarded by `from_row` (logged there);
-                    // we start fresh.
-                    Ok(Some(state)) => {
-                        if let Some(parsed) = PersistedPlayback::from_row(state) {
-                            service.restore(parsed).await;
+                    Ok(Some(state)) => match PersistedPlayback::from_row(state) {
+                        Some(parsed) => service.restore(parsed).await,
+                        // The row was corrupt (logged in `from_row`). Delete it so
+                        // the bad row doesn't linger durably across restarts.
+                        None => {
+                            if let Err(e) = service.library_manager.clear_playback_state().await {
+                                warn!("couldn't clear the corrupt playback resume cache: {e}");
+                            }
                         }
-                    }
+                    },
                     Ok(None) => {}
                     Err(e) => {
                         warn!("couldn't load the saved playback state: {e}; starting fresh")
@@ -1454,18 +1457,17 @@ impl PlaybackService {
                     self.seek(std::time::Duration::from_millis(pos)).await;
                 }
             }
-            // Always emit the position display so late-mounting views can query
-            // it. Until the live position is set, fall back to the position we
-            // just restored to (0 when we didn't seek) — that's the value the
-            // seek landed on, not a mask.
-            let actual_pos = self
-                .current_position_shared
-                .lock()
-                .unwrap()
-                .map(|d| d.as_millis() as u64)
-                .unwrap_or(parsed.position_ms.unwrap_or(0));
-            self.emit_position_display(actual_pos, track_id);
+            // Emit the position we restored to so late-mounting views can read it
+            // on mount. `None` means none was captured — the track's start (0).
+            let restored_pos = parsed.position_ms.unwrap_or(0);
+            self.emit_position_display(restored_pos, track_id);
         }
+
+        // Write the reconciled state back: dropping a dead context or
+        // library-deleted tracks corrected the in-memory queue, so persist makes
+        // that correction durable now (or clears the row if nothing is playing)
+        // rather than leaving the saved row stale until the next change.
+        self.persist_playback_state().await;
 
         info!("Playback state restored");
     }
