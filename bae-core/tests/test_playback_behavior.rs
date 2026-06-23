@@ -3679,6 +3679,133 @@ async fn test_restore_populates_last_position_display() {
     handle.stop();
 }
 
+/// A saved context cursor that points past the source release's *current* tracks
+/// (the release shrank between sessions — tracks were deleted) can't resume
+/// there. Restore must drop the context and keep only the manual lane, never
+/// silently snap the cursor back into range.
+///
+/// `has_previous` is the discriminator: a dropped context has no track before
+/// the cursor (`false`); a context that survived with a snapped-back cursor
+/// would sit past the start (`true`). The manual track must still be queued.
+#[tokio::test]
+async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
+    if should_skip_audio_tests() {
+        eprintln!("Skipping: no audio device");
+        return;
+    }
+    tracing_init();
+
+    let temp_dir = TempDir::new().unwrap();
+    let db_path = temp_dir.path().join("test.db");
+    let album_dir = temp_dir.path().join("album");
+    std::fs::create_dir_all(&album_dir).unwrap();
+    let database = Database::new_test(
+        db_path.to_str().unwrap(),
+        std::sync::Arc::new(bae_core::clock::SystemClock),
+    )
+    .await
+    .unwrap();
+    let database_arc = Arc::new(database.clone());
+    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let library_manager = LibraryManager::new(
+        (*database_arc).clone(),
+        library_dir.clone(),
+        config_handle,
+        key_service,
+        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        tokio::runtime::Handle::current(),
+        None,
+    );
+    let runtime_handle = tokio::runtime::Handle::current();
+    let _ = generate_test_flac_files(&album_dir);
+    let discogs_release = create_test_album();
+    let release_id_key = seed_discogs_test_release(discogs_release);
+    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+    let import_id = uuid::Uuid::new_v4().to_string();
+    import_handle
+        .send_command(ImportCommand::Folder {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Unmanaged,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            },
+            user_edit: None,
+        })
+        .unwrap();
+    let mut import_progress_rx = import_handle.subscribe_import(import_id);
+    let _ = wait_for_import_complete(&mut import_progress_rx).await;
+    let release = library_manager
+        .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
+        .await
+        .unwrap()
+        .remove(0);
+    let tracks = library_manager.get_tracks(&release.id).await.unwrap();
+    assert_eq!(tracks.len(), 3, "the fixture release has three tracks");
+    // The manual entry is the last track; it must survive the restore. The
+    // context source is the same release with a cursor past its three tracks.
+    let manual_track_id = tracks[2].id.clone();
+
+    std::env::set_var("MUTE_TEST_AUDIO", "1");
+    let state = bae_core::db::DbPlaybackState {
+        context: Some(bae_core::db::DbPlaybackContext {
+            source: release.id.clone(),
+            shuffle_seed: None,
+            cursor: 5,
+        }),
+        manual: serde_json::to_string(&vec![manual_track_id.clone()]).unwrap(),
+        repeat: "off".to_string(),
+        current_track_id: Some(manual_track_id.clone()),
+        position_ms: Some(0),
+        volume: 0.8,
+        is_muted: false,
+    };
+    library_manager.save_playback_state(&state).await.unwrap();
+
+    let handle = bae_core::playback::PlaybackService::start(library_manager, runtime_handle, 100);
+    handle.set_volume(0.0);
+    let mut progress_rx = handle.subscribe_progress();
+
+    // Wait for the queue update restore emits once it commits the restored queue.
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut queue_update = None;
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::QueueUpdated {
+                entries,
+                has_previous,
+                ..
+            })) => {
+                queue_update = Some((entries, has_previous));
+                break;
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) | Err(_) => continue,
+        }
+    }
+
+    let (entries, has_previous) = queue_update.expect("restore emits a queue update");
+    let queued: Vec<&str> = entries.iter().map(|e| e.track_id.as_str()).collect();
+    assert!(
+        !has_previous,
+        "the context was dropped, so nothing sits before the cursor"
+    );
+    assert!(
+        queued.contains(&manual_track_id.as_str()),
+        "the manual lane survives the restore: {queued:?}"
+    );
+    assert!(
+        !queued.contains(&tracks[0].id.as_str()) && !queued.contains(&tracks[1].id.as_str()),
+        "the dropped context contributes no tracks: {queued:?}"
+    );
+
+    handle.stop();
+}
+
 /// The persist-on-change wiring is load-bearing: playing a release writes the
 /// device-local `playback_state` row, and stopping clears it — so a restart
 /// resumes a live session but never re-cues a finished one.

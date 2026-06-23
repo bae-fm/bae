@@ -165,8 +165,10 @@ impl PlaybackQueue {
     /// shuffled traversal re-permutes `tracks` from its seed (the same seed
     /// yields the same order, so a restored shuffle reproduces what was played);
     /// a sequential one keeps source order. Mints a fresh per-instance id per
-    /// track and clamps the cursor in range. The caller passes a non-empty
-    /// release, so the context is non-empty with a valid cursor.
+    /// track. The caller passes a non-empty release and an in-range `cursor`
+    /// (`play_release` validates its index; `restore` validates the saved
+    /// cursor against the re-fetched tracks), so the context is non-empty with
+    /// a valid cursor.
     fn build_context(
         &self,
         source: String,
@@ -178,7 +180,10 @@ impl PlaybackQueue {
             shuffled_traversal(&mut tracks, seed);
         }
         let entries: Vec<QueueEntry> = tracks.into_iter().map(|t| self.mint(t)).collect();
-        let cursor = cursor.min(entries.len() - 1);
+        debug_assert!(
+            cursor < entries.len(),
+            "caller must pass an in-range cursor"
+        );
         PlaybackContext {
             source,
             entries,

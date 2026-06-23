@@ -1331,13 +1331,25 @@ impl PlaybackService {
 
         // Re-materialize the context from its source release's current tracks
         // (deleted tracks fall out of `get_track_ids`). A fetch error abandons the
-        // restore; an empty result means the source release is gone, so we drop
-        // the context and restore the manual lane only.
+        // restore; an empty result means the source release is gone; a result
+        // shorter than the saved cursor means the release shrank below where we
+        // were playing. Either way we drop the context and restore the manual
+        // lane only, so `build_context` only ever sees an in-range cursor.
         let (context, context_tracks) = match &parsed.queue.context {
             Some(cs) => match self.library_manager.get_track_ids(&cs.source).await {
                 Ok(tracks) if tracks.is_empty() => {
                     debug!(
                         "resume context release {} is gone; restoring the manual lane only",
+                        cs.source
+                    );
+                    (None, Vec::new())
+                }
+                Ok(tracks) if cs.cursor >= tracks.len() => {
+                    warn!(
+                        "saved cursor {} is past the {} current tracks of {}; \
+                         restoring the manual lane only",
+                        cs.cursor,
+                        tracks.len(),
                         cs.source
                     );
                     (None, Vec::new())
@@ -1429,20 +1441,23 @@ impl PlaybackService {
                 .set_state(crate::playback::audio_output::AudioState::Paused);
             self.play_track(&track_id, false, true).await;
 
-            let position_ms = parsed.position_ms.unwrap_or(0);
-            let position = std::time::Duration::from_millis(position_ms);
-            if !position.is_zero() {
-                self.seek(position).await;
+            // A missing position means none was captured: resume from the start,
+            // don't force a seek to 0.
+            if let Some(pos) = parsed.position_ms {
+                if pos > 0 {
+                    self.seek(std::time::Duration::from_millis(pos)).await;
+                }
             }
             // Always emit the position display so late-mounting views can query
             // it. Until the live position is set, fall back to the position we
-            // just restored to — that's the value the seek landed on, not a mask.
+            // just restored to (0 when we didn't seek) — that's the value the
+            // seek landed on, not a mask.
             let actual_pos = self
                 .current_position_shared
                 .lock()
                 .unwrap()
                 .map(|d| d.as_millis() as u64)
-                .unwrap_or(position_ms);
+                .unwrap_or(parsed.position_ms.unwrap_or(0));
             self.emit_position_display(actual_pos, track_id);
         }
 

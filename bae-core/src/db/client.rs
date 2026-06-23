@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::{debug, info};
+use tracing::{info, warn};
 
 fn row_to_library_image(row: &Row) -> DbLibraryImage {
     DbLibraryImage {
@@ -2537,40 +2537,46 @@ impl Database {
             .await
     }
 
-    /// Read the device-local `playback_state` row, or `None` if none is stored.
+    /// Read the device-local `playback_state` row, or `None` if none is stored
+    /// (or if the row is corrupt — the resume cache is discarded at this
+    /// boundary so no caller downstream sees a malformed context).
     pub async fn load_playback_state(&self) -> Result<Option<DbPlaybackState>, DbError> {
         self.inner
             .coven_db
             .call(move |conn| {
+                // The closure yields `Option<DbPlaybackState>`: `None` is a corrupt
+                // row that discards the whole cache, distinct from the outer `None`
+                // for no row at all. The outer `.optional()` then flattens both to
+                // a single "no resume state" answer.
                 conn.query_row(
                     "SELECT source, shuffle_seed, cursor, manual, repeat, \
                      current_track_id, position_ms, volume, is_muted \
                      FROM playback_state WHERE id = 'current'",
                     [],
                     |row| {
-                        // Reassemble the context substruct: the three columns are
-                        // written together, so a present `source` carries a
-                        // `shuffle_seed` (NULL = sequential) and a `cursor`.
+                        // `source` and `cursor` are written together (with
+                        // `shuffle_seed`, NULL = sequential): both present is a
+                        // context, both absent is none, exactly one present is a
+                        // corrupt row.
                         let source: Option<String> = row.get("source")?;
                         let shuffle_seed: Option<i64> = row.get("shuffle_seed")?;
                         let cursor: Option<i64> = row.get("cursor")?;
-                        let context = source.map(|source| {
-                            // A present source is written with its cursor, so a
-                            // NULL cursor here is a corrupt cache row — fall back
-                            // to the start rather than dropping the context.
-                            let cursor = cursor.unwrap_or_else(|| {
-                                debug!(
-                                    "playback_state row for {source} has a NULL cursor; using 0"
-                                );
-                                0
-                            });
-                            DbPlaybackContext {
+                        let context = match (source, cursor) {
+                            (Some(source), Some(cursor)) => Some(DbPlaybackContext {
                                 source,
                                 shuffle_seed,
                                 cursor,
+                            }),
+                            (None, None) => None,
+                            (Some(_), None) | (None, Some(_)) => {
+                                warn!(
+                                    "discarding the playback resume cache: \
+                                     source and cursor must both be present"
+                                );
+                                return Ok(None);
                             }
-                        });
-                        Ok(DbPlaybackState {
+                        };
+                        Ok(Some(DbPlaybackState {
                             context,
                             manual: row.get("manual")?,
                             repeat: row.get("repeat")?,
@@ -2578,10 +2584,11 @@ impl Database {
                             position_ms: row.get("position_ms")?,
                             volume: row.get("volume")?,
                             is_muted: row.get("is_muted")?,
-                        })
+                        }))
                     },
                 )
                 .optional()
+                .map(Option::flatten)
                 .map_err(DbError::from)
             })
             .await
@@ -4013,5 +4020,48 @@ mod readable_cloud_path_tests {
         // broken invariant surfaced as an error, not masked.
         let conn = seeded_conn();
         assert!(resolve_audio_cloud_path(&conn, "no-such-release", "x.flac").is_err());
+    }
+}
+
+#[cfg(test)]
+mod playback_state_load_tests {
+    use super::*;
+    use crate::clock::SystemClock;
+
+    async fn empty_db() -> (Database, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        (db, tmp)
+    }
+
+    /// `source` and `cursor` are written together, so a row carrying one without
+    /// the other is corrupt: `load_playback_state` discards the whole cache and
+    /// returns `None` rather than inventing a cursor.
+    #[tokio::test]
+    async fn mismatched_source_and_cursor_discards_the_cache() {
+        let (db, _tmp) = empty_db().await;
+
+        // Write a row by hand with a present source but a NULL cursor —
+        // `save_playback_state` never produces this, so we insert it directly.
+        db.coven_db()
+            .call(|conn| {
+                conn.execute(
+                    "INSERT INTO playback_state \
+                     (id, source, shuffle_seed, cursor, manual, repeat, \
+                      current_track_id, position_ms, volume, is_muted) \
+                     VALUES ('current', 'rel-1', NULL, NULL, '[]', 'off', \
+                      NULL, NULL, 1.0, 0)",
+                    [],
+                )
+                .map(|_| ())
+                .map_err(DbError::from)
+            })
+            .await
+            .unwrap();
+
+        assert!(db.load_playback_state().await.unwrap().is_none());
     }
 }
