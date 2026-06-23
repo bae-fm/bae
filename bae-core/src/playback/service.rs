@@ -1554,7 +1554,6 @@ impl PlaybackService {
                 }
                 PlaybackCommand::Stop => {
                     self.stop().await;
-                    self.persist_playback_state().await;
                 }
                 PlaybackCommand::Next => {
                     info!("Next command received");
@@ -2295,6 +2294,9 @@ impl PlaybackService {
         if let Some(following) = self.playback_queue.front().map(str::to_string) {
             self.preload_next_track(&following).await;
         }
+
+        // The gapless boundary advanced the current track without play_track.
+        self.persist_playback_state().await;
     }
 
     /// Advance the queue's current pointer past the finished track to the front
@@ -2417,6 +2419,10 @@ impl PlaybackService {
         if let Some(next_track_id) = self.playback_queue.front().map(str::to_string) {
             self.preload_next_track(&next_track_id).await;
         }
+
+        // The preloaded advance doesn't go through play_track, so persist the
+        // now-playing track here.
+        self.persist_playback_state().await;
     }
 
     /// Pause main player for preview. Called after all fallible setup so that
@@ -2910,6 +2916,10 @@ impl PlaybackService {
                 state: PlaybackState::Stopped,
             },
         );
+        // Audio is now Stopped, so this clears the durable row — covering every
+        // stop path (natural end, halt-on-error, the current track removed),
+        // not just the explicit Stop command.
+        self.persist_playback_state().await;
     }
     async fn seek(&mut self, position: std::time::Duration) {
         // Verify streaming state is available

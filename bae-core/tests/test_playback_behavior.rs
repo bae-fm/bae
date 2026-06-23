@@ -3681,6 +3681,109 @@ async fn test_restore_populates_last_position_display() {
     handle.stop();
 }
 
+/// The persist-on-change wiring is load-bearing: playing a release writes the
+/// device-local `playback_state` row, and stopping clears it — so a restart
+/// resumes a live session but never re-cues a finished one.
+#[tokio::test]
+async fn test_play_persists_then_stop_clears_playback_state() {
+    if should_skip_audio_tests() {
+        eprintln!("Skipping: no audio device");
+        return;
+    }
+    tracing_init();
+
+    let temp_dir = TempDir::new().unwrap();
+    let db_path = temp_dir.path().join("test.db");
+    let album_dir = temp_dir.path().join("album");
+    std::fs::create_dir_all(&album_dir).unwrap();
+    let database = Database::new_test(
+        db_path.to_str().unwrap(),
+        std::sync::Arc::new(bae_core::clock::SystemClock),
+    )
+    .await
+    .unwrap();
+    let database_arc = Arc::new(database.clone());
+    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let library_manager = LibraryManager::new(
+        (*database_arc).clone(),
+        library_dir.clone(),
+        config_handle,
+        key_service,
+        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        tokio::runtime::Handle::current(),
+        None,
+    );
+    let runtime_handle = tokio::runtime::Handle::current();
+    let _ = generate_test_flac_files(&album_dir);
+    let discogs_release = create_test_album();
+    let release_id_key = seed_discogs_test_release(discogs_release);
+    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+    let import_id = uuid::Uuid::new_v4().to_string();
+    import_handle
+        .send_command(ImportCommand::Folder {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Unmanaged,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            },
+            user_edit: None,
+        })
+        .unwrap();
+    let mut progress_rx = import_handle.subscribe_import(import_id);
+    let _ = wait_for_import_complete(&mut progress_rx).await;
+    let release_id = library_manager
+        .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
+        .await
+        .unwrap()[0]
+        .id
+        .clone();
+    let first_track = library_manager.get_tracks(&release_id).await.unwrap()[0]
+        .id
+        .clone();
+
+    std::env::set_var("MUTE_TEST_AUDIO", "1");
+    let handle =
+        bae_core::playback::PlaybackService::start(library_manager.clone(), runtime_handle, 100);
+    handle.set_volume(0.0);
+
+    // Playing a release persists the row: source is the release, current is the
+    // first track.
+    handle.play_release(release_id.clone(), None, false);
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut persisted = None;
+    while Instant::now() < deadline {
+        if let Some(row) = library_manager.load_playback_state().await {
+            persisted = Some(row);
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let row = persisted.expect("playing a release should persist the playback_state row");
+    assert_eq!(row.source.as_deref(), Some(release_id.as_str()));
+    assert_eq!(row.current_track_id.as_deref(), Some(first_track.as_str()));
+
+    // Stopping clears it, so a restart wouldn't re-cue a finished session.
+    handle.stop();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut cleared = false;
+    while Instant::now() < deadline {
+        if library_manager.load_playback_state().await.is_none() {
+            cleared = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert!(
+        cleared,
+        "stopping playback should clear the playback_state row"
+    );
+}
+
 /// Seeking a preview while paused must emit a PreviewPositionUpdate even
 /// though no position ticks fire in the paused state. Without this explicit
 /// emission, the progress NSView stays stuck at the old position until the

@@ -3730,10 +3730,10 @@ impl LibraryManager {
     pub async fn get_track_ids(&self, release_id: &str) -> Result<Vec<String>, LibraryError> {
         Ok(self.database.get_track_ids_for_release(release_id).await?)
     }
-    /// Return the play context for a track: its own ID, its release, the
-    /// track immediately before it in the release (if any), and every
-    /// track after it. Used by the playback service to build the queue
-    /// around a freshly selected track without chaining library calls.
+    /// Return the play context for a track: its release id, the release's full
+    /// track order, and the track's index within it. Used by the playback
+    /// service to build the queue around a freshly selected track without
+    /// chaining library calls.
     pub async fn get_play_context(&self, track_id: &str) -> Result<PlayContext, LibraryError> {
         let track = self
             .database
