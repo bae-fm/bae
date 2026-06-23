@@ -1,32 +1,20 @@
 #!/usr/bin/env bash
 # Locally reproduce all non-Windows CI checks before pushing.
 #
-# Usage: scripts/check.sh [--tests] [--no-ios] [--no-android]
+# Usage: scripts/check.sh
 #
-#   --tests       Run the full bae-core test suite (~5 min; skipped by default).
-#   --no-ios      Skip iOS bridge build and Swift checks.
-#   --no-android  Skip Android checks (also auto-skipped when ANDROID_NDK_HOME is unset).
+# Runs the same non-Windows gates as CI. Missing platform toolchains or lint
+# tools are failures.
 #
-# Not covered: bae-windows and bae-windows-ffi require the Windows toolchain
-# and can only be validated in CI.
+# Only Windows is excluded: bae-windows and bae-windows-ffi require the Windows
+# toolchain and can only be validated in CI.
 
 set -uo pipefail
 
-# ── Flags ─────────────────────────────────────────────────────────────────────
-RUN_TESTS=false
-RUN_IOS=true
-RUN_ANDROID=true
-IOS_SKIP_REASON=""
-ANDROID_SKIP_REASON=""
-
-for arg in "$@"; do
-  case "$arg" in
-    --tests)      RUN_TESTS=true ;;
-    --no-ios)     RUN_IOS=false; IOS_SKIP_REASON="--no-ios" ;;
-    --no-android) RUN_ANDROID=false; ANDROID_SKIP_REASON="--no-android" ;;
-    *) echo "Unknown option: $arg" >&2; exit 1 ;;
-  esac
-done
+if [[ $# -gt 0 ]]; then
+  echo "Usage: scripts/check.sh" >&2
+  exit 1
+fi
 
 # ── Environment ───────────────────────────────────────────────────────────────
 ROOT="$(git rev-parse --show-toplevel)"
@@ -38,22 +26,59 @@ if command -v brew &>/dev/null; then
   export LIBRARY_PATH="${BREW_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
 fi
 
-# Auto-disable Android when NDK is unavailable.
-if [[ $RUN_ANDROID == true && -z "${ANDROID_NDK_HOME:-}" ]]; then
-  RUN_ANDROID=false
-  ANDROID_SKIP_REASON="ANDROID_NDK_HOME unset"
+export NDK_VERSION="${NDK_VERSION:-29.0.14206865}"
+
+if [[ -z "${ANDROID_HOME:-}" ]]; then
+  if [[ -n "${ANDROID_SDK_ROOT:-}" ]]; then
+    export ANDROID_HOME="$ANDROID_SDK_ROOT"
+  elif [[ -d "$HOME/Library/Android/sdk" ]]; then
+    export ANDROID_HOME="$HOME/Library/Android/sdk"
+  fi
 fi
 
-# Auto-disable iOS when ffmpeg-ios is absent.
-if [[ $RUN_IOS == true && ! -d "third_party/ffmpeg-ios" ]]; then
-  RUN_IOS=false
-  IOS_SKIP_REASON="third_party/ffmpeg-ios absent — run scripts/build-ffmpeg-ios.sh"
+if [[ -z "${ANDROID_HOME:-}" || ! -d "$ANDROID_HOME" ]]; then
+  echo "ANDROID_HOME is unset and no Android SDK was found at ~/Library/Android/sdk" >&2
+  exit 1
 fi
+
+if [[ -z "${ANDROID_NDK_HOME:-}" ]]; then
+  if [[ -d "$ANDROID_HOME/ndk/$NDK_VERSION" ]]; then
+    export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
+  else
+    echo "ANDROID_NDK_HOME is unset and $ANDROID_HOME/ndk/$NDK_VERSION does not exist" >&2
+    exit 1
+  fi
+fi
+
+if [[ ! -d "$ANDROID_NDK_HOME" ]]; then
+  echo "ANDROID_NDK_HOME does not exist: $ANDROID_NDK_HOME" >&2
+  exit 1
+fi
+
+if [[ ! -d "third_party/ffmpeg-ios" ]]; then
+  echo "third_party/ffmpeg-ios is absent; run scripts/build-ffmpeg-ios.sh" >&2
+  exit 1
+fi
+
+require_free_kib() {
+  local path="$1"
+  local required_kib="$2"
+  local available_kib
+  available_kib="$(df -Pk "$path" | awk 'NR == 2 { print $4 }')"
+  if [[ -z "$available_kib" || "$available_kib" -lt "$required_kib" ]]; then
+    echo "$path has ${available_kib:-0} KiB free; scripts/check.sh requires ${required_kib} KiB" >&2
+    exit 1
+  fi
+}
+
+REQUIRED_CHECK_SPACE_KIB=$((40 * 1024 * 1024))
+require_free_kib "$ROOT" "$REQUIRED_CHECK_SPACE_KIB"
+require_free_kib "${TMPDIR:-/tmp}" "$REQUIRED_CHECK_SPACE_KIB"
 
 # ── Output helpers ────────────────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; BOLD='\033[1m'; NC='\033[0m'
 
-PASS=0; FAIL=0; SKIP=0
+PASS=0; FAIL=0
 FAILURES=()
 
 section() { echo -e "\n${BOLD}── $1 ──────────────────────────────────${NC}"; }
@@ -85,8 +110,6 @@ check() {
     return 1
   fi
 }
-
-skip() { echo -e "  ${YELLOW}–${NC} $1 ($2)"; SKIP=$((SKIP+1)); }
 
 # ── Helpers for complex multi-step commands ────────────────────────────────────
 
@@ -132,17 +155,8 @@ check "clippy (bae-core --features oauth-providers)" \
 check "clippy (bae-bridge --features oauth-providers,cloudkit)" \
   cargo clippy -p bae-bridge --features oauth-providers,cloudkit -- -D warnings
 
-if cargo machete --version &>/dev/null; then
-  check "cargo machete" cargo machete
-else
-  skip "cargo machete" "not installed — cargo binstall cargo-machete"
-fi
-
-if cargo deny --version &>/dev/null; then
-  check "cargo deny" cargo deny check
-else
-  skip "cargo deny" "not installed — cargo binstall cargo-deny"
-fi
+check "cargo machete" cargo machete
+check "cargo deny" cargo deny check
 
 check "cargo doc" env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
@@ -155,151 +169,93 @@ check "cargo test (bae-bridge --lib)"  cargo test -p bae-bridge --lib
 # ── macOS ──────────────────────────────────────────────────────────────────────
 section "macOS"
 
-MACOS_BUILD_OK=false
-if check "bridge build" ./bae-bridge/build-macos.sh; then
+check "bridge build" ./bae-bridge/build-macos.sh
+check "copy macOS bridge binding" \
   cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
-  check "xcodegen" bash -c 'cd bae-macos/bae && xcodegen'
-  MACOS_XCODE_OK=false
-  if check "xcodebuild" \
-      xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
-        CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-        -derivedDataPath bae-macos/bae/.build/derivedData \
-        -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
-        -disableAutomaticPackageResolution build; then
-    MACOS_BUILD_OK=true
-    MACOS_XCODE_OK=true
-  fi
-else
-  skip "xcodegen" "bridge build failed"
-  skip "xcodebuild" "bridge build failed"
-fi
+check "xcodegen" bash -c 'cd bae-macos/bae && xcodegen'
+check "xcodebuild" \
+  xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
+    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+    -derivedDataPath bae-macos/bae/.build/derivedData \
+    -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
+    -disableAutomaticPackageResolution build
 
 check "swift-format lint" _swift_format_lint bae-macos/bae/bae
 
-if command -v swiftlint &>/dev/null; then
-  check "swiftlint" swiftlint lint --strict --config .swiftlint.yml bae-macos/bae/bae
-else
-  skip "swiftlint (macOS)" "not installed — brew install swiftlint"
-fi
+check "swiftlint" swiftlint lint --strict --config .swiftlint.yml bae-macos/bae/bae
 
-if command -v periphery &>/dev/null; then
-  if [[ ${MACOS_XCODE_OK:-false} == true ]]; then
-    check "periphery" bash -c '
-      cd bae-macos/bae && periphery scan --strict --skip-build \
-        --index-store-path .build/derivedData/Index.noindex/DataStore
-    '
-  else
-    skip "periphery (macOS)" "xcodebuild failed"
-  fi
-else
-  skip "periphery (macOS)" "not installed — brew install peripheryapp/periphery/periphery"
-fi
+check "periphery" bash -c '
+  cd bae-macos/bae && periphery scan --strict --skip-build \
+    --index-store-path .build/derivedData/Index.noindex/DataStore
+'
 
 # ── iOS ────────────────────────────────────────────────────────────────────────
 section "iOS"
 
-if [[ $RUN_IOS == false ]]; then
-  skip "iOS checks" "$IOS_SKIP_REASON"
-else
-  rustup target add aarch64-apple-ios 2>/dev/null || true
+rustup target add aarch64-apple-ios 2>/dev/null || true
 
-  check "clippy (iOS aarch64)"  _ios_clippy
+check "clippy (iOS aarch64)"  _ios_clippy
 
-  IOS_XCODE_OK=false
-  if check "bridge build" ./bae-bridge/build-ios.sh; then
-    check "xcodegen" bash -c 'cd bae-ios/bae && xcodegen'
-    if check "xcodebuild (iphonesimulator)" \
-        xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
-          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-          -sdk iphonesimulator -arch arm64 \
-          -derivedDataPath bae-ios/bae/.build/derivedData build; then
-      IOS_XCODE_OK=true
-    fi
-  else
-    skip "xcodegen (iOS)" "bridge build failed"
-    skip "xcodebuild (iOS)" "bridge build failed"
-  fi
+check "bridge build" ./bae-bridge/build-ios.sh
+check "xcodegen" bash -c 'cd bae-ios/bae && xcodegen'
+check "xcodebuild (iphonesimulator)" \
+  xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
+    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+    -sdk iphonesimulator -arch arm64 \
+    -derivedDataPath bae-ios/bae/.build/derivedData build
 
-  check "swift-format lint" _swift_format_lint bae-ios/bae/bae
-
-  if command -v swiftlint &>/dev/null; then
-    check "swiftlint" swiftlint lint --strict --config .swiftlint.yml bae-ios/bae/bae
-  else
-    skip "swiftlint (iOS)" "not installed — brew install swiftlint"
-  fi
-
-  if command -v periphery &>/dev/null; then
-    if [[ $IOS_XCODE_OK == true ]]; then
-      check "periphery" bash -c '
-        cd bae-ios/bae && periphery scan --strict --skip-build \
-          --index-store-path .build/derivedData/Index.noindex/DataStore
-      '
-    else
-      skip "periphery (iOS)" "xcodebuild failed"
-    fi
-  else
-    skip "periphery (iOS)" "not installed — brew install peripheryapp/periphery/periphery"
-  fi
-fi
+check "swift-format lint" _swift_format_lint bae-ios/bae/bae
+check "swiftlint" swiftlint lint --strict --config .swiftlint.yml bae-ios/bae/bae
+check "periphery" bash -c '
+  cd bae-ios/bae && periphery scan --strict --skip-build \
+    --index-store-path .build/derivedData/Index.noindex/DataStore
+'
 
 # ── Android ────────────────────────────────────────────────────────────────────
 section "Android"
 
-if [[ $RUN_ANDROID == false ]]; then
-  skip "Android checks" "$ANDROID_SKIP_REASON"
-else
-  rustup target add aarch64-linux-android 2>/dev/null || true
+rustup target add aarch64-linux-android 2>/dev/null || true
 
-  check "clippy (Android aarch64)" _android_clippy
+check "clippy (Android aarch64)" _android_clippy
 
-  ANDROID_BUILD_OK=false
-  if check "bridge build" ./bae-bridge/build-android.sh; then
-    ANDROID_BUILD_OK=true
-    check "Gradle unit tests" bash -c \
-      'cd bae-android && ./gradlew testFullDebugUnitTest --no-daemon'
-  else
-    skip "Gradle unit tests" "bridge build failed"
-  fi
+check "bridge build (Android full)" env BAE_BRIDGE_FEATURES=oauth-providers ./bae-bridge/build-android.sh
+check "Gradle unit tests (Android full)" bash -c \
+  'cd bae-android && ./gradlew testFullDebugUnitTest --no-daemon'
+check "ktlint" ktlint "bae-android/app/src/**/*.kt"
+check "detekt" detekt --input bae-android/app/src/main/java \
+  --config bae-android/detekt.yml --build-upon-default-config
+check "Android lint (full)" bash -c \
+  'cd bae-android && ./gradlew lintFullDebug --no-daemon'
+check "assemble debug APK (full)" bash -c \
+  'cd bae-android && ./gradlew assembleFullDebug --no-daemon'
 
-  if command -v ktlint &>/dev/null; then
-    check "ktlint" ktlint "bae-android/app/src/**/*.kt"
-  else
-    skip "ktlint" "not installed — brew install ktlint"
-  fi
-
-  if command -v detekt &>/dev/null; then
-    check "detekt" detekt --input bae-android/app/src/main/java \
-      --config bae-android/detekt.yml --build-upon-default-config
-  else
-    skip "detekt" "not installed — brew install detekt"
-  fi
-fi
+check "bridge build (Android baeium)" env BAE_BRIDGE_FEATURES= ./bae-bridge/build-android.sh
+check "Gradle unit tests (Android baeium)" bash -c \
+  'cd bae-android && ./gradlew testBaeiumDebugUnitTest --no-daemon'
+check "Android lint (baeium)" bash -c \
+  'cd bae-android && ./gradlew lintBaeiumDebug --no-daemon'
+check "assemble debug APK (baeium)" bash -c \
+  'cd bae-android && ./gradlew assembleBaeiumDebug --no-daemon'
 
 # ── GitHub Actions workflows ───────────────────────────────────────────────────
 section "Workflows"
 
-if command -v actionlint &>/dev/null; then
-  check "actionlint" env SHELLCHECK_OPTS="--severity=error" actionlint
-else
-  skip "actionlint" "not installed — brew install actionlint"
-fi
+check "actionlint" env SHELLCHECK_OPTS="--severity=error" actionlint
 
-# ── bae-core tests (opt-in, slow) ─────────────────────────────────────────────
-if [[ $RUN_TESTS == true ]]; then
-  section "bae-core tests"
-  check "cargo test (bae-core)" \
-    cargo test -p bae-core --features bae-core/test-utils \
-      -- --test-threads=1 --skip test_playback_cpu
-  check "cargo test (bae-core playback CPU, release)" \
-    cargo test -p bae-core --release --features bae-core/test-utils \
-      --test test_playback_cpu
-fi
+# ── bae-core tests ────────────────────────────────────────────────────────────
+section "bae-core tests"
+check "cargo test (bae-core)" \
+  cargo test -p bae-core --features bae-core/test-utils \
+    -- --test-threads=1 --skip test_playback_cpu
+check "cargo test (bae-core playback CPU, release)" \
+  cargo test -p bae-core --release --features bae-core/test-utils \
+    --test test_playback_cpu
 
 # ── Summary ────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}────────────────────────────────────────────────────────${NC}"
-printf "  ${GREEN}✓${NC} %d passed   ${RED}✗${NC} %d failed   ${YELLOW}–${NC} %d skipped\n" \
-  "$PASS" "$FAIL" "$SKIP"
+printf "  ${GREEN}✓${NC} %d passed   ${RED}✗${NC} %d failed\n" \
+  "$PASS" "$FAIL"
 
 if [[ $FAIL -gt 0 ]]; then
   echo -e "\n  ${RED}Failed:${NC}"
