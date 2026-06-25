@@ -16,7 +16,7 @@ use crate::db::Database;
 use crate::encryption::EncryptionService;
 use crate::keys::KeyService;
 use crate::library::{LibraryEvent, UploadThroughput};
-use crate::sync::blob_plan::{BaeBlobPlan, ReleaseUploadObserver};
+use crate::sync::blob_source::{BaeBlobSource, ReleaseUploadObserver};
 
 // coven owns the sync manager; bae uses it directly.
 pub use coven::sync::membership::MemberRole;
@@ -178,7 +178,8 @@ pub fn build_sync_manager(
     let clock = database.clock().clone();
     let coven_db = database.coven_db().clone();
     let library_dir = config_handle.config().library_dir.clone();
-    let blob_plan: Arc<dyn coven::blob::BlobPlan> = Arc::new(BaeBlobPlan::new(library_dir.clone()));
+    let blob_source: Arc<dyn coven::blob::BlobSource> =
+        Arc::new(BaeBlobSource::new(library_dir.clone()));
     let observer: Arc<dyn coven::blob::BlobUploadObserver> = Arc::new(ReleaseUploadObserver::new(
         Arc::new(database),
         library_dir,
@@ -199,7 +200,7 @@ pub fn build_sync_manager(
         encryption_service,
         coven_db,
         clock,
-        blob_plan,
+        blob_source,
         Some(observer),
     )
 }

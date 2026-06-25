@@ -888,7 +888,7 @@ async fn import_with_cover_art() {
     assert_eq!(cover.source, "local");
 
     // Cover image file on disk
-    let cover_path = f.library_dir.image_path(&release_id);
+    let cover_path = bae_core::storage::local::image_path(&f.library_dir, &release_id);
     assert!(
         cover_path.exists(),
         "cover image file should exist at {:?}",
@@ -1593,7 +1593,7 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
         "cover must be sourced from the embedded picture"
     );
 
-    let cover_path = f.library_dir.image_path(&release_id);
+    let cover_path = bae_core::storage::local::image_path(&f.library_dir, &release_id);
     let bytes = fs::read(&cover_path).expect("cover file on disk");
     assert_eq!(
         bytes, EMBEDDED_JPEG,

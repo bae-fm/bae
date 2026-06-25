@@ -33,7 +33,7 @@
 //! audio, `library_images` for images); every later upload, read, delete, and
 //! pull uses the stored value verbatim. (The key is re-derivable from the
 //! immutable ids, but storing it keeps reads uniform with the opaque
-//! hashed-by-id path and lets the image `BlobPlan`, which has no DB handle at
+//! hashed-by-id path and lets the image `BlobSource`, which has no DB handle at
 //! push, read the key straight off the row.)
 
 use crate::util::content_type::ContentType;

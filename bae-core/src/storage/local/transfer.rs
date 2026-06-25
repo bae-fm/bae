@@ -69,7 +69,7 @@ pub async fn read_release_file_bytes(
             // Read the whole object through the home's cipher: one ranged read
             // that decrypts under the master key on an opaque home, or returns
             // the verbatim bytes on a browsable one. Every managed blob is
-            // master-scoped (see `BaeBlobPlan`). The object key is the row's
+            // master-scoped (see `BaeBlobSource`). The object key is the row's
             // stored `cloud_path`; a NULL value means the hashed-by-id layout
             // (`storage_path`), the documented default — not a masked error.
             let source_size = file.file_size as u64;
@@ -438,7 +438,7 @@ async fn download_cloud_file_chunked(
     on_progress: &(dyn Fn(u8) + Send + Sync),
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let source_size = file.file_size as u64;
-    // Every managed blob is master-scoped (see `BaeBlobPlan`). The object key is
+    // Every managed blob is master-scoped (see `BaeBlobSource`). The object key is
     // the file's effective cloud key (its stored `cloud_path`, else the
     // hashed-by-id default).
     let reader = crate::storage::BlobRangeReader::new(

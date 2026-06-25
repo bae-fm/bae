@@ -1,112 +1,12 @@
 #![cfg(feature = "test-utils")]
-//! Integration tests for the cloud outbox (upload/delete queueing and processing).
+//! Integration tests for bae's cloud-outbox DB wrappers (`db/client.rs`): the
+//! enqueue/read/remove pass-throughs over coven's `cloud_outbox`, plus the
+//! `BlobScope::Master` default bae stamps at enqueue. The drains themselves
+//! (`coven::blob::upload::drain_uploads`, the tombstone delete path) are coven's
+//! and covered by coven's own blob tests.
 
-mod support;
-
-use async_trait::async_trait;
-use bae_core::clock::SystemClock;
 use bae_core::db::Database;
-use bae_core::encryption::EncryptionService;
-use bae_core::storage::cloud::{CloudHome, CloudHomeError, CloudHomeJoinInfo};
-use bae_core::sync::cloud_storage::CloudCipher;
-use bae_core::sync::outbox;
-use std::sync::{Mutex, RwLock};
 use tempfile::TempDir;
-
-// ---------------------------------------------------------------------------
-// Mock CloudHome
-// ---------------------------------------------------------------------------
-
-/// Records writes and deletes for assertion. Can be configured to fail.
-struct MockCloudHome {
-    writes: Mutex<Vec<(String, Vec<u8>)>>,
-    deletes: Mutex<Vec<String>>,
-    fail_writes: bool,
-    fail_deletes: bool,
-}
-
-impl MockCloudHome {
-    fn new() -> Self {
-        Self {
-            writes: Mutex::new(Vec::new()),
-            deletes: Mutex::new(Vec::new()),
-            fail_writes: false,
-            fail_deletes: false,
-        }
-    }
-
-    fn failing_writes() -> Self {
-        Self {
-            writes: Mutex::new(Vec::new()),
-            deletes: Mutex::new(Vec::new()),
-            fail_writes: true,
-            fail_deletes: false,
-        }
-    }
-
-    fn failing_deletes() -> Self {
-        Self {
-            writes: Mutex::new(Vec::new()),
-            deletes: Mutex::new(Vec::new()),
-            fail_writes: false,
-            fail_deletes: true,
-        }
-    }
-}
-
-#[async_trait]
-impl CloudHome for MockCloudHome {
-    async fn write(
-        &self,
-        key: &str,
-        data: Vec<u8>,
-        progress: &bae_core::storage::cloud::UploadProgress<'_>,
-    ) -> Result<(), CloudHomeError> {
-        if self.fail_writes {
-            return Err(CloudHomeError::Storage("mock write failure".into()));
-        }
-        let total = data.len() as u64;
-        self.writes.lock().unwrap().push((key.to_string(), data));
-        progress(total);
-        Ok(())
-    }
-
-    async fn read(&self, _key: &str) -> Result<Vec<u8>, CloudHomeError> {
-        unimplemented!()
-    }
-
-    async fn read_range(&self, _: &str, _: u64, _: u64) -> Result<Vec<u8>, CloudHomeError> {
-        unimplemented!()
-    }
-
-    async fn list(&self, _: &str) -> Result<Vec<String>, CloudHomeError> {
-        unimplemented!()
-    }
-
-    async fn delete(&self, key: &str) -> Result<(), CloudHomeError> {
-        if self.fail_deletes {
-            return Err(CloudHomeError::Storage("mock delete failure".into()));
-        }
-        self.deletes.lock().unwrap().push(key.to_string());
-        Ok(())
-    }
-
-    async fn exists(&self, _: &str) -> Result<bool, CloudHomeError> {
-        unimplemented!()
-    }
-
-    async fn grant_access(&self, _: &str) -> Result<CloudHomeJoinInfo, CloudHomeError> {
-        unimplemented!()
-    }
-
-    async fn revoke_access(&self, _: &str) -> Result<(), CloudHomeError> {
-        unimplemented!()
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 async fn setup_db() -> (Database, TempDir) {
     let tmp = TempDir::new().expect("temp dir");
@@ -120,9 +20,15 @@ async fn setup_db() -> (Database, TempDir) {
     (db, tmp)
 }
 
-// ---------------------------------------------------------------------------
-// DB method tests
-// ---------------------------------------------------------------------------
+/// The `file_id` an upload entry carries, panicking if the entry is not an
+/// upload. coven nests it inside `OutboxOperation::Upload`; the tests assert FIFO
+/// order by it.
+fn upload_file_id(entry: &coven::db::OutboxEntry) -> &str {
+    match &entry.operation {
+        coven::db::OutboxOperation::Upload { file_id, .. } => file_id,
+        other => panic!("expected an upload entry, got {other:?}"),
+    }
+}
 
 #[tokio::test]
 async fn test_add_and_get_pending_uploads_fifo() {
@@ -145,20 +51,10 @@ async fn test_add_and_get_pending_uploads_fifo() {
     assert_eq!(upload_file_id(&uploads[2]), "file-ccc");
 }
 
-/// The `file_id` an upload entry carries, panicking if the entry is a delete.
-/// coven nests it inside `OutboxOperation::Upload`; the tests assert FIFO order
-/// by it.
-fn upload_file_id(entry: &coven::db::OutboxEntry) -> &str {
-    match &entry.operation {
-        coven::db::OutboxOperation::Upload { file_id, .. } => file_id,
-        coven::db::OutboxOperation::Delete => panic!("expected an upload entry"),
-    }
-}
-
-/// The master scope round-trips through the outbox: enqueue an upload, read back
-/// the `BlobScope::Master` on the `OutboxEntry`. coven encrypts with the library
-/// master key at drain, so a lost or wrong scope would silently mis-encrypt.
-/// Deletes carry no scope.
+/// The master scope round-trips through the outbox: bae's `add_cloud_outbox_upload`
+/// stamps `BlobScope::Master` at enqueue, read back on the `OutboxEntry`. coven
+/// encrypts with the library master key at drain, so a lost or wrong scope would
+/// silently mis-encrypt. Deletes carry no scope.
 #[tokio::test]
 async fn test_outbox_upload_round_trips_master_scope() {
     use coven::blob::BlobScope;
@@ -270,148 +166,4 @@ async fn test_insert_or_ignore_idempotency() {
 
     let uploads = db.get_pending_cloud_uploads().await.unwrap();
     assert_eq!(uploads.len(), 1, "duplicate insert should be ignored");
-}
-
-// ---------------------------------------------------------------------------
-// process_uploads tests
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_process_uploads_success() {
-    let (db, tmp) = setup_db().await;
-    let library_dir = tmp.path().to_path_buf();
-
-    // Write a local file that the uploader will read
-    let file_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-    let cloud_key = bae_core::storage::local::storage_path(file_id);
-    let local_path = library_dir.join(&cloud_key);
-    std::fs::create_dir_all(local_path.parent().unwrap()).unwrap();
-    std::fs::write(&local_path, b"hello world").unwrap();
-
-    // The upload encrypts with the library master key (`BlobScope::Master`).
-    db.add_cloud_outbox_upload(file_id, &cloud_key, None)
-        .await
-        .unwrap();
-
-    let cloud = MockCloudHome::new();
-    let cipher = RwLock::new(CloudCipher::Encrypted(EncryptionService::new_with_key(
-        &[0u8; 32],
-    )));
-
-    let count = outbox::process_uploads(
-        db.coven_db(),
-        &cloud,
-        &cipher,
-        &library_dir,
-        &SystemClock,
-        None,
-    )
-    .await
-    .unwrap()
-    .uploaded;
-
-    assert_eq!(count, 1);
-
-    // Cloud should have received one encrypted write
-    {
-        let writes = cloud.writes.lock().unwrap();
-        assert_eq!(writes.len(), 1);
-        assert_eq!(writes[0].0, cloud_key);
-        // Data should be encrypted (not plaintext)
-        assert_ne!(writes[0].1, b"hello world");
-    }
-
-    // Outbox should be empty
-    assert!(db.get_pending_cloud_uploads().await.unwrap().is_empty());
-}
-
-#[tokio::test]
-async fn test_process_uploads_failure_retains_entry() {
-    let (db, tmp) = setup_db().await;
-    let library_dir = tmp.path().to_path_buf();
-
-    let file_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-    let cloud_key = bae_core::storage::local::storage_path(file_id);
-    let local_path = library_dir.join(&cloud_key);
-    std::fs::create_dir_all(local_path.parent().unwrap()).unwrap();
-    std::fs::write(&local_path, b"hello world").unwrap();
-
-    db.add_cloud_outbox_upload(file_id, &cloud_key, None)
-        .await
-        .unwrap();
-
-    let cloud = MockCloudHome::failing_writes();
-    let cipher = RwLock::new(CloudCipher::Encrypted(EncryptionService::new_with_key(
-        &[0u8; 32],
-    )));
-
-    let count = outbox::process_uploads(
-        db.coven_db(),
-        &cloud,
-        &cipher,
-        &library_dir,
-        &SystemClock,
-        None,
-    )
-    .await
-    .unwrap()
-    .uploaded;
-
-    assert_eq!(count, 0, "no uploads should succeed");
-
-    // Entry should still be in the outbox
-    assert!(!db.get_pending_cloud_uploads().await.unwrap().is_empty());
-}
-
-// ---------------------------------------------------------------------------
-// process_deletes tests
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_process_deletes_removes_queued_blob() {
-    let (db, _tmp) = setup_db().await;
-
-    db.add_cloud_outbox_delete("storage/aa/bb/file-aaa")
-        .await
-        .unwrap();
-
-    let cloud = MockCloudHome::new();
-
-    // The delete drains as soon as the cloud is reachable — no wait on your other devices.
-    let count = outbox::process_deletes(db.coven_db(), &cloud)
-        .await
-        .unwrap();
-
-    assert_eq!(count, 1);
-
-    {
-        let deletes = cloud.deletes.lock().unwrap();
-        assert_eq!(deletes.len(), 1);
-        assert_eq!(deletes[0], "storage/aa/bb/file-aaa");
-    }
-
-    // Outbox should be empty
-    let remaining = db.get_pending_cloud_deletes().await.unwrap();
-    assert!(remaining.is_empty());
-}
-
-#[tokio::test]
-async fn test_process_deletes_failure_retains_entry() {
-    let (db, _tmp) = setup_db().await;
-
-    db.add_cloud_outbox_delete("storage/aa/bb/file-aaa")
-        .await
-        .unwrap();
-
-    let cloud = MockCloudHome::failing_deletes();
-
-    let count = outbox::process_deletes(db.coven_db(), &cloud)
-        .await
-        .unwrap();
-
-    assert_eq!(count, 0, "failed delete should not count");
-
-    // Entry should still be in the outbox
-    let remaining = db.get_pending_cloud_deletes().await.unwrap();
-    assert_eq!(remaining.len(), 1);
 }

@@ -1033,7 +1033,7 @@ pub struct LibraryManager {
     /// Transient (zeroed after a restart, like `outbox_in_flight`).
     upload_throughput: Arc<crate::library::UploadThroughput>,
     /// User-driven pause flag for the cloud-upload pipeline. When true,
-    /// coven's `process_uploads` short-circuits before each entry, so the
+    /// coven's `drain_uploads` short-circuits before each entry, so the
     /// queue stops draining but in-flight uploads (and new enqueues) keep
     /// flowing. Transient (Running after a restart).
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
@@ -1883,7 +1883,7 @@ impl LibraryManager {
     // =========================================================================
 
     pub fn image_path(&self, id: &str) -> PathBuf {
-        self.library_dir.image_path(id)
+        crate::storage::local::image_path(&self.library_dir, id)
     }
 
     /// The cache-bustable identifier for the library image at `id`, but only
@@ -2321,7 +2321,7 @@ impl LibraryManager {
 
     /// Pause or resume the cloud-upload pipeline. Paused means new enqueues
     /// still land in the outbox but the sync cycle won't drain them; in-flight
-    /// uploads finish (coven's `process_uploads` checks the flag between
+    /// uploads finish (coven's `drain_uploads` checks the flag between
     /// entries, not mid-write). Re-emits the outbox snapshot so the UI's
     /// paused indicator and the bottom-panel summary update.
     pub async fn set_sync_paused(&self, paused: bool) {
@@ -2350,7 +2350,7 @@ impl LibraryManager {
         cloud_home: &dyn CloudHome,
         encryption: &std::sync::RwLock<EncryptionService>,
     ) -> Result<usize, String> {
-        let observer = crate::sync::blob_plan::ReleaseUploadObserver::new(
+        let observer = crate::sync::blob_source::ReleaseUploadObserver::new(
             Arc::new(self.database.clone()),
             self.library_dir.clone(),
             self.outbox_in_flight.clone(),
@@ -2359,7 +2359,7 @@ impl LibraryManager {
             self.upload_cancelling.clone(),
             self.event_tx.clone(),
         );
-        // coven's `process_uploads` takes the home's at-rest cipher. bae homes are
+        // coven's `drain_uploads` takes the home's at-rest cipher. bae homes are
         // always encrypted, so wrap the library's `EncryptionService` as
         // `CloudCipher::Encrypted`. Clone the service under the read lock, then drop
         // the lock before building the local cipher lock coven seals blobs through.
@@ -2368,7 +2368,7 @@ impl LibraryManager {
             coven::sync::cloud_storage::CloudCipher::Encrypted(service.clone())
         };
         let cipher = std::sync::RwLock::new(cipher);
-        crate::sync::outbox::process_uploads(
+        coven::blob::upload::drain_uploads(
             self.database.coven_db(),
             cloud_home,
             &cipher,
@@ -3482,7 +3482,7 @@ pub(crate) async fn find_release_detail_with(
 /// `LibraryManager::image_path_if_exists` and the release-detail resolver so
 /// the two don't keep parallel copies that drift.
 fn image_identifier_if_exists(library_dir: &LibraryDir, id: &str) -> Option<String> {
-    let path = library_dir.image_path(id);
+    let path = crate::storage::local::image_path(library_dir, id);
     let metadata = match std::fs::metadata(&path) {
         Ok(metadata) => metadata,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return None,
@@ -4231,7 +4231,7 @@ impl LibraryManager {
         };
 
         // Write image to disk
-        let cover_path = library_dir.image_path(release_id);
+        let cover_path = crate::storage::local::image_path(library_dir, release_id);
         if let Some(parent) = cover_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -4385,7 +4385,7 @@ impl LibraryManager {
         };
 
         // Local: queue the on-disk cover for deferred deletion.
-        let cover_path = self.library_dir.image_path(release_id);
+        let cover_path = crate::storage::local::image_path(&self.library_dir, release_id);
         let pending = vec![PendingDeletion::Local {
             path: cover_path.display().to_string(),
         }];
@@ -4593,7 +4593,7 @@ impl LibraryManager {
         let year = meta.release.pressing.year.or(album.year);
 
         let cover_image_path = album.primary_release_id.as_deref().and_then(|rid| {
-            let path = self.library_dir.image_path(rid);
+            let path = crate::storage::local::image_path(&self.library_dir, rid);
             if path.exists() {
                 Some(path)
             } else {
@@ -5639,7 +5639,7 @@ mod tests {
             })
             .await
             .unwrap();
-        let cover_path = manager.library_dir.image_path(&release1.id);
+        let cover_path = crate::storage::local::image_path(&manager.library_dir, &release1.id);
         tokio::fs::create_dir_all(cover_path.parent().unwrap())
             .await
             .unwrap();
@@ -5822,6 +5822,77 @@ mod tests {
     async fn image_path_if_exists_is_none_without_a_cover() {
         let (manager, _temp_dir) = setup_test_manager().await;
         assert!(manager.image_path_if_exists("no-such-release").is_none());
+    }
+
+    /// A peer can ship `releases`/`release_files` rows with any `id` — bae's
+    /// apply path mints no id and validates none. A path-traversal id
+    /// (`../../etc/x`) is not a valid storage path token, so the display
+    /// resolver that fires on every sync cycle must treat it as a missing asset,
+    /// never panic. Before the fix, `find_release_detail` panics inside
+    /// `image_path`/`storage_path` on the bad id, which a synced row makes
+    /// durable — crash-looping every device each cycle (a denial of service).
+    #[tokio::test]
+    async fn find_release_detail_does_not_panic_on_traversal_ids_from_a_peer() {
+        let (manager, _temp_dir) = setup_test_manager().await;
+
+        let album = create_test_album();
+        // A release whose id is a path-traversal token, as if synced from a peer.
+        let release = DbRelease {
+            id: "../../etc/x".to_string(),
+            ..create_test_release(&album.id)
+        };
+        manager.database.insert_album(&album).await.unwrap();
+        manager.database.insert_release(&release).await.unwrap();
+
+        // An image file whose id is also a traversal token, plus a pinned local
+        // copy (no `unmanaged_path`) — that combination is what drives the
+        // gallery's `storage_path(&file.id)` resolution for this release file.
+        let file = DbFile::new(
+            &release.id,
+            "cover.jpg",
+            5,
+            crate::util::content_type::ContentType::Jpeg,
+            "../../etc/y".to_string(),
+            Utc::now(),
+        );
+        manager.add_file(&file).await.unwrap();
+        manager
+            .database
+            .upsert_release_local_copy(&DbReleaseLocalCopy {
+                release_id: release.id.clone(),
+                unmanaged_path: None,
+                pinned_locally: true,
+            })
+            .await
+            .unwrap();
+
+        // The resolver that fires when a synced release surfaces in the UI. The
+        // bad ids must resolve to "no cover" / "no local gallery path", not a
+        // panic.
+        let detail = manager
+            .find_release_detail(&release.id)
+            .await
+            .expect("resolving a release with a traversal id must not error")
+            .expect("the inserted release must resolve to a detail");
+        assert!(
+            detail.summary.cover_path.is_none(),
+            "a traversal release id has no resolvable cover"
+        );
+        assert!(
+            detail
+                .gallery_items
+                .iter()
+                .all(|item| item.local_path.is_none()),
+            "a traversal file id has no resolvable local gallery path"
+        );
+    }
+
+    #[tokio::test]
+    async fn image_path_if_exists_is_none_for_a_traversal_id() {
+        let (manager, _temp_dir) = setup_test_manager().await;
+        // A synced id that is not a valid path token must resolve to "no image",
+        // not panic inside `image_path`.
+        assert!(manager.image_path_if_exists("../../etc/x").is_none());
     }
 
     #[tokio::test]
@@ -7185,7 +7256,7 @@ mod tests {
 
         // The observer shares the manager's in-flight map and throughput tracker,
         // exactly as production wires it in `build_sync_manager`.
-        let observer = crate::sync::blob_plan::ReleaseUploadObserver::new(
+        let observer = crate::sync::blob_source::ReleaseUploadObserver::new(
             Arc::new(manager.database.clone()),
             manager.library_dir.clone(),
             manager.outbox_in_flight.clone(),

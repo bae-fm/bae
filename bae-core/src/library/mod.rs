@@ -80,9 +80,9 @@ pub fn create_library(
     Ok(config)
 }
 
-/// The blob plan coven binds to a freshly created/restored library dir.
-fn make_blob_plan(library_dir: &LibraryDir) -> Box<dyn coven::blob::BlobPlan> {
-    Box::new(crate::sync::blob_plan::BaeBlobPlan::new(
+/// The blob source coven binds to a freshly created/restored library dir.
+fn make_blob_source(library_dir: &LibraryDir) -> Box<dyn coven::blob::BlobSource> {
+    Box::new(crate::sync::blob_source::BaeBlobSource::new(
         library_dir.clone(),
     ))
 }
@@ -105,6 +105,12 @@ pub async fn restore_from_cloud(
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
     let app_dir = crate::config::bae_dir().map_err(|e| e.to_string())?;
+    // The restoring device signs its control objects during restore with its own
+    // identity. Get-or-create the device keypair under the library being restored,
+    // mirroring the keyring identity coven imports on the restore-code path.
+    let keypair = KeyService::new(library_id.to_string())
+        .get_or_create_user_keypair()
+        .map_err(|e| e.to_string())?;
     // This restore-with-a-key path is for an opaque home: the caller supplies the
     // library key, so coven rebuilds the encrypted, obfuscated home from its
     // presence (`Some`). A browsable home has no key and restores through the
@@ -115,10 +121,11 @@ pub async fn restore_from_cloud(
         library_name,
         &crate::sync::synced_tables(),
         source,
+        &keypair,
         &app_dir,
         std::sync::Arc::new(crate::clock::SystemClock),
         std::sync::Arc::new(crate::id_provider::UuidProvider),
-        make_blob_plan,
+        make_blob_source,
         on_status,
     )
     .await
@@ -175,7 +182,7 @@ async fn restore_from_code_with_cancel(
         &app_dir,
         std::sync::Arc::new(crate::clock::SystemClock),
         std::sync::Arc::new(crate::id_provider::UuidProvider),
-        make_blob_plan,
+        make_blob_source,
         on_status,
     );
     let coven_config = if let Some((cancel, library_dir, library_dir_existed)) = cancel {
@@ -284,7 +291,7 @@ async fn join_from_code_with_cancel(
         cloudkit_ops,
         std::sync::Arc::new(crate::clock::SystemClock),
         std::sync::Arc::new(crate::id_provider::UuidProvider),
-        make_blob_plan,
+        make_blob_source,
         on_status,
     );
     let coven_config = if let Some((cancel, library_dir, library_dir_existed)) = cancel {

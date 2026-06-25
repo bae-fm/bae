@@ -1394,16 +1394,16 @@ async fn test_manage_opaque_leaves_cloud_path_null() {
 }
 
 /// A cover set on a BROWSABLE home stores an id-structured `library_images.cloud_path`,
-/// and the `BlobPlan` carries it through to `BlobRef.cloud_path` as
+/// and the `BlobSource` carries it through to `BlobRef.cloud_path` as
 /// `{album_id}/{release_id}/cover.jpg`. On an OPAQUE home both stay NULL/None.
 #[tokio::test]
 async fn test_cover_blob_ref_cloud_path_browsable_vs_opaque() {
     tracing_init();
 
     use bae_core::db::LibraryImageType;
-    use bae_core::sync::blob_plan::BaeBlobPlan;
+    use bae_core::sync::blob_source::BaeBlobSource;
     use bae_core::util::content_type::ContentType;
-    use coven::blob::BlobPlan;
+    use coven::blob::BlobSource;
 
     // --- Browsable: the cover keys by id and the plan reflects it. ---
     let temp = TempDir::new().unwrap();
@@ -1440,11 +1440,12 @@ async fn test_cover_blob_ref_cloud_path_browsable_vs_opaque() {
     .unwrap();
 
     let library_dir = LibraryDir::new(library_path.clone());
-    let plan = BaeBlobPlan::new(library_dir.clone());
+    let source = BaeBlobSource::new(library_dir.clone());
     let refs = db
         .coven_db()
         .call(move |conn| {
-            plan.blobs_in_db(conn)
+            source
+                .blobs_in_db(conn)
                 .map_err(coven::database::DbError::from)
         })
         .await
@@ -1490,11 +1491,11 @@ async fn test_cover_blob_ref_cloud_path_browsable_vs_opaque() {
     })
     .await
     .unwrap();
-    let plan2 = BaeBlobPlan::new(LibraryDir::new(library_path2.clone()));
+    let source2 = BaeBlobSource::new(LibraryDir::new(library_path2.clone()));
     let refs2 = db2
         .coven_db()
         .call(move |conn| {
-            plan2
+            source2
                 .blobs_in_db(conn)
                 .map_err(coven::database::DbError::from)
         })

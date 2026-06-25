@@ -250,7 +250,7 @@ impl AudioDataReader for CloudReader {
             // One reader per track: on an encrypted home the nonce header is
             // fetched once and reused across every range read (a full-file stream
             // issues many); a plaintext home reads each window verbatim. Every
-            // managed blob is master-scoped (see `BaeBlobPlan`).
+            // managed blob is master-scoped (see `BaeBlobSource`).
             let reader = crate::storage::BlobRangeReader::new(
                 cloud_home,
                 &cipher,

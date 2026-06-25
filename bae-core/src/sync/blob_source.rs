@@ -1,4 +1,4 @@
-//! bae's `BlobPlan` + `BlobUploadObserver`.
+//! bae's `BlobSource` + `BlobUploadObserver`.
 //!
 //! coven owns the cloud blob layout and encryption; bae decides which of its rows
 //! carry blobs and where their local files live. `library_images` INSERTs carry
@@ -8,7 +8,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
-use coven::blob::{BlobPlan, BlobRef, BlobScope, BlobUploadObserver, DrainControl};
+use coven::blob::{BlobRef, BlobScope, BlobSource, BlobSync, BlobUploadObserver, DrainControl};
 use coven::changeset::{ChangeOp, RowChange};
 use coven::library_dir::LibraryDir;
 use tokio::sync::broadcast;
@@ -52,13 +52,14 @@ const LIBRARY_IMAGES_CLOUD_PATH_INDEX: usize = {
     i
 };
 
-/// Maps bae's blob-bearing rows to their cloud blobs. Push and pull move the
-/// same set (an INSERT's blob is uploaded on push, downloaded on pull).
-pub struct BaeBlobPlan {
+/// Maps bae's blob-bearing rows to their cloud blobs. coven walks both a pushed
+/// and an incoming changeset through the same `blobs_for_change`, so an INSERT's
+/// blob is uploaded on push and downloaded on pull off one mapping.
+pub struct BaeBlobSource {
     library_dir: LibraryDir,
 }
 
-impl BaeBlobPlan {
+impl BaeBlobSource {
     pub fn new(library_dir: LibraryDir) -> Self {
         Self { library_dir }
     }
@@ -68,53 +69,52 @@ impl BaeBlobPlan {
     /// `None` on an opaque home (coven's `Hashed` scheme keys off the id), the
     /// readable key on a browsable one (coven's `Plain` scheme uses it verbatim).
     /// The LOCAL file always lives at the hashed `image_path(id)` regardless —
-    /// only the cloud key becomes readable.
+    /// only the cloud key becomes readable. Images are `Mirrored`: a pulling
+    /// device downloads and keeps them, since cover/artist art is part of having
+    /// the library (audio, by contrast, streams on demand and is never listed).
     fn image_ref(&self, id: &str, cloud_path: Option<String>) -> BlobRef {
         BlobRef {
             namespace: "images".to_string(),
             id: id.to_string(),
-            local_path: self.library_dir.image_path(id),
+            local_path: crate::storage::local::image_path(&self.library_dir, id),
             scope: BlobScope::Master,
             cloud_path,
+            sync: BlobSync::Mirrored,
         }
     }
 
-    fn refs(&self, changes: &[RowChange]) -> Vec<BlobRef> {
-        let mut refs = Vec::new();
-        for change in changes {
-            // Only INSERTs carry a new blob: image bytes never change on update,
-            // and deletes are handled by the cloud outbox.
-            if change.op != ChangeOp::Insert {
-                continue;
-            }
-            let Some(id) = change.pk() else {
-                warn!(
-                    "{} INSERT has no primary key; skipping its blob",
-                    change.table
-                );
-                continue;
-            };
-            // `library_images` is the only blob-bearing table.
-            if change.table == "library_images" {
-                // The row's stored `cloud_path` (readable key on a browsable
-                // home, absent on an opaque one), read at its DDL column index.
-                let cloud_path = change
-                    .col(LIBRARY_IMAGES_CLOUD_PATH_INDEX)
-                    .map(|s| s.to_string());
-                refs.push(self.image_ref(id, cloud_path));
-            }
+    /// The blobs a single row-change references: at most one image blob for a
+    /// `library_images` INSERT, empty for everything else. coven calls this over
+    /// every change in both directions.
+    fn refs_for_change(&self, change: &RowChange) -> Vec<BlobRef> {
+        // Only INSERTs carry a new blob: image bytes never change on update, and
+        // deletes are handled by the cloud outbox.
+        if change.op != ChangeOp::Insert {
+            return Vec::new();
         }
-        refs
+        // `library_images` is the only blob-bearing table.
+        if change.table != "library_images" {
+            return Vec::new();
+        }
+        let Some(id) = change.pk() else {
+            warn!(
+                "{} INSERT has no primary key; skipping its blob",
+                change.table
+            );
+            return Vec::new();
+        };
+        // The row's stored `cloud_path` (readable key on a browsable home, absent
+        // on an opaque one), read at its DDL column index.
+        let cloud_path = change
+            .col(LIBRARY_IMAGES_CLOUD_PATH_INDEX)
+            .map(|s| s.to_string());
+        vec![self.image_ref(id, cloud_path)]
     }
 }
 
-impl BlobPlan for BaeBlobPlan {
-    fn blobs_to_push(&self, changes: &[RowChange]) -> Vec<BlobRef> {
-        self.refs(changes)
-    }
-
-    fn blobs_to_pull(&self, changes: &[RowChange]) -> Vec<BlobRef> {
-        self.refs(changes)
+impl BlobSource for BaeBlobSource {
+    fn blobs_for_change(&self, change: &RowChange) -> Vec<BlobRef> {
+        self.refs_for_change(change)
     }
 
     /// Every `library_images` row currently in the DB references a blob that
@@ -467,7 +467,7 @@ impl BlobUploadObserver for ReleaseUploadObserver {
             self.in_flight.lock().unwrap().remove(file_id);
         }
         // The failure (attempt_count / last_error) is persisted by coven's
-        // process_uploads via record_cloud_upload_failure; the snapshot we emit
+        // drain_uploads via record_cloud_upload_failure; the snapshot we emit
         // here reflects it.
         self.emit_outbox_changed().await;
     }
@@ -616,13 +616,13 @@ mod tests {
         }
     }
 
-    fn plan() -> BaeBlobPlan {
-        BaeBlobPlan::new(LibraryDir::new("/lib"))
+    fn source() -> BaeBlobSource {
+        BaeBlobSource::new(LibraryDir::new("/lib"))
     }
 
     /// A full `library_images` `RowChange` in DDL order, with `cloud_path`
-    /// placed via the module's index constant so the plan reads the same key the
-    /// production walker would. NULL columns model an opaque-home row.
+    /// placed via the module's index constant so the source reads the same key
+    /// the production walker would. NULL columns model an opaque-home row.
     fn image_row(op: ChangeOp, id: &str, image_type: &str, cloud_path: Option<&str>) -> RowChange {
         let mut columns: Vec<Option<String>> = vec![None; LIBRARY_IMAGES_COLUMNS.len()];
         columns[0] = Some(id.to_string());
@@ -640,7 +640,7 @@ mod tests {
         // Covers and artist images both encrypt with the library master key.
         for image_type in ["cover", "artist"] {
             let refs =
-                plan().blobs_to_push(&[image_row(ChangeOp::Insert, "img-1", image_type, None)]);
+                source().blobs_for_change(&image_row(ChangeOp::Insert, "img-1", image_type, None));
             assert_eq!(refs.len(), 1);
             assert_eq!(refs[0].namespace, "images");
             assert_eq!(refs[0].id, "img-1");
@@ -652,15 +652,15 @@ mod tests {
     fn opaque_image_carries_no_cloud_path_browsable_carries_it() {
         // An opaque-home row (cloud_path NULL) → BlobRef.cloud_path None; a
         // browsable-home row → the stored readable key, read at its DDL index.
-        let refs = plan().blobs_to_push(&[image_row(ChangeOp::Insert, "rel-1", "cover", None)]);
+        let refs = source().blobs_for_change(&image_row(ChangeOp::Insert, "rel-1", "cover", None));
         assert_eq!(refs[0].cloud_path, None);
 
-        let refs = plan().blobs_to_push(&[image_row(
+        let refs = source().blobs_for_change(&image_row(
             ChangeOp::Insert,
             "rel-1",
             "cover",
             Some("Artist Name/Album Title/cover.jpg"),
-        )]);
+        ));
         assert_eq!(
             refs[0].cloud_path.as_deref(),
             Some("Artist Name/Album Title/cover.jpg")
@@ -680,7 +680,7 @@ mod tests {
         )
         .unwrap();
 
-        let refs = plan().blobs_in_db(&conn).unwrap();
+        let refs = source().blobs_in_db(&conn).unwrap();
         assert_eq!(refs.len(), 2);
 
         let cover = refs.iter().find(|r| r.id == "rel-1").unwrap();
@@ -700,14 +700,17 @@ mod tests {
     #[test]
     fn updates_deletes_and_other_tables_carry_no_blobs() {
         // Image bytes never change on update; deletes go through the cloud
-        // outbox; non-blob tables (albums, etc.) carry nothing.
+        // outbox; non-blob tables (albums, etc.) carry nothing. coven walks one
+        // change at a time, so each must individually yield no blob.
         let changes = [
             image_row(ChangeOp::Update, "img-1", "cover", None),
             image_row(ChangeOp::Delete, "img-1", "cover", None),
             row("albums", ChangeOp::Insert, &["a-1"]),
         ];
-        assert!(plan().blobs_to_push(&changes).is_empty());
-        assert!(plan().blobs_to_pull(&changes).is_empty());
+        let source = source();
+        for change in &changes {
+            assert!(source.blobs_for_change(change).is_empty());
+        }
     }
 
     /// Pins the DDL↔index coupling: insert a `library_images` row through the

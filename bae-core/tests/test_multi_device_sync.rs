@@ -16,7 +16,7 @@ use bae_core::clock::SystemClock;
 use bae_core::db::Database;
 use bae_core::storage::cloud::{CloudHome, CloudHomeError, CloudHomeJoinInfo, UploadProgress};
 
-use coven::blob::{BlobPlan, BlobRef};
+use coven::blob::{BlobRef, BlobSource};
 use coven::changeset::RowChange;
 use coven::encryption::EncryptionService;
 use coven::keys::UserKeypair;
@@ -102,12 +102,9 @@ impl CloudHome for SharedCloud {
 }
 
 /// No blobs in this test — the catalog (rows) is what must cross, not audio.
-struct NoopBlobPlan;
-impl BlobPlan for NoopBlobPlan {
-    fn blobs_to_push(&self, _: &[RowChange]) -> Vec<BlobRef> {
-        Vec::new()
-    }
-    fn blobs_to_pull(&self, _: &[RowChange]) -> Vec<BlobRef> {
+struct NoopBlobSource;
+impl BlobSource for NoopBlobSource {
+    fn blobs_for_change(&self, _: &RowChange) -> Vec<BlobRef> {
         Vec::new()
     }
     fn blobs_in_db(
@@ -171,25 +168,37 @@ fn cloud_has_changeset(cloud: &SharedCloud, device_id: &str) -> bool {
         .any(|k| k.starts_with(&prefix))
 }
 
+/// The one library both devices sync. coven authorizes a changeset against the
+/// library it names, so the cycle and the storage that signs the device's control
+/// objects must agree on it.
+const LIBRARY_ID: &str = "test-lib";
+
 /// Run one sync cycle for `device_id` over `storage` (no cloud_home → no outbox
-/// processing; no blobs).
-async fn sync_cycle(db: &Database, storage: &CloudSyncStorage, device_id: &str, lib: &LibraryDir) {
+/// processing; no blobs). `keypair` is the device's identity — the same key its
+/// `storage` signs control objects with, so the cloud accepts what it reads back.
+async fn sync_cycle(
+    db: &Database,
+    storage: &CloudSyncStorage,
+    device_id: &str,
+    keypair: &UserKeypair,
+    lib: &LibraryDir,
+) {
     let hlc = Hlc::new(device_id.to_string());
     let cipher = RwLock::new(CloudCipher::Encrypted(EncryptionService::new_with_key(
         &[9u8; 32],
     )));
-    let keypair = UserKeypair::generate();
     run_single_sync_cycle(
         storage,
+        LIBRARY_ID,
         device_id,
         &hlc,
         &SystemClock,
         db.coven_db(),
         &cipher,
-        &keypair,
+        keypair,
         lib,
         None,
-        &NoopBlobPlan,
+        &NoopBlobSource,
         None,
     )
     .await
@@ -208,17 +217,19 @@ async fn managed_catalog_pushed_by_device_a_reaches_device_b() {
     let db_a = Database::new_test(lib_a.db_path().to_str().unwrap(), Arc::new(SystemClock))
         .await
         .unwrap();
+    let keypair_a = UserKeypair::generate();
     let storage_a = CloudSyncStorage::new(
-        Box::new(cloud.clone()),
+        Arc::new(cloud.clone()),
         CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
         BlobPathScheme::Hashed,
+        keypair_a.clone(),
     );
 
     insert_managed_catalog(&db_a).await;
 
     // A syncs: the managed release flips into the gated set, so its whole subtree
     // is pushed to the cloud.
-    sync_cycle(&db_a, &storage_a, "device-a", &lib_a).await;
+    sync_cycle(&db_a, &storage_a, "device-a", &keypair_a, &lib_a).await;
 
     // Device B: a fresh empty library on the same cloud.
     let tmp_b = tempfile::tempdir().unwrap();
@@ -227,10 +238,12 @@ async fn managed_catalog_pushed_by_device_a_reaches_device_b() {
     let db_b = Database::new_test(lib_b.db_path().to_str().unwrap(), Arc::new(SystemClock))
         .await
         .unwrap();
+    let keypair_b = UserKeypair::generate();
     let storage_b = CloudSyncStorage::new(
-        Box::new(cloud.clone()),
+        Arc::new(cloud.clone()),
         CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
         BlobPathScheme::Hashed,
+        keypair_b.clone(),
     );
     assert_eq!(
         count(&db_b, "SELECT count(*) FROM releases").await,
@@ -239,7 +252,7 @@ async fn managed_catalog_pushed_by_device_a_reaches_device_b() {
     );
 
     // B syncs: it pulls A's catalog changeset.
-    sync_cycle(&db_b, &storage_b, "device-b", &lib_b).await;
+    sync_cycle(&db_b, &storage_b, "device-b", &keypair_b, &lib_b).await;
 
     // B must now hold A's managed release, its album/artist, and both tracks.
     assert_eq!(
@@ -310,17 +323,19 @@ async fn each_release_propagates_when_its_own_upload_flips_managed() {
     let db_a = Database::new_test(lib_a.db_path().to_str().unwrap(), Arc::new(SystemClock))
         .await
         .unwrap();
+    let keypair_a = UserKeypair::generate();
     let storage_a = CloudSyncStorage::new(
-        Box::new(cloud.clone()),
+        Arc::new(cloud.clone()),
         CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
         BlobPathScheme::Hashed,
+        keypair_a.clone(),
     );
 
     insert_two_uploading_releases(&db_a).await;
 
     // Cycle 1: both releases are still `managed = 0` (audio uploading), so the
     // gate cuts them — nothing reaches the cloud.
-    sync_cycle(&db_a, &storage_a, "device-a", &lib_a).await;
+    sync_cycle(&db_a, &storage_a, "device-a", &keypair_a, &lib_a).await;
     assert!(
         !cloud_has_changeset(&cloud, "device-a"),
         "a release whose audio isn't uploaded yet (managed=0) is gated out",
@@ -330,7 +345,7 @@ async fn each_release_propagates_when_its_own_upload_flips_managed() {
     // copy), through the same DB transition the live observer calls. re2 is still
     // uploading.
     db_a.set_release_managed_cloud_only("re1").await.unwrap();
-    sync_cycle(&db_a, &storage_a, "device-a", &lib_a).await;
+    sync_cycle(&db_a, &storage_a, "device-a", &keypair_a, &lib_a).await;
 
     // Device B pulls: it gets re1 (and its album/artist/track) but NOT re2 —
     // re1 reached B without waiting for re2's upload.
@@ -340,12 +355,14 @@ async fn each_release_propagates_when_its_own_upload_flips_managed() {
     let db_b = Database::new_test(lib_b.db_path().to_str().unwrap(), Arc::new(SystemClock))
         .await
         .unwrap();
+    let keypair_b = UserKeypair::generate();
     let storage_b = CloudSyncStorage::new(
-        Box::new(cloud.clone()),
+        Arc::new(cloud.clone()),
         CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
         BlobPathScheme::Hashed,
+        keypair_b.clone(),
     );
-    sync_cycle(&db_b, &storage_b, "device-b", &lib_b).await;
+    sync_cycle(&db_b, &storage_b, "device-b", &keypair_b, &lib_b).await;
     assert_eq!(
         count(
             &db_b,
@@ -363,8 +380,8 @@ async fn each_release_propagates_when_its_own_upload_flips_managed() {
 
     // re2's audio finishes and flips it managed; now it reaches B too.
     db_a.set_release_managed_cloud_only("re2").await.unwrap();
-    sync_cycle(&db_a, &storage_a, "device-a", &lib_a).await;
-    sync_cycle(&db_b, &storage_b, "device-b", &lib_b).await;
+    sync_cycle(&db_a, &storage_a, "device-a", &keypair_a, &lib_a).await;
+    sync_cycle(&db_b, &storage_b, "device-b", &keypair_b, &lib_b).await;
     assert_eq!(
         count(
             &db_b,

@@ -512,8 +512,8 @@ async fn test_manage_cloud_only_upload_failure_keeps_source() {
 
     mgr.manage_release(&release_id, false, true).await.unwrap();
 
-    // A cloud whose writes all fail: process_uploads stops at the first one and
-    // never notifies the observer.
+    // A cloud whose writes all fail: drain_uploads records each failure and keeps
+    // draining, so none of the release's uploads succeed.
     let failing = MockCloudHome::failing();
     let enc = RwLock::new(enc_svc);
     let count = mgr

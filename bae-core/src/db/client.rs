@@ -281,7 +281,7 @@ impl Database {
     /// The connection coven owns, the integration seam for coven's sync + blob
     /// pipeline. `build_sync_manager` hands this to `coven::SyncManager::new`
     /// (which reads the synced-table set and the shared register clock from it),
-    /// and coven's `process_uploads`/`process_deletes` take it directly.
+    /// and coven's blob upload/delete drains take it directly.
     pub fn coven_db(&self) -> &coven::Database {
         &self.inner.coven_db
     }
