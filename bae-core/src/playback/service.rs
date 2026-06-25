@@ -23,8 +23,8 @@
 
 use super::RepeatMode;
 use super::{
-    repeat_to_str, ContextStart, NextEntry, PersistedPlayback, PlaybackQueue, PreviousAction,
-    QueueEntryId, QueueSnapshot, Traversal,
+    repeat_to_str, source_to_str, ContextSource, ContextStart, NextEntry, PersistedPlayback,
+    PlaybackQueue, PreviousAction, QueueEntryId, QueueSnapshot, Traversal,
 };
 use crate::audio_codec::StreamingDecodeError;
 use crate::db::{DbPlaybackContext, DbPlaybackState};
@@ -39,7 +39,10 @@ use crate::playback::error::PlaybackError;
 use crate::playback::progress::emit_progress;
 use crate::playback::progress::PreviewState;
 use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
-use crate::playback::source::{PlaybackSource, TrackCrossing, TrackFmt};
+// The `source` module is imported by path so the audio sample feed reads
+// `source::PlaybackSource` — distinct from the queue's `ContextSource`.
+use crate::playback::source;
+use crate::playback::source::{TrackCrossing, TrackFmt};
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::{create_track_stream_pair, TrackStream};
 use crate::util::format::PhysicalSideMedium;
@@ -139,6 +142,9 @@ pub enum PlaybackCommand {
         start_track_index: Option<usize>,
         shuffle: bool,
     },
+    /// Play the whole library in a freshly seeded shuffle. An empty library is a
+    /// no-op (logged); the seed is minted in the handler.
+    PlayLibraryShuffled,
     Pause,
     Resume,
     Stop,
@@ -294,6 +300,9 @@ impl PlaybackHandle {
                 shuffle,
             },
         );
+    }
+    pub fn play_library_shuffled(&self) {
+        dispatch_command(&self.command_tx, PlaybackCommand::PlayLibraryShuffled);
     }
     pub fn pause(&self) {
         dispatch_command(&self.command_tx, PlaybackCommand::Pause);
@@ -617,7 +626,7 @@ pub struct PlaybackService {
     /// Current playing source. A `PlaybackSource` wraps the current track and an
     /// optional pre-staged next track so the audio callback can advance across a
     /// track boundary without rebuilding the stream.
-    current_playback_source: Option<Arc<Mutex<PlaybackSource>>>,
+    current_playback_source: Option<Arc<Mutex<source::PlaybackSource>>>,
     /// JoinHandle for the current decoder thread (needed for seek cancellation)
     current_decoder_handle: Option<std::thread::JoinHandle<()>>,
     /// Listener task handles for the current track (position ticks + completion)
@@ -644,7 +653,7 @@ pub struct PlaybackService {
     /// Streaming source for preview (to cancel on stop). Wrapped in a
     /// single-track `PlaybackSource` (preview never chains) to share the audio
     /// output's stream interface.
-    preview_playback_source: Option<Arc<Mutex<PlaybackSource>>>,
+    preview_playback_source: Option<Arc<Mutex<source::PlaybackSource>>>,
     /// Path of the file currently being previewed
     preview_path: Option<String>,
     /// Whether the main player was playing before preview started (to resume on stop)
@@ -764,7 +773,7 @@ fn spawn_sync_to_async_bridge<T: Send + 'static>(
 
 async fn setup_audio_stream(
     audio_output: &mut dyn AudioOutput,
-    source: Arc<Mutex<PlaybackSource>>,
+    source: Arc<Mutex<source::PlaybackSource>>,
     position_update_interval_ms: u32,
 ) -> Result<StreamSetup, PlaybackError> {
     let (source_sample_rate, source_channels) = {
@@ -978,7 +987,7 @@ impl PlaybackService {
     /// filling the buffer. After this, the buffer is ready for a new decoder
     /// to read from position 0.
     async fn teardown_decoder_for_seek(
-        source: &mut Option<Arc<Mutex<PlaybackSource>>>,
+        source: &mut Option<Arc<Mutex<source::PlaybackSource>>>,
         buffer: &SharedSparseBuffer,
         cancel_token: &Arc<std::sync::atomic::AtomicBool>,
         decoder_handle: &mut Option<std::thread::JoinHandle<()>>,
@@ -1045,7 +1054,7 @@ impl PlaybackService {
 
         // Wrap the track source in a PlaybackSource so the audio callback can
         // advance to a pre-staged next track without rebuilding the stream.
-        let gapless = Arc::new(Mutex::new(PlaybackSource::new(
+        let gapless = Arc::new(Mutex::new(source::PlaybackSource::new(
             source,
             fmt,
             self.boundary_tx.clone(),
@@ -1406,24 +1415,25 @@ impl PlaybackService {
 
         // -- All fallible work first; the queue is untouched until it succeeds. --
 
-        // Re-materialize the context from its source release's current tracks
-        // (deleted tracks fall out of `get_track_ids`). A fetch error abandons the
-        // restore; an empty result means the source release is gone; a result
-        // shorter than the saved cursor means the release shrank below where we
-        // were playing. Either way we drop the context and restore the manual
-        // lane only, so `build_context` only ever sees an in-range cursor.
+        // Re-materialize the context from its source's current tracks (deleted
+        // tracks fall out of the re-fetch). A fetch error abandons the restore; an
+        // empty result means the source is gone (the release was deleted, or the
+        // library is now empty); a result shorter than the saved cursor means the
+        // source shrank below where we were playing. Either way we drop the context
+        // and restore the manual lane only, so `build_context` only ever sees an
+        // in-range cursor.
         let (context, context_tracks) = match &parsed.queue.context {
-            Some(cs) => match self.library_manager.get_track_ids(&cs.source).await {
+            Some(cs) => match self.fetch_source_tracks(&cs.source).await {
                 Ok(tracks) if tracks.is_empty() => {
                     debug!(
-                        "resume context release {} is gone; restoring the manual lane only",
+                        "resume context source {:?} is gone; restoring the manual lane only",
                         cs.source
                     );
                     (None, Vec::new())
                 }
                 Ok(tracks) if cs.cursor >= tracks.len() => {
                     warn!(
-                        "saved cursor {} is past the {} current tracks of {}; \
+                        "saved cursor {} is past the {} current tracks of {:?}; \
                          restoring the manual lane only",
                         cs.cursor,
                         tracks.len(),
@@ -1434,7 +1444,7 @@ impl PlaybackService {
                 Ok(tracks) => (parsed.queue.context, tracks),
                 Err(e) => {
                     warn!(
-                        "couldn't load the resume context tracks for {}: {e}; starting fresh",
+                        "couldn't load the resume context tracks for {:?}: {e}; starting fresh",
                         cs.source
                     );
                     return;
@@ -1552,6 +1562,21 @@ impl PlaybackService {
     ///
     /// The write is logged-best-effort, not propagated as fatal: a failed
     /// resume-cache write only costs the resume point; playback is unaffected.
+    /// Fetch a context's tracks in source order for the source it plays from:
+    /// a release's ordered track ids, or every library track. The one place the
+    /// service re-derives a context's tracks (the shuffle toggle, restore, and
+    /// any future `Context`-repeat re-fetch dispatch here so the two sources stay
+    /// in lockstep).
+    async fn fetch_source_tracks(
+        &self,
+        source: &ContextSource,
+    ) -> Result<Vec<String>, crate::library::LibraryError> {
+        match source {
+            ContextSource::Release(id) => self.library_manager.get_track_ids(id).await,
+            ContextSource::Library => self.library_manager.get_all_track_ids().await,
+        }
+    }
+
     /// The log is the never-mask escape hatch — a write failure is recorded, not
     /// conflated with "nothing was playing".
     async fn persist_playback_state(&self) {
@@ -1564,7 +1589,7 @@ impl PlaybackService {
         }
         let snap = self.playback_queue.snapshot();
         let context = snap.context.map(|ctx| DbPlaybackContext {
-            source: ctx.source,
+            source: source_to_str(&ctx.source),
             shuffle_seed: match ctx.traversal {
                 Traversal::Shuffled { seed } => Some(seed as i64),
                 Traversal::Sequential => None,
@@ -1616,7 +1641,7 @@ impl PlaybackService {
                     match self.library_manager.get_play_context(&track_id).await {
                         Ok(context) => {
                             self.playback_queue.play_release(
-                                context.release_id,
+                                ContextSource::Release(context.release_id),
                                 context.track_ids,
                                 ContextStart::Index(context.index),
                             );
@@ -1671,9 +1696,38 @@ impl PlaybackService {
                         };
                         ContextStart::Index(index)
                     };
-                    let first_track = self
-                        .playback_queue
-                        .play_release(release_id, track_ids, start);
+                    let first_track = self.playback_queue.play_release(
+                        ContextSource::Release(release_id),
+                        track_ids,
+                        start,
+                    );
+                    self.pending_side_pause = None;
+                    self.emit_queue_update();
+                    self.play_track(&first_track, false, false).await;
+                }
+                PlaybackCommand::PlayLibraryShuffled => {
+                    let track_ids = match self.fetch_source_tracks(&ContextSource::Library).await {
+                        Ok(ids) => ids,
+                        Err(e) => {
+                            error!("PlayLibraryShuffled: couldn't load library tracks: {e}");
+                            continue;
+                        }
+                    };
+                    if track_ids.is_empty() {
+                        warn!("PlayLibraryShuffled: the library has no tracks; nothing to play");
+                        continue;
+                    }
+                    self.stop_preview_without_resume();
+                    self.main_was_playing_before_preview = false;
+                    // A fresh seed minted at the command boundary so the shuffled
+                    // order is reproducible and `Context` repeat can re-derive it.
+                    let first_track = self.playback_queue.play_release(
+                        ContextSource::Library,
+                        track_ids,
+                        ContextStart::Shuffled {
+                            seed: rand::random(),
+                        },
+                    );
                     self.pending_side_pause = None;
                     self.emit_queue_update();
                     self.play_track(&first_track, false, false).await;
@@ -1988,12 +2042,8 @@ impl PlaybackService {
                     self.persist_playback_state().await;
                 }
                 PlaybackCommand::SetShuffle(on) => {
-                    match self
-                        .playback_queue
-                        .context_source()
-                        .map(|s| s.to_string())
-                    {
-                        Some(source) => match self.library_manager.get_track_ids(&source).await {
+                    match self.playback_queue.context_source().cloned() {
+                        Some(source) => match self.fetch_source_tracks(&source).await {
                             Ok(source_tracks) => {
                                 // A fresh seed minted here at the command boundary so
                                 // a shuffled order is reproducible and `Context`
@@ -2005,7 +2055,7 @@ impl PlaybackService {
                                 self.persist_playback_state().await;
                             }
                             Err(e) => warn!(
-                                "SetShuffle: couldn't fetch source tracks for {source}: {e}; \
+                                "SetShuffle: couldn't fetch source tracks for {source:?}: {e}; \
                                  leaving the queue unchanged"
                             ),
                         },
@@ -2829,7 +2879,7 @@ impl PlaybackService {
             replay_gain_linear: 1.0,
         };
         let (preview_boundary_tx, _preview_boundary_rx) = tokio_mpsc::unbounded_channel();
-        let source = Arc::new(Mutex::new(PlaybackSource::new(
+        let source = Arc::new(Mutex::new(source::PlaybackSource::new(
             source,
             preview_fmt,
             preview_boundary_tx,

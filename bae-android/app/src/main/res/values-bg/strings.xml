@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">Текущо възпроизвеждане</string>
     <string name="queue_section_up_next">Следва</string>
     <string name="queue_section_playing_from">Възпроизвежда се от</string>
+    <string name="queue_section_your_library">Вашата библиотека</string>
+    <string name="shuffle_library">Разбъркване на библиотеката</string>
     <string name="queue_nothing_up_next">Няма следващо</string>
     <string name="queue_empty">Опашката е празна</string>
     <string name="queue_remove">Премахване от опашката</string>

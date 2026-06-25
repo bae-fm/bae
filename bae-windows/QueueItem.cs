@@ -22,12 +22,15 @@ public sealed class QueueItem
     public override string ToString() => $"{Title} — {Artist} · {DurationLabel}".Trim();
 }
 
-/// <summary>The context lane (the release being played from), from the
-/// <c>QueueUpdated</c> event JSON: its not-yet-played tail, plus whether it was
-/// ordered by shuffle (the queue dialog shows a shuffle indicator when so).
-/// Rendered as its own section, distinct from the manual "Up Next" lane.</summary>
+/// <summary>The context lane (what the queue is playing from), from the
+/// <c>QueueUpdated</c> event JSON: its kind (<c>release</c> / <c>library</c>, for
+/// the section label), its not-yet-played tail, plus whether it was ordered by
+/// shuffle (the queue dialog shows a shuffle indicator when so). Rendered as its
+/// own section, distinct from the manual "Up Next" lane.</summary>
 public sealed class PlaybackContext
 {
+    /// <summary>The source kind wire name: <c>"release"</c> or <c>"library"</c>.</summary>
+    public string Kind { get; set; } = string.Empty;
     public bool Shuffled { get; set; }
     public List<QueueItem> Upcoming { get; set; } = new();
 }

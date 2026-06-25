@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">正在播放</string>
     <string name="queue_section_up_next">接下來</string>
     <string name="queue_section_playing_from">來自</string>
+    <string name="queue_section_your_library">你的資料庫</string>
+    <string name="shuffle_library">隨機播放資料庫</string>
     <string name="queue_nothing_up_next">接下來沒有內容</string>
     <string name="queue_empty">佇列是空的</string>
     <string name="queue_remove">從佇列移除</string>

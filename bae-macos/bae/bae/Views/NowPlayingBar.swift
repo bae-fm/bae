@@ -449,6 +449,7 @@ private struct NowPlayingBarPreview: View {
         queueIsActive: true,
         queueManual: Array(PreviewData.queueItems.prefix(2)),
         queueContext: QueuePlaybackContext(
+            kind: .release,
             shuffled: false,
             upcoming: Array(PreviewData.queueItems.suffix(3))
         ),
@@ -465,6 +466,7 @@ private struct NowPlayingBarPreview: View {
         queueIsActive: true,
         queueManual: Array(PreviewData.queueItems.prefix(2)),
         queueContext: QueuePlaybackContext(
+            kind: .release,
             shuffled: true,
             upcoming: Array(PreviewData.queueItems.suffix(3))
         ),

@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">Đang phát</string>
     <string name="queue_section_up_next">Tiếp theo</string>
     <string name="queue_section_playing_from">Đang phát từ</string>
+    <string name="queue_section_your_library">Thư viện của bạn</string>
+    <string name="shuffle_library">Phát ngẫu nhiên thư viện</string>
     <string name="queue_nothing_up_next">Không có mục tiếp theo</string>
     <string name="queue_empty">Queue is empty</string>
     <string name="queue_remove">Remove from queue</string>

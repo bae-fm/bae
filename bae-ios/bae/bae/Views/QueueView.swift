@@ -122,21 +122,30 @@ struct QueueView: View {
                     onSkipped: { dismiss() }
                 )
             } header: {
-                playingFromHeader(shuffled: context.shuffled, queue: queue)
+                playingFromHeader(
+                    kind: context.kind,
+                    shuffled: context.shuffled,
+                    queue: queue
+                )
             }
         }
     }
 }
 
-/// The "Playing From" context-section header with its shuffle toggle — shared by
-/// the queue sheet and the expanded player's embedded queue so the control can't
-/// drift. The toggle is tinted when on; tapping it flips the context's order
-/// while the current track keeps playing.
+/// The context-section header with its shuffle toggle — shared by the queue
+/// sheet and the expanded player's embedded queue so the control can't drift.
+/// The title names what's playing — a release ("Playing From") vs the whole
+/// library — by `kind`. The toggle is tinted when on; tapping it flips the
+/// context's order while the current track keeps playing.
 @MainActor
 @ViewBuilder
-func playingFromHeader(shuffled: Bool, queue: Queue) -> some View {
+func playingFromHeader(
+    kind: BridgePlaybackSourceKind,
+    shuffled: Bool,
+    queue: Queue
+) -> some View {
     HStack(spacing: 6) {
-        Text("Playing From")
+        Text(contextSectionTitle(kind))
         Spacer()
         Button {
             queue.setShuffle(!shuffled)
@@ -148,6 +157,18 @@ func playingFromHeader(shuffled: Bool, queue: Queue) -> some View {
         .accessibilityLabel(
             shuffled ? Text("Turn off shuffle") : Text("Shuffle")
         )
+    }
+}
+
+/// The context section's title, by what it plays from: a release keeps the
+/// "Playing From" label; the library names itself. Resolving a localized key by
+/// the source kind is the UI's locale-rendering job.
+func contextSectionTitle(_ kind: BridgePlaybackSourceKind) -> LocalizedStringKey {
+    switch kind {
+    case .release:
+        return "Playing From"
+    case .library:
+        return "Your Library"
     }
 }
 

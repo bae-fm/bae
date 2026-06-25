@@ -47,6 +47,7 @@ import fm.bae.app.playback.QueueItem
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import uniffi.bae_bridge.BridgePlaybackSourceKind
 
 private const val TAG = "bae.QueueScreen"
 private val logger = BaeLogger(TAG)
@@ -108,6 +109,10 @@ internal class QueueOrder {
     val manual = mutableStateListOf<QueueItem>()
     val context = mutableStateListOf<QueueItem>()
     var contextShuffled by mutableStateOf(false)
+
+    /** What the context plays from (release vs library), labelling its section,
+     *  or null when nothing is playing from a context. */
+    var contextKind by mutableStateOf<BridgePlaybackSourceKind?>(null)
 
     val isEmpty: Boolean
         get() = manual.isEmpty() && context.isEmpty()
@@ -178,11 +183,13 @@ internal fun rememberReorderableQueue(
             when (val context = queue.context) {
                 null -> {
                     order.contextShuffled = false
+                    order.contextKind = null
                 }
 
                 else -> {
                     order.context.addAll(context.upcoming)
                     order.contextShuffled = context.shuffled
+                    order.contextKind = context.kind
                 }
             }
         }
@@ -224,9 +231,14 @@ internal fun LazyListScope.queueContent(
 
     if (order.context.isNotEmpty()) {
         item(key = "ctxhdr") {
+            val labelRes =
+                when (order.contextKind) {
+                    BridgePlaybackSourceKind.LIBRARY -> R.string.queue_section_your_library
+                    BridgePlaybackSourceKind.RELEASE, null -> R.string.queue_section_playing_from
+                }
             ContextSectionLabel(
                 session = session,
-                text = stringResource(R.string.queue_section_playing_from),
+                text = stringResource(labelRes),
                 shuffled = order.contextShuffled,
             )
         }

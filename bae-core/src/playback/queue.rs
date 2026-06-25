@@ -4,7 +4,9 @@ use tracing::warn;
 
 use super::RepeatMode;
 use crate::id_provider::IdRef;
-use crate::playback::context::{shuffled_traversal, ContextStart, PlaybackContext, Traversal};
+use crate::playback::context::{
+    shuffled_traversal, ContextSource, ContextStart, PlaybackContext, Traversal,
+};
 
 /// Per-instance identity for an enqueued track. Distinct from `track_id`: the
 /// same track enqueued twice yields two entries with two ids, each removable,
@@ -20,11 +22,13 @@ pub struct QueueEntry {
     pub track_id: String,
 }
 
-/// The context lane projected for the UI: its not-yet-played tail and whether
-/// the release was ordered by shuffle (which the UI surfaces as an indicator).
-/// Kept distinct from the manual lane so the two render as separate sections.
+/// The context lane projected for the UI: what it plays from (so the UI labels
+/// the section — a release vs the library), its not-yet-played tail, and whether
+/// it was ordered by shuffle (which the UI surfaces as an indicator). Kept
+/// distinct from the manual lane so the two render as separate sections.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContextProjection {
+    pub source: ContextSource,
     pub shuffled: bool,
     pub upcoming: Vec<QueueEntry>,
 }
@@ -54,11 +58,11 @@ enum EntryLocation {
     Context(usize),
 }
 
-/// The persistable view of a playing context (its release and how it's ordered),
-/// without the per-instance entry ids — those are local UI identity, re-minted on
-/// restore. Re-materialized from `source` + `traversal` on load.
+/// The persistable view of a playing context (what it plays from and how it's
+/// ordered), without the per-instance entry ids — those are local UI identity,
+/// re-minted on restore. Re-materialized from `source` + `traversal` on load.
 pub struct ContextSnapshot {
-    pub source: String,
+    pub source: ContextSource,
     pub traversal: Traversal,
     pub cursor: usize,
 }
@@ -170,7 +174,7 @@ impl PlaybackQueue {
 
     // -- Context ---------------------------------------------------------------
 
-    /// Order a release's source tracks under a traversal and mint a fresh
+    /// Order a source's tracks under a traversal and mint a fresh
     /// per-instance id per track: a shuffled traversal re-permutes `tracks` from
     /// its seed (the same seed yields the same order, so a restored shuffle
     /// reproduces what was played); a sequential one keeps source order. Shared
@@ -187,14 +191,14 @@ impl PlaybackQueue {
         tracks.into_iter().map(|t| self.mint(t)).collect()
     }
 
-    /// Build a `PlaybackContext` from a release's tracks under a traversal,
-    /// pairing the materialized order with `cursor`. The caller passes a non-empty
-    /// release and an in-range `cursor` (`play_release` validates its index;
+    /// Build a `PlaybackContext` from a source's tracks under a traversal,
+    /// pairing the materialized order with `cursor`. The caller passes non-empty
+    /// `tracks` and an in-range `cursor` (`play_release` validates its index;
     /// `restore` validates the saved cursor against the re-fetched tracks), so the
     /// context is non-empty with a valid cursor.
     fn build_context(
         &self,
-        source: String,
+        source: ContextSource,
         tracks: Vec<String>,
         cursor: usize,
         traversal: Traversal,
@@ -212,14 +216,14 @@ impl PlaybackQueue {
         }
     }
 
-    /// Make a release's tracks the playing context: build their order under
+    /// Make a source's tracks the playing context: build their order under
     /// `start`, set the cursor, and make the cursor entry current. Clears the
     /// manual lane (a fresh playback session). Returns the track to play. The
-    /// caller passes a non-empty release (and an in-range `Index`); the context
-    /// is therefore non-empty with a valid cursor.
+    /// caller passes a non-empty `track_ids` (and an in-range `Index`); the
+    /// context is therefore non-empty with a valid cursor.
     pub fn play_release(
         &mut self,
-        release_id: String,
+        source: ContextSource,
         track_ids: Vec<String>,
         start: ContextStart,
     ) -> String {
@@ -228,7 +232,7 @@ impl PlaybackQueue {
             ContextStart::Index(index) => (index, Traversal::Sequential),
             ContextStart::Shuffled { seed } => (0, Traversal::Shuffled { seed }),
         };
-        let context = self.build_context(release_id, track_ids, cursor, traversal);
+        let context = self.build_context(source, track_ids, cursor, traversal);
         let track = context.current().track_id.clone();
         self.current = Some(context.current().clone());
         self.context = Some(context);
@@ -614,12 +618,13 @@ impl PlaybackQueue {
         self.manual.iter().cloned().collect()
     }
 
-    /// The context's projection — its not-yet-played tail and whether it was
-    /// ordered by shuffle — or `None` when nothing is playing from a release.
+    /// The context's projection — what it plays from, its not-yet-played tail,
+    /// and whether it was ordered by shuffle — or `None` when nothing is playing.
     /// The two lanes are kept separate (not flattened) so each UI renders the
     /// manual lane and the context as distinct sections.
     pub fn context_projection(&self) -> Option<ContextProjection> {
         self.context.as_ref().map(|ctx| ContextProjection {
+            source: ctx.source.clone(),
             shuffled: matches!(ctx.traversal, Traversal::Shuffled { .. }),
             upcoming: ctx.upcoming().to_vec(),
         })
@@ -685,11 +690,11 @@ impl PlaybackQueue {
         self.current.as_ref().map(|e| e.track_id.as_str())
     }
 
-    /// The source release id of the playing context, or `None` when nothing is
-    /// playing from a release. The shuffle toggle reads this to re-fetch the
-    /// context's source tracks before re-materializing the order.
-    pub fn context_source(&self) -> Option<&str> {
-        self.context.as_ref().map(|ctx| ctx.source.as_str())
+    /// What the playing context plays from (a release or the library), or `None`
+    /// when nothing is playing. The shuffle toggle and `Context` repeat read this
+    /// to re-fetch the context's source tracks before re-materializing the order.
+    pub fn context_source(&self) -> Option<&ContextSource> {
+        self.context.as_ref().map(|ctx| &ctx.source)
     }
 
     /// The whole context order (including the tracks behind the cursor) as track
@@ -734,6 +739,11 @@ mod tests {
 
     fn rel(tracks: &[&str]) -> Vec<String> {
         tracks.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// A release source for the given id, the common `play_release` source.
+    fn rel_src(id: &str) -> ContextSource {
+        ContextSource::Release(id.to_string())
     }
 
     // -- manual lane -----------------------------------------------------------
@@ -843,7 +853,7 @@ mod tests {
     fn test_clear_empties_manual_keeps_context() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3"]),
             ContextStart::Index(0),
         );
@@ -878,7 +888,7 @@ mod tests {
     fn test_play_release_sets_current_and_upcoming() {
         let mut q = queue();
         let first = q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3"]),
             ContextStart::Index(0),
         );
@@ -891,7 +901,7 @@ mod tests {
     fn test_play_release_start_index() {
         let mut q = queue();
         let first = q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3"]),
             ContextStart::Index(1),
         );
@@ -903,7 +913,7 @@ mod tests {
     fn test_play_release_shuffled_keeps_all_tracks() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3", "t4"]),
             ContextStart::Shuffled { seed: 7 },
         );
@@ -917,7 +927,7 @@ mod tests {
         let order = |seed| {
             let mut q = queue();
             q.play_release(
-                "r1".into(),
+                rel_src("r1"),
                 rel(&["t1", "t2", "t3", "t4", "t5"]),
                 ContextStart::Shuffled { seed },
             );
@@ -934,7 +944,7 @@ mod tests {
     fn test_context_repeat_shuffled_loops_a_re_derived_order() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3", "t4", "t5"]),
             ContextStart::Shuffled { seed: 1 },
         );
@@ -960,13 +970,63 @@ mod tests {
         );
     }
 
+    /// A `Library` source is the same construct as a release: its tracks
+    /// materialize into the context under the seed, keeping every track, and the
+    /// snapshot reports the `Library` source.
+    #[test]
+    fn test_library_source_context_materializes_all_tracks() {
+        let mut q = queue();
+        q.play_release(
+            ContextSource::Library,
+            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            ContextStart::Shuffled { seed: 3 },
+        );
+        let mut all = full_order(&q);
+        all.sort();
+        assert_eq!(all, vec!["t1", "t2", "t3", "t4", "t5"]);
+        assert_eq!(q.snapshot().context.unwrap().source, ContextSource::Library);
+    }
+
+    /// `Context` repeat on a `Library` context loops a freshly re-derived order
+    /// of the same library tracks each pass — the queue re-permutes its held
+    /// entries in place, identical to a release context (the source enum only
+    /// labels where the tracks came from).
+    #[test]
+    fn test_context_repeat_on_library_re_derives_a_fresh_order() {
+        let mut q = queue();
+        q.play_release(
+            ContextSource::Library,
+            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            ContextStart::Shuffled { seed: 9 },
+        );
+        q.set_repeat_mode(RepeatMode::Context);
+        let first_pass = full_order(&q);
+        for _ in 0..first_pass.len() - 1 {
+            q.next_entry();
+        }
+        match q.next_entry() {
+            NextEntry::Play(_) => {}
+            other => panic!("expected a looped Play, got {other:?}"),
+        }
+        let second_pass = full_order(&q);
+
+        let (mut a, mut b) = (first_pass.clone(), second_pass.clone());
+        a.sort();
+        b.sort();
+        assert_eq!(a, b, "the loop replays exactly the library tracks");
+        assert_ne!(
+            first_pass, second_pass,
+            "but in a freshly re-derived order each pass"
+        );
+    }
+
     // -- shuffle toggle --------------------------------------------------------
 
     #[test]
     fn test_set_shuffle_on_keeps_current_track_with_cursor_on_it() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3", "t4", "t5"]),
             ContextStart::Index(2),
         );
@@ -992,7 +1052,7 @@ mod tests {
     fn test_set_shuffle_off_restores_source_order_from_current() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3", "t4", "t5"]),
             ContextStart::Index(2),
         );
@@ -1024,7 +1084,7 @@ mod tests {
         let order = |seed| {
             let mut q = queue();
             q.play_release(
-                "r1".into(),
+                rel_src("r1"),
                 rel(&["t1", "t2", "t3", "t4", "t5"]),
                 ContextStart::Index(0),
             );
@@ -1040,12 +1100,15 @@ mod tests {
     fn test_snapshot_restore_sequential_context() {
         let mut q = queue();
         q.play_release(
-            "rel-A".into(),
+            rel_src("rel-A"),
             rel(&["t1", "t2", "t3"]),
             ContextStart::Index(1),
         );
         let snap = q.snapshot();
-        assert_eq!(snap.context.as_ref().unwrap().source, "rel-A");
+        assert_eq!(
+            snap.context.as_ref().unwrap().source,
+            ContextSource::Release("rel-A".into())
+        );
         assert_eq!(snap.current_track_id.as_deref(), Some("t2"));
 
         let mut restored = queue();
@@ -1062,7 +1125,7 @@ mod tests {
     fn test_snapshot_restore_shuffled_keeps_cursor_on_same_track() {
         let mut q = queue();
         q.play_release(
-            "rel-A".into(),
+            rel_src("rel-A"),
             rel(&["t1", "t2", "t3", "t4", "t5"]),
             ContextStart::Shuffled { seed: 99 },
         );
@@ -1096,7 +1159,7 @@ mod tests {
     #[test]
     fn test_manual_drains_before_context() {
         let mut q = queue();
-        q.play_release("r1".into(), rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
         q.add_to_queue(rel(&["m1"]));
         // current = t1; next drains manual (m1) before advancing the context.
         assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
@@ -1108,7 +1171,7 @@ mod tests {
     fn test_context_advances_by_cursor() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3"]),
             ContextStart::Index(0),
         );
@@ -1122,7 +1185,7 @@ mod tests {
         // The queue holds the context order, so looping reuses it: the queue has
         // no library access, so it structurally cannot re-fetch.
         let mut q = queue();
-        q.play_release("r1".into(), rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
         q.set_repeat_mode(RepeatMode::Context);
         assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
         // Exhausted under Context repeat → loop from the start of the same order.
@@ -1133,7 +1196,7 @@ mod tests {
     #[test]
     fn test_repeat_track_pins_current() {
         let mut q = queue();
-        q.play_release("r1".into(), rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
         q.set_repeat_mode(RepeatMode::Track);
         assert!(matches!(q.next_entry(), NextEntry::RepeatCurrent(t) if t == "t1"));
     }
@@ -1142,7 +1205,7 @@ mod tests {
     fn test_previous_steps_cursor_back_multiple() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3"]),
             ContextStart::Index(0),
         );
@@ -1160,7 +1223,7 @@ mod tests {
     #[test]
     fn test_previous_past_3s_restarts() {
         let mut q = queue();
-        q.play_release("r1".into(), rel(&["t1", "t2"]), ContextStart::Index(1));
+        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
         assert!(matches!(
             q.previous_action(5000),
             PreviousAction::RestartCurrent
@@ -1171,7 +1234,7 @@ mod tests {
     fn test_skip_to_context_tail_moves_cursor() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3", "t4"]),
             ContextStart::Index(0),
         );
@@ -1186,7 +1249,7 @@ mod tests {
     fn test_remove_context_tail_entry() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3"]),
             ContextStart::Index(0),
         );
@@ -1200,7 +1263,7 @@ mod tests {
     fn test_reorder_context_tail_keeps_cursor() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3", "t4"]),
             ContextStart::Index(0),
         );
@@ -1220,7 +1283,7 @@ mod tests {
     #[test]
     fn test_reorder_cross_lane_is_noop() {
         let mut q = queue();
-        q.play_release("r1".into(), rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
         q.add_to_queue(rel(&["m1"]));
         let manual_id = manual_ids(&q)[0].clone();
         let context_id = q
@@ -1262,7 +1325,7 @@ mod tests {
     fn test_remove_by_ids_clears_manual_and_context() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "dup", "t3"]),
             ContextStart::Index(0),
         );
@@ -1277,7 +1340,7 @@ mod tests {
     fn test_remove_by_ids_keeps_cursor_on_same_track() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["gone", "t2", "t3"]),
             ContextStart::Index(1),
         );
@@ -1291,7 +1354,7 @@ mod tests {
     #[test]
     fn test_remove_by_ids_clears_current_when_deleted() {
         let mut q = queue();
-        q.play_release("r1".into(), rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
         let ids: HashSet<String> = ["t1"].iter().map(|s| s.to_string()).collect();
         q.remove_by_ids(&ids);
         assert_eq!(q.current_track_id(), None);
@@ -1301,7 +1364,7 @@ mod tests {
     fn test_remove_by_ids_deleting_current_last_entry_keeps_cursor_valid() {
         let mut q = queue();
         // current = t2 at the last position (cursor == len-1).
-        q.play_release("r1".into(), rel(&["t1", "t2"]), ContextStart::Index(1));
+        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
         let ids: HashSet<String> = ["t2"].iter().map(|s| s.to_string()).collect();
         q.remove_by_ids(&ids);
         assert_eq!(
@@ -1337,7 +1400,7 @@ mod tests {
     fn test_projection_keeps_manual_and_context_separate() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3"]),
             ContextStart::Index(0),
         );
@@ -1371,7 +1434,7 @@ mod tests {
     fn test_projection_context_carries_shuffled_flag() {
         let mut q = queue();
         q.play_release(
-            "r1".into(),
+            rel_src("r1"),
             rel(&["t1", "t2", "t3", "t4"]),
             ContextStart::Shuffled { seed: 7 },
         );
@@ -1397,7 +1460,7 @@ mod tests {
         let mut q = queue();
         assert!(!q.has_upcoming());
         assert!(!q.has_previous());
-        q.play_release("r1".into(), rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
         assert!(q.has_upcoming());
         assert!(!q.has_previous());
         q.next_entry(); // → t2

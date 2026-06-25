@@ -304,7 +304,9 @@ pub struct DbReleaseLocalCopy {
 /// the DB client destructures this on save and reassembles it on load.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbPlaybackContext {
-    /// The release being played from.
+    /// What the context plays from, encoded for the flat column: a release id, or
+    /// the library sentinel. See `source_to_str`/`source_from_str` in
+    /// `playback::persisted`.
     pub source: String,
     /// The `u64` shuffle seed reinterpreted as `i64` (SQLite's integer type) so
     /// the high bit round-trips. `None` = sequential (source) order.

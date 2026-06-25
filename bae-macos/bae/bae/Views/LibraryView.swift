@@ -44,6 +44,7 @@ struct LibraryView: View {
                         onAddNext: { releaseId in
                             queue.addReleaseNext(releaseId)
                         },
+                        onShuffleLibrary: { playback.playLibraryShuffled() },
                         headerTitle: String(localized: "Library"),
                     ) { albumId in
                         AlbumDetailView(albumId: albumId)

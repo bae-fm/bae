@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">ഇപ്പോൾ പ്ലേ ചെയ്യുന്നു</string>
     <string name="queue_section_up_next">അടുത്തത്</string>
     <string name="queue_section_playing_from">ഇതിൽ നിന്ന് പ്ലേ ചെയ്യുന്നു</string>
+    <string name="queue_section_your_library">നിങ്ങളുടെ ലൈബ്രറി</string>
+    <string name="shuffle_library">ലൈബ്രറി ഷഫിൾ ചെയ്യുക</string>
     <string name="queue_nothing_up_next">അടുത്തത് ഒന്നുമില്ല</string>
     <string name="queue_empty">ക്യൂ ശൂന്യം</string>
     <string name="queue_remove">ക്യൂയിൽ നിന്ന് നീക്കുക</string>

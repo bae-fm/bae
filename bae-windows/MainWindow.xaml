@@ -34,6 +34,7 @@
                 <TextBlock x:Name="SyncIndicator" VerticalAlignment="Center"
                            Foreground="Gray" TextWrapping="NoWrap" />
                 <ComboBox x:Name="SortBox" SelectionChanged="OnSortChanged" VerticalAlignment="Center" />
+                <Button x:Uid="ShuffleLibraryButton" Content="shuffle library" Click="OnShuffleLibraryClick" />
                 <Button x:Uid="LibrariesButton" Content="libraries" Click="OnLibrariesClick" />
                 <Button x:Uid="CloseLibraryButton" Content="close" Click="OnCloseLibraryClick" ToolTipService.ToolTip="close library">
                     <Button.KeyboardAccelerators>

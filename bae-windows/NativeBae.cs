@@ -956,6 +956,11 @@ internal static class NativeBae
         long startTrackIndex,
         [MarshalAs(UnmanagedType.I1)] bool shuffle);
 
+    /// <summary>Play the whole library in a freshly seeded shuffle. An empty
+    /// library is a no-op.</summary>
+    [DllImport(Dll, EntryPoint = "bae_play_library_shuffled", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void PlayLibraryShuffled(IntPtr handle);
+
     /// <summary>Toggle play/pause.</summary>
     [DllImport(Dll, EntryPoint = "bae_play_pause", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void PlayPause(IntPtr handle);

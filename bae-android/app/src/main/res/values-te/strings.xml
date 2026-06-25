@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">ఇప్పుడు ప్లే అవుతోంది</string>
     <string name="queue_section_up_next">తదుపరి</string>
     <string name="queue_section_playing_from">దీని నుండి ప్లే అవుతోంది</string>
+    <string name="queue_section_your_library">మీ లైబ్రరీ</string>
+    <string name="shuffle_library">లైబ్రరీని షఫుల్ చేయి</string>
     <string name="queue_nothing_up_next">తదుపరి ఏమీ లేదు</string>
     <string name="queue_empty">క్యూ ఖాళీగా ఉంది</string>
     <string name="queue_remove">క్యూ నుండి తీసివేయి</string>

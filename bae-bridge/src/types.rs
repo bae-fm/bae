@@ -1968,12 +1968,33 @@ pub struct BridgeQueueEntry {
     pub cover_image_id: Option<String>,
 }
 
-/// The context lane (the release being played from), carried by `QueueUpdated`
+/// Which kind of source the context plays from, so the UI labels the section
+/// (a release's "Playing From" vs the whole library). The discriminant of
+/// `bae_core::playback::ContextSource`; the release id stays in core (the UI
+/// labels by kind, not by id here). FFI mirror of the core enum's variants.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgePlaybackSourceKind {
+    Release,
+    Library,
+}
+
+impl BridgePlaybackSourceKind {
+    pub(crate) fn from_core(source: &bae_core::playback::ContextSource) -> Self {
+        match source {
+            bae_core::playback::ContextSource::Release(_) => Self::Release,
+            bae_core::playback::ContextSource::Library => Self::Library,
+        }
+    }
+}
+
+/// The context lane (what the queue is playing from), carried by `QueueUpdated`
 /// alongside the manual lane so each UI renders the two as distinct sections:
-/// its not-yet-played tail, plus whether it was ordered by shuffle (the UI shows
-/// a shuffle indicator when so).
+/// its kind (release vs library, for the section label), its not-yet-played tail,
+/// plus whether it was ordered by shuffle (the UI shows a shuffle indicator when
+/// so).
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePlaybackContext {
+    pub kind: BridgePlaybackSourceKind,
     pub shuffled: bool,
     pub upcoming: Vec<BridgeQueueEntry>,
 }

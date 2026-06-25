@@ -90,7 +90,7 @@ struct QueueView: View {
 
                         if let context, !context.upcoming.isEmpty {
                             QueueSection(
-                                title: String(localized: "Playing From"),
+                                title: Self.contextSectionTitle(context.kind),
                                 shuffled: context.shuffled,
                                 items: context.upcoming,
                                 acceptsExternalDrops: false,
@@ -109,6 +109,21 @@ struct QueueView: View {
             }
         }
         .background(Theme.surface)
+    }
+
+    /// The context section's title, by what it plays from: a release keeps the
+    /// "Playing From" label; the library names itself. Resolving a localized key
+    /// by the source kind is the UI's locale-rendering job — the kind crosses the
+    /// bridge as an enum, the prose stays here.
+    private static func contextSectionTitle(_ kind: BridgePlaybackSourceKind)
+        -> String
+    {
+        switch kind {
+        case .release:
+            return String(localized: "Playing From")
+        case .library:
+            return String(localized: "Your Library")
+        }
     }
 
     // MARK: - Header
@@ -558,6 +573,7 @@ extension QueueView {
         nowPlayingArtist: PreviewData.nowPlayingArtist,
         manual: Array(PreviewData.queueItems.prefix(2)),
         context: QueuePlaybackContext(
+            kind: .release,
             shuffled: true,
             upcoming: Array(PreviewData.queueItems.suffix(3))
         )

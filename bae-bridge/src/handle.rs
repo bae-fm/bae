@@ -266,6 +266,10 @@ impl AppHandle {
         );
     }
 
+    pub fn play_library_shuffled(&self) {
+        self.app_services.playback().play_library_shuffled();
+    }
+
     pub fn pause(&self) {
         self.app_services.playback().pause();
     }
@@ -1543,6 +1547,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             Some(BridgeUiEvent::QueueUpdated {
                 manual: manual.into_iter().map(to_entry).collect(),
                 context: context.map(|c| BridgePlaybackContext {
+                    kind: BridgePlaybackSourceKind::from_core(&c.source),
                     shuffled: c.shuffled,
                     upcoming: c.upcoming.into_iter().map(to_entry).collect(),
                 }),

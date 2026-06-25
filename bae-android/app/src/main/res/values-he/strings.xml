@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">מתנגן כעת</string>
     <string name="queue_section_up_next">הבא בתור</string>
     <string name="queue_section_playing_from">מנגן מתוך</string>
+    <string name="queue_section_your_library">הספרייה שלך</string>
+    <string name="shuffle_library">ערבוב הספרייה</string>
     <string name="queue_nothing_up_next">אין דבר בהמשך</string>
     <string name="queue_empty">התור ריק</string>
     <string name="queue_remove">הסר מהתור</string>

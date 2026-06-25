@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">आता प्ले होत आहे</string>
     <string name="queue_section_up_next">पुढचे</string>
     <string name="queue_section_playing_from">येथून वाजत आहे</string>
+    <string name="queue_section_your_library">तुमची लायब्ररी</string>
+    <string name="shuffle_library">लायब्ररी शफल करा</string>
     <string name="queue_nothing_up_next">पुढे काही नाही</string>
     <string name="queue_empty">रांग रिकामी आहे</string>
     <string name="queue_remove">रांगेतून काढा</string>

@@ -202,7 +202,11 @@ struct ExpandedNowPlayingView: View {
                     onSkipped: {}
                 )
             } header: {
-                playingFromHeader(shuffled: context.shuffled, queue: queue)
+                playingFromHeader(
+                    kind: context.kind,
+                    shuffled: context.shuffled,
+                    queue: queue
+                )
             }
         }
     }

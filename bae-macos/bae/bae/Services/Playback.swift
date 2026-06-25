@@ -18,6 +18,9 @@ final class Playback: Sendable, Observable {
         @Sendable (
             _ releaseId: String, _ startTrackIndex: UInt32?, _ shuffle: Bool
         ) -> Void
+    /// Play the whole library in a freshly seeded shuffle. An empty library is a
+    /// no-op (logged in core).
+    let playLibraryShuffled: @Sendable () -> Void
 
     init(
         togglePlayPause: @escaping @Sendable () -> Void = {},
@@ -33,7 +36,8 @@ final class Playback: Sendable, Observable {
             _,
             _,
             _ in
-        }
+        },
+        playLibraryShuffled: @escaping @Sendable () -> Void = {}
     ) {
         self.togglePlayPause = togglePlayPause
         self.pause = pause
@@ -45,6 +49,7 @@ final class Playback: Sendable, Observable {
         self.toggleMute = toggleMute
         self.cycleRepeatMode = cycleRepeatMode
         self.playRelease = playRelease
+        self.playLibraryShuffled = playLibraryShuffled
     }
 
     convenience init(handle: any AppHandleProtocol) {
@@ -64,7 +69,8 @@ final class Playback: Sendable, Observable {
                     startTrackIndex: $1,
                     shuffle: $2
                 )
-            }
+            },
+            playLibraryShuffled: { handle.playLibraryShuffled() }
         )
     }
 

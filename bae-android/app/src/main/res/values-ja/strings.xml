@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">再生中</string>
     <string name="queue_section_up_next">次に再生</string>
     <string name="queue_section_playing_from">再生元</string>
+    <string name="queue_section_your_library">ライブラリ</string>
+    <string name="shuffle_library">ライブラリをシャッフル</string>
     <string name="queue_nothing_up_next">次の項目はありません</string>
     <string name="queue_empty">キューは空です</string>
     <string name="queue_remove">キューから削除</string>

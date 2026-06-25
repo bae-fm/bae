@@ -186,6 +186,7 @@ impl UiEventBus {
                                 bus.emit(UiBusEvent::QueueUpdated {
                                     manual: manual_items,
                                     context: context.map(|c| crate::queue::ResolvedContext {
+                                        source: c.source,
                                         shuffled: c.shuffled,
                                         upcoming: context_items,
                                     }),

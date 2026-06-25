@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">In riproduzione</string>
     <string name="queue_section_up_next">A seguire</string>
     <string name="queue_section_playing_from">In riproduzione da</string>
+    <string name="queue_section_your_library">La tua libreria</string>
+    <string name="shuffle_library">Riproduci libreria in ordine casuale</string>
     <string name="queue_nothing_up_next">Niente a seguire</string>
     <string name="queue_empty">Queue is empty</string>
     <string name="queue_remove">Remove from queue</string>

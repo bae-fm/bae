@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">กำลังเล่น</string>
     <string name="queue_section_up_next">ถัดไป</string>
     <string name="queue_section_playing_from">กำลังเล่นจาก</string>
+    <string name="queue_section_your_library">คลังของคุณ</string>
+    <string name="shuffle_library">สุ่มเล่นคลังเพลง</string>
     <string name="queue_nothing_up_next">ไม่มีรายการถัดไป</string>
     <string name="queue_empty">คิวว่าง</string>
     <string name="queue_remove">นำออกจากคิว</string>

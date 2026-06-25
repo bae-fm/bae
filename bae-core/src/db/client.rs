@@ -1490,6 +1490,23 @@ impl Database {
             .await
     }
 
+    /// Every track id in the library, in a deterministic base order (the same
+    /// order across calls so a shuffle seed permutes a stable list). Ordered to
+    /// match the per-release order — by release, then side, track number, id — so
+    /// the library and a single release agree on what "source order" means.
+    pub async fn get_all_track_ids(&self) -> Result<Vec<String>, DbError> {
+        self.inner
+            .coven_db
+            .call(move |conn| {
+                let mut stmt = conn
+                    .prepare("SELECT id FROM tracks ORDER BY release_id, side, track_number, id")?;
+                let rows = stmt.query_map([], |row| row.get::<_, String>("id"))?;
+                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                    .map_err(DbError::from)
+            })
+            .await
+    }
+
     /// Return the subset of `track_ids` that exist in the tracks table.
     /// Ordering of returned IDs is unspecified; callers that need a
     /// specific order must re-derive it.

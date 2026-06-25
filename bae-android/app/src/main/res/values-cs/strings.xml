@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">Právě hraje</string>
     <string name="queue_section_up_next">Další v pořadí</string>
     <string name="queue_section_playing_from">Přehrává se z</string>
+    <string name="queue_section_your_library">Vaše knihovna</string>
+    <string name="shuffle_library">Náhodně přehrát knihovnu</string>
     <string name="queue_nothing_up_next">Nic dalšího v pořadí</string>
     <string name="queue_empty">Fronta je prázdná</string>
     <string name="queue_remove">Odebrat z fronty</string>

@@ -18,6 +18,8 @@ struct AlbumGridView<ExpansionContent: View>: View {
     let onPlay: (String) -> Void
     let onAddToQueue: (String) -> Void
     let onAddNext: (String) -> Void
+    /// Shuffle the whole library into a fresh playback session.
+    let onShuffleLibrary: () -> Void
     let headerTitle: String
     @ViewBuilder
     let expansionContent: (_ albumId: String) -> ExpansionContent
@@ -212,6 +214,11 @@ struct AlbumGridView<ExpansionContent: View>: View {
             Text(headerTitle)
                 .font(.system(size: 36, weight: .bold))
             Spacer()
+            Button(action: onShuffleLibrary) {
+                Label("Shuffle Library", systemImage: "shuffle")
+            }
+            .buttonStyle(.borderless)
+            .help("Shuffle Library")
             sortControls
         }
     }
@@ -486,6 +493,7 @@ private class MenuItem: NSMenuItem {
                 onPlay: { _ in },
                 onAddToQueue: { _ in },
                 onAddNext: { _ in },
+                onShuffleLibrary: {},
                 headerTitle: "Library",
             ) { albumId in
                 AlbumDetailView(albumId: albumId)

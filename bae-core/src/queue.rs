@@ -18,14 +18,15 @@ pub struct QueueItem {
     pub cover_image_id: Option<String>,
 }
 
-/// The context lane resolved for display: the not-yet-played tail of the
-/// release being played from, plus whether it was ordered by shuffle (which the
-/// UI surfaces as an indicator). The display-ready counterpart of
-/// [`crate::playback::ContextProjection`], with each entry resolved to a
-/// [`QueueItem`]. Carried separately from the manual lane so each UI renders the
-/// two as distinct sections.
+/// The context lane resolved for display: what it plays from (so the UI labels
+/// the section — a release vs the library), the not-yet-played tail, and whether
+/// it was ordered by shuffle (which the UI surfaces as an indicator). The
+/// display-ready counterpart of [`crate::playback::ContextProjection`], with each
+/// entry resolved to a [`QueueItem`]. Carried separately from the manual lane so
+/// each UI renders the two as distinct sections.
 #[derive(Debug, Clone)]
 pub struct ResolvedContext {
+    pub source: crate::playback::ContextSource,
     pub shuffled: bool,
     pub upcoming: Vec<QueueItem>,
 }

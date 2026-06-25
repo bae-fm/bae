@@ -1,5 +1,17 @@
 use crate::playback::queue::QueueEntry;
 
+/// What the queue is playing from: a single release (its track order), or the
+/// whole library. A `Release` carries the id its tracks are fetched by; `Library`
+/// has no id — its tracks are every track in the library. The service dispatches
+/// the track re-fetch on this (release → `get_track_ids`, library →
+/// `get_all_track_ids`) and persistence encodes it in the resume cache's `source`
+/// column.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ContextSource {
+    Release(String),
+    Library,
+}
+
 /// How the context's track order was derived, kept so `Context` repeat can
 /// re-derive it: `Sequential` replays the source order; `Shuffled` re-permutes
 /// with a fresh seed each loop.
@@ -19,17 +31,19 @@ pub enum ContextStart {
     Shuffled { seed: u64 },
 }
 
-/// The thing playback is "playing from": a release's track order, traversed by a
+/// The thing playback is "playing from": a source's track order, traversed by a
 /// cursor.
 ///
 /// The tracks are held as per-instance [`QueueEntry`]s so the cursor walks
 /// forward (advance) and backward (Previous) over stable row ids, and `Context`
-/// repeat loops the stored order without re-fetching it. A release is small, so
-/// the whole order is held expanded.
+/// repeat loops the stored order without re-fetching it. The whole order is held
+/// expanded — a release is small, and the library materializes to cheap track-id
+/// strings.
 pub struct PlaybackContext {
-    /// The release this order came from. Read by persistence to re-fetch the
-    /// tracks and re-materialize the order on restart.
-    pub source: String,
+    /// What this order came from (a release, or the whole library). Read by
+    /// persistence and the shuffle/repeat re-derive to re-fetch the tracks and
+    /// re-materialize the order.
+    pub source: ContextSource,
     /// The release's tracks in play order, each with a stable per-instance id.
     pub entries: Vec<QueueEntry>,
     /// Index into `entries` of the context track currently playing.

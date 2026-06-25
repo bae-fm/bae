@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -246,16 +247,14 @@ private fun LibraryBrowser(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var searchOpen by remember { mutableStateOf(false) }
-    var sortCriterion by remember {
-        mutableStateOf(BridgeSortCriterion(BridgeSortField.DATE_ADDED, BridgeSortDirection.DESCENDING))
-    }
+    var sortCriterion by
+        remember { mutableStateOf(BridgeSortCriterion(BridgeSortField.DATE_ADDED, BridgeSortDirection.DESCENDING)) }
     val generation by session.libraryStore.generation.collectAsState()
     val syncing by session.configStore.syncing.collectAsState()
     val syncError by session.configStore.syncError.collectAsState()
     val appError by session.configStore.error.collectAsState()
-    val appContext = LocalContext.current
     val gridState = rememberLazyGridState()
-    val page = rememberLibraryPage(session, generation, sortCriterion, appContext, gridState)
+    val page = rememberLibraryPage(session, generation, sortCriterion, LocalContext.current, gridState)
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (searchOpen) {
@@ -270,6 +269,13 @@ private fun LibraryBrowser(
         } else {
             LibraryTopBar(
                 onOpenSearch = { searchOpen = true },
+                onShuffleLibrary = {
+                    try {
+                        session.appHandle.playLibraryShuffled()
+                    } catch (e: Exception) {
+                        logger.error("playLibraryShuffled failed", e)
+                    }
+                },
                 sortCriterion = sortCriterion,
                 onSortChange = { sortCriterion = it },
                 onSettings = onSettings,
@@ -388,6 +394,7 @@ private fun LibraryErrorBanner(
 @Composable
 private fun LibraryTopBar(
     onOpenSearch: () -> Unit,
+    onShuffleLibrary: () -> Unit,
     sortCriterion: BridgeSortCriterion,
     onSortChange: (BridgeSortCriterion) -> Unit,
     onSettings: () -> Unit,
@@ -401,6 +408,12 @@ private fun LibraryTopBar(
             Spacer(modifier = Modifier.weight(1f))
             IconButton(onClick = onOpenSearch) {
                 Icon(imageVector = Icons.Filled.Search, contentDescription = stringResource(R.string.search))
+            }
+            IconButton(onClick = onShuffleLibrary) {
+                Icon(
+                    imageVector = Icons.Filled.Shuffle,
+                    contentDescription = stringResource(R.string.shuffle_library),
+                )
             }
             SortMenu(criterion = sortCriterion, onChange = onSortChange)
             IconButton(onClick = onSettings) {

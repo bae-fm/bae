@@ -4,6 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>search</value></data>
   <data name="LibrariesButton.Content" xml:space="preserve"><value>libraries</value></data>
+  <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>நூலகத்தை கலைத்து இயக்கு</value></data>
   <data name="CloseLibraryButton.Content" xml:space="preserve"><value>close</value></data>
   <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>close நூலகம்</value></data>
   <data name="ImportButton.Content" xml:space="preserve"><value>import</value></data>
@@ -119,6 +120,7 @@
   <data name="queue.title" xml:space="preserve"><value>queue</value></data>
   <data name="queue.section.up_next" xml:space="preserve"><value>அடுத்தது</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>இதிலிருந்து இயக்குகிறது</value></data>
+  <data name="queue.section.your_library" xml:space="preserve"><value>உங்கள் நூலகம்</value></data>
   <data name="queue.shuffle.off" xml:space="preserve"><value>turn off shuffle</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>shuffle</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>restore code</value></data>

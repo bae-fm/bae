@@ -17,6 +17,8 @@ struct LibraryView: View {
     private var configStore
     @Environment(Sync.self)
     private var sync
+    @Environment(Playback.self)
+    private var playback
 
     @State
     private var showSettings = false
@@ -56,6 +58,14 @@ struct LibraryView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     sortMenu
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        playback.playLibraryShuffled()
+                    } label: {
+                        Image(systemName: "shuffle")
+                    }
+                    .accessibilityLabel(Text("Shuffle Library"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Text(

@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">Çalıyor</string>
     <string name="queue_section_up_next">Sıradaki</string>
     <string name="queue_section_playing_from">Şuradan çalınıyor</string>
+    <string name="queue_section_your_library">Kitaplığınız</string>
+    <string name="shuffle_library">Kitaplığı karıştır</string>
     <string name="queue_nothing_up_next">Sırada bir şey yok</string>
     <string name="queue_empty">Queue is empty</string>
     <string name="queue_remove">Remove from queue</string>

@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">Aktuelle Wiedergabe</string>
     <string name="queue_section_up_next">Als Nächstes</string>
     <string name="queue_section_playing_from">Wird abgespielt aus</string>
+    <string name="queue_section_your_library">Deine Mediathek</string>
+    <string name="shuffle_library">Mediathek zufällig wiedergeben</string>
     <string name="queue_nothing_up_next">Nichts als Nächstes</string>
     <string name="queue_empty">Warteschlange ist leer</string>
     <string name="queue_remove">Aus Warteschlange entfernen</string>

@@ -3758,6 +3758,12 @@ impl LibraryManager {
     pub async fn get_track_ids(&self, release_id: &str) -> Result<Vec<String>, LibraryError> {
         Ok(self.database.get_track_ids_for_release(release_id).await?)
     }
+    /// Every track id in the library, in a deterministic base order. Used to
+    /// materialize a `ContextSource::Library` context (shuffle library, and the
+    /// `Context`-repeat re-derive of a library context).
+    pub async fn get_all_track_ids(&self) -> Result<Vec<String>, LibraryError> {
+        Ok(self.database.get_all_track_ids().await?)
+    }
     /// Return the play context for a track: its release id, the release's full
     /// track order, and the track's index within it. Used by the playback
     /// service to build the queue around a freshly selected track without
@@ -9019,5 +9025,104 @@ mod tests {
             ),
             "the drop guard must emit ReleaseTransferEnded for the aborted release, got {event:?}"
         );
+    }
+
+    /// Seed an album with two releases, each holding two tracks with explicit
+    /// side/track-number so the library order is deterministic. Track ids are
+    /// chosen so the `(release_id, side, track_number, id)` order is unambiguous.
+    async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) {
+        use crate::db::DbTrack;
+        let mut album = create_test_album();
+        album.id = "alb-1".to_string();
+        let mut rel1 = create_test_release(&album.id);
+        rel1.id = "rel-1".to_string();
+        let mut rel2 = create_test_release(&album.id);
+        rel2.id = "rel-2".to_string();
+        manager.database.insert_album(&album).await.unwrap();
+        manager.database.insert_release(&rel1).await.unwrap();
+        manager.database.insert_release(&rel2).await.unwrap();
+
+        let track = |release_id: &str, id: &str, side: i32, number: i32| {
+            let t = DbTrack {
+                side,
+                ..DbTrack::new_test(release_id, id, "Track Title", Some(number))
+            };
+            let database = &manager.database;
+            async move { database.insert_track(&t).await.unwrap() }
+        };
+        // rel-1: side 1 then side 2; rel-2: two side-1 tracks.
+        track("rel-1", "r1-t1", 1, 1).await;
+        track("rel-1", "r1-t2", 2, 1).await;
+        track("rel-2", "r2-t1", 1, 1).await;
+        track("rel-2", "r2-t2", 1, 2).await;
+        (rel1.id, rel2.id)
+    }
+
+    /// `get_all_track_ids` returns every library track in the deterministic base
+    /// order — by release, then side, track number, id — so a shuffle seed
+    /// permutes a stable list.
+    #[tokio::test]
+    async fn test_get_all_track_ids_returns_library_in_base_order() {
+        let (manager, _temp_dir) = setup_test_manager().await;
+        seed_two_release_library(&manager).await;
+        let all = manager.get_all_track_ids().await.unwrap();
+        assert_eq!(all, vec!["r1-t1", "r1-t2", "r2-t1", "r2-t2"]);
+    }
+
+    /// The two track-id queries the service's source dispatcher routes between:
+    /// a release's own ordered tracks (`get_track_ids`) vs the whole library
+    /// (`get_all_track_ids`). The library is the union of the releases, so a
+    /// release's tracks are a strict subset of it.
+    #[tokio::test]
+    async fn test_release_and_library_track_id_queries_return_their_sets() {
+        let (manager, _temp_dir) = setup_test_manager().await;
+        let (rel1, _rel2) = seed_two_release_library(&manager).await;
+        let release_tracks = manager.get_track_ids(&rel1).await.unwrap();
+        assert_eq!(release_tracks, vec!["r1-t1", "r1-t2"]);
+        let library_tracks = manager.get_all_track_ids().await.unwrap();
+        assert_eq!(library_tracks, vec!["r1-t1", "r1-t2", "r2-t1", "r2-t2"]);
+        assert!(release_tracks.iter().all(|t| library_tracks.contains(t)));
+    }
+
+    /// A `playback_state` row carrying a library source survives save → load: the
+    /// `source` column stores the library sentinel and reads back unchanged, and a
+    /// release row stores/reads its id. (Decoding the sentinel back to the source
+    /// enum is covered in `playback::persisted`.)
+    #[tokio::test]
+    async fn test_playback_state_source_column_round_trips_both_kinds() {
+        use crate::db::{DbPlaybackContext, DbPlaybackState};
+        use crate::playback::source_to_str;
+        use crate::playback::ContextSource;
+        let (manager, _temp_dir) = setup_test_manager().await;
+
+        for source in [
+            ContextSource::Library,
+            ContextSource::Release("rel-1".to_string()),
+        ] {
+            let row = DbPlaybackState {
+                context: Some(DbPlaybackContext {
+                    source: source_to_str(&source),
+                    shuffle_seed: Some(11),
+                    cursor: 0,
+                }),
+                manual: "[]".to_string(),
+                repeat: "off".to_string(),
+                current_track_id: None,
+                position_ms: None,
+                volume: 1.0,
+                is_muted: false,
+            };
+            manager.save_playback_state(&row).await.unwrap();
+            let loaded = manager
+                .load_playback_state()
+                .await
+                .unwrap()
+                .expect("a saved row loads");
+            assert_eq!(
+                loaded.context.unwrap().source,
+                source_to_str(&source),
+                "the source column round-trips for {source:?}"
+            );
+        }
     }
 }

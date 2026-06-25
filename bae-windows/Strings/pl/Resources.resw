@@ -4,6 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>szukaj</value></data>
   <data name="LibrariesButton.Content" xml:space="preserve"><value>biblioteki</value></data>
+  <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>odtwarzaj bibliotekę losowo</value></data>
   <data name="CloseLibraryButton.Content" xml:space="preserve"><value>zamknij</value></data>
   <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>zamknij bibliotekę</value></data>
   <data name="ImportButton.Content" xml:space="preserve"><value>importuj</value></data>
@@ -119,6 +120,7 @@
   <data name="queue.title" xml:space="preserve"><value>kolejka</value></data>
   <data name="queue.section.up_next" xml:space="preserve"><value>Następne w kolejce</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Odtwarzanie z</value></data>
+  <data name="queue.section.your_library" xml:space="preserve"><value>Twoja biblioteka</value></data>
   <data name="queue.shuffle.off" xml:space="preserve"><value>wyłącz odtwarzanie losowe</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>losowo</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>kod przywracania</value></data>

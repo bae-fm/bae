@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">Speelt nu</string>
     <string name="queue_section_up_next">Volgende</string>
     <string name="queue_section_playing_from">Afspelen vanuit</string>
+    <string name="queue_section_your_library">Je bibliotheek</string>
+    <string name="shuffle_library">Bibliotheek shufflen</string>
     <string name="queue_nothing_up_next">Niets hierna</string>
     <string name="queue_empty">Queue is empty</string>
     <string name="queue_remove">Remove from queue</string>

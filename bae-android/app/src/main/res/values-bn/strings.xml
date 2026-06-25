@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">এখন চলছে</string>
     <string name="queue_section_up_next">পরবর্তী</string>
     <string name="queue_section_playing_from">যা থেকে চলছে</string>
+    <string name="queue_section_your_library">আপনার লাইব্রেরি</string>
+    <string name="shuffle_library">লাইব্রেরি শাফল করুন</string>
     <string name="queue_nothing_up_next">পরবর্তী কিছু নেই</string>
     <string name="queue_empty">সারি খালি</string>
     <string name="queue_remove">সারি থেকে সরান</string>

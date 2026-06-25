@@ -61,6 +61,8 @@
     <string name="queue_section_now_playing">Now Playing</string>
     <string name="queue_section_up_next">Up Next</string>
     <string name="queue_section_playing_from">Playing From</string>
+    <string name="queue_section_your_library">Your Library</string>
+    <string name="shuffle_library">Shuffle Library</string>
     <string name="queue_nothing_up_next">Nothing up next</string>
     <string name="queue_empty">Queue is empty</string>
     <string name="queue_remove">Remove from queue</string>

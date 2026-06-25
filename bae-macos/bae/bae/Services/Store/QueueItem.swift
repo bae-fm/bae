@@ -24,19 +24,27 @@ struct QueueItem: Identifiable, Equatable {
     }
 }
 
-/// The context lane (the release being played from): its not-yet-played tail,
-/// plus whether it was ordered by shuffle (rendered as a shuffle indicator).
-/// Shown as its own section, distinct from the manual "Up Next" lane.
+/// The context lane (what the queue is playing from): its kind (a release vs the
+/// whole library, which the section header labels), its not-yet-played tail, plus
+/// whether it was ordered by shuffle (rendered as a shuffle indicator). Shown as
+/// its own section, distinct from the manual "Up Next" lane.
 struct QueuePlaybackContext: Equatable {
+    let kind: BridgePlaybackSourceKind
     let shuffled: Bool
     let upcoming: [QueueItem]
 
     init(bridge: BridgePlaybackContext) {
+        kind = bridge.kind
         shuffled = bridge.shuffled
         upcoming = bridge.upcoming.map(QueueItem.init(bridge:))
     }
 
-    init(shuffled: Bool, upcoming: [QueueItem]) {
+    init(
+        kind: BridgePlaybackSourceKind,
+        shuffled: Bool,
+        upcoming: [QueueItem]
+    ) {
+        self.kind = kind
         self.shuffled = shuffled
         self.upcoming = upcoming
     }

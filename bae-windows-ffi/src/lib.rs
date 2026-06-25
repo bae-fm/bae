@@ -2274,12 +2274,14 @@ struct FfiQueueItem {
     cover_image_id: Option<String>,
 }
 
-/// The context lane (the release being played from), carried by `QueueUpdated`
-/// alongside the manual lane so the UI renders the two as distinct sections:
-/// its not-yet-played tail, plus whether it was ordered by shuffle (the UI shows
-/// a shuffle indicator when so).
+/// The context lane (what the queue is playing from), carried by `QueueUpdated`
+/// alongside the manual lane so the UI renders the two as distinct sections: its
+/// kind (`release` / `library`, for the section label), its not-yet-played tail,
+/// plus whether it was ordered by shuffle (the UI shows a shuffle indicator when
+/// so).
 #[derive(Serialize)]
 struct FfiPlaybackContext {
+    kind: String,
     shuffled: bool,
     upcoming: Vec<FfiQueueItem>,
 }
@@ -2621,6 +2623,16 @@ fn repeat_mode_name(mode: &bae_core::playback::RepeatMode) -> &'static str {
     }
 }
 
+/// The wire name for a playback source kind — which the UI labels the context
+/// section by (a release vs the whole library).
+fn source_kind_name(source: &bae_core::playback::ContextSource) -> &'static str {
+    use bae_core::playback::ContextSource;
+    match source {
+        ContextSource::Release(_) => "release",
+        ContextSource::Library => "library",
+    }
+}
+
 /// Map a core `UiBusEvent` to the subset the WinUI app handles, or `None`.
 fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
     Some(match event {
@@ -2716,6 +2728,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             FfiEvent::QueueUpdated {
                 manual: manual.iter().map(to_item).collect(),
                 context: context.as_ref().map(|c| FfiPlaybackContext {
+                    kind: source_kind_name(&c.source).to_string(),
                     shuffled: c.shuffled,
                     upcoming: c.upcoming.iter().map(to_item).collect(),
                 }),
@@ -2896,6 +2909,18 @@ pub unsafe extern "C" fn bae_play_release(
         .services
         .playback()
         .play_release(release_id, start, shuffle);
+}
+
+/// Play the whole library in a freshly seeded shuffle. An empty library is a
+/// no-op (logged in core).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_play_library_shuffled(handle: *const BaeHandle) {
+    if let Some(handle) = handle.as_ref() {
+        handle.0.services.playback().play_library_shuffled();
+    }
 }
 
 /// Toggle play/pause.

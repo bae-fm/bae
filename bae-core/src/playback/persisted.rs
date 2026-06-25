@@ -8,7 +8,7 @@
 
 use tracing::warn;
 
-use super::{ContextSnapshot, QueueSnapshot, RepeatMode, Traversal};
+use super::{ContextSnapshot, ContextSource, QueueSnapshot, RepeatMode, Traversal};
 use crate::db::DbPlaybackState;
 
 /// The validated device-local resume cache: a queue snapshot plus the live
@@ -67,7 +67,7 @@ impl PersistedPlayback {
                     None => Traversal::Sequential,
                 };
                 Some(ContextSnapshot {
-                    source: ctx.source,
+                    source: source_from_str(ctx.source),
                     traversal,
                     cursor,
                 })
@@ -100,6 +100,32 @@ impl PersistedPlayback {
             volume: row.volume,
             is_muted: row.is_muted,
         })
+    }
+}
+
+/// The `playback_state.source` value standing for a library context. A release
+/// `source` is a UUID, which can never equal this literal, so the two are
+/// unambiguous in the column.
+const LIBRARY_SOURCE: &str = "library";
+
+/// Encode a [`ContextSource`] for the `playback_state.source` column: a release
+/// stores its id, the library the `LIBRARY_SOURCE` sentinel. A present context
+/// always has a `source`; "no context" is the NULL column, handled one level up.
+pub fn source_to_str(source: &ContextSource) -> String {
+    match source {
+        ContextSource::Release(id) => id.clone(),
+        ContextSource::Library => LIBRARY_SOURCE.to_string(),
+    }
+}
+
+/// Decode the `playback_state.source` column back to a [`ContextSource`]: the
+/// sentinel is the library, anything else is a release id. Total — every stored
+/// string maps to a source, so a present context never discards the cache here.
+fn source_from_str(source: String) -> ContextSource {
+    if source == LIBRARY_SOURCE {
+        ContextSource::Library
+    } else {
+        ContextSource::Release(source)
     }
 }
 
@@ -150,7 +176,7 @@ mod tests {
     fn valid_row_round_trips() {
         let parsed = PersistedPlayback::from_row(valid_row()).expect("a valid row parses");
         let context = parsed.queue.context.expect("the context survives");
-        assert_eq!(context.source, "rel-A");
+        assert_eq!(context.source, ContextSource::Release("rel-A".into()));
         assert_eq!(context.cursor, 2);
         assert!(matches!(
             context.traversal,
@@ -177,6 +203,36 @@ mod tests {
         let parsed = PersistedPlayback::from_row(row).expect("a valid row parses");
         let context = parsed.queue.context.expect("the context survives");
         assert!(matches!(context.traversal, Traversal::Sequential));
+    }
+
+    /// A row whose `source` is the library sentinel decodes back to the library
+    /// source — the resume cache for "shuffle library" survives a restart.
+    #[test]
+    fn library_source_row_round_trips() {
+        let row = DbPlaybackState {
+            context: Some(DbPlaybackContext {
+                source: source_to_str(&ContextSource::Library),
+                shuffle_seed: Some(7),
+                cursor: 0,
+            }),
+            ..valid_row()
+        };
+        let parsed = PersistedPlayback::from_row(row).expect("a valid row parses");
+        let context = parsed.queue.context.expect("the context survives");
+        assert_eq!(context.source, ContextSource::Library);
+    }
+
+    /// Both source kinds survive the `playback_state.source` encode/decode: a
+    /// release id is its own string, the library is the sentinel, and neither is
+    /// mistaken for the other (a release id is a UUID, never the sentinel).
+    #[test]
+    fn source_encoding_round_trips() {
+        for source in [
+            ContextSource::Release("550e8400-e29b-41d4-a716-446655440000".into()),
+            ContextSource::Library,
+        ] {
+            assert_eq!(source_from_str(source_to_str(&source)), source);
+        }
     }
 
     #[test]

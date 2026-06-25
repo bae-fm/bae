@@ -396,6 +396,14 @@ public sealed partial class MainWindow : Window
     // new one. Restore-from-code lives only in the first-run flow. Once a library
     // is open the first-run flow never shows, so this is the only way to reach
     // other libraries or create another.
+    private void OnShuffleLibraryClick(object sender, RoutedEventArgs e)
+    {
+        if (_handle != IntPtr.Zero)
+        {
+            NativeBae.PlayLibraryShuffled(_handle);
+        }
+    }
+
     private async void OnLibrariesClick(object sender, RoutedEventArgs e)
     {
         var libraries = LoadLibraries();
@@ -2617,7 +2625,12 @@ public sealed partial class MainWindow : Window
 
         if (_queueContext is { Upcoming.Count: > 0 } ctx)
         {
-            content.Children.Add(ContextSectionLabel(Loc.Chrome("queue.section.playing_from"), ctx.Shuffled));
+            // The context section names what's playing — a release ("Playing From")
+            // vs the whole library — by the source kind the wire shape carries.
+            var labelKey = ctx.Kind == "library"
+                ? "queue.section.your_library"
+                : "queue.section.playing_from";
+            content.Children.Add(ContextSectionLabel(Loc.Chrome(labelKey), ctx.Shuffled));
             content.Children.Add(BuildQueueLaneList(ctx.Upcoming));
         }
 

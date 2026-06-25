@@ -33,6 +33,7 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackPauseReason
+import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeSidePausePrompt
@@ -77,6 +78,7 @@ data class QueueItem(
  *  plus whether it was ordered by shuffle (the UI shows a shuffle indicator when
  *  so). Rendered as a section distinct from the manual lane. */
 data class QueueContext(
+    val kind: BridgePlaybackSourceKind,
     val shuffled: Boolean,
     val upcoming: List<QueueItem>,
 )
@@ -489,6 +491,10 @@ class BaeCorePlayer(
     private var contextShuffled: Boolean = false
     private var hasContext: Boolean = false
 
+    /** What the context plays from (release vs library), null when no context.
+     *  Read only inside the `hasContext` branch of `publish`, where it is set. */
+    private var contextKind: BridgePlaybackSourceKind? = null
+
     /** Authoritative now-playing metadata from the latest Playing/Paused payload. */
     private var currentMeta: Meta? = null
 
@@ -744,6 +750,7 @@ class BaeCorePlayer(
             manualEntries = manualMetas
             contextEntries = contextMetas
             contextShuffled = context?.shuffled == true
+            contextKind = context?.kind
             hasContext = context != null
             entries = manualMetas + contextMetas
             this@BaeCorePlayer.hasNext = hasNext
@@ -778,6 +785,7 @@ class BaeCorePlayer(
                 context =
                     if (hasContext) {
                         QueueContext(
+                            kind = requireNotNull(contextKind) { "a context has a source kind" },
                             shuffled = contextShuffled,
                             upcoming = contextEntries.mapNotNull { it.toQueueItem() },
                         )

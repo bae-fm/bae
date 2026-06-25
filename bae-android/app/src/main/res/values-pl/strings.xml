@@ -40,6 +40,8 @@
     <string name="queue_section_now_playing">Teraz odtwarzane</string>
     <string name="queue_section_up_next">Następne w kolejce</string>
     <string name="queue_section_playing_from">Odtwarzanie z</string>
+    <string name="queue_section_your_library">Twoja biblioteka</string>
+    <string name="shuffle_library">Odtwarzaj bibliotekę losowo</string>
     <string name="queue_nothing_up_next">Brak następnych pozycji</string>
     <string name="queue_empty">Kolejka jest pusta</string>
     <string name="queue_remove">Usuń z kolejki</string>
