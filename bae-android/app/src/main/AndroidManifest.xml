@@ -17,6 +17,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Bae">
 
+        <!-- Sentry's SDK registers a ContentProvider that auto-initializes at
+             process start by reading io.sentry.dsn from the manifest. With no
+             DSN that init throws and kills the app before any bae code runs.
+             Disable it: BaeCrashReporting.configure() is the only init path,
+             and it no-ops (loudly) when no DSN is configured at build time. -->
+        <meta-data
+            android:name="io.sentry.auto-init"
+            android:value="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
