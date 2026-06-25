@@ -3664,7 +3664,21 @@ pub(crate) fn resolve_release(
         let path = if let Some(ref unmanaged_path) = copy.unmanaged_path {
             std::path::Path::new(unmanaged_path).join(&f.original_filename)
         } else {
-            library_dir.join(crate::storage::local::storage_path(&f.id))
+            // A managed file's local blob lives at its content-addressed token.
+            // A malformed (peer-supplied) id is not a valid token, so it has no
+            // local gallery path at all — distinct from a valid id whose blob
+            // simply isn't downloaded yet (that still yields a path). Resolving
+            // it to the missing-asset sentinel here would surface a bogus local
+            // path the lightbox then tries to load, so drop it to None instead.
+            let token = coven::storage::local::storage_path(&f.id)
+                .inspect_err(|e| {
+                    debug!(
+                        "gallery image id {:?} is not a valid storage token ({e}); no local path",
+                        f.id
+                    );
+                })
+                .ok()?;
+            library_dir.join(token)
         };
         Some(path.to_string_lossy().into_owned())
     };
