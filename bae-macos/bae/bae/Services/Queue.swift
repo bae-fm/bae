@@ -15,6 +15,8 @@ final class Queue: Sendable, Observable {
     let reorderEntry:
         @Sendable (_ entryId: String, _ beforeEntryId: String?) -> Void
     let skipToEntry: @Sendable (_ entryId: String) -> Void
+    /// Flip the playing context between sequential and shuffled order.
+    let setShuffle: @Sendable (_ on: Bool) -> Void
 
     init(
         addToQueue: @escaping @Sendable ([String]) -> Void = { _ in },
@@ -29,7 +31,8 @@ final class Queue: Sendable, Observable {
         clearQueue: @escaping @Sendable () -> Void = {},
         reorderEntry: @escaping @Sendable (String, String?) -> Void = { _, _ in
         },
-        skipToEntry: @escaping @Sendable (String) -> Void = { _ in }
+        skipToEntry: @escaping @Sendable (String) -> Void = { _ in },
+        setShuffle: @escaping @Sendable (Bool) -> Void = { _ in }
     ) {
         self.addToQueue = addToQueue
         self.addNext = addNext
@@ -40,6 +43,7 @@ final class Queue: Sendable, Observable {
         self.clearQueue = clearQueue
         self.reorderEntry = reorderEntry
         self.skipToEntry = skipToEntry
+        self.setShuffle = setShuffle
     }
 
     convenience init(handle: any AppHandleProtocol) {
@@ -54,7 +58,8 @@ final class Queue: Sendable, Observable {
             reorderEntry: {
                 handle.reorderEntry(entryId: $0, beforeEntryId: $1)
             },
-            skipToEntry: { handle.skipToEntry(entryId: $0) }
+            skipToEntry: { handle.skipToEntry(entryId: $0) },
+            setShuffle: { handle.setShuffle(on: $0) }
         )
     }
 

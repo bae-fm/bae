@@ -44,7 +44,8 @@
     <string name="queue_empty">Queue is empty</string>
     <string name="queue_remove">Remove from queue</string>
     <string name="queue_drag_to_reorder">Sleep om te herschikken</string>
-    <string name="queue_shuffled">Geschud</string>
+    <string name="queue_shuffle_on">Shuffle</string>
+    <string name="queue_shuffle_off">Shuffle uitschakelen</string>
     <string name="search_failed">Zoeken · Fout</string>
     <string name="search_no_results">Geen resultaten: “%1$s”</string>
     <string name="search_section_albums">Albums</string>

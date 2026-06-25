@@ -170,25 +170,36 @@ impl PlaybackQueue {
 
     // -- Context ---------------------------------------------------------------
 
-    /// Build a `PlaybackContext` from a release's tracks under a traversal: a
-    /// shuffled traversal re-permutes `tracks` from its seed (the same seed
-    /// yields the same order, so a restored shuffle reproduces what was played);
-    /// a sequential one keeps source order. Mints a fresh per-instance id per
-    /// track. The caller passes a non-empty release and an in-range `cursor`
-    /// (`play_release` validates its index; `restore` validates the saved
-    /// cursor against the re-fetched tracks), so the context is non-empty with
-    /// a valid cursor.
-    fn build_context(
+    /// Order a release's source tracks under a traversal and mint a fresh
+    /// per-instance id per track: a shuffled traversal re-permutes `tracks` from
+    /// its seed (the same seed yields the same order, so a restored shuffle
+    /// reproduces what was played); a sequential one keeps source order. Shared
+    /// by `build_context` (which pairs the order with a caller-supplied cursor)
+    /// and `set_shuffle` (which derives the cursor from the playing track).
+    fn materialize_entries(
         &self,
-        source: String,
         mut tracks: Vec<String>,
-        cursor: usize,
         traversal: Traversal,
-    ) -> PlaybackContext {
+    ) -> Vec<QueueEntry> {
         if let Traversal::Shuffled { seed } = traversal {
             shuffled_traversal(&mut tracks, seed);
         }
-        let entries: Vec<QueueEntry> = tracks.into_iter().map(|t| self.mint(t)).collect();
+        tracks.into_iter().map(|t| self.mint(t)).collect()
+    }
+
+    /// Build a `PlaybackContext` from a release's tracks under a traversal,
+    /// pairing the materialized order with `cursor`. The caller passes a non-empty
+    /// release and an in-range `cursor` (`play_release` validates its index;
+    /// `restore` validates the saved cursor against the re-fetched tracks), so the
+    /// context is non-empty with a valid cursor.
+    fn build_context(
+        &self,
+        source: String,
+        tracks: Vec<String>,
+        cursor: usize,
+        traversal: Traversal,
+    ) -> PlaybackContext {
+        let entries = self.materialize_entries(tracks, traversal);
         debug_assert!(
             cursor < entries.len(),
             "caller must pass an in-range cursor"
@@ -230,6 +241,48 @@ impl PlaybackQueue {
         self.manual.clear();
         self.context = None;
         self.current = Some(self.mint(track_id));
+    }
+
+    /// Set the playing context to sequential or shuffled order while the playing
+    /// track keeps playing. `on` materializes a shuffled order from `seed`; off
+    /// restores `source_tracks` order. `source_tracks` is the context's own source
+    /// release in source order (the service re-fetched it). The new order is stable
+    /// until changed again — Previous walks exactly it, not a fresh shuffle per
+    /// skip. `seed` is used only when `on`.
+    ///
+    /// The cursor lands on the context's own cursor track — the one the context is
+    /// playing from — which came from `source_tracks` and so is present in the new
+    /// order. (When a manual-lane track is the playing track, the context isn't the
+    /// `current` entry; it resumes from where its cursor sat, not from the start.
+    /// `self.manual` and `self.current` are untouched.)
+    pub fn set_shuffle(&mut self, on: bool, source_tracks: Vec<String>, seed: u64) {
+        let Some(ctx) = self.context.as_ref() else {
+            warn!("set_shuffle: no playing context to shuffle; ignoring");
+            return;
+        };
+        let anchor_track_id = ctx.current().track_id.clone();
+        let traversal = if on {
+            Traversal::Shuffled { seed }
+        } else {
+            Traversal::Sequential
+        };
+        let entries = self.materialize_entries(source_tracks, traversal);
+        let cursor = entries
+            .iter()
+            .position(|e| e.track_id == anchor_track_id)
+            .unwrap_or_else(|| {
+                warn!(
+                    "set_shuffle: context track {anchor_track_id} absent from \
+                     re-fetched source; resuming the context at its start"
+                );
+                0
+            });
+        self.context = Some(PlaybackContext {
+            source: ctx.source.clone(),
+            entries,
+            cursor,
+            traversal,
+        });
     }
 
     // -- Persistence -----------------------------------------------------------
@@ -631,6 +684,24 @@ impl PlaybackQueue {
     pub fn current_track_id(&self) -> Option<&str> {
         self.current.as_ref().map(|e| e.track_id.as_str())
     }
+
+    /// The source release id of the playing context, or `None` when nothing is
+    /// playing from a release. The shuffle toggle reads this to re-fetch the
+    /// context's source tracks before re-materializing the order.
+    pub fn context_source(&self) -> Option<&str> {
+        self.context.as_ref().map(|ctx| ctx.source.as_str())
+    }
+
+    /// The whole context order (including the tracks behind the cursor) as track
+    /// ids. For tests that assert re-materialization keeps every track.
+    #[cfg(test)]
+    fn context_order(&self) -> Vec<String> {
+        let ctx = self
+            .context
+            .as_ref()
+            .expect("context_order requires a playing context");
+        ctx.entries.iter().map(|e| e.track_id.clone()).collect()
+    }
 }
 
 #[cfg(test)]
@@ -887,6 +958,80 @@ mod tests {
             first_pass, second_pass,
             "but in a freshly re-derived order each pass"
         );
+    }
+
+    // -- shuffle toggle --------------------------------------------------------
+
+    #[test]
+    fn test_set_shuffle_on_keeps_current_track_with_cursor_on_it() {
+        let mut q = queue();
+        q.play_release(
+            "r1".into(),
+            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            ContextStart::Index(2),
+        );
+        assert_eq!(q.current_track_id(), Some("t3"));
+
+        q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), 7);
+
+        // The playing track keeps playing; the cursor sits on it.
+        assert_eq!(q.current_track_id(), Some("t3"));
+        let ctx = q.context_projection().expect("a release is playing");
+        assert!(
+            ctx.shuffled,
+            "the context reports shuffled after turning shuffle on"
+        );
+
+        // Every source track is retained in the new order, just re-ordered.
+        let mut all = q.context_order();
+        all.sort();
+        assert_eq!(all, vec!["t1", "t2", "t3", "t4", "t5"], "no track is lost");
+    }
+
+    #[test]
+    fn test_set_shuffle_off_restores_source_order_from_current() {
+        let mut q = queue();
+        q.play_release(
+            "r1".into(),
+            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            ContextStart::Index(2),
+        );
+        assert_eq!(q.current_track_id(), Some("t3"));
+
+        // On then off; the playing track rides through to a restored source order.
+        q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), 7);
+        assert!(q.context_projection().unwrap().shuffled);
+        assert_eq!(q.current_track_id(), Some("t3"));
+
+        q.set_shuffle(false, rel(&["t1", "t2", "t3", "t4", "t5"]), 0);
+
+        // Same playing track; the order is back to source order, cursor on it.
+        assert_eq!(q.current_track_id(), Some("t3"));
+        let ctx = q.context_projection().expect("a release is playing");
+        assert!(
+            !ctx.shuffled,
+            "the context is sequential after turning shuffle off"
+        );
+        assert_eq!(
+            full_order(&q),
+            vec!["t3", "t4", "t5"],
+            "source order resumes from the current track"
+        );
+    }
+
+    #[test]
+    fn test_set_shuffle_on_is_deterministic_for_a_seed() {
+        let order = |seed| {
+            let mut q = queue();
+            q.play_release(
+                "r1".into(),
+                rel(&["t1", "t2", "t3", "t4", "t5"]),
+                ContextStart::Index(0),
+            );
+            q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), seed);
+            q.context_order()
+        };
+        assert_eq!(order(42), order(42), "same seed yields the same order");
     }
 
     // -- persistence round-trips -----------------------------------------------

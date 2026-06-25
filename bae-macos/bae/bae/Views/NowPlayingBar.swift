@@ -65,6 +65,7 @@ struct NowPlayingBarContainer: View {
                 queue.reorderEntry(entryId, beforeEntryId)
             },
             onQueueInsertTracks: onQueueInsertTracks,
+            onQueueSetShuffle: { queue.setShuffle($0) },
             onDropToQueue: onDropToQueue,
             onNavigateToAlbum: {
                 if let albumId = track?.albumId {
@@ -127,6 +128,7 @@ struct NowPlayingBar: View {
     let onQueueRemove: (String) -> Void
     let onQueueReorder: (String, String?) -> Void
     let onQueueInsertTracks: ([String], Int) -> Void
+    let onQueueSetShuffle: (Bool) -> Void
     let onDropToQueue: ([String]) -> Void
     let onNavigateToAlbum: () -> Void
     let queueAddPublisher: AnyPublisher<Int, Never>
@@ -291,6 +293,7 @@ struct NowPlayingBar: View {
                     onRemove: { onQueueRemove($0) },
                     onReorder: { onQueueReorder($0, $1) },
                     onInsertTracks: { onQueueInsertTracks($0, $1) },
+                    onSetShuffle: { onQueueSetShuffle($0) },
                 )
                 .frame(width: 350, height: 500)
                 .background { StablePopoverBehavior() }
@@ -428,6 +431,7 @@ private struct NowPlayingBarPreview: View {
             onQueueRemove: { _ in },
             onQueueReorder: { _, _ in },
             onQueueInsertTracks: { _, _ in },
+            onQueueSetShuffle: { _ in },
             onDropToQueue: { _ in },
             onNavigateToAlbum: {},
             queueAddPublisher: Empty().eraseToAnyPublisher(),

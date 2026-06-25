@@ -44,7 +44,8 @@
     <string name="queue_empty">Warteschlange ist leer</string>
     <string name="queue_remove">Aus Warteschlange entfernen</string>
     <string name="queue_drag_to_reorder">Zum Umsortieren ziehen</string>
-    <string name="queue_shuffled">Zufällig</string>
+    <string name="queue_shuffle_on">Zufallswiedergabe</string>
+    <string name="queue_shuffle_off">Zufallswiedergabe ausschalten</string>
     <string name="search_failed">Suche fehlgeschlagen</string>
     <string name="search_no_results">Keine Ergebnisse für „%1$s“</string>
     <string name="search_section_albums">Alben</string>

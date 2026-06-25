@@ -323,6 +323,10 @@ impl AppHandle {
         self.app_services.playback().cycle_repeat_mode();
     }
 
+    pub fn set_shuffle(&self, on: bool) {
+        self.app_services.playback().set_shuffle(on);
+    }
+
     pub fn toggle_play_pause(&self) {
         self.app_services.playback().toggle_play_pause();
     }

@@ -44,7 +44,8 @@
     <string name="queue_empty">A fila está vazia</string>
     <string name="queue_remove">Remover da fila</string>
     <string name="queue_drag_to_reorder">Arraste para reordenar</string>
-    <string name="queue_shuffled">Aleatório</string>
+    <string name="queue_shuffle_on">Aleatório</string>
+    <string name="queue_shuffle_off">Desativar aleatório</string>
     <string name="search_failed">Falha na busca</string>
     <string name="search_no_results">Nenhum resultado para “%1$s”</string>
     <string name="search_section_albums">Álbuns</string>

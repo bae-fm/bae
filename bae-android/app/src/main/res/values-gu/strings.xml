@@ -44,7 +44,8 @@
     <string name="queue_empty">કતાર ખાલી છે</string>
     <string name="queue_remove">કતારમાંથી કાઢો</string>
     <string name="queue_drag_to_reorder">ક્રમ બદલવા ખેંચો</string>
-    <string name="queue_shuffled">શફલ કરેલું</string>
+    <string name="queue_shuffle_on">શફલ કરો</string>
+    <string name="queue_shuffle_off">શફલ બંધ કરો</string>
     <string name="search_failed">શોધો · ભૂલ</string>
     <string name="search_no_results">કોઈ પરિણામ નથી: “%1$s”</string>
     <string name="search_section_albums">એલ્બમ</string>

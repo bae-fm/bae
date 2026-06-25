@@ -44,7 +44,8 @@
     <string name="queue_empty">キューは空です</string>
     <string name="queue_remove">キューから削除</string>
     <string name="queue_drag_to_reorder">ドラッグで並べ替え</string>
-    <string name="queue_shuffled">シャッフル</string>
+    <string name="queue_shuffle_on">シャッフル</string>
+    <string name="queue_shuffle_off">シャッフルをオフにする</string>
     <string name="search_failed">検索に失敗しました</string>
     <string name="search_no_results">「%1$s」の結果なし</string>
     <string name="search_section_albums">アルバム</string>

@@ -44,7 +44,8 @@
     <string name="queue_empty">Queue is empty</string>
     <string name="queue_remove">Remove from queue</string>
     <string name="queue_drag_to_reorder">Trascina per riordinare</string>
-    <string name="queue_shuffled">Casuale</string>
+    <string name="queue_shuffle_on">Casuale</string>
+    <string name="queue_shuffle_off">Disattiva riproduzione casuale</string>
     <string name="search_failed">Cerca · Errore</string>
     <string name="search_no_results">Nessun risultato: “%1$s”</string>
     <string name="search_section_albums">Album</string>

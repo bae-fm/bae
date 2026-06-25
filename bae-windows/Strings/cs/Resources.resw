@@ -119,7 +119,8 @@
   <data name="queue.title" xml:space="preserve"><value>fronta</value></data>
   <data name="queue.section.up_next" xml:space="preserve"><value>Další v pořadí</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Přehrává se z</value></data>
-  <data name="queue.shuffled" xml:space="preserve"><value>Zamícháno</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>vypnout náhodné přehrávání</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>náhodně</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>kód pro obnovení</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>obnovit</value></data>
   <data name="restore.failed" xml:space="preserve"><value>obnovení selhalo</value></data>

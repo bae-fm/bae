@@ -202,13 +202,7 @@ struct ExpandedNowPlayingView: View {
                     onSkipped: {}
                 )
             } header: {
-                HStack(spacing: 6) {
-                    Text("Playing From")
-                    if context.shuffled {
-                        Image(systemName: "shuffle")
-                            .accessibilityLabel(Text("Shuffled"))
-                    }
-                }
+                playingFromHeader(shuffled: context.shuffled, queue: queue)
             }
         }
     }

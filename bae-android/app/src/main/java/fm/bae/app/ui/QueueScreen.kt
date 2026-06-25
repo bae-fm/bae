@@ -225,6 +225,7 @@ internal fun LazyListScope.queueContent(
     if (order.context.isNotEmpty()) {
         item(key = "ctxhdr") {
             ContextSectionLabel(
+                session = session,
                 text = stringResource(R.string.queue_section_playing_from),
                 shuffled = order.contextShuffled,
             )
@@ -312,15 +313,16 @@ private fun SectionLabel(text: String) {
     )
 }
 
-// The context section's label, with a shuffle indicator when the release was
-// ordered by shuffle.
+// The context section's label, with a shuffle toggle that flips the context
+// between sequential and shuffled order while the current track keeps playing.
 @Composable
 private fun ContextSectionLabel(
+    session: OpenLibrary,
     text: String,
     shuffled: Boolean,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -328,14 +330,30 @@ private fun ContextSectionLabel(
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
         )
-        if (shuffled) {
-            Spacer(modifier = Modifier.width(6.dp))
+        IconButton(
+            onClick = {
+                try {
+                    session.appHandle.setShuffle(!shuffled)
+                } catch (e: Exception) {
+                    logger.error("setShuffle ${!shuffled} failed", e)
+                }
+            },
+        ) {
             Icon(
                 imageVector = Icons.Filled.Shuffle,
-                contentDescription = stringResource(R.string.queue_shuffled),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp),
+                contentDescription =
+                    stringResource(
+                        if (shuffled) R.string.queue_shuffle_off else R.string.queue_shuffle_on,
+                    ),
+                tint =
+                    if (shuffled) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                modifier = Modifier.size(20.dp),
             )
         }
     }

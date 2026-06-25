@@ -44,7 +44,8 @@
     <string name="queue_empty">Red je prazan</string>
     <string name="queue_remove">Ukloni iz reda</string>
     <string name="queue_drag_to_reorder">Povucite za promjenu redoslijeda</string>
-    <string name="queue_shuffled">Izmiješano</string>
+    <string name="queue_shuffle_on">Naizmjenično</string>
+    <string name="queue_shuffle_off">Isključi naizmjenično</string>
     <string name="search_failed">Pretraživanje nije uspjelo</string>
     <string name="search_no_results">Nema rezultata za „%1$s”</string>
     <string name="search_section_albums">Albumi</string>

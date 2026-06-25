@@ -44,7 +44,8 @@
     <string name="queue_empty">সারি খালি</string>
     <string name="queue_remove">সারি থেকে সরান</string>
     <string name="queue_drag_to_reorder">নতুন ক্রমে আনতে টানুন</string>
-    <string name="queue_shuffled">শাফল করা</string>
+    <string name="queue_shuffle_on">শাফল</string>
+    <string name="queue_shuffle_off">শাফল বন্ধ করুন</string>
     <string name="search_failed">খুঁজুন · ত্রুটি</string>
     <string name="search_no_results">কোনো ফল নেই: “%1$s”</string>
     <string name="search_section_albums">অ্যালবাম</string>

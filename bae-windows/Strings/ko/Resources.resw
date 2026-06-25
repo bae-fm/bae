@@ -119,7 +119,8 @@
   <data name="queue.title" xml:space="preserve"><value>대기열</value></data>
   <data name="queue.section.up_next" xml:space="preserve"><value>다음 재생</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>재생 위치</value></data>
-  <data name="queue.shuffled" xml:space="preserve"><value>셔플됨</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>셔플 끄기</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>셔플</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>복원 코드</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>복원</value></data>
   <data name="restore.failed" xml:space="preserve"><value>복원 실패</value></data>

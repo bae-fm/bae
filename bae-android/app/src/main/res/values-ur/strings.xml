@@ -44,7 +44,8 @@
     <string name="queue_empty">قطار خالی ہے</string>
     <string name="queue_remove">قطار سے ہٹائیں</string>
     <string name="queue_drag_to_reorder">ترتیب بدلنے کے لیے گھسیٹیں</string>
-    <string name="queue_shuffled">شفل شدہ</string>
+    <string name="queue_shuffle_on">شفل کریں</string>
+    <string name="queue_shuffle_off">شفل بند کریں</string>
     <string name="search_failed">تلاش · خرابی</string>
     <string name="search_no_results">کوئی نتیجہ نہیں: “%1$s”</string>
     <string name="search_section_albums">البمز</string>

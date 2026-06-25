@@ -44,7 +44,8 @@
     <string name="queue_empty">रांग रिकामी आहे</string>
     <string name="queue_remove">रांगेतून काढा</string>
     <string name="queue_drag_to_reorder">क्रम बदलण्यासाठी ओढा</string>
-    <string name="queue_shuffled">शफल केले</string>
+    <string name="queue_shuffle_on">शफल करा</string>
+    <string name="queue_shuffle_off">शफल बंद करा</string>
     <string name="search_failed">शोधा · त्रुटी</string>
     <string name="search_no_results">निकाल नाहीत: “%1$s”</string>
     <string name="search_section_albums">अल्बम</string>

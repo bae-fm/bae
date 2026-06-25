@@ -980,6 +980,11 @@ internal static class NativeBae
     [DllImport(Dll, EntryPoint = "bae_cycle_repeat_mode", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void CycleRepeatMode(IntPtr handle);
 
+    /// <summary>Flip the playing context between sequential and shuffled order;
+    /// the current track keeps playing.</summary>
+    [DllImport(Dll, EntryPoint = "bae_set_shuffle", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void SetShuffle(IntPtr handle, [MarshalAs(UnmanagedType.I1)] bool on);
+
     /// <summary>Skip to the next track.</summary>
     [DllImport(Dll, EntryPoint = "bae_next", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void Next(IntPtr handle);

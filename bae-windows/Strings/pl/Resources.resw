@@ -119,7 +119,8 @@
   <data name="queue.title" xml:space="preserve"><value>kolejka</value></data>
   <data name="queue.section.up_next" xml:space="preserve"><value>Następne w kolejce</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Odtwarzanie z</value></data>
-  <data name="queue.shuffled" xml:space="preserve"><value>Losowo</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>wyłącz odtwarzanie losowe</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>losowo</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>kod przywracania</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>przywróć</value></data>
   <data name="restore.failed" xml:space="preserve"><value>przywracanie nie powiodło się</value></data>

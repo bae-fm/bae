@@ -2967,6 +2967,19 @@ pub unsafe extern "C" fn bae_cycle_repeat_mode(handle: *const BaeHandle) {
     }
 }
 
+/// Set the playing context to sequential or shuffled order. `on` mints a fresh
+/// shuffle order; off restores source order. The current track keeps playing;
+/// the new queue order arrives as a `QueueUpdated` event.
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_set_shuffle(handle: *const BaeHandle, on: bool) {
+    if let Some(handle) = handle.as_ref() {
+        handle.0.services.playback().set_shuffle(on);
+    }
+}
+
 /// Preview-play an audio file by path (auditioning a candidate before import).
 /// Independent of library playback; progress arrives as `PreviewProgress` events.
 ///

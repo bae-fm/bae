@@ -108,8 +108,9 @@ struct QueueView: View {
     }
 
     // The context (the release being played from): its not-yet-played tail, with
-    // a shuffle indicator in the header when the order is shuffled. The rows skip/
-    // remove/reorder by entry id, the same as the manual lane.
+    // a shuffle toggle in the header that flips its order while the current track
+    // keeps playing. The rows skip/remove/reorder by entry id, the same as the
+    // manual lane.
     @ViewBuilder
     private var playingFrom: some View {
         if let context = playbackStore.queueContext, !context.upcoming.isEmpty {
@@ -121,15 +122,32 @@ struct QueueView: View {
                     onSkipped: { dismiss() }
                 )
             } header: {
-                HStack(spacing: 6) {
-                    Text("Playing From")
-                    if context.shuffled {
-                        Image(systemName: "shuffle")
-                            .accessibilityLabel(Text("Shuffled"))
-                    }
-                }
+                playingFromHeader(shuffled: context.shuffled, queue: queue)
             }
         }
+    }
+}
+
+/// The "Playing From" context-section header with its shuffle toggle — shared by
+/// the queue sheet and the expanded player's embedded queue so the control can't
+/// drift. The toggle is tinted when on; tapping it flips the context's order
+/// while the current track keeps playing.
+@MainActor
+@ViewBuilder
+func playingFromHeader(shuffled: Bool, queue: Queue) -> some View {
+    HStack(spacing: 6) {
+        Text("Playing From")
+        Spacer()
+        Button {
+            queue.setShuffle(!shuffled)
+        } label: {
+            Image(systemName: "shuffle")
+                .foregroundStyle(shuffled ? Theme.accent : .secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            shuffled ? Text("Turn off shuffle") : Text("Shuffle")
+        )
     }
 }
 

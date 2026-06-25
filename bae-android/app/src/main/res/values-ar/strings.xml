@@ -44,7 +44,8 @@
     <string name="queue_empty">قائمة الانتظار فارغة</string>
     <string name="queue_remove">إزالة من قائمة الانتظار</string>
     <string name="queue_drag_to_reorder">اسحب لإعادة الترتيب</string>
-    <string name="queue_shuffled">تم الخلط</string>
+    <string name="queue_shuffle_on">تشغيل عشوائي</string>
+    <string name="queue_shuffle_off">إيقاف التشغيل العشوائي</string>
     <string name="search_failed">فشل البحث</string>
     <string name="search_no_results">لا توجد نتائج لـ ”%1$s“</string>
     <string name="search_section_albums">الألبومات</string>

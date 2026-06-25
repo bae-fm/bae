@@ -44,7 +44,8 @@
     <string name="queue_empty">התור ריק</string>
     <string name="queue_remove">הסר מהתור</string>
     <string name="queue_drag_to_reorder">גררו לסידור מחדש</string>
-    <string name="queue_shuffled">אקראי</string>
+    <string name="queue_shuffle_on">ערבב</string>
+    <string name="queue_shuffle_off">כבה ערבוב</string>
     <string name="search_failed">החיפוש נכשל</string>
     <string name="search_no_results">אין תוצאות עבור ”%1$s“</string>
     <string name="search_section_albums">אלבומים</string>

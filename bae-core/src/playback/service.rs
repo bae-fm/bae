@@ -195,6 +195,10 @@ pub enum PlaybackCommand {
     ClearQueue,
     SetRepeatMode(RepeatMode),
     CycleRepeatMode,
+    /// Set the playing context to sequential or shuffled order. `true` mints a
+    /// fresh seed and materializes a shuffled order; `false` restores source order.
+    /// The current track keeps playing.
+    SetShuffle(bool),
     /// Skip to the queue entry with this per-instance id (manual action, skip pregap)
     SkipTo(QueueEntryId),
     /// Preview a local audio file (toggle: same path stops, different path switches).
@@ -363,6 +367,10 @@ impl PlaybackHandle {
 
     pub fn cycle_repeat_mode(&self) {
         dispatch_command(&self.command_tx, PlaybackCommand::CycleRepeatMode);
+    }
+
+    pub fn set_shuffle(&self, on: bool) {
+        dispatch_command(&self.command_tx, PlaybackCommand::SetShuffle(on));
     }
 
     pub fn toggle_play_pause(&self) {
@@ -1978,6 +1986,31 @@ impl PlaybackService {
                     );
                     self.emit_queue_update();
                     self.persist_playback_state().await;
+                }
+                PlaybackCommand::SetShuffle(on) => {
+                    match self
+                        .playback_queue
+                        .context_source()
+                        .map(|s| s.to_string())
+                    {
+                        Some(source) => match self.library_manager.get_track_ids(&source).await {
+                            Ok(source_tracks) => {
+                                // A fresh seed minted here at the command boundary so
+                                // a shuffled order is reproducible and `Context`
+                                // repeat can re-derive it. `set_shuffle` consumes the
+                                // seed only when turning shuffle on; off ignores it.
+                                let seed = rand::random();
+                                self.playback_queue.set_shuffle(on, source_tracks, seed);
+                                self.emit_queue_update();
+                                self.persist_playback_state().await;
+                            }
+                            Err(e) => warn!(
+                                "SetShuffle: couldn't fetch source tracks for {source}: {e}; \
+                                 leaving the queue unchanged"
+                            ),
+                        },
+                        None => warn!("SetShuffle: no playing context; nothing to shuffle"),
+                    }
                 }
                 PlaybackCommand::SkipTo(entry_id) => {
                     if let Some(entry) = self.playback_queue.skip_to(&entry_id) {

@@ -44,7 +44,8 @@
     <string name="queue_empty">క్యూ ఖాళీగా ఉంది</string>
     <string name="queue_remove">క్యూ నుండి తీసివేయి</string>
     <string name="queue_drag_to_reorder">క్రమం మార్చడానికి లాగండి</string>
-    <string name="queue_shuffled">షఫుల్ చేయబడింది</string>
+    <string name="queue_shuffle_on">షఫుల్</string>
+    <string name="queue_shuffle_off">షఫుల్‌ను ఆఫ్ చేయండి</string>
     <string name="search_failed">వెతుకు · లోపం</string>
     <string name="search_no_results">ఫలితాలు లేవు: “%1$s”</string>
     <string name="search_section_albums">ఆల్బమ్‌లు</string>

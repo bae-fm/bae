@@ -44,7 +44,8 @@
     <string name="queue_empty">வரிசை காலி</string>
     <string name="queue_remove">வரிசையிலிருந்து அகற்று</string>
     <string name="queue_drag_to_reorder">வரிசை மாற்ற இழுக்கவும்</string>
-    <string name="queue_shuffled">கலைக்கப்பட்டது</string>
+    <string name="queue_shuffle_on">கலைக்கவும்</string>
+    <string name="queue_shuffle_off">கலைப்பை அணைக்கவும்</string>
     <string name="search_failed">தேடு · பிழை</string>
     <string name="search_no_results">முடிவுகள் இல்லை: “%1$s”</string>
     <string name="search_section_albums">ஆல்பங்கள்</string>

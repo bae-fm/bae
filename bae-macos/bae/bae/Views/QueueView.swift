@@ -20,6 +20,9 @@ struct QueueView: View {
     /// to the end of its lane.
     let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
     let onInsertTracks: ([String], Int) -> Void
+    /// Flip the playing context between sequential and shuffled order. Wired only
+    /// to the context section's header — shuffle is a property of the context.
+    let onSetShuffle: (Bool) -> Void
 
     // A drag can start in either section; the dragged entry id is shared so the
     // source row dims wherever it lives. Hover and drop-insertion are positional,
@@ -82,6 +85,7 @@ struct QueueView: View {
                             onRemove: onRemove,
                             onReorder: onReorder,
                             onInsertTracks: onInsertTracks,
+                            onSetShuffle: nil,
                         )
 
                         if let context, !context.upcoming.isEmpty {
@@ -96,6 +100,7 @@ struct QueueView: View {
                                 onRemove: onRemove,
                                 onReorder: onReorder,
                                 onInsertTracks: onInsertTracks,
+                                onSetShuffle: onSetShuffle,
                             )
                         }
                     }
@@ -185,6 +190,9 @@ private struct QueueSection: View {
     let onRemove: (String) -> Void
     let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
     let onInsertTracks: ([String], Int) -> Void
+    /// Flip this section between sequential and shuffled order, given its current
+    /// `shuffled` state. `nil` on the manual lane, which has no shuffle control.
+    let onSetShuffle: ((Bool) -> Void)?
 
     @State
     private var hoveredIndex: Int?
@@ -254,17 +262,31 @@ private struct QueueSection: View {
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(.secondary)
-            if shuffled {
-                Image(systemName: "shuffle")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel(Text("Shuffled"))
-            }
             Spacer()
+            if let onSetShuffle {
+                shuffleToggle(onSetShuffle)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.top, 10)
         .padding(.bottom, 4)
+    }
+
+    /// The context's shuffle toggle: tinted when on, muted when off; tapping it
+    /// flips the context's order while the current track keeps playing.
+    private func shuffleToggle(_ onSetShuffle: @escaping (Bool) -> Void)
+        -> some View
+    {
+        Button {
+            onSetShuffle(!shuffled)
+        } label: {
+            Image(systemName: "shuffle")
+                .font(.caption2)
+                .foregroundStyle(shuffled ? Color.accentColor : .secondary)
+        }
+        .buttonStyle(.plain)
+        .help(shuffled ? "Turn off shuffle" : "Shuffle")
+        .accessibilityLabel(shuffled ? "Turn off shuffle" : "Shuffle")
     }
 
     private var insertionLine: some View {
@@ -521,7 +543,8 @@ extension QueueView {
             onSkipTo: { _ in },
             onRemove: { _ in },
             onReorder: { _, _ in },
-            onInsertTracks: { _, _ in }
+            onInsertTracks: { _, _ in },
+            onSetShuffle: { _ in }
         )
     }
 }

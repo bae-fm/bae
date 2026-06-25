@@ -44,7 +44,8 @@
     <string name="queue_empty">Fronta je prázdná</string>
     <string name="queue_remove">Odebrat z fronty</string>
     <string name="queue_drag_to_reorder">Tažením změníte pořadí</string>
-    <string name="queue_shuffled">Zamícháno</string>
+    <string name="queue_shuffle_on">Náhodně</string>
+    <string name="queue_shuffle_off">Vypnout náhodné přehrávání</string>
     <string name="search_failed">Vyhledávání selhalo</string>
     <string name="search_no_results">Žádné výsledky pro „%1$s“</string>
     <string name="search_section_albums">Alba</string>

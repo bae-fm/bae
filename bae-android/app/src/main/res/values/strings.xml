@@ -65,7 +65,8 @@
     <string name="queue_empty">Queue is empty</string>
     <string name="queue_remove">Remove from queue</string>
     <string name="queue_drag_to_reorder">Drag to reorder</string>
-    <string name="queue_shuffled">Shuffled</string>
+    <string name="queue_shuffle_on">Shuffle</string>
+    <string name="queue_shuffle_off">Turn off shuffle</string>
 
     <!-- Search results -->
     <string name="search_failed">Search failed</string>

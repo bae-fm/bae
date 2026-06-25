@@ -44,7 +44,8 @@
     <string name="queue_empty">La file est vide</string>
     <string name="queue_remove">Retirer de la file</string>
     <string name="queue_drag_to_reorder">Glisser pour réorganiser</string>
-    <string name="queue_shuffled">Aléatoire</string>
+    <string name="queue_shuffle_on">Lecture aléatoire</string>
+    <string name="queue_shuffle_off">Désactiver la lecture aléatoire</string>
     <string name="search_failed">Échec de la recherche</string>
     <string name="search_no_results">Aucun résultat pour « %1$s »</string>
     <string name="search_section_albums">Albums</string>

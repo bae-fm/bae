@@ -44,7 +44,8 @@
     <string name="queue_empty">คิวว่าง</string>
     <string name="queue_remove">นำออกจากคิว</string>
     <string name="queue_drag_to_reorder">ลากเพื่อจัดลำดับใหม่</string>
-    <string name="queue_shuffled">สุ่ม</string>
+    <string name="queue_shuffle_on">สุ่ม</string>
+    <string name="queue_shuffle_off">ปิดการสุ่ม</string>
     <string name="search_failed">ค้นหา · ข้อผิดพลาด</string>
     <string name="search_no_results">ไม่มีผลลัพธ์: “%1$s”</string>
     <string name="search_section_albums">อัลบั้ม</string>

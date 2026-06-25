@@ -2611,13 +2611,13 @@ public sealed partial class MainWindow : Window
         // entry ids are unique across both and core no-ops a cross-lane move.
         if (_queueManual.Count > 0)
         {
-            content.Children.Add(QueueSectionLabel(Loc.Chrome("queue.section.up_next"), shuffled: false));
+            content.Children.Add(QueueSectionLabel(Loc.Chrome("queue.section.up_next")));
             content.Children.Add(BuildQueueLaneList(_queueManual));
         }
 
         if (_queueContext is { Upcoming.Count: > 0 } ctx)
         {
-            content.Children.Add(QueueSectionLabel(Loc.Chrome("queue.section.playing_from"), ctx.Shuffled));
+            content.Children.Add(ContextSectionLabel(Loc.Chrome("queue.section.playing_from"), ctx.Shuffled));
             content.Children.Add(BuildQueueLaneList(ctx.Upcoming));
         }
 
@@ -2631,32 +2631,49 @@ public sealed partial class MainWindow : Window
         await dialog.ShowAsync();
     }
 
-    // A section header for the queue dialog, with a shuffle glyph when the lane
-    // is shuffled (only the context lane ever is).
-    private static StackPanel QueueSectionLabel(string text, bool shuffled)
+    // A plain section header for the queue dialog (the manual "Up Next" lane,
+    // which is never shuffled and has no shuffle control).
+    private static TextBlock QueueSectionLabel(string text) => new()
+    {
+        Text = text,
+        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+    };
+
+    // The context section's header, with a shuffle toggle that flips the context
+    // between sequential and shuffled order while the current track keeps playing.
+    private StackPanel ContextSectionLabel(string text, bool shuffled)
     {
         var row = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 6,
+            VerticalAlignment = VerticalAlignment.Center,
         };
         row.Children.Add(new TextBlock
         {
             Text = text,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
         });
-        if (shuffled)
+        // Segoe MDL2 Assets "Shuffle" glyph (U+E8B1), accented when on.
+        var toggle = new Button
         {
-            // Segoe MDL2 Assets "Shuffle" glyph (U+E8B1).
-            var icon = new FontIcon
+            Content = new FontIcon
             {
-                Glyph = "\uE8B1", // Segoe MDL2 Assets "Shuffle"
+                Glyph = "\uE8B1",
                 FontSize = 14,
-            };
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
-                icon, Loc.Chrome("queue.shuffled"));
-            row.Children.Add(icon);
-        }
+                Foreground = shuffled
+                    ? (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"]
+                    : (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            },
+            Padding = new Thickness(6, 2, 6, 2),
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            toggle, Loc.Chrome(shuffled ? "queue.shuffle.off" : "queue.shuffle.on"));
+        ToolTipService.SetToolTip(
+            toggle, Loc.Chrome(shuffled ? "queue.shuffle.off" : "queue.shuffle.on"));
+        toggle.Click += (_, _) => NativeBae.SetShuffle(_handle, !shuffled);
+        row.Children.Add(toggle);
         return row;
     }
 
