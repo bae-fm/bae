@@ -395,12 +395,8 @@ extension AlbumDetailView {
     private func presentManageConfirmSheet(releaseId: String) {
         uiStore.presentModal {
             ManageConfirmSheet(
-                onConfirm: { pin, deleteSource in
-                    manageRelease(
-                        releaseId: releaseId,
-                        pin: pin,
-                        deleteSource: deleteSource
-                    )
+                onConfirm: { pin in
+                    manageRelease(releaseId: releaseId, pin: pin)
                 },
                 onCancel: { uiStore.dismissModal() },
             )
@@ -491,15 +487,11 @@ extension AlbumDetailView {
         }
     }
 
-    private func manageRelease(
-        releaseId: String,
-        pin: Bool,
-        deleteSource: Bool
-    ) {
+    private func manageRelease(releaseId: String, pin: Bool) {
         uiStore.dismissModal()
         let releaseEditor = releaseEditor
         runStorageTransition(releaseId: releaseId) {
-            try await releaseEditor.manageRelease(releaseId, pin, deleteSource)
+            try await releaseEditor.manageRelease(releaseId, pin)
         }
     }
 
@@ -1143,7 +1135,7 @@ private struct StorageStatusBand: View {
 
     /// Outbox progress for this release, if any work is in flight. Drives the
     /// "uploading…" indicator and suppresses transfer actions — acting
-    /// mid-upload races the observer that completes the unmanaged → CloudOnly
+    /// mid-upload races the observer that completes the unmanaged → managed
     /// step.
     private var uploadProgress: BridgeUploadProgress? {
         guard let p = outboxStore.progress(forRelease: release.summary.id),
@@ -1196,12 +1188,15 @@ private struct StorageStatusBand: View {
             case .unmanaged:
                 Image(systemName: "folder")
                 Text("Unmanaged")
-            case .pinned:
-                Image(systemName: "pin.fill")
-                Text("Pinned for offline")
-            case .cloudOnly:
-                Image(systemName: "cloud")
-                Text("Cloud")
+            case .managed:
+                if release.summary.pinned {
+                    Image(systemName: "pin.fill")
+                    Text("Pinned for offline")
+                }
+                else {
+                    Image(systemName: "cloud")
+                    Text("Cloud")
+                }
             }
         }
         .font(.callout)
@@ -1219,30 +1214,26 @@ private struct StorageStatusBand: View {
 
 // MARK: - ManageConfirmSheet
 
-/// Confirmation for moving an unmanaged release into the library. The two
-/// toggles map to the `manage_release` options: whether to keep a local
-/// copy (Pin) and whether to delete the originals once a verified durable
-/// copy exists.
+/// Confirmation for moving an unmanaged release into the library. The single
+/// toggle maps to the `manage_release` pin option: whether to keep a local copy
+/// (pinned for offline) once the release is managed.
 struct ManageConfirmSheet: View {
-    let onConfirm: (_ pin: Bool, _ deleteSource: Bool) -> Void
+    let onConfirm: (_ pin: Bool) -> Void
     let onCancel: () -> Void
 
     @State
     private var pin: Bool = true
-    @State
-    private var deleteSource: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Move into library")
                 .font(.headline)
             Toggle("Pin for offline", isOn: $pin)
-            Toggle("Delete original files", isOn: $deleteSource)
             HStack {
                 Spacer()
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
-                Button("Move") { onConfirm(pin, deleteSource) }
+                Button("Move") { onConfirm(pin) }
                     .keyboardShortcut(.defaultAction)
             }
         }

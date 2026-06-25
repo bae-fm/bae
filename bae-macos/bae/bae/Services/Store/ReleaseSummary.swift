@@ -35,6 +35,11 @@ final class ReleaseSummary: Identifiable {
     let albumId: String
     var format: String?
     var storageState: BridgeReleaseStorageState
+    /// Whether coven keeps this release's blobs pinned (offline) on this device
+    /// — the orthogonal coven-cache property, meaningful only when
+    /// `storageState` is `.managed`. Kept separate from `storageState` so the UI
+    /// never conflates "in the cloud" with "kept offline".
+    var pinned: Bool
     /// Storage transitions the user can take right now, pre-computed by core
     /// from the release's state and cloud-home presence. The album-detail
     /// "Storage…" sheet and the Storage Manager row context menu render these;
@@ -65,6 +70,7 @@ final class ReleaseSummary: Identifiable {
         albumId = bridge.albumId
         format = bridge.format
         storageState = bridge.storageState
+        pinned = bridge.pinned
         storageActions = bridge.storageActions
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
@@ -79,6 +85,7 @@ final class ReleaseSummary: Identifiable {
         albumId = bridge.albumId
         format = bridge.format
         storageState = bridge.storageState
+        pinned = bridge.pinned
         storageActions = bridge.storageActions
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
@@ -93,6 +100,9 @@ final class ReleaseSummary: Identifiable {
         }
         if storageState != bridge.storageState {
             storageState = bridge.storageState
+        }
+        if pinned != bridge.pinned {
+            pinned = bridge.pinned
         }
         if storageActions != bridge.storageActions {
             storageActions = bridge.storageActions
@@ -114,6 +124,9 @@ final class ReleaseSummary: Identifiable {
         }
         if storageState != bridge.storageState {
             storageState = bridge.storageState
+        }
+        if pinned != bridge.pinned {
+            pinned = bridge.pinned
         }
         if storageActions != bridge.storageActions {
             storageActions = bridge.storageActions

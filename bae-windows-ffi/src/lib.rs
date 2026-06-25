@@ -1634,9 +1634,13 @@ struct FfiStorageRow {
     /// Raw total size in bytes; the C# formats it for the locale.
     total_size: i64,
     file_count: i64,
-    /// Storage state wire tag: "unmanaged" / "pinned" / "cloud_only". The C#
-    /// resolves a localized label per tag.
+    /// Storage state wire tag: "unmanaged" / "managed". The C# resolves a
+    /// localized label per tag.
     state: &'static str,
+    /// Whether coven keeps this release's blobs pinned (kept offline) on this
+    /// device — the orthogonal coven-cache property, meaningful only when `state`
+    /// is "managed". The C# shows a pin indicator from it, separate from `state`.
+    pinned: bool,
     /// The storage transitions this release allows right now, gated on cloud
     /// home by the core. The in-flight-uploads gate lives in the UI: it reads
     /// `OutboxSnapshot.per_release[release_id]` and suppresses these actions
@@ -1644,12 +1648,13 @@ struct FfiStorageRow {
     actions: Vec<String>,
 }
 
-/// Wire tag for a release's storage state. The C# resolves a localized label.
+/// Wire tag for a release's storage state — `"unmanaged"` or `"managed"`. The C#
+/// resolves a localized label. Pinned-ness is the orthogonal `pinned` bool on the
+/// row, never folded into this tag.
 fn storage_state_tag(state: ReleaseStorageState) -> &'static str {
     match state {
         ReleaseStorageState::Unmanaged => "unmanaged",
-        ReleaseStorageState::Pinned => "pinned",
-        ReleaseStorageState::CloudOnly => "cloud_only",
+        ReleaseStorageState::Managed => "managed",
     }
 }
 
@@ -1694,6 +1699,7 @@ pub unsafe extern "C" fn bae_storage(handle: *const BaeHandle) -> *mut c_char {
                 total_size: summary.total_size,
                 file_count: summary.file_count,
                 state: storage_state_tag(summary.storage_state),
+                pinned: summary.pinned,
                 actions,
             }
         })
@@ -1756,9 +1762,10 @@ pub unsafe extern "C" fn bae_unpin_release(
 }
 
 /// Bring an unmanaged release under management (copy its files into the library
-/// and upload). `pin` keeps a local copy; `delete_source` removes the original
-/// files after copying. Returns null on success, or an error-message C string
-/// (free with [`bae_string_free`]).
+/// and upload). `pin` keeps the blobs in coven's pinned cache (offline). The
+/// in-place source is always removed once the upload lands (a managed release has
+/// no local path). Returns null on success, or an error-message C string (free
+/// with [`bae_string_free`]).
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
@@ -1768,7 +1775,6 @@ pub unsafe extern "C" fn bae_manage_release(
     handle: *const BaeHandle,
     release_id: *const c_char,
     pin: bool,
-    delete_source: bool,
 ) -> *mut c_char {
     let Some(handle) = handle.as_ref() else {
         return error_cstring("no app handle");
@@ -1777,13 +1783,11 @@ pub unsafe extern "C" fn bae_manage_release(
         return error_cstring("invalid release id");
     };
     let app = &handle.0;
-    match app
-        .runtime
-        .block_on(
-            app.services
-                .library_manager()
-                .manage_release(&release_id, pin, delete_source),
-        ) {
+    match app.runtime.block_on(
+        app.services
+            .library_manager()
+            .manage_release(&release_id, pin),
+    ) {
         Ok(()) => std::ptr::null_mut(),
         Err(e) => error_cstring(&e),
     }
@@ -3964,12 +3968,12 @@ fn metadata_source_from_str(source: &str) -> Option<bae_core::import::MetadataSo
 }
 
 /// Parse the wire storage-mode tag into a [`bae_core::import::StorageMode`].
-/// `managed_pinned` keeps a local managed copy; `managed_unpinned` uploads to
-/// cloud without keeping one; `unmanaged` leaves the files in place.
+/// `managed` uploads to the cloud; `unmanaged` leaves the files in place. The pin
+/// choice is orthogonal — the import passes it as a separate `pin` argument, never
+/// folded into this tag.
 fn storage_mode_from_str(mode: &str) -> Option<bae_core::import::StorageMode> {
     match mode {
-        "managed_unpinned" => Some(bae_core::import::StorageMode::Managed { pin: false }),
-        "managed_pinned" => Some(bae_core::import::StorageMode::Managed { pin: true }),
+        "managed" => Some(bae_core::import::StorageMode::Managed),
         "unmanaged" => Some(bae_core::import::StorageMode::Unmanaged),
         _ => None,
     }
@@ -4397,7 +4401,8 @@ pub unsafe extern "C" fn bae_check_release_in_library(
 
 /// Import a scanned candidate as the chosen identity (a match from a
 /// `CandidateIdentifyState` event, or a manual search). `storage_mode` is
-/// `"unmanaged"`, `"managed_pinned"`, or `"managed_unpinned"`. `user_edit_json`
+/// `"unmanaged"` or `"managed"`; `pin` is the orthogonal "keep offline" choice,
+/// applied only to a managed import. `user_edit_json`
 /// overlays the user's confirmed metadata edits onto the committed release:
 /// when null or empty the release seeds straight from the source (no edit),
 /// otherwise it is a JSON [`bae_core::import::RawReleaseEdit`] (the shape
@@ -4423,6 +4428,7 @@ pub unsafe extern "C" fn bae_import_candidate(
     chosen_release_id: *const c_char,
     source: *const c_char,
     storage_mode: *const c_char,
+    pin: bool,
     user_edit_json: *const c_char,
     selected_cover_json: *const c_char,
 ) -> *mut c_char {
@@ -4486,6 +4492,7 @@ pub unsafe extern "C" fn bae_import_candidate(
         std::path::PathBuf::from(folder_path),
         selected_cover,
         storage_mode,
+        pin,
         identity_choice,
         user_edit,
     ) {
@@ -4538,20 +4545,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn storage_mode_tags_carry_pin_choice() {
+    fn storage_mode_tags_map_to_the_two_states() {
         match storage_mode_from_str("unmanaged") {
             Some(bae_core::import::StorageMode::Unmanaged) => {}
             other => panic!("unexpected unmanaged mode: {other:?}"),
         }
-        match storage_mode_from_str("managed_pinned") {
-            Some(bae_core::import::StorageMode::Managed { pin: true }) => {}
-            other => panic!("unexpected managed_pinned mode: {other:?}"),
+        match storage_mode_from_str("managed") {
+            Some(bae_core::import::StorageMode::Managed) => {}
+            other => panic!("unexpected managed mode: {other:?}"),
         }
-        match storage_mode_from_str("managed_unpinned") {
-            Some(bae_core::import::StorageMode::Managed { pin: false }) => {}
-            other => panic!("unexpected managed_unpinned mode: {other:?}"),
-        }
-        assert!(storage_mode_from_str("managed").is_none());
+        // The pin choice is an orthogonal FFI argument, not folded into the tag,
+        // so the old 3-way tags are no longer recognized.
+        assert!(storage_mode_from_str("managed_pinned").is_none());
+        assert!(storage_mode_from_str("managed_unpinned").is_none());
     }
 
     /// The WinUI "go to now playing" navigation needs the album and track ids of

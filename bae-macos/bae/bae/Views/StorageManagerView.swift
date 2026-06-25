@@ -85,12 +85,7 @@ struct StorageManagerView: View {
         ) {
             if let runner {
                 ManageConfirmSheet(
-                    onConfirm: { pin, deleteSource in
-                        runner.confirmManage(
-                            pin: pin,
-                            deleteSource: deleteSource
-                        )
-                    },
+                    onConfirm: { pin in runner.confirmManage(pin: pin) },
                     onCancel: { runner.cancelManage() },
                 )
                 .frame(width: 420)

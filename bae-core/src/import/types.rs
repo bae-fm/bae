@@ -450,14 +450,21 @@ impl RawPressingEdit {
     }
 }
 
-/// Decided by the user at import confirmation time:
-/// - `Unmanaged`: files stay in place
-/// - `Managed { pin: true }`: copy to storage/, upload to cloud, keep local copy
-/// - `Managed { pin: false }`: upload to cloud from source, no local copy in storage/
-#[derive(Debug, Clone)]
+/// The storage state the user picks for an import. Every import FIRST lands
+/// `Unmanaged` (files in place, playable immediately); a `Managed` import then
+/// transitions to the cloud in the background (the same path `do_manage` runs).
+///
+/// Pin-vs-cloud-only is NOT part of this state: pinned-ness is coven cache state,
+/// never a bae property. The user's pin choice rides the managed transition as a
+/// transient argument (`pin` on the import command), threaded into the upload so
+/// coven knows whether to populate `storage/pinned/`; it is never persisted here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageMode {
+    /// Files stay in place on this device; never uploaded.
     Unmanaged,
-    Managed { pin: bool },
+    /// Uploaded to the cloud home; `releases.managed` flips true once the upload
+    /// lands.
+    Managed,
 }
 
 /// User's cover art selection for an import.
@@ -638,6 +645,11 @@ pub enum ImportCommand {
         folder: PathBuf,
         selected_cover: Option<CoverSelection>,
         storage_mode: StorageMode,
+        /// The transient pin choice for a `Managed` import: whether coven keeps
+        /// the uploaded blobs in `storage/pinned/` (kept offline) vs the evictable
+        /// cache. Ignored for `Unmanaged`. Never persisted — it rides the upload
+        /// as the retain-pinned intent.
+        pin: bool,
         identity_choice: IdentityChoice,
         user_edit: Option<ReleaseUserEdit>,
     },

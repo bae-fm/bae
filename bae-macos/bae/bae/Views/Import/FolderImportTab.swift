@@ -18,9 +18,10 @@ struct FolderImportTab: View {
 
     @State
     private var selectedKey: String?
-    // Last-used storage choice, persisted; only consulted when a cloud home
-    // exists (toggle hidden otherwise), Config.importStorageMode forces Unmanaged
-    // without one.
+    // Last-used storage choices, persisted; only consulted when a cloud home
+    // exists (toggles hidden otherwise). Managed and pinned are orthogonal:
+    // `managed` picks the storage state, `pinned` is passed separately to
+    // `startImport`. Config.importStorageMode forces Unmanaged without a home.
     @AppStorage("importStorageManaged")
     private var storageManaged: Bool = true
     @AppStorage("importStoragePinned")
@@ -427,8 +428,7 @@ extension FolderImportTab {
         let coverSelection = candidate.selectedCover?.selection
 
         let storageMode = configStore.config.importStorageMode(
-            managed: storageManaged,
-            pinned: storagePinned
+            managed: storageManaged
         )
 
         // The identity choice was picked at row-time (or set to
@@ -455,6 +455,7 @@ extension FolderImportTab {
                 folderPath,
                 coverSelection,
                 storageMode,
+                storagePinned,
                 identityChoice.bridge,
                 $0
             )

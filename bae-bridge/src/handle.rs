@@ -528,17 +528,12 @@ impl AppHandle {
         .map_err(BridgeError::internal)
     }
 
-    pub async fn manage_release(
-        &self,
-        release_id: String,
-        pin: bool,
-        delete_source: bool,
-    ) -> Result<(), BridgeError> {
+    pub async fn manage_release(&self, release_id: String, pin: bool) -> Result<(), BridgeError> {
         let services = self.app_services.clone();
         self.spawn_on_runtime(async move {
             services
                 .library_manager()
-                .manage_release(&release_id, pin, delete_source)
+                .manage_release(&release_id, pin)
                 .await
         })
         .await
@@ -1120,6 +1115,7 @@ impl AppHandle {
         folder_path: String,
         selected_cover: Option<BridgeCoverSelection>,
         storage_mode: BridgeStorageMode,
+        pin: bool,
         identity_choice: crate::types::BridgeIdentityChoice,
         user_edit: Option<crate::types::BridgeReleaseUserEdit>,
     ) -> Result<(), BridgeError> {
@@ -1134,6 +1130,7 @@ impl AppHandle {
                 std::path::PathBuf::from(&folder_path),
                 cover,
                 bridge_storage_mode_to_core(storage_mode),
+                pin,
                 identity_choice.to_core(),
                 user_edit,
             )
@@ -1768,6 +1765,7 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
         catalog_number: rel.catalog_number,
         country: rel.country,
         storage_state: crate::types::BridgeReleaseStorageState::from_core(summary.storage_state),
+        pinned: summary.pinned,
         storage_actions: summary
             .storage_actions
             .into_iter()
@@ -1809,6 +1807,7 @@ fn convert_release_summary(s: bae_core::album_detail::ReleaseSummary) -> BridgeR
         album_id: s.album_id,
         format: s.format,
         storage_state: crate::types::BridgeReleaseStorageState::from_core(s.storage_state),
+        pinned: s.pinned,
         storage_actions: s
             .storage_actions
             .into_iter()

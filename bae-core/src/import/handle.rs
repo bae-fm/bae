@@ -530,6 +530,7 @@ impl ImportServiceHandle {
         folder: std::path::PathBuf,
         selected_cover: Option<super::types::CoverSelection>,
         storage_mode: StorageMode,
+        pin: bool,
         identity_choice: super::types::IdentityChoice,
         user_edit: Option<super::types::ReleaseUserEdit>,
     ) -> Result<String, String> {
@@ -540,6 +541,7 @@ impl ImportServiceHandle {
             folder,
             selected_cover,
             storage_mode,
+            pin,
             identity_choice,
             user_edit,
         };

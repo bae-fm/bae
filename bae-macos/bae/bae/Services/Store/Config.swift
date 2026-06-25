@@ -55,10 +55,11 @@ struct Config: Equatable {
         pauseBetweenSides = bridge.pauseBetweenSides
     }
 
-    func importStorageMode(managed: Bool, pinned: Bool) -> BridgeStorageMode {
-        guard hasCloudHome && managed else {
-            return .unmanaged
-        }
-        return pinned ? .managedPinned : .managedUnpinned
+    /// The storage state to import into. `Managed` only when a cloud home
+    /// exists and the user chose it; otherwise `Unmanaged`. Whether to keep the
+    /// release pinned (offline) is the orthogonal `pin` argument to
+    /// `startImport`, never folded in here.
+    func importStorageMode(managed: Bool) -> BridgeStorageMode {
+        hasCloudHome && managed ? .managed : .unmanaged
     }
 }

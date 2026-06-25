@@ -30,7 +30,8 @@ private func makeBridgeRelease(
     albumId: String = "album-1",
     displayName: String = "Release One",
     format: String? = "FLAC",
-    storageState: BridgeReleaseStorageState = .cloudOnly,
+    storageState: BridgeReleaseStorageState = .managed,
+    pinned: Bool = false,
     storageActions: [BridgeReleaseStorageAction] = [],
     totalDurationMs: Int64 = 2_700_000,
     fileCount: Int64 = 0,
@@ -48,6 +49,7 @@ private func makeBridgeRelease(
         catalogNumber: nil,
         country: nil,
         storageState: storageState,
+        pinned: pinned,
         storageActions: storageActions,
         tracks: [],
         trackGroups: [],
@@ -65,7 +67,8 @@ private func makeBridgeReleaseSummary(
     id: String = "release-1",
     albumId: String = "album-1",
     format: String? = "FLAC",
-    storageState: BridgeReleaseStorageState = .cloudOnly,
+    storageState: BridgeReleaseStorageState = .managed,
+    pinned: Bool = false,
     storageActions: [BridgeReleaseStorageAction] = [],
     fileCount: Int64 = 0,
     totalSize: Int64 = 0,
@@ -76,6 +79,7 @@ private func makeBridgeReleaseSummary(
         albumId: albumId,
         format: format,
         storageState: storageState,
+        pinned: pinned,
         storageActions: storageActions,
         fileCount: fileCount,
         totalSize: totalSize,
@@ -219,19 +223,21 @@ struct InternReleaseSummaryTests {
     func internUpdatesFields() {
         let store = LibraryStore()
         let bridge1 = makeBridgeReleaseSummary(
-            storageState: .cloudOnly,
+            storageState: .managed,
+            pinned: false,
             totalSize: 100
         )
         let first = store.internReleaseSummary(bridge1)
 
         let bridge2 = makeBridgeReleaseSummary(
-            storageState: .pinned,
+            storageState: .managed,
+            pinned: true,
             totalSize: 200
         )
         let second = store.internReleaseSummary(bridge2)
 
         #expect(first === second)
-        #expect(first.storageState == .pinned)
+        #expect(first.pinned)
         #expect(first.totalSize == 200)
     }
 
@@ -241,7 +247,8 @@ struct InternReleaseSummaryTests {
         let store = LibraryStore()
         let bridge = makeBridgeRelease(
             format: "MP3",
-            storageState: .pinned,
+            storageState: .managed,
+            pinned: true,
             fileCount: 12,
             totalSize: 5_000_000,
             coverPath: "/img/release-1.jpg#v=7"
@@ -252,7 +259,8 @@ struct InternReleaseSummaryTests {
         #expect(summary.id == "release-1")
         #expect(summary.albumId == "album-1")
         #expect(summary.format == "MP3")
-        #expect(summary.storageState == .pinned)
+        #expect(summary.storageState == .managed)
+        #expect(summary.pinned)
         #expect(summary.fileCount == 12)
         #expect(summary.totalSize == 5_000_000)
         #expect(summary.coverPath == "/img/release-1.jpg#v=7")
@@ -314,19 +322,21 @@ struct InternReleaseDetailTests {
         let store = LibraryStore()
         let bridge1 = makeBridgeRelease(
             displayName: "V1",
-            storageState: .cloudOnly
+            storageState: .managed,
+            pinned: false
         )
         _ = store.internReleaseDetail(bridge1)
         let originalSummary = store.releaseSummaries["release-1"]!
 
         let bridge2 = makeBridgeRelease(
             displayName: "V2",
-            storageState: .pinned
+            storageState: .managed,
+            pinned: true
         )
         _ = store.internReleaseDetail(bridge2)
 
         #expect(store.releaseSummaries["release-1"] === originalSummary)
-        #expect(originalSummary.storageState == .pinned)
+        #expect(originalSummary.pinned)
         #expect(store.releaseDetails["release-1"]!.displayName == "V2")
         // Detail's summary pointer still matches the canonical one.
         #expect(store.releaseDetails["release-1"]!.summary === originalSummary)
@@ -433,7 +443,8 @@ struct AlbumEventTests {
         let r1 = makeBridgeRelease(
             id: "r-1",
             displayName: "V1",
-            storageState: .cloudOnly
+            storageState: .managed,
+            pinned: false
         )
         let initialDetail = makeBridgeAlbumDetail(
             releases: [r1]
@@ -444,7 +455,8 @@ struct AlbumEventTests {
         let updatedR1 = makeBridgeRelease(
             id: "r-1",
             displayName: "V2",
-            storageState: .pinned
+            storageState: .managed,
+            pinned: true
         )
         let updatedDetail = makeBridgeAlbumDetail(
             releases: [updatedR1]
@@ -453,7 +465,7 @@ struct AlbumEventTests {
 
         // Summary identity preserved; fields updated in place.
         #expect(store.releaseSummaries["r-1"] === originalSummary)
-        #expect(originalSummary.storageState == .pinned)
+        #expect(originalSummary.pinned)
 
         // Detail replaced wholesale; still wraps canonical summary.
         #expect(store.releaseDetails["r-1"]!.displayName == "V2")
@@ -570,13 +582,14 @@ struct ReleaseEventTests {
 
         let updated = makeBridgeRelease(
             displayName: "New",
-            storageState: .pinned
+            storageState: .managed,
+            pinned: true
         )
         store.handleReleaseUpdated(release: updated)
 
         #expect(store.releaseDetails["release-1"]?.displayName == "New")
         #expect(store.releaseSummaries["release-1"] === originalSummary)
-        #expect(originalSummary.storageState == .pinned)
+        #expect(originalSummary.pinned)
     }
 
     @MainActor

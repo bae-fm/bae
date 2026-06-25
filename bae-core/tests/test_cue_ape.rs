@@ -154,6 +154,7 @@ async fn test_cue_ape_records_correct_durations() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -340,6 +341,7 @@ async fn test_cue_ape_records_track_timing() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -462,6 +464,7 @@ impl CueApeTestFixture {
                 folder: album_dir.clone(),
                 selected_cover: None,
                 storage_mode: StorageMode::Unmanaged,
+                pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
                 },
@@ -1412,9 +1415,10 @@ async fn test_cue_ape_next_track() {
 /// (identified by the relative path `CD{N}/CDImage.ape`).
 ///
 /// This exercises the bare-filename collision regression in every code path:
-/// bytes-never-copied (Unmanaged), bytes-copied-to-local-storage (Managed+pin),
-/// and in-memory-only-no-local-copy (Managed+unpin).
-async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode) {
+/// bytes-never-copied (Unmanaged), bytes-uploaded-and-pinned (Managed + pin),
+/// and bytes-uploaded-cloud-only (Managed, no pin). Pin is an orthogonal coven
+/// cache choice, so it rides alongside the `StorageMode` as its own argument.
+async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, pin: bool) {
     tracing_init();
     let temp_root = TempDir::new().expect("temp root");
     let album_dir = temp_root.path().join("album");
@@ -1504,6 +1508,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode) {
             folder: album_dir,
             selected_cover: None,
             storage_mode,
+            pin,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -1584,15 +1589,15 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode) {
 /// cover each explicitly to prevent a regression on any one path.
 #[tokio::test]
 async fn test_multi_disc_cue_ape_unmanaged() {
-    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Unmanaged).await;
+    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Unmanaged, false).await;
 }
 
 #[tokio::test]
 async fn test_multi_disc_cue_ape_managed_pin() {
-    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Managed { pin: true }).await;
+    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Managed, true).await;
 }
 
 #[tokio::test]
 async fn test_multi_disc_cue_ape_managed_unpin() {
-    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Managed { pin: false }).await;
+    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Managed, false).await;
 }

@@ -6,9 +6,14 @@
 //! unencrypted at stable, structured paths built from the album/release/artist
 //! ids, with the file's real name intact:
 //!
-//! - audio:        `storage/{album_id}/{release_id}/{source_folder}/{filename}`
+//! - audio:        `{album_id}/{release_id}/{source_folder}/{filename}` (under the `storage` namespace)
 //! - cover image:  `{album_id}/{release_id}/cover.{ext}`   (under the `images` namespace)
 //! - artist image: `{artist_id}/artist.{ext}`             (under the `images` namespace)
+//!
+//! Every key is RELATIVE to its namespace; coven prepends the namespace (`storage`
+//! for audio, `images` for art — see [`crate::storage::local::AUDIO_NAMESPACE`]),
+//! so the full object key is `storage/{album}/…` for audio and `images/{album}/…`
+//! for a cover.
 //!
 //! `{source_folder}` is the name of the folder the release was imported from
 //! (`releases.source_folder_name`), so a browsable bucket mirrors the original
@@ -23,10 +28,9 @@
 //! name-sanitizing or disambiguation is needed. Browsable means "not obscured",
 //! not "human-named": the real filenames are visible and the tree is navigable
 //! by album → release, versus the opaque home's content-hashed shards. Audio
-//! keys carry the `storage/` prefix (bae's audio namespace, the same root an
-//! opaque home shards under), keeping them clear of coven's reserved root
-//! prefixes (`heads/`, `changes/`, `membership/`, `auth/keys/`); image keys stay
-//! under coven's `images/` namespace (coven prepends it).
+//! lives under the `storage` namespace and art under `images` (coven prepends
+//! each), keeping audio clear of coven's reserved root prefixes (`heads/`,
+//! `changes/`, `membership/`, `auth/keys/`).
 //!
 //! The key is computed once when the blob is first destined for the cloud and
 //! stored on the synced `cloud_path` column of its row (`release_files` for
@@ -62,15 +66,17 @@ fn safe_component(component: &str) -> String {
     component.replace(['/', '\\'], "_")
 }
 
-/// The cloud key for a release file on a browsable home:
-/// `storage/{album_id}/{release_id}/{source_folder}/{filename}`, mirroring the
-/// folder the release was imported from. `source_folder` is `None` for a
-/// non-folder import — that level is then omitted; the `{release_id}` level
-/// keeps the key unique either way. (`source_folder_name` comes from
-/// `Path::file_name`, which is `None` or a non-empty name, so `Some("")` never
-/// occurs and isn't guarded here.) The `storage/` prefix is bae's release-file
-/// namespace (an opaque home shards under the same prefix), keeping the key
-/// clear of coven's reserved root prefixes.
+/// The cloud key for a release file on a browsable home, RELATIVE to the
+/// `storage` audio namespace coven prepends (see
+/// [`crate::storage::local::AUDIO_NAMESPACE`]):
+/// `{album_id}/{release_id}/{source_folder}/{filename}`, mirroring the folder the
+/// release was imported from. The full object key is `storage/` + this. The
+/// readable key is stored RELATIVE on `release_files.cloud_path`, exactly as a
+/// cover's key is stored relative to `images` — coven prepends the namespace on
+/// every read/write. `source_folder` is `None` for a non-folder import — that
+/// level is then omitted; the `{release_id}` level keeps the key unique either
+/// way. (`source_folder_name` comes from `Path::file_name`, which is `None` or a
+/// non-empty name, so `Some("")` never occurs and isn't guarded here.)
 pub fn audio_key(
     album_id: &str,
     release_id: &str,
@@ -80,10 +86,10 @@ pub fn audio_key(
     let filename = safe_component(filename);
     match source_folder {
         Some(folder) => format!(
-            "storage/{album_id}/{release_id}/{}/{filename}",
+            "{album_id}/{release_id}/{}/{filename}",
             safe_component(folder)
         ),
-        None => format!("storage/{album_id}/{release_id}/{filename}"),
+        None => format!("{album_id}/{release_id}/{filename}"),
     }
 }
 
@@ -108,6 +114,7 @@ mod tests {
 
     #[test]
     fn audio_key_includes_source_folder_when_present() {
+        // Namespace-relative; coven prepends `storage/`.
         assert_eq!(
             audio_key(
                 "album-1",
@@ -115,7 +122,7 @@ mod tests {
                 Some("Album Folder [FLAC]"),
                 "01 Track Title.flac"
             ),
-            "storage/album-1/rel-1/Album Folder [FLAC]/01 Track Title.flac"
+            "album-1/rel-1/Album Folder [FLAC]/01 Track Title.flac"
         );
     }
 
@@ -125,7 +132,7 @@ mod tests {
         // makes the key unique.
         assert_eq!(
             audio_key("album-1", "rel-1", None, "01 Track Title.flac"),
-            "storage/album-1/rel-1/01 Track Title.flac"
+            "album-1/rel-1/01 Track Title.flac"
         );
     }
 
@@ -135,13 +142,13 @@ mod tests {
         // sub-level; everything else is verbatim.
         assert_eq!(
             audio_key("album-1", "rel-1", Some("a/b"), "sub/dir\\track.flac"),
-            "storage/album-1/rel-1/a_b/sub_dir_track.flac"
+            "album-1/rel-1/a_b/sub_dir_track.flac"
         );
         // Spaces, punctuation, unicode all pass through untouched — the
         // {release_id} level already guarantees uniqueness.
         assert_eq!(
             audio_key("album-1", "rel-1", None, "01 — Track (Live) 音.flac"),
-            "storage/album-1/rel-1/01 — Track (Live) 音.flac"
+            "album-1/rel-1/01 — Track (Live) 音.flac"
         );
     }
 

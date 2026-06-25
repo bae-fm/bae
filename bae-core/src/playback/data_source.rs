@@ -159,12 +159,11 @@ impl AudioDataReader for LocalReader {
 ///
 /// Reads a local file when `source` resolves one (this device's copy, or a
 /// still-pending upload's original). A pending upload whose source is gone
-/// errors before any cloud read — the object may not exist yet. A `CloudOnly`
-/// source is a managed track's cloud-only object: read it through the home's
-/// at-rest cipher (decrypt on an opaque home, verbatim on a browsable one), or
-/// report sync disconnected if no cloud home is configured. An `Unreachable`
-/// source is an unmanaged track whose local file is gone — there is nowhere to
-/// read it.
+/// errors before any cloud read — the object may not exist yet. A `Managed`
+/// source is a managed track read through the home's at-rest cipher (decrypt on
+/// an opaque home, verbatim on a browsable one), or report sync disconnected if
+/// no cloud home is configured. An `Unreachable` source is an unmanaged track
+/// whose local file is gone — there is nowhere to read it.
 pub fn create_audio_reader(
     source: crate::library::manager::ReadableFileSource,
     file_id: &str,
@@ -181,7 +180,7 @@ pub fn create_audio_reader(
             Ok(Box::new(LocalReader::new(read_config)))
         }
         ReadableFileSource::UploadPendingSourceMissing => Err(PlaybackError::UploadPending),
-        ReadableFileSource::CloudOnly => {
+        ReadableFileSource::Managed => {
             // A managed track's audio is a cloud-only object sealed under the
             // home's at-rest cipher: read it through that cipher where the read
             // needs the home and cipher, or report sync disconnected if no cloud

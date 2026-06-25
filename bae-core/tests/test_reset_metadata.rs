@@ -583,13 +583,9 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
-    db.upsert_release_local_copy(&bae_core::db::DbReleaseLocalCopy {
-        release_id: release.id.clone(),
-        unmanaged_path: Some(audio_dir.to_str().unwrap().to_string()),
-        pinned_locally: false,
-    })
-    .await
-    .unwrap();
+    db.upsert_release_unmanaged_source(&release.id, audio_dir.to_str().unwrap())
+        .await
+        .unwrap();
     db.insert_track(&t1).await.unwrap();
     db.insert_track(&t2).await.unwrap();
 

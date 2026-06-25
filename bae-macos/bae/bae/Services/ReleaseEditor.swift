@@ -12,8 +12,7 @@ final class ReleaseEditor: Sendable, Observable {
         ) async throws -> Void
     let unpinRelease: @Sendable (_ releaseId: String) async throws -> Void
     let manageRelease:
-        @Sendable (_ releaseId: String, _ pin: Bool, _ deleteSource: Bool)
-            async throws -> Void
+        @Sendable (_ releaseId: String, _ pin: Bool) async throws -> Void
     let unmanageRelease:
         @Sendable (_ releaseId: String, _ newPath: String) async throws -> Void
     let deleteRelease: @Sendable (_ releaseId: String) -> Void
@@ -40,8 +39,8 @@ final class ReleaseEditor: Sendable, Observable {
             _ in
         },
         manageRelease:
-            @escaping @Sendable (String, Bool, Bool) async throws -> Void =
-            { _, _, _ in },
+            @escaping @Sendable (String, Bool) async throws -> Void =
+            { _, _ in },
         unmanageRelease:
             @escaping @Sendable (String, String) async throws -> Void = {
                 _,
@@ -91,11 +90,7 @@ final class ReleaseEditor: Sendable, Observable {
             },
             unpinRelease: { try await handle.unpinRelease(releaseId: $0) },
             manageRelease: {
-                try await handle.manageRelease(
-                    releaseId: $0,
-                    pin: $1,
-                    deleteSource: $2
-                )
+                try await handle.manageRelease(releaseId: $0, pin: $1)
             },
             unmanageRelease: {
                 try await handle.unmanageRelease(releaseId: $0, newPath: $1)

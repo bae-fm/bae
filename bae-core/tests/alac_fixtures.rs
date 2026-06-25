@@ -120,6 +120,7 @@ async fn import_single_m4a_fixture(
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -362,6 +363,7 @@ async fn import_cue_alac_pair() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },

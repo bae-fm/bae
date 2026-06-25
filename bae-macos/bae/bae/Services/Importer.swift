@@ -36,6 +36,7 @@ final class Importer: Sendable, Observable {
             _ candidateKey: String, _ folderPath: String,
             _ selectedCover: BridgeCoverSelection?,
             _ storageMode: BridgeStorageMode,
+            _ pin: Bool,
             _ identityChoice: BridgeIdentityChoice,
             _ userEdit: BridgeReleaseUserEdit?
         ) throws -> Void
@@ -77,9 +78,9 @@ final class Importer: Sendable, Observable {
             { _ in throw StubError.notImplemented },
         startImport:
             @escaping @Sendable (
-                String, String, BridgeCoverSelection?, BridgeStorageMode,
+                String, String, BridgeCoverSelection?, BridgeStorageMode, Bool,
                 BridgeIdentityChoice, BridgeReleaseUserEdit?
-            ) throws -> Void = { _, _, _, _, _, _ in },
+            ) throws -> Void = { _, _, _, _, _, _, _ in },
         isSourceFolderNameImported:
             @escaping @Sendable (String) throws -> Bool = { _ in false }
     ) {
@@ -131,8 +132,9 @@ final class Importer: Sendable, Observable {
                     folderPath: $1,
                     selectedCover: $2,
                     storageMode: $3,
-                    identityChoice: $4,
-                    userEdit: $5
+                    pin: $4,
+                    identityChoice: $5,
+                    userEdit: $6
                 )
             },
             isSourceFolderNameImported: {

@@ -185,9 +185,9 @@
   <data name="storage.action.unpin" xml:space="preserve"><value>移除本地副本</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, other {# 个文件}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>无法加载存储</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>已固定</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>无法读取存储</value></data>
-  <data name="storage.state.cloud_only" xml:space="preserve"><value>仅云端</value></data>
-  <data name="storage.state.pinned" xml:space="preserve"><value>已固定</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>已托管</value></data>
   <data name="storage.state.unmanaged" xml:space="preserve"><value>未托管</value></data>
   <data name="storage.title" xml:space="preserve"><value>存储</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>同步错误</value></data>

@@ -87,6 +87,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
             folder: album_dir.to_path_buf(),
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
@@ -94,10 +95,8 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Flip to cloud-only: managed, no local-copy row.
-    f.db.set_release_managed_cloud_only(&release_id)
-        .await
-        .unwrap();
+    // Flip to cloud-only: managed, no unmanaged-source row.
+    f.db.set_release_managed(&release_id).await.unwrap();
 
     // Seed the cloud home with each file's bytes encrypted under the library
     // master key (what the upload outbox would have produced).

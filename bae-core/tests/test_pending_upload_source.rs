@@ -85,7 +85,8 @@ async fn import_managed_unpinned(f: &Fixture, album_dir: &Path) -> String {
             candidate_key: "test".to_string(),
             folder: album_dir.to_path_buf(),
             selected_cover: None,
-            storage_mode: StorageMode::Managed { pin: false },
+            storage_mode: StorageMode::Managed,
+            pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
@@ -107,14 +108,15 @@ async fn pending_upload_source_resolves_for_playback() {
     support::write_tagged_flac(&album_dir, "01.flac", "Track One");
     let release_id = import_managed_unpinned(&f, &album_dir).await;
 
-    // The import really is cloud-only with a queued upload.
+    // The import landed Unmanaged with its upload queued: it keeps its in-place
+    // source row (managed flips only once the upload drains) and a pending upload.
     assert!(
         f.mgr
-            .get_release_local_copy(&release_id)
+            .get_release_unmanaged_source(&release_id)
             .await
             .unwrap()
-            .is_none(),
-        "managed unpinned import keeps no local copy"
+            .is_some(),
+        "a managed import stays Unmanaged-with-source until its upload drains"
     );
     assert_eq!(
         f.mgr

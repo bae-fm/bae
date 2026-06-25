@@ -251,9 +251,11 @@ pub struct DbRelease {
     /// Specific MB/Discogs release ID used to seed metadata. NULL when
     /// `metadata_source = FileTags`.
     pub metadata_source_release_id: Option<String>,
-    /// Shared, synced fact: is this release's audio in the cloud home.
-    /// Device-local storage truth (whether *this* device holds the bytes,
-    /// and where) lives in `release_local_copy` / [`DbReleaseLocalCopy`].
+    /// Shared, synced fact: is this release's audio in the cloud home (managed)
+    /// or local to one device (unmanaged). An unmanaged release's in-place folder
+    /// lives in the device-local `release_unmanaged_source` /
+    /// [`DbReleaseUnmanagedSource`]; a managed release's bytes live in coven's
+    /// blob cache.
     pub managed: bool,
     /// Name of the source folder this release was imported from (just the final
     /// path component, not the full path). Used to detect likely duplicates when
@@ -277,22 +279,22 @@ pub struct DbRelease {
     pub created_at: DateTime<Utc>,
 }
 
-/// One `release_local_copy` row — DEVICE-LOCAL truth that this device holds a
-/// local copy of a release's audio. Not synced (the table carries no
-/// `_updated_at` and is not a registered synced table), so each device owns its
-/// own rows.
+/// One `release_unmanaged_source` row — DEVICE-LOCAL truth that this release is
+/// UNMANAGED on this device, with its files in place at `path`. Not synced (the
+/// table carries no `_updated_at` and is not a registered synced table), so each
+/// device owns its own rows.
 ///
-/// The XOR invariant mirrors the table CHECK: an unmanaged in-place import sets
-/// `unmanaged_path`; a managed pin sets `pinned_locally`. The two never hold at
-/// once. A release with no row has no local copy on this device.
+/// A row exists for exactly the unmanaged releases (`releases.managed = 0`). A
+/// managed release has NO row: its bytes live only in coven's blob cache
+/// (`storage/pinned/` when kept local, else fetched into `storage/cache/` on
+/// read), which coven owns — so "is it local" and "is it pinned" for a managed
+/// release are answered by coven's cache, never here.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DbReleaseLocalCopy {
+pub struct DbReleaseUnmanagedSource {
     pub release_id: String,
-    /// Folder the in-place unmanaged files live in on this device
-    /// (path = `unmanaged_path/original_filename`). `None` for a managed pin.
-    pub unmanaged_path: Option<String>,
-    /// True when this device pins a managed release's bytes under `storage/`.
-    pub pinned_locally: bool,
+    /// The folder the in-place files live in on this device; a file is at
+    /// `path/original_filename`.
+    pub path: String,
 }
 
 /// The playing context of a saved `playback_state` row: which release is being
@@ -402,10 +404,11 @@ pub struct DbTrack {
 /// - Files are part of a specific release (e.g., "2016 Remaster" has different files than "1973 Original")
 /// - Some files are metadata (cover.jpg, .cue sheets) not associated with any track
 ///
-/// File location is determined by this device's `release_local_copy` row:
-/// - `unmanaged_path` set: `unmanaged_path/original_filename`
-/// - `pinned_locally`: local managed storage via `storage_path()`
-/// - no row: cloud-only via `storage_path()` (managed) or unreachable
+/// File location follows the release's storage state:
+/// - unmanaged (has a `release_unmanaged_source` row): `path/original_filename`,
+///   the in-place source on this device;
+/// - managed (no row): coven's blob cache (`storage/pinned/` or `storage/cache/`),
+///   read through coven's cache API by the file's id — never a bae path.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbFile {
     pub id: String,
@@ -707,31 +710,20 @@ impl DbRelease {
         }
     }
 
-    /// Storage state on this device, derived from the shared `managed` fact
-    /// and this device's `release_local_copy` row (if any).
-    pub fn storage_state(
-        &self,
-        local_copy: Option<&DbReleaseLocalCopy>,
-    ) -> crate::album_detail::ReleaseStorageState {
-        crate::album_detail::storage_state(self.managed, local_copy)
+    /// Storage state — Unmanaged (local) or Managed (cloud) — from the shared
+    /// `managed` fact. Pinned-ness is the orthogonal coven-cache property the
+    /// caller carries separately; it is never part of this.
+    pub fn storage_state(&self) -> crate::album_detail::ReleaseStorageState {
+        crate::album_detail::storage_state(self.managed)
     }
 }
 
-impl DbReleaseLocalCopy {
-    /// Resolve the local file path this device holds for `file`:
-    /// `unmanaged_path/original_filename` for an in-place import, or the
-    /// managed `storage/` path for a pin. A row always resolves to a path
-    /// (the XOR invariant guarantees exactly one branch fires).
-    pub fn local_file_path(
-        &self,
-        file: &DbFile,
-        library_dir: &crate::library_dir::LibraryDir,
-    ) -> std::path::PathBuf {
-        if let Some(ref unmanaged_path) = self.unmanaged_path {
-            std::path::Path::new(unmanaged_path).join(&file.original_filename)
-        } else {
-            file.local_storage_path(library_dir)
-        }
+impl DbReleaseUnmanagedSource {
+    /// The in-place path of `file` on this device: `path/original_filename`. Only
+    /// unmanaged releases have a row, so this always resolves to the in-place
+    /// source; a managed release reads from coven's cache, never here.
+    pub fn local_file_path(&self, file: &DbFile) -> std::path::PathBuf {
+        std::path::Path::new(&self.path).join(&file.original_filename)
     }
 }
 impl DbTrack {
@@ -1075,11 +1067,14 @@ pub struct DbReleaseStorageSummary {
     pub artist_names: String,
     pub format: Option<String>,
     pub primary_release_id: Option<String>,
-    /// Shared `releases.managed` fact.
+    /// Shared `releases.managed` fact: managed (cloud) vs unmanaged (local). The
+    /// resolver derives `Unmanaged` directly from `!managed`; for a managed
+    /// release it asks coven's cache (via `any_file_id`) whether it is pinned.
     pub managed: bool,
-    /// This device's `release_local_copy` row, if any. The resolver derives
-    /// `storage_state` from `managed` plus this.
-    pub local_copy: Option<DbReleaseLocalCopy>,
+    /// The id of one of the release's files, or `None` when it has no files. Used
+    /// to ask coven's cache whether the release is pinned (pin/unpin act on all a
+    /// release's blobs together, so any one file represents the release).
+    pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,
 }
@@ -1121,9 +1116,10 @@ pub struct DbAlbumDetail {
 #[derive(Debug, Clone)]
 pub struct DbReleaseDetail {
     pub release: DbRelease,
-    /// This device's `release_local_copy` row, if any. The resolver derives
-    /// `storage_state` and local file paths from `release.managed` plus this.
-    pub local_copy: Option<DbReleaseLocalCopy>,
+    /// This device's `release_unmanaged_source` row, present iff the release is
+    /// unmanaged. The resolver reads in-place file paths from it; a managed
+    /// release has none (its bytes live in coven's cache).
+    pub unmanaged_source: Option<DbReleaseUnmanagedSource>,
     pub tracks: Vec<DbTrackWithArtists>,
     pub files: Vec<DbFile>,
     /// Audio-format rows for this release's tracks. Each carries the codec,
@@ -1154,11 +1150,14 @@ pub struct DbReleaseSummary {
     pub id: String,
     pub album_id: String,
     pub format: Option<String>,
-    /// Shared `releases.managed` fact.
+    /// Shared `releases.managed` fact: managed (cloud) vs unmanaged (local). The
+    /// resolver derives `Unmanaged` directly from `!managed`; for a managed
+    /// release it asks coven's cache (via `any_file_id`) whether it is pinned.
     pub managed: bool,
-    /// This device's `release_local_copy` row, if any. The resolver derives
-    /// `storage_state` from `managed` plus this.
-    pub local_copy: Option<DbReleaseLocalCopy>,
+    /// The id of one of the release's files, or `None` when it has no files. Used
+    /// to ask coven's cache whether the release is pinned (pin/unpin act on all a
+    /// release's blobs together, so any one file represents the release).
+    pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,
 }

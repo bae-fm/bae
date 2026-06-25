@@ -1,16 +1,25 @@
 #![cfg(feature = "test-utils")]
 //! Tests for the release storage state machine: the cloud-dependent transition
-//! windows (Manage → CloudOnly via the upload observer, Unmanage from CloudOnly
-//! via a cloud download). The local-only windows live in `test_transfer.rs`.
+//! windows (Manage → Managed via the upload observer, Unmanage from Managed via
+//! a cloud read). The local-only windows live in `test_transfer.rs`.
 //!
-//! SAFETY INVARIANT: a durable verified copy must exist at the destination
-//! before any delete is queued. The CloudOnly transitions exercise the upload
-//! observer's deferred-delete (originals removed only after the last upload
-//! lands) and the cloud-read durability check (a missing/short blob aborts
-//! before any delete).
+//! Storage is TWO states — Unmanaged (a local file the user owns, in place) and
+//! Managed (a cloud blob fronted by coven's cache). Pinned-ness is the ORTHOGONAL
+//! per-device coven-cache property (`pinned: bool`): whether coven keeps a managed
+//! blob in `storage/pinned/` (offline) vs the evictable `storage/cache/`. A blob
+//! only becomes pinned once it is in coven's cache, which a `retain_pinned` upload
+//! populates as it drains — so a pin-intent manage lands Unmanaged with its source
+//! in place and an upload queued, and becomes Managed+pinned only after that upload
+//! drains.
+//!
+//! SAFETY INVARIANT: a durable verified copy must exist at the destination before
+//! any delete is queued. The Managed transitions exercise the upload observer's
+//! deferred-delete (originals removed only after the last upload lands) and the
+//! cloud-read durability check (a missing/short blob aborts before any delete).
 
 mod support;
 
+use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource};
 use bae_core::encryption::EncryptionService;
 use bae_core::library::LibraryManager;
@@ -26,37 +35,18 @@ use uuid::Uuid;
 // Helpers
 // ---------------------------------------------------------------------------
 
-async fn setup(tmp: &TempDir) -> LibraryManager {
-    let library_dir = LibraryDir::new(tmp.path());
-    let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
-    let db_path = tmp.path().join("test.db");
-    let db = bae_core::db::Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-    )
-    .await
-    .unwrap();
-    LibraryManager::new(
-        db,
-        library_dir,
-        config_handle,
-        key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
-        tokio::runtime::Handle::current(),
-        None,
-    )
-}
-
-/// This device's storage state for a release, derived from `releases.managed`
-/// and its `release_local_copy` row.
-async fn storage_state(
-    mgr: &LibraryManager,
-    release_id: &str,
-) -> bae_core::album_detail::ReleaseStorageState {
-    let release = mgr.get_release_by_id(release_id).await.unwrap().unwrap();
-    let local_copy = mgr.get_release_local_copy(release_id).await.unwrap();
-    bae_core::album_detail::storage_state(release.managed, local_copy.as_ref())
+/// This release's storage facts on this device: its storage state (Unmanaged /
+/// Managed, from `releases.managed`) and the orthogonal `pinned` cache property
+/// (whether coven holds its blob in `storage/pinned/`). `find_release_storage_summary`
+/// resolves both; it needs the release to have at least one file row, which every
+/// test here creates.
+async fn storage(mgr: &LibraryManager, release_id: &str) -> (ReleaseStorageState, bool) {
+    let s = mgr
+        .find_release_storage_summary(release_id)
+        .await
+        .unwrap()
+        .unwrap();
+    (s.storage_state, s.pinned)
 }
 
 /// This device's raw `releases.managed` flag for a release.
@@ -68,11 +58,25 @@ async fn managed_flag(mgr: &LibraryManager, release_id: &str) -> bool {
         .managed
 }
 
-/// Create a managed (pinned) album+release+files, write files to storage/.
-async fn create_pinned_release(mgr: &LibraryManager, filenames: &[&str]) -> String {
+/// Insert an artist + album + an Unmanaged release, write its source files under
+/// `source_dir`, register the `DbFile` rows, and queue each file's cloud upload
+/// carrying `retain_pinned`. The release starts `managed = false` with its source
+/// recorded — exactly the state a pin-intent (retain_pinned=true) or cloud-only
+/// (retain_pinned=false) manage produces before its uploads drain. Returns
+/// (release_id, [(filename, bytes)]).
+///
+/// Draining these uploads (`process_cloud_uploads_with`) flips the release managed
+/// and — when `retain_pinned` is true — populates coven's pinned cache from the
+/// plaintext, so the release then reads `(Managed, true)`; with `retain_pinned`
+/// false it reads `(Managed, false)`.
+async fn create_unmanaged_with_uploads(
+    mgr: &LibraryManager,
+    source_dir: &std::path::Path,
+    filenames: &[&str],
+    retain_pinned: bool,
+) -> (String, Vec<(String, Vec<u8>)>) {
     let now = Utc::now();
 
-    // Insert a test artist for the album FK
     let artist_id = "test-storage-artist";
     let _ = mgr
         .insert_artist(&bae_core::db::DbArtist {
@@ -102,9 +106,9 @@ async fn create_pinned_release(mgr: &LibraryManager, filenames: &[&str]) -> Stri
         disc_id: None,
         metadata_source: ReleaseMetadataSource::FileTags,
         metadata_source_release_id: None,
-        // A pin lands unmanaged with a verified local copy and uploads queued;
-        // the upload observer flips `managed` true once they finish. Tests that
-        // drain the uploads exercise that real flip.
+        // A manage (pin or cloud-only) lands Unmanaged with its source in place
+        // and uploads queued; the upload observer flips `managed` true once they
+        // finish. Tests that drain the uploads exercise that real flip.
         managed: false,
         source_folder_name: None,
         content_hash: None,
@@ -117,67 +121,87 @@ async fn create_pinned_release(mgr: &LibraryManager, filenames: &[&str]) -> Stri
     mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
         .await
         .unwrap();
-    // Pin this device's local copy (managed stays false until the uploads land).
-    mgr.pin_release_locally(&release_id).await.unwrap();
+    mgr.set_release_unmanaged_path(&release_id, &source_dir.to_string_lossy())
+        .await
+        .unwrap();
 
+    tokio::fs::create_dir_all(source_dir).await.unwrap();
+    let mut result = Vec::new();
     for filename in filenames {
+        let data = format!("data-{filename}").into_bytes();
+        let source_path = source_dir.join(filename);
+        tokio::fs::write(&source_path, &data).await.unwrap();
+
         let file = DbFile::new(
             &release_id,
             filename,
-            1000,
+            data.len() as i64,
             ContentType::Flac,
             uuid::Uuid::new_v4().to_string(),
             chrono::Utc::now(),
         );
-        let storage_path = mgr.local_storage_path_for_file(&file);
-        std::fs::create_dir_all(storage_path.parent().unwrap()).unwrap();
-        std::fs::write(&storage_path, format!("data-{filename}").as_bytes()).unwrap();
-
         let cloud_key = bae_core::storage::local::storage_path(&file.id);
         mgr.add_file(&file).await.unwrap();
-        mgr.add_cloud_outbox_upload(&file.id, &cloud_key, None)
-            .await
-            .unwrap();
+        mgr.add_cloud_outbox_upload(
+            &file.id,
+            &cloud_key,
+            Some(&source_path.to_string_lossy()),
+            retain_pinned,
+        )
+        .await
+        .unwrap();
+        result.push((filename.to_string(), data));
     }
 
-    release_id
+    (release_id, result)
 }
 
 // ---------------------------------------------------------------------------
-// Import with cloud: Pinned stays Pinned after upload
+// Manage with pin: Unmanaged before the drain, Managed + pinned after.
+//
+// The pinned LABEL now requires coven's cache to be populated, which happens as
+// the `retain_pinned` upload drains — so a pin-intent manage is NOT pinned before
+// the upload lands. Before the drain the release is `(Unmanaged, false)`; after,
+// `(Managed, true)`. (Old model read "Pinned" immediately off a staged local copy;
+// that copy is gone — managed bytes live only in coven's cache.)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_managed_import_stays_pinned_after_upload() {
+async fn test_managed_import_becomes_pinned_after_upload() {
     let tmp = TempDir::new().unwrap();
-    let mgr = setup(&tmp).await;
+    let (mgr, _cloud, enc_svc) = setup_with_cloud(&tmp, true).await;
+    let source_dir = tmp.path().join("originals");
 
-    let release_id = create_pinned_release(&mgr, &["track1.flac"]).await;
+    let (release_id, _files) =
+        create_unmanaged_with_uploads(&mgr, &source_dir, &["track1.flac"], true).await;
 
-    // Lands unmanaged (its upload hasn't finished) yet already reads Pinned —
-    // this device holds the verified local copy.
+    // Before the drain the blob isn't in coven's cache yet: the release is still
+    // Unmanaged (its upload hasn't finished) and NOT pinned.
     assert!(
         !managed_flag(&mgr, &release_id).await,
-        "a pin lands managed=false until its upload completes"
+        "a pin-intent manage lands managed=false until its upload completes"
     );
     assert_eq!(
-        storage_state(&mgr, &release_id).await,
-        bae_core::album_detail::ReleaseStorageState::Pinned
+        storage(&mgr, &release_id).await,
+        (ReleaseStorageState::Unmanaged, false),
+        "a pin-intent manage is Unmanaged + not-pinned before the upload drains"
     );
 
     let cloud = MockCloudHome::new();
-    let enc = RwLock::new(EncryptionService::new_with_key(&[0u8; 32]));
+    let enc = RwLock::new(enc_svc);
     let count = mgr.process_cloud_uploads_with(&cloud, &enc).await.unwrap();
     assert_eq!(count, 1);
 
-    // The upload completed: the observer flipped it managed while keeping the pin.
+    // The upload completed: the observer flipped it managed, AND the retain-pinned
+    // upload populated coven's pinned cache — so it now reads Managed + pinned.
     assert!(
         managed_flag(&mgr, &release_id).await,
-        "the upload observer flips a pin to managed once its uploads finish"
+        "the upload observer flips the release to managed once its uploads finish"
     );
     assert_eq!(
-        storage_state(&mgr, &release_id).await,
-        bae_core::album_detail::ReleaseStorageState::Pinned
+        storage(&mgr, &release_id).await,
+        (ReleaseStorageState::Managed, true),
+        "a drained retain-pinned upload lands Managed + pinned"
     );
 }
 
@@ -188,13 +212,15 @@ async fn test_managed_import_stays_pinned_after_upload() {
 #[tokio::test]
 async fn test_multiple_releases_independent_completion() {
     let tmp = TempDir::new().unwrap();
-    let mgr = setup(&tmp).await;
+    let (mgr, _cloud, enc_svc) = setup_with_cloud(&tmp, true).await;
 
-    let release_a = create_pinned_release(&mgr, &["track.flac"]).await;
-    let release_b = create_pinned_release(&mgr, &["track.flac"]).await;
+    let (release_a, _a) =
+        create_unmanaged_with_uploads(&mgr, &tmp.path().join("a"), &["track.flac"], true).await;
+    let (release_b, _b) =
+        create_unmanaged_with_uploads(&mgr, &tmp.path().join("b"), &["track.flac"], true).await;
 
     let cloud = MockCloudHome::new();
-    let enc = RwLock::new(EncryptionService::new_with_key(&[0u8; 32]));
+    let enc = RwLock::new(enc_svc);
 
     // First drain: release_a's upload completes and flips it managed; the observer
     // breaks the drain to publish, so release_b is left for the next pass —
@@ -218,14 +244,14 @@ async fn test_multiple_releases_independent_completion() {
         "release_b flipped managed",
     );
 
-    use bae_core::album_detail::ReleaseStorageState;
+    // Both drained as retain-pinned: each is Managed + pinned.
     assert_eq!(
-        storage_state(&mgr, &release_a).await,
-        ReleaseStorageState::Pinned
+        storage(&mgr, &release_a).await,
+        (ReleaseStorageState::Managed, true)
     );
     assert_eq!(
-        storage_state(&mgr, &release_b).await,
-        ReleaseStorageState::Pinned
+        storage(&mgr, &release_b).await,
+        (ReleaseStorageState::Managed, true)
     );
 }
 
@@ -271,8 +297,8 @@ async fn setup_with_cloud(
     mgr.set_cloud_override(cloud.clone(), enc.clone());
     // Tests that drive the upload pipeline by hand via
     // `process_cloud_uploads_with` pass `sync_ready: true` to model a running
-    // sync loop, which the CloudOnly manage gate requires. The refusal test
-    // passes `false` to leave the gate reading the real (absent) sync loop.
+    // sync loop, which the Managed manage gate requires. The refusal test passes
+    // `false` to leave the gate reading the real (absent) sync loop.
     if sync_ready {
         mgr.set_force_sync_ready();
     }
@@ -280,7 +306,8 @@ async fn setup_with_cloud(
 }
 
 /// Insert a test artist + album + an Unmanaged release, write its originals to
-/// `source_dir`, and register the DbFile rows. Returns (release_id, files).
+/// `source_dir`, and register the DbFile rows (no uploads queued — the test drives
+/// `manage_release` itself). Returns (release_id, files).
 async fn create_unmanaged_release(
     mgr: &LibraryManager,
     source_dir: &std::path::Path,
@@ -316,7 +343,7 @@ async fn create_unmanaged_release(
         disc_id: None,
         metadata_source: ReleaseMetadataSource::FileTags,
         metadata_source_release_id: None,
-        managed: true,
+        managed: false,
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,
@@ -327,8 +354,7 @@ async fn create_unmanaged_release(
     mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
         .await
         .unwrap();
-    // Unmanaged in place: mark managed=false and record this device's local
-    // copy at the source directory.
+    // Unmanaged in place: record this device's source folder.
     mgr.set_release_unmanaged_path(&release_id, &source_dir.to_string_lossy())
         .await
         .unwrap();
@@ -352,18 +378,18 @@ async fn create_unmanaged_release(
 }
 
 // ---------------------------------------------------------------------------
-// Manage → CloudOnly requires a live upload pipeline.
+// Manage → Managed requires a live upload pipeline.
 //
-// CloudOnly keeps no local managed copy: the release only becomes managed once
-// `ReleaseUploadObserver` confirms the last upload landed, and that observer
-// fires only from inside the running sync loop. With a cloud home configured
-// but the sync loop not running, the uploads never drain, the observer never
-// fires, and the release would stay Unmanaged forever — so the transition must
-// refuse up front instead of silently succeeding.
+// A managed release keeps no local managed copy: the release only becomes managed
+// once `ReleaseUploadObserver` confirms the last upload landed, and that observer
+// fires only from inside the running sync loop. With a cloud home configured but
+// the sync loop not running, the uploads never drain, the observer never fires,
+// and the release would stay Unmanaged forever — so the transition must refuse up
+// front instead of silently succeeding.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_manage_cloud_only_refused_when_sync_not_running() {
+async fn test_manage_refused_when_sync_not_running() {
     let tmp = TempDir::new().unwrap();
     // Cloud home configured but the sync loop is NOT running.
     let (mgr, _cloud, _enc) = setup_with_cloud(&tmp, false).await;
@@ -379,33 +405,33 @@ async fn test_manage_cloud_only_refused_when_sync_not_running() {
     )
     .await;
 
-    // CloudOnly manage with the pipeline down must error, not return Ok: nothing
-    // would ever drain the queue to flip the release managed.
-    let result = mgr.manage_release(&release_id, false, false).await;
+    // Manage with the pipeline down must error, not return Ok: nothing would ever
+    // drain the queue to flip the release managed.
+    let result = mgr.manage_release(&release_id, false).await;
     assert!(
         result.is_err(),
-        "manage → CloudOnly must fail when the upload pipeline isn't running, got {result:?}"
+        "manage must fail when the upload pipeline isn't running, got {result:?}"
     );
 
-    // Nothing was enqueued and the release stays Unmanaged.
+    // Nothing was enqueued and the release stays Unmanaged (not pinned).
     assert!(
         mgr.get_pending_cloud_uploads().await.unwrap().is_empty(),
         "no upload may be enqueued when the pipeline can't drain it"
     );
-    use bae_core::album_detail::ReleaseStorageState;
     assert_eq!(
-        storage_state(&mgr, &release_id).await,
-        ReleaseStorageState::Unmanaged
+        storage(&mgr, &release_id).await,
+        (ReleaseStorageState::Unmanaged, false)
     );
 }
 
 // ---------------------------------------------------------------------------
-// Manage → CloudOnly (pin = false): upload from the originals; the observer
-// clears unmanaged_path once the last upload lands.
+// Manage → Managed (pin = false): upload from the originals; the observer drops
+// the unmanaged-source row and deletes the originals once the last upload lands.
+// Cloud-only: the drained blob is NOT pinned.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_manage_cloud_only_uploads_from_source_then_observer_clears_path() {
+async fn test_manage_cloud_only_uploads_from_source_then_observer_completes() {
     let tmp = TempDir::new().unwrap();
     let (mgr, cloud, enc_svc) = setup_with_cloud(&tmp, true).await;
     let source_dir = tmp.path().join("originals");
@@ -416,8 +442,8 @@ async fn test_manage_cloud_only_uploads_from_source_then_observer_clears_path() 
     )
     .await;
 
-    // Manage to CloudOnly, no source deletion.
-    mgr.manage_release(&release_id, false, false).await.unwrap();
+    // Manage cloud-only (pin = false).
+    mgr.manage_release(&release_id, false).await.unwrap();
 
     // Outbox uploads read from the originals (source_path = Some).
     let uploads = mgr.get_pending_cloud_uploads().await.unwrap();
@@ -430,11 +456,10 @@ async fn test_manage_cloud_only_uploads_from_source_then_observer_clears_path() 
         }
     )));
 
-    // Still Unmanaged until the uploads finish.
-    use bae_core::album_detail::ReleaseStorageState;
+    // Still Unmanaged (not pinned) until the uploads finish.
     assert_eq!(
-        storage_state(&mgr, &release_id).await,
-        ReleaseStorageState::Unmanaged
+        storage(&mgr, &release_id).await,
+        (ReleaseStorageState::Unmanaged, false)
     );
 
     // Drive the uploads (this fires the real ReleaseUploadObserver).
@@ -445,61 +470,25 @@ async fn test_manage_cloud_only_uploads_from_source_then_observer_clears_path() 
         .unwrap();
     assert_eq!(count, files.len());
 
-    // Observer flipped it to managed → CloudOnly. Source NOT deleted.
+    // Observer flipped it to Managed; cloud-only, so NOT pinned. The in-place
+    // source files were deleted once the last upload landed.
     assert_eq!(
-        storage_state(&mgr, &release_id).await,
-        ReleaseStorageState::CloudOnly
-    );
-    for (name, _) in &files {
-        assert!(source_dir.join(name).exists(), "source {name} kept");
-    }
-}
-
-#[tokio::test]
-async fn test_manage_cloud_only_deferred_delete_removes_source_after_last_upload() {
-    let tmp = TempDir::new().unwrap();
-    let (mgr, cloud, enc_svc) = setup_with_cloud(&tmp, true).await;
-    let source_dir = tmp.path().join("originals");
-    let (release_id, files) = create_unmanaged_release(
-        &mgr,
-        &source_dir,
-        &[("a.flac", b"defer-a"), ("b.flac", b"defer-bb")],
-    )
-    .await;
-
-    // Manage to CloudOnly WITH source deletion requested (deferred).
-    mgr.manage_release(&release_id, false, true).await.unwrap();
-
-    // Deferred: originals still present right after enqueue.
-    for (name, _) in &files {
-        assert!(source_dir.join(name).exists(), "source {name} not yet gone");
-    }
-
-    // Drive uploads → observer fires on the last one, deletes the originals.
-    let enc = RwLock::new(enc_svc);
-    let count = mgr
-        .process_cloud_uploads_with(cloud.as_ref(), &enc)
-        .await
-        .unwrap();
-    assert_eq!(count, files.len());
-
-    assert_eq!(
-        storage_state(&mgr, &release_id).await,
-        bae_core::album_detail::ReleaseStorageState::CloudOnly
+        storage(&mgr, &release_id).await,
+        (ReleaseStorageState::Managed, false)
     );
     for (name, _) in &files {
         assert!(
             !source_dir.join(name).exists(),
-            "source {name} should be deleted after last upload"
+            "source {name} deleted after the last upload landed"
         );
     }
 }
 
-/// Manage → CloudOnly with delete_source requested, but the upload FAILS: the
-/// observer never fires, so the originals survive (no eager delete) and the
-/// release stays Unmanaged with the intent still pending.
+/// Manage → Managed, but the upload FAILS: the observer never fires, so the
+/// originals survive (no eager delete), the release stays Unmanaged (not pinned),
+/// and its upload is still pending.
 #[tokio::test]
-async fn test_manage_cloud_only_upload_failure_keeps_source() {
+async fn test_manage_upload_failure_keeps_source() {
     let tmp = TempDir::new().unwrap();
     let (mgr, _cloud, enc_svc) = setup_with_cloud(&tmp, true).await;
     let source_dir = tmp.path().join("originals");
@@ -510,7 +499,7 @@ async fn test_manage_cloud_only_upload_failure_keeps_source() {
     )
     .await;
 
-    mgr.manage_release(&release_id, false, true).await.unwrap();
+    mgr.manage_release(&release_id, false).await.unwrap();
 
     // A cloud whose writes all fail: drain_uploads records each failure and keeps
     // draining, so none of the release's uploads succeed.
@@ -522,13 +511,14 @@ async fn test_manage_cloud_only_upload_failure_keeps_source() {
         .unwrap();
     assert_eq!(count, 0, "no upload should succeed");
 
-    // Source intact; release still Unmanaged; the upload is still pending.
+    // Source intact; release still Unmanaged (not pinned); the upload is still
+    // pending.
     for (name, _) in &files {
         assert!(source_dir.join(name).exists(), "source {name} must survive");
     }
     assert_eq!(
-        storage_state(&mgr, &release_id).await,
-        bae_core::album_detail::ReleaseStorageState::Unmanaged
+        storage(&mgr, &release_id).await,
+        (ReleaseStorageState::Unmanaged, false)
     );
     assert_ne!(
         mgr.count_pending_uploads_for_release(&release_id)
@@ -538,14 +528,13 @@ async fn test_manage_cloud_only_upload_failure_keeps_source() {
     );
 }
 
-/// Manage → CloudOnly refuses a truncated source. The original is the upload
-/// source and the delete is deferred to the observer, so a source whose on-disk
-/// bytes are shorter than the recorded file_size must abort BEFORE anything is
-/// enqueued — otherwise short bytes would upload and the only full copy would
-/// then be deleted. All-or-nothing: nothing enqueued, source intact, still
-/// Unmanaged.
+/// Manage refuses a truncated source. The original is the upload source and the
+/// delete is deferred to the observer, so a source whose on-disk bytes are shorter
+/// than the recorded file_size must abort BEFORE anything is enqueued — otherwise
+/// short bytes would upload and the only full copy would then be deleted.
+/// All-or-nothing: nothing enqueued, source intact, still Unmanaged.
 #[tokio::test]
-async fn test_manage_cloud_only_truncated_source_aborts_before_enqueue() {
+async fn test_manage_truncated_source_aborts_before_enqueue() {
     let tmp = TempDir::new().unwrap();
     let (mgr, _cloud, _enc_svc) = setup_with_cloud(&tmp, true).await;
     let source_dir = tmp.path().join("originals");
@@ -561,7 +550,7 @@ async fn test_manage_cloud_only_truncated_source_aborts_before_enqueue() {
         .await
         .unwrap();
 
-    let result = mgr.manage_release(&release_id, false, true).await;
+    let result = mgr.manage_release(&release_id, false).await;
     assert!(result.is_err(), "truncated source must abort manage");
 
     assert!(
@@ -572,139 +561,117 @@ async fn test_manage_cloud_only_truncated_source_aborts_before_enqueue() {
         assert!(source_dir.join(name).exists(), "source {name} must survive");
     }
     assert_eq!(
-        storage_state(&mgr, &release_id).await,
-        bae_core::album_detail::ReleaseStorageState::Unmanaged,
+        storage(&mgr, &release_id).await,
+        (ReleaseStorageState::Unmanaged, false),
         "release must stay Unmanaged after an aborted manage"
     );
 }
 
 // ---------------------------------------------------------------------------
-// Unmanage from CloudOnly: download + decrypt each file, write to the new
-// path, then queue cloud deletes — only after a verified durable write.
+// Unmanage from Managed: read each file through coven's cache (cloud on a miss),
+// write it to the new path, then queue cloud deletes — only after a verified
+// durable write.
 // ---------------------------------------------------------------------------
 
-/// Insert a CloudOnly release (unmanaged_path = None, not pinned) and register
-/// its DbFile rows. Returns (release_id, [(file_id, original_filename,
-/// plaintext)]). The caller seeds the cloud blobs.
-async fn create_cloud_only_release(
+/// Get a Managed (cloud-only, not pinned) release whose blobs sit in the
+/// `MockCloudHome`: insert it Unmanaged, queue cloud-only uploads, and drain them.
+/// The observer flips it Managed and the blobs land in the home, so a later
+/// unmanage/pin reads them back through coven's cache. Returns (release_id,
+/// [(file_id, original_filename, plaintext)]).
+async fn create_managed_cloud_only_release(
     mgr: &LibraryManager,
+    cloud: &MockCloudHome,
+    enc_svc: EncryptionService,
+    source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
 ) -> (String, Vec<(String, String, Vec<u8>)>) {
-    let now = Utc::now();
-    let artist_id = "cloudonly-dl-artist";
-    let _ = mgr
-        .insert_artist(&bae_core::db::DbArtist {
-            id: artist_id.to_string(),
-            name: "Test Artist".to_string(),
-            sort_name: None,
-            discogs_artist_id: None,
-            musicbrainz_artist_id: None,
-            created_at: now,
-        })
-        .await;
-    let album = DbAlbum {
-        id: Uuid::new_v4().to_string(),
-        title: "CloudOnly DL".to_string(),
-        artist_id: artist_id.to_string(),
-        year: Some(2024),
-        primary_release_id: None,
-        is_compilation: false,
-        created_at: now,
-    };
-    let release = DbRelease {
-        id: Uuid::new_v4().to_string(),
-        album_id: album.id.clone(),
-        release_name: None,
-        pressing: Pressing::blank(),
-        disc_id: None,
-        metadata_source: ReleaseMetadataSource::FileTags,
-        metadata_source_release_id: None,
-        managed: true,
-        source_folder_name: None,
-        content_hash: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: now,
-    };
-    let release_id = release.id.clone();
-    mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
-        .await
-        .unwrap();
+    let (release_id, _named) = create_unmanaged_release(mgr, source_dir, files).await;
 
+    // Capture each file's id before draining (the file rows persist; the source
+    // files get deleted by the observer).
     let mut result = Vec::new();
-    for (name, data) in files {
-        let db_file = DbFile::new(
-            &release_id,
-            name,
-            data.len() as i64,
-            ContentType::Flac,
-            uuid::Uuid::new_v4().to_string(),
-            chrono::Utc::now(),
-        );
-        let id = db_file.id.clone();
-        mgr.add_file(&db_file).await.unwrap();
-        result.push((id, name.to_string(), data.to_vec()));
+    for file in mgr.get_files_for_release(&release_id).await.unwrap() {
+        let plaintext = files
+            .iter()
+            .find(|(n, _)| *n == file.original_filename)
+            .map(|(_, d)| d.to_vec())
+            .unwrap();
+        result.push((file.id.clone(), file.original_filename.clone(), plaintext));
     }
+
+    mgr.manage_release(&release_id, false).await.unwrap();
+    let enc = RwLock::new(enc_svc);
+    let count = mgr.process_cloud_uploads_with(cloud, &enc).await.unwrap();
+    assert_eq!(count, files.len(), "all files uploaded");
+    assert_eq!(
+        storage(mgr, &release_id).await,
+        (ReleaseStorageState::Managed, false),
+        "release is Managed (cloud-only) after the drain"
+    );
+
     (release_id, result)
 }
 
 #[tokio::test]
-async fn test_unmanage_from_cloud_only_downloads_then_queues_deletes() {
+async fn test_unmanage_from_managed_reads_through_cache_then_queues_deletes() {
     let tmp = TempDir::new().unwrap();
     let (mgr, cloud, enc) = setup_with_cloud(&tmp, true).await;
-    let (release_id, files) = create_cloud_only_release(
+    let source_dir = tmp.path().join("originals");
+    let (release_id, files) = create_managed_cloud_only_release(
         &mgr,
+        cloud.as_ref(),
+        enc,
+        &source_dir,
         &[("x.flac", b"download-x"), ("y.flac", b"download-yy")],
     )
     .await;
-
-    // Seed encrypted blobs at the content-addressed cloud keys, encrypted with
-    // the library master key — that's what the unmanage download decrypts with.
-    for (file_id, _name, plaintext) in &files {
-        let key = bae_core::storage::local::storage_path(file_id);
-        cloud.put(&key, enc.encrypt(plaintext));
-    }
 
     let new_path = tmp.path().join("exported");
     mgr.unmanage_release(&release_id, new_path.to_str().unwrap())
         .await
         .unwrap();
 
-    // Files downloaded + decrypted to the new path with the right bytes.
+    // Files read back through coven's cache (cloud on a miss) and written to the
+    // new path with the right bytes.
     for (_file_id, name, plaintext) in &files {
         let written = tokio::fs::read(new_path.join(name)).await.unwrap();
-        assert_eq!(&written, plaintext, "downloaded {name} matches");
+        assert_eq!(&written, plaintext, "exported {name} matches");
     }
 
     // Release is Unmanaged at the new path, and cloud deletes were queued for
     // every blob (after the durable write).
     assert_eq!(
-        storage_state(&mgr, &release_id).await,
-        bae_core::album_detail::ReleaseStorageState::Unmanaged
+        storage(&mgr, &release_id).await,
+        (ReleaseStorageState::Unmanaged, false)
     );
-    let local_copy = mgr
-        .get_release_local_copy(&release_id)
+    let source = mgr
+        .get_release_unmanaged_source(&release_id)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(local_copy.unmanaged_path.as_deref(), new_path.to_str());
+    assert_eq!(source.path.as_str(), new_path.to_str().unwrap());
     let deletes = mgr.get_pending_cloud_deletes().await.unwrap();
     assert_eq!(deletes.len(), files.len());
 }
 
-/// Unmanage of a CloudOnly release whose cloud blob is missing: a hard error,
-/// nothing written for that file, no delete queued, release stays managed.
+/// Unmanage of a Managed release whose cloud blob is missing: a hard error,
+/// nothing written for that file, no delete queued, release stays Managed.
 #[tokio::test]
-async fn test_unmanage_from_cloud_only_missing_blob_is_hard_error() {
+async fn test_unmanage_from_managed_missing_blob_is_hard_error() {
     let tmp = TempDir::new().unwrap();
     let (mgr, cloud, enc) = setup_with_cloud(&tmp, true).await;
-    let (release_id, files) =
-        create_cloud_only_release(&mgr, &[("x.flac", b"present"), ("y.flac", b"missing")]).await;
+    let source_dir = tmp.path().join("originals");
+    let (release_id, files) = create_managed_cloud_only_release(
+        &mgr,
+        cloud.as_ref(),
+        enc,
+        &source_dir,
+        &[("x.flac", b"present"), ("y.flac", b"missing")],
+    )
+    .await;
 
-    // Seed only the FIRST file's blob (encrypted with the library master key);
-    // the second is absent.
-    let key0 = bae_core::storage::local::storage_path(&files[0].0);
-    cloud.put(&key0, enc.encrypt(&files[0].2));
+    // Remove the SECOND file's blob from the cloud so its cache-miss read 404s.
+    cloud.remove(&bae_core::storage::local::storage_path(&files[1].0));
 
     let new_path = tmp.path().join("exported");
     let result = mgr
@@ -712,28 +679,36 @@ async fn test_unmanage_from_cloud_only_missing_blob_is_hard_error() {
         .await;
     assert!(result.is_err(), "missing blob must be a hard error");
 
-    // No delete was queued; the release stays CloudOnly (managed).
+    // No delete was queued; the release stays Managed (cloud-only).
     assert!(mgr.get_pending_cloud_deletes().await.unwrap().is_empty());
     assert_eq!(
-        storage_state(&mgr, &release_id).await,
-        bae_core::album_detail::ReleaseStorageState::CloudOnly
+        storage(&mgr, &release_id).await,
+        (ReleaseStorageState::Managed, false)
     );
 
     // The missing file was never written to the new path.
     assert!(!new_path.join(&files[1].1).exists());
 }
 
-/// Unmanage of a CloudOnly release whose cloud blob decrypts to fewer bytes
-/// than `file_size`: the length check aborts, no delete queued.
+/// Unmanage of a Managed release whose cloud blob decrypts to fewer bytes than
+/// `file_size`: the length check aborts, no delete queued, release stays Managed.
 #[tokio::test]
-async fn test_unmanage_from_cloud_only_short_blob_is_hard_error() {
+async fn test_unmanage_from_managed_short_blob_is_hard_error() {
     let tmp = TempDir::new().unwrap();
     let (mgr, cloud, enc) = setup_with_cloud(&tmp, true).await;
-    let (release_id, files) =
-        create_cloud_only_release(&mgr, &[("x.flac", b"the-full-length-bytes")]).await;
+    let source_dir = tmp.path().join("originals");
+    let (release_id, files) = create_managed_cloud_only_release(
+        &mgr,
+        cloud.as_ref(),
+        enc.clone(),
+        &source_dir,
+        &[("x.flac", b"the-full-length-bytes")],
+    )
+    .await;
 
-    // Seed a blob (encrypted with the library master key) that decrypts to FEWER
-    // bytes than the declared file_size, so the length check is what aborts.
+    // Overwrite the cloud blob with one that decrypts to FEWER bytes than the
+    // declared file_size, so the length check is what aborts. The blob is sealed
+    // with the library master key, exactly as the upload sealed the original.
     let key = bae_core::storage::local::storage_path(&files[0].0);
     cloud.put(&key, enc.encrypt(b"short"));
 
@@ -745,8 +720,8 @@ async fn test_unmanage_from_cloud_only_short_blob_is_hard_error() {
 
     assert!(mgr.get_pending_cloud_deletes().await.unwrap().is_empty());
     assert_eq!(
-        storage_state(&mgr, &release_id).await,
-        bae_core::album_detail::ReleaseStorageState::CloudOnly
+        storage(&mgr, &release_id).await,
+        (ReleaseStorageState::Managed, false)
     );
 }
 

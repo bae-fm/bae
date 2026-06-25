@@ -111,13 +111,14 @@ pub struct BridgeAlbum {
     pub cover_path: Option<String>,
 }
 
-/// Where a release's files live. Mirrors
-/// `bae_core::album_detail::ReleaseStorageState`.
+/// A release's storage state — Unmanaged (a local file the user owns) or Managed
+/// (a cloud blob). Mirrors `bae_core::album_detail::ReleaseStorageState`. Whether
+/// a managed release is kept offline is the ORTHOGONAL `pinned` bool on
+/// `BridgeReleaseSummary`/`BridgeRelease`, never folded into this enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReleaseStorageState {
     Unmanaged,
-    Pinned,
-    CloudOnly,
+    Managed,
 }
 
 impl BridgeReleaseStorageState {
@@ -125,8 +126,7 @@ impl BridgeReleaseStorageState {
         use bae_core::album_detail::ReleaseStorageState;
         match state {
             ReleaseStorageState::Unmanaged => Self::Unmanaged,
-            ReleaseStorageState::Pinned => Self::Pinned,
-            ReleaseStorageState::CloudOnly => Self::CloudOnly,
+            ReleaseStorageState::Managed => Self::Managed,
         }
     }
 }
@@ -179,8 +179,13 @@ pub struct BridgeReleaseSummary {
     pub id: String,
     pub album_id: String,
     pub format: Option<String>,
-    /// Where this release's files live.
+    /// The release's storage state — Unmanaged (local) or Managed (cloud).
     pub storage_state: BridgeReleaseStorageState,
+    /// Whether coven keeps this release's blobs pinned (kept offline) on this
+    /// device — the ORTHOGONAL coven-cache property. Meaningful only when
+    /// `storage_state` is `Managed`. Kept separate from `storage_state` so the UI
+    /// never conflates "in the cloud" with "kept offline".
+    pub pinned: bool,
     /// Storage transitions available right now, gated on cloud-home by the
     /// core. The in-flight-uploads gate lives in the UI: it consults the
     /// outbox snapshot's `per_release` map before showing actions. The Storage
@@ -206,8 +211,11 @@ pub struct BridgeRelease {
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
-    /// Where this release's files live.
+    /// The release's storage state — Unmanaged (local) or Managed (cloud).
     pub storage_state: BridgeReleaseStorageState,
+    /// Whether coven keeps this release's blobs pinned (kept offline) on this
+    /// device — the ORTHOGONAL coven-cache property, separate from `storage_state`.
+    pub pinned: bool,
     /// Storage transitions available right now, gated on cloud-home by the
     /// core. The in-flight-uploads gate lives in the UI: it consults the
     /// outbox snapshot's `per_release` map before showing actions.
@@ -2019,11 +2027,14 @@ pub struct BridgeSortCriterion {
     pub direction: BridgeSortDirection,
 }
 
+/// The storage state the user picks for an import — Unmanaged (keep the files in
+/// place) or Managed (upload to the cloud). Mirrors
+/// `bae_core::import::StorageMode`. Whether a managed import is kept offline is the
+/// ORTHOGONAL `pin` argument on `start_import`, never folded into this enum.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeStorageMode {
     Unmanaged,
-    ManagedPinned,
-    ManagedUnpinned,
+    Managed,
 }
 
 #[derive(Debug, uniffi::Enum)]
@@ -2425,14 +2436,16 @@ pub(crate) fn bridge_playback_error_reason(
     }
 }
 
+/// Map the UI's storage-state choice to the core's `StorageMode`. Pinned-ness is
+/// orthogonal — the caller passes the import's `pin` choice separately.
 #[cfg(feature = "desktop")]
 pub(crate) fn bridge_storage_mode_to_core(
     mode: BridgeStorageMode,
 ) -> bae_core::import::StorageMode {
+    use bae_core::import::StorageMode;
     match mode {
-        BridgeStorageMode::Unmanaged => bae_core::import::StorageMode::Unmanaged,
-        BridgeStorageMode::ManagedPinned => bae_core::import::StorageMode::Managed { pin: true },
-        BridgeStorageMode::ManagedUnpinned => bae_core::import::StorageMode::Managed { pin: false },
+        BridgeStorageMode::Unmanaged => StorageMode::Unmanaged,
+        BridgeStorageMode::Managed => StorageMode::Managed,
     }
 }
 

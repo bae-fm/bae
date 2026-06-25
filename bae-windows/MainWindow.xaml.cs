@@ -2299,17 +2299,16 @@ public sealed partial class MainWindow : Window
             IsChecked = true,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        bool StorageManagedSelected() => storageManaged.IsChecked == true;
-        string StorageModeTag() =>
-            !settings.HasCloudHome || !StorageManagedSelected()
-                ? "unmanaged"
-                : storagePinned.IsChecked == true
-                    ? "managed_pinned"
-                    : "managed_unpinned";
+        bool StorageManagedSelected() => settings.HasCloudHome && storageManaged.IsChecked == true;
+        // Storage state and pinned-ness are orthogonal: the mode tag is purely
+        // unmanaged-vs-managed; the pin choice rides alongside as its own arg,
+        // meaningful only for a managed import.
+        string StorageModeTag() => StorageManagedSelected() ? "managed" : "unmanaged";
+        bool StoragePinSelected() => StorageManagedSelected() && storagePinned.IsChecked == true;
 
         void RefreshStorageControls()
         {
-            storagePinned.Visibility = settings.HasCloudHome && StorageManagedSelected()
+            storagePinned.Visibility = StorageManagedSelected()
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
@@ -2380,9 +2379,10 @@ public sealed partial class MainWindow : Window
             var deferral = args.GetDeferral();
             var payload = JsonSerializer.Serialize(form.ReadBack(), JsonOptions);
             var storageMode = StorageModeTag();
+            var pin = StoragePinSelected();
             var error = await System.Threading.Tasks.Task.Run(
                 () => NativeBae.ImportCandidate(
-                    _handle, candidate.Key, candidate.FolderPath, chosen.ReleaseId, chosen.Source, storageMode, payload, selectedCoverJson));
+                    _handle, candidate.Key, candidate.FolderPath, chosen.ReleaseId, chosen.Source, storageMode, pin, payload, selectedCoverJson));
             if (error is not null)
             {
                 form.ErrorText.Text = error;
@@ -4448,7 +4448,7 @@ public sealed partial class MainWindow : Window
                 {
                     "pin" => NativeBae.PinRelease(_handle, releaseId),
                     "unpin" => NativeBae.UnpinRelease(_handle, releaseId),
-                    "manage" => NativeBae.ManageRelease(_handle, releaseId, false, false),
+                    "manage" => NativeBae.ManageRelease(_handle, releaseId, pin: false),
                     // A null return reads as success; an unknown action is a
                     // UI/core contract mismatch, so surface it rather than
                     // reload as if it worked.

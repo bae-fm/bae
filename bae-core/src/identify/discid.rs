@@ -40,7 +40,7 @@ pub async fn resolve_release_identity(
         .map_err(|e| format!("Failed to load tracks: {e}"))?
         .len() as u32;
     let local_copy = library_manager
-        .get_release_local_copy(release_id)
+        .get_release_unmanaged_source(release_id)
         .await
         .map_err(|e| format!("Failed to load local copy: {e}"))?;
 
@@ -103,7 +103,7 @@ pub async fn resolve_release_artwork_paths(
         .await
         .map_err(|e| format!("Failed to load release files: {e}"))?;
     let local_copy = library_manager
-        .get_release_local_copy(release_id)
+        .get_release_unmanaged_source(release_id)
         .await
         .map_err(|e| format!("Failed to load local copy: {e}"))?;
 
@@ -317,11 +317,7 @@ mod tests {
         };
         database.insert_release(&release).await.unwrap();
         database
-            .upsert_release_local_copy(&crate::db::DbReleaseLocalCopy {
-                release_id: release.id.clone(),
-                unmanaged_path: Some(unmanaged_dir.to_string_lossy().into_owned()),
-                pinned_locally: false,
-            })
+            .upsert_release_unmanaged_source(&release.id, &unmanaged_dir.to_string_lossy())
             .await
             .unwrap();
 

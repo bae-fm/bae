@@ -401,6 +401,7 @@ async fn unmanaged_folder_import() {
             folder: album_dir.clone(),
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -411,19 +412,16 @@ async fn unmanaged_folder_import() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Verify release in DB: unmanaged (not managed), with this device's local
-    // copy recording the in-place import path.
+    // Verify release in DB: unmanaged (not managed), with this device's
+    // unmanaged-source row recording the in-place import path.
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert!(!release.managed);
-    let local_copy =
-        f.db.get_release_local_copy(&release_id)
+    let source =
+        f.db.get_release_unmanaged_source(&release_id)
             .await
             .unwrap()
             .unwrap();
-    assert_eq!(
-        local_copy.unmanaged_path.as_deref(),
-        Some(album_dir.to_str().unwrap())
-    );
+    assert_eq!(source.path, album_dir.to_str().unwrap());
 
     // Verify tracks
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
@@ -481,7 +479,8 @@ async fn managed_unpin_complete_fires_after_outbox_enqueue() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Managed { pin: false },
+            storage_mode: StorageMode::Managed,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -525,6 +524,7 @@ async fn import_produces_audio_format_records() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -649,6 +649,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -803,6 +804,7 @@ async fn two_sequential_imports() {
                 folder: album_dir,
                 selected_cover: None,
                 storage_mode: StorageMode::Unmanaged,
+                pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_keys[i].clone(), MetadataSource::Discogs),
                 },
@@ -868,6 +870,7 @@ async fn import_with_cover_art() {
             folder: album_dir,
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -960,6 +963,7 @@ async fn exact_import_writes_release_id_and_pressing_fields() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key.clone(), MetadataSource::Discogs),
             },
@@ -1017,6 +1021,7 @@ async fn approximate_import_nulls_release_id_and_clears_pressing() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Approximate {
                 release_ref: MetadataRef::new(release_id_key.clone(), MetadataSource::Discogs),
             },
@@ -1124,6 +1129,7 @@ async fn approximate_import_with_user_edit_overlay() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Approximate {
                 release_ref: MetadataRef::new(release_id_key.clone(), MetadataSource::Discogs),
             },
@@ -1289,6 +1295,7 @@ async fn cross_source_exact_writes_both_release_ids() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(mb_id.clone(), MetadataSource::MusicBrainz),
             },
@@ -1350,6 +1357,7 @@ async fn cross_source_approximate_nulls_both_release_ids() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Approximate {
                 release_ref: MetadataRef::new(mb_id.clone(), MetadataSource::MusicBrainz),
             },
@@ -1441,6 +1449,7 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Approximate {
                 release_ref: MetadataRef::new(discogs_id.clone(), MetadataSource::Discogs),
             },
@@ -1510,6 +1519,7 @@ async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
@@ -1575,6 +1585,7 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
@@ -1635,6 +1646,7 @@ async fn unknown_import_folder_image_wins_over_embedded_cover() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
@@ -1680,6 +1692,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
             folder: identified_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -1713,6 +1726,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
             folder: unknown_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
@@ -1777,6 +1791,7 @@ async fn unknown_import_with_user_edit_overlay() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: Some(edit),
         })
@@ -1837,6 +1852,7 @@ async fn unknown_import_with_no_tags_seeds_title_from_folder_name() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })

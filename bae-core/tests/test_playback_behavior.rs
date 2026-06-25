@@ -145,6 +145,7 @@ where
             folder: album_dir.clone(),
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -723,6 +724,7 @@ impl CueFlacTestFixture {
                 folder: album_dir.clone(),
                 selected_cover: None,
                 storage_mode: StorageMode::Unmanaged,
+                pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
                 },
@@ -2974,6 +2976,7 @@ impl HighSampleRateTestFixture {
                 folder: album_dir.clone(),
                 selected_cover: None,
                 storage_mode: StorageMode::Unmanaged,
+                pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
                 },
@@ -4015,6 +4018,7 @@ async fn test_restore_populates_last_position_display() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -4123,6 +4127,7 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -4250,6 +4255,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -4360,6 +4366,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Unmanaged,
+            pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
             },
@@ -4661,7 +4668,8 @@ impl CloudOnlyPlaybackFixture {
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
                 selected_cover: None,
-                storage_mode: StorageMode::Managed { pin: false },
+                storage_mode: StorageMode::Managed,
+                pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
                 },

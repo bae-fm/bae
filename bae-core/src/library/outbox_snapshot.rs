@@ -459,7 +459,7 @@ mod tests {
             })
             .await
             .unwrap();
-            db.add_cloud_outbox_upload(id, &format!("storage/{id}"), None)
+            db.add_cloud_outbox_upload(id, &format!("storage/{id}"), None, false)
                 .await
                 .unwrap();
         }

@@ -185,9 +185,9 @@
   <data name="storage.action.unpin" xml:space="preserve"><value>إزالة النسخة المحلية</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, zero {# ملف} one {ملف واحد} two {ملفان} few {# ملفات} many {# ملفًا} other {# ملف}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>تعذّر تحميل التخزين</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>مثبّت</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>تعذّرت قراءة التخزين</value></data>
-  <data name="storage.state.cloud_only" xml:space="preserve"><value>سحابي فقط</value></data>
-  <data name="storage.state.pinned" xml:space="preserve"><value>مثبّت</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>مُدار</value></data>
   <data name="storage.state.unmanaged" xml:space="preserve"><value>غير مُدار</value></data>
   <data name="storage.title" xml:space="preserve"><value>التخزين</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>خطأ في المزامنة</value></data>

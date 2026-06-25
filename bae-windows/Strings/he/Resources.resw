@@ -185,9 +185,9 @@
   <data name="storage.action.unpin" xml:space="preserve"><value>הסר עותק מקומי</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {קובץ #} two {# קבצים} many {# קבצים} other {# קבצים}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>לא ניתן לטעון את האחסון</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>ננעץ</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>לא ניתן לקרוא את האחסון</value></data>
-  <data name="storage.state.cloud_only" xml:space="preserve"><value>ענן בלבד</value></data>
-  <data name="storage.state.pinned" xml:space="preserve"><value>ננעץ</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>מנוהל</value></data>
   <data name="storage.state.unmanaged" xml:space="preserve"><value>לא מנוהל</value></data>
   <data name="storage.title" xml:space="preserve"><value>אחסון</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>שגיאת סנכרון</value></data>

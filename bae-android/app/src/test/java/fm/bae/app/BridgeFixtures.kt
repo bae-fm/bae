@@ -49,6 +49,7 @@ object BridgeFixtures {
             catalogNumber = null,
             country = null,
             storageState = BridgeReleaseStorageState.UNMANAGED,
+            pinned = false,
             storageActions = emptyList(),
             tracks = trackGroups.flatMap { it.tracks },
             trackGroups = trackGroups,

@@ -12,10 +12,10 @@ import SwiftUI
 /// window's alert); the rows themselves refresh reactively when core re-emits
 /// `ReleaseUpdated` / `AlbumUpdated` / `OutboxChanged`.
 ///
-/// `manage` (move into library) needs the pin / delete-source choice, so it
-/// stashes the targets in `pendingManage` and the view presents
-/// `ManageConfirmSheet`. `unmanage` opens an `NSOpenPanel` for the destination
-/// folder. The other transitions run straight away.
+/// `manage` (move into library) needs the pin choice, so it stashes the targets
+/// in `pendingManage` and the view presents `ManageConfirmSheet`. `unmanage`
+/// opens an `NSOpenPanel` for the destination folder. The other transitions run
+/// straight away.
 @MainActor
 @Observable
 final class StorageActionRunner {
@@ -65,17 +65,13 @@ final class StorageActionRunner {
     }
 
     /// Confirm callback for `ManageConfirmSheet`: move each pending release
-    /// into the library with the chosen pin / delete-source options.
-    func confirmManage(pin: Bool, deleteSource: Bool) {
+    /// into the library, pinning it for offline when `pin` is set.
+    func confirmManage(pin: Bool) {
         let releaseIds = pendingManage ?? []
         pendingManage = nil
         runEach(releaseIds, String(localized: "move into library")) {
             releaseId in
-            try await self.releaseEditor.manageRelease(
-                releaseId,
-                pin,
-                deleteSource
-            )
+            try await self.releaseEditor.manageRelease(releaseId, pin)
         }
     }
 

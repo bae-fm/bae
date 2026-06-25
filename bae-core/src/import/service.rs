@@ -22,7 +22,6 @@ use {
         CoverSelection, CueAudioAnalysis, CueFlacAnalysis, DiscoveredFile, ImportPhase,
         PrepareStep, TrackFile,
     },
-    crate::storage::local::ReleaseStorageImpl,
     crate::util::content_type::ContentType,
     crate::util::content_type_hint::ContentTypeHint,
     notify::RecursiveMode,
@@ -37,13 +36,6 @@ use {
 use tokio::sync::{broadcast, mpsc};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use tracing::{debug, error, info, warn};
-
-/// Keyed by each file's absolute path — unique identity, no collisions even when
-/// two files share a bare filename across subfolders (e.g. CD1/CDImage.ape and
-/// CD2/CDImage.ape). Each entry lists (track_id, start_byte, end_byte) within
-/// that file.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-type TrackProgressMap = HashMap<PathBuf, Vec<(String, i64, i64)>>;
 
 /// Metadata-prep output for a folder import.
 ///
@@ -110,8 +102,7 @@ fn resolve_file_content_type(path: &Path) -> Result<ContentType, String> {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn storage_mode_label(mode: &StorageMode) -> &'static str {
     match mode {
-        StorageMode::Managed { pin: true } => "managed (pin)",
-        StorageMode::Managed { pin: false } => "managed (unpin)",
+        StorageMode::Managed => "managed",
         StorageMode::Unmanaged => "unmanaged",
     }
 }
@@ -262,24 +253,6 @@ fn cue_track_byte_ends(file_path: &Path, cue_pair: &CueFlacAnalysis) -> Option<V
         return None;
     };
     crate::audio_codec::frame_byte_offsets(path, &end_samples)
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn calculate_track_percent(bytes_written: usize, start_byte: i64, end_byte: i64) -> u8 {
-    let bytes_written = bytes_written as i64;
-    if bytes_written >= end_byte {
-        100
-    } else if bytes_written <= start_byte {
-        0
-    } else {
-        let written_for_track = bytes_written - start_byte;
-        let track_size = end_byte - start_byte;
-        if track_size <= 0 {
-            100
-        } else {
-            ((written_for_track * 100) / track_size) as u8
-        }
-    }
 }
 
 /// Send an import event on the broadcast bus, logging on send failure.
@@ -612,6 +585,7 @@ impl ImportService {
             folder,
             selected_cover,
             storage_mode,
+            pin,
             identity_choice,
             user_edit,
         } = command;
@@ -623,6 +597,7 @@ impl ImportService {
                 folder,
                 selected_cover,
                 storage_mode,
+                pin,
                 identity_choice,
                 user_edit,
             )
@@ -849,6 +824,7 @@ impl ImportService {
         folder: PathBuf,
         selected_cover: Option<CoverSelection>,
         storage_mode: StorageMode,
+        pin: bool,
         identity_choice: crate::import::IdentityChoice,
         user_edit: Option<crate::import::ReleaseUserEdit>,
     ) -> Result<(), String> {
@@ -1138,6 +1114,7 @@ impl ImportService {
         // Phase 1+2: Storage (writes files to disk/cloud, builds DB records in memory)
         self.run_import(
             &storage_mode,
+            pin,
             &mut db_release,
             &discovered_files,
             &tracks_to_files,
@@ -1210,141 +1187,14 @@ impl ImportService {
         Ok(())
     }
 
-    /// Create a storage implementation for managed local storage.
-    fn create_storage(&self) -> ReleaseStorageImpl {
-        self.library_manager.create_release_storage()
-    }
-
-    /// Approximate the byte span of a CUE track within a single-blob file by
-    /// linear interpolation: `position / total * file_size`. Import progress only
-    /// -- it decides when a track's slice of the file copy reaches 100%, so an
-    /// interpolation is good enough. `start`, `end`, and `total` share one unit
-    /// (samples for FLAC/APE, milliseconds for ALAC); a `None` end runs to EOF.
-    fn proportional_byte_span(
-        start: f64,
-        end: Option<f64>,
-        total: f64,
-        file_size: u64,
-    ) -> (i64, i64) {
-        if total <= 0.0 {
-            return (0, file_size as i64);
-        }
-        let scale = |p: f64| (p / total * file_size as f64) as i64;
-        let end = match end {
-            Some(e) => scale(e),
-            None => file_size as i64,
-        };
-        (scale(start), end)
-    }
-
-    /// Build a map from filename to track progress info for progress reporting.
-    ///
-    /// CUE-backed tracks already know their `cue_pair` + `cue_index`, so byte
-    /// ranges come straight from the attached analysis. Standalone tracks span
-    /// the whole file (0 → file_size).
-    ///
-    /// Keyed by absolute file path so disc subfolder siblings (e.g. CD1/CDImage.ape
-    /// and CD2/CDImage.ape) don't collapse into one entry.
-    fn build_track_progress_map(
-        tracks_to_files: &[TrackFile],
-        discovered_files: &[DiscoveredFile],
-    ) -> Result<TrackProgressMap, String> {
-        let mut result: TrackProgressMap = HashMap::new();
-        let file_sizes: HashMap<&Path, usize> = discovered_files
-            .iter()
-            .map(|f| (f.path.as_path(), f.size as usize))
-            .collect();
-
-        for track_file in tracks_to_files {
-            match track_file {
-                TrackFile::CueBacked {
-                    db_track,
-                    file_path,
-                    cue_pair,
-                    cue_index,
-                } => {
-                    let cue_track = cue_pair.cue_sheet.tracks.get(*cue_index).ok_or_else(|| {
-                        format!(
-                            "CUE index {} out of bounds for {}",
-                            cue_index,
-                            file_path.display()
-                        )
-                    })?;
-                    let (start_byte, end_byte) = match &cue_pair.analysis {
-                        // Progress only: approximate each track's byte span from
-                        // its sample/time window -- the file is one blob, so this
-                        // just decides when a track's progress hits 100%.
-                        CueAudioAnalysis::Flac { flac_info } => {
-                            let file_size =
-                                *file_sizes.get(file_path.as_path()).ok_or_else(|| {
-                                    format!("file_sizes missing entry for {}", file_path.display())
-                                })?;
-                            Self::proportional_byte_span(
-                                cue_track.audio_start_sample(flac_info.sample_rate) as f64,
-                                cue_track
-                                    .end_sample(flac_info.sample_rate)
-                                    .map(|s| s as f64),
-                                flac_info.total_samples as f64,
-                                file_size as u64,
-                            )
-                        }
-                        CueAudioAnalysis::Ape { ape_info } => Self::proportional_byte_span(
-                            cue_track.audio_start_sample(ape_info.sample_rate) as f64,
-                            cue_track.end_sample(ape_info.sample_rate).map(|s| s as f64),
-                            ape_info.total_samples as f64,
-                            ape_info.file_size,
-                        ),
-                        CueAudioAnalysis::Alac { duration_ms, .. } => {
-                            // MP4 has no sample window here; interpolate from the
-                            // CUE times against the container duration instead.
-                            let file_size =
-                                *file_sizes.get(file_path.as_path()).ok_or_else(|| {
-                                    format!("file_sizes missing entry for {}", file_path.display())
-                                })?;
-                            Self::proportional_byte_span(
-                                cue_track.start_time_ms() as f64,
-                                cue_track.end_time_ms().map(|e| e as f64),
-                                *duration_ms as f64,
-                                file_size as u64,
-                            )
-                        }
-                    };
-                    result.entry(file_path.clone()).or_default().push((
-                        db_track.id.clone(),
-                        start_byte,
-                        end_byte,
-                    ));
-                }
-                TrackFile::Standalone {
-                    db_track,
-                    file_path,
-                } => {
-                    let file_size = *file_sizes.get(file_path.as_path()).ok_or_else(|| {
-                        format!("file_sizes missing entry for {}", file_path.display())
-                    })? as i64;
-                    result.entry(file_path.clone()).or_default().push((
-                        db_track.id.clone(),
-                        0,
-                        file_size,
-                    ));
-                }
-            }
-        }
-
-        Ok(result)
-    }
-
-    /// Run an import, regardless of storage mode.
-    ///
-    /// The pipeline is the same for managed and unmanaged imports: read metadata,
-    /// build DbFile + audio-format records, finalize atomically, emit events.
-    /// Only byte placement differs per `StorageMode`:
-    ///   - `Managed { pin: true }`: stream each source file into local storage via
-    ///     `store_from_path`, report per-track Store progress from the write callback,
-    ///     queue cloud upload.
-    ///   - `Managed { pin: false }`: skip local storage, queue cloud upload with `source`.
-    ///   - `Unmanaged`: record `unmanaged_path` and reference files in place; no cloud
-    ///     upload since we don't own the files.
+    /// Run an import. ONE path regardless of storage mode: read metadata, build
+    /// DbFile + audio-format records, reference the files in place, finalize
+    /// atomically as an UNMANAGED release (playable immediately), emit events.
+    /// No bytes move here. If `storage_mode` is `Managed`, the release then
+    /// transitions to the cloud via `enqueue_managed_uploads` (the same flow the
+    /// "Manage" action runs), carrying `pin` as the upload's retain-pinned intent;
+    /// the observer flips `managed` true and deletes the in-place source once the
+    /// last upload lands. `pin` is ignored for an `Unmanaged` import.
     ///
     /// All DB writes happen in one atomic transaction at the end. DbTracks —
     /// including their populated `duration_ms` — live inside `tracks_to_files`.
@@ -1352,6 +1202,7 @@ impl ImportService {
     async fn run_import(
         &self,
         storage_mode: &StorageMode,
+        pin: bool,
         db_release: &mut DbRelease,
         discovered_files: &[DiscoveredFile],
         tracks_to_files: &[TrackFile],
@@ -1397,179 +1248,56 @@ impl ImportService {
             db_files.push(db_file);
         }
 
-        // Strategy-specific byte placement and Store-phase progress reporting.
-        // Each arm records this device's local copy (a managed pin or an in-place
-        // unmanaged path; a managed cloud-only import keeps no local copy). A
-        // managed import lands `managed = false` and only reaches `managed = true`
-        // once its uploads finish (via `ReleaseUploadObserver`), so another device
-        // never sees the release before its audio is in the cloud. An unmanaged import
-        // stays `managed = false` for good.
-        let mut local_copy: Option<crate::db::DbReleaseLocalCopy> = None;
-        match storage_mode {
-            StorageMode::Managed { pin: true } => {
-                let storage = self.create_storage();
-                let file_to_tracks =
-                    Self::build_track_progress_map(tracks_to_files, discovered_files)?;
-                let release_total_bytes: usize =
-                    discovered_files.iter().map(|f| f.size as usize).sum();
-                let mut release_bytes_written = 0usize;
-                let import_id_owned = import_id.to_string();
-                let candidate_key_owned = candidate_key.to_string();
-
-                for (idx, file) in discovered_files.iter().enumerate() {
-                    let file_id = &file_ids[&file.path];
-                    let track_infos = file_to_tracks.get(&file.path).cloned().unwrap_or_default();
-                    let event_tx = self.event_tx.clone();
-                    let release_id = db_release.id.clone();
-                    let import_id_for_closure = import_id_owned.clone();
-                    let candidate_key_for_closure = candidate_key_owned.clone();
-                    let base_bytes = release_bytes_written;
-                    let file_size = file.size as usize;
-
-                    storage
-                        .store_from_path(
-                            file_id,
-                            &file.path,
-                            Box::new(move |file_bytes_written, _file_total| {
-                                let bytes_written = file_bytes_written as i64;
-                                for (track_id, start_byte, end_byte) in &track_infos {
-                                    if bytes_written > *start_byte {
-                                        let percent = calculate_track_percent(
-                                            file_bytes_written,
-                                            *start_byte,
-                                            *end_byte,
-                                        );
-                                        send_event(
-                                            &event_tx,
-                                            crate::import::handle::ImportEvent::ImportProgress {
-                                                candidate_key: candidate_key_for_closure.clone(),
-                                                progress: ImportProgress::Progress {
-                                                    id: track_id.clone(),
-                                                    percent,
-                                                    phase: Some(ImportPhase::Store),
-                                                    import_id: Some(import_id_for_closure.clone()),
-                                                },
-                                            },
-                                        );
-                                    }
-                                }
-                                let total_written = base_bytes + file_bytes_written;
-                                let release_percent =
-                                    (total_written * 100 / release_total_bytes.max(1)) as u8;
-                                send_event(
-                                    &event_tx,
-                                    crate::import::handle::ImportEvent::ImportProgress {
-                                        candidate_key: candidate_key_for_closure.clone(),
-                                        progress: ImportProgress::Progress {
-                                            id: release_id.clone(),
-                                            percent: release_percent,
-                                            phase: Some(ImportPhase::Store),
-                                            import_id: Some(import_id_for_closure.clone()),
-                                        },
-                                    },
-                                );
-                            }),
-                        )
-                        .await
-                        .map_err(|e| {
-                            format!("Failed to store file {}: {}", file.relative_path, e)
-                        })?;
-
-                    release_bytes_written += file_size;
-                    info!(
-                        "Stored file {}/{}: {} ({} bytes)",
-                        idx + 1,
-                        total_files,
-                        file.relative_path,
-                        file_size,
-                    );
-                }
-                // The pinned local copy; `managed` flips true once uploads finish.
-                local_copy = Some(crate::db::DbReleaseLocalCopy {
-                    release_id: db_release.id.clone(),
-                    unmanaged_path: None,
-                    pinned_locally: true,
+        // Every import lands UNMANAGED: reference the files in place and record
+        // their common-ancestor folder as the release's unmanaged source. No bytes
+        // move here in any mode. A Managed import then transitions to the cloud
+        // (`enqueue_managed_uploads`, below), flipping `managed` true once the
+        // upload lands; until then it is a valid, playable unmanaged release, so
+        // another device never sees a release before its audio is in the cloud.
+        let unmanaged_root = {
+            let mut ancestor: Option<&Path> = None;
+            for file in discovered_files.iter() {
+                let parent = file
+                    .path
+                    .parent()
+                    .ok_or_else(|| format!("File has no parent: {:?}", file.path))?;
+                ancestor = Some(match ancestor {
+                    None => parent,
+                    Some(a) => common_ancestor(a, parent),
                 });
             }
-            StorageMode::Managed { pin: false } => {
-                // No local storage write; emit release-level progress per file so the
-                // UI can advance while cloud uploads are queued later.
-                for (idx, file) in discovered_files.iter().enumerate() {
-                    let release_percent = ((idx + 1) * 100 / total_files.max(1)) as u8;
-                    self.emit_store_progress(
-                        candidate_key,
-                        &db_release.id,
-                        release_percent,
-                        import_id,
-                    );
-                    info!(
-                        "Recorded file {}/{}: {}",
-                        idx + 1,
-                        total_files,
-                        file.relative_path,
-                    );
-                }
-                // Managed cloud-only: no local copy on this device; `managed`
-                // flips true once uploads finish.
-            }
-            StorageMode::Unmanaged => {
-                // Record unmanaged_path from the files' common parent directory.
-                let unmanaged_root = {
-                    let mut ancestor: Option<&Path> = None;
-                    for file in discovered_files.iter() {
-                        let parent = file
-                            .path
-                            .parent()
-                            .ok_or_else(|| format!("File has no parent: {:?}", file.path))?;
-                        ancestor = Some(match ancestor {
-                            None => parent,
-                            Some(a) => common_ancestor(a, parent),
-                        });
-                    }
-                    ancestor.ok_or_else(|| "No files to determine unmanaged path".to_string())?
-                };
-                let unmanaged_path = unmanaged_root
-                    .to_str()
-                    .ok_or_else(|| format!("Cannot convert path to string: {:?}", unmanaged_root))?
-                    .to_string();
-                local_copy = Some(crate::db::DbReleaseLocalCopy {
-                    release_id: db_release.id.clone(),
-                    unmanaged_path: Some(unmanaged_path),
-                    pinned_locally: false,
-                });
+            ancestor.ok_or_else(|| "No files to determine unmanaged path".to_string())?
+        };
+        let unmanaged_path = unmanaged_root
+            .to_str()
+            .ok_or_else(|| format!("Cannot convert path to string: {:?}", unmanaged_root))?
+            .to_string();
 
-                // Per-track progress jumps to 100% immediately — files are referenced in
-                // place, no bytes move.
-                let file_to_tracks: HashMap<PathBuf, Vec<String>> = {
-                    let mut map: HashMap<PathBuf, Vec<String>> = HashMap::new();
-                    for tf in tracks_to_files {
-                        map.entry(tf.file_path().to_path_buf())
-                            .or_default()
-                            .push(tf.db_track().id.clone());
-                    }
-                    map
-                };
-                for (idx, file) in discovered_files.iter().enumerate() {
-                    if let Some(track_ids) = file_to_tracks.get(&file.path) {
-                        for track_id in track_ids {
-                            self.emit_store_progress(candidate_key, track_id, 100, import_id);
-                        }
-                    }
-                    let release_percent = ((idx + 1) * 100 / total_files.max(1)) as u8;
-                    self.emit_store_progress(
-                        candidate_key,
-                        &db_release.id,
-                        release_percent,
-                        import_id,
-                    );
-                    info!(
-                        "Recorded file {}/{}: {}",
-                        idx + 1,
-                        total_files,
-                        file.relative_path,
-                    );
+        // Per-track progress jumps to 100% immediately — files are referenced in
+        // place, no bytes move.
+        let file_to_tracks: HashMap<PathBuf, Vec<String>> = {
+            let mut map: HashMap<PathBuf, Vec<String>> = HashMap::new();
+            for tf in tracks_to_files {
+                map.entry(tf.file_path().to_path_buf())
+                    .or_default()
+                    .push(tf.db_track().id.clone());
+            }
+            map
+        };
+        for (idx, file) in discovered_files.iter().enumerate() {
+            if let Some(track_ids) = file_to_tracks.get(&file.path) {
+                for track_id in track_ids {
+                    self.emit_store_progress(candidate_key, track_id, 100, import_id);
                 }
             }
+            let release_percent = ((idx + 1) * 100 / total_files.max(1)) as u8;
+            self.emit_store_progress(candidate_key, &db_release.id, release_percent, import_id);
+            info!(
+                "Recorded file {}/{}: {}",
+                idx + 1,
+                total_files,
+                file.relative_path,
+            );
         }
 
         // Audio formats, cover image, and finalize are identical across strategies.
@@ -1581,11 +1309,10 @@ impl ImportService {
         )?;
 
         // Measure loudness from the source decode — bae stores originals verbatim
-        // (no transcode), so source samples == stored samples. The bytes are
-        // present locally in every storage mode at this point (a managed pin has
-        // copied to `storage/`; cloud-only / unmanaged still reference the
-        // originals); uploads queue only after finalize. Per-track NULLs and an
-        // album NULL are legitimate "not measured" results, each logged at the
+        // (no transcode), so source samples == stored samples. The source files
+        // are present in place (every import references them and lands unmanaged);
+        // a managed import's uploads queue only after finalize. Per-track NULLs and
+        // an album NULL are legitimate "not measured" results, each logged at the
         // skip point inside `measure_loudness`.
         #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
         {
@@ -1640,25 +1367,7 @@ impl ImportService {
             .or(embedded_cover_image.as_ref());
         let cover_rel_id = Some((album_id, db_release.id.as_str()));
 
-        // Managed imports queue one cloud upload per file, committed inside
-        // the finalize transaction: a pin reads its staged `storage/` copy,
-        // a cloud-only import reads the user's original file. Unmanaged
-        // files are referenced in place and never upload.
-        let cloud_uploads: Vec<crate::db::DbCloudUpload> = match storage_mode {
-            StorageMode::Managed { pin } => discovered_files
-                .iter()
-                .map(|file| crate::db::DbCloudUpload {
-                    file_id: file_ids[&file.path].clone(),
-                    source_path: if *pin {
-                        None
-                    } else {
-                        Some(file.path.to_string_lossy().to_string())
-                    },
-                })
-                .collect(),
-            StorageMode::Unmanaged => Vec::new(),
-        };
-
+        let managed_intent = matches!(storage_mode, StorageMode::Managed);
         library_manager
             .finalize_import_atomic(
                 new_album,
@@ -1673,11 +1382,33 @@ impl ImportService {
                 cover_rel_id,
                 import_id,
                 identities,
-                local_copy.as_ref(),
-                &cloud_uploads,
+                &unmanaged_path,
+                managed_intent,
             )
             .await
             .map_err(|e| format!("Failed to finalize import: {}", e))?;
+
+        // A Managed import transitions to the cloud in the background — the same
+        // flow the "Manage" action runs: enqueue the uploads carrying the pin
+        // intent; the observer flips `managed` true and deletes the in-place source
+        // once the last upload lands. This runs BEFORE the events below so the
+        // outbox already holds the upload by the time any consumer observes the
+        // release or `Complete` — a consumer that treats Complete as "done" never
+        // races ahead of the queued transition. The release is already a playable
+        // unmanaged release, so a transition that can't start (e.g. a missing or
+        // truncated source) is logged, leaving it unmanaged for the user to Manage
+        // later, rather than failing the completed import.
+        if managed_intent {
+            if let Err(e) = library_manager
+                .enqueue_managed_uploads(&db_release.id, pin)
+                .await
+            {
+                warn!(
+                    "Import of {} landed unmanaged but the managed transition could not start: {e}",
+                    db_release.id
+                );
+            }
+        }
 
         if new_album.is_some() {
             library_manager.emit_album_added(album_id).await;
@@ -1687,16 +1418,9 @@ impl ImportService {
                 .await;
         }
 
-        // The upload rows were committed with the import; surface them to the
-        // outbox UI and kick the sync loop to start draining.
-        if !cloud_uploads.is_empty() {
-            library_manager.emit_outbox_changed().await;
-            library_manager.trigger_sync();
-        }
-
-        // Emit Complete after the album/release events: the uploads were
-        // committed atomically with the import, so Complete always implies
-        // the cloud upload is queued.
+        // Emit Complete after the album/release events: the release is now in the
+        // library and playable (as an unmanaged release; a managed import is
+        // uploading in the background, its outbox row already queued above).
         send_event(
             &self.event_tx,
             crate::import::handle::ImportEvent::ImportProgress {

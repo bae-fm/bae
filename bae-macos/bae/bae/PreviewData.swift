@@ -238,6 +238,7 @@ enum PreviewData {
                     catalogNumber: nil,
                     country: nil,
                     storageState: .unmanaged,
+                    pinned: false,
                     storageActions: [],
                     tracks: makeTracks(tracks, artist: artist),
                     trackGroups: [
@@ -297,6 +298,7 @@ enum PreviewData {
                     catalogNumber: "CAT-001",
                     country: "US",
                     storageState: .unmanaged,
+                    pinned: false,
                     storageActions: [],
                     tracks: sides.tracks,
                     trackGroups: sides.groups,
@@ -363,6 +365,7 @@ enum PreviewData {
                     catalogNumber: nil,
                     country: nil,
                     storageState: .unmanaged,
+                    pinned: false,
                     storageActions: [],
                     tracks: allTracks,
                     trackGroups: groups,

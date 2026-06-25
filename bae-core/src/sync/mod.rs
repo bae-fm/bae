@@ -217,21 +217,21 @@ mod tests {
         assert_eq!(ancestors, BTreeSet::from(["albums", "artists"]));
     }
 
-    /// The whole point of the storage-state split: per-device copy state lives in
-    /// `release_local_copy`, which must never sync.
+    /// The whole point of the storage-state split: per-device unmanaged-source
+    /// state lives in `release_unmanaged_source`, which must never sync.
     #[test]
-    fn release_local_copy_is_device_local() {
+    fn release_unmanaged_source_is_device_local() {
         let tables = migration_tables();
         let (_, body) = tables
             .iter()
-            .find(|(n, _)| n == "release_local_copy")
-            .expect("release_local_copy table exists");
+            .find(|(n, _)| n == "release_unmanaged_source")
+            .expect("release_unmanaged_source table exists");
         assert!(
             !has_lww_clock(body),
-            "release_local_copy must have no `_updated_at` (device-local, never synced)"
+            "release_unmanaged_source must have no `_updated_at` (device-local, never synced)"
         );
         assert!(synced_tables()
             .iter()
-            .all(|t| t.name() != "release_local_copy"));
+            .all(|t| t.name() != "release_unmanaged_source"));
     }
 }

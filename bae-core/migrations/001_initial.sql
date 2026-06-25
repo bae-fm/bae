@@ -62,9 +62,10 @@ CREATE TABLE IF NOT EXISTS releases (
     catalog_number TEXT,
     country TEXT,
     barcode TEXT,
-    -- Shared, synced fact: is this release's audio in the cloud home.
-    -- Device-local storage truth (which device holds the bytes, and where)
-    -- lives in `release_local_copy`, NOT here — it must not sync.
+    -- Shared, synced fact: is this release's audio in the cloud home (managed)
+    -- or local to one device (unmanaged). An unmanaged release's in-place source
+    -- folder lives in the device-local `release_unmanaged_source`, NOT here — it
+    -- must not sync. A managed release's bytes live in coven's blob cache.
     managed BOOLEAN NOT NULL,
     source_folder_name TEXT,
     -- SHA-256 over the imported folder's categorized file structure (sorted
@@ -86,35 +87,19 @@ CREATE TABLE IF NOT EXISTS releases (
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE
 );
 
--- DEVICE-LOCAL storage truth: a row means "this device holds a local copy of
--- this release's audio". Not synced (no `_updated_at`, absent from
--- SYNCED_TABLES) — one device's local storage must never overwrite another's.
---   - Unmanaged release imported in place → `unmanaged_path` set, the folder
---     the files live in on this device.
---   - Managed release pinned on this device → `pinned_locally = 1`, bytes under
---     `storage/`.
--- No row → this device has no local copy: stream from cloud if `managed`, else
--- the release isn't reachable here (the availability filter hides it).
-CREATE TABLE IF NOT EXISTS release_local_copy (
-    release_id     TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
-    unmanaged_path TEXT,
-    pinned_locally BOOLEAN NOT NULL DEFAULT 0,
-    -- Deferred-delete intent for this device's Manage → CloudOnly transition.
-    -- When a user manages an unmanaged release to cloud-only and asks to delete
-    -- the originals, the source files ARE the upload source and can't be
-    -- deleted until the upload succeeds. The upload observer reads this when the
-    -- release's last upload lands, deletes the originals, then drops this whole
-    -- row. Device-local like the rest of this table — it's this device's intent
-    -- about this device's source files, never another device's business. Only
-    -- meaningful while `unmanaged_path` is set.
-    delete_unmanaged_source_on_upload BOOLEAN NOT NULL DEFAULT 0,
-    -- A row means a local copy exists, so exactly one branch holds: an
-    -- unmanaged in-place path, XOR a managed pin. An all-empty row (no path,
-    -- not pinned) is meaningless and forbidden.
-    CHECK (
-        (unmanaged_path IS NOT NULL AND pinned_locally = 0)
-        OR (unmanaged_path IS NULL AND pinned_locally = 1)
-    )
+-- DEVICE-LOCAL unmanaged source: a row means "this release is UNMANAGED on this
+-- device, with its files in place at `path`". It exists for exactly the unmanaged
+-- releases (those with `releases.managed = 0`) and is the folder their audio
+-- plays from. Not synced (no `_updated_at`, absent from SYNCED_TABLES) — an
+-- unmanaged release is local to one device.
+--
+-- A MANAGED release has NO row here: its bytes live only in coven's blob cache
+-- (`storage/pinned/` when kept local, else fetched into `storage/cache/` on
+-- read), which coven owns. "Is it local" and "is it pinned" for a managed
+-- release are answered by coven's cache, never by a column here.
+CREATE TABLE IF NOT EXISTS release_unmanaged_source (
+    release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
+    path       TEXT NOT NULL
 );
 
 -- Per-source identity rows. A release has 0+ rows: 0 = Unknown, 1+ = identified

@@ -185,9 +185,9 @@
   <data name="storage.action.unpin" xml:space="preserve"><value>Remove local copy</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# files}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>couldn't load স্টোরেজ</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>Pinned</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>couldn't read স্টোরেজ</value></data>
-  <data name="storage.state.cloud_only" xml:space="preserve"><value>Cloud-only</value></data>
-  <data name="storage.state.pinned" xml:space="preserve"><value>Pinned</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>Managed</value></data>
   <data name="storage.state.unmanaged" xml:space="preserve"><value>Unmanaged</value></data>
   <data name="storage.title" xml:space="preserve"><value>স্টোরেজ</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>সিঙ্ক error</value></data>

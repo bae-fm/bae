@@ -185,9 +185,9 @@
   <data name="storage.action.unpin" xml:space="preserve"><value>Remover cópia local</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# arquivo} other {# arquivos}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>não foi possível carregar o armazenamento</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>Fixado</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>não foi possível ler o armazenamento</value></data>
-  <data name="storage.state.cloud_only" xml:space="preserve"><value>Somente na nuvem</value></data>
-  <data name="storage.state.pinned" xml:space="preserve"><value>Fixado</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>Gerenciado</value></data>
   <data name="storage.state.unmanaged" xml:space="preserve"><value>Não gerenciado</value></data>
   <data name="storage.title" xml:space="preserve"><value>armazenamento</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>erro de sincronização</value></data>

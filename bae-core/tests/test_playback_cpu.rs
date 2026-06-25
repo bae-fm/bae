@@ -299,6 +299,7 @@ impl PlaybackTestFixture {
                 folder: album_dir.clone(),
                 selected_cover: None,
                 storage_mode: StorageMode::Unmanaged,
+                pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
                 },

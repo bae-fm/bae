@@ -185,9 +185,9 @@
   <data name="storage.action.unpin" xml:space="preserve"><value>Ukloni lokalnu kopiju</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# datoteka} few {# datoteke} other {# datoteka}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>nije moguće učitati pohranu</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>Prikvačeno</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>nije moguće pročitati pohranu</value></data>
-  <data name="storage.state.cloud_only" xml:space="preserve"><value>Samo u oblaku</value></data>
-  <data name="storage.state.pinned" xml:space="preserve"><value>Prikvačeno</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>Upravljano</value></data>
   <data name="storage.state.unmanaged" xml:space="preserve"><value>Neupravljano</value></data>
   <data name="storage.title" xml:space="preserve"><value>pohrana</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>pogreška sinkronizacije</value></data>

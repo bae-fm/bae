@@ -1,6 +1,6 @@
 #![cfg(feature = "test-utils")]
 //! `create_audio_reader` source dispatch: which reader (or error) a resolved
-//! file source maps to. A `CloudOnly` source fetches the cloud home and the
+//! file source maps to. A `Managed` source fetches the cloud home and the
 //! master key from the `LibraryManager`; an `Unreachable` source never consults
 //! the manager at all — the variant already carries the "no readable location"
 //! verdict.
@@ -15,15 +15,15 @@ use bae_core::playback::data_source::create_audio_reader;
 use bae_core::playback::PlaybackError;
 use support::{setup_fresh_library, MockCloudHome};
 
-/// A `CloudOnly` source with no cloud connection: sync is disconnected. The
+/// A `Managed` source with no cloud connection: sync is disconnected. The
 /// reader-builder returns `SyncDisconnected` so the UI can prompt for reconnect.
 #[test]
-fn cloud_only_no_cloud_returns_sync_disconnected() {
+fn managed_no_cloud_returns_sync_disconnected() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (manager, _tmp) = setup_fresh_library(&runtime);
 
     let err = create_audio_reader(
-        ReadableFileSource::CloudOnly,
+        ReadableFileSource::Managed,
         "file-1",
         "Artist Name/Album Title/01 Track Title.flac",
         &manager,

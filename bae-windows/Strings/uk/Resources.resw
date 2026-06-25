@@ -185,9 +185,9 @@
   <data name="storage.action.unpin" xml:space="preserve"><value>Вилучити локальну копію</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# файл} few {# файли} many {# файлів} other {# файлу}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>не вдалося завантажити сховище</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>Закріплено</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>не вдалося прочитати сховище</value></data>
-  <data name="storage.state.cloud_only" xml:space="preserve"><value>Лише в хмарі</value></data>
-  <data name="storage.state.pinned" xml:space="preserve"><value>Закріплено</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>Кероване</value></data>
   <data name="storage.state.unmanaged" xml:space="preserve"><value>Некероване</value></data>
   <data name="storage.title" xml:space="preserve"><value>сховище</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>помилка синхронізації</value></data>

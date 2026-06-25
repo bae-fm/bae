@@ -185,9 +185,9 @@
   <data name="storage.action.unpin" xml:space="preserve"><value>Премахване на локалното копие</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# файл} other {# файла}}</value></data>
   <data name="storage.load_failed" xml:space="preserve"><value>хранилището не може да бъде заредено</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>Закачено</value></data>
   <data name="storage.read_failed" xml:space="preserve"><value>хранилището не може да бъде прочетено</value></data>
-  <data name="storage.state.cloud_only" xml:space="preserve"><value>Само в облака</value></data>
-  <data name="storage.state.pinned" xml:space="preserve"><value>Закачено</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>Управлявани</value></data>
   <data name="storage.state.unmanaged" xml:space="preserve"><value>Неуправлявани</value></data>
   <data name="storage.title" xml:space="preserve"><value>хранилище</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>грешка при синхронизиране</value></data>

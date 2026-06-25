@@ -454,8 +454,7 @@ internal static class NativeBae
     private static extern IntPtr ManageReleasePtr(
         IntPtr handle,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        [MarshalAs(UnmanagedType.I1)] bool pin,
-        [MarshalAs(UnmanagedType.I1)] bool deleteSource);
+        [MarshalAs(UnmanagedType.I1)] bool pin);
 
     /// <summary>Pin a cloud-only release locally; null on success, else the error.</summary>
     internal static string? PinRelease(IntPtr handle, string releaseId) =>
@@ -465,9 +464,14 @@ internal static class NativeBae
     internal static string? UnpinRelease(IntPtr handle, string releaseId) =>
         ResultMessage(UnpinReleasePtr(handle, releaseId));
 
-    /// <summary>Manage an unmanaged release; null on success, else the error.</summary>
-    internal static string? ManageRelease(IntPtr handle, string releaseId, bool pin, bool deleteSource) =>
-        ResultMessage(ManageReleasePtr(handle, releaseId, pin, deleteSource));
+    /// <summary>
+    /// Manage an unmanaged release: upload it to the cloud and drop the in-place
+    /// source (a managed release has no local path). <paramref name="pin"/> keeps
+    /// coven's blobs offline — the orthogonal "keep local" choice. Null on success,
+    /// else the error.
+    /// </summary>
+    internal static string? ManageRelease(IntPtr handle, string releaseId, bool pin) =>
+        ResultMessage(ManageReleasePtr(handle, releaseId, pin));
 
     [DllImport(Dll, EntryPoint = "bae_unmanage_release", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr UnmanageReleasePtr(
@@ -875,6 +879,7 @@ internal static class NativeBae
         [MarshalAs(UnmanagedType.LPUTF8Str)] string chosenReleaseId,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string storageMode,
+        [MarshalAs(UnmanagedType.I1)] bool pin,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string userEditJson,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string selectedCoverJson);
 
@@ -884,14 +889,15 @@ internal static class NativeBae
     /// confirmed metadata edits (a serialized ReleaseEdit) — pass an empty string
     /// for no edit. <paramref name="selectedCoverJson"/> is the cover the user
     /// picked (a serialized cover selection) — pass an empty string to use the
-    /// import's default cover. <paramref name="storageMode"/> is
-    /// <c>unmanaged</c>, <c>managed_pinned</c>, or <c>managed_unpinned</c>.
-    /// The import runs in the background (progress via CandidateImport* events).
-    /// May block briefly — call off the UI thread.
+    /// import's default cover. <paramref name="storageMode"/> is <c>unmanaged</c>
+    /// (leave the files in place) or <c>managed</c> (upload to the cloud);
+    /// <paramref name="pin"/> is the orthogonal "keep offline" choice, meaningful
+    /// only for a managed import. The import runs in the background (progress via
+    /// CandidateImport* events). May block briefly — call off the UI thread.
     /// </summary>
     internal static string? ImportCandidate(
-        IntPtr handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, string userEditJson, string selectedCoverJson) =>
-        ResultMessage(ImportCandidatePtr(handle, candidateKey, folderPath, chosenReleaseId, source, storageMode, userEditJson, selectedCoverJson));
+        IntPtr handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, bool pin, string userEditJson, string selectedCoverJson) =>
+        ResultMessage(ImportCandidatePtr(handle, candidateKey, folderPath, chosenReleaseId, source, storageMode, pin, userEditJson, selectedCoverJson));
 
     private static string DiagnosticFieldsJson(IEnumerable<KeyValuePair<string, string>>? fields) =>
         JsonSerializer.Serialize((fields ?? []).Select(field => new DiagnosticField(field.Key, field.Value)));

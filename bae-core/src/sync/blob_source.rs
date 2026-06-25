@@ -155,7 +155,7 @@ impl BlobSource for BaeBlobSource {
 /// transfer so the snapshot can surface a rolling-window rate. `library_dir`
 /// lets the observer rebuild `ReleaseDetail` payloads (via
 /// `find_release_detail_with`) so the storage-state transition that lands at
-/// the end of an Unmanaged → CloudOnly run emits a `ReleaseUpdated` event.
+/// the end of an Unmanaged → Managed run emits a `ReleaseUpdated` event.
 /// Every lifecycle callback re-emits the outbox snapshot as a
 /// `LibraryEvent::OutboxChanged`.
 pub struct ReleaseUploadObserver {
@@ -237,11 +237,12 @@ impl ReleaseUploadObserver {
 
     /// Flip a release to managed once its last storage file uploads — the moment
     /// the cloud holds a durable copy of every file and the release's metadata is
-    /// safe to push to your other devices. A pinned release keeps this device's verified
-    /// local copy; a cloud-only one drops it. Every managed-content path (managed
-    /// import and Manage → Pinned/CloudOnly) imports the release `managed = false`
-    /// and reaches `managed = true` here, so the synced row never references a
-    /// blob the cloud doesn't hold yet.
+    /// safe to push to your other devices. The release's bytes now live in coven's
+    /// cache (pinned or evictable, per the upload's retain-pinned intent), so this
+    /// drops the in-place `release_unmanaged_source` row and deletes the now-
+    /// redundant source files. Every managed path (managed import and the "Manage"
+    /// action) lands the release `managed = false` and reaches `managed = true`
+    /// here, so the synced row never references a blob the cloud doesn't hold yet.
     ///
     /// Returns whether this call flipped the release, so the caller can break the
     /// outbox drain and publish the now-synced rows.
@@ -285,42 +286,41 @@ impl ReleaseUploadObserver {
             }
             return false;
         }
-        let local_copy = match self.db.get_release_local_copy(&release.id).await {
-            Ok(copy) => copy,
-            Err(e) => {
-                warn!("Failed to load local copy for {}: {e}", release.id);
-                return false;
-            }
-        };
         match self.db.has_pending_uploads_for_release(&release.id).await {
             Ok(true) => false, // More files still to upload.
             Ok(false) => {
                 // Last upload landed: the cloud now holds a durable copy of every
-                // file, so the release can flip to managed. A pin keeps this
-                // device's verified `storage/` copy (flag-only flip); a cloud-only
-                // release drops it — and first deletes the originals if a
-                // Manage → CloudOnly asked to (they were the upload source, unsafe
-                // to delete until now).
-                let pinned = local_copy.as_ref().is_some_and(|c| c.pinned_locally);
-                let kind = if pinned { "pinned" } else { "cloud-only" };
+                // file, so the release flips to managed and its in-place source is
+                // redundant. Capture the source path BEFORE dropping its row.
                 info!(
-                    "All files uploaded for release {}, marking managed ({kind})",
+                    "All files uploaded for release {}, marking managed",
                     release.id
                 );
-                let flip = if pinned {
-                    self.db.set_release_managed_pinned(&release.id).await
-                } else {
-                    self.delete_unmanaged_source_if_requested(&release, local_copy.as_ref())
-                        .await;
-                    self.db.set_release_managed_cloud_only(&release.id).await
-                };
-                if let Err(e) = flip {
-                    warn!("Failed to mark {} managed ({kind}): {e}", release.id);
+                let source = self
+                    .db
+                    .get_release_unmanaged_source(&release.id)
+                    .await
+                    .unwrap_or_else(|e| {
+                        warn!("Failed to load unmanaged source for {}: {e}", release.id);
+                        None
+                    });
+                // Flip the gate on + drop the unmanaged-source row, atomically. The
+                // cloud holds every blob, so `managed = true` never points at an
+                // absent blob.
+                if let Err(e) = self.db.set_release_managed(&release.id).await {
+                    warn!("Failed to mark {} managed: {e}", release.id);
                     return false;
                 }
-                // The release just became managed. Emit ReleaseUpdated so the UI's
-                // cached summary picks up the new storage_state (per-release upload
-                // counts come from the snapshot, but the state field doesn't).
+                // Delete the now-redundant in-place source files. Best-effort: the
+                // release is already managed with its bytes in the cloud + coven's
+                // cache, so a leftover original is harmless garbage, not wrong state.
+                if let Some(source) = source {
+                    self.delete_managed_source_files(&release.id, &source.path)
+                        .await;
+                }
+                // Emit ReleaseUpdated so the UI's cached summary picks up the new
+                // storage_state (per-release upload counts come from the snapshot,
+                // but the state field doesn't).
                 self.emit_release_updated(&release.album_id, &release.id)
                     .await;
                 true
@@ -334,66 +334,31 @@ impl ReleaseUploadObserver {
 }
 
 impl ReleaseUploadObserver {
-    /// If a Manage → CloudOnly transition asked to delete the originals,
-    /// remove the source files at `unmanaged_path/{original_filename}` now that
-    /// the cloud holds a durable copy, then clear the intent flag. Called only
-    /// after the release's last upload completes and only while this device's
-    /// local copy still records the unmanaged source path.
-    async fn delete_unmanaged_source_if_requested(
-        &self,
-        release: &crate::db::DbRelease,
-        local_copy: Option<&crate::db::DbReleaseLocalCopy>,
-    ) {
-        let Some(unmanaged_path) = local_copy.and_then(|c| c.unmanaged_path.as_deref()) else {
-            return;
-        };
-        match self
-            .db
-            .get_release_delete_unmanaged_source_on_upload(&release.id)
-            .await
-        {
-            Ok(false) => return,
-            Ok(true) => {}
-            Err(e) => {
-                warn!(
-                    "Failed to read delete-source intent for {}: {e}",
-                    release.id
-                );
-                return;
-            }
-        }
-
-        let files = match self.db.get_files_for_release(&release.id).await {
+    /// Delete a just-managed release's in-place source files at
+    /// `path/{original_filename}` — they are redundant now that the bytes are in
+    /// the cloud + coven's cache. Best-effort: the release is already managed, so a
+    /// file that can't be deleted is a harmless leftover, never wrong state.
+    async fn delete_managed_source_files(&self, release_id: &str, path: &str) {
+        let files = match self.db.get_files_for_release(release_id).await {
             Ok(files) => files,
             Err(e) => {
-                warn!(
-                    "Failed to load files to delete originals for {}: {e}",
-                    release.id
-                );
+                warn!("Failed to load files to delete originals for {release_id}: {e}");
                 return;
             }
         };
 
         for file in &files {
-            let path = std::path::Path::new(unmanaged_path).join(&file.original_filename);
-            match tokio::fs::remove_file(&path).await {
-                Ok(()) => info!("Deleted managed-source original: {}", path.display()),
+            let file_path = std::path::Path::new(path).join(&file.original_filename);
+            match tokio::fs::remove_file(&file_path).await {
+                Ok(()) => info!("Deleted managed-source original: {}", file_path.display()),
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                    debug!("Source original already gone: {}", path.display());
+                    debug!("Source original already gone: {}", file_path.display());
                 }
-                Err(e) => warn!("Failed to delete source original {}: {e}", path.display()),
+                Err(e) => warn!(
+                    "Failed to delete source original {}: {e}",
+                    file_path.display()
+                ),
             }
-        }
-
-        if let Err(e) = self
-            .db
-            .set_release_delete_unmanaged_source_on_upload(&release.id, false)
-            .await
-        {
-            warn!(
-                "Failed to clear delete-source intent for {}: {e}",
-                release.id
-            );
         }
     }
 }
@@ -557,7 +522,9 @@ mod tests {
             original_filename: "track.flac".into(),
             file_size: 1000,
             content_type: ContentType::Flac,
-            cloud_path: Some("storage/rel-1/track".into()),
+            // Namespace-relative, as stored on the row; coven prepends `storage/`,
+            // so the queued delete key is `storage/rel-1/track`.
+            cloud_path: Some("rel-1/track".into()),
             created_at: Utc::now(),
         })
         .await

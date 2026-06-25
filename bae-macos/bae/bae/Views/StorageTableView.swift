@@ -973,10 +973,13 @@ private struct StorageStateLabel: View {
             switch release.storageState {
             case .unmanaged:
                 Label("Unmanaged", systemImage: "folder").lineLimit(1)
-            case .pinned:
-                Label("Pinned", systemImage: "pin.fill").lineLimit(1)
-            case .cloudOnly:
-                Label("Cloud", systemImage: "cloud").lineLimit(1)
+            case .managed:
+                if release.pinned {
+                    Label("Pinned", systemImage: "pin.fill").lineLimit(1)
+                }
+                else {
+                    Label("Cloud", systemImage: "cloud").lineLimit(1)
+                }
             }
         }
     }

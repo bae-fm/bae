@@ -34,13 +34,13 @@ fn upload_file_id(entry: &coven::db::OutboxEntry) -> &str {
 async fn test_add_and_get_pending_uploads_fifo() {
     let (db, _tmp) = setup_db().await;
 
-    db.add_cloud_outbox_upload("file-aaa", "storage/aa/bb/file-aaa", None)
+    db.add_cloud_outbox_upload("file-aaa", "storage/aa/bb/file-aaa", None, false)
         .await
         .unwrap();
-    db.add_cloud_outbox_upload("file-bbb", "storage/bb/cc/file-bbb", None)
+    db.add_cloud_outbox_upload("file-bbb", "storage/bb/cc/file-bbb", None, false)
         .await
         .unwrap();
-    db.add_cloud_outbox_upload("file-ccc", "storage/cc/dd/file-ccc", None)
+    db.add_cloud_outbox_upload("file-ccc", "storage/cc/dd/file-ccc", None, false)
         .await
         .unwrap();
 
@@ -62,7 +62,7 @@ async fn test_outbox_upload_round_trips_master_scope() {
 
     let (db, _tmp) = setup_db().await;
 
-    db.add_cloud_outbox_upload("file-k", "storage/aa/bb/file-k", None)
+    db.add_cloud_outbox_upload("file-k", "storage/aa/bb/file-k", None, false)
         .await
         .unwrap();
 
@@ -117,7 +117,7 @@ async fn test_add_and_get_pending_deletes() {
 async fn test_remove_outbox_entry() {
     let (db, _tmp) = setup_db().await;
 
-    db.add_cloud_outbox_upload("file-aaa", "storage/aa/bb/file-aaa", None)
+    db.add_cloud_outbox_upload("file-aaa", "storage/aa/bb/file-aaa", None, false)
         .await
         .unwrap();
 
@@ -135,10 +135,10 @@ async fn test_remove_outbox_entry() {
 async fn test_remove_uploads_for_key() {
     let (db, _tmp) = setup_db().await;
 
-    db.add_cloud_outbox_upload("file-aaa", "storage/aa/bb/file-aaa", None)
+    db.add_cloud_outbox_upload("file-aaa", "storage/aa/bb/file-aaa", None, false)
         .await
         .unwrap();
-    db.add_cloud_outbox_upload("file-bbb", "storage/bb/cc/file-bbb", None)
+    db.add_cloud_outbox_upload("file-bbb", "storage/bb/cc/file-bbb", None, false)
         .await
         .unwrap();
 
@@ -155,12 +155,12 @@ async fn test_remove_uploads_for_key() {
 async fn test_insert_or_ignore_idempotency() {
     let (db, _tmp) = setup_db().await;
 
-    db.add_cloud_outbox_upload("file-aaa", "storage/aa/bb/file-aaa", None)
+    db.add_cloud_outbox_upload("file-aaa", "storage/aa/bb/file-aaa", None, false)
         .await
         .unwrap();
 
     // Same key again — should not error (INSERT OR IGNORE)
-    db.add_cloud_outbox_upload("file-aaa", "storage/aa/bb/file-aaa", None)
+    db.add_cloud_outbox_upload("file-aaa", "storage/aa/bb/file-aaa", None, false)
         .await
         .unwrap();
 

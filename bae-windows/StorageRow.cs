@@ -21,8 +21,16 @@ public sealed class StorageRow
 
     public long FileCount { get; set; }
 
-    /// <summary>Storage-state wire tag: "unmanaged" / "pinned" / "cloud_only".</summary>
+    /// <summary>Storage-state wire tag: "unmanaged" / "managed".</summary>
     public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether coven keeps this release's blobs offline on this device — the
+    /// orthogonal coven-cache property, meaningful only when <see cref="State"/>
+    /// is "managed". Rendered as a separate pin indicator, never folded into the
+    /// state label.
+    /// </summary>
+    public bool Pinned { get; set; }
 
     public long PendingUploads { get; set; }
 
@@ -35,13 +43,20 @@ public sealed class StorageRow
     public string SizeLabel => Loc.Bytes(TotalSize);
 
     /// <summary>
-    /// The localized storage-state label. macOS does not yet route this typed
-    /// state through the shared catalog (it hardcodes the words in Swift), so
-    /// it's app chrome here — keyed by the wire tag in the app's own Resources
-    /// table — rather than an invented <c>core.*</c> key macOS doesn't have.
+    /// The localized storage-state label ("Unmanaged" / "Managed"). macOS does
+    /// not yet route this typed state through the shared catalog (it hardcodes the
+    /// words in Swift), so it's app chrome here — keyed by the wire tag in the
+    /// app's own Resources table — rather than an invented <c>core.*</c> key macOS
+    /// doesn't have.
     /// </summary>
     [JsonIgnore]
     public string StateLabel => Loc.Chrome($"storage.state.{State}");
+
+    /// <summary>The "kept offline" pin indicator, appended to the row when
+    /// <see cref="Pinned"/> — the orthogonal coven-cache property, separate from
+    /// the state label. Empty for an unpinned release.</summary>
+    [JsonIgnore]
+    public string PinIndicator => Pinned ? $" · {Loc.Chrome("storage.pinned")}" : string.Empty;
 
     /// <summary>The list row, omitting absent fields.</summary>
     [JsonIgnore]
@@ -56,7 +71,7 @@ public sealed class StorageRow
             var pending = PendingUploads > 0
                 ? $" · {Loc.Core("core.queue.uploading", "count", PendingUploads)}"
                 : string.Empty;
-            return $"{AlbumTitle} — {Artist}{format} · {files} · {SizeLabel} · {StateLabel}{pending}";
+            return $"{AlbumTitle} — {Artist}{format} · {files} · {SizeLabel} · {StateLabel}{PinIndicator}{pending}";
         }
     }
 }
