@@ -325,6 +325,7 @@ extension BaeApp {
                 SettingsView(checkForUpdatesViewModel: checkForUpdatesViewModel)
                     .environment(appService.configStore)
                     .environment(appService.libraryStore)
+                    .environment(appService.playback)
                     .environment(appService.sync)
                     .environment(appService.discogs)
                     .environment(\.playbackPositionPublisher, playbackPublisher)

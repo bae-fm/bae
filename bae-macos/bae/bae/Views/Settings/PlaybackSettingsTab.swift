@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct PlaybackSettingsTab: View {
-    @Environment(AppService.self)
-    private var appService
+    @Environment(Playback.self)
+    private var playback
     @Environment(ConfigStore.self)
     private var configStore
+    @Environment(UiStore.self)
+    private var uiStore
 
     @AppStorage("persistPlayback")
     private var persistPlayback = false
@@ -14,9 +16,9 @@ struct PlaybackSettingsTab: View {
             Section {
                 PauseBetweenSidesToggle(
                     configStore: configStore,
-                    appHandle: appService.appHandle,
+                    setEnabled: playback.setPauseBetweenSides,
                     showError: { @MainActor error in
-                        appService.uiStore.showError(error)
+                        uiStore.showError(error)
                     }
                 )
                 Toggle("Restore on launch", isOn: $persistPlayback)
@@ -37,8 +39,9 @@ struct PlaybackSettingsTab: View {
     let appService = PlaybackSettingsPreviewAppService.make()
 
     PlaybackSettingsTab()
-        .environment(appService)
+        .environment(appService.playback)
         .environment(appService.configStore)
+        .environment(appService.uiStore)
         .frame(width: 500, height: 300)
 }
 

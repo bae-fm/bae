@@ -3,7 +3,7 @@ import SwiftUI
 @MainActor
 struct PauseBetweenSidesToggle: View {
     let configStore: ConfigStore
-    let appHandle: AppHandle
+    let setEnabled: @Sendable (Bool) throws -> Void
     let showError: @MainActor (DisplayError) -> Void
 
     var body: some View {
@@ -15,7 +15,7 @@ struct PauseBetweenSidesToggle: View {
             get: { configStore.config.pauseBetweenSides },
             set: { enabled in
                 do {
-                    try appHandle.setPauseBetweenSides(enabled: enabled)
+                    try setEnabled(enabled)
                 }
                 catch let error as BridgeError {
                     showError(DisplayError(error))

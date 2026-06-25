@@ -2,8 +2,9 @@ import Foundation
 
 /// Playback transport — commands the now-playing track stream.
 /// Narrow subset of `AppHandle` covering play/pause, seek, volume,
-/// repeat mode, and the "play this release" trigger. Views that drive
-/// transport take this instead of the full `AppService`.
+/// repeat mode, the "play this release" trigger, and the pause-between-sides
+/// preference. Views that drive transport take this instead of the full
+/// `AppService`.
 final class Playback: Sendable, Observable {
     let togglePlayPause: @Sendable () -> Void
     let pause: @Sendable () -> Void
@@ -21,6 +22,7 @@ final class Playback: Sendable, Observable {
     /// Play the whole library in a freshly seeded shuffle. An empty library is a
     /// no-op (logged in core).
     let playLibraryShuffled: @Sendable () -> Void
+    let setPauseBetweenSides: @Sendable (_ enabled: Bool) throws -> Void
 
     init(
         togglePlayPause: @escaping @Sendable () -> Void = {},
@@ -37,7 +39,10 @@ final class Playback: Sendable, Observable {
             _,
             _ in
         },
-        playLibraryShuffled: @escaping @Sendable () -> Void = {}
+        playLibraryShuffled: @escaping @Sendable () -> Void = {},
+        setPauseBetweenSides: @escaping @Sendable (Bool) throws -> Void = {
+            _ in
+        }
     ) {
         self.togglePlayPause = togglePlayPause
         self.pause = pause
@@ -50,6 +55,7 @@ final class Playback: Sendable, Observable {
         self.cycleRepeatMode = cycleRepeatMode
         self.playRelease = playRelease
         self.playLibraryShuffled = playLibraryShuffled
+        self.setPauseBetweenSides = setPauseBetweenSides
     }
 
     convenience init(handle: any AppHandleProtocol) {
@@ -70,7 +76,10 @@ final class Playback: Sendable, Observable {
                     shuffle: $2
                 )
             },
-            playLibraryShuffled: { handle.playLibraryShuffled() }
+            playLibraryShuffled: { handle.playLibraryShuffled() },
+            setPauseBetweenSides: {
+                try handle.setPauseBetweenSides(enabled: $0)
+            }
         )
     }
 
