@@ -26,6 +26,21 @@ struct ExportFixture {
     _temp: TempDir,
 }
 
+/// The cloud object key coven addresses a release file's blob by. The export
+/// fixture's cloud home is the default opaque home, so the blob is sharded by id
+/// under the `release_files` namespace (Hashed scheme, no readable cloud_path).
+/// Seeding/removing the mock cloud at this key matches what coven reads.
+fn cloud_key(file: &bae_core::db::DbFile) -> String {
+    use coven::sync::cloud_storage::{BlobPathScheme, CloudSyncStorage};
+    CloudSyncStorage::blob_key(
+        BlobPathScheme::Hashed,
+        "release_files",
+        &file.id,
+        file.cloud_path.as_deref(),
+    )
+    .expect("derive cloud key")
+}
+
 impl ExportFixture {
     async fn new() -> Self {
         let temp = TempDir::new().unwrap();
@@ -95,8 +110,16 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Flip to cloud-only: remote, no local-source row.
-    f.db.set_release_remote(&release_id).await.unwrap();
+    // Flip to cloud-only: remote, and drop the in-place external refs. A real
+    // make-Remote uploads each file and drops its ref; this test seeds the cloud
+    // by hand, so it flips the gate and clears the refs directly. With the refs
+    // gone, coven's read resolves to the cloud (not the user's deleted file).
+    f.db.set_remote_for_test(&release_id, true).await.unwrap();
+    let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
+    assert_eq!(files.len(), 1);
+    for file in &files {
+        f.db.coven_db().clear_external_blob(&file.id).await.unwrap();
+    }
 
     // Seed the cloud home with each file's bytes encrypted under the library
     // master key (what the upload outbox would have produced).
@@ -104,13 +127,9 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
         .mgr
         .get_encryption_service()
         .expect("the library is unlocked");
-    let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
-    assert_eq!(files.len(), 1);
     let original_bytes = fs::read(album_dir.join(&files[0].original_filename)).unwrap();
-    f.cloud.put(
-        &bae_core::storage::local::storage_path(&files[0].id),
-        master_enc.encrypt(&original_bytes),
-    );
+    f.cloud
+        .put(&cloud_key(&files[0]), master_enc.encrypt(&original_bytes));
 
     // Remove the originals — nothing local remains.
     fs::remove_dir_all(album_dir).unwrap();
@@ -188,8 +207,7 @@ async fn export_release_missing_blob_is_hard_error() {
 
     // Blow away the seeded blob.
     let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
-    f.cloud
-        .remove(&bae_core::storage::local::storage_path(&files[0].id));
+    f.cloud.remove(&cloud_key(&files[0]));
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();

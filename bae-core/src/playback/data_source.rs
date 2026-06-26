@@ -155,111 +155,76 @@ impl AudioDataReader for LocalReader {
     }
 }
 
-/// Create the appropriate audio reader based on where the track data lives.
-///
-/// Reads a local file when `source` resolves one (this device's copy, or a
-/// still-pending upload's original). A pending upload whose source is gone
-/// errors before any cloud read — the object may not exist yet. A `Remote`
-/// source is a remote track read through the home's at-rest cipher (decrypt on
-/// an opaque home, verbatim on a browsable one), or report sync disconnected if
-/// no cloud home is configured. An `Unreachable` source is a local track
-/// whose local file is gone — there is nowhere to read it.
+/// Create the playback reader for a release file. coven owns locality: one reader
+/// streams every range through [`coven::blob::cache::open_blob_stream`], which
+/// resolves *where the bytes are* per read — the user's own file (a Local
+/// user-provided blob's external ref), coven's local store (a Local host-provided
+/// blob), `storage/pinned`/`storage/cache` on a Remote hit, or the cloud on a
+/// Remote miss (decrypting under the home's at-rest cipher). A read failure (a
+/// vanished external file, or a Remote blob with no cloud home) surfaces through
+/// the fill, so this is infallible to build.
 pub fn create_audio_reader(
-    source: crate::library::manager::ReadableFileSource,
-    file_id: &str,
-    cloud_key: &str,
     library_manager: &crate::library::LibraryManager,
-    make_read_config: impl FnOnce(String) -> AudioReadConfig,
-) -> Result<Box<dyn AudioDataReader>, crate::playback::PlaybackError> {
-    use crate::library::manager::ReadableFileSource;
-    use crate::playback::PlaybackError;
-
-    match source {
-        ReadableFileSource::Local(local_path) => {
-            let read_config = make_read_config(local_path.display().to_string());
-            Ok(Box::new(LocalReader::new(read_config)))
-        }
-        ReadableFileSource::UploadPendingSourceMissing => Err(PlaybackError::UploadPending),
-        ReadableFileSource::Remote => {
-            // A remote track's audio is a cloud-only object sealed under the
-            // home's at-rest cipher: read it through that cipher where the read
-            // needs the home and cipher, or report sync disconnected if no cloud
-            // home is configured. An opaque home's cipher needs the library key;
-            // a remote release always has an unlocked library, so a missing
-            // cipher there is a broken invariant, surfaced as an error rather
-            // than masked. A browsable home's cipher is plaintext and always
-            // present. The object key is the resolved `cloud_key` (the row's
-            // readable `cloud_path`, or the hashed `storage_path` default).
-            if let Some(cloud_home) = library_manager.get_cloud_home() {
-                let cipher = library_manager.cloud_blob_cipher().ok_or_else(|| {
-                    PlaybackError::not_found("blob cipher for remote cloud file", file_id)
-                })?;
-                let read_config = make_read_config(cloud_key.to_string());
-                Ok(Box::new(CloudReader::new(read_config, cloud_home, cipher)))
-            } else {
-                Err(PlaybackError::SyncDisconnected)
-            }
-        }
-        ReadableFileSource::Unreachable => {
-            // A local track's audio never leaves the user's disk, so a
-            // missing local source is simply gone — never a cloud read.
-            Err(PlaybackError::not_found("playable file location", file_id))
-        }
-    }
+    file_id: &str,
+    cloud_path: Option<&str>,
+    source_size: u64,
+) -> Box<dyn AudioDataReader> {
+    let blob = coven::blob::BlobRef {
+        namespace: crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
+        id: file_id.to_string(),
+        scope: coven::blob::BlobScope::Master,
+        cloud_path: cloud_path.map(str::to_string),
+        provenance: coven::blob::Provenance::UserProvided,
+        fill: coven::blob::CacheFill::CacheLazy,
+    };
+    Box::new(CovenBlobReader {
+        db: library_manager.coven_database().clone(),
+        library_dir: library_manager.library_dir().clone(),
+        storage: library_manager.blob_storage(),
+        blob,
+        source_size,
+    })
 }
 
-/// Reads from cloud storage through the home's at-rest cipher: an opaque home's
-/// `Encrypted` cipher decrypts each remote blob under the library key, a
-/// browsable home's `Plaintext` cipher reads the verbatim bytes.
-pub struct CloudReader {
-    config: AudioReadConfig,
-    cloud_home: Arc<dyn crate::storage::cloud::CloudHome>,
-    cipher: coven::sync::cloud_storage::CloudCipher,
+/// Streams a release file's plaintext through coven's locality-aware ranged read.
+/// The single playback reader: coven resolves each window to the external file,
+/// the local store, the cache, or the cloud (decrypting as needed), so playback
+/// never branches on locality.
+pub struct CovenBlobReader {
+    db: coven::Database,
+    library_dir: coven::library_dir::LibraryDir,
+    storage: Box<dyn coven::sync::storage::SyncStorage>,
+    blob: coven::blob::BlobRef,
+    source_size: u64,
 }
 
-impl CloudReader {
-    pub fn new(
-        config: AudioReadConfig,
-        cloud_home: Arc<dyn crate::storage::cloud::CloudHome>,
-        cipher: coven::sync::cloud_storage::CloudCipher,
-    ) -> Self {
-        Self {
-            config,
-            cloud_home,
-            cipher,
-        }
-    }
-}
-
-impl AudioDataReader for CloudReader {
+impl AudioDataReader for CovenBlobReader {
     fn start_reading(
         self: Box<Self>,
         buffer: SharedSparseBuffer,
         progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
     ) {
-        let config = self.config;
-        let cloud_home = self.cloud_home;
-        let cipher = self.cipher;
+        let CovenBlobReader {
+            db,
+            library_dir,
+            storage,
+            blob,
+            source_size,
+        } = *self;
         let (wake, buffer) = prepare_fill(buffer);
 
         tokio::spawn(async move {
-            let source_size = config.source_size;
-            info!("CloudReader: source_size={source_size}");
-
-            // One reader per track: on an encrypted home the nonce header is
-            // fetched once and reused across every range read (a full-file stream
-            // issues many); a plaintext home reads each window verbatim. Every
-            // remote blob is master-scoped (see `BaeBlobSource`).
-            let reader = crate::storage::BlobRangeReader::new(
-                cloud_home,
-                &cipher,
-                coven::blob::ResolvedScope::Master,
-                config.path.clone(),
-                source_size,
-            );
-
+            info!("CovenBlobReader: source_size={source_size}");
             let result = fill_buffer_on_demand(buffer.clone(), wake, |src_off, len| {
-                let fut = reader.read(src_off, len);
+                let fut = coven::blob::cache::open_blob_stream(
+                    &db,
+                    &library_dir,
+                    storage.as_ref(),
+                    &blob,
+                    source_size,
+                    src_off,
+                    len,
+                );
                 async move { fut.await.map_err(|e| e.to_string()) }
             })
             .await;
@@ -269,7 +234,7 @@ impl AudioDataReader for CloudReader {
                 report_fill_failure(
                     &progress_tx,
                     &buffer,
-                    format!("Cloud download failed: {error}"),
+                    format!("Blob read failed: {error}"),
                     error,
                 );
             }
@@ -277,7 +242,12 @@ impl AudioDataReader for CloudReader {
     }
 }
 
-const CLOUD_STREAM_READ_SIZE: u64 = crate::encryption::CHUNK_SIZE as u64 * 16;
+// The fill fetches one window at a time through coven's `open_blob_stream`, which
+// resolves locality per call (an external-ref lookup + a file open, or a cloud
+// range read). A larger window means fewer such calls per second of playback, so
+// the per-call overhead stays well under the playback CPU budget; 4 MiB keeps the
+// readahead and per-track memory modest while cutting the call rate.
+const CLOUD_STREAM_READ_SIZE: u64 = crate::encryption::CHUNK_SIZE as u64 * 64;
 
 /// The minimum the fill keeps buffered ahead of a reader, regardless of its
 /// track ceiling. A few windows so the decoder's ring can't underrun: it's the
@@ -419,80 +389,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::encryption::{EncryptionService, CHUNK_SIZE};
     use crate::playback::sparse_buffer::create_sparse_buffer;
-    use crate::storage::cloud::{CloudHome, CloudHomeError, CloudHomeJoinInfo};
-    use coven::sync::cloud_storage::CloudCipher;
     use std::io::Write;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Mutex;
     use std::time::Duration;
     use tempfile::NamedTempFile;
     use tokio::time::timeout;
-
-    /// A cloud home holding exactly one encrypted blob at a known key — enough to
-    /// drive the real `CloudReader` decrypt path.
-    struct OneBlobCloud {
-        key: String,
-        blob: Vec<u8>,
-    }
-
-    #[async_trait::async_trait]
-    impl CloudHome for OneBlobCloud {
-        async fn read(&self, key: &str) -> Result<Vec<u8>, CloudHomeError> {
-            if key == self.key {
-                Ok(self.blob.clone())
-            } else {
-                Err(CloudHomeError::NotFound(key.to_string()))
-            }
-        }
-        async fn write(
-            &self,
-            _key: &str,
-            _data: Vec<u8>,
-            _progress: &crate::storage::cloud::UploadProgress<'_>,
-        ) -> Result<(), CloudHomeError> {
-            unimplemented!("not exercised by CloudReader read")
-        }
-        async fn read_range(
-            &self,
-            key: &str,
-            start: u64,
-            end: u64,
-        ) -> Result<Vec<u8>, CloudHomeError> {
-            if key != self.key {
-                return Err(CloudHomeError::NotFound(key.to_string()));
-            }
-
-            let start = usize::try_from(start)
-                .map_err(|e| CloudHomeError::Storage(format!("invalid range start: {e}")))?;
-            let end = usize::try_from(end)
-                .map_err(|e| CloudHomeError::Storage(format!("invalid range end: {e}")))?;
-            if start > end || end > self.blob.len() {
-                return Err(CloudHomeError::Storage(format!(
-                    "range {start}..{end} outside blob length {}",
-                    self.blob.len()
-                )));
-            }
-
-            Ok(self.blob[start..end].to_vec())
-        }
-        async fn list(&self, _: &str) -> Result<Vec<String>, CloudHomeError> {
-            unimplemented!("not exercised")
-        }
-        async fn delete(&self, _: &str) -> Result<(), CloudHomeError> {
-            unimplemented!("not exercised")
-        }
-        async fn exists(&self, _: &str) -> Result<bool, CloudHomeError> {
-            unimplemented!("not exercised")
-        }
-        async fn grant_access(&self, _: &str) -> Result<CloudHomeJoinInfo, CloudHomeError> {
-            unimplemented!("not exercised")
-        }
-        async fn revoke_access(&self, _: &str) -> Result<(), CloudHomeError> {
-            unimplemented!("not exercised")
-        }
-    }
 
     /// Ordered record of `read_range(start, end)` calls, shared with a test.
     type ReadLog = Arc<Mutex<Vec<(u64, u64)>>>;
@@ -529,75 +431,6 @@ mod tests {
         fn release(&self, start: u64) {
             self.released.lock().unwrap().insert(start);
             self.notify.notify_waiters();
-        }
-    }
-
-    /// A cloud home that exposes only range reads. Playback of encrypted byte
-    /// ranges must not depend on a full-object download. Counts nonce-header
-    /// reads (a range at offset 0 of `NONCE_SIZE` bytes) separately so a test
-    /// can assert the header is fetched exactly once across many windows, and can
-    /// inject a queued range-read error (optionally after cancelling a buffer).
-    struct RangeOnlyCloud {
-        inner: OneBlobCloud,
-        full_reads: Arc<AtomicUsize>,
-        range_reads: Arc<AtomicUsize>,
-        nonce_reads: Arc<AtomicUsize>,
-        range_read_error: Mutex<Option<CloudHomeError>>,
-        /// When set, the queued `range_read_error` fires only after cancelling
-        /// this buffer — modelling teardown cancelling the buffer while a reader
-        /// is parked in an in-flight `read().await` past its top-of-loop cancel
-        /// check, then the read returning a genuine error.
-        cancel_before_error: Mutex<Option<SharedSparseBuffer>>,
-    }
-
-    #[async_trait::async_trait]
-    impl CloudHome for RangeOnlyCloud {
-        async fn read(&self, key: &str) -> Result<Vec<u8>, CloudHomeError> {
-            self.full_reads.fetch_add(1, Ordering::SeqCst);
-            Err(CloudHomeError::Storage(format!(
-                "full read should not be used for {key}"
-            )))
-        }
-        async fn write(
-            &self,
-            _key: &str,
-            _data: Vec<u8>,
-            _progress: &crate::storage::cloud::UploadProgress<'_>,
-        ) -> Result<(), CloudHomeError> {
-            unimplemented!("not exercised by CloudReader read")
-        }
-        async fn read_range(
-            &self,
-            key: &str,
-            start: u64,
-            end: u64,
-        ) -> Result<Vec<u8>, CloudHomeError> {
-            self.range_reads.fetch_add(1, Ordering::SeqCst);
-            if start == 0 && end == crate::encryption::NONCE_SIZE as u64 {
-                self.nonce_reads.fetch_add(1, Ordering::SeqCst);
-            }
-            if let Some(error) = self.range_read_error.lock().unwrap().take() {
-                if let Some(buffer) = self.cancel_before_error.lock().unwrap().take() {
-                    buffer.cancel();
-                }
-                return Err(error);
-            }
-            self.inner.read_range(key, start, end).await
-        }
-        async fn list(&self, _: &str) -> Result<Vec<String>, CloudHomeError> {
-            unimplemented!("not exercised")
-        }
-        async fn delete(&self, _: &str) -> Result<(), CloudHomeError> {
-            unimplemented!("not exercised")
-        }
-        async fn exists(&self, _: &str) -> Result<bool, CloudHomeError> {
-            unimplemented!("not exercised")
-        }
-        async fn grant_access(&self, _: &str) -> Result<CloudHomeJoinInfo, CloudHomeError> {
-            unimplemented!("not exercised")
-        }
-        async fn revoke_access(&self, _: &str) -> Result<(), CloudHomeError> {
-            unimplemented!("not exercised")
         }
     }
 
@@ -642,306 +475,6 @@ mod tests {
             path: path.into(),
             source_size,
         }
-    }
-
-    /// Build a `CloudReader` over `cloud` for `file_id` reading through `cipher`
-    /// — the same reader `create_audio_reader`'s cloud arm constructs, built
-    /// directly here so the read-path tests don't stand up a `LibraryManager`.
-    /// The storage path matches production's `storage_path(file_id)`.
-    fn cloud_reader_for(
-        cloud: Arc<dyn CloudHome>,
-        file_id: &str,
-        cipher: CloudCipher,
-        source_size: u64,
-    ) -> Box<CloudReader> {
-        let config = full_file_config(crate::storage::local::storage_path(file_id), source_size);
-        Box::new(CloudReader::new(config, cloud, cipher))
-    }
-
-    /// The playback decrypt path: a remote track whose audio lives only in the
-    /// cloud, encrypted with the library master key, is read back through the
-    /// `CloudReader` and recovered byte-for-byte. It exercises `CloudReader` ->
-    /// coven's `BlobRangeReader` -> `EncryptionService::decrypt_range_with_offset`.
-    #[tokio::test]
-    async fn cloud_reader_decrypts_remote_audio_with_master_key() {
-        let master_key = [9u8; 32];
-        let plaintext = b"remote cloud audio for exactly one release".to_vec();
-        // Encrypt as the upload outbox does: with the library master key.
-        let encrypted = EncryptionService::from_key(master_key).encrypt(&plaintext);
-
-        let file_id = "file-remote-1";
-        let storage_key = crate::storage::local::storage_path(file_id);
-        let cloud: Arc<dyn CloudHome> = Arc::new(OneBlobCloud {
-            key: storage_key,
-            blob: encrypted,
-        });
-
-        let reader = cloud_reader_for(
-            cloud,
-            file_id,
-            CloudCipher::Encrypted(EncryptionService::from_key(master_key)),
-            plaintext.len() as u64,
-        );
-
-        let buffer = create_sparse_buffer(plaintext.len() as u64);
-        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-        reader.start_reading(buffer.clone(), progress_tx);
-        let actual = drain_async(buffer.clone()).await;
-
-        assert!(
-            !buffer.is_cancelled(),
-            "decrypt with the right key must succeed"
-        );
-        assert_eq!(
-            actual, plaintext,
-            "CloudReader must recover the audio after decrypting with the master key"
-        );
-    }
-
-    /// The browsable-home playback path: a remote track whose audio lives only
-    /// in the cloud, stored verbatim (a browsable home seals nothing), is read
-    /// back through a `Plaintext` `CloudReader` and recovered byte-for-byte. The
-    /// upload writes the bytes as-is, so the read must not look for a nonce or
-    /// try to decrypt. Mirror of the opaque decrypt test with the home's cipher
-    /// flipped to `Plaintext` and the stored blob left unencrypted.
-    #[tokio::test]
-    async fn cloud_reader_reads_browsable_remote_audio_verbatim() {
-        // A browsable home stores the audio in the clear: the stored blob IS the
-        // plaintext, with no nonce header.
-        let plaintext = b"remote cloud audio on a browsable home".to_vec();
-
-        let file_id = "file-browsable-1";
-        let storage_key = crate::storage::local::storage_path(file_id);
-        let cloud: Arc<dyn CloudHome> = Arc::new(OneBlobCloud {
-            key: storage_key,
-            blob: plaintext.clone(),
-        });
-
-        let reader = cloud_reader_for(
-            cloud,
-            file_id,
-            CloudCipher::Plaintext,
-            plaintext.len() as u64,
-        );
-
-        let buffer = create_sparse_buffer(plaintext.len() as u64);
-        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-        reader.start_reading(buffer.clone(), progress_tx);
-        let actual = drain_async(buffer.clone()).await;
-
-        assert!(
-            !buffer.is_cancelled(),
-            "a verbatim read on a browsable home must succeed"
-        );
-        assert_eq!(
-            actual, plaintext,
-            "CloudReader must recover the verbatim audio from a browsable home"
-        );
-    }
-
-    #[tokio::test]
-    async fn cloud_reader_streams_remote_full_file_without_full_download() {
-        let master_key = [8u8; 32];
-        // Span several `CLOUD_STREAM_READ_SIZE` windows so the nonce-read-once
-        // assertion has multiple windows to be true across.
-        let plaintext: Vec<u8> = (0..CHUNK_SIZE * 40)
-            .map(|i| ((i * 17) % 251) as u8)
-            .collect();
-        let encrypted = EncryptionService::from_key(master_key).encrypt(&plaintext);
-
-        let file_id = "file-remote-full-range-1";
-        let storage_key = crate::storage::local::storage_path(file_id);
-        let full_reads = Arc::new(AtomicUsize::new(0));
-        let range_reads = Arc::new(AtomicUsize::new(0));
-        let nonce_reads = Arc::new(AtomicUsize::new(0));
-        let cloud: Arc<dyn CloudHome> = Arc::new(RangeOnlyCloud {
-            inner: OneBlobCloud {
-                key: storage_key,
-                blob: encrypted,
-            },
-            full_reads: full_reads.clone(),
-            range_reads: range_reads.clone(),
-            nonce_reads: nonce_reads.clone(),
-            range_read_error: Mutex::new(None),
-            cancel_before_error: Mutex::new(None),
-        });
-
-        let reader = cloud_reader_for(
-            cloud,
-            file_id,
-            CloudCipher::Encrypted(EncryptionService::from_key(master_key)),
-            plaintext.len() as u64,
-        );
-
-        let buffer = create_sparse_buffer(plaintext.len() as u64);
-        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-        reader.start_reading(buffer.clone(), progress_tx);
-        let actual = drain_async(buffer.clone()).await;
-
-        assert!(
-            !buffer.is_cancelled(),
-            "encrypted cloud full-file playback must not depend on full-object reads"
-        );
-        assert_eq!(actual, plaintext);
-        assert_eq!(
-            full_reads.load(Ordering::SeqCst),
-            0,
-            "encrypted full-file playback must not call CloudHome::read"
-        );
-        assert!(
-            range_reads.load(Ordering::SeqCst) >= 2,
-            "encrypted full-file playback must read the nonce and encrypted chunks"
-        );
-        assert_eq!(
-            nonce_reads.load(Ordering::SeqCst),
-            1,
-            "the nonce header is read once and reused across every streamed window"
-        );
-    }
-
-    /// A genuine range read failure on a LIVE buffer (no teardown) surfaces a
-    /// PlaybackError so the service can stop the frozen Playing/Loading state.
-    /// The buffer ends cancelled only as a consequence of the failure.
-    #[tokio::test]
-    async fn cloud_reader_reports_range_failure_on_live_buffer() {
-        let file_id = "file-remote-range-error-1";
-        let storage_key = crate::storage::local::storage_path(file_id);
-        let range_reads = Arc::new(AtomicUsize::new(0));
-        let cloud: Arc<dyn CloudHome> = Arc::new(RangeOnlyCloud {
-            inner: OneBlobCloud {
-                key: storage_key,
-                blob: Vec::new(),
-            },
-            full_reads: Arc::new(AtomicUsize::new(0)),
-            range_reads: range_reads.clone(),
-            nonce_reads: Arc::new(AtomicUsize::new(0)),
-            range_read_error: Mutex::new(Some(CloudHomeError::Storage(
-                "mock range read failure: checksum mismatch".to_string(),
-            ))),
-            cancel_before_error: Mutex::new(None),
-        });
-        let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
-
-        let reader = cloud_reader_for(
-            cloud,
-            file_id,
-            CloudCipher::Encrypted(EncryptionService::from_key([3u8; 32])),
-            4096,
-        );
-
-        let buffer = create_sparse_buffer(4096);
-        reader.start_reading(buffer.clone(), progress_tx);
-        let actual = drain_async(buffer.clone()).await;
-
-        assert!(actual.is_empty());
-        assert!(buffer.is_cancelled());
-        assert_eq!(
-            range_reads.load(Ordering::SeqCst),
-            1,
-            "encrypted read should fail while fetching the nonce header"
-        );
-        let error = next_playback_error(
-            &mut progress_rx,
-            "cloud range failure should emit playback error",
-        )
-        .await;
-        // The failure on the nonce read (the first range read, asserted above)
-        // surfaces the provider's error body to the player.
-        assert!(
-            error.contains("checksum mismatch"),
-            "expected provider body error, got: {error}",
-        );
-    }
-
-    /// Teardown (track switch) cancels the buffer while a reader is parked in an
-    /// in-flight `read().await` past its top-of-loop cancel check; the read then
-    /// returns a genuine error. That error belongs to the abandoned track, so it
-    /// must NOT surface a PlaybackError — otherwise the service's HaltOnError
-    /// self-subscription would stop the track the user just switched to. The
-    /// buffer still ends cancelled.
-    #[tokio::test]
-    async fn cloud_reader_suppresses_failure_after_buffer_cancelled() {
-        let file_id = "file-remote-range-error-cancelled-1";
-        let storage_key = crate::storage::local::storage_path(file_id);
-        let range_reads = Arc::new(AtomicUsize::new(0));
-        let buffer = create_sparse_buffer(4096);
-        let cloud: Arc<dyn CloudHome> = Arc::new(RangeOnlyCloud {
-            inner: OneBlobCloud {
-                key: storage_key,
-                blob: Vec::new(),
-            },
-            full_reads: Arc::new(AtomicUsize::new(0)),
-            range_reads: range_reads.clone(),
-            nonce_reads: Arc::new(AtomicUsize::new(0)),
-            range_read_error: Mutex::new(Some(CloudHomeError::Storage(
-                "mock range read failure".to_string(),
-            ))),
-            // Cancel the buffer mid-read, then fail the read: the reader's
-            // top-of-loop cancel check already passed before this read began.
-            cancel_before_error: Mutex::new(Some(buffer.clone())),
-        });
-        let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
-
-        let reader = cloud_reader_for(
-            cloud,
-            file_id,
-            CloudCipher::Encrypted(EncryptionService::from_key([3u8; 32])),
-            4096,
-        );
-
-        reader.start_reading(buffer.clone(), progress_tx);
-        let actual = drain_async(buffer.clone()).await;
-
-        assert!(actual.is_empty());
-        assert!(
-            buffer.is_cancelled(),
-            "the buffer must still end cancelled so the reader stops"
-        );
-        assert_eq!(
-            range_reads.load(Ordering::SeqCst),
-            1,
-            "the failing read is the nonce-header fetch"
-        );
-        assert!(
-            progress_rx.try_recv().is_err(),
-            "a failure on an already-cancelled buffer must not emit a PlaybackError"
-        );
-    }
-
-    /// Sabotage check: the wrong key must NOT decrypt the blob — the reader
-    /// cancels the buffer. Guards against playback silently pairing a blob with
-    /// a key that isn't the one it was encrypted under.
-    #[tokio::test]
-    async fn cloud_reader_with_wrong_key_cancels() {
-        let master_key = [9u8; 32];
-        let wrong_key = [1u8; 32];
-        let plaintext = b"remote cloud audio".to_vec();
-        let encrypted = EncryptionService::from_key(master_key).encrypt(&plaintext);
-
-        let file_id = "file-remote-2";
-        let storage_key = crate::storage::local::storage_path(file_id);
-        let cloud: Arc<dyn CloudHome> = Arc::new(OneBlobCloud {
-            key: storage_key,
-            blob: encrypted,
-        });
-
-        let reader = cloud_reader_for(
-            cloud,
-            file_id,
-            CloudCipher::Encrypted(EncryptionService::from_key(wrong_key)),
-            plaintext.len() as u64,
-        );
-
-        let buffer = create_sparse_buffer(plaintext.len() as u64);
-        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-        reader.start_reading(buffer.clone(), progress_tx);
-        let actual = drain_async(buffer.clone()).await;
-
-        assert!(
-            buffer.is_cancelled(),
-            "the wrong key must fail decryption and cancel the read"
-        );
-        assert!(actual.is_empty());
     }
 
     const WINDOW: u64 = CLOUD_STREAM_READ_SIZE;

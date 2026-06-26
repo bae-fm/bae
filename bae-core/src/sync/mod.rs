@@ -1,5 +1,5 @@
-//! bae's sync: coven's sync substrate re-exported, with bae's blob source and a
-//! `SyncManager` wrapper layered on top.
+//! bae's sync: coven's sync substrate re-exported, with bae's blob-transition
+//! observer and a `SyncManager` wrapper layered on top.
 
 // The sync substrate lives in coven; these resolve `crate::sync::<m>` unchanged.
 pub use coven::join_code;
@@ -10,13 +10,35 @@ pub use coven::sync::{cloud_storage, join, restore, restore_code};
 // browsable home is `Plain` (the row's readable `cloud_path` verbatim).
 pub use coven::sync::cloud_storage::{BlobPathScheme, CloudSyncStorage};
 
-// bae-only domain layers built on the substrate.
-pub mod blob_source;
+// bae's blob-transition observer: UI bookkeeping for coven's upload drain and
+// make-Remote / make-Local completions (coven owns the lifecycle itself).
+pub mod upload_observer;
 
 // bae's SyncManager wrapper owns and drives coven's SyncManager.
 pub mod sync_manager;
 
-use coven::sync::session::SyncedTable;
+use coven::blob::{CacheFill, Provenance};
+use coven::sync::session::{BlobDecl, SyncedTable};
+
+/// Cloud namespace for release-file (audio/image/text/…) blobs — the user's own
+/// imported files. coven keys them under `release_files/…` and segments their
+/// cache + budget by this name.
+pub const RELEASE_FILES_NAMESPACE: &str = "release_files";
+/// Cloud namespace for the bae-produced album cover blob (1:1 with a release).
+pub const COVERS_NAMESPACE: &str = "covers";
+/// Cloud namespace for the bae-produced artist image blob (1:1 with an artist).
+pub const ARTIST_IMAGES_NAMESPACE: &str = "artist_images";
+
+/// This device's cache-size budget (bytes) for Remote `release_files` blobs —
+/// the bulk of the cache, since audio dominates. Each namespace evicts against
+/// its own budget, so audio pressure never wipes the cover cache.
+pub const RELEASE_FILES_CACHE_BUDGET: u64 = 20 * 1024 * 1024 * 1024; // 20 GiB
+/// A small reserved cache budget for Remote `covers` blobs (grid art), evicted
+/// independently of audio. A `CacheEager` cover evicted under pressure shows a
+/// placeholder and re-fetches on the next pull — covers are not pinned.
+pub const COVERS_CACHE_BUDGET: u64 = 512 * 1024 * 1024; // 512 MiB
+/// A small reserved cache budget for Remote `artist_images` blobs.
+pub const ARTIST_IMAGES_CACHE_BUDGET: u64 = 256 * 1024 * 1024; // 256 MiB
 
 /// The tables coven captures into changesets for incremental sync.
 ///
@@ -28,7 +50,7 @@ use coven::sync::session::SyncedTable;
 ///   - an `id TEXT PRIMARY KEY` at column 0 (the apply key), and
 ///   - an `_updated_at TEXT NOT NULL` column (the LWW clock).
 ///
-/// These ten satisfy both (verified against
+/// The set below satisfies both (verified against
 /// `bae-core/migrations/001_initial.sql`).
 ///
 /// ## The `releases.remote` gate
@@ -37,10 +59,11 @@ use coven::sync::session::SyncedTable;
 /// true, and the gate flows down the declared foreign keys to the release
 /// subtree, so its descendants sync iff their root release is remote. The
 /// inheriting children — `tracks`, `track_artists` (2-hop, via `tracks`),
-/// `release_files`, `release_identities`, `audio_formats` — are declared plain;
-/// they pick up the gate automatically from coven's FK walk, not from a
-/// per-table flag. Flipping `remote` true re-emits the whole now-visible
-/// subtree to peers as full inserts.
+/// `release_files`, `release_identities`, `audio_formats`, and the `covers`
+/// asset — are declared plain (or, for the cover, an `.asset()`); they pick up
+/// the gate automatically from coven's FK walk, not from a per-table flag.
+/// Flipping `remote` true re-emits the whole now-visible subtree to peers as
+/// full inserts.
 ///
 /// `albums` and `artists` are FK-ancestors of `releases`, declared
 /// `gated_by_descendants()`: an album syncs only while it has a surviving
@@ -49,6 +72,13 @@ use coven::sync::session::SyncedTable;
 /// keep-children from the foreign-key graph, so a receiver never materializes an
 /// album with zero remote releases and there is no read-side filter to hide
 /// one. `album_artists` is a plain join table that rides along.
+///
+/// `release_files` carries the user's own imported-file blobs; `covers` and
+/// `artist_images` carry bae-produced image blobs and are `.asset()`s of their
+/// FK subject (a release / an artist), so they ride the subject's gate but never
+/// keep it alive. coven owns the whole blob lifecycle off these declarations
+/// (upload/download, the make-Remote/make-Local transitions, the locality-aware
+/// read), so bae no longer hand-maintains a blob source.
 ///
 /// Deliberately excluded:
 ///   - local-only tables (`release_metadata`, `imports`, `attribution_names`)
@@ -67,9 +97,44 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         SyncedTable::new("release_identities"),
         SyncedTable::new("tracks"),
         SyncedTable::new("track_artists"),
-        SyncedTable::new("release_files"),
+        // The user's own imported files: user-provided (Local = the file at the
+        // user's path, an external ref coven holds), CacheLazy (fetched on first
+        // read when Remote). coven reads the blob id off the PK and the readable
+        // cloud key off `cloud_path`.
+        SyncedTable::new("release_files").carries_blob(
+            BlobDecl::new(
+                RELEASE_FILES_NAMESPACE,
+                Provenance::UserProvided,
+                CacheFill::CacheLazy,
+            )
+            .with_cloud_path_column("cloud_path"),
+        ),
         SyncedTable::new("audio_formats"),
-        SyncedTable::new("library_images"),
+        // The bae-produced album cover: host-provided (coven owns the copy in
+        // its local store while Local), CacheEager (pulled with the row when
+        // Remote so the grid renders from local bytes). An asset — it rides its
+        // release's gate (FK on `id`) but never keeps the release alive.
+        SyncedTable::new("covers")
+            .carries_blob(
+                BlobDecl::new(
+                    COVERS_NAMESPACE,
+                    Provenance::HostProvided,
+                    CacheFill::CacheEager,
+                )
+                .with_cloud_path_column("cloud_path"),
+            )
+            .asset(),
+        // The bae-produced artist image, same shape, riding `artists`' gate.
+        SyncedTable::new("artist_images")
+            .carries_blob(
+                BlobDecl::new(
+                    ARTIST_IMAGES_NAMESPACE,
+                    Provenance::HostProvided,
+                    CacheFill::CacheEager,
+                )
+                .with_cloud_path_column("cloud_path"),
+            )
+            .asset(),
     ]
 }
 
@@ -217,21 +282,34 @@ mod tests {
         assert_eq!(ancestors, BTreeSet::from(["albums", "artists"]));
     }
 
-    /// The whole point of the storage-state split: per-device local-source
-    /// state lives in `release_local_source`, which must never sync.
+    /// `release_files` carries the user's own blobs; `covers` and `artist_images`
+    /// carry bae-produced image blobs and are assets (ride their FK subject's
+    /// gate, never grant keep). A blob declaration or asset flag silently dropped
+    /// here would break the whole coven-owned blob lifecycle, which is what this
+    /// test catches.
     #[test]
-    fn release_local_source_is_device_local() {
-        let tables = migration_tables();
-        let (_, body) = tables
-            .iter()
-            .find(|(n, _)| n == "release_local_source")
-            .expect("release_local_source table exists");
+    fn blob_bearing_tables_carry_their_declarations() {
+        let tables = synced_tables();
+        let by_name = |name: &str| tables.iter().find(|t| t.name() == name).unwrap();
+
+        assert!(by_name("release_files").blob().is_some());
+        assert!(!by_name("release_files").is_asset());
+
+        let covers = by_name("covers");
+        assert!(covers.blob().is_some(), "covers carries a blob");
+        assert!(covers.is_asset(), "covers is an asset of releases");
+
+        let artist_images = by_name("artist_images");
         assert!(
-            !has_lww_clock(body),
-            "release_local_source must have no `_updated_at` (device-local, never synced)"
+            artist_images.blob().is_some(),
+            "artist_images carries a blob"
         );
-        assert!(synced_tables()
-            .iter()
-            .all(|t| t.name() != "release_local_source"));
+        assert!(
+            artist_images.is_asset(),
+            "artist_images is an asset of artists"
+        );
+
+        // Non-blob tables carry no declaration.
+        assert!(by_name("tracks").blob().is_none());
     }
 }

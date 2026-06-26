@@ -189,6 +189,12 @@ fn bootstrap_inner(
         None,
     );
 
+    // Configure coven's per-namespace cache budgets (device-local, idempotent):
+    // the bulk for audio, a small reserved slice each for covers / artist images.
+    runtime
+        .block_on(library_manager.configure_cache_budgets())
+        .map_err(|e| BootstrapError::Database(e.to_string()))?;
+
     // Now that the manager owns the outbox in-flight set and event channel, build
     // and start the sync manager (if unlocked) so the upload observer shares
     // them. Must precede `library_manager.start()`, which subscribes to the sync

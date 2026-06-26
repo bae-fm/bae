@@ -251,11 +251,10 @@ pub struct DbRelease {
     /// Specific MB/Discogs release ID used to seed metadata. NULL when
     /// `metadata_source = FileTags`.
     pub metadata_source_release_id: Option<String>,
-    /// Shared, synced fact: is this release's audio in the cloud home (remote)
-    /// or local to one device (local). A local release's in-place folder
-    /// lives in the device-local `release_local_source` /
-    /// [`DbReleaseLocalSource`]; a remote release's bytes live in coven's
-    /// blob cache.
+    /// Shared, synced fact (the coven gate column): is this release's audio in
+    /// the cloud home (remote) or local to one device (local). A local release's
+    /// in-place files are coven user-provided external refs (`local_blob_refs`);
+    /// a remote release's bytes live in coven's blob cache.
     pub remote: bool,
     /// Name of the source folder this release was imported from (just the final
     /// path component, not the full path). Used to detect likely duplicates when
@@ -277,24 +276,6 @@ pub struct DbRelease {
     /// tracks. `None` = not measured. Playback caps the album gain at `1.0/peak`.
     pub album_peak_linear: Option<f64>,
     pub created_at: DateTime<Utc>,
-}
-
-/// One `release_local_source` row — DEVICE-LOCAL truth that this release is
-/// LOCAL on this device, with its files in place at `path`. Not synced (the
-/// table carries no `_updated_at` and is not a registered synced table), so each
-/// device owns its own rows.
-///
-/// A row exists for exactly the local releases (`releases.remote = 0`). A
-/// remote release has NO row: its bytes live only in coven's blob cache
-/// (`storage/pinned/` when kept local, else fetched into `storage/cache/` on
-/// read), which coven owns — so "is it local" and "is it pinned" for a remote
-/// release are answered by coven's cache, never here.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DbReleaseLocalSource {
-    pub release_id: String,
-    /// The folder the in-place files live in on this device; a file is at
-    /// `path/original_filename`.
-    pub path: String,
 }
 
 /// The playing context of a saved `playback_state` row: which release is being
@@ -404,11 +385,11 @@ pub struct DbTrack {
 /// - Files are part of a specific release (e.g., "2016 Remaster" has different files than "1973 Original")
 /// - Some files are metadata (cover.jpg, .cue sheets) not associated with any track
 ///
-/// File location follows the release's storage state:
-/// - local (has a `release_local_source` row): `path/original_filename`,
-///   the in-place source on this device;
-/// - remote (no row): coven's blob cache (`storage/pinned/` or `storage/cache/`),
-///   read through coven's cache API by the file's id — never a bae path.
+/// File location follows the release's storage state, resolved by coven:
+/// - Local: the user's own file in place, a coven user-provided external ref
+///   (`local_blob_refs`), read straight from the user's path;
+/// - Remote: coven's blob cache (`storage/pinned/` or `storage/cache/`), read
+///   through coven's locality-aware read by the file's id — never a bae path.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbFile {
     pub id: String,
@@ -417,30 +398,15 @@ pub struct DbFile {
     pub original_filename: String,
     pub file_size: i64,
     pub content_type: ContentType,
-    /// Cloud object key for this file's remote blob, mirroring coven's
-    /// `BlobRef.cloud_path`. `None` = the hashed-by-id layout
-    /// (`storage_path(id)`), used by opaque homes and as the read fallback;
-    /// `Some` = the explicit readable key set when the file entered a browsable
-    /// home. Every upload/read/delete addresses the blob through this value
-    /// (falling back to `storage_path(id)` when `None`).
+    /// Readable cloud key for this file's blob, relative to the `release_files`
+    /// namespace coven prepends (mirroring coven's `BlobRef.cloud_path`). `None`
+    /// = the hashed-by-id layout (opaque homes); `Some` = the explicit readable
+    /// key computed at import for a browsable home. coven derives every
+    /// upload/read/delete key from this column via the table's `BlobDecl`.
     pub cloud_path: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
-/// A cloud-upload intent committed inside `finalize_import_atomic`'s
-/// transaction — one per file of a remote import, so the release either
-/// lands with its uploads queued or doesn't land at all. The cloud object key
-/// is computed inside the transaction (the same value written to the file's
-/// `release_files.cloud_path`): the hashed `storage_path(file_id)` on an opaque
-/// home, the readable `{artist}/{album}/{filename}` on a browsable one.
-#[derive(Debug, Clone)]
-pub struct DbCloudUpload {
-    pub file_id: String,
-    /// Plaintext source the upload drain reads. `None` means the staged
-    /// `storage/` copy (a remote pin); `Some` points at the user's original
-    /// file (a remote cloud-only import, which moves no bytes locally).
-    pub source_path: Option<String>,
-}
 /// Audio format metadata for a track. One record per track (1:1 with track).
 ///
 /// A track is a sample window `[start_sample, end_sample)` into its backing
@@ -718,14 +684,6 @@ impl DbRelease {
     }
 }
 
-impl DbReleaseLocalSource {
-    /// The in-place path of `file` on this device: `path/original_filename`. Only
-    /// local releases have a row, so this always resolves to the in-place
-    /// source; a remote release reads from coven's cache, never here.
-    pub fn local_file_path(&self, file: &DbFile) -> std::path::PathBuf {
-        std::path::Path::new(&self.path).join(&file.original_filename)
-    }
-}
 impl DbTrack {
     #[cfg(test)]
     pub fn new_test(
@@ -793,23 +751,6 @@ impl DbFile {
             cloud_path: None,
             created_at: now,
         }
-    }
-
-    /// Derive the local storage path for this file.
-    pub fn local_storage_path(
-        &self,
-        library_dir: &crate::library_dir::LibraryDir,
-    ) -> std::path::PathBuf {
-        library_dir.join(crate::storage::local::storage_path(&self.id))
-    }
-
-    /// The cloud object key this file's blob lives at — its stored readable
-    /// `cloud_path` on a browsable home, or the hashed-by-id default on an opaque
-    /// one. See [`crate::storage::local::effective_cloud_key`]; every read,
-    /// delete, and pull resolves the key through this so no consumer re-states
-    /// the NULL-means-hashed fallback.
-    pub fn cloud_key(&self) -> String {
-        crate::storage::local::effective_cloud_key(self.cloud_path.as_deref(), &self.id)
     }
 }
 impl DbAudioFormat {
@@ -1116,10 +1057,6 @@ pub struct DbAlbumDetail {
 #[derive(Debug, Clone)]
 pub struct DbReleaseDetail {
     pub release: DbRelease,
-    /// This device's `release_local_source` row, present iff the release is
-    /// local. The resolver reads in-place file paths from it; a remote
-    /// release has none (its bytes live in coven's cache).
-    pub local_source: Option<DbReleaseLocalSource>,
     pub tracks: Vec<DbTrackWithArtists>,
     pub files: Vec<DbFile>,
     /// Audio-format rows for this release's tracks. Each carries the codec,

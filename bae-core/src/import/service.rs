@@ -1068,37 +1068,33 @@ impl ImportService {
             .unwrap_or(&db_album.id)
             .to_string();
 
-        // Write remote cover to disk (filesystem only, no DB yet)
-        let remote_cover_image = if let Some((bytes, content_type, url, source)) = remote_cover_data
-        {
-            let image_path = library_manager.image_path(&db_release.id);
-            if let Some(parent) = image_path.parent() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| format!("Failed to create images directory: {}", e))?;
-            }
-            std::fs::write(&image_path, bytes.as_slice())
-                .map_err(|e| format!("Failed to write cover: {}", e))?;
-
-            info!("Wrote remote cover art to {}", image_path.display());
-            let now = library_manager.clock().now();
-            Some(crate::db::DbLibraryImage {
-                id: db_release.id.clone(),
-                image_type: crate::db::LibraryImageType::Cover,
-                content_type,
-                file_size: bytes.len() as i64,
-                width: None,
-                height: None,
-                source: source.as_str().to_string(),
-                source_url: Some(url),
-                // The import's finalize transaction computes the readable
-                // cloud_path under a browsable home (it needs the album/artist
-                // rows it inserts); it stays NULL on an opaque one.
-                cloud_path: None,
-                created_at: now,
-            })
-        } else {
-            None
-        };
+        // Build the remote cover record + its bytes (no storage yet — the winning
+        // cover's bytes are handed to coven's local store below, and its row is
+        // written by finalize).
+        let remote_cover_image: Option<(crate::db::DbLibraryImage, Vec<u8>)> =
+            if let Some((bytes, content_type, url, source)) = remote_cover_data {
+                let now = library_manager.clock().now();
+                let bytes = bytes.to_vec();
+                Some((
+                    crate::db::DbLibraryImage {
+                        id: db_release.id.clone(),
+                        image_type: crate::db::LibraryImageType::Cover,
+                        content_type,
+                        file_size: bytes.len() as i64,
+                        width: None,
+                        height: None,
+                        source: source.as_str().to_string(),
+                        source_url: Some(url),
+                        // finalize computes the readable cloud_path on a browsable
+                        // home; NULL (hashed) on an opaque one.
+                        cloud_path: None,
+                        created_at: now,
+                    },
+                    bytes,
+                ))
+            } else {
+                None
+            };
         let remote_cover_set = remote_cover_image.is_some();
 
         step_times.push(("save_to_database", last_step_start.elapsed()));
@@ -1210,7 +1206,7 @@ impl ImportService {
         import_id: &str,
         candidate_key: &str,
         remote_cover_set: bool,
-        remote_cover_image: Option<crate::db::DbLibraryImage>,
+        remote_cover_image: Option<(crate::db::DbLibraryImage, Vec<u8>)>,
         embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
         db_metadata: &[DbReleaseMetadata],
         remapped_track_artists: &[crate::db::DbTrackArtist],
@@ -1328,43 +1324,46 @@ impl ImportService {
             None
         };
 
-        // Embedded cover art is the last resort: write it only when no
-        // remote selection and no folder image produced a cover. This
-        // keeps the priority Remote/Local > folder image > embedded — a
-        // tagged rip with embedded art but no sidecar image still gets a
-        // cover, but a folder image always wins when present.
-        let embedded_cover_image = match embedded_cover {
-            Some((bytes, content_type)) if !remote_cover_set && local_cover_image.is_none() => {
-                let image_path = library_manager.image_path(&db_release.id);
-                if let Some(parent) = image_path.parent() {
-                    std::fs::create_dir_all(parent)
-                        .map_err(|e| format!("Failed to create images directory: {e}"))?;
+        // Embedded cover art is the last resort: use it only when no remote
+        // selection and no folder image produced a cover. This keeps the priority
+        // Remote/Local > folder image > embedded — a tagged rip with embedded art
+        // but no sidecar image still gets a cover, but a folder image always wins.
+        let embedded_cover_image: Option<(crate::db::DbLibraryImage, Vec<u8>)> =
+            match embedded_cover {
+                Some((bytes, content_type)) if !remote_cover_set && local_cover_image.is_none() => {
+                    let now = library_manager.clock().now();
+                    Some((
+                        crate::db::DbLibraryImage {
+                            id: db_release.id.clone(),
+                            image_type: crate::db::LibraryImageType::Cover,
+                            content_type,
+                            file_size: bytes.len() as i64,
+                            width: None,
+                            height: None,
+                            source: "embedded".to_string(),
+                            source_url: None,
+                            cloud_path: None,
+                            created_at: now,
+                        },
+                        bytes,
+                    ))
                 }
-                std::fs::write(&image_path, bytes.as_slice())
-                    .map_err(|e| format!("Failed to write embedded cover: {e}"))?;
-                info!("Wrote embedded cover art to {}", image_path.display());
-                let now = library_manager.clock().now();
-                Some(crate::db::DbLibraryImage {
-                    id: db_release.id.clone(),
-                    image_type: crate::db::LibraryImageType::Cover,
-                    content_type,
-                    file_size: bytes.len() as i64,
-                    width: None,
-                    height: None,
-                    source: "embedded".to_string(),
-                    source_url: None,
-                    // Computed in the finalize transaction (see above).
-                    cloud_path: None,
-                    created_at: now,
-                })
-            }
-            _ => None,
-        };
+                _ => None,
+            };
 
-        let library_image = remote_cover_image
-            .as_ref()
-            .or(local_cover_image.as_ref())
-            .or(embedded_cover_image.as_ref());
+        // The winning cover (Remote > Local folder image > embedded): its bytes go
+        // to coven's local store (a host-provided Local blob coven now owns), its
+        // row is written by finalize.
+        let cover_winner = remote_cover_image
+            .or(local_cover_image)
+            .or(embedded_cover_image);
+        if let Some((_, bytes)) = &cover_winner {
+            library_manager
+                .store_cover_blob(&db_release.id, bytes)
+                .await
+                .map_err(|e| format!("Failed to store cover blob: {e}"))?;
+        }
+        let library_image = cover_winner.as_ref().map(|(image, _)| image);
         let cover_rel_id = Some((album_id, db_release.id.as_str()));
 
         let remote_intent = matches!(storage_mode, StorageMode::Remote);
@@ -1383,26 +1382,21 @@ impl ImportService {
                 import_id,
                 identities,
                 &local_path,
-                remote_intent,
             )
             .await
             .map_err(|e| format!("Failed to finalize import: {}", e))?;
 
         // A Remote import transitions to the cloud in the background — the same
-        // flow the "Manage" action runs: enqueue the uploads carrying the pin
-        // intent; the observer flips `remote` true and deletes the in-place source
-        // once the last upload lands. This runs BEFORE the events below so the
-        // outbox already holds the upload by the time any consumer observes the
-        // release or `Complete` — a consumer that treats Complete as "done" never
-        // races ahead of the queued transition. The release is already a playable
-        // local release, so a transition that can't start (e.g. a missing or
-        // truncated source) is logged, leaving it local for the user to Manage
-        // later, rather than failing the completed import.
+        // flow the "Make Remote" action runs: coven uploads each file from its
+        // external (in-place) source, and on the last flips `remote` true, drops
+        // the external refs, deletes the source files, and re-emits the subtree
+        // (the cover rides along). This runs BEFORE the events below so the outbox
+        // already holds the upload by the time any consumer observes the release or
+        // `Complete`. The release is already a playable Local release, so a
+        // transition that can't start (e.g. sync not running) is logged, leaving it
+        // Local for the user to make Remote later, rather than failing the import.
         if remote_intent {
-            if let Err(e) = library_manager
-                .enqueue_remote_uploads(&db_release.id, pin)
-                .await
-            {
+            if let Err(e) = library_manager.coven_make_remote(&db_release.id, pin).await {
                 warn!(
                     "Import of {} landed local but the remote transition could not start: {e}",
                     db_release.id
@@ -1466,15 +1460,17 @@ impl ImportService {
     }
 
     /// Build a cover image record from local files without writing to DB.
-    /// Copies the cover file to the images cache directory and returns the
-    /// DbLibraryImage record and the (album_id, release_id) pair for primary_release_id.
+    /// Read the chosen cover file's bytes and build its `DbLibraryImage` record,
+    /// returning `(record, bytes)`. The caller hands the bytes to coven's local
+    /// store (the cover's home as a host-provided Local blob) and the record to
+    /// finalize; nothing is written to a bae path here.
     #[allow(clippy::type_complexity)]
     fn build_cover_image_record(
         &self,
         release_id: &str,
         discovered_files: &[DiscoveredFile],
         cover_image_path: Option<&Path>,
-    ) -> Result<Option<crate::db::DbLibraryImage>, String> {
+    ) -> Result<Option<(crate::db::DbLibraryImage, Vec<u8>)>, String> {
         use crate::db::{DbLibraryImage, LibraryImageType};
 
         let image_extensions = ["jpg", "jpeg", "png", "gif", "webp"];
@@ -1525,31 +1521,25 @@ impl ImportService {
         let content_type = resolve_file_content_type(&cover_file.path)?;
         let source_url = format!("release://{}", relative_path);
 
-        // Copy cover to images cache
-        let cache_path = self.library_manager.image_path(release_id);
-        if let Some(parent) = cache_path.parent() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
-                error!("Failed to create images directory: {}", e);
+        // Read the cover bytes from the user's folder; the caller stores them in
+        // coven's local store and writes the row.
+        let bytes = match std::fs::read(&cover_file.path) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                error!(
+                    "Failed to read cover art {}: {e}",
+                    cover_file.path.display()
+                );
                 return Ok(None);
             }
-        }
-        if let Err(e) = std::fs::copy(&cover_file.path, &cache_path) {
-            error!("Failed to cache cover art: {}", e);
-            return Ok(None);
-        }
-
-        let file_size = std::fs::metadata(&cache_path)
-            .map(|m| m.len() as i64)
-            .map_err(|e| format!("Failed to read cover art metadata: {e}"))?;
-
-        info!("Cached cover art to {}", cache_path.display());
+        };
 
         let now = self.library_manager.clock().now();
         let db_image = DbLibraryImage {
             id: release_id.to_string(),
             image_type: LibraryImageType::Cover,
             content_type,
-            file_size,
+            file_size: bytes.len() as i64,
             width: None,
             height: None,
             source: "local".to_string(),
@@ -1559,7 +1549,7 @@ impl ImportService {
             created_at: now,
         };
 
-        Ok(Some(db_image))
+        Ok(Some((db_image, bytes)))
     }
 
     fn image_cover_priority(filename: &str) -> u8 {

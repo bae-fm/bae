@@ -583,9 +583,6 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
-    db.upsert_release_local_source(&release.id, audio_dir.to_str().unwrap())
-        .await
-        .unwrap();
     db.insert_track(&t1).await.unwrap();
     db.insert_track(&t2).await.unwrap();
 
@@ -610,6 +607,11 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
     };
     db.insert_file(&file1).await.unwrap();
     db.insert_file(&file2).await.unwrap();
+    // A Local release's files are coven external refs at their in-place location;
+    // register them now that the file rows exist so reset can read the tags.
+    db.register_release_external_refs_for_test(&release.id, audio_dir.to_str().unwrap())
+        .await
+        .unwrap();
 
     let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
 

@@ -16,8 +16,6 @@ use bae_core::clock::SystemClock;
 use bae_core::db::Database;
 use bae_core::storage::cloud::{CloudHome, CloudHomeError, CloudHomeJoinInfo, UploadProgress};
 
-use coven::blob::{BlobRef, BlobSource};
-use coven::changeset::RowChange;
 use coven::encryption::EncryptionService;
 use coven::keys::UserKeypair;
 use coven::library_dir::LibraryDir;
@@ -98,20 +96,6 @@ impl CloudHome for SharedCloud {
 
     async fn revoke_access(&self, _: &str) -> Result<(), CloudHomeError> {
         unimplemented!()
-    }
-}
-
-/// No blobs in this test — the catalog (rows) is what must cross, not audio.
-struct NoopBlobSource;
-impl BlobSource for NoopBlobSource {
-    fn blobs_for_change(&self, _: &RowChange) -> Vec<BlobRef> {
-        Vec::new()
-    }
-    fn blobs_in_db(
-        &self,
-        _: &coven::rusqlite::Connection,
-    ) -> coven::rusqlite::Result<Vec<BlobRef>> {
-        Ok(Vec::new())
     }
 }
 
@@ -198,7 +182,6 @@ async fn sync_cycle(
         keypair,
         lib,
         None,
-        &NoopBlobSource,
         None,
     )
     .await
@@ -344,7 +327,7 @@ async fn each_release_propagates_when_its_own_upload_flips_remote() {
     // re1's audio finishes; the observer flips it remote (cloud-only — no local
     // copy), through the same DB transition the live observer calls. re2 is still
     // uploading.
-    db_a.set_release_remote("re1").await.unwrap();
+    db_a.set_remote_for_test("re1", true).await.unwrap();
     sync_cycle(&db_a, &storage_a, "device-a", &keypair_a, &lib_a).await;
 
     // Device B pulls: it gets re1 (and its album/artist/track) but NOT re2 —
@@ -379,7 +362,7 @@ async fn each_release_propagates_when_its_own_upload_flips_remote() {
     );
 
     // re2's audio finishes and flips it remote; now it reaches B too.
-    db_a.set_release_remote("re2").await.unwrap();
+    db_a.set_remote_for_test("re2", true).await.unwrap();
     sync_cycle(&db_a, &storage_a, "device-a", &keypair_a, &lib_a).await;
     sync_cycle(&db_b, &storage_b, "device-b", &keypair_b, &lib_b).await;
     assert_eq!(

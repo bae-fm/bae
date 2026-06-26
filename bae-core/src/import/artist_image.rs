@@ -6,8 +6,9 @@ use tracing::{debug, info, warn};
 
 /// Fetch and save an artist image from Discogs.
 ///
-/// Skips if the artist already has an image on disk.
-/// Downloads the primary image from Discogs and saves to `images/ab/cd/{artist_id}`.
+/// Downloads the primary image and hands its bytes to coven's local store (a
+/// host-provided Local blob), then writes the `artist_images` row. The caller
+/// already skips artists that have an image row, so this assumes none exists.
 /// Best-effort: logs warnings on failure, never fails the import.
 ///
 /// Returns true if an image was saved successfully.
@@ -17,13 +18,6 @@ pub async fn fetch_and_save_artist_image(
     discogs_client: &DiscogsClient,
     library_manager: &LibraryManager,
 ) -> bool {
-    // Check if image already exists on disk
-    let dest_path = library_manager.image_path(artist_id);
-    if dest_path.exists() {
-        debug!("Artist image already exists: {}", dest_path.display());
-        return false;
-    }
-
     let image_url = match discogs_client.get_artist_image(discogs_artist_id).await {
         Ok(Some(url)) => url,
         Ok(None) => {
@@ -77,22 +71,19 @@ pub async fn fetch_and_save_artist_image(
         return false;
     }
 
-    if let Some(parent) = dest_path.parent() {
-        if let Err(e) = std::fs::create_dir_all(parent) {
-            warn!("Failed to create images directory: {}", e);
-            return false;
-        }
-    }
-
-    if let Err(e) = std::fs::write(&dest_path, &bytes) {
-        warn!("Failed to write artist image: {}", e);
+    // Hand the bytes to coven's local store (a host-provided Local blob coven owns
+    // from here); the row below points at it.
+    if let Err(e) = library_manager
+        .store_artist_image_blob(artist_id, &bytes)
+        .await
+    {
+        warn!("Failed to store artist image blob: {e}");
         return false;
     }
 
     info!(
-        "Saved artist image ({} bytes) to {}",
-        bytes.len(),
-        dest_path.display()
+        "Saved artist image ({} bytes) for artist {artist_id}",
+        bytes.len()
     );
 
     let now = library_manager.clock().now();

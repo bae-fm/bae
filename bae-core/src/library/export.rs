@@ -99,21 +99,15 @@ impl ExportService {
             return Err("No files found for release".to_string());
         }
 
-        let local_copy = library_manager
-            .get_release_local_source(release_id)
-            .await
-            .map_err(|e| format!("Failed to get local copy: {}", e))?;
-
         let output_dir = Self::resolve_release_dir(target_dir, &release, library_manager).await?;
 
         for file in &files {
-            let file_data = crate::storage::local::transfer::read_release_file_bytes(
-                local_copy.as_ref(),
-                file,
-                library_manager,
-            )
-            .await
-            .map_err(|e| format!("Failed to read file {}: {}", file.original_filename, e))?;
+            let file_data =
+                crate::storage::local::transfer::read_release_file_bytes(file, library_manager)
+                    .await
+                    .map_err(|e| {
+                        format!("Failed to read file {}: {}", file.original_filename, e)
+                    })?;
 
             // Ensure subdirectories exist for nested filenames
             let file_path = output_dir.join(&file.original_filename);

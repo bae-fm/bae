@@ -140,7 +140,7 @@ fn collect_raw_changes(changes: &[RowChange]) -> RawChanges {
                     raw.track_artist_track_ids.insert(track_id.to_string());
                 }
             }
-            _ => {} // Ignore other tables (artists, library_images, etc.)
+            _ => {} // Ignore other tables (artists, covers, artist_images, etc.)
         }
     }
 

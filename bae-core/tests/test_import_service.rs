@@ -28,7 +28,6 @@ use tempfile::TempDir;
 
 struct ImportFixture {
     db: Database,
-    library_dir: LibraryDir,
     handle: bae_core::import::ImportServiceHandle,
     _temp: TempDir,
 }
@@ -66,7 +65,6 @@ impl ImportFixture {
 
         Self {
             db,
-            library_dir,
             handle,
             _temp: temp,
         }
@@ -412,16 +410,19 @@ async fn local_folder_import() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Verify release in DB: local (not remote), with this device's
-    // local-source row recording the in-place import path.
+    // Verify release in DB: local (not remote), with its files registered as
+    // coven external refs at their in-place import location.
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert!(!release.remote);
-    let source =
-        f.db.get_release_local_source(&release_id)
-            .await
-            .unwrap()
-            .unwrap();
-    assert_eq!(source.path, album_dir.to_str().unwrap());
+    let files = f.db.get_files_for_release(&release_id).await.unwrap();
+    let local_path = f
+        .handle
+        .library_manager
+        .file_local_path(&files[0].id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(local_path.parent().unwrap(), album_dir);
 
     // Verify tracks
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
@@ -452,54 +453,6 @@ async fn local_folder_import() {
         .filter(|e| matches!(e, bae_core::library::LibraryEvent::AlbumAdded { .. }))
         .count();
     assert_eq!(album_added, 1, "expected one AlbumAdded event after import");
-}
-
-/// Remote { pin: false } import enqueues the cloud_outbox upload BEFORE
-/// emitting `ImportProgress::Complete`, so a consumer that treats Complete
-/// as "done" can rely on the cloud upload being queued. A regression would
-/// re-introduce the race where a fast consumer (navigating away, tearing
-/// the import handle down) acted on Complete before the outbox row landed.
-#[tokio::test]
-#[serial]
-async fn remote_unpin_complete_fires_after_outbox_enqueue() {
-    support::tracing_init();
-
-    let release = discogs_release("Order Test", &["Track"]);
-    let release_id_key = seed_discogs_test_release(release);
-    let f = ImportFixture::new().await;
-
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track.flac"]);
-
-    let import_id = uuid::Uuid::new_v4().to_string();
-    f.handle
-        .send_command(ImportCommand::Folder {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            folder: album_dir,
-            selected_cover: None,
-            storage_mode: StorageMode::Remote,
-            pin: false,
-            identity_choice: IdentityChoice::Exact {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
-            },
-            user_edit: None,
-        })
-        .unwrap();
-
-    let mut progress_rx = f.handle.subscribe_import(import_id);
-    let _ = support::wait_for_import_complete(&mut progress_rx).await;
-
-    // The moment Complete is observed, the outbox MUST already have the
-    // entry — no polling, no sleep. If this fails, the Complete-before-outbox
-    // race is back.
-    let uploads = f.db.get_pending_cloud_uploads().await.unwrap();
-    assert_eq!(
-        uploads.len(),
-        1,
-        "outbox should already hold the upload by the time Complete fires",
-    );
 }
 
 /// 4. Import produces correct audio format records.
@@ -890,8 +843,12 @@ async fn import_with_cover_art() {
     let cover = cover.unwrap();
     assert_eq!(cover.source, "local");
 
-    // Cover image file on disk
-    let cover_path = bae_core::storage::local::image_path(&f.library_dir, &release_id);
+    // Cover image file on disk (coven's local store while the release is Local)
+    let cover_path = f
+        .handle
+        .library_manager
+        .cover_blob_path(&release_id)
+        .expect("cover blob should exist on disk");
     assert!(
         cover_path.exists(),
         "cover image file should exist at {:?}",
@@ -1604,7 +1561,11 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
         "cover must be sourced from the embedded picture"
     );
 
-    let cover_path = bae_core::storage::local::image_path(&f.library_dir, &release_id);
+    let cover_path = f
+        .handle
+        .library_manager
+        .cover_blob_path(&release_id)
+        .expect("cover blob should exist on disk");
     let bytes = fs::read(&cover_path).expect("cover file on disk");
     assert_eq!(
         bytes, EMBEDDED_JPEG,

@@ -3,8 +3,9 @@
 //! The sync manager itself is coven's — bae uses it directly (re-exported here so
 //! `crate::sync::sync_manager::SyncManager` resolves). `build_sync_manager` wires
 //! it up with bae's pieces: a config provider that reads bae's live `ConfigHandle`
-//! (so connect/disconnect are picked up without rebuilding), bae's blob plan, and
-//! the upload observer.
+//! (so connect/disconnect are picked up without rebuilding) and the
+//! blob-transition observer. coven derives which rows carry blobs from the
+//! declarations the host passed to `Database::open`, so there is no blob source.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -16,7 +17,7 @@ use crate::db::Database;
 use crate::encryption::EncryptionService;
 use crate::keys::KeyService;
 use crate::library::{LibraryEvent, UploadThroughput};
-use crate::sync::blob_source::{BaeBlobSource, ReleaseUploadObserver};
+use crate::sync::upload_observer::ReleaseUploadObserver;
 
 // coven owns the sync manager; bae uses it directly.
 pub use coven::sync::membership::MemberRole;
@@ -154,15 +155,17 @@ pub struct S3ConfigData {
     pub storage: crate::config::HomeStorage,
 }
 
-/// Build coven's `SyncManager` wired with bae's config provider, blob plan, and
-/// upload observer. The provider reads bae's live config whenever coven needs it,
-/// so connecting/disconnecting a provider is reflected without rebuilding.
+/// Build coven's `SyncManager` wired with bae's config provider and
+/// blob-transition observer. The provider reads bae's live config whenever coven
+/// needs it, so connecting/disconnecting a provider is reflected without
+/// rebuilding.
 ///
 /// The manager takes the same `coven::Database` the host opened; it reads the
-/// synced-table set and the shared register clock from it, so the sync loop's
-/// advance-on-pull and envelope stamps order against the clock the host stamps
-/// rows from. Construction is synchronous and infallible: seeding happened in
-/// [`coven::Database::open`] at startup.
+/// synced-table set (including the per-table blob declarations) and the shared
+/// register clock from it, so coven derives every blob the host carries itself
+/// and the sync loop's advance-on-pull and envelope stamps order against the
+/// clock the host stamps rows from. Construction is synchronous and infallible:
+/// seeding happened in [`coven::Database::open`] at startup.
 #[allow(clippy::too_many_arguments)]
 pub fn build_sync_manager(
     config_handle: Arc<ConfigHandle>,
@@ -172,23 +175,20 @@ pub fn build_sync_manager(
     outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
     upload_throughput: Arc<UploadThroughput>,
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
-    upload_cancelling: Arc<Mutex<std::collections::HashSet<String>>>,
     events: broadcast::Sender<LibraryEvent>,
 ) -> SyncManager {
     let clock = database.clock().clone();
     let coven_db = database.coven_db().clone();
     let library_dir = config_handle.config().library_dir.clone();
-    let blob_source: Arc<dyn coven::blob::BlobSource> =
-        Arc::new(BaeBlobSource::new(library_dir.clone()));
-    let observer: Arc<dyn coven::blob::BlobUploadObserver> = Arc::new(ReleaseUploadObserver::new(
-        Arc::new(database),
-        library_dir,
-        outbox_in_flight,
-        upload_throughput,
-        sync_paused,
-        upload_cancelling,
-        events,
-    ));
+    let observer: Arc<dyn coven::blob::BlobTransitionObserver> =
+        Arc::new(ReleaseUploadObserver::new(
+            Arc::new(database),
+            library_dir,
+            outbox_in_flight,
+            upload_throughput,
+            sync_paused,
+            events,
+        ));
 
     let ch = config_handle;
     let config_provider: coven::sync::sync_manager::ConfigProvider =
@@ -200,7 +200,6 @@ pub fn build_sync_manager(
         encryption_service,
         coven_db,
         clock,
-        blob_source,
         Some(observer),
     )
 }

@@ -1,19 +1,16 @@
-//! Cloud blob keys for browsable homes.
+//! Readable (browsable-home) cloud-key paths for bae's blobs.
 //!
-//! An opaque home keys every remote blob by a hash of its id
-//! (`storage/{ab}/{cd}/{id}` for audio, `images/{ab}/{cd}/{id}` for images), so
-//! its cloud objects are obscured shard keys. A browsable home stores them
-//! unencrypted at stable, structured paths built from the album/release/artist
-//! ids, with the file's real name intact:
+//! An opaque home keys every Remote blob by a hash of its id
+//! (`{namespace}/{ab}/{cd}/{id}`), so its cloud objects are obscured shard keys.
+//! A browsable home stores them unencrypted at stable, structured paths built
+//! from the album/release/artist ids, with the file's real name intact:
 //!
-//! - audio:        `{album_id}/{release_id}/{source_folder}/{filename}` (under the `storage` namespace)
-//! - cover image:  `{album_id}/{release_id}/cover.{ext}`   (under the `images` namespace)
-//! - artist image: `{artist_id}/artist.{ext}`             (under the `images` namespace)
+//! - release file: `{album_id}/{release_id}/{source_folder}/{filename}` (namespace `release_files`)
+//! - cover image:  `{album_id}/{release_id}/cover.{ext}`               (namespace `covers`)
+//! - artist image: `{artist_id}/artist.{ext}`                          (namespace `artist_images`)
 //!
-//! Every key is RELATIVE to its namespace; coven prepends the namespace (`storage`
-//! for audio, `images` for art — see [`crate::storage::local::AUDIO_NAMESPACE`]),
-//! so the full object key is `storage/{album}/…` for audio and `images/{album}/…`
-//! for a cover.
+//! Each key here is RELATIVE to its namespace; coven prepends the namespace, so
+//! the full object key is `release_files/{album}/…`, `covers/{album}/…`, etc.
 //!
 //! `{source_folder}` is the name of the folder the release was imported from
 //! (`releases.source_folder_name`), so a browsable bucket mirrors the original
@@ -27,18 +24,14 @@
 //! (two releases of one album get sibling `{release_id}` folders), and no
 //! name-sanitizing or disambiguation is needed. Browsable means "not obscured",
 //! not "human-named": the real filenames are visible and the tree is navigable
-//! by album → release, versus the opaque home's content-hashed shards. Audio
-//! lives under the `storage` namespace and art under `images` (coven prepends
-//! each), keeping audio clear of coven's reserved root prefixes (`heads/`,
-//! `changes/`, `membership/`, `auth/keys/`).
+//! by album → release, versus the opaque home's content-hashed shards.
 //!
-//! The key is computed once when the blob is first destined for the cloud and
-//! stored on the synced `cloud_path` column of its row (`release_files` for
-//! audio, `library_images` for images); every later upload, read, delete, and
-//! pull uses the stored value verbatim. (The key is re-derivable from the
-//! immutable ids, but storing it keeps reads uniform with the opaque
-//! hashed-by-id path and lets the image `BlobSource`, which has no DB handle at
-//! push, read the key straight off the row.)
+//! The key is computed once, at import, and stored on the synced `cloud_path`
+//! column of its row (`release_files` / `covers` / `artist_images`); coven keys
+//! every later upload, read, delete, and pull off the BlobDecl's
+//! `cloud_path_column` so the path never drifts. (The key is re-derivable from
+//! the immutable ids, but storing it keeps reads uniform with the opaque
+//! hashed-by-id path.)
 
 use crate::util::content_type::ContentType;
 
@@ -67,15 +60,13 @@ fn safe_component(component: &str) -> String {
 }
 
 /// The cloud key for a release file on a browsable home, RELATIVE to the
-/// `storage` audio namespace coven prepends (see
-/// [`crate::storage::local::AUDIO_NAMESPACE`]):
+/// `release_files` namespace coven prepends:
 /// `{album_id}/{release_id}/{source_folder}/{filename}`, mirroring the folder the
-/// release was imported from. The full object key is `storage/` + this. The
-/// readable key is stored RELATIVE on `release_files.cloud_path`, exactly as a
-/// cover's key is stored relative to `images` — coven prepends the namespace on
-/// every read/write. `source_folder` is `None` for a non-folder import — that
-/// level is then omitted; the `{release_id}` level keeps the key unique either
-/// way. (`source_folder_name` comes from `Path::file_name`, which is `None` or a
+/// release was imported from. The readable key is stored RELATIVE on
+/// `release_files.cloud_path` — coven prepends the namespace on every read/write.
+/// `source_folder` is `None` for a non-folder import — that level is then
+/// omitted; the `{release_id}` level keeps the key unique either way.
+/// (`source_folder_name` comes from `Path::file_name`, which is `None` or a
 /// non-empty name, so `Some("")` never occurs and isn't guarded here.)
 pub fn audio_key(
     album_id: &str,
@@ -94,7 +85,7 @@ pub fn audio_key(
 }
 
 /// The `cloud_path` for a cover image on a browsable home, RELATIVE to the
-/// `images` namespace coven prepends: `{album_id}/{release_id}/cover.{ext}`.
+/// `covers` namespace coven prepends: `{album_id}/{release_id}/cover.{ext}`.
 pub fn cover_cloud_path(album_id: &str, release_id: &str, content_type: &ContentType) -> String {
     format!(
         "{album_id}/{release_id}/cover.{}",

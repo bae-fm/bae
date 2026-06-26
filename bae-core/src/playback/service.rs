@@ -559,23 +559,15 @@ async fn prepare_track_for_playback(
 
     let source_size = resolved.file_size;
 
-    // Tracks sharing a source file (the tracks of a CUE image) share one buffer.
-    // Key a readable source by its local path, a remote source by its file
-    // id; a source with no readable bytes (upload pending, or unreachable) is
-    // never cached -- it falls through to the reader, which reports the error.
-    use crate::library::manager::ReadableFileSource;
-    let cache_key: Option<String> = match &resolved.source {
-        ReadableFileSource::Local(path) => Some(path.to_string_lossy().into_owned()),
-        ReadableFileSource::Remote => Some(resolved.file_id.clone()),
-        ReadableFileSource::Unreachable | ReadableFileSource::UploadPendingSourceMissing => None,
-    };
+    // Tracks sharing a source file (the tracks of a CUE image) share one buffer,
+    // keyed by the backing file's blob id. coven resolves locality per read, so
+    // the key no longer depends on where the bytes live.
+    let cache_key = resolved.file_id.clone();
 
-    let cached = cache_key.as_ref().and_then(|key| {
-        shared_file_buffer
-            .as_ref()
-            .filter(|(k, _)| k == key)
-            .map(|(_, buf)| buf.clone())
-    });
+    let cached = shared_file_buffer
+        .as_ref()
+        .filter(|(k, _)| *k == cache_key)
+        .map(|(_, buf)| buf.clone());
 
     let mut is_shared = cached.is_some();
     let buffer = if let Some(buf) = cached {
@@ -585,17 +577,14 @@ async fn prepare_track_for_playback(
     } else {
         let buffer = create_sparse_buffer(source_size);
         let reader = create_audio_reader(
-            resolved.source.clone(),
-            &resolved.file_id,
-            &resolved.cloud_key,
             library_manager,
-            move |path| AudioReadConfig { path, source_size },
-        )?;
+            &resolved.file_id,
+            resolved.cloud_path.as_deref(),
+            source_size,
+        );
         reader.start_reading(buffer.clone(), progress_tx);
-        if let Some(key) = cache_key {
-            *shared_file_buffer = Some((key, buffer.clone()));
-            is_shared = true;
-        }
+        *shared_file_buffer = Some((cache_key, buffer.clone()));
+        is_shared = true;
         buffer
     };
 

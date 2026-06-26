@@ -39,20 +39,22 @@ pub async fn resolve_release_identity(
         .await
         .map_err(|e| format!("Failed to load tracks: {e}"))?
         .len() as u32;
-    let local_copy = library_manager
-        .get_release_local_source(release_id)
-        .await
-        .map_err(|e| format!("Failed to load local copy: {e}"))?;
-
-    // Resolve local paths for every release file. Cloud-only files
-    // without a local copy are skipped — the disc-ID phase silently
-    // bails to `None` for those, which `resolve_release_identity`'s
-    // contract permits and the service treats as `DiscidUnavailable`.
-    let local_paths: Vec<PathBuf> = files
-        .iter()
-        .filter_map(|f| library_manager.resolve_local_file_path(local_copy.as_ref(), f))
-        .filter(|p| p.exists())
-        .collect();
+    // Resolve on-disk paths for every release file via coven's external refs
+    // (a Local release's files are the user's own files in place). Remote files
+    // have no external ref and are skipped — the disc-ID phase silently bails to
+    // `None` for those, which the service treats as `DiscidUnavailable`.
+    let mut local_paths: Vec<PathBuf> = Vec::new();
+    for f in &files {
+        if let Some(path) = library_manager
+            .file_local_path(&f.id)
+            .await
+            .map_err(|e| format!("Failed to resolve local path: {e}"))?
+        {
+            if path.exists() {
+                local_paths.push(path);
+            }
+        }
+    }
 
     let log_paths: Vec<PathBuf> = local_paths
         .iter()
@@ -102,27 +104,25 @@ pub async fn resolve_release_artwork_paths(
         .get_files_for_release(release_id)
         .await
         .map_err(|e| format!("Failed to load release files: {e}"))?;
-    let local_copy = library_manager
-        .get_release_local_source(release_id)
-        .await
-        .map_err(|e| format!("Failed to load local copy: {e}"))?;
-
     let mut paths: Vec<PathBuf> = Vec::new();
 
-    // Cover image, stored at `library_dir/images/{release_id}` for
-    // releases whose cover came from a downloaded source. The path may
-    // not exist for releases without a cover; skip silently.
-    let cover_path = library_manager.image_path(release_id);
-    if cover_path.exists() {
+    // Cover image, in coven's local store (Local) or cache (Remote). Absent for
+    // releases without a cover; skip silently.
+    if let Some(cover_path) = library_manager.cover_blob_path(release_id) {
         paths.push(cover_path);
     }
 
-    // Release-attached image files (in-folder artwork like cover.jpg).
+    // Release-attached image files (in-folder artwork like cover.jpg), resolved
+    // to the user's own file via coven's external ref (Local releases only).
     for file in &files {
         if !file.content_type.is_image() {
             continue;
         }
-        if let Some(p) = library_manager.resolve_local_file_path(local_copy.as_ref(), file) {
+        if let Some(p) = library_manager
+            .file_local_path(&file.id)
+            .await
+            .map_err(|e| format!("Failed to resolve image path: {e}"))?
+        {
             if p.exists() {
                 paths.push(p);
             }
@@ -316,10 +316,6 @@ mod tests {
             created_at: Utc::now(),
         };
         database.insert_release(&release).await.unwrap();
-        database
-            .upsert_release_local_source(&release.id, &local_dir.to_string_lossy())
-            .await
-            .unwrap();
 
         // One DbFile per real file on disk under the local folder.
         for (filename, content_type) in [
@@ -340,6 +336,12 @@ mod tests {
             };
             database.insert_file(&file).await.unwrap();
         }
+        // Register the files as coven external refs (a Local release's in-place
+        // files) AFTER inserting them, so the DiscID re-read resolves their paths.
+        database
+            .register_release_external_refs_for_test(&release.id, &local_dir.to_string_lossy())
+            .await
+            .unwrap();
 
         // Two tracks so the count comes from the DB, not from a folder
         // walk that may find different audio counts.

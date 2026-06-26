@@ -80,13 +80,6 @@ pub fn create_library(
     Ok(config)
 }
 
-/// The blob source coven binds to a freshly created/restored library dir.
-fn make_blob_source(library_dir: &LibraryDir) -> Box<dyn coven::blob::BlobSource> {
-    Box::new(crate::sync::blob_source::BaeBlobSource::new(
-        library_dir.clone(),
-    ))
-}
-
 /// coven's restore/join returns the recovered Config; wrap it in bae's Config
 /// (which adds Discogs fields) and persist it.
 fn save_coven_library(coven_config: coven::config::Config) -> Result<Config, String> {
@@ -125,7 +118,6 @@ pub async fn restore_from_cloud(
         &app_dir,
         std::sync::Arc::new(crate::clock::SystemClock),
         std::sync::Arc::new(crate::id_provider::UuidProvider),
-        make_blob_source,
         on_status,
     )
     .await
@@ -182,7 +174,6 @@ async fn restore_from_code_with_cancel(
         &app_dir,
         std::sync::Arc::new(crate::clock::SystemClock),
         std::sync::Arc::new(crate::id_provider::UuidProvider),
-        make_blob_source,
         on_status,
     );
     let coven_config = if let Some((cancel, library_dir, library_dir_existed)) = cancel {
@@ -291,7 +282,6 @@ async fn join_from_code_with_cancel(
         cloudkit_ops,
         std::sync::Arc::new(crate::clock::SystemClock),
         std::sync::Arc::new(crate::id_provider::UuidProvider),
-        make_blob_source,
         on_status,
     );
     let coven_config = if let Some((cancel, library_dir, library_dir_existed)) = cancel {

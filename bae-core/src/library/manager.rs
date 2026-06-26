@@ -33,11 +33,11 @@ use crate::clock::ClockRef;
 use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::{
     Database, DbAlbum, DbAlbumArtist, DbAlbumSearchResult, DbAlbumSummary, DbArtist, DbAudioFormat,
-    DbFile, DbImport, DbLibraryImage, DbLibrarySearchResults, DbRelease, DbReleaseLocalSource,
-    DbReleaseStorageSummary, DbReleaseSummary, DbStorageRow, DbTrack, DbTrackArtist,
-    DbTrackSearchResult, ImportOperationStatus, LibraryImageType, Pressing,
-    SortDirection as DbSortDirection, StorageFilter as DbStorageFilter,
-    StorageSortCriterion as DbStorageSortCriterion, StorageSortField as DbStorageSortField,
+    DbFile, DbImport, DbLibraryImage, DbLibrarySearchResults, DbRelease, DbReleaseStorageSummary,
+    DbReleaseSummary, DbStorageRow, DbTrack, DbTrackArtist, DbTrackSearchResult,
+    ImportOperationStatus, LibraryImageType, Pressing, SortDirection as DbSortDirection,
+    StorageFilter as DbStorageFilter, StorageSortCriterion as DbStorageSortCriterion,
+    StorageSortField as DbStorageSortField,
 };
 use crate::encryption::EncryptionService;
 use crate::id_provider::IdRef;
@@ -527,18 +527,22 @@ async fn project_file_tags(
     ids: IdRef,
 ) -> Result<crate::import::ParsedAlbum, LibraryError> {
     let files = database.get_files_for_release(&release.id).await?;
-    let local_copy = database.get_release_local_source(&release.id).await?;
     let mut audio_paths = Vec::new();
     for file in &files {
         if !file.content_type.is_audio() {
             continue;
         }
-        let path = local_copy
-            .as_ref()
-            .map(|copy| copy.local_file_path(file))
+        // The file's bytes must be the user's own file in place (a Local
+        // user-provided blob coven holds an external ref for); a Remote release
+        // has no on-disk original to re-read tags from.
+        let path = database
+            .coven_db()
+            .external_blob(&file.id)
+            .await?
+            .map(|ext| ext.path)
             .ok_or_else(|| {
             LibraryError::Import(format!(
-                "audio file '{}' is cloud-only — pin the release locally before resetting from file tags",
+                "audio file '{}' is remote — make the release local before resetting from file tags",
                 file.original_filename
             ))
         })?;
@@ -608,10 +612,6 @@ pub enum LibraryError {
 pub(crate) struct TrackAudioMeta {
     pub track: DbTrack,
     pub release: DbRelease,
-    /// This device's `release_local_source` row for `release`, if any. Used to
-    /// resolve an in-place read path; `None` means the release is remote (read
-    /// through coven's cache).
-    pub local_source: Option<DbReleaseLocalSource>,
     pub audio_format: DbAudioFormat,
     pub audio_file: DbFile,
     /// File id backing this track's audio. Always `Some` coming out of `resolve`
@@ -636,7 +636,6 @@ impl TrackAudioMeta {
             })?;
 
         let release = database.get_release_for_track(&track).await?;
-        let local_source = database.get_release_local_source(&release.id).await?;
 
         let file_id = audio_format.file_id.clone().ok_or_else(|| {
             LibraryError::TrackMapping(format!(
@@ -652,34 +651,11 @@ impl TrackAudioMeta {
         Ok(Self {
             track,
             release,
-            local_source,
             audio_format,
             audio_file,
             file_id,
         })
     }
-}
-
-/// Where a release file's bytes can be read on this device, including the
-/// window where a remote file's upload is still queued: the outbox row's
-/// original source file is readable until the upload lands.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ReadableFileSource {
-    /// A readable local path — this device's local copy, or the original
-    /// source file of a still-pending cloud upload.
-    Local(PathBuf),
-    /// No local bytes, and a queued upload whose source file is gone — the
-    /// cloud object may not exist yet, so a cloud read would 404.
-    UploadPendingSourceMissing,
-    /// A remote release with no pending upload: read it through coven's cache,
-    /// which serves the blob from `storage/pinned/` or `storage/cache/` on a hit
-    /// and fetches + decrypts it from the cloud on a miss. (Whether a copy is kept
-    /// offline is the orthogonal `pinned` property — not encoded here.)
-    Remote,
-    /// No local bytes and no pending upload, on a local release: the
-    /// user's source file is gone and the audio was never uploaded, so there
-    /// is no readable location anywhere.
-    Unreachable,
 }
 
 /// All resolved data needed to set up a playback reader for a track.
@@ -690,20 +666,15 @@ pub enum ReadableFileSource {
 pub struct ResolvedTrackAudio {
     pub track_id: String,
     pub release_id: String,
-    /// File id backing this track's audio data. Used as a cache key and to address
-    /// cloud-only files.
+    /// File id backing this track's audio data. The blob id coven addresses this
+    /// file by (in the `release_files` namespace), and the playback cache key.
     pub file_id: String,
-    /// The cloud object key for this file's remote blob: the row's stored
-    /// `cloud_path` (a readable key on a browsable home) or `storage_path(id)`
-    /// (the hashed-by-id default) when it is NULL. A cloud-only read addresses
-    /// the object by this; a local read ignores it.
-    pub cloud_key: String,
+    /// The readable cloud-relative key for this file's blob (`release_files.cloud_path`):
+    /// a readable path on a browsable home, `None` for the hashed-by-id default on
+    /// an opaque one. Carried into the `BlobRef` the playback reader streams through
+    /// coven; coven resolves the locality (external ref / local store / cache / cloud).
+    pub cloud_path: Option<String>,
     pub file_size: u64,
-    /// Where this file's bytes can be read: a local path (this device's copy
-    /// or a still-pending upload's original), a queued upload whose source is
-    /// gone, or no local bytes. The playback setup matches on it to pick the
-    /// reader and to report a pending upload instead of issuing a doomed read.
-    pub source: ReadableFileSource,
     pub duration_ms: Option<i64>,
     pub pregap_ms: Option<i64>,
     pub sample_rate: u32,
@@ -726,24 +697,17 @@ pub struct ResolvedTrackAudio {
 }
 
 impl ResolvedTrackAudio {
-    /// Build a resolved view of a track's audio from raw DB records + the
-    /// readable source resolved by the caller.
-    pub(crate) fn from_meta(meta: &TrackAudioMeta, source: ReadableFileSource) -> Self {
-        // The blob's cloud key is the file row's stored `cloud_path` (readable
-        // on a browsable home) or `storage_path(id)` (the hashed-by-id default)
-        // when NULL — the documented fallback, resolved through the one helper
-        // every consumer shares.
-        let cloud_key = crate::storage::local::effective_cloud_key(
-            meta.audio_file.cloud_path.as_deref(),
-            &meta.file_id,
-        );
+    /// Build a resolved view of a track's audio from raw DB records. coven owns the
+    /// locality resolution at read time (external ref / local store / cache /
+    /// cloud), so this carries only the blob's identity (`file_id` + `cloud_path`)
+    /// and the playback parameters — not a resolved read source.
+    pub(crate) fn from_meta(meta: &TrackAudioMeta) -> Self {
         Self {
             track_id: meta.track.id.clone(),
             release_id: meta.track.release_id.clone(),
             file_id: meta.file_id.clone(),
-            cloud_key,
+            cloud_path: meta.audio_file.cloud_path.clone(),
             file_size: meta.audio_file.file_size as u64,
-            source,
             duration_ms: meta.track.duration_ms,
             pregap_ms: meta.audio_format.pregap_ms,
             sample_rate: meta.audio_format.sample_rate as u32,
@@ -1049,13 +1013,6 @@ pub struct LibraryManager {
     /// queue stops draining but in-flight uploads (and new enqueues) keep
     /// flowing. Transient (Running after a restart).
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
-    /// Releases whose in-progress upload the user cancelled ("stop uploading").
-    /// The upload observer consults this so a file that lands after the cancel
-    /// doesn't flip the release to remote; instead its now-orphaned blob is
-    /// queued for deletion, leaving the release local-only. Cleared when the
-    /// release is remote afresh. Shared across clones; transient (a restart
-    /// drops it, by which point the queue rows are already gone).
-    upload_cancelling: Arc<Mutex<std::collections::HashSet<String>>>,
     /// Cancellation tokens for in-progress foreground transfers (unmanage),
     /// keyed by release id. `cancel_release_transition` fires the token; the
     /// transfer observes it between files, deletes the partial copies it wrote,
@@ -1125,7 +1082,6 @@ impl Clone for LibraryManager {
             outbox_in_flight: self.outbox_in_flight.clone(),
             upload_throughput: self.upload_throughput.clone(),
             sync_paused: self.sync_paused.clone(),
-            upload_cancelling: self.upload_cancelling.clone(),
             transfer_cancels: self.transfer_cancels.clone(),
             download_queue: self.download_queue.clone(),
             device_keypair: self.device_keypair.clone(),
@@ -1167,7 +1123,6 @@ impl LibraryManager {
             outbox_in_flight: Arc::new(Mutex::new(HashMap::new())),
             upload_throughput: Arc::new(crate::library::UploadThroughput::new()),
             sync_paused: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-            upload_cancelling: Arc::new(Mutex::new(std::collections::HashSet::new())),
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             device_keypair: Arc::new(std::sync::OnceLock::new()),
@@ -1229,7 +1184,7 @@ impl LibraryManager {
             .await
             .expect("file lookup")
             .expect("file exists");
-        file.cloud_key()
+        self.release_file_cloud_key(&file).expect("cloud key")
     }
 
     /// The readable cover `cloud_path` the current home would store for a
@@ -1282,11 +1237,10 @@ impl LibraryManager {
         &self.ids
     }
 
-    /// The library's on-disk directory. The import layer reads/writes its
-    /// sibling appdata files (e.g. the watched-folder registry) under it.
-    /// Only the desktop import modules call this, so it isn't compiled on
-    /// mobile (where it would otherwise be dead code).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    /// The library's on-disk directory, used across platforms: playback resolves
+    /// blob reads under it (see `playback::data_source`), and the import layer
+    /// reads/writes its sibling appdata files (e.g. the watched-folder registry)
+    /// under it.
     pub(crate) fn library_dir(&self) -> &LibraryDir {
         &self.library_dir
     }
@@ -1898,32 +1852,118 @@ impl LibraryManager {
 
     /// The coven `BlobRef` for a remote release file's audio blob — its identity
     /// in coven's cache (and the cloud on a miss). `cloud_path` is the row's value
-    /// RELATIVE to the `storage` namespace coven prepends (see
-    /// [`crate::storage::local::AUDIO_NAMESPACE`]); `local_path` is unused by the
-    /// cache read/pin paths (the cache owns the on-disk destination by id), so it
-    /// is left empty. Every remote audio blob is master-scoped and `OnDemand`
-    /// (streamed on demand, not mirrored to disk on pull).
-    pub(crate) fn audio_blob_ref(file: &DbFile) -> coven::blob::BlobRef {
+    /// RELATIVE to the `release_files` namespace coven prepends. A release file is
+    /// a coven **user-provided** blob (the user's own imported file): Local = the
+    /// file at the user's path (an external ref coven holds), Remote = uploaded and
+    /// `CacheLazy` (fetched into the cache on first read). coven resolves which by
+    /// where the bytes are — the same `BlobRef` addresses every locality.
+    pub(crate) fn release_file_blob_ref(file: &DbFile) -> coven::blob::BlobRef {
         coven::blob::BlobRef {
-            namespace: crate::storage::local::AUDIO_NAMESPACE.to_string(),
+            namespace: crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
             id: file.id.clone(),
-            local_path: std::path::PathBuf::new(),
             scope: coven::blob::BlobScope::Master,
             cloud_path: file.cloud_path.clone(),
-            sync: coven::blob::BlobSync::OnDemand,
+            provenance: coven::blob::Provenance::UserProvided,
+            fill: coven::blob::CacheFill::CacheLazy,
         }
     }
 
-    /// Read a remote release file's whole plaintext through coven's cache: served
-    /// from `storage/pinned/` or `storage/cache/` on a hit, fetched from the cloud
-    /// (and into `cache/`) on a miss. For the non-streaming readers (export,
-    /// unmanage copy-out); playback streams ranges via `open_blob_stream` instead.
-    pub(crate) async fn read_remote_file(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
-        let storage = self.create_sync_storage()?;
-        let blob = Self::audio_blob_ref(file);
-        coven::blob::cache::read_blob(self.database.coven_db(), &self.library_dir, &storage, &blob)
-            .await
-            .map_err(|e| LibraryError::Storage(format!("cache read of {}: {e}", file.id)))
+    /// A `SyncStorage` for coven's locality-aware read: the configured cloud home
+    /// when one exists, else an offline stub. coven reaches storage only on a
+    /// cloud miss (a Remote blob not yet cached); a Local blob — the only kind a
+    /// home-less library has — is served from its external ref or the local store
+    /// without ever touching it, so the offline stub stands in for a uniform read.
+    pub(crate) fn blob_storage(&self) -> Box<dyn coven::sync::storage::SyncStorage> {
+        match self.create_sync_storage() {
+            Ok(storage) => Box::new(storage),
+            Err(_) => Box::new(crate::storage::OfflineSyncStorage),
+        }
+    }
+
+    /// The coven `Database` handle (the playback reader clones it for its task).
+    pub(crate) fn coven_database(&self) -> &coven::Database {
+        self.database.coven_db()
+    }
+
+    /// Configure coven's per-namespace cache budgets for this device: the bulk for
+    /// `release_files` (audio), a small reserved slice each for `covers` and
+    /// `artist_images`, so each namespace evicts against its own budget and audio
+    /// pressure never wipes the cover cache. Device-local; set once at startup.
+    pub(crate) async fn configure_cache_budgets(&self) -> Result<(), LibraryError> {
+        let db = self.database.coven_db();
+        db.set_cache_budget(
+            crate::sync::RELEASE_FILES_NAMESPACE,
+            crate::sync::RELEASE_FILES_CACHE_BUDGET,
+        )
+        .await?;
+        db.set_cache_budget(
+            crate::sync::COVERS_NAMESPACE,
+            crate::sync::COVERS_CACHE_BUDGET,
+        )
+        .await?;
+        db.set_cache_budget(
+            crate::sync::ARTIST_IMAGES_NAMESPACE,
+            crate::sync::ARTIST_IMAGES_CACHE_BUDGET,
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Store a bae-produced cover blob's bytes in coven's local store
+    /// (`storage/local/covers/<release_id>`) — a host-provided Local blob. coven
+    /// owns the copy from here: it serves it locally while the release is Local
+    /// and moves it into the cache when the release is made Remote. The caller
+    /// writes the `covers` row separately (its readable cloud_path, file size).
+    pub(crate) async fn store_cover_blob(
+        &self,
+        release_id: &str,
+        bytes: &[u8],
+    ) -> Result<(), LibraryError> {
+        coven::blob::local_files::store(
+            &self.library_dir,
+            crate::sync::COVERS_NAMESPACE,
+            release_id,
+            bytes,
+        )
+        .await
+        .map_err(|e| LibraryError::Storage(format!("store cover blob {release_id}: {e}")))
+    }
+
+    /// Store a bae-produced artist-image blob's bytes in coven's local store
+    /// (`storage/local/artist_images/<artist_id>`) — a host-provided Local blob.
+    pub(crate) async fn store_artist_image_blob(
+        &self,
+        artist_id: &str,
+        bytes: &[u8],
+    ) -> Result<(), LibraryError> {
+        coven::blob::local_files::store(
+            &self.library_dir,
+            crate::sync::ARTIST_IMAGES_NAMESPACE,
+            artist_id,
+            bytes,
+        )
+        .await
+        .map_err(|e| LibraryError::Storage(format!("store artist image blob {artist_id}: {e}")))
+    }
+
+    /// Read a release file's whole plaintext through coven's locality-aware read:
+    /// served from the user's file (Local user-provided), coven's local store
+    /// (Local host-provided), `storage/pinned`/`storage/cache` on a Remote hit, or
+    /// fetched from the cloud (into `cache/`) on a Remote miss. For the
+    /// non-streaming readers (export, gallery images); playback streams ranges via
+    /// `open_blob_stream` instead. A vanished/changed external file maps to a
+    /// storage error so the caller surfaces a "files missing / moved" state.
+    pub(crate) async fn read_release_blob(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
+        let storage = self.blob_storage();
+        let blob = Self::release_file_blob_ref(file);
+        coven::blob::cache::read_blob(
+            self.database.coven_db(),
+            &self.library_dir,
+            storage.as_ref(),
+            &blob,
+        )
+        .await
+        .map_err(|e| LibraryError::Storage(format!("read of {}: {e}", file.id)))
     }
 
     /// Whether coven holds this release pinned on this device — true iff its
@@ -1939,7 +1979,7 @@ impl LibraryManager {
     /// The low-level cache op behind the "Pin" transition.
     pub(crate) async fn pin_release_blobs(&self, release_id: &str) -> Result<(), LibraryError> {
         let files = self.database.get_files_for_release(release_id).await?;
-        let blobs: Vec<_> = files.iter().map(Self::audio_blob_ref).collect();
+        let blobs: Vec<_> = files.iter().map(Self::release_file_blob_ref).collect();
         let storage = self.create_sync_storage()?;
         coven::blob::cache::pin(
             self.database.coven_db(),
@@ -1957,10 +1997,193 @@ impl LibraryManager {
     /// "Unpin" transition.
     pub(crate) async fn unpin_release_blobs(&self, release_id: &str) -> Result<(), LibraryError> {
         let files = self.database.get_files_for_release(release_id).await?;
-        let blobs: Vec<_> = files.iter().map(Self::audio_blob_ref).collect();
+        let blobs: Vec<_> = files.iter().map(Self::release_file_blob_ref).collect();
         coven::blob::cache::unpin(&self.library_dir, &blobs)
             .await
             .map_err(|e| LibraryError::Storage(format!("unpin release {release_id}: {e}")))
+    }
+
+    // =========================================================================
+    // coven-owned locality transitions (make-Remote / make-Local / cancel)
+    // =========================================================================
+
+    /// Make a release Remote (Local → Remote) through coven: coven enqueues an
+    /// upload per user-provided blob from its external file, uploads each, and on
+    /// the last flips the `remote` gate true, drops the external refs, deletes the
+    /// source files, and re-emits the subtree (the host-provided cover then rides
+    /// along). Returns once enqueued; completion fires `on_root_made_remote`.
+    pub(crate) async fn coven_make_remote(
+        &self,
+        release_id: &str,
+        pin: bool,
+    ) -> Result<(), LibraryError> {
+        let sm = self
+            .sync_manager_inner()
+            .ok_or_else(|| LibraryError::Storage("sync not running".to_string()))?;
+        sm.make_remote("releases", release_id, pin)
+            .await
+            .map_err(|e| LibraryError::Storage(format!("make release {release_id} remote: {e}")))
+    }
+
+    /// Cancel an in-flight make-Remote of `release_id` through coven: clears the
+    /// intent and pending uploads and tombstones any blob already in the cloud.
+    /// The gate never flips, so the release stays Local.
+    pub(crate) async fn coven_cancel_make_remote(
+        &self,
+        release_id: &str,
+    ) -> Result<(), LibraryError> {
+        let sm = self
+            .sync_manager_inner()
+            .ok_or_else(|| LibraryError::Storage("sync not running".to_string()))?;
+        sm.cancel_make_remote("releases", release_id)
+            .await
+            .map_err(|e| {
+                LibraryError::Storage(format!("cancel make release {release_id} remote: {e}"))
+            })
+    }
+
+    /// Make a release Local (Remote → Local) through coven: coven materializes each
+    /// blob back to a local file durability-first — every release file (a
+    /// user-provided blob) to `new_path/{original_filename}`, the host-provided
+    /// cover to coven's local store (no dest) — then flips the `remote` gate false,
+    /// registers the external refs, and enqueues the cloud deletes in one atomic
+    /// commit. `cancel` aborts before the commit (the release stays Remote).
+    pub(crate) async fn coven_make_local(
+        &self,
+        release_id: &str,
+        new_path: &str,
+        cancel: &crate::library::CancellationToken,
+    ) -> Result<(), LibraryError> {
+        let sm = self
+            .sync_manager_inner()
+            .ok_or_else(|| LibraryError::Storage("sync not running".to_string()))?;
+
+        // `dest` maps each user-provided blob id (a release file) to the user path
+        // its bytes go back to. The host-provided cover takes no dest — coven
+        // restores it to its local store.
+        let files = self.database.get_files_for_release(release_id).await?;
+        let dest: HashMap<String, PathBuf> = files
+            .iter()
+            .map(|f| {
+                (
+                    f.id.clone(),
+                    std::path::Path::new(new_path).join(&f.original_filename),
+                )
+            })
+            .collect();
+
+        // Bridge bae's `CancellationToken` to the `watch::Receiver<bool>` coven's
+        // make_local polls between blobs: when the token fires, flip the watch.
+        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+        let token = cancel.clone();
+        let bridge = tokio::spawn(async move {
+            token.cancelled().await;
+            let _ = cancel_tx.send(true);
+        });
+
+        let result = sm
+            .make_local("releases", release_id, &dest, &cancel_rx)
+            .await;
+        bridge.abort();
+        match result {
+            Ok(()) => Ok(()),
+            // The user cancelled before coven's commit: coven rolled back the
+            // partial copies and left the release Remote. A clean stop, not a
+            // failure — mirror the old cancel-unmanage handling.
+            Err(coven::blob::transition::MakeLocalError::Cancelled) => Ok(()),
+            Err(e) => Err(LibraryError::Storage(format!(
+                "make release {release_id} local: {e}"
+            ))),
+        }
+    }
+
+    /// Test-only: enqueue a make-Remote via coven's transition (no live
+    /// SyncManager). The caller then drains with `process_cloud_uploads_with`,
+    /// which flips the gate and fires `on_root_made_remote`.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn make_remote_for_test(
+        &self,
+        release_id: &str,
+        pin: bool,
+    ) -> Result<(), LibraryError> {
+        let scheme = coven::sync::cloud_storage::BlobPathScheme::for_storage(
+            self.config_handle.config().cloud_home.storage,
+        );
+        let hlc = coven::sync::hlc::Hlc::new(self.config_handle.config().device_id.clone());
+        coven::blob::transition::make_remote(
+            self.database.coven_db(),
+            scheme,
+            &hlc,
+            "releases",
+            release_id,
+            pin,
+        )
+        .await
+        .map_err(|e| LibraryError::Storage(format!("make_remote: {e}")))
+    }
+
+    /// Test-only: run a make-Local via coven's transition (no live SyncManager),
+    /// wiring an observer that shares this manager's event channel so
+    /// `on_root_made_local` emits `ReleaseUpdated`. Mirrors `coven_make_local` but
+    /// sources storage from `blob_storage()` (the injected cloud override).
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn make_local_for_test(
+        &self,
+        release_id: &str,
+        new_path: &str,
+        cancel: &crate::library::CancellationToken,
+    ) -> Result<(), LibraryError> {
+        let scheme = coven::sync::cloud_storage::BlobPathScheme::for_storage(
+            self.config_handle.config().cloud_home.storage,
+        );
+        let hlc = coven::sync::hlc::Hlc::new(self.config_handle.config().device_id.clone());
+        let storage = self.blob_storage();
+        let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
+            Arc::new(self.database.clone()),
+            self.library_dir.clone(),
+            self.outbox_in_flight.clone(),
+            self.upload_throughput.clone(),
+            self.sync_paused.clone(),
+            self.event_tx.clone(),
+        );
+
+        let files = self.database.get_files_for_release(release_id).await?;
+        let dest: HashMap<String, PathBuf> = files
+            .iter()
+            .map(|f| {
+                (
+                    f.id.clone(),
+                    std::path::Path::new(new_path).join(&f.original_filename),
+                )
+            })
+            .collect();
+
+        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+        let token = cancel.clone();
+        let bridge = tokio::spawn(async move {
+            token.cancelled().await;
+            let _ = cancel_tx.send(true);
+        });
+
+        let result = coven::blob::transition::make_local(
+            self.database.coven_db(),
+            storage.as_ref(),
+            &self.library_dir,
+            scheme,
+            &hlc,
+            Some(&observer),
+            "releases",
+            release_id,
+            &dest,
+            &cancel_rx,
+        )
+        .await;
+        bridge.abort();
+        match result {
+            Ok(()) => Ok(()),
+            Err(coven::blob::transition::MakeLocalError::Cancelled) => Ok(()),
+            Err(e) => Err(LibraryError::Storage(format!("make_local: {e}"))),
+        }
     }
 
     pub fn generate_restore_code(&self) -> Result<String, String> {
@@ -2013,149 +2236,48 @@ impl LibraryManager {
     // File paths / storage
     // =========================================================================
 
-    pub fn image_path(&self, id: &str) -> PathBuf {
-        crate::storage::local::image_path(&self.library_dir, id)
+    /// The on-disk path a cover blob's bytes live at on this device (coven's local
+    /// store while Local, its cache while Remote), if present — for callers that
+    /// need the actual cover file (the DiscID re-read). `None` when the cover is
+    /// not on this device.
+    pub fn cover_blob_path(&self, release_id: &str) -> Option<PathBuf> {
+        crate::storage::local::image_blob_path(
+            &self.library_dir,
+            crate::sync::COVERS_NAMESPACE,
+            release_id,
+        )
     }
 
-    /// The cache-bustable identifier for the library image at `id`, but only
-    /// when the file is present on disk. UIs render a cover only when it exists,
-    /// so the existence gate lives here rather than being re-derived at each
-    /// binding.
+    /// The cache-bustable identifier for the image (cover or artist image) whose
+    /// subject id is `id`, but only when its bytes are on this device. UIs render
+    /// an image only when it exists, so the existence gate lives here.
     ///
-    /// The identifier is the file's path with its modification time appended as
-    /// `#v=<mtime_secs>` (see [`versioned_image_identifier`]). The library image
-    /// lives at a stable, content-addressed path, so changing a cover overwrites
-    /// the file in place and the path never changes — every image cache keyed on
-    /// the path would keep serving the stale image. Threading the modification
-    /// time into the identifier changes the cache key whenever the bytes change,
-    /// so the view reloads. The single `metadata` call is both the existence
-    /// gate and the source of the version.
+    /// The identifier is the on-disk blob path with its modification time appended
+    /// as `#v=<mtime_secs>` (see [`versioned_image_identifier`]). coven owns the
+    /// blob's on-disk location — its local store while Local, its cache while
+    /// Remote — and replacing the image overwrites that file in place, so the path
+    /// is stable; threading the mtime changes the cache key whenever the bytes
+    /// change, so the view reloads.
     pub fn image_path_if_exists(&self, id: &str) -> Option<String> {
         image_identifier_if_exists(&self.library_dir, id)
     }
 
-    pub fn local_storage_path_for_file(&self, file: &DbFile) -> PathBuf {
-        file.local_storage_path(&self.library_dir)
-    }
-
-    /// Resolve a release file's in-place path on this device, given the release's
-    /// `release_local_source` row (if any). `Some` only for a local
-    /// release; `None` means the release is remote (read through coven's cache)
-    /// or has no source here.
-    pub fn resolve_local_file_path(
-        &self,
-        local_source: Option<&DbReleaseLocalSource>,
-        file: &DbFile,
-    ) -> Option<PathBuf> {
-        local_source.map(|source| source.local_file_path(file))
-    }
-
-    /// Resolve where a release file's bytes can be read on this device: the
-    /// local copy when one exists, otherwise the original source file of a
-    /// still-pending cloud upload. A remote import that keeps no local copy
-    /// queues its uploads with `source_path` pointing at the originals — those
-    /// stay the readable source (for playback, pin, export) until the upload
-    /// lands and the cloud object exists.
+    /// The on-disk path of a release file that lives at the user's own path — a
+    /// coven **user-provided Local** blob's external ref. `Ok(Some(path))` only
+    /// for a Local release file coven holds an external ref for (the user's file
+    /// in place); `Ok(None)` for a Remote file (its bytes are in coven's cache,
+    /// keyed by id, with no stable bae path) or an unknown file. DB errors
+    /// propagate so callers distinguish "no in-place file" from "library broken".
     ///
-    /// With no local copy and no pending upload, the readable source depends on
-    /// whether the release is remote: a remote release's audio is read through
-    /// coven's cache (`Remote`), while a local release's source file is
-    /// simply gone (`Unreachable`). The remote flag comes from the release row
-    /// addressed by `file.release_id`, so no caller has to supply it.
-    pub(crate) async fn resolve_readable_file_source(
-        &self,
-        local_source: Option<&DbReleaseLocalSource>,
-        file: &DbFile,
-    ) -> Result<ReadableFileSource, LibraryError> {
-        if let Some(path) = self.resolve_local_file_path(local_source, file) {
-            // The source row maps to a path but can't guarantee the file is still
-            // there — it's a user-owned file in place, which they may have moved or
-            // deleted. Confirm it before returning `Local`; if it's gone, fall
-            // through so a pending upload reports `UploadPendingSourceMissing` (or
-            // an un-uploaded release reports `Unreachable`), rather than handing
-            // back a path that will fail to open.
-            if tokio::fs::try_exists(&path).await.unwrap_or(false) {
-                return Ok(ReadableFileSource::Local(path));
-            }
-        }
-
-        for entry in self.database.get_pending_cloud_uploads().await? {
-            let coven::db::OutboxOperation::Upload {
-                file_id,
-                source_path,
-                ..
-            } = entry.operation
-            else {
-                continue;
-            };
-            if file_id != file.id {
-                continue;
-            }
-            let Some(source_path) = source_path else {
-                // The upload reads from `storage/` — that path is the local
-                // copy, which already failed to resolve above (e.g. the copy
-                // was deleted out from under a queued upload).
-                tracing::warn!(
-                    file_id = %file.id,
-                    "pending upload reads from storage/ but the release has no local copy"
-                );
-                return Ok(ReadableFileSource::UploadPendingSourceMissing);
-            };
-            let path = PathBuf::from(&source_path);
-            match tokio::fs::try_exists(&path).await {
-                Ok(true) => return Ok(ReadableFileSource::Local(path)),
-                Ok(false) => {
-                    tracing::warn!(
-                        file_id = %file.id,
-                        source = %source_path,
-                        "pending upload's source file is gone"
-                    );
-                    return Ok(ReadableFileSource::UploadPendingSourceMissing);
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        file_id = %file.id,
-                        source = %source_path,
-                        "pending upload's source file is unreadable: {e}"
-                    );
-                    return Ok(ReadableFileSource::UploadPendingSourceMissing);
-                }
-            }
-        }
-
-        // No local copy and no pending upload. A remote release's audio lives
-        // only in the cloud; a local release's source file is just gone.
-        let release = self
-            .database
-            .find_release_by_id(&file.release_id)
-            .await?
-            .ok_or_else(|| {
-                LibraryError::TrackMapping(format!(
-                    "Release {} not found for file {}",
-                    file.release_id, file.id
-                ))
-            })?;
-        if release.remote {
-            Ok(ReadableFileSource::Remote)
-        } else {
-            Ok(ReadableFileSource::Unreachable)
-        }
-    }
-
-    /// Look up a file by id and resolve its local path, if any.
-    /// Returns `Ok(None)` if the file is unknown, its release is unknown, or
-    /// it has no readable local location (e.g. cloud-only file that isn't
-    /// cached). DB errors are propagated so callers can distinguish between
-    /// "legitimately missing" and "library in a broken state".
+    /// Used where a caller needs the actual user file (the DiscID re-read of the
+    /// rip's artifacts), not coven's locality-aware byte read.
     pub async fn file_local_path(&self, file_id: &str) -> Result<Option<PathBuf>, LibraryError> {
-        let Some(file) = self.database.find_file_by_id(file_id).await? else {
-            return Ok(None);
-        };
-        let local_source = self
+        Ok(self
             .database
-            .get_release_local_source(&file.release_id)
-            .await?;
-        Ok(self.resolve_local_file_path(local_source.as_ref(), &file))
+            .coven_db()
+            .external_blob(file_id)
+            .await?
+            .map(|ext| ext.path))
     }
 
     pub fn create_release_storage(&self) -> ReleaseStorageImpl {
@@ -2232,15 +2354,6 @@ impl LibraryManager {
         Ok(self.database.is_content_hash_imported(hash).await?)
     }
 
-    /// This device's `release_local_source` row for a release — present iff the
-    /// release is local (files in place); `None` for a remote release.
-    pub async fn get_release_local_source(
-        &self,
-        release_id: &str,
-    ) -> Result<Option<DbReleaseLocalSource>, LibraryError> {
-        Ok(self.database.get_release_local_source(release_id).await?)
-    }
-
     /// Count outbox upload entries still pending for a release's files.
     /// Zero means the cloud copy is confirmed durable. Used by the unpin
     /// guard in `make_release_local` to refuse a transition mid-upload — the
@@ -2254,106 +2367,6 @@ impl LibraryManager {
             .database
             .count_pending_uploads_for_release(release_id)
             .await?)
-    }
-
-    /// Enqueue the remote-transition uploads for a local release: queue one
-    /// cloud upload per file, reading its in-place source and carrying the
-    /// `pin` retain-pinned intent (so coven populates `storage/pinned/` iff
-    /// pinned), then kick the sync loop. The upload observer flips `remote` true
-    /// and deletes the in-place source once the last upload lands. This is the
-    /// single remote-upload flow, shared by `do_make_remote` (the user "Manage"
-    /// action, which adds an is-sync-ready gate and progress) and the remote
-    /// import path.
-    ///
-    /// Verifies every source file is intact (on-disk length == recorded size)
-    /// before enqueuing anything: the source IS the upload source and is deleted
-    /// once the upload lands, so a truncated original must abort the whole
-    /// transition rather than upload short bytes and lose its only full copy.
-    pub(crate) async fn enqueue_remote_uploads(
-        &self,
-        release_id: &str,
-        pin: bool,
-    ) -> Result<(), LibraryError> {
-        let release = self
-            .database
-            .find_release_by_id(release_id)
-            .await?
-            .ok_or_else(|| LibraryError::Storage(format!("release {release_id} not found")))?;
-        if release.remote {
-            return Err(LibraryError::Storage(format!(
-                "release {release_id} is already remote"
-            )));
-        }
-        let source = self
-            .database
-            .get_release_local_source(release_id)
-            .await?
-            .ok_or_else(|| {
-                LibraryError::Storage(format!("release {release_id} has no local source"))
-            })?;
-        let files = self.database.get_files_for_release(release_id).await?;
-        if files.is_empty() {
-            return Err(LibraryError::Storage(format!(
-                "release {release_id} has no files"
-            )));
-        }
-
-        // Verify every source is intact before enqueuing any upload, so a
-        // truncated original aborts the transition rather than uploading short
-        // bytes whose only full copy is then deleted.
-        for file in &files {
-            let path = std::path::Path::new(&source.path).join(&file.original_filename);
-            let len = tokio::fs::metadata(&path)
-                .await
-                .map_err(|e| {
-                    LibraryError::Storage(format!(
-                        "cannot read manage source {}: {e}",
-                        path.display()
-                    ))
-                })?
-                .len();
-            if len != file.file_size as u64 {
-                return Err(LibraryError::Storage(format!(
-                    "manage source {} is {len} bytes but the release records {} — refusing to \
-                     upload a truncated original whose only copy would then be deleted",
-                    path.display(),
-                    file.file_size
-                )));
-            }
-        }
-
-        for file in &files {
-            let source_path = std::path::Path::new(&source.path).join(&file.original_filename);
-            let cloud_key = self.cloud_key_for_remote_file(file).await?;
-            self.add_cloud_outbox_upload(
-                &file.id,
-                &cloud_key,
-                Some(&source_path.to_string_lossy()),
-                pin,
-            )
-            .await?;
-        }
-        self.trigger_sync();
-        Ok(())
-    }
-
-    /// Move a release to the Local state: mark `remote = false` and record
-    /// this device's local copy at `path`. Re-emits so consumers caching
-    /// resolved file paths see the new location.
-    pub async fn set_release_local_path(
-        &self,
-        release_id: &str,
-        path: &str,
-    ) -> Result<(), LibraryError> {
-        self.database
-            .set_release_local_path(release_id, path)
-            .await?;
-
-        if let Ok(Some(release)) = self.database.find_release_by_id(release_id).await {
-            self.emit_release_updated(&release.album_id, release_id)
-                .await;
-        }
-        Ok(())
     }
 
     pub async fn add_cloud_outbox_upload(
@@ -2370,42 +2383,41 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// The cloud object key a remote file's blob uploads to, and (under a
-    /// browsable home) the readable key persisted on its `release_files.cloud_path`
-    /// so every later read/delete/pull addresses the same object.
-    ///
-    /// Opaque home: `storage_path(file.id)` (hashed by id), the row's
-    /// `cloud_path` stays NULL. Browsable home: the readable
-    /// `{artist}/{album}/{filename}`, computed once and STORED on the row here —
-    /// the manage path creates the file row before its cloud destination exists,
-    /// so the key lands when the file is first uploaded, not at import.
-    pub async fn cloud_key_for_remote_file(&self, file: &DbFile) -> Result<String, LibraryError> {
-        // A file already carrying a (namespace-relative) readable cloud_path keeps
-        // it (idempotent re-manage): return its FULL object key.
-        if file.cloud_path.is_some() {
-            return Ok(file.cloud_key());
-        }
-        let storage = self.config_handle.config().cloud_home.storage;
-        match self
-            .database
-            .audio_cloud_path_for_storage(storage, &file.release_id, &file.original_filename)
-            .await?
-        {
-            // Browsable home: persist the namespace-relative readable key on the
-            // row and return the FULL object key (the audio namespace prepended).
-            Some(readable) => {
-                self.database
-                    .set_file_cloud_path(&file.id, &readable)
-                    .await?;
-                Ok(crate::storage::local::effective_cloud_key(
-                    Some(&readable),
-                    &file.id,
-                ))
-            }
-            // Opaque home: hashed-by-id; `cloud_path` stays NULL and `cloud_key()`
-            // resolves to the hashed default, the documented opaque layout.
-            None => Ok(file.cloud_key()),
-        }
+    /// The full cloud object key a release file's blob lives at, derived through
+    /// coven for the configured home's scheme (`Hashed` → `{ns}/{ab}/{cd}/{id}`,
+    /// `Plain` → `{ns}/{cloud_path}`). Used by the bae-side delete path, which
+    /// stays bae's responsibility (the transitions are coven's).
+    fn release_file_cloud_key(&self, file: &DbFile) -> Result<String, LibraryError> {
+        let scheme = coven::sync::cloud_storage::BlobPathScheme::for_storage(
+            self.config_handle.config().cloud_home.storage,
+        );
+        coven::sync::cloud_storage::CloudSyncStorage::blob_key(
+            scheme,
+            crate::sync::RELEASE_FILES_NAMESPACE,
+            &file.id,
+            file.cloud_path.as_deref(),
+        )
+        .map_err(|e| LibraryError::Storage(format!("cloud key for file {}: {e}", file.id)))
+    }
+
+    /// The full cloud object key a cover blob lives at (namespace `covers`),
+    /// derived through coven for the configured home's scheme. Used by the
+    /// bae-side cover delete path.
+    fn cover_cloud_key(
+        &self,
+        release_id: &str,
+        cloud_path: Option<&str>,
+    ) -> Result<String, LibraryError> {
+        let scheme = coven::sync::cloud_storage::BlobPathScheme::for_storage(
+            self.config_handle.config().cloud_home.storage,
+        );
+        coven::sync::cloud_storage::CloudSyncStorage::blob_key(
+            scheme,
+            crate::sync::COVERS_NAMESPACE,
+            release_id,
+            cloud_path,
+        )
+        .map_err(|e| LibraryError::Storage(format!("cloud key for cover {release_id}: {e}")))
     }
 
     pub async fn get_pending_cloud_uploads(&self) -> Result<Vec<OutboxEntry>, LibraryError> {
@@ -2429,59 +2441,14 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Stop uploading a release that's mid-`manage` and keep it local-only.
+    /// Stop uploading a release that's mid-make-Remote and keep it Local.
     ///
-    /// `remote` flips only after a release's *last* file uploads, so stopping
-    /// early leaves the release in a valid local state already — pinned (the
-    /// `storage/` copy stays) or local (the originals stay). This:
-    ///
-    /// 1. removes the release's still-queued and in-flight upload rows, so no
-    ///    further files leave this device;
-    /// 2. marks the release "cancelling" so a file whose write lands in the gap
-    ///    doesn't flip it to remote — the observer queues that blob's deletion
-    ///    instead (see `ReleaseUploadObserver::mark_remote_if_complete`);
-    /// 3. queues deletions for the files already uploaded this attempt, so the
-    ///    cloud is left holding nothing for the release; and
-    /// 4. clears any "delete the originals once uploaded" intent, so a
-    ///    cloud-only manage doesn't strand the release with no local copy.
+    /// coven owns the cancel: it clears the durable make-Remote intent and the
+    /// release's pending upload rows, and tombstones any blob that already reached
+    /// the cloud, in one transaction. The gate never flips, so the release stays
+    /// Local — its files are still the external refs coven holds, untouched.
     pub async fn cancel_release_upload(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.upload_cancelling
-            .lock()
-            .unwrap()
-            .insert(release_id.to_string());
-
-        // Pending rows (queued + the single in-flight one) are files whose blob
-        // is not yet durable in the cloud; dropping the rows stops them with
-        // nothing to clean up.
-        let rows = self.database.outbox_items().await?;
-        let mut pending_file_ids = std::collections::HashSet::new();
-        for row in &rows {
-            if row.release_id.as_deref() == Some(release_id)
-                && matches!(row.operation, crate::db::OutboxOpKind::Upload)
-            {
-                pending_file_ids.insert(row.file_id.clone());
-                self.database.remove_cloud_outbox_entry(row.id).await?;
-            }
-        }
-
-        // Files with no pending row already uploaded this attempt: their blobs
-        // are in the cloud, so queue a delete to leave the release local-only.
-        // `cloud_key()` resolves each file's blob key (its stored readable key,
-        // or the hashed-by-id default on an opaque home) — the same resolver
-        // every delete uses.
-        let files = self.database.get_files_for_release(release_id).await?;
-        for file in &files {
-            if !pending_file_ids.contains(&file.id) {
-                self.database
-                    .add_cloud_outbox_delete(&file.cloud_key())
-                    .await?;
-            }
-        }
-
-        // Stopping leaves the release local: `remote` never flipped, so its
-        // in-place `release_local_source` row is still present and the source
-        // files are untouched — there is nothing to undo here.
-        self.trigger_sync();
+        self.coven_cancel_make_remote(release_id).await?;
         self.emit_outbox_changed().await;
         // Refresh the release row (it no longer reads as "uploading"). A
         // best-effort UI nudge — the cancel itself already succeeded above.
@@ -2531,13 +2498,12 @@ impl LibraryManager {
         cloud_home: &dyn CloudHome,
         encryption: &std::sync::RwLock<EncryptionService>,
     ) -> Result<usize, String> {
-        let observer = crate::sync::blob_source::ReleaseUploadObserver::new(
+        let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
             Arc::new(self.database.clone()),
             self.library_dir.clone(),
             self.outbox_in_flight.clone(),
             self.upload_throughput.clone(),
             self.sync_paused.clone(),
-            self.upload_cancelling.clone(),
             self.event_tx.clone(),
         );
         // coven's `drain_uploads` takes the home's at-rest cipher. bae homes are
@@ -2549,12 +2515,21 @@ impl LibraryManager {
             coven::sync::cloud_storage::CloudCipher::Encrypted(service.clone())
         };
         let cipher = std::sync::RwLock::new(cipher);
+        // coven's own register clock is private; this test helper drives the drain
+        // off a fresh HLC stamped with this device's id. The drain's gate flip is a
+        // local unconditional write, so the stamp's only role is the synced
+        // `_updated_at`, and a wall-clock-seeded HLC orders after the rows this
+        // device wrote earlier. (Production drives the drain from the sync loop with
+        // the Database's own clock.)
+        let device_id = self.config_handle.config().device_id.clone();
+        let hlc = coven::sync::hlc::Hlc::new(device_id);
         coven::blob::upload::drain_uploads(
             self.database.coven_db(),
             cloud_home,
             &cipher,
             &self.library_dir,
             self.clock.as_ref(),
+            &hlc,
             Some(&observer),
         )
         .await
@@ -3398,11 +3373,10 @@ impl LibraryManager {
         import_id: &str,
         identities: &[crate::import::ReleaseIdentity],
         local_path: &str,
-        remote_intent: bool,
     ) -> Result<(), LibraryError> {
-        // The home's storage mode decides the remote cover-blob layout (opaque
-        // hashed-by-id vs. browsable readable paths); the manager owns config,
-        // so it reads the mode here rather than threading it from the importer.
+        // The home's storage mode decides the blob layout (opaque hashed-by-id vs.
+        // browsable readable paths); the manager owns config, so it reads the mode
+        // here rather than threading it from the importer.
         let storage = self.config_handle.config().cloud_home.storage;
         self.database
             .finalize_import_atomic(
@@ -3419,7 +3393,6 @@ impl LibraryManager {
                 import_id,
                 identities,
                 local_path,
-                remote_intent,
                 storage,
             )
             .await?;
@@ -3690,7 +3663,7 @@ pub(crate) async fn release_blob_pinned(
     let Some(file_id) = any_file_id else {
         return false;
     };
-    let path = match library_dir.pinned_blob_path(file_id) {
+    let path = match library_dir.pinned_blob_path(crate::sync::RELEASE_FILES_NAMESPACE, file_id) {
         Ok(path) => path,
         Err(e) => {
             warn!("pinned-state check: bad blob id {file_id}: {e}");
@@ -3706,24 +3679,34 @@ pub(crate) async fn release_blob_pinned(
     }
 }
 
-/// The cache-bustable identifier (`<path>#v=<mtime_secs>`) for the library
-/// image at `id`, or `None` when no file is cached. The single `metadata` call
-/// is both the existence gate and the version source: a missing file is the
-/// normal "no image" case, so it returns `None` quietly; any other IO error is
-/// logged before returning `None` so it isn't silently masked. Shared by
-/// `LibraryManager::image_path_if_exists` and the release-detail resolver so
-/// the two don't keep parallel copies that drift.
+/// The cache-bustable identifier (`<path>#v=<mtime_secs>`) for the image whose
+/// subject id is `id`, or `None` when its bytes aren't on this device. `id` is a
+/// release id (a cover) or an artist id (an artist image); both namespaces are
+/// checked, covers first (the common grid case). The blob's on-disk location is
+/// coven's (local store while Local, cache while Remote), resolved by
+/// [`crate::storage::local::image_blob_path`]. Shared by
+/// `LibraryManager::image_path_if_exists` and the release-detail resolver so the
+/// two don't keep parallel copies that drift.
 fn image_identifier_if_exists(library_dir: &LibraryDir, id: &str) -> Option<String> {
-    let path = crate::storage::local::image_path(library_dir, id);
-    let metadata = match std::fs::metadata(&path) {
-        Ok(metadata) => metadata,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return None,
-        Err(e) => {
-            warn!("reading image metadata for {id} at {path:?} failed: {e}");
-            return None;
-        }
-    };
-    versioned_image_identifier(&path, &metadata)
+    for namespace in [
+        crate::sync::COVERS_NAMESPACE,
+        crate::sync::ARTIST_IMAGES_NAMESPACE,
+    ] {
+        let Some(path) = crate::storage::local::image_blob_path(library_dir, namespace, id) else {
+            continue;
+        };
+        let metadata = match std::fs::metadata(&path) {
+            Ok(metadata) => metadata,
+            // Vanished between the existence check and the stat — treat as absent.
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => {
+                warn!("reading image metadata for {id} at {path:?} failed: {e}");
+                return None;
+            }
+        };
+        return versioned_image_identifier(&path, &metadata);
+    }
+    None
 }
 
 /// Free-function variant of `LibraryManager::resolve_release`. Both the
@@ -3740,7 +3723,6 @@ pub(crate) fn resolve_release(
     pinned: bool,
 ) -> ReleaseDetail {
     let release = raw.release;
-    let local_source = raw.local_source;
 
     let has_multiple_sides = {
         let mut sides = std::collections::HashSet::new();
@@ -3889,20 +3871,10 @@ pub(crate) fn resolve_release(
     let total_size: i64 = files.iter().map(|f| f.file_size).sum();
     let total_duration_ms: i64 = tracks.iter().filter_map(|t| t.duration_ms).sum();
 
-    // Build gallery: cover (if on disk) followed by image files that resolve to a
-    // local path on this device. Only a LOCAL release has in-place files; a
-    // remote release's image files live in coven's cache (no stable bae path), so
-    // they get no local path here and the lightbox fetches them on demand via
-    // `load_gallery_image`.
-    let image_file_local_path = |f: &FileDetail| -> Option<String> {
-        let source = local_source.as_ref()?;
-        let path = std::path::Path::new(&source.path).join(&f.original_filename);
-        Some(path.to_string_lossy().into_owned())
-    };
-
     let mut gallery = Vec::new();
     // The release's own cover identifier, resolved once: the gallery's "Cover"
-    // slot and the summary's `cover_path` both read it.
+    // slot and the summary's `cover_path` both read it. The cover blob's on-disk
+    // location is coven's (local store while Local, cache while Remote).
     let release_cover = image_identifier_if_exists(library_dir, &release.id);
     if let Some(cover_identifier) = release_cover.clone() {
         gallery.push(GalleryItem {
@@ -3911,14 +3883,15 @@ pub(crate) fn resolve_release(
             local_path: Some(cover_identifier),
         });
     }
-    // Every image file the release has, whether or not it's on disk here. A
-    // cloud-only file (no local copy on this device) gets a None path; the
-    // lightbox fetches its bytes on demand via `load_gallery_image`.
+    // Every image file the release has. coven owns the locality-aware read, so the
+    // lightbox always fetches an image file's bytes on demand via
+    // `load_gallery_image` (the user's own file when Local, the cache/cloud when
+    // Remote) rather than a bae path — there is no stable bae path for it.
     for f in &image_files {
         gallery.push(GalleryItem {
             id: f.id.clone(),
             label: f.original_filename.clone(),
-            local_path: image_file_local_path(f),
+            local_path: None,
         });
     }
 
@@ -4088,8 +4061,7 @@ impl LibraryManager {
                     "Image file {file_id} is not part of release {release_id}"
                 ))
             })?;
-        let local_copy = self.get_release_local_source(release_id).await?;
-        crate::storage::local::transfer::read_release_file_bytes(local_copy.as_ref(), &file, self)
+        crate::storage::local::transfer::read_release_file_bytes(&file, self)
             .await
             .map_err(|e| LibraryError::Import(e.to_string()))
     }
@@ -4118,10 +4090,7 @@ impl LibraryManager {
         track_id: &str,
     ) -> Result<ResolvedTrackAudio, LibraryError> {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        let source = self
-            .resolve_readable_file_source(meta.local_source.as_ref(), &meta.audio_file)
-            .await?;
-        Ok(ResolvedTrackAudio::from_meta(&meta, source))
+        Ok(ResolvedTrackAudio::from_meta(&meta))
     }
 
     /// Resolve display metadata (artist names, album, cover) for a track at
@@ -4148,10 +4117,7 @@ impl LibraryManager {
         track_id: &str,
     ) -> Result<(ResolvedTrackAudio, crate::playback::PlaybackTrackInfo), LibraryError> {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        let source = self
-            .resolve_readable_file_source(meta.local_source.as_ref(), &meta.audio_file)
-            .await?;
-        let audio = ResolvedTrackAudio::from_meta(&meta, source);
+        let audio = ResolvedTrackAudio::from_meta(&meta);
         let info =
             playback_info_from_track_release(&self.database, &meta.track, &meta.release).await?;
         Ok((audio, info))
@@ -4427,7 +4393,6 @@ impl LibraryManager {
         release_id: &str,
         selection: CoverSelection,
     ) -> Result<(), LibraryError> {
-        let library_dir = &self.library_dir;
         let (bytes, content_type, source, source_url) = match selection {
             CoverSelection::ReleaseImage { file_id } => {
                 let file = self
@@ -4435,19 +4400,9 @@ impl LibraryManager {
                     .await?
                     .ok_or_else(|| LibraryError::Import(format!("File '{file_id}' not found")))?;
 
-                let local_copy = self
-                    .database
-                    .get_release_local_source(&file.release_id)
-                    .await?;
-
-                let source_path = local_copy
-                    .as_ref()
-                    .map(|copy| copy.local_file_path(&file))
-                    .ok_or_else(|| {
-                        LibraryError::Import("Release has no local file storage".to_string())
-                    })?;
-
-                let bytes = std::fs::read(&source_path)?;
+                // Read the chosen release image file through coven's locality-aware
+                // read (the user's own file when Local, the cache/cloud when Remote).
+                let bytes = self.read_release_blob(&file).await?;
                 let source_url = format!("release://{}", file.original_filename);
                 (
                     bytes,
@@ -4468,12 +4423,11 @@ impl LibraryManager {
             }
         };
 
-        // Write image to disk
-        let cover_path = crate::storage::local::image_path(library_dir, release_id);
-        if let Some(parent) = cover_path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::write(&cover_path, &bytes)?;
+        // Hand the new cover bytes to coven's local store (a host-provided Local
+        // blob coven owns). For a Remote release the row UPDATE below re-emits and
+        // coven's inline push re-uploads from the local store; for a Local release
+        // the cover stays in the local store until the release is made Remote.
+        self.store_cover_blob(release_id, &bytes).await?;
 
         // Record in database. The cover's `id` IS the release id. Under a
         // browsable home the cover blob lands at a readable
@@ -4520,11 +4474,6 @@ impl LibraryManager {
             _ => return,
         };
 
-        // Local releases: the user's in-place files, don't delete.
-        if !release.remote {
-            return;
-        }
-
         let files = match self.get_files_for_release(release_id).await {
             Ok(files) => files,
             Err(e) => {
@@ -4533,8 +4482,22 @@ impl LibraryManager {
             }
         };
 
-        // Remote: tombstone the cloud blobs and drop coven's cache copies.
-        self.queue_storage_deletions(&files).await;
+        if release.remote {
+            // Remote: tombstone the cloud blobs and drop coven's cache copies.
+            self.queue_storage_deletions(&files).await;
+        } else {
+            // Local: the files are the user's own files in place — never delete
+            // them. Just clear coven's external refs so no orphan ref outlives the
+            // release row.
+            for file in &files {
+                if let Err(e) = self.database.coven_db().clear_external_blob(&file.id).await {
+                    warn!(
+                        "Failed to clear external ref for {} on delete: {e}",
+                        file.id
+                    );
+                }
+            }
+        }
     }
 
     /// Tombstone every file's cloud blob (cancelling any pending upload first) and
@@ -4549,11 +4512,17 @@ impl LibraryManager {
     /// are correct even after the release has since flipped local.
     pub(crate) async fn queue_storage_deletions(&self, files: &[DbFile]) {
         // Queue cloud outbox deletes and cancel pending uploads. The delete key
-        // must match the key the blob was uploaded under: the row's stored
-        // `cloud_path` (readable on a browsable home), or the hashed
-        // `storage_path` default when it is NULL.
+        // must match the key the blob was uploaded under, derived through coven
+        // for the home's scheme (the row's readable `cloud_path` on a browsable
+        // home, the hashed-by-id default on an opaque one).
         for file in files {
-            let cloud_key = file.cloud_key();
+            let cloud_key = match self.release_file_cloud_key(file) {
+                Ok(key) => key,
+                Err(e) => {
+                    warn!("Failed to derive delete key for {}: {e}", file.id);
+                    continue;
+                }
+            };
 
             // Cancel any pending upload for this file
             if let Err(e) = self
@@ -4570,27 +4539,36 @@ impl LibraryManager {
             }
         }
 
-        // Drop coven's local cache copies: unpin moves any pinned copy to the
-        // evictable cache, where the budget sweep / clear reclaims it. The release
-        // is local/deleted, so nothing reads these blobs from the cache. The
-        // blobs are `OnDemand`, so unpin never rejects them. Best-effort.
-        let blobs: Vec<_> = files.iter().map(Self::audio_blob_ref).collect();
-        if let Err(e) = coven::blob::cache::unpin(&self.library_dir, &blobs).await {
-            warn!("Failed to drop cache copies during storage deletion: {e}");
+        // Drop coven's local cache copies (both pinned and evictable folders) so a
+        // deleted release leaks nothing on disk. The release is Remote here, so its
+        // blobs are cache copies, not external refs. Best-effort.
+        for file in files {
+            if let Err(e) = coven::blob::cache::drop_cached_blob(
+                &self.library_dir,
+                crate::sync::RELEASE_FILES_NAMESPACE,
+                &file.id,
+            )
+            .await
+            {
+                warn!(
+                    "Failed to drop cache copy of {} during deletion: {e}",
+                    file.id
+                );
+            }
         }
 
         self.emit_outbox_changed().await;
     }
 
-    /// Remove a release's cover image when the release is deleted.
-    ///
-    /// `library_images` has no foreign key to releases, so the release/album
-    /// cascade leaves the cover row, its on-disk file, and its cloud blob
-    /// behind. Covers exist on local releases too, so this runs for every
-    /// deleted release (not gated on `remote` like the audio-file cleanup).
-    /// Best-effort: each step logs and continues so a cleanup hiccup never
-    /// aborts the delete.
-    async fn queue_release_cover_for_deletion(&self, release_id: &str) {
+    /// Clean up a release's cover blob when the release is deleted. The `covers`
+    /// row itself is cascade-deleted with the release (its FK to `releases`), and
+    /// that DELETE changeset replicates the removal — and on peers coven's
+    /// apply-side cache drop removes their cover copy. This handles the owner's
+    /// blob bytes: a Remote release's cover is in the cloud + cache (tombstone the
+    /// cloud blob + drop the cache copy), a Local release's cover is in coven's
+    /// local store (drop it). Best-effort: each step logs and continues so a
+    /// cleanup hiccup never aborts the delete.
+    async fn queue_release_cover_for_deletion(&self, release_id: &str, was_remote: bool) {
         let cover = match self
             .database
             .find_library_image(release_id, &LibraryImageType::Cover)
@@ -4605,48 +4583,36 @@ impl LibraryManager {
             }
         };
 
-        // Local: queue the on-disk cover for deferred deletion.
-        let cover_path = crate::storage::local::image_path(&self.library_dir, release_id);
-        let pending = vec![PendingDeletion::Local {
-            path: cover_path.display().to_string(),
-        }];
-        if let Err(e) = append_pending_deletions(self.library_dir.as_ref(), &pending).await {
-            warn!("Failed to queue cover deletion for {release_id}: {e}");
-        }
-
-        // Cloud: the image row's DELETE changeset replicates the row removal,
-        // but the blob itself is removed through the cloud outbox, like audio.
-        // The blob's key must match what it was uploaded under: the row's stored
-        // readable `cloud_path` (`Plain` scheme) on a browsable home, or the
-        // hashed content-addressed path (`Hashed`, no readable path) on an
-        // opaque one.
-        let scheme = match &cover.cloud_path {
-            Some(_) => crate::sync::BlobPathScheme::Plain,
-            None => crate::sync::BlobPathScheme::Hashed,
-        };
-        let cloud_key = match crate::sync::CloudSyncStorage::blob_key(
-            scheme,
-            "images",
-            release_id,
-            cover.cloud_path.as_deref(),
-        ) {
-            Ok(key) => key,
-            Err(e) => {
-                warn!("Failed to derive cover blob key for {release_id}: {e}");
-                return;
+        if was_remote {
+            // Remote: tombstone the cloud cover blob and drop the cache copy.
+            match self.cover_cloud_key(release_id, cover.cloud_path.as_deref()) {
+                Ok(cloud_key) => {
+                    if let Err(e) = self.database.add_cloud_outbox_delete(&cloud_key).await {
+                        warn!("Failed to enqueue cover blob delete for {release_id}: {e}");
+                    }
+                }
+                Err(e) => warn!("Failed to derive cover blob key for {release_id}: {e}"),
             }
-        };
-        if let Err(e) = self.database.add_cloud_outbox_delete(&cloud_key).await {
-            warn!("Failed to enqueue cover blob delete for {release_id}: {e}");
-        }
-
-        // DB row: delete it so a DELETE changeset replicates the removal to
-        // peers and the orphan row stops being synced.
-        if let Err(e) = self
-            .delete_library_image(release_id, &LibraryImageType::Cover)
+            if let Err(e) = coven::blob::cache::drop_cached_blob(
+                &self.library_dir,
+                crate::sync::COVERS_NAMESPACE,
+                release_id,
+            )
             .await
-        {
-            warn!("Failed to delete cover row for {release_id}: {e}");
+            {
+                warn!("Failed to drop cover cache copy for {release_id}: {e}");
+            }
+        } else {
+            // Local: the cover is coven's own copy in the local store. Drop it.
+            if let Err(e) = coven::blob::local_files::drop_blob(
+                &self.library_dir,
+                crate::sync::COVERS_NAMESPACE,
+                release_id,
+            )
+            .await
+            {
+                warn!("Failed to drop cover local-store copy for {release_id}: {e}");
+            }
         }
 
         self.emit_outbox_changed().await;
@@ -4662,7 +4628,14 @@ impl LibraryManager {
     /// File cleanup happens asynchronously via the cleanup service, which retries
     /// on failure. This prevents orphaned cloud objects when deletion fails.
     pub async fn delete_release(&self, release_id: &str) -> Result<(), LibraryError> {
-        let album_id = self.get_album_id_for_release(release_id).await?;
+        let release = self
+            .database
+            .find_release_by_id(release_id)
+            .await?
+            .ok_or_else(|| {
+                LibraryError::TrackMapping(format!("Release not found: {release_id}"))
+            })?;
+        let album_id = release.album_id.clone();
 
         // Collect track IDs before deletion for playback cleanup
         let track_ids: Vec<String> = self
@@ -4674,7 +4647,8 @@ impl LibraryManager {
 
         // Queue files for deferred deletion before removing DB records
         self.queue_release_files_for_deletion(release_id).await;
-        self.queue_release_cover_for_deletion(release_id).await;
+        self.queue_release_cover_for_deletion(release_id, release.remote)
+            .await;
 
         self.database.delete_release(release_id).await?;
         let remaining_releases = self.get_releases_for_album(&album_id).await?;
@@ -4739,7 +4713,8 @@ impl LibraryManager {
                 all_track_ids.extend(tracks.into_iter().map(|t| t.id));
             }
             self.queue_release_files_for_deletion(&release.id).await;
-            self.queue_release_cover_for_deletion(&release.id).await;
+            self.queue_release_cover_for_deletion(&release.id, release.remote)
+                .await;
         }
 
         self.database.delete_album(album_id).await?;
@@ -4779,15 +4754,14 @@ impl LibraryManager {
     ) -> Result<ExportTrackPlan, LibraryError> {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
 
-        let audio_bytes = crate::storage::local::transfer::read_release_file_bytes(
-            meta.local_source.as_ref(),
-            &meta.audio_file,
-            self,
-        )
-        .await
-        .map_err(|e| {
-            LibraryError::TrackMapping(format!("Couldn't read audio for track {track_id}: {e}"))
-        })?;
+        let audio_bytes =
+            crate::storage::local::transfer::read_release_file_bytes(&meta.audio_file, self)
+                .await
+                .map_err(|e| {
+                    LibraryError::TrackMapping(format!(
+                        "Couldn't read audio for track {track_id}: {e}"
+                    ))
+                })?;
 
         let album = self.database.get_album_for_release(&meta.release).await?;
 
@@ -4813,14 +4787,10 @@ impl LibraryManager {
 
         let year = meta.release.pressing.year.or(album.year);
 
-        let cover_image_path = album.primary_release_id.as_deref().and_then(|rid| {
-            let path = crate::storage::local::image_path(&self.library_dir, rid);
-            if path.exists() {
-                Some(path)
-            } else {
-                None
-            }
-        });
+        let cover_image_path = album
+            .primary_release_id
+            .as_deref()
+            .and_then(|rid| self.cover_blob_path(rid));
 
         let is_digital =
             crate::util::format::is_digital_format(meta.release.pressing.format.as_deref());
@@ -5091,9 +5061,6 @@ impl LibraryManager {
     /// evictable cache. The in-place source is always deleted once the upload lands
     /// (a remote release has no local path — see `transfer::do_make_remote`).
     pub async fn make_release_remote(&self, release_id: &str, pin: bool) -> Result<(), String> {
-        // A fresh manage supersedes any earlier cancel: clear the guard so this
-        // attempt's uploads are allowed to flip the release to remote.
-        self.upload_cancelling.lock().unwrap().remove(release_id);
         let transfer_service = crate::storage::local::transfer::TransferService::new(self.clone());
         let rx = transfer_service.make_release_remote(release_id.to_string(), pin);
         self.drive_transfer(release_id, ReleaseStorageAction::MakeRemote, rx, |_| {})
@@ -5505,7 +5472,6 @@ impl LibraryManager {
             self.outbox_in_flight.clone(),
             self.upload_throughput.clone(),
             self.sync_paused.clone(),
-            self.upload_cancelling.clone(),
             self.event_tx.clone(),
         ));
         self.install_sync_manager(&sm).await;
@@ -5696,7 +5662,10 @@ mod tests {
     /// already be remote with `file_id` among its `release_files`. Pinned-ness is
     /// coven cache state, never a bae column.
     fn pin_file_in_cache(manager: &LibraryManager, file_id: &str) {
-        let path = manager.library_dir.pinned_blob_path(file_id).unwrap();
+        let path = manager
+            .library_dir
+            .pinned_blob_path(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
+            .unwrap();
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, b"pinned-bytes").unwrap();
     }
@@ -5820,10 +5789,10 @@ mod tests {
         );
     }
 
-    /// `library_images` has no foreign key to releases, so deleting a release
-    /// must remove its cover row, queue its on-disk file, and enqueue its cloud
-    /// blob delete — otherwise the orphan row replicates forever and local +
-    /// cloud storage leak.
+    /// Deleting a release cascade-deletes its `covers` row (the FK on `covers.id`
+    /// to `releases`), and `queue_release_cover_for_deletion` cleans up the cover
+    /// blob: a Remote release's cover is tombstoned in the cloud and dropped from
+    /// the cache.
     #[tokio::test]
     async fn delete_release_removes_its_cover_image() {
         let (mut manager, _temp_dir) = setup_test_manager().await;
@@ -5837,7 +5806,13 @@ mod tests {
         manager.database.insert_release(&release1).await.unwrap();
         manager.database.insert_release(&release2).await.unwrap();
 
-        // Give release1 a cover: a library_images row plus its on-disk file.
+        // Give release1 a cover: a `covers` row plus its blob in coven's local
+        // store. release1 is Remote (`create_test_release` defaults remote=true),
+        // so the cover blob is in the cloud + cache.
+        manager
+            .store_cover_blob(&release1.id, b"image")
+            .await
+            .unwrap();
         manager
             .upsert_library_image(&crate::db::DbLibraryImage {
                 id: release1.id.clone(),
@@ -5853,25 +5828,20 @@ mod tests {
             })
             .await
             .unwrap();
-        let cover_path = crate::storage::local::image_path(&manager.library_dir, &release1.id);
-        tokio::fs::create_dir_all(cover_path.parent().unwrap())
-            .await
-            .unwrap();
-        tokio::fs::write(&cover_path, b"image").await.unwrap();
 
         manager.delete_release(&release1.id).await.unwrap();
 
-        // Row removed.
+        // Row removed (the `covers` FK to `releases` cascade-deletes it).
         assert!(manager
             .get_library_image(&release1.id, &LibraryImageType::Cover)
             .await
             .unwrap()
             .is_none());
 
-        // Cloud blob delete enqueued under the image namespace.
+        // Cloud blob delete enqueued under the `covers` namespace.
         let cloud_key = crate::sync::CloudSyncStorage::blob_key(
             crate::sync::BlobPathScheme::Hashed,
-            "images",
+            crate::sync::COVERS_NAMESPACE,
             &release1.id,
             None,
         )
@@ -5881,19 +5851,6 @@ mod tests {
             deletes.iter().any(|d| d.cloud_key == cloud_key),
             "cover blob delete must be enqueued"
         );
-
-        // On-disk cover drained by the scheduled cleanup.
-        let drained = async {
-            for _ in 0..200 {
-                if !cover_path.exists() {
-                    return true;
-                }
-                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-            }
-            false
-        }
-        .await;
-        assert!(drained, "the on-disk cover must be queued and drained");
     }
 
     /// delete_album removes each release's cover too (same helper, second wiring
@@ -5905,6 +5862,10 @@ mod tests {
         let release = create_test_release(&album.id);
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release).await.unwrap();
+        manager
+            .store_cover_blob(&release.id, b"image")
+            .await
+            .unwrap();
         manager
             .upsert_library_image(&crate::db::DbLibraryImage {
                 id: release.id.clone(),
@@ -5930,7 +5891,7 @@ mod tests {
             .is_none());
         let cloud_key = crate::sync::CloudSyncStorage::blob_key(
             crate::sync::BlobPathScheme::Hashed,
-            "images",
+            crate::sync::COVERS_NAMESPACE,
             &release.id,
             None,
         )
@@ -6107,7 +6068,10 @@ mod tests {
 
         let (manager, _temp_dir) = setup_test_manager().await;
         let release_id = "rel-cover-version";
-        let cover_path = manager.image_path(release_id);
+        let cover_path = manager
+            .library_dir()
+            .local_blob_path(crate::sync::COVERS_NAMESPACE, release_id)
+            .unwrap();
         std::fs::create_dir_all(cover_path.parent().unwrap()).unwrap();
 
         // Write the cover, then stamp an explicit mtime so the identifier's
@@ -6171,7 +6135,10 @@ mod tests {
         // Give each release its own cover on disk with distinct mtimes, so the
         // cache-bustable identifiers differ on version as well as path.
         for (release, mtime) in [(&release1, 1_000u64), (&release2, 2_000u64)] {
-            let cover_path = manager.image_path(&release.id);
+            let cover_path = manager
+                .library_dir()
+                .local_blob_path(crate::sync::COVERS_NAMESPACE, &release.id)
+                .unwrap();
             std::fs::create_dir_all(cover_path.parent().unwrap()).unwrap();
             std::fs::write(&cover_path, b"cover").unwrap();
             std::fs::File::options()
@@ -6255,7 +6222,10 @@ mod tests {
         assert!(detail.cover_path.is_none());
 
         // Write the cover at the release's stable path and stamp an mtime.
-        let cover_path = manager.image_path(&release.id);
+        let cover_path = manager
+            .library_dir()
+            .local_blob_path(crate::sync::COVERS_NAMESPACE, &release.id)
+            .unwrap();
         std::fs::create_dir_all(cover_path.parent().unwrap()).unwrap();
         std::fs::write(&cover_path, b"first cover bytes").unwrap();
         std::fs::File::options()
@@ -6642,7 +6612,7 @@ mod tests {
         manager.database.insert_release(&local).await.unwrap();
         manager
             .database
-            .upsert_release_local_source(&local.id, "/tmp/local")
+            .register_release_external_refs_for_test(&local.id, "/tmp/local")
             .await
             .unwrap();
 
@@ -6673,7 +6643,7 @@ mod tests {
         manager.database.insert_release(&release).await.unwrap();
         manager
             .database
-            .upsert_release_local_source(&release.id, "/tmp/local")
+            .register_release_external_refs_for_test(&release.id, "/tmp/local")
             .await
             .unwrap();
 
@@ -6709,7 +6679,7 @@ mod tests {
             .unwrap();
         manager
             .database
-            .upsert_release_local_source(&local_release.id, "/tmp/local")
+            .register_release_external_refs_for_test(&local_release.id, "/tmp/local")
             .await
             .unwrap();
 
@@ -6757,7 +6727,7 @@ mod tests {
             if local {
                 manager
                     .database
-                    .upsert_release_local_source(&release.id, "/tmp/local")
+                    .register_release_external_refs_for_test(&release.id, "/tmp/local")
                     .await
                     .unwrap();
             }
@@ -6880,7 +6850,7 @@ mod tests {
         manager.database.insert_release(&release).await.unwrap();
         manager
             .database
-            .upsert_release_local_source(
+            .register_release_external_refs_for_test(
                 &release.id,
                 &format!("/nonexistent/origin-device/{}", Uuid::new_v4()),
             )
@@ -7189,103 +7159,26 @@ mod tests {
             .await
             .unwrap();
 
-        // A token cancelled before the copy loop runs: the transfer stops at the
-        // first check, before reading/writing any file, and never flips state.
+        // A token cancelled before the materialize loop runs: coven aborts at the
+        // first check, before reading/writing any blob, and never flips state. A
+        // cancelled make-Local is a clean stop (Ok), not a failure.
         let token = crate::library::CancellationToken::new();
         token.cancel();
         let dest = temp_dir.path().join("out");
-        let svc = crate::storage::local::transfer::TransferService::new(manager.clone());
-        let mut rx = svc.make_release_local(
-            release.id.clone(),
-            dest.to_string_lossy().to_string(),
-            token,
-        );
-
-        let mut completed = false;
-        while let Some(p) = rx.recv().await {
-            if matches!(
-                p,
-                crate::storage::local::transfer::TransferProgress::Complete { .. }
-            ) {
-                completed = true;
-            }
-        }
-        assert!(completed, "cancelled unmanage ends cleanly (Complete)");
+        manager
+            .make_local_for_test(&release.id, dest.to_str().unwrap(), &token)
+            .await
+            .expect("a cancelled make-Local ends cleanly");
 
         let after = manager
             .get_release_by_id(&release.id)
             .await
             .unwrap()
             .unwrap();
-        assert!(after.remote, "cancelled unmanage leaves the release remote");
-    }
-
-    #[tokio::test]
-    async fn cancel_release_upload_drops_queue_and_deletes_uploaded_blobs() {
-        let (manager, _temp_dir) = setup_test_manager().await;
-        let album = create_test_album();
-        let release = create_test_release(&album.id);
-        manager.database.insert_album(&album).await.unwrap();
-        manager.database.insert_release(&release).await.unwrap();
-        // A remote-in-progress release has a local-copy row (here the originals
-        // at a local path, the cloud-only manage starting point).
-        manager
-            .database
-            .set_release_local_path(&release.id, "/tmp/originals")
-            .await
-            .unwrap();
-
-        // One file still queued (not yet uploaded) and one already uploaded this
-        // attempt (no queue row; its blob lives at `cloud_path`).
-        let queued = DbFile {
-            id: format!("{}-queued", release.id),
-            release_id: release.id.clone(),
-            original_filename: "queued.flac".to_string(),
-            file_size: 1000,
-            content_type: crate::util::content_type::ContentType::Flac,
-            cloud_path: None,
-            created_at: Utc::now(),
-        };
-        let uploaded = DbFile {
-            id: format!("{}-uploaded", release.id),
-            release_id: release.id.clone(),
-            original_filename: "uploaded.flac".to_string(),
-            file_size: 1000,
-            content_type: crate::util::content_type::ContentType::Flac,
-            // Namespace-relative, as stored on the row; coven prepends `storage/`.
-            cloud_path: Some("already-uploaded".to_string()),
-            created_at: Utc::now(),
-        };
-        manager.database.insert_file(&queued).await.unwrap();
-        manager.database.insert_file(&uploaded).await.unwrap();
-        manager
-            .add_cloud_outbox_upload(&queued.id, "storage/still-queued", None, false)
-            .await
-            .unwrap();
-
-        manager.cancel_release_upload(&release.id).await.unwrap();
-
-        // The queued upload is dropped — nothing left to push for the release.
         assert!(
-            manager
-                .get_pending_cloud_uploads()
-                .await
-                .unwrap()
-                .is_empty(),
-            "cancel removes the release's queued uploads"
+            after.remote,
+            "cancelled make-Local leaves the release remote"
         );
-
-        // The already-uploaded blob is queued for deletion so the cloud is left
-        // holding nothing for the release; the still-queued file (never
-        // uploaded) is not — its blob never landed.
-        let deletes: Vec<String> = manager
-            .get_pending_cloud_deletes()
-            .await
-            .unwrap()
-            .into_iter()
-            .map(|e| e.cloud_key)
-            .collect();
-        assert_eq!(deletes, vec!["storage/already-uploaded".to_string()]);
     }
 
     #[tokio::test]
@@ -7400,7 +7293,7 @@ mod tests {
     #[tokio::test]
     async fn observer_progress_advances_snapshot_bytes_done() {
         use crate::library::UploadState;
-        use coven::blob::BlobUploadObserver;
+        use coven::blob::BlobTransitionObserver;
 
         let (manager, _temp_dir) = setup_test_manager().await;
         let album = create_test_album();
@@ -7424,13 +7317,12 @@ mod tests {
 
         // The observer shares the manager's in-flight map and throughput tracker,
         // exactly as production wires it in `build_sync_manager`.
-        let observer = crate::sync::blob_source::ReleaseUploadObserver::new(
+        let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
             Arc::new(manager.database.clone()),
             manager.library_dir.clone(),
             manager.outbox_in_flight.clone(),
             manager.upload_throughput.clone(),
             manager.sync_paused.clone(),
-            manager.upload_cancelling.clone(),
             manager.event_tx.clone(),
         );
 
@@ -8427,11 +8319,6 @@ mod tests {
 
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release).await.unwrap();
-        manager
-            .database
-            .upsert_release_local_source(&release.id, &media.path().to_string_lossy())
-            .await
-            .unwrap();
         // Two existing track rows align positionally with the two files.
         insert_n_tracks(&manager.database, &release.id, 2).await;
         let now = Utc::now();
@@ -8446,6 +8333,13 @@ mod tests {
             );
             manager.database.insert_file(&file).await.unwrap();
         }
+        // Register the files as coven external refs (in-place files of a Local
+        // release) AFTER inserting them, so the file-tag re-read resolves paths.
+        manager
+            .database
+            .register_release_external_refs_for_test(&release.id, &media.path().to_string_lossy())
+            .await
+            .unwrap();
         manager
             .database
             .insert_release_identities(&release.id, &[mb_identity("g1", Some("mb-rel-1"))])
@@ -8969,11 +8863,6 @@ mod tests {
         manager.database.insert_release(&release).await.unwrap();
         manager
             .database
-            .upsert_release_local_source(&release.id, &media.path().to_string_lossy())
-            .await
-            .unwrap();
-        manager
-            .database
             .insert_release_identities(&release.id, &[mb_identity("g1", Some("mb-rel-1"))])
             .await
             .unwrap();
@@ -9007,6 +8896,12 @@ mod tests {
             );
             manager.database.insert_file(&file).await.unwrap();
         }
+        // Register the in-place files as coven external refs after inserting them.
+        manager
+            .database
+            .register_release_external_refs_for_test(&release.id, &media.path().to_string_lossy())
+            .await
+            .unwrap();
 
         manager
             .re_identify_release(&release.id, IdentityChoice::Unknown)

@@ -14,10 +14,22 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tracing::{info, warn};
 
-fn row_to_library_image(row: &Row) -> DbLibraryImage {
+/// The table a host-provided image blob's row lives in. The image type IS the
+/// table now (`covers` / `artist_images`), so there is no `type` column. A fixed
+/// match over the enum, so the interpolated name is always a trusted literal.
+fn image_table(image_type: &LibraryImageType) -> &'static str {
+    match image_type {
+        LibraryImageType::Cover => "covers",
+        LibraryImageType::Artist => "artist_images",
+    }
+}
+
+/// Build a `DbLibraryImage` from a `covers`/`artist_images` row. The table is the
+/// type, so `image_type` is supplied by the caller rather than read from a column.
+fn row_to_library_image(row: &Row, image_type: LibraryImageType) -> DbLibraryImage {
     DbLibraryImage {
         id: row.get("id").unwrap(),
-        image_type: row.get::<_, String>("type").unwrap().parse().unwrap(),
+        image_type,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type").unwrap()),
         file_size: row.get("file_size").unwrap(),
         width: row.get("width").unwrap(),
@@ -1319,11 +1331,9 @@ impl Database {
         let files = self.get_files_for_release(&release.id).await?;
         let audio_formats = self.get_audio_formats_for_release(&release.id).await?;
         let identities = self.get_release_identities(&release.id).await?;
-        let local_source = self.get_release_local_source(&release.id).await?;
 
         Ok(DbReleaseDetail {
             release,
-            local_source,
             tracks,
             files,
             audio_formats,
@@ -1625,19 +1635,13 @@ impl Database {
         import_id: &str,
         identities: &[crate::import::ReleaseIdentity],
         // The in-place folder this import's files live in on this device. Every
-        // import lands LOCAL, so this is always recorded as the release's
-        // `release_local_source` row; the remote transition (do_make_remote) runs
-        // afterward and drops it once the upload lands.
+        // import lands LOCAL, so each file is registered as a coven user-provided
+        // external ref under this folder; a later make-Remote uploads from them
+        // and drops the refs.
         local_path: &str,
-        // Whether this import will transition to remote (cloud) right after
-        // landing. Only used to key the cover blob readably on a browsable home —
-        // the cover row syncs ungated and uploads regardless, so a remote import
-        // gets the readable cover key up front; the audio readable keys are set
-        // later by do_make_remote.
-        remote_intent: bool,
-        // The cloud home's storage mode, deciding the cover blob layout: `Opaque`
-        // keys it by the hashed id, `Browsable` lays it out at a readable
-        // `cloud_path` computed inside this transaction.
+        // The cloud home's storage mode, deciding the blob layout: `Opaque` keys
+        // each blob by the hashed id, `Browsable` lays it out at a readable
+        // `cloud_path` computed inside this transaction (ready when the gate flips).
         storage: crate::config::HomeStorage,
     ) -> Result<(), DbError> {
         let album = album.cloned();
@@ -1689,11 +1693,6 @@ impl Database {
                     insert_release_identity_row(&tx, &release.id, identity, &reg, &now)?;
                 }
 
-                // 2c. Record this device's local source: every import lands
-                //     local, with its files in place at `local_path`. A
-                //     remote import drops this row once do_make_remote's upload lands.
-                upsert_release_local_source_row(&tx, &release.id, &local_path)?;
-
                 // 3. Insert tracks. DbTracks live inside `tracks_to_files`; their
                 //    `duration_ms` was populated by the mapper from the CUE sheet or
                 //    a standalone-file probe.
@@ -1711,12 +1710,39 @@ impl Database {
                     insert_release_metadata_row(&tx, meta)?;
                 }
 
-                // 6. Insert files with a NULL cloud key: every import lands
-                //    local, so its audio is not in the cloud yet. The remote
-                //    transition (do_make_remote) computes and stores each file's
-                //    readable/hashed cloud key when it enqueues the upload.
+                // 6. Insert files, and register each as a coven user-provided
+                //    external ref (the user's own file in place). Every import
+                //    lands Local — the files ARE the user's files at `local_path`,
+                //    tracked in coven's `local_blob_refs` so the locality-aware
+                //    read serves them and a later make-Remote uploads from them and
+                //    drops the refs. On a browsable home the readable cloud_path is
+                //    computed now (the album/release rows exist in this tx), so it
+                //    is ready when the gate flips; an opaque home leaves it NULL
+                //    (coven hashes the id). A populated key on a Local row is
+                //    harmless.
                 for file in &files {
-                    insert_file_row(&tx, file, &reg)?;
+                    let cloud_path = if storage.is_browsable() {
+                        Some(resolve_audio_cloud_path(
+                            &tx,
+                            &file.release_id,
+                            &file.original_filename,
+                        )?)
+                    } else {
+                        None
+                    };
+                    let file = DbFile {
+                        cloud_path,
+                        ..file.clone()
+                    };
+                    insert_file_row(&tx, &file, &reg)?;
+                    let path = std::path::Path::new(&local_path).join(&file.original_filename);
+                    coven::Database::register_external_blob_on(
+                        &tx,
+                        &file.id,
+                        crate::sync::RELEASE_FILES_NAMESPACE,
+                        &path,
+                        file.file_size as u64,
+                    )?;
                 }
 
                 // 7. Insert audio formats
@@ -1724,13 +1750,15 @@ impl Database {
                     insert_audio_format_row(&tx, af, &reg)?;
                 }
 
-                // 8. Upsert library image (cover art). The cover row syncs ungated
-                //    and uploads on the next cycle regardless of the audio's
-                //    remote state, so a remote import keys it readably on a
-                //    browsable home (`{artist}/{album}/cover.{ext}`) up front; an
-                //    opaque home (or a local import) leaves it NULL = hashed.
+                // 8. Write the cover row (its bytes were stored in coven's local
+                //    store by the import worker). The cover is a host-provided
+                //    asset of its release: on a browsable home its readable
+                //    cloud_path (`{album}/{release}/cover.{ext}`) is computed now,
+                //    ready when the gate flips; an opaque home leaves it NULL
+                //    (hashed). The cover rides the release's gate, so a Local
+                //    release's cover stays private until it is made Remote.
                 if let Some(image) = &library_image {
-                    let cloud_path = if storage.is_browsable() && remote_intent {
+                    let cloud_path = if storage.is_browsable() {
                         Some(resolve_cover_cloud_path(
                             &tx,
                             &image.id,
@@ -2330,43 +2358,47 @@ impl Database {
             .await
     }
 
-    /// Find library image by ID and type. Caller-provided ID — may not exist.
+    /// Find a host-provided image (cover / artist image) by its subject id. The
+    /// `image_type` selects the table (`covers` / `artist_images`); the id is the
+    /// release/artist id. Caller-provided id — may not exist.
     pub async fn find_library_image(
         &self,
         id: &str,
         image_type: &LibraryImageType,
     ) -> Result<Option<DbLibraryImage>, DbError> {
-        let (id, image_type) = (id.to_string(), image_type.as_str().to_string());
+        let id = id.to_string();
+        let image_type = image_type.clone();
+        let table = image_table(&image_type);
+        let sql = format!("SELECT * FROM {table} WHERE id = ?");
         self.inner
             .coven_db
             .call(move |conn| {
-                conn.query_row(
-                    "SELECT * FROM library_images WHERE id = ? AND type = ?",
-                    params![id, image_type],
-                    |row| Ok(row_to_library_image(row)),
-                )
+                conn.query_row(&sql, params![id], |row| {
+                    Ok(row_to_library_image(row, image_type.clone()))
+                })
                 .optional()
                 .map_err(DbError::from)
             })
             .await
     }
 
-    /// Delete a library image by ID and type
+    /// Delete a host-provided image row by its subject id, from the table its type
+    /// selects. (The row is also cascade-deleted with its subject; this is the
+    /// explicit path, e.g. replacing a cover.)
     pub async fn delete_library_image(
         &self,
         id: &str,
         image_type: &LibraryImageType,
     ) -> Result<(), DbError> {
-        let (id, image_type) = (id.to_string(), image_type.as_str().to_string());
+        let id = id.to_string();
+        let table = image_table(image_type);
+        let sql = format!("DELETE FROM {table} WHERE id = ?");
         self.inner
             .coven_db
             .call(move |conn| {
-                conn.execute(
-                    "DELETE FROM library_images WHERE id = ? AND type = ?",
-                    params![id, image_type],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
+                conn.execute(&sql, params![id])
+                    .map(|_| ())
+                    .map_err(DbError::from)
             })
             .await
     }
@@ -2420,33 +2452,6 @@ impl Database {
                     "SELECT * FROM releases WHERE id = ?",
                     params![release_id],
                     |row| Ok(Self::row_to_release(row)),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
-    }
-
-    /// This device's `release_local_source` row, present iff the release is
-    /// local (its files are in place at `path`). `None` means the release is
-    /// remote — its bytes live in coven's cache, read through coven's cache API.
-    pub async fn get_release_local_source(
-        &self,
-        release_id: &str,
-    ) -> Result<Option<DbReleaseLocalSource>, DbError> {
-        let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT release_id, path FROM release_local_source WHERE release_id = ?",
-                    params![release_id],
-                    |row| {
-                        Ok(DbReleaseLocalSource {
-                            release_id: row.get("release_id")?,
-                            path: row.get("path")?,
-                        })
-                    },
                 )
                 .optional()
                 .map_err(DbError::from)
@@ -2566,60 +2571,50 @@ impl Database {
             .await
     }
 
-    /// Record this device's `release_local_source` row: the release is
-    /// local with its files in place at `path`. Insert-or-replace.
-    pub async fn upsert_release_local_source(
-        &self,
-        release_id: &str,
-        path: &str,
-    ) -> Result<(), DbError> {
-        let (release_id, path) = (release_id.to_string(), path.to_string());
-        self.inner
-            .coven_db
-            .call(move |conn| upsert_release_local_source_row(conn, &release_id, &path))
-            .await
-    }
-
-    /// Finish the Local → Remote transition: flip the shared `remote` fact
-    /// true and drop this device's `release_local_source` row — the bytes now
-    /// live in coven's cache (the caller deletes the in-place source files). Pin
-    /// vs cloud-only is coven cache state set at upload time, not recorded here.
-    /// Atomic so the gate flip and the row drop never diverge.
-    pub async fn set_release_remote(&self, release_id: &str) -> Result<(), DbError> {
+    /// Test-only: flip a release's `remote` gate column directly (bumping
+    /// `_updated_at`). Production flips it through coven's transitions; tests that
+    /// only need a release in a given storage state set it here.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn set_remote_for_test(&self, release_id: &str, remote: bool) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let reg = self.register_stamp();
         self.inner
             .coven_db
             .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
-                set_release_remote_row(&tx, &release_id, true, &reg)?;
-                tx.execute(
-                    "DELETE FROM release_local_source WHERE release_id = ?",
-                    params![release_id],
-                )?;
-                tx.commit().map_err(DbError::from)
+                conn.execute(
+                    "UPDATE releases SET remote = ?, _updated_at = ? WHERE id = ?",
+                    params![remote, reg, release_id],
+                )
+                .map(|_| ())
+                .map_err(DbError::from)
             })
             .await
     }
 
-    /// Unmanage: flip the shared `remote` fact false and record this device's
-    /// local source at `path` (the files moved back out in place). Atomic.
-    pub async fn set_release_local_path(
+    /// Test-only: register each of a release's files as a coven user-provided
+    /// external ref under `folder` (the in-place files of a Local release), the
+    /// new-model equivalent of the removed `release_local_source` upsert. Call
+    /// after the file rows are inserted.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn register_release_external_refs_for_test(
         &self,
         release_id: &str,
-        path: &str,
+        folder: &str,
     ) -> Result<(), DbError> {
-        let (release_id, path) = (release_id.to_string(), path.to_string());
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
-                set_release_remote_row(&tx, &release_id, false, &reg)?;
-                upsert_release_local_source_row(&tx, &release_id, &path)?;
-                tx.commit().map_err(DbError::from)
-            })
-            .await
+        let files = self.get_files_for_release(release_id).await?;
+        for file in &files {
+            let path = std::path::Path::new(folder).join(&file.original_filename);
+            self.inner
+                .coven_db
+                .register_external_blob(
+                    &file.id,
+                    crate::sync::RELEASE_FILES_NAMESPACE,
+                    &path,
+                    file.file_size as u64,
+                )
+                .await?;
+        }
+        Ok(())
     }
 
     /// Get the release that owns a given file.
@@ -2989,23 +2984,6 @@ impl Database {
             .await
     }
 
-    /// The cloud object key for an audio file under `storage`: `None` for an
-    /// opaque home (keyed by the hashed id, the default), or the
-    /// `storage/{album_id}/{release_id}/{filename}` path for a browsable one.
-    pub async fn audio_cloud_path_for_storage(
-        &self,
-        storage: crate::config::HomeStorage,
-        release_id: &str,
-        original_filename: &str,
-    ) -> Result<Option<String>, DbError> {
-        let release_id = release_id.to_string();
-        let original_filename = original_filename.to_string();
-        self.cloud_path_if_browsable(storage, move |conn| {
-            resolve_audio_cloud_path(conn, &release_id, &original_filename)
-        })
-        .await
-    }
-
     /// The `cloud_path` for a cover image under `storage`: `None` for an opaque
     /// home, or `{album_id}/{release_id}/cover.{ext}` for a browsable one.
     pub async fn cover_cloud_path_for_storage(
@@ -3035,31 +3013,6 @@ impl Database {
             return None;
         }
         Some(resolve_artist_cloud_path(artist_id, content_type))
-    }
-
-    /// Persist the readable cloud key on an existing `release_files` row (the
-    /// manage path, where the file row predates its cloud destination). Not an
-    /// `_updated_at` bump on its own — the caller flips `remote` later, which
-    /// re-emits the whole synced subtree including this column.
-    pub async fn set_file_cloud_path(
-        &self,
-        file_id: &str,
-        cloud_path: &str,
-    ) -> Result<(), DbError> {
-        let file_id = file_id.to_string();
-        let cloud_path = cloud_path.to_string();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute(
-                    "UPDATE release_files SET cloud_path = ?, _updated_at = ? WHERE id = ?",
-                    params![cloud_path, reg, file_id],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
     }
 
     // ---- Cloud outbox ----
@@ -3483,24 +3436,23 @@ fn upsert_library_image_row(
     image: &DbLibraryImage,
     reg: &str,
 ) -> Result<(), DbError> {
+    let table = image_table(&image.image_type);
     conn.execute(
-        r#"
-        INSERT INTO library_images (id, type, content_type, file_size, width, height, source, source_url, cloud_path, _updated_at, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-            type = excluded.type,
-            content_type = excluded.content_type,
-            file_size = excluded.file_size,
-            width = excluded.width,
-            height = excluded.height,
-            source = excluded.source,
-            source_url = excluded.source_url,
-            cloud_path = excluded.cloud_path,
-            _updated_at = excluded._updated_at
-        "#,
+        &format!(
+            "INSERT INTO {table} (id, content_type, file_size, width, height, source, source_url, cloud_path, _updated_at, created_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+             ON CONFLICT(id) DO UPDATE SET \
+                 content_type = excluded.content_type, \
+                 file_size = excluded.file_size, \
+                 width = excluded.width, \
+                 height = excluded.height, \
+                 source = excluded.source, \
+                 source_url = excluded.source_url, \
+                 cloud_path = excluded.cloud_path, \
+                 _updated_at = excluded._updated_at"
+        ),
         params![
             image.id,
-            image.image_type.as_str(),
             image.content_type.as_str(),
             image.file_size,
             image.width,
@@ -3612,39 +3564,6 @@ fn insert_release_identity_row(
             reg,
             now,
         ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-/// Set the shared `releases.remote` fact (bumping `_updated_at` so the change
-/// syncs). Shared by the transactional transition methods.
-fn set_release_remote_row(
-    conn: &Connection,
-    release_id: &str,
-    remote: bool,
-    reg: &str,
-) -> Result<(), DbError> {
-    conn.execute(
-        "UPDATE releases SET remote = ?, _updated_at = ? WHERE id = ?",
-        params![remote, reg, release_id],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-/// Insert or replace a `release_local_source` row. Shared by the standalone
-/// upsert and the transactional transition methods. The table is device-local
-/// (no `_updated_at`, never synced), so there's no clock to bump.
-fn upsert_release_local_source_row(
-    conn: &Connection,
-    release_id: &str,
-    path: &str,
-) -> Result<(), DbError> {
-    conn.execute(
-        "INSERT INTO release_local_source (release_id, path) VALUES (?, ?) \
-         ON CONFLICT (release_id) DO UPDATE SET path = excluded.path",
-        params![release_id, path],
     )
     .map(|_| ())
     .map_err(DbError::from)

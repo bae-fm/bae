@@ -158,16 +158,20 @@ async fn test_local_import() {
         .expect("query")
         .expect("release should exist");
     assert!(!release.remote, "Local import should not be remote");
-    // The local-source row's existence + path IS the local state.
-    // Pinned-ness is coven cache state, never recorded for a local release.
-    let source = database
-        .get_release_local_source(&release_id)
+    // A Local release's files are coven user-provided external refs at their
+    // in-place location; that external ref IS the local state.
+    let files = library_manager
+        .get_files_for_release(&release_id)
+        .await
+        .expect("get files");
+    let local_path = library_manager
+        .file_local_path(&files[0].id)
         .await
         .expect("query")
-        .expect("local import should record a local source");
+        .expect("local import should register an in-place external ref");
     assert!(
-        !source.path.is_empty(),
-        "Local import should set the in-place source path"
+        local_path.starts_with(&album_dir),
+        "Local import should keep files in place under {album_dir:?}, got {local_path:?}"
     );
 
     info!("Release is correctly local");
@@ -399,16 +403,20 @@ async fn run_import_with_cover_test() {
         .expect("Failed to query release")
         .expect("release should exist");
     assert!(!release.remote, "Import without cloud home should be local");
-    let source = database
-        .get_release_local_source(&release_id)
+    let local_files = library_manager
+        .get_files_for_release(&release_id)
+        .await
+        .expect("get files");
+    let local_path = library_manager
+        .file_local_path(&local_files[0].id)
         .await
         .expect("query")
-        .expect("local import should record a local source");
+        .expect("local import should register an in-place external ref");
     assert!(
-        !source.path.is_empty(),
-        "Import without cloud home should set the in-place source path"
+        local_path.starts_with(&album_dir),
+        "Import without cloud home should keep files in place under {album_dir:?}, got {local_path:?}"
     );
-    info!("Release has a local source");
+    info!("Release has in-place external refs");
 
     let releases = library_manager
         .get_releases_for_album(&release.album_id)
@@ -693,11 +701,18 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
         .await
         .expect("Failed to get release")
         .expect("release should exist");
-    let source = database
-        .get_release_local_source(&release_id)
+    let files = library_manager
+        .get_files_for_release(&release_id)
         .await
-        .expect("query");
-    info!("remote: {}, local_source: {:?}", release.remote, source);
+        .expect("Failed to get files");
+    let local_path = match files.first() {
+        Some(f) => library_manager
+            .file_local_path(&f.id)
+            .await
+            .expect("query external ref"),
+        None => None,
+    };
+    info!("remote: {}, local_path: {:?}", release.remote, local_path);
     let tracks = library_manager
         .get_tracks(&release_id)
         .await
@@ -807,12 +822,17 @@ async fn test_local_import_not_in_temp_dir() {
         .await
         .expect("query release")
         .expect("release should exist");
-    let local_path = database
-        .get_release_local_source(&release_id)
+    let files = library_manager
+        .get_files_for_release(&release_id)
         .await
-        .expect("query local source")
-        .expect("local library import should record a local source")
-        .path;
+        .expect("get files");
+    let local_path = library_manager
+        .file_local_path(&files[0].id)
+        .await
+        .expect("query local external ref")
+        .expect("local library import should register an in-place external ref")
+        .to_string_lossy()
+        .into_owned();
 
     // The local_path must NOT be in the system temp directory — it must
     // point at the folder the user imported in place.

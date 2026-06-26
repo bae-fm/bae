@@ -62,10 +62,11 @@ CREATE TABLE IF NOT EXISTS releases (
     catalog_number TEXT,
     country TEXT,
     barcode TEXT,
-    -- Shared, synced fact: is this release's audio in the cloud home (remote)
-    -- or local to one device (local). A local release's in-place source
-    -- folder lives in the device-local `release_local_source`, NOT here — it
-    -- must not sync. A remote release's bytes live in coven's blob cache.
+    -- Shared, synced fact (the coven gate column): is this release's audio in
+    -- the cloud home (remote) or local to one device (local). A local release's
+    -- in-place files are tracked by coven as external blob refs
+    -- (`local_blob_refs`, coven's own device-local table), NOT here — they must
+    -- not sync. A remote release's bytes live in coven's blob cache.
     remote BOOLEAN NOT NULL,
     source_folder_name TEXT,
     -- SHA-256 over the imported folder's categorized file structure (sorted
@@ -87,20 +88,12 @@ CREATE TABLE IF NOT EXISTS releases (
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE
 );
 
--- DEVICE-LOCAL local source: a row means "this release is LOCAL on this
--- device, with its files in place at `path`". It exists for exactly the local
--- releases (those with `releases.remote = 0`) and is the folder their audio
--- plays from. Not synced (no `_updated_at`, absent from SYNCED_TABLES) — an
--- local release is local to one device.
---
--- A REMOTE release has NO row here: its bytes live only in coven's blob cache
--- (`storage/pinned/` when kept local, else fetched into `storage/cache/` on
--- read), which coven owns. "Is it local" and "is it pinned" for a remote
--- release are answered by coven's cache, never by a column here.
-CREATE TABLE IF NOT EXISTS release_local_source (
-    release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
-    path       TEXT NOT NULL
-);
+-- The device-local truth that a local release's files are in place is owned by
+-- coven, not bae: a local release file is a coven *user-provided* blob, tracked
+-- in coven's own device-local `local_blob_refs` table (blob_id = file id, the
+-- path = `folder/original_filename`). bae registers/clears those refs through
+-- coven's `register_external_blob` / `clear_external_blob`; coven flips them as
+-- part of the make-Remote / make-Local transitions. There is no bae table here.
 
 -- Per-source identity rows. A release has 0+ rows: 0 = Unknown, 1+ = identified
 -- (each row is independently Exact when source_release_id is set, Approximate
@@ -194,27 +187,49 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE
 );
 
--- Column order here is the single source of truth for the changeset column
--- INDEX `BlobPlan` reads `cloud_path` at; `bae-core/src/sync/blob_plan.rs`
--- mirrors it in `LIBRARY_IMAGES_COLUMNS` / `LIBRARY_IMAGES_CLOUD_PATH_INDEX`,
--- with a guard test that fails loudly if this DDL and that index drift.
-CREATE TABLE IF NOT EXISTS library_images (
+-- Album covers — the one small grid image bae produces per release, 1:1 with a
+-- release (`id` IS the release id). A coven host-provided · CacheEager *asset*:
+-- bae hands coven the bytes (`local_files::store("covers", id, …)`), coven owns
+-- the on-device copy (its local store while Local, its cache while Remote). The
+-- FK on `id` makes coven gate the cover as a child of its release and ride the
+-- release's gate without keeping it alive (declared `.asset()`).
+CREATE TABLE IF NOT EXISTS covers (
+    -- The release id this cover belongs to (1:1), and the cover blob's id.
     id TEXT PRIMARY KEY,
-    type TEXT NOT NULL,
     content_type TEXT NOT NULL,
     file_size INTEGER NOT NULL,
     width INTEGER,
     height INTEGER,
     source TEXT NOT NULL,
     source_url TEXT,
-    -- Cloud object key for this image's blob, mirroring coven's
-    -- BlobRef.cloud_path. NULL = the hashed-by-id layout (opaque homes); a
-    -- value = the explicit readable key (relative to the `images` namespace)
-    -- set when the image entered a browsable home (cover:
-    -- `{artist}/{album}/cover.{ext}`, artist: `{artist}/artist.{ext}`).
+    -- Cloud object key for this cover's blob (relative to the `covers`
+    -- namespace coven prepends), mirroring coven's BlobRef.cloud_path. NULL =
+    -- the hashed-by-id layout (opaque homes); a value = the explicit readable
+    -- key (`{album}/{release}/cover.{ext}`) on a browsable home.
     cloud_path TEXT,
     _updated_at TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE
+);
+
+-- Artist images — bae-produced, 1:1 with an artist (`id` IS the artist id). A
+-- coven host-provided · CacheEager *asset* of `artists`, same shape as `covers`.
+CREATE TABLE IF NOT EXISTS artist_images (
+    -- The artist id this image belongs to (1:1), and the image blob's id.
+    id TEXT PRIMARY KEY,
+    content_type TEXT NOT NULL,
+    file_size INTEGER NOT NULL,
+    width INTEGER,
+    height INTEGER,
+    source TEXT NOT NULL,
+    source_url TEXT,
+    -- Cloud object key for this image's blob (relative to the `artist_images`
+    -- namespace coven prepends). NULL = hashed-by-id (opaque homes); a value =
+    -- the readable `{artist}/artist.{ext}` key on a browsable home.
+    cloud_path TEXT,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS release_metadata (
@@ -256,7 +271,6 @@ CREATE INDEX IF NOT EXISTS idx_release_identities_release
 CREATE INDEX IF NOT EXISTS idx_tracks_release_id ON tracks (release_id);
 CREATE INDEX IF NOT EXISTS idx_release_files_release_id ON release_files (release_id);
 CREATE INDEX IF NOT EXISTS idx_audio_formats_track_id ON audio_formats (track_id);
-CREATE INDEX IF NOT EXISTS idx_library_images_type ON library_images (type);
 CREATE INDEX IF NOT EXISTS idx_imports_status ON imports (status);
 CREATE INDEX IF NOT EXISTS idx_imports_release_id ON imports (release_id);
 
