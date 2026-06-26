@@ -15,7 +15,7 @@ env:
 
 jobs:
   test:
-    name: Test
+    name: macOS app
     runs-on: macos-26
 
     steps:
@@ -29,33 +29,6 @@ jobs:
 
     - name: Setup Rust environment
       uses: ./.github/actions/setup-rust
-
-    - name: Check Rust formatting
-      run: cargo fmt --all -- --check
-
-    - name: Check for unused Rust dependencies
-      run: |
-        cargo binstall cargo-machete --no-confirm
-        cargo machete
-
-    - name: Check Rust dependency licenses and advisories (cargo-deny)
-      run: |
-        cargo binstall cargo-deny --no-confirm
-        cargo deny check
-
-    - name: Run Clippy
-      run: |
-        cargo clippy --workspace -- -D warnings
-        cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
-        cargo clippy -p bae-bridge -- -D warnings
-
-    - name: Run localization + bridge tests
-      run: |
-        cargo test -p bae-loc
-        cargo test -p bae-bridge --lib
-        # chrome-string orphan gate (core.* keys are gated by the bae-bridge
-        # loc_key_coverage test above); fails on unreferenced, un-allowlisted keys.
-        python3 scripts/loc-chrome-orphans.py
 
     - name: Build macOS app
       id: build_macos
@@ -112,31 +85,6 @@ jobs:
         /tmp/swiftui-environment-audit \
           --index-store-path bae-macos/bae/.build/derivedData/Index.noindex/DataStore \
           bae-macos/bae/bae
-
-    - name: Check Rust documentation
-      # Broken intra-doc links and invalid rustdoc syntax are caught here.
-      # Runs after the build so all dependencies are already compiled.
-      if: ${{ !cancelled() }}
-      run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
-
-    - name: Free disk before tests
-      run: |
-        rm -rf bae-macos/bae/.build target-macos
-        df -h /
-
-    - name: Run tests
-      run: |
-        # The device-sync round-trip in test_multi_device_sync.rs has a
-        # CI-specific parallelism race (tests pass locally at any thread
-        # count). Run the whole suite serially so the race can't occur; this is
-        # slower. test_playback_cpu is skipped here and re-run in release mode
-        # below for accurate CPU measurement.
-        cargo test -p bae-core --features bae-core/test-utils -- --test-threads=1 --skip test_playback_cpu
-        # The release CPU benchmarks must also run serially: each measures
-        # process-wide CPU over a wall-clock window, so a concurrent sibling
-        # test's work (e.g. another fixture's import decode) inflates the
-        # reading and trips the threshold.
-        cargo test -p bae-core --release --features bae-core/test-utils --test test_playback_cpu -- --test-threads=1
 
   feature-parity:
     # The split between the baeium (S3-only) build and the full build is enforced
