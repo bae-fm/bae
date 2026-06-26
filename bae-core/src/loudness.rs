@@ -247,4 +247,35 @@ mod tests {
             as_sixteen.loudness_lufs
         );
     }
+
+    /// Measuring a full-length track must stay fast. ebur128's pure-Rust
+    /// true-peak interpolator runs ~80x slower unoptimized, so an unoptimized
+    /// dev build made a whole-album loudness pass take minutes. The
+    /// `[profile.dev.package.ebur128] opt-level = 3` override in the workspace
+    /// Cargo.toml keeps the dependency optimized even in dev/test builds; this
+    /// guards it — without the override this is ~20s, with it well under a
+    /// second.
+    #[test]
+    fn measure_track_stays_fast_on_a_full_length_track() {
+        let sr = 48_000u32;
+        let frames = sr as usize * 240; // ~4 minutes, stereo
+        let samples: Vec<i32> = (0..frames)
+            .flat_map(|i| {
+                let t = i as f64 / sr as f64;
+                let v = ((2.0 * PI * 1_000.0 * t).sin() * 0.5 * i16::MAX as f64) as i32;
+                [v, v]
+            })
+            .collect();
+
+        let start = std::time::Instant::now();
+        let (_, measured) = measure_track(&samples, 2, sr, 16).unwrap();
+        let elapsed = start.elapsed();
+
+        assert!(measured.is_some(), "the 1kHz tone has a usable loudness");
+        assert!(
+            elapsed.as_secs_f64() < 8.0,
+            "measuring a 4-min track took {elapsed:?}; ebur128 must be optimized \
+             in dev builds (see [profile.dev.package.ebur128] in Cargo.toml)"
+        );
+    }
 }
