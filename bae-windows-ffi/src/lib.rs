@@ -4555,7 +4555,7 @@ mod tests {
             other => panic!("unexpected managed mode: {other:?}"),
         }
         // The pin choice is an orthogonal FFI argument, not folded into the tag,
-        // so the old 3-way tags are no longer recognized.
+        // so `managed_pinned` / `managed_unpinned` are not valid storage-mode tags.
         assert!(storage_mode_from_str("managed_pinned").is_none());
         assert!(storage_mode_from_str("managed_unpinned").is_none());
     }

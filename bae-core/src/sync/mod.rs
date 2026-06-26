@@ -78,7 +78,7 @@ pub const ARTIST_IMAGES_CACHE_BUDGET: u64 = 256 * 1024 * 1024; // 256 MiB
 /// FK subject (a release / an artist), so they ride the subject's gate but never
 /// keep it alive. coven owns the whole blob lifecycle off these declarations
 /// (upload/download, the make-Remote/make-Local transitions, the locality-aware
-/// read), so bae no longer hand-maintains a blob source.
+/// read), so bae does not hand-maintain a blob source.
 ///
 /// Deliberately excluded:
 ///   - local-only tables (`release_metadata`, `imports`, `attribution_names`)

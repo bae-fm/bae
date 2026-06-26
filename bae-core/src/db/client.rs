@@ -15,7 +15,7 @@ use std::sync::Arc;
 use tracing::{info, warn};
 
 /// The table a host-provided image blob's row lives in. The image type IS the
-/// table now (`covers` / `artist_images`), so there is no `type` column. A fixed
+/// table (`covers` / `artist_images`), so there is no `type` column. A fixed
 /// match over the enum, so the interpolated name is always a trusted literal.
 fn image_table(image_type: &LibraryImageType) -> &'static str {
     match image_type {

@@ -408,7 +408,7 @@ async fn each_release_propagates_when_its_own_upload_flips_remote() {
     );
 }
 
-/// Gate-retract round-trip (Part 2 "Tests"): A makes a release Remote and a peer B
+/// Gate-retract round-trip: A makes a release Remote and a peer B
 /// pulls its whole subtree (release + tracks). When A makes the release Local again
 /// (the gate flips `remote` true→false, exactly what `make_local` does), coven's
 /// gate retract emits DELETEs for the subtree, so B loses the release and its
@@ -500,7 +500,7 @@ const AL2: &str = "b0000000-0000-0000-0000-000000000002";
 const RE1: &str = "c0000000-0000-0000-0000-000000000001"; // Remote
 const RE2: &str = "c0000000-0000-0000-0000-000000000002"; // Local
 
-/// Asset keep/leak (Part 2 "Tests"): a `covers` / `artist_images` asset rides its
+/// Asset keep/leak: a `covers` / `artist_images` asset rides its
 /// FK subject's gate when that subject is Remote, but never grants keep on its own.
 /// A holds (a) a Remote release whose artist also has an artist image, (b) a Local
 /// release with a cover, and (c) an orphan artist whose only row is an artist image

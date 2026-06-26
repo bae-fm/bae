@@ -1401,9 +1401,8 @@ impl ImportService {
         // a "Make Remote" action to retry. But it is a genuine failure of the
         // requested Remote import, never a silent success: it is surfaced loudly at
         // `error` (the requested Remote outcome was not achieved), not swallowed.
-        // (A dedicated UI "imported-local, upload-pending" state is a follow-up;
-        // the release's visible `Local` storage state + the retry action are the
-        // current surface.)
+        // The release's visible `Local` storage state plus its "Make Remote" retry
+        // action are how this surfaces to the user.
         if remote_intent {
             if let Err(e) = library_manager.coven_make_remote(&db_release.id, pin).await {
                 error!(

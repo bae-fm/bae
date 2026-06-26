@@ -89,11 +89,11 @@ pub enum ReleaseStorageAction {
 ///
 /// "Remote" requires a cloud home, so with no cloud home there are no
 /// transitions at all. The in-flight-uploads gate (acting mid-upload races the
-/// observer that completes the remote transition) lives in the UI now: it
+/// observer that completes the remote transition) lives in the UI: it
 /// consults the outbox snapshot's `per_release` map and suppresses these actions
 /// when the release has work in flight. Snapshot-driven gating stays fresh on
-/// every queue mutation, whereas the previous core-side `has_pending_uploads` flag
-/// baked a stale value into each cached `ReleaseDetail`.
+/// every queue mutation, where a core-side `has_pending_uploads` flag would bake
+/// a stale value into each cached `ReleaseDetail`.
 pub fn available_storage_actions(
     state: ReleaseStorageState,
     pinned: bool,

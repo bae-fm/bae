@@ -2411,7 +2411,7 @@ impl LibraryManager {
     }
 
     /// Seed an upload outbox row + refresh the snapshot. coven owns enqueueing in
-    /// `make_remote` now, so this is only a test helper for exercising the
+    /// `make_remote`, so this is only a test helper for exercising the
     /// outbox-snapshot / drain machinery directly.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_cloud_outbox_upload(
@@ -4537,8 +4537,8 @@ impl LibraryManager {
     ///
     /// SAFETY: the cloud copies are the only ones, so this is only safe when the
     /// release is genuinely being removed. Its sole caller is
-    /// `queue_release_files_for_deletion` (the delete path); the make-Local
-    /// tombstoning is coven's now (it enqueues the deletes inside `make_local`'s
+    /// `queue_release_files_for_deletion` (the delete path); make-Local
+    /// tombstoning is coven's (it enqueues the deletes inside `make_local`'s
     /// atomic commit). `files` are precomputed by the caller, so the cloud keys are
     /// correct.
     pub(crate) async fn queue_storage_deletions(&self, files: &[DbFile]) {

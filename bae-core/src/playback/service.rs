@@ -561,7 +561,7 @@ async fn prepare_track_for_playback(
 
     // Tracks sharing a source file (the tracks of a CUE image) share one buffer,
     // keyed by the backing file's blob id. coven resolves locality per read, so
-    // the key no longer depends on where the bytes live.
+    // the key is independent of where the bytes live.
     let cache_key = resolved.file_id.clone();
 
     let cached = shared_file_buffer
