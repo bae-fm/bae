@@ -79,7 +79,9 @@ struct SettingsView: View {
                 Section("Playback") {
                     PauseBetweenSidesToggle(
                         configStore: configStore,
-                        appHandle: appService.appHandle,
+                        setEnabled: { [appHandle = appService.appHandle] in
+                            try appHandle.setPauseBetweenSides(enabled: $0)
+                        },
                         showError: { @MainActor error in
                             configStore.showError(error)
                         }
