@@ -67,6 +67,10 @@ jobs:
         # loc_key_coverage test above); fails on unreferenced, un-allowlisted keys.
         python3 scripts/loc-chrome-orphans.py
 
+    - name: Check Rust documentation
+      # Broken intra-doc links and invalid rustdoc syntax fail the build.
+      run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+
     - name: Run bae-core tests
       run: |
         # Serial: the device-sync round-trip in test_multi_device_sync.rs has a
