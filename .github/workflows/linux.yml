@@ -13,9 +13,11 @@ on:
         required: false
         type: string
         default: ''
-  # TEMPORARY: lets this job be dispatched alone on the branch for validation
-  # before it lands. Removed before merge — the suite runs via build.yml.
-  workflow_dispatch: {}
+  # TEMPORARY: run this job alone on the migration branch for validation before
+  # it lands (build.yml doesn't trigger on this branch). Removed before merge —
+  # the suite then runs only via build.yml.
+  push:
+    branches: [ci-linux-migration]
 
 env:
   CARGO_TERM_COLOR: always
