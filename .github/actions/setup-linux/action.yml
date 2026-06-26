@@ -14,16 +14,19 @@ runs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y \
-          libwebkit2gtk-4.1-dev \
-          libgtk-3-dev \
-          libayatana-appindicator3-dev \
-          librsvg2-dev \
-          patchelf \
-          libxdo-dev \
+        # libasound2-dev: cpal builds its ALSA backend on Linux.
+        # libdiscid-dev: the discid binding links system libdiscid.
+        # clang/libclang-dev: ffmpeg-sys-next runs bindgen against the headers.
+        # nasm: aws-lc-sys assembles its primitives.
+        # pulseaudio: a null sink so device-gated playback tests find an output
+        #   device instead of skipping (the CPU test's probe needs none).
+        sudo apt-get install -y --no-install-recommends \
           libasound2-dev \
           libdiscid-dev \
           pkg-config \
+          clang \
+          libclang-dev \
+          nasm \
           pulseaudio
 
     - name: Download bae-ffmpeg
@@ -34,10 +37,15 @@ runs:
         sudo mkdir -p "$FFMPEG_DIR"
         curl -L "https://github.com/bae-fm/bae-ffmpeg/releases/download/${{ inputs.ffmpeg-version }}/ffmpeg-linux-$ARCH.tar.gz" | \
           sudo tar xz -C "$FFMPEG_DIR"
+        # The pinned FFmpeg 8.0 bae-core links against. Its bundled ffmpeg CLI
+        # (anoisesrc + flac + libmp3lame encoders) also generates the test
+        # fixtures, so the CLI and the link libs are one consistent version.
         echo "FFMPEG_DIR=$FFMPEG_DIR" >> $GITHUB_ENV
         echo "PKG_CONFIG_PATH=$FFMPEG_DIR/lib/pkgconfig" >> $GITHUB_ENV
         echo "LIBRARY_PATH=$FFMPEG_DIR/lib" >> $GITHUB_ENV
+        # Shared .so libs, so the test binaries need them at runtime too.
         echo "LD_LIBRARY_PATH=$FFMPEG_DIR/lib" >> $GITHUB_ENV
+        echo "BINDGEN_EXTRA_CLANG_ARGS=-I$FFMPEG_DIR/include" >> $GITHUB_ENV
         echo "$FFMPEG_DIR/bin" >> $GITHUB_PATH
 
     - name: Start virtual audio device

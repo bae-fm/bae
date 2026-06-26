@@ -1,0 +1,74 @@
+name: Linux
+
+# Cross-platform Rust lint + test suite on a Linux runner. The Rust core is
+# portable; running it here (instead of on a scarce macOS runner) is cheaper and
+# faster, and leaves the macOS runners for the Xcode-only work. macOS still
+# builds the macOS app; this job owns the Rust gates and tests.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to checkout'
+        required: false
+        type: string
+        default: ''
+  # TEMPORARY: lets this job be dispatched alone on the branch for validation
+  # before it lands. Removed before merge — the suite runs via build.yml.
+  workflow_dispatch: {}
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.ref || github.sha }}
+
+    - name: Setup Linux environment
+      uses: ./.github/actions/setup-linux
+
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
+    - name: Check Rust formatting
+      run: cargo fmt --all -- --check
+
+    - name: Check for unused Rust dependencies
+      run: |
+        cargo binstall cargo-machete --no-confirm
+        cargo machete
+
+    - name: Check Rust dependency licenses and advisories (cargo-deny)
+      run: |
+        cargo binstall cargo-deny --no-confirm
+        cargo deny check
+
+    - name: Run Clippy
+      run: |
+        cargo clippy --workspace -- -D warnings
+        cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
+        cargo clippy -p bae-bridge -- -D warnings
+
+    - name: Run localization + bridge tests
+      run: |
+        cargo test -p bae-loc
+        cargo test -p bae-bridge --lib
+        # chrome-string orphan gate (core.* keys are covered by the bae-bridge
+        # loc_key_coverage test above); fails on unreferenced, un-allowlisted keys.
+        python3 scripts/loc-chrome-orphans.py
+
+    - name: Run bae-core tests
+      run: |
+        # Serial: the device-sync round-trip in test_multi_device_sync.rs has a
+        # CI-specific parallelism race, and the playback CPU test reads
+        # process-wide getrusage. The CPU test runs here too — its probe sink
+        # pulls and discards at real time with no audio device.
+        cargo test -p bae-core --features bae-core/test-utils -- --test-threads=1
