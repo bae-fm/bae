@@ -1602,6 +1602,15 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             progress_percent,
             step: step.map(crate::types::import_step_to_bridge),
         }),
+        UiBusEvent::CandidateImportLoudnessProgress {
+            key,
+            tracks_done,
+            tracks_total,
+        } => Some(BridgeUiEvent::CandidateImportLoudnessProgress {
+            key,
+            tracks_done,
+            tracks_total,
+        }),
         UiBusEvent::CandidateImportComplete {
             key,
             release_id,

@@ -326,8 +326,9 @@ impl FfiImportStep {
             },
             ImportStep::Running(phase) => Self::Running {
                 phase: match phase {
-                    ImportPhase::Acquire => "acquire",
-                    ImportPhase::Store => "store",
+                    ImportPhase::ReferencingFiles => "referencing_files",
+                    ImportPhase::MeasuringLoudness => "measuring_loudness",
+                    ImportPhase::Finalizing => "finalizing",
                 },
             },
         }
@@ -350,8 +351,9 @@ pub fn prepare_step_key(step: &str) -> Option<&'static str> {
 /// Catalog key for an import-phase wire tag. Mirrors `bridge_import_phase_key`.
 pub fn import_phase_key(phase: &str) -> Option<&'static str> {
     match phase {
-        "acquire" => Some("core.import.phase.acquire"),
-        "store" => Some("core.import.phase.store"),
+        "referencing_files" => Some("core.import.phase.referencing_files"),
+        "measuring_loudness" => Some("core.import.phase.measuring_loudness"),
+        "finalizing" => Some("core.import.phase.finalizing"),
         _ => None,
     }
 }
@@ -460,7 +462,7 @@ mod tests {
         ] {
             assert_key(&cat, prepare_step_key(step).expect("prepare step keyed"));
         }
-        for phase in ["acquire", "store"] {
+        for phase in ["referencing_files", "measuring_loudness", "finalizing"] {
             assert_key(&cat, import_phase_key(phase).expect("phase keyed"));
         }
     }

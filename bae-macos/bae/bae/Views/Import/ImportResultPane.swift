@@ -138,7 +138,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
             storagePinned: $storagePinned,
             importStatus: .importing(
                 progressPercent: 45,
-                step: .running(phase: .store)
+                step: .running(phase: .measuringLoudness)
             ),
             importing: true
         )

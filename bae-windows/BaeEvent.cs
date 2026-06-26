@@ -73,6 +73,11 @@ public sealed class BaeEvent
     // Import progress (CandidateImportProgress): percent + the structured step.
     public int ProgressPercent { get; set; }
 
+    // Loudness measurement progress (CandidateImportLoudnessProgress): tracks
+    // measured so far of the total, for a determinate "N / M" indicator.
+    public int TracksDone { get; set; }
+    public int TracksTotal { get; set; }
+
     /// <summary>The structured import step (CandidateImportProgress); null before
     /// the first step is known. The handler resolves its localized verb.</summary>
     public ImportStep? Step { get; set; }
@@ -111,7 +116,8 @@ public sealed class ImportStep
     [System.Text.Json.Serialization.JsonPropertyName("step")]
     public string? StepTag { get; set; }
 
-    /// <summary>Import-phase wire tag for the "running" case ("acquire"/"store").</summary>
+    /// <summary>Import-phase wire tag for the "running" case
+    /// ("referencing_files"/"measuring_loudness"/"finalizing").</summary>
     public string? Phase { get; set; }
 
     /// <summary>The localized progress verb for this step, or empty for an

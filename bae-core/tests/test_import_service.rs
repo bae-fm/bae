@@ -506,6 +506,82 @@ async fn import_produces_audio_format_records() {
     );
 }
 
+/// The loudness pass emits a start tick (0/N), one tick per track as it's
+/// measured, and a final tick (N/N) — so the import UI can show a live,
+/// determinate bar through the otherwise-silent decode span instead of a frozen
+/// spinner.
+#[tokio::test]
+#[serial]
+async fn loudness_pass_emits_per_track_progress() {
+    use bae_core::import::ImportEvent;
+
+    support::tracing_init();
+
+    let release = discogs_release("Loudness Album", &["Track One", "Track Two", "Track Three"]);
+    let release_id_key = seed_discogs_test_release(release);
+    let f = ImportFixture::new().await;
+
+    // Subscribe to the full import event stream before the import runs; the
+    // 1024-slot broadcast buffer holds every tick until we drain it below.
+    let mut event_rx = f.handle.subscribe_events();
+
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_album_files(
+        &album_dir,
+        &[
+            "01 Track One.flac",
+            "02 Track Two.flac",
+            "03 Track Three.flac",
+        ],
+    );
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    f.handle
+        .send_command(ImportCommand::Folder {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            },
+            user_edit: None,
+        })
+        .unwrap();
+
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let _ = support::wait_for_import_complete(&mut progress_rx).await;
+
+    // Drain the buffered events; keep the loudness ticks for our candidate in
+    // arrival order.
+    let mut ticks: Vec<(u32, u32)> = Vec::new();
+    while let Ok(event) = event_rx.try_recv() {
+        if let ImportEvent::ImportLoudnessProgress {
+            candidate_key,
+            tracks_done,
+            tracks_total,
+        } = event
+        {
+            if candidate_key == "test" {
+                ticks.push((tracks_done, tracks_total));
+            }
+        }
+    }
+
+    // Three tracks → a start tick plus one per measured track: 0/3, 1/3, 2/3,
+    // 3/3. `done` is monotonic and total is constant; the final tick reaches N/N
+    // so the bar always completes.
+    let done: Vec<u32> = ticks.iter().map(|(d, _)| *d).collect();
+    assert_eq!(done, vec![0, 1, 2, 3], "loudness ticks were {ticks:?}");
+    assert!(
+        ticks.iter().all(|(_, total)| *total == 3),
+        "every tick reports total=3: {ticks:?}"
+    );
+}
+
 /// Interleaved-stereo 1 kHz sine at `amplitude` (fraction of full scale).
 ///
 /// When `spikes` is set, a single full-scale sample is injected every 0.1 s.

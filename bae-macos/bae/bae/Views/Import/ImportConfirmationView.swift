@@ -32,6 +32,9 @@ struct ImportConfirmationView<
     let trackCountMismatch: Bool
     let expectedTrackCount: UInt32
     let libraryStatus: LibraryStatus?
+    /// The candidate this pane confirms — routes the high-frequency loudness
+    /// ticks to the leaf bar during the measuring-loudness phase.
+    let candidateKey: String
     let importStatus: ImportStatus?
     /// Commit-time error written to the candidate (invalid edit shape, a
     /// failed `start_import` dispatch). Distinct from the
@@ -197,14 +200,23 @@ struct ImportConfirmationView<
         else if let status = importStatus {
             switch status {
             case .importing(_, let step):
-                HStack(spacing: 6) {
-                    ProgressView()
-                        .controlSize(.small)
-                    if let step {
-                        Text(step.localizedText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
+                if case .running(.measuringLoudness)? = step {
+                    // The loudness pass is the long pole; show its live,
+                    // determinate per-track bar (updated imperatively off the
+                    // high-frequency signal) instead of an indeterminate spinner.
+                    ImportLoudnessProgressRepresentable(key: candidateKey)
+                        .frame(width: 200, height: 32)
+                }
+                else {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.small)
+                        if let step {
+                            Text(step.localizedText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
                     }
                 }
             case .error:
@@ -602,6 +614,7 @@ struct CoverPickerView: View {
         trackCountMismatch: PreviewData.releaseDetail.trackCountMismatch,
         expectedTrackCount: PreviewData.releaseDetail.trackCount,
         libraryStatus: nil,
+        candidateKey: "preview-candidate",
         importStatus: nil,
         error: nil,
         hasCoverOptions: false,

@@ -29,6 +29,18 @@ pub enum ImportEvent {
         candidate_key: String,
         progress: ImportProgress,
     },
+    /// Per-track loudness measurement progress for an importing candidate. A
+    /// high-frequency tick (one per track as its decode+measure completes,
+    /// plus a 0/N start and an N/N final), routed to a native leaf view rather
+    /// than the candidate row's coarse step. Separate from `ImportProgress` so
+    /// it bypasses the release/import progress subscribers — it carries the
+    /// candidate key, not a release/import id.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    ImportLoudnessProgress {
+        candidate_key: String,
+        tracks_done: u32,
+        tracks_total: u32,
+    },
     /// Identify pipeline transitioned to a new state. Emitted by the
     /// `identify` module; carries the full state payload plus the pre-shaped
     /// signals toolbar (the interactive badge row) projected from the same

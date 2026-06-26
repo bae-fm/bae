@@ -1571,6 +1571,19 @@ public sealed partial class MainWindow : Window
                 UpdateCandidate(evt.Key, null,
                     string.IsNullOrEmpty(stepLabel) ? importing : $"{importing} — {stepLabel}");
                 break;
+            case "CandidateImportLoudnessProgress":
+                // The long-pole loudness pass: replace the candidate's status
+                // with a live "Measuring loudness — N/M" line per track. The
+                // row is replaced in place (UpdateCandidate raises Replace), so
+                // the list isn't re-rendered.
+                UpdateCandidate(evt.Key, null, Loc.Core(
+                    "ui.import.loudness_progress",
+                    new Dictionary<string, object?>
+                    {
+                        ["done"] = evt.TracksDone,
+                        ["total"] = evt.TracksTotal,
+                    }));
+                break;
             case "CandidateImportComplete":
                 UpdateCandidate(evt.Key, null, Loc.Chrome("import.complete"));
                 break;

@@ -703,6 +703,7 @@ extension ImportSearchFlow {
                 trackCountMismatch: inputs.trackCountMismatch,
                 expectedTrackCount: inputs.expectedTrackCount,
                 libraryStatus: inputs.libraryStatus,
+                candidateKey: key,
                 importStatus: candidate.importStatus,
                 error: candidate.error,
                 hasCoverOptions: inputs.hasCoverOptions,

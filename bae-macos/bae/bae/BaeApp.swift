@@ -74,6 +74,14 @@ struct BaeApp: App {
             ?? Empty().eraseToAnyPublisher()
     }
 
+    private var importLoudnessPublisher:
+        AnyPublisher<ImportLoudnessProgressEvent?, Never>
+    {
+        appDelegate.appService?.importStore.importLoudnessSubject
+            .eraseToAnyPublisher()
+            ?? Empty().eraseToAnyPublisher()
+    }
+
     /// WelcomeView constructed with the deep-link mode if a menu item
     /// requested one (Restore from Code), else the default chooser. Bound
     /// to the same callback for both paths.
@@ -279,6 +287,7 @@ extension BaeApp {
             .environment(appDelegate.appService?.downloadStore)
             .environment(\.playbackPositionPublisher, playbackPublisher)
             .environment(\.previewProgressPublisher, previewPublisher)
+            .environment(\.importLoudnessPublisher, importLoudnessPublisher)
             .environment(appDelegate.uiStore)
             .onAppear {
                 #if !DEBUG

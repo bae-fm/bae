@@ -27,6 +27,7 @@ enum ImportConfirmationPreview {
             trackCountMismatch: trackCountMismatch,
             expectedTrackCount: expectedTrackCount,
             libraryStatus: libraryStatus,
+            candidateKey: "preview-candidate",
             importStatus: importStatus,
             error: error,
             hasCoverOptions: hasCoverOptions,

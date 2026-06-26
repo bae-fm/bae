@@ -1283,11 +1283,23 @@ impl ImportService {
         for (idx, file) in discovered_files.iter().enumerate() {
             if let Some(track_ids) = file_to_tracks.get(&file.path) {
                 for track_id in track_ids {
-                    self.emit_store_progress(candidate_key, track_id, 100, import_id);
+                    self.emit_phase_progress(
+                        candidate_key,
+                        track_id,
+                        100,
+                        ImportPhase::ReferencingFiles,
+                        import_id,
+                    );
                 }
             }
             let release_percent = ((idx + 1) * 100 / total_files.max(1)) as u8;
-            self.emit_store_progress(candidate_key, &db_release.id, release_percent, import_id);
+            self.emit_phase_progress(
+                candidate_key,
+                &db_release.id,
+                release_percent,
+                ImportPhase::ReferencingFiles,
+                import_id,
+            );
             info!(
                 "Recorded file {}/{}: {}",
                 idx + 1,
@@ -1312,8 +1324,16 @@ impl ImportService {
         // skip point inside `measure_loudness`.
         #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
         {
-            let (album_loudness, album_peak) =
-                Self::measure_loudness(&mut audio_formats, tracks_to_files).await;
+            self.emit_phase_progress(
+                candidate_key,
+                &db_release.id,
+                0,
+                ImportPhase::MeasuringLoudness,
+                import_id,
+            );
+            let (album_loudness, album_peak) = self
+                .measure_loudness(&mut audio_formats, tracks_to_files, candidate_key)
+                .await;
             db_release.album_loudness_lufs = album_loudness;
             db_release.album_peak_linear = album_peak;
         }
@@ -1365,6 +1385,14 @@ impl ImportService {
         }
         let library_image = cover_winner.as_ref().map(|(image, _)| image);
         let cover_rel_id = Some((album_id, db_release.id.as_str()));
+
+        self.emit_phase_progress(
+            candidate_key,
+            &db_release.id,
+            0,
+            ImportPhase::Finalizing,
+            import_id,
+        );
 
         let remote_intent = matches!(storage_mode, StorageMode::Remote);
         library_manager
@@ -1453,7 +1481,17 @@ impl ImportService {
         );
     }
 
-    fn emit_store_progress(&self, candidate_key: &str, id: &str, percent: u8, import_id: &str) {
+    /// Emit a coarse running-phase progress event for the candidate row. `id` is
+    /// the release id (or a track id, during the per-file referencing pass);
+    /// `percent` fills the candidate's determinate bar for that phase.
+    fn emit_phase_progress(
+        &self,
+        candidate_key: &str,
+        id: &str,
+        percent: u8,
+        phase: ImportPhase,
+        import_id: &str,
+    ) {
         send_event(
             &self.event_tx,
             crate::import::handle::ImportEvent::ImportProgress {
@@ -1461,9 +1499,24 @@ impl ImportService {
                 progress: ImportProgress::Progress {
                     id: id.to_string(),
                     percent,
-                    phase: Some(ImportPhase::Store),
+                    phase: Some(phase),
                     import_id: Some(import_id.to_string()),
                 },
+            },
+        );
+    }
+
+    /// Emit a per-track loudness tick for the candidate's confirm pane. Routed
+    /// to a native leaf view (not the coarse candidate row), so the one-per-track
+    /// cadence never churns the row.
+    #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+    fn emit_loudness_progress(&self, candidate_key: &str, tracks_done: u32, tracks_total: u32) {
+        send_event(
+            &self.event_tx,
+            crate::import::handle::ImportEvent::ImportLoudnessProgress {
+                candidate_key: candidate_key.to_string(),
+                tracks_done,
+                tracks_total,
             },
         );
     }
@@ -1672,8 +1725,10 @@ impl ImportService {
     /// aborts the import.
     #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
     async fn measure_loudness(
+        &self,
         audio_formats: &mut [crate::db::DbAudioFormat],
         tracks_to_files: &[TrackFile],
+        candidate_key: &str,
     ) -> (Option<f64>, Option<f64>) {
         use ebur128::EbuR128;
 
@@ -1695,12 +1750,21 @@ impl ImportService {
             });
         }
 
-        // Spawn one blocking decode+measure per track; collect by index so the
-        // album combine is order-independent and the per-track write is exact.
-        let mut tasks = Vec::with_capacity(audio_formats.len());
+        // Every track is one unit of progress. A track whose source file was
+        // unreadable gets no decode task, so count it as done up front — the bar
+        // still reaches N/N even when some tracks can't be measured.
+        let tracks_total = audio_formats.len() as u32;
+        let mut tracks_done: u32 = 0;
+
+        // Spawn one blocking decode+measure per track; `JoinSet::join_next`
+        // yields each as it finishes, so the per-track tick fires on real
+        // completion order. The result carries its index so the album combine
+        // stays order-independent and the per-track write is exact.
+        let mut tasks = tokio::task::JoinSet::new();
         for (idx, (af, tf)) in audio_formats.iter().zip(tracks_to_files).enumerate() {
             let path = tf.file_path().to_path_buf();
             let Some(bytes) = file_bytes.get(&path).and_then(|b| b.clone()) else {
+                tracks_done += 1;
                 continue;
             };
             let start_sample = af.start_sample as u64;
@@ -1712,7 +1776,7 @@ impl ImportService {
             // source depth (NULL for lossy codecs, where the decoded container
             // depth is used instead).
             let source_bits = af.bits_per_sample.map(|b| b as u32);
-            tasks.push(tokio::task::spawn_blocking(move || {
+            tasks.spawn_blocking(move || {
                 let decoded = match crate::audio_codec::decode_audio(
                     &bytes,
                     Some(start_sample),
@@ -1741,13 +1805,17 @@ impl ImportService {
                         (idx, None)
                     }
                 }
-            }));
+            });
         }
+
+        // Start tick (already counting any unreadable-file skips), then one per
+        // completed track so the determinate bar tracks the long decode pass.
+        self.emit_loudness_progress(candidate_key, tracks_done, tracks_total);
 
         let mut meters: Vec<EbuR128> = Vec::new();
         let mut track_peaks: Vec<f64> = Vec::new();
-        for task in tasks {
-            match task.await {
+        while let Some(joined) = tasks.join_next().await {
+            match joined {
                 Ok((idx, Some((meter, loudness_lufs, peak_linear)))) => {
                     audio_formats[idx].track_loudness_lufs = Some(loudness_lufs);
                     audio_formats[idx].track_peak_linear = Some(peak_linear);
@@ -1757,6 +1825,8 @@ impl ImportService {
                 Ok((_, None)) => {}
                 Err(e) => warn!("loudness: measurement task panicked: {e}; track stays unmeasured"),
             }
+            tracks_done += 1;
+            self.emit_loudness_progress(candidate_key, tracks_done, tracks_total);
         }
 
         let album_loudness = crate::loudness::album_loudness(&meters);

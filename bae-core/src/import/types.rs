@@ -493,9 +493,8 @@ pub enum ImportProgress {
     Progress {
         id: String,
         percent: u8,
-        /// Phase of import: Acquire (data fetching) or Store (storage/encryption).
-        /// Folder imports go straight to the Store phase — acquisition is instant
-        /// because the files are already on disk.
+        /// Which running phase this progress belongs to. The phases run in order:
+        /// reference the files in place, measure loudness, finalize.
         phase: Option<ImportPhase>,
         import_id: Option<String>,
     },
@@ -511,16 +510,22 @@ pub enum ImportProgress {
     },
 }
 
-/// Phase of import process (applies to all import types)
+/// The running phase of an import, after phase-0 preparation. Emitted as each
+/// transition begins so the UI can name the work in progress. Every import is
+/// local-in-place: the source files are referenced where they sit, then each
+/// track is decoded to measure loudness (the long pole), then the rows are
+/// written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportPhase {
-    /// Acquire phase: Get data ready for import
-    /// - Folder: No-op (files already available)
-    /// - CD: Rip CD tracks to FLAC files
-    Acquire,
-    /// Store phase: Store and encrypt data
-    /// Same for all import types: read files → encrypt → store
-    Store,
+    /// Recording each source file's row and referencing it in place. No bytes
+    /// move; per-file progress fills the percent.
+    ReferencingFiles,
+    /// Decoding each track to measure its loudness and true peak. Per-track
+    /// progress arrives on the dedicated `ImportLoudnessProgress` event, not the
+    /// coarse percent.
+    MeasuringLoudness,
+    /// Writing the album/release/track rows and committing the import.
+    Finalizing,
 }
 
 /// Steps during phase 0 preparation (in ImportHandle, before pipeline starts)

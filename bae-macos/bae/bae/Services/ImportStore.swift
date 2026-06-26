@@ -73,6 +73,16 @@ class ImportStore {
         PreviewProgressEvent, Never
     >(.reset)
 
+    /// Per-track loudness measurement progress during an import. High-frequency
+    /// (one per track), published as a Combine signal so only the leaf bar in
+    /// the confirm pane re-renders — never the candidate row. Carries the
+    /// candidate key so a leaf filters to its own import; `nil` until the first
+    /// tick. Buffers the latest value for a leaf created mid-pass.
+    @ObservationIgnored
+    let importLoudnessSubject = CurrentValueSubject<
+        ImportLoudnessProgressEvent?, Never
+    >(nil)
+
     /// Look up a candidate by key across both source dicts. Used when the
     /// caller doesn't know (or doesn't care about) the candidate's source —
     /// e.g. generic reducer cases and the shared search/confirmation flow.

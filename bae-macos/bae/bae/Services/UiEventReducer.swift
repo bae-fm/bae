@@ -126,8 +126,9 @@ enum UiEventReducer {
             reducePreview(event, into: context)
 
         case .candidateIdentifyStateChanged, .candidateSignalsUpdated,
-            .candidateImportImporting, .candidateImportComplete,
-            .candidateImportError, .candidateSkipChanged:
+            .candidateImportImporting, .candidateImportLoudnessProgress,
+            .candidateImportComplete, .candidateImportError,
+            .candidateSkipChanged:
             reduceCandidate(event, into: context)
 
         case .watchedFoldersChanged, .folderCandidateAdded, .invalidCandidate,
@@ -441,6 +442,21 @@ extension UiEventReducer {
                     step: step
                 )
             }
+
+        case .candidateImportLoudnessProgress(
+            let key,
+            let tracksDone,
+            let tracksTotal
+        ):
+            // High-frequency per-track tick — publish to the leaf bar's signal,
+            // never the @Observable candidate row.
+            importStore.importLoudnessSubject.send(
+                ImportLoudnessProgressEvent(
+                    key: key,
+                    tracksDone: tracksDone,
+                    tracksTotal: tracksTotal
+                )
+            )
 
         case .candidateImportComplete(let key, let releaseId, let albumId):
             importStore.mutateCandidate(forKey: key) {

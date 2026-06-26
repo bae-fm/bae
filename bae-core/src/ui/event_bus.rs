@@ -344,6 +344,18 @@ impl UiEventBus {
                         }
                     }
                     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                    Ok(ImportEvent::ImportLoudnessProgress {
+                        candidate_key,
+                        tracks_done,
+                        tracks_total,
+                    }) => {
+                        bus.emit(UiBusEvent::CandidateImportLoudnessProgress {
+                            key: candidate_key,
+                            tracks_done,
+                            tracks_total,
+                        });
+                    }
+                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
                     Ok(ImportEvent::IdentifyStateChanged {
                         candidate_key,
                         state,

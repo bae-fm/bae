@@ -760,19 +760,21 @@ impl BridgePrepareStep {
     }
 }
 
-/// Pipeline phase, mirroring bae-core's `ImportPhase`. Localized via
+/// Running phase, mirroring bae-core's `ImportPhase`. Localized via
 /// `bridge_import_phase_key`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeImportPhase {
-    Acquire,
-    Store,
+    ReferencingFiles,
+    MeasuringLoudness,
+    Finalizing,
 }
 
 impl BridgeImportPhase {
     pub(crate) fn loc_key(self) -> &'static str {
         match self {
-            Self::Acquire => "core.import.phase.acquire",
-            Self::Store => "core.import.phase.store",
+            Self::ReferencingFiles => "core.import.phase.referencing_files",
+            Self::MeasuringLoudness => "core.import.phase.measuring_loudness",
+            Self::Finalizing => "core.import.phase.finalizing",
         }
     }
 }
@@ -798,8 +800,9 @@ pub(crate) fn import_step_to_bridge(s: bae_core::import::ImportStep) -> BridgeIm
         },
         ImportStep::Running(phase) => BridgeImportStep::Running {
             phase: match phase {
-                ImportPhase::Acquire => BridgeImportPhase::Acquire,
-                ImportPhase::Store => BridgeImportPhase::Store,
+                ImportPhase::ReferencingFiles => BridgeImportPhase::ReferencingFiles,
+                ImportPhase::MeasuringLoudness => BridgeImportPhase::MeasuringLoudness,
+                ImportPhase::Finalizing => BridgeImportPhase::Finalizing,
             },
         },
     }
@@ -1406,6 +1409,13 @@ pub enum BridgeUiEvent {
         key: String,
         progress_percent: u32,
         step: Option<BridgeImportStep>,
+    },
+    /// High-frequency per-track loudness tick — the UI routes it to a native
+    /// leaf view (determinate bar "N / M"), not the coarse candidate row.
+    CandidateImportLoudnessProgress {
+        key: String,
+        tracks_done: u32,
+        tracks_total: u32,
     },
     CandidateImportComplete {
         key: String,
@@ -3326,10 +3336,15 @@ mod loc_key_coverage {
         }
 
         // bridge_import_phase_key — every variant carries a key.
-        for phase in [BridgeImportPhase::Acquire, BridgeImportPhase::Store] {
+        for phase in [
+            BridgeImportPhase::ReferencingFiles,
+            BridgeImportPhase::MeasuringLoudness,
+            BridgeImportPhase::Finalizing,
+        ] {
             let expected = match phase {
-                BridgeImportPhase::Acquire => "core.import.phase.acquire",
-                BridgeImportPhase::Store => "core.import.phase.store",
+                BridgeImportPhase::ReferencingFiles => "core.import.phase.referencing_files",
+                BridgeImportPhase::MeasuringLoudness => "core.import.phase.measuring_loudness",
+                BridgeImportPhase::Finalizing => "core.import.phase.finalizing",
             };
             assert_eq!(bridge_import_phase_key(phase), expected);
             keys.push(expected.to_string());

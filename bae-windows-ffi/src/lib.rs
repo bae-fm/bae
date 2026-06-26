@@ -2499,6 +2499,14 @@ enum FfiEvent {
         progress_percent: u32,
         step: Option<loc::FfiImportStep>,
     },
+    /// Per-track loudness measurement progress for a candidate. The C# renders a
+    /// determinate "N / M" indicator off these counts, updated per track rather
+    /// than re-rendering the candidate list.
+    CandidateImportLoudnessProgress {
+        key: String,
+        tracks_done: u32,
+        tracks_total: u32,
+    },
     /// A candidate's import finished; the album is in the library.
     CandidateImportComplete {
         key: String,
@@ -2781,6 +2789,15 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             key: key.clone(),
             progress_percent: *progress_percent,
             step: step.as_ref().map(loc::FfiImportStep::from_core),
+        },
+        UiBusEvent::CandidateImportLoudnessProgress {
+            key,
+            tracks_done,
+            tracks_total,
+        } => FfiEvent::CandidateImportLoudnessProgress {
+            key: key.clone(),
+            tracks_done: *tracks_done,
+            tracks_total: *tracks_total,
         },
         UiBusEvent::CandidateImportComplete {
             key,
