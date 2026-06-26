@@ -79,7 +79,15 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
 
-      - name: Build the Windows FFI cdylib
+      # Both editions differ ONLY in the Rust FFI cdylib: the full feature set
+      # (oauth-providers) adds the bae_oauth_* / bae_sign_in_cloud C-ABI exports;
+      # baeium (default, no features) omits them. The WinUI C# app is byte-identical
+      # for both — it P/Invokes whatever dll ships and runtime-detects OAuth support
+      # via NativeBae.SupportsOAuthProviders() — so it's built once (below) while the
+      # FFI is compiled and linked for both feature sets here. A real `cargo build`
+      # (not just clippy) so the oauth exports' link step is exercised, not only the
+      # type-check.
+      - name: Build the Windows FFI cdylib (baeium, default features)
         run: cargo build -p bae-windows-ffi --target x86_64-pc-windows-msvc
 
       - name: Confirm the FFI DLL was produced
@@ -88,6 +96,10 @@ jobs:
           $dll = "target\x86_64-pc-windows-msvc\debug\bae_windows_ffi.dll"
           if (Test-Path $dll) { Write-Host "PASS: $dll ($((Get-Item $dll).Length) bytes)" }
           else { Write-Host "FAIL: $dll not found"; exit 1 }
+
+      - name: Build the Windows FFI cdylib (full edition, oauth-providers)
+        # Windows has no cloudkit (Apple-only); full here is oauth-providers only.
+        run: cargo build -p bae-windows-ffi --target x86_64-pc-windows-msvc --features oauth-providers
 
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@v5
@@ -153,7 +165,12 @@ jobs:
         # mapping) that don't require audio hardware — safe to run on CI.
         run: cargo test -p bae-windows-ffi --target x86_64-pc-windows-msvc
 
-      - name: Clippy (bae-core, bae-windows-ffi, bae-bridge)
+      - name: Clippy (baeium / default features)
         # bae-bridge is included here because the host clippy in ci.yml targets
         # macOS — it doesn't catch cfg(target_os = "windows")-gated dead-code.
         run: cargo clippy -p bae-core -p bae-windows-ffi -p bae-bridge --target x86_64-pc-windows-msvc -- -D warnings
+
+      - name: Clippy (full edition, oauth-providers)
+        # Dead-code warnings are feature-specific, so lint the oauth-gated code on
+        # the Windows target too. oauth-providers only — no cloudkit on Windows.
+        run: cargo clippy -p bae-core -p bae-windows-ffi -p bae-bridge --target x86_64-pc-windows-msvc --features oauth-providers -- -D warnings
