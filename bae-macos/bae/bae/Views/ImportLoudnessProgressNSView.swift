@@ -126,9 +126,10 @@ struct ImportLoudnessProgressRepresentable: NSViewRepresentable {
             let key = key
             cancellable =
                 publisher
+                .compactMap { $0 }
+                .filter { $0.key == key }
                 .receive(on: DispatchQueue.main)
                 .sink { event in
-                    guard let event, event.key == key else { return }
                     view.setProgress(
                         tracksDone: event.tracksDone,
                         tracksTotal: event.tracksTotal

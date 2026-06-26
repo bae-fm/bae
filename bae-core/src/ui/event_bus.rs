@@ -317,7 +317,7 @@ impl UiEventBus {
                                 Some(UiBusEvent::CandidateImportImporting {
                                     key: candidate_key.clone(),
                                     progress_percent: percent as u32,
-                                    step: phase.map(crate::import::ImportStep::Running),
+                                    step: Some(crate::import::ImportStep::Running(phase)),
                                 })
                             }
                             ImportProgress::Complete { id, album_id, .. } => {

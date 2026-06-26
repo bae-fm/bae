@@ -1499,7 +1499,7 @@ impl ImportService {
                 progress: ImportProgress::Progress {
                     id: id.to_string(),
                     percent,
-                    phase: Some(phase),
+                    phase,
                     import_id: Some(import_id.to_string()),
                 },
             },

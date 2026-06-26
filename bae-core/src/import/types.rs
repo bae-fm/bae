@@ -495,7 +495,7 @@ pub enum ImportProgress {
         percent: u8,
         /// Which running phase this progress belongs to. The phases run in order:
         /// reference the files in place, measure loudness, finalize.
-        phase: Option<ImportPhase>,
+        phase: ImportPhase,
         import_id: Option<String>,
     },
     Complete {
