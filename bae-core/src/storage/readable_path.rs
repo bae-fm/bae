@@ -1,6 +1,6 @@
 //! Cloud blob keys for browsable homes.
 //!
-//! An opaque home keys every managed blob by a hash of its id
+//! An opaque home keys every remote blob by a hash of its id
 //! (`storage/{ab}/{cd}/{id}` for audio, `images/{ab}/{cd}/{id}` for images), so
 //! its cloud objects are obscured shard keys. A browsable home stores them
 //! unencrypted at stable, structured paths built from the album/release/artist

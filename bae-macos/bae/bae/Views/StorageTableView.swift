@@ -971,9 +971,9 @@ private struct StorageStateLabel: View {
         }
         else {
             switch release.storageState {
-            case .unmanaged:
+            case .local:
                 Label("Unmanaged", systemImage: "folder").lineLimit(1)
-            case .managed:
+            case .remote:
                 if release.pinned {
                     Label("Pinned", systemImage: "pin.fill").lineLimit(1)
                 }

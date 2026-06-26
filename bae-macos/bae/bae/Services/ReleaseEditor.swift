@@ -90,10 +90,10 @@ final class ReleaseEditor: Sendable, Observable {
             },
             unpinRelease: { try await handle.unpinRelease(releaseId: $0) },
             manageRelease: {
-                try await handle.manageRelease(releaseId: $0, pin: $1)
+                try await handle.makeReleaseRemote(releaseId: $0, pin: $1)
             },
             unmanageRelease: {
-                try await handle.unmanageRelease(releaseId: $0, newPath: $1)
+                try await handle.makeReleaseLocal(releaseId: $0, newPath: $1)
             },
             deleteRelease: { handle.deleteRelease(releaseId: $0) },
             setPrimaryRelease: {

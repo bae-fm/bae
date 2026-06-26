@@ -251,12 +251,12 @@ pub struct DbRelease {
     /// Specific MB/Discogs release ID used to seed metadata. NULL when
     /// `metadata_source = FileTags`.
     pub metadata_source_release_id: Option<String>,
-    /// Shared, synced fact: is this release's audio in the cloud home (managed)
-    /// or local to one device (unmanaged). An unmanaged release's in-place folder
-    /// lives in the device-local `release_unmanaged_source` /
-    /// [`DbReleaseUnmanagedSource`]; a managed release's bytes live in coven's
+    /// Shared, synced fact: is this release's audio in the cloud home (remote)
+    /// or local to one device (local). A local release's in-place folder
+    /// lives in the device-local `release_local_source` /
+    /// [`DbReleaseLocalSource`]; a remote release's bytes live in coven's
     /// blob cache.
-    pub managed: bool,
+    pub remote: bool,
     /// Name of the source folder this release was imported from (just the final
     /// path component, not the full path). Used to detect likely duplicates when
     /// the user re-scans the same folder.
@@ -279,18 +279,18 @@ pub struct DbRelease {
     pub created_at: DateTime<Utc>,
 }
 
-/// One `release_unmanaged_source` row — DEVICE-LOCAL truth that this release is
-/// UNMANAGED on this device, with its files in place at `path`. Not synced (the
+/// One `release_local_source` row — DEVICE-LOCAL truth that this release is
+/// LOCAL on this device, with its files in place at `path`. Not synced (the
 /// table carries no `_updated_at` and is not a registered synced table), so each
 /// device owns its own rows.
 ///
-/// A row exists for exactly the unmanaged releases (`releases.managed = 0`). A
-/// managed release has NO row: its bytes live only in coven's blob cache
+/// A row exists for exactly the local releases (`releases.remote = 0`). A
+/// remote release has NO row: its bytes live only in coven's blob cache
 /// (`storage/pinned/` when kept local, else fetched into `storage/cache/` on
-/// read), which coven owns — so "is it local" and "is it pinned" for a managed
+/// read), which coven owns — so "is it local" and "is it pinned" for a remote
 /// release are answered by coven's cache, never here.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DbReleaseUnmanagedSource {
+pub struct DbReleaseLocalSource {
     pub release_id: String,
     /// The folder the in-place files live in on this device; a file is at
     /// `path/original_filename`.
@@ -405,9 +405,9 @@ pub struct DbTrack {
 /// - Some files are metadata (cover.jpg, .cue sheets) not associated with any track
 ///
 /// File location follows the release's storage state:
-/// - unmanaged (has a `release_unmanaged_source` row): `path/original_filename`,
+/// - local (has a `release_local_source` row): `path/original_filename`,
 ///   the in-place source on this device;
-/// - managed (no row): coven's blob cache (`storage/pinned/` or `storage/cache/`),
+/// - remote (no row): coven's blob cache (`storage/pinned/` or `storage/cache/`),
 ///   read through coven's cache API by the file's id — never a bae path.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbFile {
@@ -417,7 +417,7 @@ pub struct DbFile {
     pub original_filename: String,
     pub file_size: i64,
     pub content_type: ContentType,
-    /// Cloud object key for this file's managed blob, mirroring coven's
+    /// Cloud object key for this file's remote blob, mirroring coven's
     /// `BlobRef.cloud_path`. `None` = the hashed-by-id layout
     /// (`storage_path(id)`), used by opaque homes and as the read fallback;
     /// `Some` = the explicit readable key set when the file entered a browsable
@@ -428,7 +428,7 @@ pub struct DbFile {
 }
 
 /// A cloud-upload intent committed inside `finalize_import_atomic`'s
-/// transaction — one per file of a managed import, so the release either
+/// transaction — one per file of a remote import, so the release either
 /// lands with its uploads queued or doesn't land at all. The cloud object key
 /// is computed inside the transaction (the same value written to the file's
 /// `release_files.cloud_path`): the hashed `storage_path(file_id)` on an opaque
@@ -437,8 +437,8 @@ pub struct DbFile {
 pub struct DbCloudUpload {
     pub file_id: String,
     /// Plaintext source the upload drain reads. `None` means the staged
-    /// `storage/` copy (a managed pin); `Some` points at the user's original
-    /// file (a managed cloud-only import, which moves no bytes locally).
+    /// `storage/` copy (a remote pin); `Some` points at the user's original
+    /// file (a remote cloud-only import, which moves no bytes locally).
     pub source_path: Option<String>,
 }
 /// Audio format metadata for a track. One record per track (1:1 with track).
@@ -618,7 +618,7 @@ impl DbRelease {
             disc_id: None,
             metadata_source: ReleaseMetadataSource::FileTags,
             metadata_source_release_id: None,
-            managed: true,
+            remote: true,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,
@@ -653,9 +653,9 @@ impl DbRelease {
             disc_id: None,
             metadata_source: ReleaseMetadataSource::Discogs,
             metadata_source_release_id: Some(release.id.clone()),
-            // Imports land unmanaged; the upload observer flips `managed` true
+            // Imports land local; the upload observer flips `remote` true
             // once the release's audio is durably in the cloud.
-            managed: false,
+            remote: false,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,
@@ -699,9 +699,9 @@ impl DbRelease {
             disc_id: None,
             metadata_source: ReleaseMetadataSource::MusicBrainz,
             metadata_source_release_id: Some(response.id.clone()),
-            // Imports land unmanaged; the upload observer flips `managed` true
+            // Imports land local; the upload observer flips `remote` true
             // once the release's audio is durably in the cloud.
-            managed: false,
+            remote: false,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,
@@ -710,18 +710,18 @@ impl DbRelease {
         }
     }
 
-    /// Storage state — Unmanaged (local) or Managed (cloud) — from the shared
-    /// `managed` fact. Pinned-ness is the orthogonal coven-cache property the
+    /// Storage state — Local (local) or Remote (cloud) — from the shared
+    /// `remote` fact. Pinned-ness is the orthogonal coven-cache property the
     /// caller carries separately; it is never part of this.
     pub fn storage_state(&self) -> crate::album_detail::ReleaseStorageState {
-        crate::album_detail::storage_state(self.managed)
+        crate::album_detail::storage_state(self.remote)
     }
 }
 
-impl DbReleaseUnmanagedSource {
+impl DbReleaseLocalSource {
     /// The in-place path of `file` on this device: `path/original_filename`. Only
-    /// unmanaged releases have a row, so this always resolves to the in-place
-    /// source; a managed release reads from coven's cache, never here.
+    /// local releases have a row, so this always resolves to the in-place
+    /// source; a remote release reads from coven's cache, never here.
     pub fn local_file_path(&self, file: &DbFile) -> std::path::PathBuf {
         std::path::Path::new(&self.path).join(&file.original_filename)
     }
@@ -788,7 +788,7 @@ impl DbFile {
             original_filename: original_filename.to_string(),
             file_size,
             content_type,
-            // Files start opaque-keyed (hashed by id). A browsable managed
+            // Files start opaque-keyed (hashed by id). A browsable remote
             // import / manage sets the readable key explicitly before insert.
             cloud_path: None,
             created_at: now,
@@ -989,7 +989,7 @@ impl std::str::FromStr for LibraryImageType {
     }
 }
 
-/// bae-managed metadata image (cover art, artist photo).
+/// bae-remote metadata image (cover art, artist photo).
 /// File lives at a deterministic path derived from type + id:
 /// - Cover: covers/{id}
 /// - Artist: artists/{id}
@@ -1067,10 +1067,10 @@ pub struct DbReleaseStorageSummary {
     pub artist_names: String,
     pub format: Option<String>,
     pub primary_release_id: Option<String>,
-    /// Shared `releases.managed` fact: managed (cloud) vs unmanaged (local). The
-    /// resolver derives `Unmanaged` directly from `!managed`; for a managed
+    /// Shared `releases.remote` fact: remote (cloud) vs local (local). The
+    /// resolver derives `Local` directly from `!remote`; for a remote
     /// release it asks coven's cache (via `any_file_id`) whether it is pinned.
-    pub managed: bool,
+    pub remote: bool,
     /// The id of one of the release's files, or `None` when it has no files. Used
     /// to ask coven's cache whether the release is pinned (pin/unpin act on all a
     /// release's blobs together, so any one file represents the release).
@@ -1116,10 +1116,10 @@ pub struct DbAlbumDetail {
 #[derive(Debug, Clone)]
 pub struct DbReleaseDetail {
     pub release: DbRelease,
-    /// This device's `release_unmanaged_source` row, present iff the release is
-    /// unmanaged. The resolver reads in-place file paths from it; a managed
+    /// This device's `release_local_source` row, present iff the release is
+    /// local. The resolver reads in-place file paths from it; a remote
     /// release has none (its bytes live in coven's cache).
-    pub unmanaged_source: Option<DbReleaseUnmanagedSource>,
+    pub local_source: Option<DbReleaseLocalSource>,
     pub tracks: Vec<DbTrackWithArtists>,
     pub files: Vec<DbFile>,
     /// Audio-format rows for this release's tracks. Each carries the codec,
@@ -1150,10 +1150,10 @@ pub struct DbReleaseSummary {
     pub id: String,
     pub album_id: String,
     pub format: Option<String>,
-    /// Shared `releases.managed` fact: managed (cloud) vs unmanaged (local). The
-    /// resolver derives `Unmanaged` directly from `!managed`; for a managed
+    /// Shared `releases.remote` fact: remote (cloud) vs local (local). The
+    /// resolver derives `Local` directly from `!remote`; for a remote
     /// release it asks coven's cache (via `any_file_id`) whether it is pinned.
-    pub managed: bool,
+    pub remote: bool,
     /// The id of one of the release's files, or `None` when it has no files. Used
     /// to ask coven's cache whether the release is pinned (pin/unpin act on all a
     /// release's blobs together, so any one file represents the release).
@@ -1195,8 +1195,8 @@ pub struct StorageSortCriterion {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageFilter {
     All,
-    Managed,
-    Unmanaged,
+    Remote,
+    Local,
     Uploading,
 }
 

@@ -3,9 +3,9 @@
 //! guards and successes (through coven's cache), the read-bytes durability check,
 //! the unmanage rollback windows (a verified destination copy must exist before
 //! any delete is queued — across a mid-transfer cancel and a write failure), and
-//! the managed cloud-key layout (readable on a browsable home, hashed on an
+//! the remote cloud-key layout (readable on a browsable home, hashed on an
 //! opaque one). The full manage/unmanage cloud lifecycle — the observer-driven
-//! managed flip, cache reads, and missing/short-blob hard errors — lives in
+//! remote flip, cache reads, and missing/short-blob hard errors — lives in
 //! `test_storage_state_machine.rs`.
 
 mod support;
@@ -40,7 +40,7 @@ fn tracing_init() {
 // ---------------------------------------------------------------------------
 
 /// (storage state, pinned) for a release — the post-transition assertion target.
-/// Storage state is the 2-way `managed` fact; pinned is the orthogonal coven-cache
+/// Storage state is the 2-way `remote` fact; pinned is the orthogonal coven-cache
 /// property. Mirrors what the UI shows.
 async fn storage(mgr: &LibraryManager, release_id: &str) -> (ReleaseStorageState, bool) {
     let s = mgr
@@ -93,7 +93,7 @@ async fn setup_with_cloud(
 }
 
 /// Like [`setup_with_cloud`], but the home is browsable: blobs are stored in the
-/// clear at readable paths, so managed cloud keys are id-structured rather than
+/// clear at readable paths, so remote cloud keys are id-structured rather than
 /// hashed.
 async fn setup_with_browsable_cloud(
     tmp: &TempDir,
@@ -108,11 +108,11 @@ async fn setup_with_browsable_cloud(
     (db, mgr, cloud, enc)
 }
 
-/// Insert an Unmanaged release: an album + release with `managed = false`, its
-/// originals written under `source_dir`, the `release_unmanaged_source` row set,
+/// Insert a Local release: an album + release with `remote = false`, its
+/// originals written under `source_dir`, the `release_local_source` row set,
 /// and one `DbFile` per file. No uploads queued. Returns (album_id, release_id,
 /// files).
-async fn create_unmanaged_release(
+async fn create_local_release(
     mgr: &LibraryManager,
     source_dir: &Path,
     files: &[(&str, &[u8])],
@@ -146,7 +146,7 @@ async fn create_unmanaged_release(
         disc_id: None,
         metadata_source: ReleaseMetadataSource::FileTags,
         metadata_source_release_id: None,
-        managed: false,
+        remote: false,
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,
@@ -157,7 +157,7 @@ async fn create_unmanaged_release(
     mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
         .await
         .unwrap();
-    mgr.set_release_unmanaged_path(&release_id, &source_dir.to_string_lossy())
+    mgr.set_release_local_path(&release_id, &source_dir.to_string_lossy())
         .await
         .unwrap();
 
@@ -179,26 +179,26 @@ async fn create_unmanaged_release(
     (album_id, release_id, result)
 }
 
-/// Get a Managed (cloud-only, not pinned) release whose blobs sit in `cloud`:
-/// insert it Unmanaged, manage it (pin = false), and drain the uploads so the
-/// observer flips it Managed. A later pin/unmanage reads the blobs back through
+/// Get a Remote (cloud-only, not pinned) release whose blobs sit in `cloud`:
+/// insert it Local, manage it (pin = false), and drain the uploads so the
+/// observer flips it Remote. A later pin/unmanage reads the blobs back through
 /// coven's cache.
-async fn create_managed_cloud_only_release(
+async fn create_remote_cloud_only_release(
     mgr: &LibraryManager,
     cloud: &MockCloudHome,
     enc_svc: EncryptionService,
     source_dir: &Path,
     files: &[(&str, &[u8])],
 ) -> String {
-    let (_album_id, release_id, named) = create_unmanaged_release(mgr, source_dir, files).await;
-    mgr.manage_release(&release_id, false).await.unwrap();
+    let (_album_id, release_id, named) = create_local_release(mgr, source_dir, files).await;
+    mgr.make_release_remote(&release_id, false).await.unwrap();
     let enc = RwLock::new(enc_svc);
     let count = mgr.process_cloud_uploads_with(cloud, &enc).await.unwrap();
     assert_eq!(count, named.len(), "all files uploaded");
     assert_eq!(
         storage(mgr, &release_id).await,
-        (ReleaseStorageState::Managed, false),
-        "Managed (cloud-only) after the drain"
+        (ReleaseStorageState::Remote, false),
+        "Remote (cloud-only) after the drain"
     );
     release_id
 }
@@ -237,15 +237,15 @@ fn completed(events: &[TransferProgress]) -> bool {
 // Pin / unpin guards
 // ---------------------------------------------------------------------------
 
-/// Pin rejects an unmanaged release: there is no cloud blob to fetch into the
+/// Pin rejects a local release: there is no cloud blob to fetch into the
 /// pinned cache.
 #[tokio::test]
-async fn test_pin_rejects_unmanaged_release() {
+async fn test_pin_rejects_local_release() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let (_db, mgr) = setup(&tmp).await;
     let (_a, release_id, _f) =
-        create_unmanaged_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
+        create_local_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
 
     let events = collect_progress(
         TransferService::new(mgr.clone())
@@ -253,22 +253,22 @@ async fn test_pin_rejects_unmanaged_release() {
             .0,
     )
     .await;
-    assert!(failed(&events), "pin must fail for an unmanaged release");
+    assert!(failed(&events), "pin must fail for a local release");
 }
 
-/// Unpin rejects an unmanaged release: it has no managed blobs to drop from the
+/// Unpin rejects a local release: it has no remote blobs to drop from the
 /// cache.
 #[tokio::test]
-async fn test_unpin_rejects_unmanaged_release() {
+async fn test_unpin_rejects_local_release() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let (_db, mgr) = setup(&tmp).await;
     let (_a, release_id, _f) =
-        create_unmanaged_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
+        create_local_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
 
     assert!(
         mgr.unpin_release(&release_id).await.is_err(),
-        "unpin must fail for an unmanaged release"
+        "unpin must fail for a local release"
     );
 }
 
@@ -276,14 +276,14 @@ async fn test_unpin_rejects_unmanaged_release() {
 // Pin / unpin success — through coven's cache
 // ---------------------------------------------------------------------------
 
-/// Pin a managed cloud-only release: coven fetches its blobs from the cloud into
-/// `storage/pinned/`, so it reads as (Managed, pinned).
+/// Pin a remote cloud-only release: coven fetches its blobs from the cloud into
+/// `storage/pinned/`, so it reads as (Remote, pinned).
 #[tokio::test]
-async fn test_pin_managed_fetches_into_pinned_cache() {
+async fn test_pin_remote_fetches_into_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let (_db, mgr, cloud, enc) = setup_with_cloud(&tmp).await;
-    let release_id = create_managed_cloud_only_release(
+    let release_id = create_remote_cloud_only_release(
         &mgr,
         cloud.as_ref(),
         enc,
@@ -301,19 +301,19 @@ async fn test_pin_managed_fetches_into_pinned_cache() {
     assert!(completed(&events) && !failed(&events), "pin succeeds");
     assert_eq!(
         storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Managed, true)
+        (ReleaseStorageState::Remote, true)
     );
 }
 
-/// Unpin a managed pinned release: coven moves its blobs out of `storage/pinned/`
-/// into the evictable cache, so it reads as (Managed, not pinned). The cloud copy
+/// Unpin a remote pinned release: coven moves its blobs out of `storage/pinned/`
+/// into the evictable cache, so it reads as (Remote, not pinned). The cloud copy
 /// is untouched.
 #[tokio::test]
-async fn test_unpin_managed_drops_from_pinned_cache() {
+async fn test_unpin_remote_drops_from_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let (_db, mgr, cloud, enc) = setup_with_cloud(&tmp).await;
-    let release_id = create_managed_cloud_only_release(
+    let release_id = create_remote_cloud_only_release(
         &mgr,
         cloud.as_ref(),
         enc,
@@ -331,13 +331,13 @@ async fn test_unpin_managed_drops_from_pinned_cache() {
     .await;
     assert_eq!(
         storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Managed, true)
+        (ReleaseStorageState::Remote, true)
     );
 
     mgr.unpin_release(&release_id).await.unwrap();
     assert_eq!(
         storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Managed, false)
+        (ReleaseStorageState::Remote, false)
     );
 }
 
@@ -354,7 +354,7 @@ async fn test_read_release_file_bytes_rejects_short_read() {
     let tmp = TempDir::new().unwrap();
     let (_db, mgr) = setup(&tmp).await;
     let source_dir = tmp.path().join("src");
-    let (_a, release_id, _f) = create_unmanaged_release(&mgr, &source_dir, &[]).await;
+    let (_a, release_id, _f) = create_local_release(&mgr, &source_dir, &[]).await;
 
     // A file whose declared size exceeds the bytes actually on disk.
     let actual = b"short";
@@ -372,7 +372,7 @@ async fn test_read_release_file_bytes_rejects_short_read() {
     mgr.add_file(&file).await.unwrap();
 
     let source = mgr
-        .get_release_unmanaged_source(&release_id)
+        .get_release_local_source(&release_id)
         .await
         .unwrap()
         .unwrap();
@@ -385,13 +385,13 @@ async fn test_read_release_file_bytes_rejects_short_read() {
 // ---------------------------------------------------------------------------
 
 /// Cancelling an unmanage after the first file is written rolls back: the partial
-/// copy is deleted, no cloud delete is queued, and the release stays Managed.
+/// copy is deleted, no cloud delete is queued, and the release stays Remote.
 #[tokio::test]
-async fn test_unmanage_cancelled_after_first_file_rolls_back_and_stays_managed() {
+async fn test_unmanage_cancelled_after_first_file_rolls_back_and_stays_remote() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let (_db, mgr, cloud, enc) = setup_with_cloud(&tmp).await;
-    let release_id = create_managed_cloud_only_release(
+    let release_id = create_remote_cloud_only_release(
         &mgr,
         cloud.as_ref(),
         enc,
@@ -402,7 +402,7 @@ async fn test_unmanage_cancelled_after_first_file_rolls_back_and_stays_managed()
 
     let new_path = tmp.path().join("exported");
     let token = CancellationToken::new();
-    let mut rx = TransferService::new(mgr.clone()).unmanage_release(
+    let mut rx = TransferService::new(mgr.clone()).make_release_local(
         release_id.clone(),
         new_path.to_str().unwrap().to_string(),
         token.clone(),
@@ -419,25 +419,25 @@ async fn test_unmanage_cancelled_after_first_file_rolls_back_and_stays_managed()
         }
     }
 
-    // Nothing left at the new path; release stays Managed (cloud-only); no deletes.
+    // Nothing left at the new path; release stays Remote (cloud-only); no deletes.
     for name in ["a.flac", "b.flac"] {
         assert!(!new_path.join(name).exists(), "{name} rolled back");
     }
     assert_eq!(
         storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Managed, false)
+        (ReleaseStorageState::Remote, false)
     );
     assert!(mgr.get_pending_cloud_deletes().await.unwrap().is_empty());
 }
 
 /// An unmanage whose destination can't be created (the path is a file) fails
-/// before any write, queues no delete, and the release stays Managed.
+/// before any write, queues no delete, and the release stays Remote.
 #[tokio::test]
 async fn test_unmanage_abort_on_dest_failure_queues_no_deletes() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let (_db, mgr, cloud, enc) = setup_with_cloud(&tmp).await;
-    let release_id = create_managed_cloud_only_release(
+    let release_id = create_remote_cloud_only_release(
         &mgr,
         cloud.as_ref(),
         enc,
@@ -450,7 +450,7 @@ async fn test_unmanage_abort_on_dest_failure_queues_no_deletes() {
     let new_path = tmp.path().join("dest_is_a_file");
     tokio::fs::write(&new_path, b"blocker").await.unwrap();
 
-    let events = collect_progress(TransferService::new(mgr.clone()).unmanage_release(
+    let events = collect_progress(TransferService::new(mgr.clone()).make_release_local(
         release_id.clone(),
         new_path.to_str().unwrap().to_string(),
         CancellationToken::new(),
@@ -462,13 +462,13 @@ async fn test_unmanage_abort_on_dest_failure_queues_no_deletes() {
     );
     assert_eq!(
         storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Managed, false)
+        (ReleaseStorageState::Remote, false)
     );
     assert!(mgr.get_pending_cloud_deletes().await.unwrap().is_empty());
 }
 
 // ---------------------------------------------------------------------------
-// Managed cloud-key layout: readable on a browsable home, hashed on opaque
+// Remote cloud-key layout: readable on a browsable home, hashed on opaque
 // ---------------------------------------------------------------------------
 
 /// Managing into a BROWSABLE home stores `storage/{album_id}/{release_id}/{name}`
@@ -483,12 +483,12 @@ async fn test_manage_browsable_stores_readable_cloud_path() {
     let (_db, mgr, _cloud, _enc) = setup_with_browsable_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (album_id, release_id, originals) =
-        create_unmanaged_release(&mgr, &source_dir, &[("a.flac", b"aa"), ("b.flac", b"bb")]).await;
+        create_local_release(&mgr, &source_dir, &[("a.flac", b"aa"), ("b.flac", b"bb")]).await;
 
     // Manage cloud-only: enqueues uploads and sets each file's cloud_path. No live
-    // sync loop drains here, so the release stays Unmanaged; only the file rows and
+    // sync loop drains here, so the release stays Local; only the file rows and
     // outbox are written.
-    mgr.manage_release(&release_id, false).await.unwrap();
+    mgr.make_release_remote(&release_id, false).await.unwrap();
 
     // The row carries the NAMESPACE-RELATIVE readable key (coven prepends the
     // `storage/` audio namespace when it reads/writes the blob).
@@ -530,9 +530,9 @@ async fn test_manage_opaque_leaves_cloud_path_null() {
     let (_db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_album_id, release_id, _originals) =
-        create_unmanaged_release(&mgr, &source_dir, &[("a.flac", b"aa")]).await;
+        create_local_release(&mgr, &source_dir, &[("a.flac", b"aa")]).await;
 
-    mgr.manage_release(&release_id, false).await.unwrap();
+    mgr.make_release_remote(&release_id, false).await.unwrap();
 
     let files = mgr.get_files_for_release(&release_id).await.unwrap();
     let uploads = mgr.get_pending_cloud_uploads().await.unwrap();
@@ -558,8 +558,7 @@ async fn test_cover_blob_ref_cloud_path_browsable_vs_opaque() {
     // Browsable: the cover keys by id.
     let tmp = TempDir::new().unwrap();
     let (db, mgr, _cloud, _enc) = setup_with_browsable_cloud(&tmp).await;
-    let (album_id, release_id, _f) =
-        create_unmanaged_release(&mgr, &tmp.path().join("src"), &[]).await;
+    let (album_id, release_id, _f) = create_local_release(&mgr, &tmp.path().join("src"), &[]).await;
     let expected_cover = format!("{album_id}/{release_id}/cover.jpg");
 
     let cloud_path = mgr
@@ -604,8 +603,7 @@ async fn test_cover_blob_ref_cloud_path_browsable_vs_opaque() {
     // Opaque: the cover carries no readable path.
     let tmp2 = TempDir::new().unwrap();
     let (db2, mgr2, _cloud2, _enc2) = setup_with_cloud(&tmp2).await;
-    let (_a2, release_id2, _f2) =
-        create_unmanaged_release(&mgr2, &tmp2.path().join("src"), &[]).await;
+    let (_a2, release_id2, _f2) = create_local_release(&mgr2, &tmp2.path().join("src"), &[]).await;
     let opaque_path = mgr2
         .cover_cloud_path_for_test(&release_id2, &ContentType::Jpeg)
         .await;

@@ -1,41 +1,39 @@
-//! Release storage transitions — moving a release between Unmanaged and Managed,
-//! and pinning/unpinning a managed release in coven's cache.
+//! Release storage transitions — moving a release between Local and Remote,
+//! and pinning/unpinning a remote release in coven's cache.
 //!
-//! - `manage_release`: upload an Unmanaged release to the cloud home (the same
-//!   transition the import's managed path runs, via
-//!   `LibraryManager::enqueue_managed_uploads`). The upload observer flips
-//!   `managed` true and deletes the in-place source once the last upload lands.
-//! - `unmanage_release`: copy a managed release's bytes back out to a user folder
-//!   (read through coven's cache), flip it Unmanaged, then delete the cloud blobs.
-//! - `pin_release_task` / `unpin_release`: pin/unpin a managed release in coven's
+//! - `make_release_remote`: upload a Local release to the cloud home (the same
+//!   transition the import's remote path runs, via
+//!   `LibraryManager::enqueue_remote_uploads`). The upload observer flips
+//!   `remote` true and deletes the in-place source once the last upload lands.
+//! - `make_release_local`: copy a remote release's bytes back out to a user folder
+//!   (read through coven's cache), flip it Local, then delete the cloud blobs.
+//! - `pin_release_task` / `unpin_release`: pin/unpin a remote release in coven's
 //!   cache (`storage/pinned/` vs the evictable `storage/cache/`).
 //!
-//! Pinned-ness is coven cache state; bae stores no pin flag. A managed release's
+//! Pinned-ness is coven cache state; bae stores no pin flag. A remote release's
 //! bytes live only in coven's cache — never a bae `storage/` path. The
 //! durability invariant still holds for the copy-out: `unmanage` writes and
 //! verifies every file at the new location before any cloud delete is queued.
 
-use crate::db::{DbFile, DbReleaseUnmanagedSource};
+use crate::db::{DbFile, DbReleaseLocalSource};
 use crate::library::LibraryManager;
 use tokio::sync::mpsc;
 use tracing::{error, info};
 
 /// Read one release file's bytes from wherever it lives on this device: an
-/// unmanaged release's in-place source file, or — for a managed release — through
+/// local release's in-place source file, or — for a remote release — through
 /// coven's cache (served from `storage/pinned/` or `storage/cache/` on a hit,
 /// fetched from the cloud on a miss). Verifies `bytes.len() == file.file_size` so
 /// a short or zero read aborts the caller before any delete is queued (the SAFETY
 /// INVARIANT).
 pub async fn read_release_file_bytes(
-    unmanaged_source: Option<&DbReleaseUnmanagedSource>,
+    local_source: Option<&DbReleaseLocalSource>,
     file: &DbFile,
     mgr: &LibraryManager,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
     use crate::library::manager::ReadableFileSource;
 
-    let source = mgr
-        .resolve_readable_file_source(unmanaged_source, file)
-        .await?;
+    let source = mgr.resolve_readable_file_source(local_source, file).await?;
     let bytes = match source {
         ReadableFileSource::Local(local_path) => tokio::fs::read(&local_path).await?,
         ReadableFileSource::UploadPendingSourceMissing => {
@@ -49,11 +47,11 @@ pub async fn read_release_file_bytes(
             )
             .into());
         }
-        ReadableFileSource::Managed => {
+        ReadableFileSource::Remote => {
             // Read the whole blob through coven's cache (cache-or-cloud,
             // transparent). Served from the local pinned/cache file on a hit,
             // fetched + decrypted from the cloud on a miss.
-            mgr.read_managed_file(file).await?
+            mgr.read_remote_file(file).await?
         }
         ReadableFileSource::Unreachable => {
             return Err(format!("File {} has no readable location", file.id).into());
@@ -128,7 +126,7 @@ fn send_file_progress(
     });
 }
 
-/// Pin/unpin/manage/unmanage service for managed releases.
+/// Pin/unpin/manage/unmanage service for remote releases.
 pub struct TransferService {
     library_manager: LibraryManager,
 }
@@ -189,11 +187,11 @@ impl TransferService {
         rx
     }
 
-    /// Manage an unmanaged release: upload it to the cloud home, keeping its blobs
+    /// Manage a local release: upload it to the cloud home, keeping its blobs
     /// pinned in coven's cache iff `pin`. Returns a receiver for progress updates;
     /// the actual upload progress flows through the outbox snapshot, so this emits
     /// Started then Complete (the uploads are now queued and draining).
-    pub fn manage_release(
+    pub fn make_release_remote(
         &self,
         release_id: String,
         pin: bool,
@@ -202,7 +200,7 @@ impl TransferService {
         let library_manager = self.library_manager.clone();
 
         tokio::spawn(async move {
-            let result = do_manage(&release_id, pin, &library_manager, &tx).await;
+            let result = do_make_remote(&release_id, pin, &library_manager, &tx).await;
 
             if let Err(e) = result {
                 error!("Manage failed for release {}: {}", release_id, e);
@@ -216,9 +214,9 @@ impl TransferService {
         rx
     }
 
-    /// Unmanage a managed release: copy its files to `new_path` and drop the
+    /// Unmanage a remote release: copy its files to `new_path` and drop the
     /// cloud copies. Returns a receiver for progress updates.
-    pub fn unmanage_release(
+    pub fn make_release_local(
         &self,
         release_id: String,
         new_path: String,
@@ -228,7 +226,8 @@ impl TransferService {
         let library_manager = self.library_manager.clone();
 
         tokio::spawn(async move {
-            let result = do_unmanage(&release_id, &new_path, &cancel, &library_manager, &tx).await;
+            let result =
+                do_make_local(&release_id, &new_path, &cancel, &library_manager, &tx).await;
 
             if let Err(e) = result {
                 error!("Unmanage failed for release {}: {}", release_id, e);
@@ -254,8 +253,8 @@ async fn do_pin(
         .get_release_by_id(release_id)
         .await?
         .ok_or("Release not found")?;
-    if !release.managed {
-        return Err("Cannot pin an unmanaged release".into());
+    if !release.remote {
+        return Err("Cannot pin a local release".into());
     }
     let files = mgr.get_files_for_release(release_id).await?;
     if files.is_empty() {
@@ -290,8 +289,8 @@ async fn do_unpin(
         .get_release_by_id(release_id)
         .await?
         .ok_or("Release not found")?;
-    if !release.managed {
-        return Err("Cannot unpin an unmanaged release".into());
+    if !release.remote {
+        return Err("Cannot unpin a local release".into());
     }
 
     let files = mgr.get_files_for_release(release_id).await?;
@@ -312,13 +311,13 @@ async fn do_unpin(
     Ok(())
 }
 
-/// Manage an unmanaged release: enqueue its cloud uploads (carrying the `pin`
+/// Manage a local release: enqueue its cloud uploads (carrying the `pin`
 /// retain-pinned intent) so the sync loop drains them and the upload observer
-/// flips it managed + deletes the in-place source. The same transition the import
+/// flips it remote + deletes the in-place source. The same transition the import
 /// runs, plus an is-sync-ready gate: the observer fires from the sync loop's
 /// outbox drain, so the loop must actually be running — otherwise the uploads sit
-/// forever, the release stays unmanaged, and no error surfaces.
-async fn do_manage(
+/// forever, the release stays local, and no error surfaces.
+async fn do_make_remote(
     release_id: &str,
     pin: bool,
     library_manager: &LibraryManager,
@@ -330,8 +329,8 @@ async fn do_manage(
         .get_release_by_id(release_id)
         .await?
         .ok_or("Release not found")?;
-    if release.managed {
-        return Err("Release is already managed".into());
+    if release.remote {
+        return Err("Release is already remote".into());
     }
     if mgr.get_cloud_home().is_none() {
         return Err("Cannot manage without a cloud home".into());
@@ -351,23 +350,23 @@ async fn do_manage(
         files.len()
     );
 
-    // The release reaches `managed = true` only when the upload observer marks it
+    // The release reaches `remote = true` only when the upload observer marks it
     // after its last upload lands. That observer fires from the sync loop's outbox
     // drain, so the loop must be running — otherwise the uploads sit forever and
-    // the release stays unmanaged with no error. A configured cloud home isn't
+    // the release stays local with no error. A configured cloud home isn't
     // enough; the loop must be draining.
     if !mgr.is_sync_ready() {
         return Err(
             "Cannot manage a release while sync isn't running — it would never finish \
-             uploading and would stay unmanaged"
+             uploading and would stay local"
                 .into(),
         );
     }
 
     // Enqueue the uploads (verifies every source intact first) and kick the loop.
-    // The observer flips `managed` true and deletes the in-place source on the
+    // The observer flips `remote` true and deletes the in-place source on the
     // last upload; per-file upload progress flows through the outbox snapshot.
-    mgr.enqueue_managed_uploads(release_id, pin).await?;
+    mgr.enqueue_remote_uploads(release_id, pin).await?;
 
     info!("Manage queued for release {} (pin={pin})", release_id);
     let _ = tx.send(TransferProgress::Complete {
@@ -376,20 +375,20 @@ async fn do_manage(
     Ok(())
 }
 
-/// Unmanage a managed release: copy every file back out to `new_path`, then drop
+/// Unmanage a remote release: copy every file back out to `new_path`, then drop
 /// the cloud copies.
 ///
 /// Durability-first: every file is read (through coven's cache), verified, written
 /// to `new_path/{original_filename}`, and re-stat-verified BEFORE any delete is
-/// queued. On any per-file failure the release stays managed and every cloud copy
+/// queued. On any per-file failure the release stays remote and every cloud copy
 /// is intact (the SAFETY INVARIANT). Only after all files are durable does it flip
-/// the release to Unmanaged and queue the cloud-blob deletes.
+/// the release to Local and queue the cloud-blob deletes.
 ///
-/// NOTE: under the current coven gate a `managed` true→false flip is a freeze, not
+/// NOTE: under the current coven gate a `remote` true→false flip is a freeze, not
 /// a retract, so peers keep the row while this device deletes the cloud blob — the
 /// known down-direction limitation deferred to the gate-retract follow-up. This
 /// function is otherwise correct as-written.
-async fn do_unmanage(
+async fn do_make_local(
     release_id: &str,
     new_path: &str,
     cancel: &crate::library::CancellationToken,
@@ -402,8 +401,8 @@ async fn do_unmanage(
         .get_release_by_id(release_id)
         .await?
         .ok_or("Release not found")?;
-    if !release.managed {
-        return Err("Release is already unmanaged".into());
+    if !release.remote {
+        return Err("Release is already local".into());
     }
     let files = mgr.get_files_for_release(release_id).await?;
     if files.is_empty() {
@@ -422,7 +421,7 @@ async fn do_unmanage(
     // Copies written so far at `new_path`. If the user cancels mid-transfer we
     // delete these so a cancelled unmanage leaves no orphans — the cloud copies
     // are never touched until the irreversible flip below, so the release stays
-    // fully managed and intact.
+    // fully remote and intact.
     let mut written: Vec<std::path::PathBuf> = Vec::new();
 
     for (i, file) in files.iter().enumerate() {
@@ -432,7 +431,7 @@ async fn do_unmanage(
 
         send_file_progress(tx, release_id, i, files.len(), &file.original_filename, 0);
 
-        // Verified read through coven's cache (the release is still managed, so it
+        // Verified read through coven's cache (the release is still remote, so it
         // has no in-place source — pass `None`). A missing/short blob aborts here,
         // before any delete.
         let data = read_release_file_bytes(None, file, mgr).await?;
@@ -464,10 +463,10 @@ async fn do_unmanage(
         return cancel_unmanage(release_id, &written, tx).await;
     }
 
-    // Every file is now durable at `new_path`. Flip the release to Unmanaged
+    // Every file is now durable at `new_path`. Flip the release to Local
     // (recording `new_path` as its source), THEN queue the cloud-blob deletes and
     // drop coven's cache copies.
-    mgr.set_release_unmanaged_path(release_id, new_path).await?;
+    mgr.set_release_local_path(release_id, new_path).await?;
     mgr.queue_storage_deletions(&files).await;
 
     info!("Unmanage complete for release {}", release_id);
@@ -479,7 +478,7 @@ async fn do_unmanage(
 
 /// Roll back a cancelled unmanage: delete the partial copies written at the new
 /// path (the cloud copies were never touched) and end the transfer cleanly so the
-/// release stays managed. Reported as `Complete` because the transfer is over —
+/// release stays remote. Reported as `Complete` because the transfer is over —
 /// not `Failed`, since the user asked for the stop.
 async fn cancel_unmanage(
     release_id: &str,

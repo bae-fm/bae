@@ -33,8 +33,8 @@ use crate::clock::ClockRef;
 use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::{
     Database, DbAlbum, DbAlbumArtist, DbAlbumSearchResult, DbAlbumSummary, DbArtist, DbAudioFormat,
-    DbFile, DbImport, DbLibraryImage, DbLibrarySearchResults, DbRelease, DbReleaseStorageSummary,
-    DbReleaseSummary, DbReleaseUnmanagedSource, DbStorageRow, DbTrack, DbTrackArtist,
+    DbFile, DbImport, DbLibraryImage, DbLibrarySearchResults, DbRelease, DbReleaseLocalSource,
+    DbReleaseStorageSummary, DbReleaseSummary, DbStorageRow, DbTrack, DbTrackArtist,
     DbTrackSearchResult, ImportOperationStatus, LibraryImageType, Pressing,
     SortDirection as DbSortDirection, StorageFilter as DbStorageFilter,
     StorageSortCriterion as DbStorageSortCriterion, StorageSortField as DbStorageSortField,
@@ -125,7 +125,7 @@ pub(crate) async fn playback_info_from_track_release(
 }
 
 /// Produces a resolved `ReleaseStorageSummary` from a raw
-/// `DbReleaseStorageSummary`: derives `storage_state` from `managed` and `pinned`
+/// `DbReleaseStorageSummary`: derives `storage_state` from `remote` and `pinned`
 /// (the caller asks coven's cache whether the release's blobs are pinned). The raw
 /// `primary_release_id` comes from SQL's `COALESCE(a.primary_release_id,
 /// <first release id>)` and is non-null by construction: every album has at
@@ -135,7 +135,7 @@ fn resolve_release_storage_summary(
     has_cloud_home: bool,
     pinned: bool,
 ) -> ReleaseStorageSummary {
-    let storage_state = crate::album_detail::storage_state(raw.managed);
+    let storage_state = crate::album_detail::storage_state(raw.remote);
     let storage_actions =
         crate::album_detail::available_storage_actions(storage_state, pinned, has_cloud_home);
     ReleaseStorageSummary {
@@ -188,9 +188,9 @@ fn resolve_album_summary(
 }
 
 /// Resolve a raw release-summary aggregate: derives `storage_state` from
-/// `managed` + this device's `release_local_copy` row.
+/// `remote` + this device's `release_local_copy` row.
 /// `has_cloud_home` is read once by the caller and passed down (DI) so
-/// `storage_actions` reflects whether managed storage exists at all.
+/// `storage_actions` reflects whether remote storage exists at all.
 /// `resolve_cover` maps the release's own id to its cover identifier.
 fn resolve_release_summary(
     raw: DbReleaseSummary,
@@ -203,7 +203,7 @@ fn resolve_release_summary(
         raw.id,
         raw.album_id,
         raw.format,
-        crate::album_detail::storage_state(raw.managed),
+        crate::album_detail::storage_state(raw.remote),
         pinned,
         raw.file_count,
         raw.total_size,
@@ -287,8 +287,8 @@ fn to_db_storage_sort(sort: &StorageSort) -> DbStorageSortCriterion {
 fn to_db_storage_filter(filter: StorageFilter) -> DbStorageFilter {
     match filter {
         StorageFilter::All => DbStorageFilter::All,
-        StorageFilter::Managed => DbStorageFilter::Managed,
-        StorageFilter::Unmanaged => DbStorageFilter::Unmanaged,
+        StorageFilter::Remote => DbStorageFilter::Remote,
+        StorageFilter::Local => DbStorageFilter::Local,
         StorageFilter::Uploading => DbStorageFilter::Uploading,
     }
 }
@@ -527,7 +527,7 @@ async fn project_file_tags(
     ids: IdRef,
 ) -> Result<crate::import::ParsedAlbum, LibraryError> {
     let files = database.get_files_for_release(&release.id).await?;
-    let local_copy = database.get_release_unmanaged_source(&release.id).await?;
+    let local_copy = database.get_release_local_source(&release.id).await?;
     let mut audio_paths = Vec::new();
     for file in &files {
         if !file.content_type.is_audio() {
@@ -608,10 +608,10 @@ pub enum LibraryError {
 pub(crate) struct TrackAudioMeta {
     pub track: DbTrack,
     pub release: DbRelease,
-    /// This device's `release_unmanaged_source` row for `release`, if any. Used to
-    /// resolve an in-place read path; `None` means the release is managed (read
+    /// This device's `release_local_source` row for `release`, if any. Used to
+    /// resolve an in-place read path; `None` means the release is remote (read
     /// through coven's cache).
-    pub unmanaged_source: Option<DbReleaseUnmanagedSource>,
+    pub local_source: Option<DbReleaseLocalSource>,
     pub audio_format: DbAudioFormat,
     pub audio_file: DbFile,
     /// File id backing this track's audio. Always `Some` coming out of `resolve`
@@ -636,7 +636,7 @@ impl TrackAudioMeta {
             })?;
 
         let release = database.get_release_for_track(&track).await?;
-        let unmanaged_source = database.get_release_unmanaged_source(&release.id).await?;
+        let local_source = database.get_release_local_source(&release.id).await?;
 
         let file_id = audio_format.file_id.clone().ok_or_else(|| {
             LibraryError::TrackMapping(format!(
@@ -652,7 +652,7 @@ impl TrackAudioMeta {
         Ok(Self {
             track,
             release,
-            unmanaged_source,
+            local_source,
             audio_format,
             audio_file,
             file_id,
@@ -661,7 +661,7 @@ impl TrackAudioMeta {
 }
 
 /// Where a release file's bytes can be read on this device, including the
-/// window where a managed file's upload is still queued: the outbox row's
+/// window where a remote file's upload is still queued: the outbox row's
 /// original source file is readable until the upload lands.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReadableFileSource {
@@ -671,12 +671,12 @@ pub enum ReadableFileSource {
     /// No local bytes, and a queued upload whose source file is gone — the
     /// cloud object may not exist yet, so a cloud read would 404.
     UploadPendingSourceMissing,
-    /// A managed release with no pending upload: read it through coven's cache,
+    /// A remote release with no pending upload: read it through coven's cache,
     /// which serves the blob from `storage/pinned/` or `storage/cache/` on a hit
     /// and fetches + decrypts it from the cloud on a miss. (Whether a copy is kept
     /// offline is the orthogonal `pinned` property — not encoded here.)
-    Managed,
-    /// No local bytes and no pending upload, on an unmanaged release: the
+    Remote,
+    /// No local bytes and no pending upload, on a local release: the
     /// user's source file is gone and the audio was never uploaded, so there
     /// is no readable location anywhere.
     Unreachable,
@@ -693,7 +693,7 @@ pub struct ResolvedTrackAudio {
     /// File id backing this track's audio data. Used as a cache key and to address
     /// cloud-only files.
     pub file_id: String,
-    /// The cloud object key for this file's managed blob: the row's stored
+    /// The cloud object key for this file's remote blob: the row's stored
     /// `cloud_path` (a readable key on a browsable home) or `storage_path(id)`
     /// (the hashed-by-id default) when it is NULL. A cloud-only read addresses
     /// the object by this; a local read ignores it.
@@ -870,8 +870,8 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
     match action {
         ReleaseStorageAction::Pin => "Pin",
         ReleaseStorageAction::Unpin => "Unpin",
-        ReleaseStorageAction::Manage => "Manage",
-        ReleaseStorageAction::Unmanage => "Unmanage",
+        ReleaseStorageAction::MakeRemote => "Manage",
+        ReleaseStorageAction::MakeLocal => "Unmanage",
     }
 }
 
@@ -1051,15 +1051,15 @@ pub struct LibraryManager {
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
     /// Releases whose in-progress upload the user cancelled ("stop uploading").
     /// The upload observer consults this so a file that lands after the cancel
-    /// doesn't flip the release to managed; instead its now-orphaned blob is
+    /// doesn't flip the release to remote; instead its now-orphaned blob is
     /// queued for deletion, leaving the release local-only. Cleared when the
-    /// release is managed afresh. Shared across clones; transient (a restart
+    /// release is remote afresh. Shared across clones; transient (a restart
     /// drops it, by which point the queue rows are already gone).
     upload_cancelling: Arc<Mutex<std::collections::HashSet<String>>>,
     /// Cancellation tokens for in-progress foreground transfers (unmanage),
     /// keyed by release id. `cancel_release_transition` fires the token; the
     /// transfer observes it between files, deletes the partial copies it wrote,
-    /// and leaves the release managed (no orphans). Registered for the transfer's
+    /// and leaves the release remote (no orphans). Registered for the transfer's
     /// duration; transient.
     transfer_cancels: Arc<Mutex<HashMap<String, crate::library::CancellationToken>>>,
     /// In-memory queue for "Pin for offline". A single serial worker drains it
@@ -1069,7 +1069,7 @@ pub struct LibraryManager {
     /// This device's signing keypair, loaded once from the keyring and cached.
     /// coven's `CloudSyncStorage` (which the cache read/pin paths build per
     /// operation) needs it, and the keyring read is not free — caching keeps a
-    /// managed read or pin off the keyring. The keypair is a stable device
+    /// remote read or pin off the keyring. The keypair is a stable device
     /// identity, so caching it can never go stale. Shared across clones.
     device_keypair: Arc<std::sync::OnceLock<coven::keys::UserKeypair>>,
     /// Test-only injection points for the cloud read/write paths, so tests
@@ -1087,7 +1087,7 @@ pub struct LibraryManager {
 struct TestOverrides {
     /// Cloud home + encryption. Production wires the cloud home through
     /// `SyncManager` (set by `connect`); tests that exercise the cloud paths
-    /// (e.g. `unmanage_release` on a managed release) inject a mock here.
+    /// (e.g. `make_release_local` on a remote release) inject a mock here.
     cloud: Option<(Arc<dyn CloudHome>, EncryptionService)>,
     /// Force `is_sync_ready` true. Production reads the running sync loop; tests
     /// that drive `process_cloud_uploads_with` by hand have no live loop, so
@@ -1178,8 +1178,8 @@ impl LibraryManager {
 
     /// Inject a cloud home + encryption service for tests, so `get_cloud_home`
     /// and `get_encryption_service` resolve without a live `SyncManager`. Used
-    /// by transfer tests that read/write the cloud (unmanage a managed release,
-    /// manage an unmanaged one).
+    /// by transfer tests that read/write the cloud (unmanage a remote release,
+    /// manage a local one).
     #[cfg(any(test, feature = "test-utils"))]
     pub fn set_cloud_override(
         &mut self,
@@ -1216,7 +1216,7 @@ impl LibraryManager {
             .expect("set test home storage mode");
     }
 
-    /// The cloud object key the read path resolves for a managed file: the row's
+    /// The cloud object key the read path resolves for a remote file: the row's
     /// stored `cloud_path` (readable on a browsable home) or the hashed
     /// `storage_path(id)` default. Mirrors what `ResolvedTrackAudio` threads into
     /// the cloud reader, exposed so a test can assert the read key matches the
@@ -1837,11 +1837,11 @@ impl LibraryManager {
         self.sync_manager_inner().and_then(|sm| sm.cloud_home())
     }
 
-    /// The at-rest cipher protecting this library's managed cloud blobs, from
+    /// The at-rest cipher protecting this library's remote cloud blobs, from
     /// the home's storage mode (see [`coven::sync::cloud_storage::CloudCipher::for_storage`]):
     /// `Encrypted` under the master key for an opaque home, `Plaintext` for a
     /// browsable one. `None` for an opaque home with no encryption service (a
-    /// locked library). Every managed cloud read — playback, pin, unmanage —
+    /// locked library). Every remote cloud read — playback, pin, unmanage —
     /// builds a [`crate::storage::BlobRangeReader`] with this so the read applies
     /// the same protection the upload sealed under: an opaque home decrypts, a
     /// browsable home reads the verbatim bytes.
@@ -1871,7 +1871,7 @@ impl LibraryManager {
         Ok(kp)
     }
 
-    /// Build a coven `SyncStorage` over the current cloud home for a managed-blob
+    /// Build a coven `SyncStorage` over the current cloud home for a remote-blob
     /// cache read or a pin. The cipher is rebuilt fresh from the current
     /// encryption service so a read stays correct across a key rotation; the
     /// keypair is the cached device identity, so this touches no keyring. `Err`
@@ -1884,7 +1884,7 @@ impl LibraryManager {
             .ok_or_else(|| LibraryError::Storage("no cloud home configured".to_string()))?;
         let cipher = self
             .cloud_blob_cipher()
-            .ok_or_else(|| LibraryError::Storage("no blob cipher for managed read".to_string()))?;
+            .ok_or_else(|| LibraryError::Storage("no blob cipher for remote read".to_string()))?;
         let scheme = coven::sync::cloud_storage::BlobPathScheme::for_storage(
             self.config_handle.config().cloud_home.storage,
         );
@@ -1896,12 +1896,12 @@ impl LibraryManager {
         ))
     }
 
-    /// The coven `BlobRef` for a managed release file's audio blob — its identity
+    /// The coven `BlobRef` for a remote release file's audio blob — its identity
     /// in coven's cache (and the cloud on a miss). `cloud_path` is the row's value
     /// RELATIVE to the `storage` namespace coven prepends (see
     /// [`crate::storage::local::AUDIO_NAMESPACE`]); `local_path` is unused by the
     /// cache read/pin paths (the cache owns the on-disk destination by id), so it
-    /// is left empty. Every managed audio blob is master-scoped and `OnDemand`
+    /// is left empty. Every remote audio blob is master-scoped and `OnDemand`
     /// (streamed on demand, not mirrored to disk on pull).
     pub(crate) fn audio_blob_ref(file: &DbFile) -> coven::blob::BlobRef {
         coven::blob::BlobRef {
@@ -1914,11 +1914,11 @@ impl LibraryManager {
         }
     }
 
-    /// Read a managed release file's whole plaintext through coven's cache: served
+    /// Read a remote release file's whole plaintext through coven's cache: served
     /// from `storage/pinned/` or `storage/cache/` on a hit, fetched from the cloud
     /// (and into `cache/`) on a miss. For the non-streaming readers (export,
     /// unmanage copy-out); playback streams ranges via `open_blob_stream` instead.
-    pub(crate) async fn read_managed_file(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
+    pub(crate) async fn read_remote_file(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
         let storage = self.create_sync_storage()?;
         let blob = Self::audio_blob_ref(file);
         coven::blob::cache::read_blob(self.database.coven_db(), &self.library_dir, &storage, &blob)
@@ -1933,7 +1933,7 @@ impl LibraryManager {
         release_blob_pinned(&self.library_dir, any_file_id).await
     }
 
-    /// Pin a managed release's blobs for offline: coven fetches every blob into
+    /// Pin a remote release's blobs for offline: coven fetches every blob into
     /// `storage/pinned/` (from the evictable cache if already there, else the
     /// cloud). Idempotent. Pinned-ness is coven cache state — there is no bae flag.
     /// The low-level cache op behind the "Pin" transition.
@@ -1951,7 +1951,7 @@ impl LibraryManager {
         .map_err(|e| LibraryError::Storage(format!("pin release {release_id}: {e}")))
     }
 
-    /// Unpin a managed release's blobs: coven moves every blob from
+    /// Unpin a remote release's blobs: coven moves every blob from
     /// `storage/pinned/` to the evictable `storage/cache/` (still readable, now
     /// droppable). No cloud read, no bae flag. The low-level cache op behind the
     /// "Unpin" transition.
@@ -2039,35 +2039,35 @@ impl LibraryManager {
     }
 
     /// Resolve a release file's in-place path on this device, given the release's
-    /// `release_unmanaged_source` row (if any). `Some` only for an unmanaged
-    /// release; `None` means the release is managed (read through coven's cache)
+    /// `release_local_source` row (if any). `Some` only for a local
+    /// release; `None` means the release is remote (read through coven's cache)
     /// or has no source here.
     pub fn resolve_local_file_path(
         &self,
-        unmanaged_source: Option<&DbReleaseUnmanagedSource>,
+        local_source: Option<&DbReleaseLocalSource>,
         file: &DbFile,
     ) -> Option<PathBuf> {
-        unmanaged_source.map(|source| source.local_file_path(file))
+        local_source.map(|source| source.local_file_path(file))
     }
 
     /// Resolve where a release file's bytes can be read on this device: the
     /// local copy when one exists, otherwise the original source file of a
-    /// still-pending cloud upload. A managed import that keeps no local copy
+    /// still-pending cloud upload. A remote import that keeps no local copy
     /// queues its uploads with `source_path` pointing at the originals — those
     /// stay the readable source (for playback, pin, export) until the upload
     /// lands and the cloud object exists.
     ///
     /// With no local copy and no pending upload, the readable source depends on
-    /// whether the release is managed: a managed release's audio is read through
-    /// coven's cache (`Managed`), while an unmanaged release's source file is
-    /// simply gone (`Unreachable`). The managed flag comes from the release row
+    /// whether the release is remote: a remote release's audio is read through
+    /// coven's cache (`Remote`), while a local release's source file is
+    /// simply gone (`Unreachable`). The remote flag comes from the release row
     /// addressed by `file.release_id`, so no caller has to supply it.
     pub(crate) async fn resolve_readable_file_source(
         &self,
-        unmanaged_source: Option<&DbReleaseUnmanagedSource>,
+        local_source: Option<&DbReleaseLocalSource>,
         file: &DbFile,
     ) -> Result<ReadableFileSource, LibraryError> {
-        if let Some(path) = self.resolve_local_file_path(unmanaged_source, file) {
+        if let Some(path) = self.resolve_local_file_path(local_source, file) {
             // The source row maps to a path but can't guarantee the file is still
             // there — it's a user-owned file in place, which they may have moved or
             // deleted. Confirm it before returning `Local`; if it's gone, fall
@@ -2123,8 +2123,8 @@ impl LibraryManager {
             }
         }
 
-        // No local copy and no pending upload. A managed release's audio lives
-        // only in the cloud; an unmanaged release's source file is just gone.
+        // No local copy and no pending upload. A remote release's audio lives
+        // only in the cloud; a local release's source file is just gone.
         let release = self
             .database
             .find_release_by_id(&file.release_id)
@@ -2135,8 +2135,8 @@ impl LibraryManager {
                     file.release_id, file.id
                 ))
             })?;
-        if release.managed {
-            Ok(ReadableFileSource::Managed)
+        if release.remote {
+            Ok(ReadableFileSource::Remote)
         } else {
             Ok(ReadableFileSource::Unreachable)
         }
@@ -2151,11 +2151,11 @@ impl LibraryManager {
         let Some(file) = self.database.find_file_by_id(file_id).await? else {
             return Ok(None);
         };
-        let unmanaged_source = self
+        let local_source = self
             .database
-            .get_release_unmanaged_source(&file.release_id)
+            .get_release_local_source(&file.release_id)
             .await?;
-        Ok(self.resolve_local_file_path(unmanaged_source.as_ref(), &file))
+        Ok(self.resolve_local_file_path(local_source.as_ref(), &file))
     }
 
     pub fn create_release_storage(&self) -> ReleaseStorageImpl {
@@ -2232,21 +2232,18 @@ impl LibraryManager {
         Ok(self.database.is_content_hash_imported(hash).await?)
     }
 
-    /// This device's `release_unmanaged_source` row for a release — present iff the
-    /// release is unmanaged (files in place); `None` for a managed release.
-    pub async fn get_release_unmanaged_source(
+    /// This device's `release_local_source` row for a release — present iff the
+    /// release is local (files in place); `None` for a remote release.
+    pub async fn get_release_local_source(
         &self,
         release_id: &str,
-    ) -> Result<Option<DbReleaseUnmanagedSource>, LibraryError> {
-        Ok(self
-            .database
-            .get_release_unmanaged_source(release_id)
-            .await?)
+    ) -> Result<Option<DbReleaseLocalSource>, LibraryError> {
+        Ok(self.database.get_release_local_source(release_id).await?)
     }
 
     /// Count outbox upload entries still pending for a release's files.
     /// Zero means the cloud copy is confirmed durable. Used by the unpin
-    /// guard in `unmanage_release` to refuse a transition mid-upload — the
+    /// guard in `make_release_local` to refuse a transition mid-upload — the
     /// UI side of "no actions mid-upload" reads the `OutboxSnapshot.per_release`
     /// map instead.
     pub async fn count_pending_uploads_for_release(
@@ -2259,20 +2256,20 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Enqueue the managed-transition uploads for an unmanaged release: queue one
+    /// Enqueue the remote-transition uploads for a local release: queue one
     /// cloud upload per file, reading its in-place source and carrying the
     /// `pin` retain-pinned intent (so coven populates `storage/pinned/` iff
-    /// pinned), then kick the sync loop. The upload observer flips `managed` true
+    /// pinned), then kick the sync loop. The upload observer flips `remote` true
     /// and deletes the in-place source once the last upload lands. This is the
-    /// single managed-upload flow, shared by `do_manage` (the user "Manage"
-    /// action, which adds an is-sync-ready gate and progress) and the managed
+    /// single remote-upload flow, shared by `do_make_remote` (the user "Manage"
+    /// action, which adds an is-sync-ready gate and progress) and the remote
     /// import path.
     ///
     /// Verifies every source file is intact (on-disk length == recorded size)
     /// before enqueuing anything: the source IS the upload source and is deleted
     /// once the upload lands, so a truncated original must abort the whole
     /// transition rather than upload short bytes and lose its only full copy.
-    pub(crate) async fn enqueue_managed_uploads(
+    pub(crate) async fn enqueue_remote_uploads(
         &self,
         release_id: &str,
         pin: bool,
@@ -2282,17 +2279,17 @@ impl LibraryManager {
             .find_release_by_id(release_id)
             .await?
             .ok_or_else(|| LibraryError::Storage(format!("release {release_id} not found")))?;
-        if release.managed {
+        if release.remote {
             return Err(LibraryError::Storage(format!(
-                "release {release_id} is already managed"
+                "release {release_id} is already remote"
             )));
         }
         let source = self
             .database
-            .get_release_unmanaged_source(release_id)
+            .get_release_local_source(release_id)
             .await?
             .ok_or_else(|| {
-                LibraryError::Storage(format!("release {release_id} has no unmanaged source"))
+                LibraryError::Storage(format!("release {release_id} has no local source"))
             })?;
         let files = self.database.get_files_for_release(release_id).await?;
         if files.is_empty() {
@@ -2327,7 +2324,7 @@ impl LibraryManager {
 
         for file in &files {
             let source_path = std::path::Path::new(&source.path).join(&file.original_filename);
-            let cloud_key = self.cloud_key_for_managed_file(file).await?;
+            let cloud_key = self.cloud_key_for_remote_file(file).await?;
             self.add_cloud_outbox_upload(
                 &file.id,
                 &cloud_key,
@@ -2340,16 +2337,16 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Move a release to the Unmanaged state: mark `managed = false` and record
+    /// Move a release to the Local state: mark `remote = false` and record
     /// this device's local copy at `path`. Re-emits so consumers caching
     /// resolved file paths see the new location.
-    pub async fn set_release_unmanaged_path(
+    pub async fn set_release_local_path(
         &self,
         release_id: &str,
         path: &str,
     ) -> Result<(), LibraryError> {
         self.database
-            .set_release_unmanaged_path(release_id, path)
+            .set_release_local_path(release_id, path)
             .await?;
 
         if let Ok(Some(release)) = self.database.find_release_by_id(release_id).await {
@@ -2373,7 +2370,7 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// The cloud object key a managed file's blob uploads to, and (under a
+    /// The cloud object key a remote file's blob uploads to, and (under a
     /// browsable home) the readable key persisted on its `release_files.cloud_path`
     /// so every later read/delete/pull addresses the same object.
     ///
@@ -2382,7 +2379,7 @@ impl LibraryManager {
     /// `{artist}/{album}/{filename}`, computed once and STORED on the row here —
     /// the manage path creates the file row before its cloud destination exists,
     /// so the key lands when the file is first uploaded, not at import.
-    pub async fn cloud_key_for_managed_file(&self, file: &DbFile) -> Result<String, LibraryError> {
+    pub async fn cloud_key_for_remote_file(&self, file: &DbFile) -> Result<String, LibraryError> {
         // A file already carrying a (namespace-relative) readable cloud_path keeps
         // it (idempotent re-manage): return its FULL object key.
         if file.cloud_path.is_some() {
@@ -2434,15 +2431,15 @@ impl LibraryManager {
 
     /// Stop uploading a release that's mid-`manage` and keep it local-only.
     ///
-    /// `managed` flips only after a release's *last* file uploads, so stopping
+    /// `remote` flips only after a release's *last* file uploads, so stopping
     /// early leaves the release in a valid local state already — pinned (the
-    /// `storage/` copy stays) or unmanaged (the originals stay). This:
+    /// `storage/` copy stays) or local (the originals stay). This:
     ///
     /// 1. removes the release's still-queued and in-flight upload rows, so no
     ///    further files leave this device;
     /// 2. marks the release "cancelling" so a file whose write lands in the gap
-    ///    doesn't flip it to managed — the observer queues that blob's deletion
-    ///    instead (see `ReleaseUploadObserver::mark_managed_if_complete`);
+    ///    doesn't flip it to remote — the observer queues that blob's deletion
+    ///    instead (see `ReleaseUploadObserver::mark_remote_if_complete`);
     /// 3. queues deletions for the files already uploaded this attempt, so the
     ///    cloud is left holding nothing for the release; and
     /// 4. clears any "delete the originals once uploaded" intent, so a
@@ -2481,8 +2478,8 @@ impl LibraryManager {
             }
         }
 
-        // Stopping leaves the release unmanaged: `managed` never flipped, so its
-        // in-place `release_unmanaged_source` row is still present and the source
+        // Stopping leaves the release local: `remote` never flipped, so its
+        // in-place `release_local_source` row is still present and the source
         // files are untouched — there is nothing to undo here.
         self.trigger_sync();
         self.emit_outbox_changed().await;
@@ -3400,10 +3397,10 @@ impl LibraryManager {
         primary_release_id: Option<(&str, &str)>,
         import_id: &str,
         identities: &[crate::import::ReleaseIdentity],
-        unmanaged_path: &str,
-        managed_intent: bool,
+        local_path: &str,
+        remote_intent: bool,
     ) -> Result<(), LibraryError> {
-        // The home's storage mode decides the managed cover-blob layout (opaque
+        // The home's storage mode decides the remote cover-blob layout (opaque
         // hashed-by-id vs. browsable readable paths); the manager owns config,
         // so it reads the mode here rather than threading it from the importer.
         let storage = self.config_handle.config().cloud_home.storage;
@@ -3421,8 +3418,8 @@ impl LibraryManager {
                 primary_release_id,
                 import_id,
                 identities,
-                unmanaged_path,
-                managed_intent,
+                local_path,
+                remote_intent,
                 storage,
             )
             .await?;
@@ -3601,7 +3598,7 @@ impl LibraryManager {
         let mut releases = Vec::with_capacity(raw.releases.len());
         for (i, r) in raw.releases.into_iter().enumerate() {
             // Ask coven's cache whether this release is pinned — the orthogonal
-            // coven-cache property of a managed release.
+            // coven-cache property of a remote release.
             let pinned =
                 release_blob_pinned(&self.library_dir, r.files.first().map(|f| f.id.as_str()))
                     .await;
@@ -3622,7 +3619,7 @@ impl LibraryManager {
     /// no artist rows of its own. `release_index` is the release's
     /// position in its album (0-based), used to compute `display_name`.
     /// `has_cloud_home` is read once by the producer and passed down (DI) so
-    /// `storage_actions` reflects whether managed storage exists at all. `pinned`
+    /// `storage_actions` reflects whether remote storage exists at all. `pinned`
     /// is the coven-cache pin state the producer resolved.
     #[allow(clippy::too_many_arguments)]
     fn resolve_release(
@@ -3648,7 +3645,7 @@ impl LibraryManager {
 ///
 /// Used by the manager and by the upload observer (which holds the same
 /// `LibraryDir` and `Database` so it can emit `ReleaseUpdated` events for a
-/// release whose `unmanaged_path` just got cleared at the end of an upload
+/// release whose `local_path` just got cleared at the end of an upload
 /// run, without owning a manager). `has_cloud_home` is supplied by the
 /// caller; the observer fires inside a running sync cycle so it can pass
 /// `true`.
@@ -3743,7 +3740,7 @@ pub(crate) fn resolve_release(
     pinned: bool,
 ) -> ReleaseDetail {
     let release = raw.release;
-    let unmanaged_source = raw.unmanaged_source;
+    let local_source = raw.local_source;
 
     let has_multiple_sides = {
         let mut sides = std::collections::HashSet::new();
@@ -3893,12 +3890,12 @@ pub(crate) fn resolve_release(
     let total_duration_ms: i64 = tracks.iter().filter_map(|t| t.duration_ms).sum();
 
     // Build gallery: cover (if on disk) followed by image files that resolve to a
-    // local path on this device. Only an UNMANAGED release has in-place files; a
-    // managed release's image files live in coven's cache (no stable bae path), so
+    // local path on this device. Only a LOCAL release has in-place files; a
+    // remote release's image files live in coven's cache (no stable bae path), so
     // they get no local path here and the lightbox fetches them on demand via
     // `load_gallery_image`.
     let image_file_local_path = |f: &FileDetail| -> Option<String> {
-        let source = unmanaged_source.as_ref()?;
+        let source = local_source.as_ref()?;
         let path = std::path::Path::new(&source.path).join(&f.original_filename);
         Some(path.to_string_lossy().into_owned())
     };
@@ -4091,7 +4088,7 @@ impl LibraryManager {
                     "Image file {file_id} is not part of release {release_id}"
                 ))
             })?;
-        let local_copy = self.get_release_unmanaged_source(release_id).await?;
+        let local_copy = self.get_release_local_source(release_id).await?;
         crate::storage::local::transfer::read_release_file_bytes(local_copy.as_ref(), &file, self)
             .await
             .map_err(|e| LibraryError::Import(e.to_string()))
@@ -4122,7 +4119,7 @@ impl LibraryManager {
     ) -> Result<ResolvedTrackAudio, LibraryError> {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let source = self
-            .resolve_readable_file_source(meta.unmanaged_source.as_ref(), &meta.audio_file)
+            .resolve_readable_file_source(meta.local_source.as_ref(), &meta.audio_file)
             .await?;
         Ok(ResolvedTrackAudio::from_meta(&meta, source))
     }
@@ -4152,7 +4149,7 @@ impl LibraryManager {
     ) -> Result<(ResolvedTrackAudio, crate::playback::PlaybackTrackInfo), LibraryError> {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let source = self
-            .resolve_readable_file_source(meta.unmanaged_source.as_ref(), &meta.audio_file)
+            .resolve_readable_file_source(meta.local_source.as_ref(), &meta.audio_file)
             .await?;
         let audio = ResolvedTrackAudio::from_meta(&meta, source);
         let info =
@@ -4440,7 +4437,7 @@ impl LibraryManager {
 
                 let local_copy = self
                     .database
-                    .get_release_unmanaged_source(&file.release_id)
+                    .get_release_local_source(&file.release_id)
                     .await?;
 
                 let source_path = local_copy
@@ -4512,8 +4509,8 @@ impl LibraryManager {
 
     /// Queue files for a release for deletion (local + cloud).
     ///
-    /// Skips unmanaged releases -- those are the user's original files. For
-    /// managed releases:
+    /// Skips local releases -- those are the user's original files. For
+    /// remote releases:
     /// - Queues local file deletion if this device pins them
     /// - Adds cloud outbox delete entries for each file
     /// - Cancels any pending uploads for the same files
@@ -4523,8 +4520,8 @@ impl LibraryManager {
             _ => return,
         };
 
-        // Unmanaged releases: the user's in-place files, don't delete.
-        if !release.managed {
+        // Local releases: the user's in-place files, don't delete.
+        if !release.remote {
             return;
         }
 
@@ -4536,20 +4533,20 @@ impl LibraryManager {
             }
         };
 
-        // Managed: tombstone the cloud blobs and drop coven's cache copies.
+        // Remote: tombstone the cloud blobs and drop coven's cache copies.
         self.queue_storage_deletions(&files).await;
     }
 
     /// Tombstone every file's cloud blob (cancelling any pending upload first) and
-    /// drop coven's local cache copies, for a managed release that is being
-    /// unmanaged or deleted.
+    /// drop coven's local cache copies, for a remote release that is being
+    /// local or deleted.
     ///
     /// SAFETY: callers must already hold a durable copy elsewhere — this only
-    /// schedules removals of the managed copies. `queue_release_files_for_deletion`
-    /// calls it when removing a release; `do_unmanage` calls it after every file is
-    /// durably written + verified at the new unmanaged path. `files` are
-    /// precomputed by the caller from the still-managed release, so the cloud keys
-    /// are correct even after the release has since flipped unmanaged.
+    /// schedules removals of the remote copies. `queue_release_files_for_deletion`
+    /// calls it when removing a release; `do_make_local` calls it after every file is
+    /// durably written + verified at the new local path. `files` are
+    /// precomputed by the caller from the still-remote release, so the cloud keys
+    /// are correct even after the release has since flipped local.
     pub(crate) async fn queue_storage_deletions(&self, files: &[DbFile]) {
         // Queue cloud outbox deletes and cancel pending uploads. The delete key
         // must match the key the blob was uploaded under: the row's stored
@@ -4575,7 +4572,7 @@ impl LibraryManager {
 
         // Drop coven's local cache copies: unpin moves any pinned copy to the
         // evictable cache, where the budget sweep / clear reclaims it. The release
-        // is unmanaged/deleted, so nothing reads these blobs from the cache. The
+        // is local/deleted, so nothing reads these blobs from the cache. The
         // blobs are `OnDemand`, so unpin never rejects them. Best-effort.
         let blobs: Vec<_> = files.iter().map(Self::audio_blob_ref).collect();
         if let Err(e) = coven::blob::cache::unpin(&self.library_dir, &blobs).await {
@@ -4589,8 +4586,8 @@ impl LibraryManager {
     ///
     /// `library_images` has no foreign key to releases, so the release/album
     /// cascade leaves the cover row, its on-disk file, and its cloud blob
-    /// behind. Covers exist on unmanaged releases too, so this runs for every
-    /// deleted release (not gated on `managed` like the audio-file cleanup).
+    /// behind. Covers exist on local releases too, so this runs for every
+    /// deleted release (not gated on `remote` like the audio-file cleanup).
     /// Best-effort: each step logs and continues so a cleanup hiccup never
     /// aborts the delete.
     async fn queue_release_cover_for_deletion(&self, release_id: &str) {
@@ -4704,14 +4701,14 @@ impl LibraryManager {
 
         // Drain the local `storage/` copies this release queued for deletion.
         // Matches delete_album/unpin/unmanage; without it a single-release
-        // delete of a pinned managed release leaks its managed copies on disk.
+        // delete of a pinned remote release leaks its remote copies on disk.
         self.spawn_cleanup();
 
         Ok(())
     }
 
     /// Remove any releases whose stored content hash equals `hash` — full
-    /// managed-file cleanup, primary-release reassignment, album cascade, and
+    /// remote-file cleanup, primary-release reassignment, album cascade, and
     /// removal events, via [`delete_release`](Self::delete_release) per match.
     /// The import worker calls this before inserting a re-import of the same
     /// folder tree, so the re-import overwrites the prior release(s) instead of
@@ -4783,7 +4780,7 @@ impl LibraryManager {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
 
         let audio_bytes = crate::storage::local::transfer::read_release_file_bytes(
-            meta.unmanaged_source.as_ref(),
+            meta.local_source.as_ref(),
             &meta.audio_file,
             self,
         )
@@ -5089,25 +5086,25 @@ impl LibraryManager {
         result
     }
 
-    /// Manage an unmanaged release: upload its files to the cloud home. `pin`
+    /// Manage a local release: upload its files to the cloud home. `pin`
     /// chooses whether coven keeps the blobs in `storage/pinned/` (offline) vs the
     /// evictable cache. The in-place source is always deleted once the upload lands
-    /// (a managed release has no local path — see `transfer::do_manage`).
-    pub async fn manage_release(&self, release_id: &str, pin: bool) -> Result<(), String> {
+    /// (a remote release has no local path — see `transfer::do_make_remote`).
+    pub async fn make_release_remote(&self, release_id: &str, pin: bool) -> Result<(), String> {
         // A fresh manage supersedes any earlier cancel: clear the guard so this
-        // attempt's uploads are allowed to flip the release to managed.
+        // attempt's uploads are allowed to flip the release to remote.
         self.upload_cancelling.lock().unwrap().remove(release_id);
         let transfer_service = crate::storage::local::transfer::TransferService::new(self.clone());
-        let rx = transfer_service.manage_release(release_id.to_string(), pin);
-        self.drive_transfer(release_id, ReleaseStorageAction::Manage, rx, |_| {})
+        let rx = transfer_service.make_release_remote(release_id.to_string(), pin);
+        self.drive_transfer(release_id, ReleaseStorageAction::MakeRemote, rx, |_| {})
             .await
     }
 
-    /// Unmanage a managed release: copy its files back out to `new_path` and
-    /// drop the managed copies. See `transfer::do_unmanage` for the
+    /// Unmanage a remote release: copy its files back out to `new_path` and
+    /// drop the remote copies. See `transfer::do_make_local` for the
     /// durability-first ordering (every copy is verified at the new path before
     /// any delete is queued).
-    pub async fn unmanage_release(&self, release_id: &str, new_path: &str) -> Result<(), String> {
+    pub async fn make_release_local(&self, release_id: &str, new_path: &str) -> Result<(), String> {
         // Register a cancellation token so `cancel_release_transition` can stop
         // this transfer; the guard deregisters even if this future is dropped.
         let cancel = crate::library::CancellationToken::new();
@@ -5121,10 +5118,13 @@ impl LibraryManager {
         };
 
         let transfer_service = crate::storage::local::transfer::TransferService::new(self.clone());
-        let rx =
-            transfer_service.unmanage_release(release_id.to_string(), new_path.to_string(), cancel);
+        let rx = transfer_service.make_release_local(
+            release_id.to_string(),
+            new_path.to_string(),
+            cancel,
+        );
         let result = self
-            .drive_transfer(release_id, ReleaseStorageAction::Unmanage, rx, |_| {})
+            .drive_transfer(release_id, ReleaseStorageAction::MakeLocal, rx, |_| {})
             .await;
         if result.is_ok() {
             self.spawn_cleanup();
@@ -5133,7 +5133,7 @@ impl LibraryManager {
     }
 
     /// Cancel the in-progress transition for a release, whatever it is: a pin
-    /// (download), a managed upload, or an unmanage. The UI calls this from the
+    /// (download), a remote upload, or an unmanage. The UI calls this from the
     /// storage row and the queue pane without knowing which is running — a
     /// release is in at most one transition at a time. A no-op if nothing is in
     /// progress. Each branch is gated on the transition actually running:
@@ -5160,7 +5160,7 @@ impl LibraryManager {
     /// Fire the cancellation token for a release's in-progress foreground
     /// transfer (unmanage), if one is registered; returns whether it fired. The
     /// transfer observes the token between files, deletes its partial copies, and
-    /// leaves the release managed. A missing token is not an error — it means no
+    /// leaves the release remote. A missing token is not an error — it means no
     /// transfer is running, so the caller falls through to the other transition
     /// kinds. The lookup and fire share one lock, so there's no check-then-act
     /// race with the deregistering drop guard.
@@ -5267,8 +5267,8 @@ impl LibraryManager {
     // =========================================================================
 
     /// Whether the background sync loop is running and draining uploads. The
-    /// manage gate requires this: managing has no inline managed flip — the
-    /// release only becomes managed once the upload observer (which fires from
+    /// manage gate requires this: managing has no inline remote flip — the
+    /// release only becomes remote once the upload observer (which fires from
     /// inside the running loop) confirms the last upload landed.
     pub fn is_sync_ready(&self) -> bool {
         #[cfg(any(test, feature = "test-utils"))]
@@ -5443,19 +5443,19 @@ impl LibraryManager {
     }
 
     /// Warning text to append to the disconnect-sync confirmation when the
-    /// library has releases reachable only through cloud sync — managed and not
+    /// library has releases reachable only through cloud sync — remote and not
     /// pinned in coven's cache. Returns `None` when no releases are at risk, so the
-    /// dialog just shows its base message. Asks coven's cache per managed release
+    /// dialog just shows its base message. Asks coven's cache per remote release
     /// (a representative blob in `storage/pinned/`); pinned-ness is coven cache
     /// state, never a bae column.
     pub async fn disconnect_warning_message(&self) -> Result<Option<String>, String> {
-        let managed_file_ids = self
+        let remote_file_ids = self
             .database
-            .get_managed_release_file_ids()
+            .get_remote_release_file_ids()
             .await
-            .map_err(|e| format!("list managed releases: {e}"))?;
+            .map_err(|e| format!("list remote releases: {e}"))?;
         let mut count: u64 = 0;
-        for any_file_id in &managed_file_ids {
+        for any_file_id in &remote_file_ids {
             if !self.release_pinned(any_file_id.as_deref()).await {
                 count += 1;
             }
@@ -5681,7 +5681,7 @@ mod tests {
             disc_id: None,
             metadata_source: crate::db::ReleaseMetadataSource::FileTags,
             metadata_source_release_id: None,
-            managed: true,
+            remote: true,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,
@@ -5690,10 +5690,10 @@ mod tests {
         }
     }
 
-    /// Mark a managed release's representative blob as pinned in coven's cache for
+    /// Mark a remote release's representative blob as pinned in coven's cache for
     /// a test by creating the pinned cache file (`storage/pinned/<file_id>`) — its
     /// presence is the pin truth `release_blob_pinned` reads. The release must
-    /// already be managed with `file_id` among its `release_files`. Pinned-ness is
+    /// already be remote with `file_id` among its `release_files`. Pinned-ness is
     /// coven cache state, never a bae column.
     fn pin_file_in_cache(manager: &LibraryManager, file_id: &str) {
         let path = manager.library_dir.pinned_blob_path(file_id).unwrap();
@@ -5779,24 +5779,24 @@ mod tests {
         assert_eq!(remaining[0].id, other.id);
     }
 
-    /// Deleting one release of a multi-release album must tombstone its managed
+    /// Deleting one release of a multi-release album must tombstone its remote
     /// cloud blobs — delete_release has to queue the cloud-outbox deletes like
-    /// delete_album/unmanage, or the managed blobs leak in the cloud (nothing else
+    /// delete_album/unmanage, or the remote blobs leak in the cloud (nothing else
     /// processes the release once its rows are gone).
     #[tokio::test]
-    async fn delete_release_tombstones_managed_cloud_blobs() {
+    async fn delete_release_tombstones_remote_cloud_blobs() {
         let (mut manager, _temp_dir) = setup_test_manager().await;
         manager.set_cleanup_delay(std::time::Duration::ZERO);
 
         let album = create_test_album();
         // Two releases so delete_release takes the album-survives branch.
-        let release1 = create_test_release(&album.id); // managed: true
+        let release1 = create_test_release(&album.id); // remote: true
         let release2 = create_test_release(&album.id);
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release1).await.unwrap();
         manager.database.insert_release(&release2).await.unwrap();
 
-        // release1 is managed with one cloud blob, held pinned in coven's cache.
+        // release1 is remote with one cloud blob, held pinned in coven's cache.
         let file = DbFile::new(
             &release1.id,
             "track1.flac",
@@ -5810,13 +5810,13 @@ mod tests {
 
         manager.delete_release(&release1.id).await.unwrap();
 
-        // delete_release awaits the deletion queueing, so by now the managed
+        // delete_release awaits the deletion queueing, so by now the remote
         // blob's cloud-outbox tombstone is enqueued.
         let deletes = manager.get_pending_cloud_deletes().await.unwrap();
         assert_eq!(
             deletes.len(),
             1,
-            "deleting a managed release tombstones its cloud blob"
+            "deleting a remote release tombstones its cloud blob"
         );
     }
 
@@ -6060,7 +6060,7 @@ mod tests {
 
         // An image file whose id is also a traversal token — it drives the
         // gallery's `image_path(&file.id)` resolution, and (as the release's
-        // representative blob) the managed release's `release_blob_pinned`
+        // representative blob) the remote release's `release_blob_pinned`
         // pinned-cache check; both must reject the bad id rather than panic.
         let file = DbFile::new(
             &release.id,
@@ -6600,17 +6600,17 @@ mod tests {
 
     /// Each storage-page row carries the state-appropriate `storage_actions`
     /// the Storage Manager row context menu renders — pinned offers unpin +
-    /// unmanage, cloud-only offers pin + unmanage, unmanaged offers manage.
-    /// With a cloud home present every managed/unmanaged transition is open.
+    /// unmanage, cloud-only offers pin + unmanage, local offers manage.
+    /// With a cloud home present every remote/local transition is open.
     #[cfg(feature = "test-utils")]
     #[tokio::test]
     async fn storage_page_rows_carry_state_appropriate_actions() {
-        use crate::album_detail::ReleaseStorageAction::{Manage, Pin, Unmanage, Unpin};
+        use crate::album_detail::ReleaseStorageAction::{MakeLocal, MakeRemote, Pin, Unpin};
 
         let (mut manager, _temp_dir) = setup_test_manager().await;
         give_cloud_home(&mut manager);
 
-        // Pinned: managed, with its blob held in coven's pinned cache.
+        // Pinned: remote, with its blob held in coven's pinned cache.
         let pinned_album = create_test_album();
         let pinned = create_test_release(&pinned_album.id);
         manager.database.insert_album(&pinned_album).await.unwrap();
@@ -6626,27 +6626,23 @@ mod tests {
         manager.add_file(&pinned_file).await.unwrap();
         pin_file_in_cache(&manager, &pinned_file.id);
 
-        // Cloud-only: managed, blob not in the pinned cache.
+        // Cloud-only: remote, blob not in the pinned cache.
         let mut cloud_album = create_test_album();
         cloud_album.title = "Cloud Album".to_string();
         let cloud_only = create_test_release(&cloud_album.id);
         manager.database.insert_album(&cloud_album).await.unwrap();
         manager.database.insert_release(&cloud_only).await.unwrap();
 
-        // Unmanaged: not managed, files at an unmanaged path.
-        let mut unmanaged_album = create_test_album();
-        unmanaged_album.title = "Unmanaged Album".to_string();
-        let mut unmanaged = create_test_release(&unmanaged_album.id);
-        unmanaged.managed = false;
+        // Local: not remote, files at a local path.
+        let mut local_album = create_test_album();
+        local_album.title = "Local Album".to_string();
+        let mut local = create_test_release(&local_album.id);
+        local.remote = false;
+        manager.database.insert_album(&local_album).await.unwrap();
+        manager.database.insert_release(&local).await.unwrap();
         manager
             .database
-            .insert_album(&unmanaged_album)
-            .await
-            .unwrap();
-        manager.database.insert_release(&unmanaged).await.unwrap();
-        manager
-            .database
-            .upsert_release_unmanaged_source(&unmanaged.id, "/tmp/unmanaged")
+            .upsert_release_local_source(&local.id, "/tmp/local")
             .await
             .unwrap();
 
@@ -6660,24 +6656,24 @@ mod tests {
             .map(|r| (r.release.id.clone(), r.release.storage_actions.clone()))
             .collect();
 
-        assert_eq!(actions[&pinned.id], vec![Unpin, Unmanage]);
-        assert_eq!(actions[&cloud_only.id], vec![Pin, Unmanage]);
-        assert_eq!(actions[&unmanaged.id], vec![Manage]);
+        assert_eq!(actions[&pinned.id], vec![Unpin, MakeLocal]);
+        assert_eq!(actions[&cloud_only.id], vec![Pin, MakeLocal]);
+        assert_eq!(actions[&local.id], vec![MakeRemote]);
     }
 
-    /// With no cloud home, no managed storage exists, so the rows offer no
+    /// With no cloud home, no remote storage exists, so the rows offer no
     /// transitions — the context menu is empty everywhere.
     #[tokio::test]
     async fn storage_page_rows_have_no_actions_without_cloud_home() {
         let (manager, _temp_dir) = setup_test_manager().await;
         let album = create_test_album();
         let mut release = create_test_release(&album.id);
-        release.managed = false;
+        release.remote = false;
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release).await.unwrap();
         manager
             .database
-            .upsert_release_unmanaged_source(&release.id, "/tmp/unmanaged")
+            .upsert_release_local_source(&release.id, "/tmp/local")
             .await
             .unwrap();
 
@@ -6690,58 +6686,54 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn storage_page_unmanaged_filter_matches_unmanaged_path() {
+    async fn storage_page_local_filter_matches_local_path() {
         let (manager, _temp_dir) = setup_test_manager().await;
-        let album_managed = create_test_album();
-        let mut album_unmanaged = create_test_album();
-        album_unmanaged.title = "Unmanaged Album".to_string();
-        let managed_release = create_test_release(&album_managed.id);
-        let mut unmanaged_release = create_test_release(&album_unmanaged.id);
-        unmanaged_release.managed = false;
+        let album_remote = create_test_album();
+        let mut album_local = create_test_album();
+        album_local.title = "Local Album".to_string();
+        let remote_release = create_test_release(&album_remote.id);
+        let mut local_release = create_test_release(&album_local.id);
+        local_release.remote = false;
 
-        manager.database.insert_album(&album_managed).await.unwrap();
+        manager.database.insert_album(&album_remote).await.unwrap();
+        manager.database.insert_album(&album_local).await.unwrap();
         manager
             .database
-            .insert_album(&album_unmanaged)
+            .insert_release(&remote_release)
             .await
             .unwrap();
         manager
             .database
-            .insert_release(&managed_release)
+            .insert_release(&local_release)
             .await
             .unwrap();
         manager
             .database
-            .insert_release(&unmanaged_release)
-            .await
-            .unwrap();
-        manager
-            .database
-            .upsert_release_unmanaged_source(&unmanaged_release.id, "/tmp/unmanaged")
+            .upsert_release_local_source(&local_release.id, "/tmp/local")
             .await
             .unwrap();
 
-        let unmanaged = manager
-            .get_storage_page(&sort_by_album_title_asc(), StorageFilter::Unmanaged, 0, 10)
+        let local = manager
+            .get_storage_page(&sort_by_album_title_asc(), StorageFilter::Local, 0, 10)
             .await
             .unwrap();
-        assert_eq!(unmanaged.rows.len(), 1);
-        assert_eq!(unmanaged.total_count, 1);
-        assert_eq!(unmanaged.rows[0].release.id, unmanaged_release.id);
+        assert_eq!(local.rows.len(), 1);
+        assert_eq!(local.total_count, 1);
+        assert_eq!(local.rows[0].release.id, local_release.id);
         assert_eq!(
-            unmanaged.rows[0].release.storage_state,
-            crate::album_detail::ReleaseStorageState::Unmanaged
+            local.rows[0].release.storage_state,
+            crate::album_detail::ReleaseStorageState::Local
         );
 
-        let managed = manager
-            .get_storage_page(&sort_by_album_title_asc(), StorageFilter::Managed, 0, 10)
+        let remote = manager
+            .get_storage_page(&sort_by_album_title_asc(), StorageFilter::Remote, 0, 10)
             .await
             .unwrap();
-        assert_eq!(managed.rows.len(), 1);
-        assert_eq!(managed.rows[0].release.id, managed_release.id);
+        assert_eq!(remote.rows.len(), 1);
+        assert_eq!(remote.rows[0].release.id, remote_release.id);
         assert_ne!(
-            managed.rows[0].release.storage_state,
-            crate::album_detail::ReleaseStorageState::Unmanaged
+            remote.rows[0].release.storage_state,
+            crate::album_detail::ReleaseStorageState::Local
         );
     }
 
@@ -6749,23 +6741,23 @@ mod tests {
     async fn storage_count_matches_filtered_page_total() {
         let (manager, _temp_dir) = setup_test_manager().await;
         // Three albums, one release each. Mark the second release
-        // unmanaged at insert time so filters produce distinct counts.
-        let mut inserted_unmanaged = None;
+        // local at insert time so filters produce distinct counts.
+        let mut inserted_local = None;
         for i in 0..3 {
             let mut album = create_test_album();
             album.title = format!("Album {i}");
             let mut release = create_test_release(&album.id);
-            let unmanaged = i == 1;
-            if unmanaged {
-                release.managed = false;
-                inserted_unmanaged = Some(release.id.clone());
+            let local = i == 1;
+            if local {
+                release.remote = false;
+                inserted_local = Some(release.id.clone());
             }
             manager.database.insert_album(&album).await.unwrap();
             manager.database.insert_release(&release).await.unwrap();
-            if unmanaged {
+            if local {
                 manager
                     .database
-                    .upsert_release_unmanaged_source(&release.id, "/tmp/unmanaged")
+                    .upsert_release_local_source(&release.id, "/tmp/local")
                     .await
                     .unwrap();
             }
@@ -6777,14 +6769,14 @@ mod tests {
         );
         assert_eq!(
             manager
-                .get_storage_count(StorageFilter::Unmanaged)
+                .get_storage_count(StorageFilter::Local)
                 .await
                 .unwrap(),
             1
         );
         assert_eq!(
             manager
-                .get_storage_count(StorageFilter::Managed)
+                .get_storage_count(StorageFilter::Remote)
                 .await
                 .unwrap(),
             2
@@ -6803,15 +6795,12 @@ mod tests {
             .unwrap();
         assert_eq!(all_page.total_count, 3);
 
-        let unmanaged_page = manager
-            .get_storage_page(&sort_by_album_title_asc(), StorageFilter::Unmanaged, 0, 10)
+        let local_page = manager
+            .get_storage_page(&sort_by_album_title_asc(), StorageFilter::Local, 0, 10)
             .await
             .unwrap();
-        assert_eq!(unmanaged_page.rows.len(), 1);
-        assert_eq!(
-            unmanaged_page.rows[0].release.id,
-            inserted_unmanaged.unwrap()
-        );
+        assert_eq!(local_page.rows.len(), 1);
+        assert_eq!(local_page.rows[0].release.id, inserted_local.unwrap());
     }
 
     /// A `CloudHome` that exists only so `get_cloud_home().is_some()`
@@ -6879,19 +6868,19 @@ mod tests {
         );
     }
 
-    /// Insert an unmanaged release whose `unmanaged_path` points at a
+    /// Insert a local release whose `local_path` points at a
     /// nonexistent directory, so no local copy resolves on this device. Seeds
     /// a `DbFile` row so the release is otherwise complete.
-    async fn insert_unmanaged_release_without_local_files(
+    async fn insert_local_release_without_local_files(
         manager: &LibraryManager,
         album_id: &str,
     ) -> DbRelease {
         let mut release = create_test_release(album_id);
-        release.managed = false;
+        release.remote = false;
         manager.database.insert_release(&release).await.unwrap();
         manager
             .database
-            .upsert_release_unmanaged_source(
+            .upsert_release_local_source(
                 &release.id,
                 &format!("/nonexistent/origin-device/{}", Uuid::new_v4()),
             )
@@ -6910,18 +6899,18 @@ mod tests {
         release
     }
 
-    /// The read layer surfaces an unmanaged release even when no local copy
+    /// The read layer surfaces a local release even when no local copy
     /// resolves on this device — there is no availability filter to hide one.
     /// The substrate gate (coven's `gated_by_descendants`) prunes such a
     /// release's album from a *peer's* sync entirely, so a receiver never
     /// materializes an orphan album; nothing is hidden on read here.
     #[tokio::test]
-    async fn surfaces_unmanaged_release_with_no_local_files() {
+    async fn surfaces_local_release_with_no_local_files() {
         let (manager, _temp_dir) = setup_test_manager().await;
 
         let album = create_test_album();
         manager.database.insert_album(&album).await.unwrap();
-        let release = insert_unmanaged_release_without_local_files(&manager, &album.id).await;
+        let release = insert_local_release_without_local_files(&manager, &album.id).await;
 
         // Grid and count include the album.
         let page = manager.get_album_page(&[], 0, 10).await.unwrap();
@@ -7180,10 +7169,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn unmanage_cancelled_before_copy_leaves_release_managed() {
+    async fn unmanage_cancelled_before_copy_leaves_release_remote() {
         let (manager, temp_dir) = setup_test_manager().await;
         let album = create_test_album();
-        let release = create_test_release(&album.id); // managed: true
+        let release = create_test_release(&album.id); // remote: true
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release).await.unwrap();
         manager
@@ -7206,7 +7195,7 @@ mod tests {
         token.cancel();
         let dest = temp_dir.path().join("out");
         let svc = crate::storage::local::transfer::TransferService::new(manager.clone());
-        let mut rx = svc.unmanage_release(
+        let mut rx = svc.make_release_local(
             release.id.clone(),
             dest.to_string_lossy().to_string(),
             token,
@@ -7228,10 +7217,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert!(
-            after.managed,
-            "cancelled unmanage leaves the release managed"
-        );
+        assert!(after.remote, "cancelled unmanage leaves the release remote");
     }
 
     #[tokio::test]
@@ -7241,11 +7227,11 @@ mod tests {
         let release = create_test_release(&album.id);
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release).await.unwrap();
-        // A managed-in-progress release has a local-copy row (here the originals
-        // at an unmanaged path, the cloud-only manage starting point).
+        // A remote-in-progress release has a local-copy row (here the originals
+        // at a local path, the cloud-only manage starting point).
         manager
             .database
-            .set_release_unmanaged_path(&release.id, "/tmp/originals")
+            .set_release_local_path(&release.id, "/tmp/originals")
             .await
             .unwrap();
 
@@ -7479,8 +7465,8 @@ mod tests {
         assert_eq!(snap.uploads[0].state, UploadState::Queued);
     }
 
-    /// Insert a managed, not-pinned release with one file and return its id.
-    /// `managed: true` + no pinned cache copy makes it eligible for pinning.
+    /// Insert a remote, not-pinned release with one file and return its id.
+    /// `remote: true` + no pinned cache copy makes it eligible for pinning.
     async fn insert_pinnable_release(manager: &LibraryManager) -> String {
         let album = create_test_album();
         let release = create_test_release(&album.id);
@@ -7539,7 +7525,7 @@ mod tests {
         let release_id = insert_pinnable_release(&manager).await;
         manager.set_downloads_paused(true);
 
-        // Pinned: managed, with its blob held in coven's pinned cache.
+        // Pinned: remote, with its blob held in coven's pinned cache.
         // `insert_pinnable_release` seeds one file with id `<release>-file`.
         pin_file_in_cache(&manager, &format!("{release_id}-file"));
         let summary = manager
@@ -7549,7 +7535,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             summary.storage_state,
-            crate::album_detail::ReleaseStorageState::Managed
+            crate::album_detail::ReleaseStorageState::Remote
         );
         assert!(summary.pinned, "the cache file makes it read as pinned");
 
@@ -8437,13 +8423,13 @@ mod tests {
         let mut release = create_test_release(&album.id);
         release.metadata_source = crate::db::ReleaseMetadataSource::MusicBrainz;
         release.metadata_source_release_id = Some("mb-rel-1".to_string());
-        release.managed = false;
+        release.remote = false;
 
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release).await.unwrap();
         manager
             .database
-            .upsert_release_unmanaged_source(&release.id, &media.path().to_string_lossy())
+            .upsert_release_local_source(&release.id, &media.path().to_string_lossy())
             .await
             .unwrap();
         // Two existing track rows align positionally with the two files.
@@ -8948,7 +8934,7 @@ mod tests {
 
         let (manager, _temp_dir) = setup_test_manager().await;
 
-        // Local files live in an unmanaged folder so `local_file_path`
+        // Local files live in a local folder so `local_file_path`
         // resolves to disk where lofty can read the embedded tags.
         let media = TempDir::new().unwrap();
         let fixtures = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -8977,13 +8963,13 @@ mod tests {
         // MusicBrainz-shaped pointer; the rows below carry MB metadata.
         release.metadata_source = crate::db::ReleaseMetadataSource::MusicBrainz;
         release.metadata_source_release_id = Some("mb-rel-1".to_string());
-        release.managed = false;
+        release.remote = false;
 
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release).await.unwrap();
         manager
             .database
-            .upsert_release_unmanaged_source(&release.id, &media.path().to_string_lossy())
+            .upsert_release_local_source(&release.id, &media.path().to_string_lossy())
             .await
             .unwrap();
         manager

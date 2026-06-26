@@ -39,57 +39,57 @@
 use crate::db::DbAlbum;
 
 /// The TWO storage states a release's audio can be in — the shared
-/// `releases.managed` fact. This is ORTHOGONAL to pinned-ness: whether coven keeps
-/// a managed release's blobs local (`storage/pinned/`) vs evictable
+/// `releases.remote` fact. This is ORTHOGONAL to pinned-ness: whether coven keeps
+/// a remote release's blobs local (`storage/pinned/`) vs evictable
 /// (`storage/cache/`) is a separate per-device coven-cache property, carried
 /// alongside this as a `pinned: bool` and NEVER folded into this enum. Mixing the
 /// two would conflate "where the bytes live" with "is a copy kept offline."
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseStorageState {
     /// A local file the user owns, played in place; not in the cloud. Stays
-    /// Unmanaged while uploading (the upload is a sub-state of unmanaged —
-    /// `managed` only flips once every blob is in the cloud).
-    Unmanaged,
+    /// Local while uploading (the upload is a sub-state of local —
+    /// `remote` only flips once every blob is in the cloud).
+    Local,
     /// A cloud blob; coven's cache sits transparently in front of it. Whether a
     /// copy is kept offline on this device is the orthogonal `pinned` property.
-    Managed,
+    Remote,
 }
 
-/// The storage state for the shared `managed` fact. Pinned-ness is NOT part of
+/// The storage state for the shared `remote` fact. Pinned-ness is NOT part of
 /// this — it is a separate coven-cache property the caller carries as a `pinned`
 /// bool. Pure: the no-cloud-home overlay belongs to [`available_storage_actions`].
-pub fn storage_state(managed: bool) -> ReleaseStorageState {
-    if managed {
-        ReleaseStorageState::Managed
+pub fn storage_state(remote: bool) -> ReleaseStorageState {
+    if remote {
+        ReleaseStorageState::Remote
     } else {
-        ReleaseStorageState::Unmanaged
+        ReleaseStorageState::Local
     }
 }
 
 /// A storage transition the user can trigger from the release "Storage…"
 /// sheet. The core computes which are available; the UI renders them and
-/// never re-derives availability. `Manage`/`Unmanage` move between the two storage
-/// states; `Pin`/`Unpin` toggle the orthogonal coven-cache pin on a managed
+/// never re-derives availability. `MakeRemote`/`MakeLocal` move between the two storage
+/// states; `Pin`/`Unpin` toggle the orthogonal coven-cache pin on a remote
 /// release.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseStorageAction {
-    /// Unmanaged → Managed (upload to the cloud home).
-    Manage,
-    /// Keep a managed release offline: fetch its blobs into coven's pinned cache.
+    /// Local → Remote (upload to the cloud home).
+    MakeRemote,
+    /// Keep a remote release offline: fetch its blobs into coven's pinned cache.
     Pin,
-    /// Stop keeping a managed release offline: drop its blobs from the pinned
+    /// Stop keeping a remote release offline: drop its blobs from the pinned
     /// cache (still in the cloud).
     Unpin,
-    /// Managed → Unmanaged (move the files back out to a user folder).
-    Unmanage,
+    /// Remote → Local (move the files back out to a user folder).
+    MakeLocal,
 }
 
 /// Which storage actions are available for a release, given its storage `state`
 /// and the orthogonal `pinned` cache property.
 ///
-/// "Managed" requires a cloud home, so with no cloud home there are no
+/// "Remote" requires a cloud home, so with no cloud home there are no
 /// transitions at all. The in-flight-uploads gate (acting mid-upload races the
-/// observer that completes the managed transition) lives in the UI now: it
+/// observer that completes the remote transition) lives in the UI now: it
 /// consults the outbox snapshot's `per_release` map and suppresses these actions
 /// when the release has work in flight. Snapshot-driven gating stays fresh on
 /// every queue mutation, whereas the previous core-side `has_pending_uploads` flag
@@ -104,9 +104,9 @@ pub fn available_storage_actions(
         return Vec::new();
     }
     match state {
-        ReleaseStorageState::Unmanaged => vec![Manage],
-        ReleaseStorageState::Managed if pinned => vec![Unpin, Unmanage],
-        ReleaseStorageState::Managed => vec![Pin, Unmanage],
+        ReleaseStorageState::Local => vec![MakeRemote],
+        ReleaseStorageState::Remote if pinned => vec![Unpin, MakeLocal],
+        ReleaseStorageState::Remote => vec![Pin, MakeLocal],
     }
 }
 
@@ -211,13 +211,13 @@ pub struct ReleaseSummary {
     pub album_id: String,
     /// Audio format (e.g. "FLAC", "MP3"). `None` if unknown.
     pub format: Option<String>,
-    /// The release's storage state — Unmanaged (local) or Managed (cloud) —
-    /// derived from the shared `releases.managed` fact. Orthogonal to `pinned`.
+    /// The release's storage state — Local (local) or Remote (cloud) —
+    /// derived from the shared `releases.remote` fact. Orthogonal to `pinned`.
     pub storage_state: ReleaseStorageState,
     /// Whether coven keeps this release's blobs pinned (kept offline) on this
     /// device — the orthogonal coven-cache property, asked of coven's cache.
-    /// Meaningful only when `storage_state` is `Managed` (always `false` for an
-    /// Unmanaged release, which is already a local file). Kept SEPARATE from
+    /// Meaningful only when `storage_state` is `Remote` (always `false` for an
+    /// Local release, which is already a local file). Kept SEPARATE from
     /// `storage_state` so the two concepts are never confused.
     pub pinned: bool,
     /// Storage transitions available for this release right now, computed by
@@ -335,7 +335,7 @@ pub struct AlbumSummary {
 
 /// Resolved per-release storage summary for the Storage Manager view.
 /// Produced by `LibraryManager` from `DbReleaseStorageSummary`: derives
-/// `storage_state` from `releases.managed` and this device's
+/// `storage_state` from `releases.remote` and this device's
 /// `release_local_copy` row. The UI formats `total_size` for the locale.
 #[derive(Debug, Clone)]
 pub struct ReleaseStorageSummary {
@@ -348,12 +348,12 @@ pub struct ReleaseStorageSummary {
     /// comparisons and cover art lookup). Always set: every album has at
     /// least one release.
     pub primary_release_id: String,
-    /// The release's storage state — Unmanaged (local) or Managed (cloud) —
-    /// derived from the shared `releases.managed` fact. Orthogonal to `pinned`.
+    /// The release's storage state — Local (local) or Remote (cloud) —
+    /// derived from the shared `releases.remote` fact. Orthogonal to `pinned`.
     pub storage_state: ReleaseStorageState,
     /// Whether coven keeps this release's blobs pinned (kept offline) on this
     /// device — the orthogonal coven-cache property. Meaningful only when
-    /// `storage_state` is `Managed`. Kept SEPARATE from `storage_state`.
+    /// `storage_state` is `Remote`. Kept SEPARATE from `storage_state`.
     pub pinned: bool,
     /// The storage transitions this release allows now, gated on cloud-home
     /// only. The in-flight-uploads gate lives in the UI: it suppresses these
@@ -411,10 +411,10 @@ pub struct StorageSort {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageFilter {
     All,
-    /// Only unmanaged releases (files live outside the library directory).
-    Unmanaged,
-    /// Only managed releases (files stored by the library).
-    Managed,
+    /// Only local releases (files live outside the library directory).
+    Local,
+    /// Only remote releases (files stored by the library).
+    Remote,
     /// Only releases with at least one file pending cloud upload.
     Uploading,
 }
@@ -458,16 +458,16 @@ mod tests {
     use ReleaseStorageState::*;
 
     #[test]
-    fn storage_state_is_just_the_managed_fact() {
-        // Storage state is the 2-way `managed` fact; pinned-ness is orthogonal and
+    fn storage_state_is_just_the_remote_fact() {
+        // Storage state is the 2-way `remote` fact; pinned-ness is orthogonal and
         // not part of it.
-        assert_eq!(storage_state(false), Unmanaged);
-        assert_eq!(storage_state(true), Managed);
+        assert_eq!(storage_state(false), Local);
+        assert_eq!(storage_state(true), Remote);
     }
 
     #[test]
     fn no_cloud_home_has_no_actions() {
-        for state in [Unmanaged, Managed] {
+        for state in [Local, Remote] {
             for pinned in [false, true] {
                 assert_eq!(
                     available_storage_actions(state, pinned, false),
@@ -479,31 +479,31 @@ mod tests {
     }
 
     #[test]
-    fn unmanaged_with_cloud_offers_manage() {
-        // `pinned` is irrelevant for an unmanaged release.
+    fn local_with_cloud_offers_manage() {
+        // `pinned` is irrelevant for a local release.
         assert_eq!(
-            available_storage_actions(Unmanaged, false, true),
-            vec![Manage]
+            available_storage_actions(Local, false, true),
+            vec![MakeRemote]
         );
         assert_eq!(
-            available_storage_actions(Unmanaged, true, true),
-            vec![Manage]
-        );
-    }
-
-    #[test]
-    fn managed_pinned_offers_unpin_and_unmanage() {
-        assert_eq!(
-            available_storage_actions(Managed, true, true),
-            vec![Unpin, Unmanage]
+            available_storage_actions(Local, true, true),
+            vec![MakeRemote]
         );
     }
 
     #[test]
-    fn managed_unpinned_offers_pin_and_unmanage() {
+    fn remote_pinned_offers_unpin_and_unmanage() {
         assert_eq!(
-            available_storage_actions(Managed, false, true),
-            vec![Pin, Unmanage]
+            available_storage_actions(Remote, true, true),
+            vec![Unpin, MakeLocal]
+        );
+    }
+
+    #[test]
+    fn remote_unpinned_offers_pin_and_unmanage() {
+        assert_eq!(
+            available_storage_actions(Remote, false, true),
+            vec![Pin, MakeLocal]
         );
     }
 }

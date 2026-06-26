@@ -151,9 +151,9 @@ pub fn map_file_tags_to_db(
         disc_id: None,
         metadata_source: ReleaseMetadataSource::FileTags,
         metadata_source_release_id: None,
-        // Imports land unmanaged; the upload observer flips `managed` true once
+        // Imports land local; the upload observer flips `remote` true once
         // the release's audio is durably in the cloud.
-        managed: false,
+        remote: false,
         source_folder_name: None,
         content_hash: None,
         // Album loudness is measured in `build_audio_formats` and written to the

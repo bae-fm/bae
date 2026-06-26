@@ -61,10 +61,10 @@ impl UiError {
 /// audio output, IO, missing file) is un-enumerable and routes to `Diagnostic`.
 #[derive(Debug, Clone)]
 pub enum PlaybackErrorReason {
-    /// A managed cloud-only track has no local copy and sync is disconnected —
+    /// A remote cloud-only track has no local copy and sync is disconnected —
     /// the user reconnects cloud sync to play it. Actionable, keyed.
     SyncDisconnected,
-    /// A managed track's cloud upload is still queued and its source file is
+    /// A remote track's cloud upload is still queued and its source file is
     /// gone, so there's nothing to play yet — the user waits for the upload.
     /// Actionable, keyed.
     UploadPending,

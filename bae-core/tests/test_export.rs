@@ -1,5 +1,5 @@
 #![cfg(feature = "test-utils")]
-//! Export of cloud-only (unpinned managed) releases.
+//! Export of cloud-only (unpinned remote) releases.
 //!
 //! Export must not require a local copy: when this device holds none, the
 //! bytes are downloaded from the cloud home and decrypted with the release's
@@ -73,9 +73,9 @@ impl ExportFixture {
     }
 }
 
-/// Import a one-track album from `album_dir` as Unmanaged with Unknown
+/// Import a one-track album from `album_dir` as Local with Unknown
 /// identity (file tags only — no network), then flip it to cloud-only:
-/// managed with no local copy, encrypted blobs seeded in the mock cloud,
+/// remote with no local copy, encrypted blobs seeded in the mock cloud,
 /// originals deleted. This is the state export must handle: no local bytes,
 /// audio only in the cloud.
 async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (String, Vec<u8>) {
@@ -86,7 +86,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
             candidate_key: "test".to_string(),
             folder: album_dir.to_path_buf(),
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
@@ -95,8 +95,8 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Flip to cloud-only: managed, no unmanaged-source row.
-    f.db.set_release_managed(&release_id).await.unwrap();
+    // Flip to cloud-only: remote, no local-source row.
+    f.db.set_release_remote(&release_id).await.unwrap();
 
     // Seed the cloud home with each file's bytes encrypted under the library
     // master key (what the upload outbox would have produced).

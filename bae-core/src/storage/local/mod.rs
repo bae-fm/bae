@@ -1,4 +1,4 @@
-//! Local managed blob storage. The blob store and content-addressed path layout
+//! Local remote blob storage. The blob store and content-addressed path layout
 //! live in coven; bae keeps the pin/unpin transfer queue and deferred cleanup on
 //! top. `ReleaseStorageImpl` is bae's name for coven's `BlobStore`.
 pub mod cleanup;
@@ -51,7 +51,7 @@ pub fn image_path(library_dir: &LibraryDir, id: &str) -> std::path::PathBuf {
 /// reserved root prefixes (`heads/`, `changes/`, `membership/`, `auth/keys/`).
 pub const AUDIO_NAMESPACE: &str = "storage";
 
-/// The full cloud object key a managed file's blob lives at: the
+/// The full cloud object key a remote file's blob lives at: the
 /// [`AUDIO_NAMESPACE`] prepended onto the stored readable `cloud_path` (a
 /// browsable home), or the hashed-by-id [`storage_path`] default (an opaque home,
 /// where `cloud_path` is NULL — already namespace-prefixed). This is the single

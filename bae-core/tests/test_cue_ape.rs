@@ -153,7 +153,7 @@ async fn test_cue_ape_records_correct_durations() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -340,7 +340,7 @@ async fn test_cue_ape_records_track_timing() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -463,7 +463,7 @@ impl CueApeTestFixture {
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
                 selected_cover: None,
-                storage_mode: StorageMode::Unmanaged,
+                storage_mode: StorageMode::Local,
                 pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -1415,8 +1415,8 @@ async fn test_cue_ape_next_track() {
 /// (identified by the relative path `CD{N}/CDImage.ape`).
 ///
 /// This exercises the bare-filename collision regression in every code path:
-/// bytes-never-copied (Unmanaged), bytes-uploaded-and-pinned (Managed + pin),
-/// and bytes-uploaded-cloud-only (Managed, no pin). Pin is an orthogonal coven
+/// bytes-never-copied (Local), bytes-uploaded-and-pinned (Remote + pin),
+/// and bytes-uploaded-cloud-only (Remote, no pin). Pin is an orthogonal coven
 /// cache choice, so it rides alongside the `StorageMode` as its own argument.
 async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, pin: bool) {
     tracing_init();
@@ -1588,16 +1588,16 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
 /// The same structural bug lived in all three byte-placement strategies, so we
 /// cover each explicitly to prevent a regression on any one path.
 #[tokio::test]
-async fn test_multi_disc_cue_ape_unmanaged() {
-    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Unmanaged, false).await;
+async fn test_multi_disc_cue_ape_local() {
+    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Local, false).await;
 }
 
 #[tokio::test]
-async fn test_multi_disc_cue_ape_managed_pin() {
-    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Managed, true).await;
+async fn test_multi_disc_cue_ape_remote_pin() {
+    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Remote, true).await;
 }
 
 #[tokio::test]
-async fn test_multi_disc_cue_ape_managed_unpin() {
-    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Managed, false).await;
+async fn test_multi_disc_cue_ape_remote_unpin() {
+    assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Remote, false).await;
 }

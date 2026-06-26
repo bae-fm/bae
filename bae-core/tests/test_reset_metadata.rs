@@ -79,7 +79,7 @@ fn make_release(album_id: &str) -> DbRelease {
         disc_id: None,
         metadata_source: ReleaseMetadataSource::FileTags,
         metadata_source_release_id: None,
-        managed: true,
+        remote: true,
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,
@@ -542,7 +542,7 @@ fn copy_and_tag(
 async fn reset_file_tags_unknown_returns_tags_from_disk() {
     let (lm, db, tmp) = setup().await;
 
-    // Create real audio files inside an unmanaged folder so the release
+    // Create real audio files inside a local folder so the release
     // can resolve them via `local_file_path`.
     let audio_dir = tmp.path().join("source-folder");
     std::fs::create_dir_all(&audio_dir).unwrap();
@@ -576,14 +576,14 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
     let mut release = make_release(&album.id);
     release.metadata_source = ReleaseMetadataSource::FileTags;
     release.metadata_source_release_id = None;
-    release.managed = false;
+    release.remote = false;
     let t1 = make_track(&release.id, 1, "Original Track 1");
     let t2 = make_track(&release.id, 2, "Original Track 2");
 
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
-    db.upsert_release_unmanaged_source(&release.id, audio_dir.to_str().unwrap())
+    db.upsert_release_local_source(&release.id, audio_dir.to_str().unwrap())
         .await
         .unwrap();
     db.insert_track(&t1).await.unwrap();

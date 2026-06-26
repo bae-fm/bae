@@ -1,6 +1,6 @@
 #![cfg(feature = "test-utils")]
 //! `create_audio_reader` source dispatch: which reader (or error) a resolved
-//! file source maps to. A `Managed` source fetches the cloud home and the
+//! file source maps to. A `Remote` source fetches the cloud home and the
 //! master key from the `LibraryManager`; an `Unreachable` source never consults
 //! the manager at all — the variant already carries the "no readable location"
 //! verdict.
@@ -15,15 +15,15 @@ use bae_core::playback::data_source::create_audio_reader;
 use bae_core::playback::PlaybackError;
 use support::{setup_fresh_library, MockCloudHome};
 
-/// A `Managed` source with no cloud connection: sync is disconnected. The
+/// A `Remote` source with no cloud connection: sync is disconnected. The
 /// reader-builder returns `SyncDisconnected` so the UI can prompt for reconnect.
 #[test]
-fn managed_no_cloud_returns_sync_disconnected() {
+fn remote_no_cloud_returns_sync_disconnected() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (manager, _tmp) = setup_fresh_library(&runtime);
 
     let err = create_audio_reader(
-        ReadableFileSource::Managed,
+        ReadableFileSource::Remote,
         "file-1",
         "Artist Name/Album Title/01 Track Title.flac",
         &manager,
@@ -60,7 +60,7 @@ fn upload_pending_reports_pending() {
     );
 }
 
-/// An `Unreachable` source — an unmanaged track whose local file is gone — has
+/// An `Unreachable` source — a local track whose local file is gone — has
 /// no readable location anywhere. The reader-builder returns `NotFound`.
 #[test]
 fn unreachable_returns_not_found() {
@@ -83,7 +83,7 @@ fn unreachable_returns_not_found() {
 }
 
 /// An `Unreachable` source stays `NotFound` even with a cloud home connected:
-/// an unmanaged track's audio never went to the cloud, so a connected home must
+/// a local track's audio never went to the cloud, so a connected home must
 /// not turn its missing local file into a doomed cloud read. The variant carries
 /// the verdict, so the builder never consults the cloud at all.
 #[test]

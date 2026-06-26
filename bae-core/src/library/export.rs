@@ -100,7 +100,7 @@ impl ExportService {
         }
 
         let local_copy = library_manager
-            .get_release_unmanaged_source(release_id)
+            .get_release_local_source(release_id)
             .await
             .map_err(|e| format!("Failed to get local copy: {}", e))?;
 

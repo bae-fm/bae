@@ -369,10 +369,10 @@ async fn collect_scan_events(
     ScanBatch { added, removed }
 }
 
-/// 3. Unmanaged folder import: album, release, tracks all in DB, files stay in place.
+/// 3. Local folder import: album, release, tracks all in DB, files stay in place.
 #[tokio::test]
 #[serial]
-async fn unmanaged_folder_import() {
+async fn local_folder_import() {
     support::tracing_init();
 
     let release = discogs_release("Test Album", &["Track One", "Track Two", "Track Three"]);
@@ -400,7 +400,7 @@ async fn unmanaged_folder_import() {
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -412,12 +412,12 @@ async fn unmanaged_folder_import() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Verify release in DB: unmanaged (not managed), with this device's
-    // unmanaged-source row recording the in-place import path.
+    // Verify release in DB: local (not remote), with this device's
+    // local-source row recording the in-place import path.
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert!(!release.managed);
+    assert!(!release.remote);
     let source =
-        f.db.get_release_unmanaged_source(&release_id)
+        f.db.get_release_local_source(&release_id)
             .await
             .unwrap()
             .unwrap();
@@ -434,7 +434,7 @@ async fn unmanaged_folder_import() {
     let files = f.db.get_files_for_release(&release_id).await.unwrap();
     assert_eq!(files.len(), 3);
 
-    // Original files still in place (unmanaged)
+    // Original files still in place (local)
     assert!(album_dir.join("01 Track One.flac").exists());
     assert!(album_dir.join("02 Track Two.flac").exists());
     assert!(album_dir.join("03 Track Three.flac").exists());
@@ -454,14 +454,14 @@ async fn unmanaged_folder_import() {
     assert_eq!(album_added, 1, "expected one AlbumAdded event after import");
 }
 
-/// Managed { pin: false } import enqueues the cloud_outbox upload BEFORE
+/// Remote { pin: false } import enqueues the cloud_outbox upload BEFORE
 /// emitting `ImportProgress::Complete`, so a consumer that treats Complete
 /// as "done" can rely on the cloud upload being queued. A regression would
 /// re-introduce the race where a fast consumer (navigating away, tearing
 /// the import handle down) acted on Complete before the outbox row landed.
 #[tokio::test]
 #[serial]
-async fn managed_unpin_complete_fires_after_outbox_enqueue() {
+async fn remote_unpin_complete_fires_after_outbox_enqueue() {
     support::tracing_init();
 
     let release = discogs_release("Order Test", &["Track"]);
@@ -479,7 +479,7 @@ async fn managed_unpin_complete_fires_after_outbox_enqueue() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Managed,
+            storage_mode: StorageMode::Remote,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -523,7 +523,7 @@ async fn import_produces_audio_format_records() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -648,7 +648,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -803,7 +803,7 @@ async fn two_sequential_imports() {
                 candidate_key: "test".to_string(),
                 folder: album_dir,
                 selected_cover: None,
-                storage_mode: StorageMode::Unmanaged,
+                storage_mode: StorageMode::Local,
                 pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_keys[i].clone(), MetadataSource::Discogs),
@@ -869,7 +869,7 @@ async fn import_with_cover_art() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -962,7 +962,7 @@ async fn exact_import_writes_release_id_and_pressing_fields() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key.clone(), MetadataSource::Discogs),
@@ -1020,7 +1020,7 @@ async fn approximate_import_nulls_release_id_and_clears_pressing() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Approximate {
                 release_ref: MetadataRef::new(release_id_key.clone(), MetadataSource::Discogs),
@@ -1128,7 +1128,7 @@ async fn approximate_import_with_user_edit_overlay() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Approximate {
                 release_ref: MetadataRef::new(release_id_key.clone(), MetadataSource::Discogs),
@@ -1294,7 +1294,7 @@ async fn cross_source_exact_writes_both_release_ids() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(mb_id.clone(), MetadataSource::MusicBrainz),
@@ -1356,7 +1356,7 @@ async fn cross_source_approximate_nulls_both_release_ids() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Approximate {
                 release_ref: MetadataRef::new(mb_id.clone(), MetadataSource::MusicBrainz),
@@ -1448,7 +1448,7 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Approximate {
                 release_ref: MetadataRef::new(discogs_id.clone(), MetadataSource::Discogs),
@@ -1518,7 +1518,7 @@ async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
@@ -1584,7 +1584,7 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
@@ -1645,7 +1645,7 @@ async fn unknown_import_folder_image_wins_over_embedded_cover() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
@@ -1691,7 +1691,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
             candidate_key: "identified".to_string(),
             folder: identified_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -1725,7 +1725,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
             candidate_key: "unknown".to_string(),
             folder: unknown_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
@@ -1790,7 +1790,7 @@ async fn unknown_import_with_user_edit_overlay() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: Some(edit),
@@ -1851,7 +1851,7 @@ async fn unknown_import_with_no_tags_seeds_title_from_folder_name() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,

@@ -31,23 +31,23 @@ use coven::sync::session::SyncedTable;
 /// These ten satisfy both (verified against
 /// `bae-core/migrations/001_initial.sql`).
 ///
-/// ## The `releases.managed` gate
+/// ## The `releases.remote` gate
 ///
-/// `releases` is a *gated root*: a row syncs only when its `managed` column is
+/// `releases` is a *gated root*: a row syncs only when its `remote` column is
 /// true, and the gate flows down the declared foreign keys to the release
-/// subtree, so its descendants sync iff their root release is managed. The
+/// subtree, so its descendants sync iff their root release is remote. The
 /// inheriting children — `tracks`, `track_artists` (2-hop, via `tracks`),
 /// `release_files`, `release_identities`, `audio_formats` — are declared plain;
 /// they pick up the gate automatically from coven's FK walk, not from a
-/// per-table flag. Flipping `managed` true re-emits the whole now-visible
+/// per-table flag. Flipping `remote` true re-emits the whole now-visible
 /// subtree to peers as full inserts.
 ///
 /// `albums` and `artists` are FK-ancestors of `releases`, declared
 /// `gated_by_descendants()`: an album syncs only while it has a surviving
-/// (managed) release, and an artist syncs only while a surviving album,
+/// (remote) release, and an artist syncs only while a surviving album,
 /// `album_artists`, or `track_artists` row references it. coven infers those
 /// keep-children from the foreign-key graph, so a receiver never materializes an
-/// album with zero managed releases and there is no read-side filter to hide
+/// album with zero remote releases and there is no read-side filter to hide
 /// one. `album_artists` is a plain join table that rides along.
 ///
 /// Deliberately excluded:
@@ -63,7 +63,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         SyncedTable::new("artists").gated_by_descendants(),
         SyncedTable::new("albums").gated_by_descendants(),
         SyncedTable::new("album_artists"),
-        SyncedTable::new("releases").gated_by("managed"),
+        SyncedTable::new("releases").gated_by("remote"),
         SyncedTable::new("release_identities"),
         SyncedTable::new("tracks"),
         SyncedTable::new("track_artists"),
@@ -182,7 +182,7 @@ mod tests {
         }
     }
 
-    /// `releases` is the only gated root, gated by `managed`. The release subtree
+    /// `releases` is the only gated root, gated by `remote`. The release subtree
     /// (`tracks`, `track_artists`, `release_files`, `release_identities`,
     /// `audio_formats`) inherits the gate via coven's FK walk and so is declared
     /// plain; a gate accidentally attached to one of those — or to a
@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn releases_is_the_only_gated_root() {
         for table in synced_tables() {
-            let expected_gate = (table.name() == "releases").then_some("managed");
+            let expected_gate = (table.name() == "releases").then_some("remote");
             assert_eq!(
                 table.gate_column(),
                 expected_gate,
@@ -217,21 +217,21 @@ mod tests {
         assert_eq!(ancestors, BTreeSet::from(["albums", "artists"]));
     }
 
-    /// The whole point of the storage-state split: per-device unmanaged-source
-    /// state lives in `release_unmanaged_source`, which must never sync.
+    /// The whole point of the storage-state split: per-device local-source
+    /// state lives in `release_local_source`, which must never sync.
     #[test]
-    fn release_unmanaged_source_is_device_local() {
+    fn release_local_source_is_device_local() {
         let tables = migration_tables();
         let (_, body) = tables
             .iter()
-            .find(|(n, _)| n == "release_unmanaged_source")
-            .expect("release_unmanaged_source table exists");
+            .find(|(n, _)| n == "release_local_source")
+            .expect("release_local_source table exists");
         assert!(
             !has_lww_clock(body),
-            "release_unmanaged_source must have no `_updated_at` (device-local, never synced)"
+            "release_local_source must have no `_updated_at` (device-local, never synced)"
         );
         assert!(synced_tables()
             .iter()
-            .all(|t| t.name() != "release_unmanaged_source"));
+            .all(|t| t.name() != "release_local_source"));
     }
 }

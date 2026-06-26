@@ -38,8 +38,8 @@ struct StorageManagerView: View {
         VStack(spacing: 0) {
             Picker("Filter", selection: $filter) {
                 Text("All").tag(BridgeStorageFilter.all)
-                Text("Unmanaged").tag(BridgeStorageFilter.unmanaged)
-                Text("Managed").tag(BridgeStorageFilter.managed)
+                Text("Unmanaged").tag(BridgeStorageFilter.local)
+                Text("Managed").tag(BridgeStorageFilter.remote)
                 Text("Uploading").tag(BridgeStorageFilter.uploading)
             }
             .pickerStyle(.segmented)

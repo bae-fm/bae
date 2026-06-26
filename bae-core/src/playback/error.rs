@@ -18,11 +18,11 @@ pub enum PlaybackError {
     /// Async task panicked or was cancelled
     #[error("Task failed: {0}")]
     TaskFailed(String),
-    /// A managed track has no local copy and sync is disconnected, so the
+    /// A remote track has no local copy and sync is disconnected, so the
     /// audio can't be fetched. The user needs to reconnect cloud sync.
     #[error("Sync is disconnected — reconnect to play this release")]
     SyncDisconnected,
-    /// A managed track whose cloud upload is still queued has no readable
+    /// A remote track whose cloud upload is still queued has no readable
     /// source left (the original file is gone), so the cloud object may not
     /// exist yet. The user waits for the upload rather than getting a
     /// not-found error for an internal storage key.

@@ -102,8 +102,8 @@ fn resolve_file_content_type(path: &Path) -> Result<ContentType, String> {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn storage_mode_label(mode: &StorageMode) -> &'static str {
     match mode {
-        StorageMode::Managed => "managed",
-        StorageMode::Unmanaged => "unmanaged",
+        StorageMode::Remote => "remote",
+        StorageMode::Local => "local",
     }
 }
 
@@ -898,7 +898,7 @@ impl ImportService {
 
         // Overwrite a prior import of the same folder tree: re-importing
         // replaces rather than duplicates. Remove the existing release(s)
-        // carrying this content hash (and their managed files, via the library
+        // carrying this content hash (and their remote files, via the library
         // remove path) before reconciling, so the new import builds against
         // post-removal state — a single-release album is freshly recreated; a
         // multi-release album keeps its siblings and reassigns its primary. The
@@ -1189,12 +1189,12 @@ impl ImportService {
 
     /// Run an import. ONE path regardless of storage mode: read metadata, build
     /// DbFile + audio-format records, reference the files in place, finalize
-    /// atomically as an UNMANAGED release (playable immediately), emit events.
-    /// No bytes move here. If `storage_mode` is `Managed`, the release then
-    /// transitions to the cloud via `enqueue_managed_uploads` (the same flow the
+    /// atomically as a LOCAL release (playable immediately), emit events.
+    /// No bytes move here. If `storage_mode` is `Remote`, the release then
+    /// transitions to the cloud via `enqueue_remote_uploads` (the same flow the
     /// "Manage" action runs), carrying `pin` as the upload's retain-pinned intent;
-    /// the observer flips `managed` true and deletes the in-place source once the
-    /// last upload lands. `pin` is ignored for an `Unmanaged` import.
+    /// the observer flips `remote` true and deletes the in-place source once the
+    /// last upload lands. `pin` is ignored for an `Local` import.
     ///
     /// All DB writes happen in one atomic transaction at the end. DbTracks —
     /// including their populated `duration_ms` — live inside `tracks_to_files`.
@@ -1248,13 +1248,13 @@ impl ImportService {
             db_files.push(db_file);
         }
 
-        // Every import lands UNMANAGED: reference the files in place and record
-        // their common-ancestor folder as the release's unmanaged source. No bytes
-        // move here in any mode. A Managed import then transitions to the cloud
-        // (`enqueue_managed_uploads`, below), flipping `managed` true once the
-        // upload lands; until then it is a valid, playable unmanaged release, so
+        // Every import lands LOCAL: reference the files in place and record
+        // their common-ancestor folder as the release's local source. No bytes
+        // move here in any mode. A Remote import then transitions to the cloud
+        // (`enqueue_remote_uploads`, below), flipping `remote` true once the
+        // upload lands; until then it is a valid, playable local release, so
         // another device never sees a release before its audio is in the cloud.
-        let unmanaged_root = {
+        let local_root = {
             let mut ancestor: Option<&Path> = None;
             for file in discovered_files.iter() {
                 let parent = file
@@ -1266,11 +1266,11 @@ impl ImportService {
                     Some(a) => common_ancestor(a, parent),
                 });
             }
-            ancestor.ok_or_else(|| "No files to determine unmanaged path".to_string())?
+            ancestor.ok_or_else(|| "No files to determine local path".to_string())?
         };
-        let unmanaged_path = unmanaged_root
+        let local_path = local_root
             .to_str()
-            .ok_or_else(|| format!("Cannot convert path to string: {:?}", unmanaged_root))?
+            .ok_or_else(|| format!("Cannot convert path to string: {:?}", local_root))?
             .to_string();
 
         // Per-track progress jumps to 100% immediately — files are referenced in
@@ -1310,8 +1310,8 @@ impl ImportService {
 
         // Measure loudness from the source decode — bae stores originals verbatim
         // (no transcode), so source samples == stored samples. The source files
-        // are present in place (every import references them and lands unmanaged);
-        // a managed import's uploads queue only after finalize. Per-track NULLs and
+        // are present in place (every import references them and lands local);
+        // a remote import's uploads queue only after finalize. Per-track NULLs and
         // an album NULL are legitimate "not measured" results, each logged at the
         // skip point inside `measure_loudness`.
         #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
@@ -1367,7 +1367,7 @@ impl ImportService {
             .or(embedded_cover_image.as_ref());
         let cover_rel_id = Some((album_id, db_release.id.as_str()));
 
-        let managed_intent = matches!(storage_mode, StorageMode::Managed);
+        let remote_intent = matches!(storage_mode, StorageMode::Remote);
         library_manager
             .finalize_import_atomic(
                 new_album,
@@ -1382,29 +1382,29 @@ impl ImportService {
                 cover_rel_id,
                 import_id,
                 identities,
-                &unmanaged_path,
-                managed_intent,
+                &local_path,
+                remote_intent,
             )
             .await
             .map_err(|e| format!("Failed to finalize import: {}", e))?;
 
-        // A Managed import transitions to the cloud in the background — the same
+        // A Remote import transitions to the cloud in the background — the same
         // flow the "Manage" action runs: enqueue the uploads carrying the pin
-        // intent; the observer flips `managed` true and deletes the in-place source
+        // intent; the observer flips `remote` true and deletes the in-place source
         // once the last upload lands. This runs BEFORE the events below so the
         // outbox already holds the upload by the time any consumer observes the
         // release or `Complete` — a consumer that treats Complete as "done" never
         // races ahead of the queued transition. The release is already a playable
-        // unmanaged release, so a transition that can't start (e.g. a missing or
-        // truncated source) is logged, leaving it unmanaged for the user to Manage
+        // local release, so a transition that can't start (e.g. a missing or
+        // truncated source) is logged, leaving it local for the user to Manage
         // later, rather than failing the completed import.
-        if managed_intent {
+        if remote_intent {
             if let Err(e) = library_manager
-                .enqueue_managed_uploads(&db_release.id, pin)
+                .enqueue_remote_uploads(&db_release.id, pin)
                 .await
             {
                 warn!(
-                    "Import of {} landed unmanaged but the managed transition could not start: {e}",
+                    "Import of {} landed local but the remote transition could not start: {e}",
                     db_release.id
                 );
             }
@@ -1419,7 +1419,7 @@ impl ImportService {
         }
 
         // Emit Complete after the album/release events: the release is now in the
-        // library and playable (as an unmanaged release; a managed import is
+        // library and playable (as a local release; a remote import is
         // uploading in the background, its outbox row already queued above).
         send_event(
             &self.event_tx,
@@ -2077,7 +2077,7 @@ mod tests {
         assert!(affected_roots(&changed, &roots).is_empty());
     }
 
-    /// `common_ancestor` derives the unmanaged-path root by folding over the
+    /// `common_ancestor` derives the local-path root by folding over the
     /// files' parent dirs. It must compare path components, not string
     /// prefixes, so `/m/Album` and `/m/Album2` collapse to `/m` (a string
     /// prefix would wrongly keep `/m/Album`), and an ancestor argument returns
@@ -2252,7 +2252,7 @@ mod tests {
             disc_id: None,
             metadata_source: crate::db::ReleaseMetadataSource::MusicBrainz,
             metadata_source_release_id: Some("rel-mb".to_string()),
-            managed: true,
+            remote: true,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,
@@ -2464,7 +2464,7 @@ mod tests {
             disc_id: None,
             metadata_source: crate::db::ReleaseMetadataSource::MusicBrainz,
             metadata_source_release_id: Some("rel-mb".to_string()),
-            managed: true,
+            remote: true,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,

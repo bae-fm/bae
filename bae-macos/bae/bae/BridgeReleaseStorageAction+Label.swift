@@ -6,8 +6,8 @@ extension BridgeReleaseStorageAction {
     /// sites read the same wording.
     var label: String {
         switch self {
-        case .manage: "Move into library"
-        case .unmanage: "Move out of library..."
+        case .makeRemote: "Move into library"
+        case .makeLocal: "Move out of library..."
         case .pin: "Pin for offline"
         case .unpin: "Remove local copy"
         }
@@ -16,8 +16,8 @@ extension BridgeReleaseStorageAction {
     /// SF Symbol name paired with `label`.
     var systemImage: String {
         switch self {
-        case .manage: "arrow.down.to.line"
-        case .unmanage: "arrow.up.forward.square"
+        case .makeRemote: "arrow.down.to.line"
+        case .makeLocal: "arrow.up.forward.square"
         case .pin: "pin"
         case .unpin: "pin.slash"
         }

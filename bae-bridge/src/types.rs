@@ -111,22 +111,22 @@ pub struct BridgeAlbum {
     pub cover_path: Option<String>,
 }
 
-/// A release's storage state — Unmanaged (a local file the user owns) or Managed
+/// A release's storage state — Local (a local file the user owns) or Remote
 /// (a cloud blob). Mirrors `bae_core::album_detail::ReleaseStorageState`. Whether
-/// a managed release is kept offline is the ORTHOGONAL `pinned` bool on
+/// a remote release is kept offline is the ORTHOGONAL `pinned` bool on
 /// `BridgeReleaseSummary`/`BridgeRelease`, never folded into this enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReleaseStorageState {
-    Unmanaged,
-    Managed,
+    Local,
+    Remote,
 }
 
 impl BridgeReleaseStorageState {
     pub fn from_core(state: bae_core::album_detail::ReleaseStorageState) -> Self {
         use bae_core::album_detail::ReleaseStorageState;
         match state {
-            ReleaseStorageState::Unmanaged => Self::Unmanaged,
-            ReleaseStorageState::Managed => Self::Managed,
+            ReleaseStorageState::Local => Self::Local,
+            ReleaseStorageState::Remote => Self::Remote,
         }
     }
 }
@@ -135,20 +135,20 @@ impl BridgeReleaseStorageState {
 /// Mirrors `bae_core::album_detail::ReleaseStorageAction`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReleaseStorageAction {
-    Manage,
+    MakeRemote,
     Pin,
     Unpin,
-    Unmanage,
+    MakeLocal,
 }
 
 impl BridgeReleaseStorageAction {
     pub fn from_core(action: bae_core::album_detail::ReleaseStorageAction) -> Self {
         use bae_core::album_detail::ReleaseStorageAction;
         match action {
-            ReleaseStorageAction::Manage => Self::Manage,
+            ReleaseStorageAction::MakeRemote => Self::MakeRemote,
             ReleaseStorageAction::Pin => Self::Pin,
             ReleaseStorageAction::Unpin => Self::Unpin,
-            ReleaseStorageAction::Unmanage => Self::Unmanage,
+            ReleaseStorageAction::MakeLocal => Self::MakeLocal,
         }
     }
 
@@ -156,8 +156,8 @@ impl BridgeReleaseStorageAction {
         match self {
             Self::Pin => "core.transfer.action.pin",
             Self::Unpin => "core.transfer.action.unpin",
-            Self::Manage => "core.transfer.action.manage",
-            Self::Unmanage => "core.transfer.action.unmanage",
+            Self::MakeRemote => "core.transfer.action.manage",
+            Self::MakeLocal => "core.transfer.action.unmanage",
         }
     }
 }
@@ -179,11 +179,11 @@ pub struct BridgeReleaseSummary {
     pub id: String,
     pub album_id: String,
     pub format: Option<String>,
-    /// The release's storage state — Unmanaged (local) or Managed (cloud).
+    /// The release's storage state — Local (local) or Remote (cloud).
     pub storage_state: BridgeReleaseStorageState,
     /// Whether coven keeps this release's blobs pinned (kept offline) on this
     /// device — the ORTHOGONAL coven-cache property. Meaningful only when
-    /// `storage_state` is `Managed`. Kept separate from `storage_state` so the UI
+    /// `storage_state` is `Remote`. Kept separate from `storage_state` so the UI
     /// never conflates "in the cloud" with "kept offline".
     pub pinned: bool,
     /// Storage transitions available right now, gated on cloud-home by the
@@ -211,7 +211,7 @@ pub struct BridgeRelease {
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
-    /// The release's storage state — Unmanaged (local) or Managed (cloud).
+    /// The release's storage state — Local (local) or Remote (cloud).
     pub storage_state: BridgeReleaseStorageState,
     /// Whether coven keeps this release's blobs pinned (kept offline) on this
     /// device — the ORTHOGONAL coven-cache property, separate from `storage_state`.
@@ -1957,8 +1957,8 @@ pub struct BridgeStorageSort {
 #[derive(Debug, Clone, Copy, uniffi::Enum)]
 pub enum BridgeStorageFilter {
     All,
-    Managed,
-    Unmanaged,
+    Remote,
+    Local,
     Uploading,
 }
 
@@ -2027,14 +2027,14 @@ pub struct BridgeSortCriterion {
     pub direction: BridgeSortDirection,
 }
 
-/// The storage state the user picks for an import — Unmanaged (keep the files in
-/// place) or Managed (upload to the cloud). Mirrors
-/// `bae_core::import::StorageMode`. Whether a managed import is kept offline is the
+/// The storage state the user picks for an import — Local (keep the files in
+/// place) or Remote (upload to the cloud). Mirrors
+/// `bae_core::import::StorageMode`. Whether a remote import is kept offline is the
 /// ORTHOGONAL `pin` argument on `start_import`, never folded into this enum.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeStorageMode {
-    Unmanaged,
-    Managed,
+    Local,
+    Remote,
 }
 
 #[derive(Debug, uniffi::Enum)]
@@ -2316,10 +2316,10 @@ impl BridgeError {
 /// copyable, log-only detail).
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePlaybackErrorReason {
-    /// A managed cloud-only track isn't downloaded and sync is disconnected —
+    /// A remote cloud-only track isn't downloaded and sync is disconnected —
     /// the user reconnects to play it.
     SyncDisconnected,
-    /// A managed track's cloud upload is still queued — the user waits for it
+    /// A remote track's cloud upload is still queued — the user waits for it
     /// to finish.
     UploadPending,
     /// Any other failure. Carries the underlying `BridgeError`; the UI renders
@@ -2444,8 +2444,8 @@ pub(crate) fn bridge_storage_mode_to_core(
 ) -> bae_core::import::StorageMode {
     use bae_core::import::StorageMode;
     match mode {
-        BridgeStorageMode::Unmanaged => StorageMode::Unmanaged,
-        BridgeStorageMode::Managed => StorageMode::Managed,
+        BridgeStorageMode::Local => StorageMode::Local,
+        BridgeStorageMode::Remote => StorageMode::Remote,
     }
 }
 
@@ -2561,8 +2561,8 @@ pub(crate) fn bridge_storage_filter_to_core(
 ) -> bae_core::album_detail::StorageFilter {
     match filter {
         BridgeStorageFilter::All => bae_core::album_detail::StorageFilter::All,
-        BridgeStorageFilter::Managed => bae_core::album_detail::StorageFilter::Managed,
-        BridgeStorageFilter::Unmanaged => bae_core::album_detail::StorageFilter::Unmanaged,
+        BridgeStorageFilter::Remote => bae_core::album_detail::StorageFilter::Remote,
+        BridgeStorageFilter::Local => bae_core::album_detail::StorageFilter::Local,
         BridgeStorageFilter::Uploading => bae_core::album_detail::StorageFilter::Uploading,
     }
 }
@@ -3214,16 +3214,16 @@ mod loc_key_coverage {
 
         // bridge_transfer_action_key — every variant carries a key.
         for a in [
-            BridgeReleaseStorageAction::Manage,
+            BridgeReleaseStorageAction::MakeRemote,
             BridgeReleaseStorageAction::Pin,
             BridgeReleaseStorageAction::Unpin,
-            BridgeReleaseStorageAction::Unmanage,
+            BridgeReleaseStorageAction::MakeLocal,
         ] {
             let expected = match a {
-                BridgeReleaseStorageAction::Manage => "core.transfer.action.manage",
+                BridgeReleaseStorageAction::MakeRemote => "core.transfer.action.manage",
                 BridgeReleaseStorageAction::Pin => "core.transfer.action.pin",
                 BridgeReleaseStorageAction::Unpin => "core.transfer.action.unpin",
-                BridgeReleaseStorageAction::Unmanage => "core.transfer.action.unmanage",
+                BridgeReleaseStorageAction::MakeLocal => "core.transfer.action.unmanage",
             };
             assert_eq!(bridge_transfer_action_key(a), expected);
             keys.push(expected.to_string());

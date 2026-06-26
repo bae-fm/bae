@@ -2287,7 +2287,7 @@ public sealed partial class MainWindow : Window
         // The cover the user picks; empty means "let the import choose its
         // default cover" (the source's first cover art, else a folder image).
         var selectedCoverJson = string.Empty;
-        var storageManaged = new CheckBox
+        var storageRemote = new CheckBox
         {
             Content = Loc.Chrome("import.storage.managed"),
             IsChecked = true,
@@ -2299,21 +2299,21 @@ public sealed partial class MainWindow : Window
             IsChecked = true,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        bool StorageManagedSelected() => settings.HasCloudHome && storageManaged.IsChecked == true;
+        bool StorageRemoteSelected() => settings.HasCloudHome && storageRemote.IsChecked == true;
         // Storage state and pinned-ness are orthogonal: the mode tag is purely
-        // unmanaged-vs-managed; the pin choice rides alongside as its own arg,
-        // meaningful only for a managed import.
-        string StorageModeTag() => StorageManagedSelected() ? "managed" : "unmanaged";
-        bool StoragePinSelected() => StorageManagedSelected() && storagePinned.IsChecked == true;
+        // the remote-vs-local storage choice; the pin choice rides alongside as
+        // its own arg, meaningful only for a remote import.
+        string StorageModeTag() => StorageRemoteSelected() ? "managed" : "unmanaged";
+        bool StoragePinSelected() => StorageRemoteSelected() && storagePinned.IsChecked == true;
 
         void RefreshStorageControls()
         {
-            storagePinned.Visibility = StorageManagedSelected()
+            storagePinned.Visibility = StorageRemoteSelected()
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
-        storageManaged.Checked += (_, _) => RefreshStorageControls();
-        storageManaged.Unchecked += (_, _) => RefreshStorageControls();
+        storageRemote.Checked += (_, _) => RefreshStorageControls();
+        storageRemote.Unchecked += (_, _) => RefreshStorageControls();
         RefreshStorageControls();
 
         var panel = new StackPanel { Spacing = 8, MinWidth = 520 };
@@ -2326,7 +2326,7 @@ public sealed partial class MainWindow : Window
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
             };
-            storageRow.Children.Add(storageManaged);
+            storageRow.Children.Add(storageRemote);
             storageRow.Children.Add(storagePinned);
             panel.Children.Add(storageRow);
         }
@@ -3776,7 +3776,7 @@ public sealed partial class MainWindow : Window
         // The releases whose rows are selected. Right-clicking applies the
         // chosen action to the whole selection (or to just the right-tapped row
         // when it isn't part of it). Releases that vanish on reload (e.g. an
-        // unmanaged release moved out of the library) drop out below.
+        // local release moved out of the library) drop out below.
         var selected = new HashSet<string>();
         // The current rows, kept so the right-tap menu can resolve a release's
         // allowed actions (for the multi-select intersection) by id.
@@ -4242,7 +4242,7 @@ public sealed partial class MainWindow : Window
     // menu only offers actions applicable to all. Order follows the first
     // release's action list (the core's order). Suppressed entirely when any
     // targeted release has uploads in flight: acting mid-upload races the
-    // observer that completes the unmanaged → cloud step (the gate the core
+    // observer that completes the local → cloud step (the gate the core
     // leaves to the UI, mirroring the macOS "Storage…" sheet).
     private static List<string> IntersectedStorageActions(
         List<string> releaseIds, Dictionary<string, StorageRow> rowsById)
@@ -4421,7 +4421,7 @@ public sealed partial class MainWindow : Window
                 {
                     foreach (var releaseId in releaseIds)
                     {
-                        var error = NativeBae.UnmanageRelease(_handle, releaseId, path);
+                        var error = NativeBae.MakeReleaseLocal(_handle, releaseId, path);
                         if (error is not null)
                         {
                             return error;
@@ -4448,7 +4448,7 @@ public sealed partial class MainWindow : Window
                 {
                     "pin" => NativeBae.PinRelease(_handle, releaseId),
                     "unpin" => NativeBae.UnpinRelease(_handle, releaseId),
-                    "manage" => NativeBae.ManageRelease(_handle, releaseId, pin: false),
+                    "manage" => NativeBae.MakeReleaseRemote(_handle, releaseId, pin: false),
                     // A null return reads as success; an unknown action is a
                     // UI/core contract mismatch, so surface it rather than
                     // reload as if it worked.

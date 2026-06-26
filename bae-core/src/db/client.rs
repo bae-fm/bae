@@ -121,8 +121,8 @@ fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
 fn storage_filter_where(filter: StorageFilter) -> &'static str {
     match filter {
         StorageFilter::All => "",
-        StorageFilter::Managed => "WHERE r.managed = 1",
-        StorageFilter::Unmanaged => "WHERE r.managed = 0",
+        StorageFilter::Remote => "WHERE r.remote = 1",
+        StorageFilter::Local => "WHERE r.remote = 0",
         StorageFilter::Uploading => {
             "WHERE EXISTS ( \
             SELECT 1 FROM cloud_outbox co \
@@ -332,7 +332,7 @@ impl Database {
             disc_id: row.get("disc_id").unwrap(),
             metadata_source,
             metadata_source_release_id: row.get("metadata_source_release_id").unwrap(),
-            managed: row.get("managed").unwrap(),
+            remote: row.get("remote").unwrap(),
             source_folder_name: row.get("source_folder_name").unwrap(),
             content_hash: row.get("content_hash").unwrap(),
             album_loudness_lufs: row.get("album_loudness_lufs").unwrap(),
@@ -972,7 +972,7 @@ impl Database {
             r.album_id, \
             a.title AS album_title, \
             r.format, \
-            r.managed, \
+            r.remote, \
             (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
             COALESCE( \
                 a.primary_release_id, \
@@ -1010,7 +1010,7 @@ impl Database {
             artist_names: row.get("artist_names")?,
             format: row.get("format")?,
             primary_release_id: row.get("primary_release_id")?,
-            managed: row.get("managed")?,
+            remote: row.get("remote")?,
             any_file_id: row.get("any_file_id")?,
             file_count: row.get("file_count")?,
             total_size: row.get("total_size")?,
@@ -1052,19 +1052,19 @@ impl Database {
             .await
     }
 
-    /// A representative file id for every managed release — one per release, or
-    /// `None` for a managed release that has no files. The disconnect flow asks
+    /// A representative file id for every remote release — one per release, or
+    /// `None` for a remote release that has no files. The disconnect flow asks
     /// coven's cache whether each is pinned (kept offline) to count how many
     /// releases become unreachable when the cloud provider is removed; an unpinned
-    /// managed release is reachable only through the cloud. Pin/unpin act on all a
+    /// remote release is reachable only through the cloud. Pin/unpin act on all a
     /// release's blobs together, so one file represents the release.
-    pub async fn get_managed_release_file_ids(&self) -> Result<Vec<Option<String>>, DbError> {
+    pub async fn get_remote_release_file_ids(&self) -> Result<Vec<Option<String>>, DbError> {
         self.inner
             .coven_db
             .call(move |conn| {
                 let mut stmt = conn.prepare(
                     "SELECT (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) \
-                     FROM releases r WHERE r.managed = 1",
+                     FROM releases r WHERE r.remote = 1",
                 )?;
                 let rows = stmt.query_map([], |row| row.get::<_, Option<String>>(0))?;
                 rows.collect::<coven::rusqlite::Result<Vec<_>>>()
@@ -1133,7 +1133,7 @@ impl Database {
                 r.id AS release_id, \
                 r.album_id, \
                 r.format AS release_format, \
-                r.managed, \
+                r.remote, \
                 (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
                 COALESCE(( \
                     SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
@@ -1176,7 +1176,7 @@ impl Database {
                         id: row.get("release_id")?,
                         album_id: row.get("album_id")?,
                         format: row.get("release_format")?,
-                        managed: row.get("managed")?,
+                        remote: row.get("remote")?,
                         any_file_id: row.get("any_file_id")?,
                         file_count: row.get("file_count")?,
                         total_size: row.get("total_size")?,
@@ -1319,11 +1319,11 @@ impl Database {
         let files = self.get_files_for_release(&release.id).await?;
         let audio_formats = self.get_audio_formats_for_release(&release.id).await?;
         let identities = self.get_release_identities(&release.id).await?;
-        let unmanaged_source = self.get_release_unmanaged_source(&release.id).await?;
+        let local_source = self.get_release_local_source(&release.id).await?;
 
         Ok(DbReleaseDetail {
             release,
-            unmanaged_source,
+            local_source,
             tracks,
             files,
             audio_formats,
@@ -1625,16 +1625,16 @@ impl Database {
         import_id: &str,
         identities: &[crate::import::ReleaseIdentity],
         // The in-place folder this import's files live in on this device. Every
-        // import lands UNMANAGED, so this is always recorded as the release's
-        // `release_unmanaged_source` row; the managed transition (do_manage) runs
+        // import lands LOCAL, so this is always recorded as the release's
+        // `release_local_source` row; the remote transition (do_make_remote) runs
         // afterward and drops it once the upload lands.
-        unmanaged_path: &str,
-        // Whether this import will transition to managed (cloud) right after
+        local_path: &str,
+        // Whether this import will transition to remote (cloud) right after
         // landing. Only used to key the cover blob readably on a browsable home —
-        // the cover row syncs ungated and uploads regardless, so a managed import
+        // the cover row syncs ungated and uploads regardless, so a remote import
         // gets the readable cover key up front; the audio readable keys are set
-        // later by do_manage.
-        managed_intent: bool,
+        // later by do_make_remote.
+        remote_intent: bool,
         // The cloud home's storage mode, deciding the cover blob layout: `Opaque`
         // keys it by the hashed id, `Browsable` lays it out at a readable
         // `cloud_path` computed inside this transaction.
@@ -1655,7 +1655,7 @@ impl Database {
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let import_id = import_id.to_string();
         let identities = identities.to_vec();
-        let unmanaged_path = unmanaged_path.to_string();
+        let local_path = local_path.to_string();
 
         let now_dt = self.inner.clock.now();
         let now = now_dt.to_rfc3339();
@@ -1689,10 +1689,10 @@ impl Database {
                     insert_release_identity_row(&tx, &release.id, identity, &reg, &now)?;
                 }
 
-                // 2c. Record this device's unmanaged source: every import lands
-                //     unmanaged, with its files in place at `unmanaged_path`. A
-                //     managed import drops this row once do_manage's upload lands.
-                upsert_release_unmanaged_source_row(&tx, &release.id, &unmanaged_path)?;
+                // 2c. Record this device's local source: every import lands
+                //     local, with its files in place at `local_path`. A
+                //     remote import drops this row once do_make_remote's upload lands.
+                upsert_release_local_source_row(&tx, &release.id, &local_path)?;
 
                 // 3. Insert tracks. DbTracks live inside `tracks_to_files`; their
                 //    `duration_ms` was populated by the mapper from the CUE sheet or
@@ -1712,8 +1712,8 @@ impl Database {
                 }
 
                 // 6. Insert files with a NULL cloud key: every import lands
-                //    unmanaged, so its audio is not in the cloud yet. The managed
-                //    transition (do_manage) computes and stores each file's
+                //    local, so its audio is not in the cloud yet. The remote
+                //    transition (do_make_remote) computes and stores each file's
                 //    readable/hashed cloud key when it enqueues the upload.
                 for file in &files {
                     insert_file_row(&tx, file, &reg)?;
@@ -1726,11 +1726,11 @@ impl Database {
 
                 // 8. Upsert library image (cover art). The cover row syncs ungated
                 //    and uploads on the next cycle regardless of the audio's
-                //    managed state, so a managed import keys it readably on a
+                //    remote state, so a remote import keys it readably on a
                 //    browsable home (`{artist}/{album}/cover.{ext}`) up front; an
-                //    opaque home (or an unmanaged import) leaves it NULL = hashed.
+                //    opaque home (or a local import) leaves it NULL = hashed.
                 if let Some(image) = &library_image {
-                    let cloud_path = if storage.is_browsable() && managed_intent {
+                    let cloud_path = if storage.is_browsable() && remote_intent {
                         Some(resolve_cover_cloud_path(
                             &tx,
                             &image.id,
@@ -2427,22 +2427,22 @@ impl Database {
             .await
     }
 
-    /// This device's `release_unmanaged_source` row, present iff the release is
-    /// unmanaged (its files are in place at `path`). `None` means the release is
-    /// managed — its bytes live in coven's cache, read through coven's cache API.
-    pub async fn get_release_unmanaged_source(
+    /// This device's `release_local_source` row, present iff the release is
+    /// local (its files are in place at `path`). `None` means the release is
+    /// remote — its bytes live in coven's cache, read through coven's cache API.
+    pub async fn get_release_local_source(
         &self,
         release_id: &str,
-    ) -> Result<Option<DbReleaseUnmanagedSource>, DbError> {
+    ) -> Result<Option<DbReleaseLocalSource>, DbError> {
         let release_id = release_id.to_string();
         self.inner
             .coven_db
             .call(move |conn| {
                 conn.query_row(
-                    "SELECT release_id, path FROM release_unmanaged_source WHERE release_id = ?",
+                    "SELECT release_id, path FROM release_local_source WHERE release_id = ?",
                     params![release_id],
                     |row| {
-                        Ok(DbReleaseUnmanagedSource {
+                        Ok(DbReleaseLocalSource {
                             release_id: row.get("release_id")?,
                             path: row.get("path")?,
                         })
@@ -2566,9 +2566,9 @@ impl Database {
             .await
     }
 
-    /// Record this device's `release_unmanaged_source` row: the release is
-    /// unmanaged with its files in place at `path`. Insert-or-replace.
-    pub async fn upsert_release_unmanaged_source(
+    /// Record this device's `release_local_source` row: the release is
+    /// local with its files in place at `path`. Insert-or-replace.
+    pub async fn upsert_release_local_source(
         &self,
         release_id: &str,
         path: &str,
@@ -2576,25 +2576,25 @@ impl Database {
         let (release_id, path) = (release_id.to_string(), path.to_string());
         self.inner
             .coven_db
-            .call(move |conn| upsert_release_unmanaged_source_row(conn, &release_id, &path))
+            .call(move |conn| upsert_release_local_source_row(conn, &release_id, &path))
             .await
     }
 
-    /// Finish the Unmanaged → Managed transition: flip the shared `managed` fact
-    /// true and drop this device's `release_unmanaged_source` row — the bytes now
+    /// Finish the Local → Remote transition: flip the shared `remote` fact
+    /// true and drop this device's `release_local_source` row — the bytes now
     /// live in coven's cache (the caller deletes the in-place source files). Pin
     /// vs cloud-only is coven cache state set at upload time, not recorded here.
     /// Atomic so the gate flip and the row drop never diverge.
-    pub async fn set_release_managed(&self, release_id: &str) -> Result<(), DbError> {
+    pub async fn set_release_remote(&self, release_id: &str) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let reg = self.register_stamp();
         self.inner
             .coven_db
             .call(move |conn| {
                 let tx = conn.unchecked_transaction()?;
-                set_release_managed_row(&tx, &release_id, true, &reg)?;
+                set_release_remote_row(&tx, &release_id, true, &reg)?;
                 tx.execute(
-                    "DELETE FROM release_unmanaged_source WHERE release_id = ?",
+                    "DELETE FROM release_local_source WHERE release_id = ?",
                     params![release_id],
                 )?;
                 tx.commit().map_err(DbError::from)
@@ -2602,9 +2602,9 @@ impl Database {
             .await
     }
 
-    /// Unmanage: flip the shared `managed` fact false and record this device's
-    /// unmanaged source at `path` (the files moved back out in place). Atomic.
-    pub async fn set_release_unmanaged_path(
+    /// Unmanage: flip the shared `remote` fact false and record this device's
+    /// local source at `path` (the files moved back out in place). Atomic.
+    pub async fn set_release_local_path(
         &self,
         release_id: &str,
         path: &str,
@@ -2615,8 +2615,8 @@ impl Database {
             .coven_db
             .call(move |conn| {
                 let tx = conn.unchecked_transaction()?;
-                set_release_managed_row(&tx, &release_id, false, &reg)?;
-                upsert_release_unmanaged_source_row(&tx, &release_id, &path)?;
+                set_release_remote_row(&tx, &release_id, false, &reg)?;
+                upsert_release_local_source_row(&tx, &release_id, &path)?;
                 tx.commit().map_err(DbError::from)
             })
             .await
@@ -3039,7 +3039,7 @@ impl Database {
 
     /// Persist the readable cloud key on an existing `release_files` row (the
     /// manage path, where the file row predates its cloud destination). Not an
-    /// `_updated_at` bump on its own — the caller flips `managed` later, which
+    /// `_updated_at` bump on its own — the caller flips `remote` later, which
     /// re-emits the whole synced subtree including this column.
     pub async fn set_file_cloud_path(
         &self,
@@ -3323,7 +3323,7 @@ fn insert_release_row(conn: &Connection, release: &DbRelease, reg: &str) -> Resu
             id, album_id, release_name, year,
             disc_id, metadata_source, metadata_source_release_id,
             format, label, catalog_number, country, barcode,
-            managed,
+            remote,
             source_folder_name, content_hash,
             album_loudness_lufs, album_peak_linear,
             _updated_at, created_at
@@ -3342,7 +3342,7 @@ fn insert_release_row(conn: &Connection, release: &DbRelease, reg: &str) -> Resu
             release.pressing.catalog_number,
             release.pressing.country,
             release.pressing.barcode,
-            release.managed,
+            release.remote,
             release.source_folder_name,
             release.content_hash,
             release.album_loudness_lufs,
@@ -3617,32 +3617,32 @@ fn insert_release_identity_row(
     .map_err(DbError::from)
 }
 
-/// Set the shared `releases.managed` fact (bumping `_updated_at` so the change
+/// Set the shared `releases.remote` fact (bumping `_updated_at` so the change
 /// syncs). Shared by the transactional transition methods.
-fn set_release_managed_row(
+fn set_release_remote_row(
     conn: &Connection,
     release_id: &str,
-    managed: bool,
+    remote: bool,
     reg: &str,
 ) -> Result<(), DbError> {
     conn.execute(
-        "UPDATE releases SET managed = ?, _updated_at = ? WHERE id = ?",
-        params![managed, reg, release_id],
+        "UPDATE releases SET remote = ?, _updated_at = ? WHERE id = ?",
+        params![remote, reg, release_id],
     )
     .map(|_| ())
     .map_err(DbError::from)
 }
 
-/// Insert or replace a `release_unmanaged_source` row. Shared by the standalone
+/// Insert or replace a `release_local_source` row. Shared by the standalone
 /// upsert and the transactional transition methods. The table is device-local
 /// (no `_updated_at`, never synced), so there's no clock to bump.
-fn upsert_release_unmanaged_source_row(
+fn upsert_release_local_source_row(
     conn: &Connection,
     release_id: &str,
     path: &str,
 ) -> Result<(), DbError> {
     conn.execute(
-        "INSERT INTO release_unmanaged_source (release_id, path) VALUES (?, ?) \
+        "INSERT INTO release_local_source (release_id, path) VALUES (?, ?) \
          ON CONFLICT (release_id) DO UPDATE SET path = excluded.path",
         params![release_id, path],
     )
@@ -3829,7 +3829,7 @@ mod readable_cloud_path_tests {
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO releases (id, album_id, metadata_source, managed, _updated_at, created_at) \
+            "INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at) \
              VALUES ('rel-1', 'album-1', 'file_tags', 1, ?, ?)",
             params![now, now],
         )

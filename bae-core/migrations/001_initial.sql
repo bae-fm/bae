@@ -62,11 +62,11 @@ CREATE TABLE IF NOT EXISTS releases (
     catalog_number TEXT,
     country TEXT,
     barcode TEXT,
-    -- Shared, synced fact: is this release's audio in the cloud home (managed)
-    -- or local to one device (unmanaged). An unmanaged release's in-place source
-    -- folder lives in the device-local `release_unmanaged_source`, NOT here — it
-    -- must not sync. A managed release's bytes live in coven's blob cache.
-    managed BOOLEAN NOT NULL,
+    -- Shared, synced fact: is this release's audio in the cloud home (remote)
+    -- or local to one device (local). A local release's in-place source
+    -- folder lives in the device-local `release_local_source`, NOT here — it
+    -- must not sync. A remote release's bytes live in coven's blob cache.
+    remote BOOLEAN NOT NULL,
     source_folder_name TEXT,
     -- SHA-256 over the imported folder's categorized file structure (sorted
     -- relative paths + sizes). Location-independent content fingerprint: the
@@ -87,17 +87,17 @@ CREATE TABLE IF NOT EXISTS releases (
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE
 );
 
--- DEVICE-LOCAL unmanaged source: a row means "this release is UNMANAGED on this
--- device, with its files in place at `path`". It exists for exactly the unmanaged
--- releases (those with `releases.managed = 0`) and is the folder their audio
+-- DEVICE-LOCAL local source: a row means "this release is LOCAL on this
+-- device, with its files in place at `path`". It exists for exactly the local
+-- releases (those with `releases.remote = 0`) and is the folder their audio
 -- plays from. Not synced (no `_updated_at`, absent from SYNCED_TABLES) — an
--- unmanaged release is local to one device.
+-- local release is local to one device.
 --
--- A MANAGED release has NO row here: its bytes live only in coven's blob cache
+-- A REMOTE release has NO row here: its bytes live only in coven's blob cache
 -- (`storage/pinned/` when kept local, else fetched into `storage/cache/` on
--- read), which coven owns. "Is it local" and "is it pinned" for a managed
+-- read), which coven owns. "Is it local" and "is it pinned" for a remote
 -- release are answered by coven's cache, never by a column here.
-CREATE TABLE IF NOT EXISTS release_unmanaged_source (
+CREATE TABLE IF NOT EXISTS release_local_source (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     path       TEXT NOT NULL
 );
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS release_files (
     original_filename TEXT NOT NULL,
     file_size INTEGER NOT NULL,
     content_type TEXT NOT NULL,
-    -- Cloud object key for this file's managed blob, mirroring coven's
+    -- Cloud object key for this file's remote blob, mirroring coven's
     -- BlobRef.cloud_path. NULL = the hashed-by-id layout (opaque homes); a
     -- value = the explicit readable key set when the file entered a browsable
     -- home (`{artist}/{album}/{filename}`). Synced, so every device addresses

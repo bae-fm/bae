@@ -1619,8 +1619,8 @@ fn storage_action_name(action: &bae_core::album_detail::ReleaseStorageAction) ->
     match action {
         ReleaseStorageAction::Pin => "pin",
         ReleaseStorageAction::Unpin => "unpin",
-        ReleaseStorageAction::Manage => "manage",
-        ReleaseStorageAction::Unmanage => "unmanage",
+        ReleaseStorageAction::MakeRemote => "manage",
+        ReleaseStorageAction::MakeLocal => "unmanage",
     }
 }
 
@@ -1653,8 +1653,8 @@ struct FfiStorageRow {
 /// row, never folded into this tag.
 fn storage_state_tag(state: ReleaseStorageState) -> &'static str {
     match state {
-        ReleaseStorageState::Unmanaged => "unmanaged",
-        ReleaseStorageState::Managed => "managed",
+        ReleaseStorageState::Local => "unmanaged",
+        ReleaseStorageState::Remote => "managed",
     }
 }
 
@@ -1761,17 +1761,17 @@ pub unsafe extern "C" fn bae_unpin_release(
     }
 }
 
-/// Bring an unmanaged release under management (copy its files into the library
-/// and upload). `pin` keeps the blobs in coven's pinned cache (offline). The
-/// in-place source is always removed once the upload lands (a managed release has
-/// no local path). Returns null on success, or an error-message C string (free
-/// with [`bae_string_free`]).
+/// Make a local release remote (copy its files into the library and upload).
+/// `pin` keeps the blobs in coven's pinned cache (offline). The in-place source
+/// is always removed once the upload lands (a remote release has no local path).
+/// Returns null on success, or an error-message C string (free with
+/// [`bae_string_free`]).
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
 /// `release_id` must be a valid NUL-terminated UTF-8 C string.
 #[no_mangle]
-pub unsafe extern "C" fn bae_manage_release(
+pub unsafe extern "C" fn bae_make_release_remote(
     handle: *const BaeHandle,
     release_id: *const c_char,
     pin: bool,
@@ -1786,22 +1786,22 @@ pub unsafe extern "C" fn bae_manage_release(
     match app.runtime.block_on(
         app.services
             .library_manager()
-            .manage_release(&release_id, pin),
+            .make_release_remote(&release_id, pin),
     ) {
         Ok(()) => std::ptr::null_mut(),
         Err(e) => error_cstring(&e),
     }
 }
 
-/// Move a managed release's files out of the library to `new_path` (unmanage).
-/// Returns null on success, or an error-message C string (free with
+/// Move a remote release's files out of the library to `new_path` (make it
+/// local). Returns null on success, or an error-message C string (free with
 /// [`bae_string_free`]).
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
 /// `release_id` and `new_path` must be valid NUL-terminated UTF-8 C strings.
 #[no_mangle]
-pub unsafe extern "C" fn bae_unmanage_release(
+pub unsafe extern "C" fn bae_make_release_local(
     handle: *const BaeHandle,
     release_id: *const c_char,
     new_path: *const c_char,
@@ -1816,7 +1816,7 @@ pub unsafe extern "C" fn bae_unmanage_release(
     match app.runtime.block_on(
         app.services
             .library_manager()
-            .unmanage_release(&release_id, &new_path),
+            .make_release_local(&release_id, &new_path),
     ) {
         Ok(()) => std::ptr::null_mut(),
         Err(e) => error_cstring(&e),
@@ -2104,7 +2104,7 @@ pub unsafe extern "C" fn bae_cancel_outbox_item(handle: *const BaeHandle, id: i6
 }
 
 /// Cancel whatever transition a release is mid-flight — a pin (download), a
-/// managed upload, or an unmanage — leaving it in its prior state. A no-op if
+/// remote upload, or an unmanage — leaving it in its prior state. A no-op if
 /// nothing is in progress. Returns null on success, else an owned error string
 /// to free with `bae_free_string`.
 ///
@@ -3973,8 +3973,8 @@ fn metadata_source_from_str(source: &str) -> Option<bae_core::import::MetadataSo
 /// folded into this tag.
 fn storage_mode_from_str(mode: &str) -> Option<bae_core::import::StorageMode> {
     match mode {
-        "managed" => Some(bae_core::import::StorageMode::Managed),
-        "unmanaged" => Some(bae_core::import::StorageMode::Unmanaged),
+        "managed" => Some(bae_core::import::StorageMode::Remote),
+        "unmanaged" => Some(bae_core::import::StorageMode::Local),
         _ => None,
     }
 }
@@ -4402,7 +4402,7 @@ pub unsafe extern "C" fn bae_check_release_in_library(
 /// Import a scanned candidate as the chosen identity (a match from a
 /// `CandidateIdentifyState` event, or a manual search). `storage_mode` is
 /// `"unmanaged"` or `"managed"`; `pin` is the orthogonal "keep offline" choice,
-/// applied only to a managed import. `user_edit_json`
+/// applied only to a remote import. `user_edit_json`
 /// overlays the user's confirmed metadata edits onto the committed release:
 /// when null or empty the release seeds straight from the source (no edit),
 /// otherwise it is a JSON [`bae_core::import::RawReleaseEdit`] (the shape
@@ -4547,11 +4547,11 @@ mod tests {
     #[test]
     fn storage_mode_tags_map_to_the_two_states() {
         match storage_mode_from_str("unmanaged") {
-            Some(bae_core::import::StorageMode::Unmanaged) => {}
+            Some(bae_core::import::StorageMode::Local) => {}
             other => panic!("unexpected unmanaged mode: {other:?}"),
         }
         match storage_mode_from_str("managed") {
-            Some(bae_core::import::StorageMode::Managed) => {}
+            Some(bae_core::import::StorageMode::Remote) => {}
             other => panic!("unexpected managed mode: {other:?}"),
         }
         // The pin choice is an orthogonal FFI argument, not folded into the tag,

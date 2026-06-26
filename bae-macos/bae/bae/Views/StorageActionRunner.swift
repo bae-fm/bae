@@ -46,9 +46,9 @@ final class StorageActionRunner {
     /// download queue; `unpin` runs directly.
     func run(_ action: BridgeReleaseStorageAction, releaseIds: [String]) {
         switch action {
-        case .manage:
+        case .makeRemote:
             pendingManage = releaseIds
-        case .unmanage:
+        case .makeLocal:
             unmanage(releaseIds: releaseIds)
         case .pin:
             // Pinning routes through the in-memory download queue, which

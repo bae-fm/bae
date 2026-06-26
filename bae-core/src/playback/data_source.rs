@@ -159,10 +159,10 @@ impl AudioDataReader for LocalReader {
 ///
 /// Reads a local file when `source` resolves one (this device's copy, or a
 /// still-pending upload's original). A pending upload whose source is gone
-/// errors before any cloud read — the object may not exist yet. A `Managed`
-/// source is a managed track read through the home's at-rest cipher (decrypt on
+/// errors before any cloud read — the object may not exist yet. A `Remote`
+/// source is a remote track read through the home's at-rest cipher (decrypt on
 /// an opaque home, verbatim on a browsable one), or report sync disconnected if
-/// no cloud home is configured. An `Unreachable` source is an unmanaged track
+/// no cloud home is configured. An `Unreachable` source is a local track
 /// whose local file is gone — there is nowhere to read it.
 pub fn create_audio_reader(
     source: crate::library::manager::ReadableFileSource,
@@ -180,19 +180,19 @@ pub fn create_audio_reader(
             Ok(Box::new(LocalReader::new(read_config)))
         }
         ReadableFileSource::UploadPendingSourceMissing => Err(PlaybackError::UploadPending),
-        ReadableFileSource::Managed => {
-            // A managed track's audio is a cloud-only object sealed under the
+        ReadableFileSource::Remote => {
+            // A remote track's audio is a cloud-only object sealed under the
             // home's at-rest cipher: read it through that cipher where the read
             // needs the home and cipher, or report sync disconnected if no cloud
             // home is configured. An opaque home's cipher needs the library key;
-            // a managed release always has an unlocked library, so a missing
+            // a remote release always has an unlocked library, so a missing
             // cipher there is a broken invariant, surfaced as an error rather
             // than masked. A browsable home's cipher is plaintext and always
             // present. The object key is the resolved `cloud_key` (the row's
             // readable `cloud_path`, or the hashed `storage_path` default).
             if let Some(cloud_home) = library_manager.get_cloud_home() {
                 let cipher = library_manager.cloud_blob_cipher().ok_or_else(|| {
-                    PlaybackError::not_found("blob cipher for managed cloud file", file_id)
+                    PlaybackError::not_found("blob cipher for remote cloud file", file_id)
                 })?;
                 let read_config = make_read_config(cloud_key.to_string());
                 Ok(Box::new(CloudReader::new(read_config, cloud_home, cipher)))
@@ -201,7 +201,7 @@ pub fn create_audio_reader(
             }
         }
         ReadableFileSource::Unreachable => {
-            // An unmanaged track's audio never leaves the user's disk, so a
+            // A local track's audio never leaves the user's disk, so a
             // missing local source is simply gone — never a cloud read.
             Err(PlaybackError::not_found("playable file location", file_id))
         }
@@ -209,7 +209,7 @@ pub fn create_audio_reader(
 }
 
 /// Reads from cloud storage through the home's at-rest cipher: an opaque home's
-/// `Encrypted` cipher decrypts each managed blob under the library key, a
+/// `Encrypted` cipher decrypts each remote blob under the library key, a
 /// browsable home's `Plaintext` cipher reads the verbatim bytes.
 pub struct CloudReader {
     config: AudioReadConfig,
@@ -249,7 +249,7 @@ impl AudioDataReader for CloudReader {
             // One reader per track: on an encrypted home the nonce header is
             // fetched once and reused across every range read (a full-file stream
             // issues many); a plaintext home reads each window verbatim. Every
-            // managed blob is master-scoped (see `BaeBlobSource`).
+            // remote blob is master-scoped (see `BaeBlobSource`).
             let reader = crate::storage::BlobRangeReader::new(
                 cloud_home,
                 &cipher,
@@ -658,18 +658,18 @@ mod tests {
         Box::new(CloudReader::new(config, cloud, cipher))
     }
 
-    /// The playback decrypt path: a managed track whose audio lives only in the
+    /// The playback decrypt path: a remote track whose audio lives only in the
     /// cloud, encrypted with the library master key, is read back through the
     /// `CloudReader` and recovered byte-for-byte. It exercises `CloudReader` ->
     /// coven's `BlobRangeReader` -> `EncryptionService::decrypt_range_with_offset`.
     #[tokio::test]
-    async fn cloud_reader_decrypts_managed_audio_with_master_key() {
+    async fn cloud_reader_decrypts_remote_audio_with_master_key() {
         let master_key = [9u8; 32];
-        let plaintext = b"managed cloud audio for exactly one release".to_vec();
+        let plaintext = b"remote cloud audio for exactly one release".to_vec();
         // Encrypt as the upload outbox does: with the library master key.
         let encrypted = EncryptionService::from_key(master_key).encrypt(&plaintext);
 
-        let file_id = "file-managed-1";
+        let file_id = "file-remote-1";
         let storage_key = crate::storage::local::storage_path(file_id);
         let cloud: Arc<dyn CloudHome> = Arc::new(OneBlobCloud {
             key: storage_key,
@@ -698,17 +698,17 @@ mod tests {
         );
     }
 
-    /// The browsable-home playback path: a managed track whose audio lives only
+    /// The browsable-home playback path: a remote track whose audio lives only
     /// in the cloud, stored verbatim (a browsable home seals nothing), is read
     /// back through a `Plaintext` `CloudReader` and recovered byte-for-byte. The
     /// upload writes the bytes as-is, so the read must not look for a nonce or
     /// try to decrypt. Mirror of the opaque decrypt test with the home's cipher
     /// flipped to `Plaintext` and the stored blob left unencrypted.
     #[tokio::test]
-    async fn cloud_reader_reads_browsable_managed_audio_verbatim() {
+    async fn cloud_reader_reads_browsable_remote_audio_verbatim() {
         // A browsable home stores the audio in the clear: the stored blob IS the
         // plaintext, with no nonce header.
-        let plaintext = b"managed cloud audio on a browsable home".to_vec();
+        let plaintext = b"remote cloud audio on a browsable home".to_vec();
 
         let file_id = "file-browsable-1";
         let storage_key = crate::storage::local::storage_path(file_id);
@@ -740,7 +740,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn cloud_reader_streams_managed_full_file_without_full_download() {
+    async fn cloud_reader_streams_remote_full_file_without_full_download() {
         let master_key = [8u8; 32];
         // Span several `CLOUD_STREAM_READ_SIZE` windows so the nonce-read-once
         // assertion has multiple windows to be true across.
@@ -749,7 +749,7 @@ mod tests {
             .collect();
         let encrypted = EncryptionService::from_key(master_key).encrypt(&plaintext);
 
-        let file_id = "file-managed-full-range-1";
+        let file_id = "file-remote-full-range-1";
         let storage_key = crate::storage::local::storage_path(file_id);
         let full_reads = Arc::new(AtomicUsize::new(0));
         let range_reads = Arc::new(AtomicUsize::new(0));
@@ -804,7 +804,7 @@ mod tests {
     /// The buffer ends cancelled only as a consequence of the failure.
     #[tokio::test]
     async fn cloud_reader_reports_range_failure_on_live_buffer() {
-        let file_id = "file-managed-range-error-1";
+        let file_id = "file-remote-range-error-1";
         let storage_key = crate::storage::local::storage_path(file_id);
         let range_reads = Arc::new(AtomicUsize::new(0));
         let cloud: Arc<dyn CloudHome> = Arc::new(RangeOnlyCloud {
@@ -861,7 +861,7 @@ mod tests {
     /// buffer still ends cancelled.
     #[tokio::test]
     async fn cloud_reader_suppresses_failure_after_buffer_cancelled() {
-        let file_id = "file-managed-range-error-cancelled-1";
+        let file_id = "file-remote-range-error-cancelled-1";
         let storage_key = crate::storage::local::storage_path(file_id);
         let range_reads = Arc::new(AtomicUsize::new(0));
         let buffer = create_sparse_buffer(4096);
@@ -915,10 +915,10 @@ mod tests {
     async fn cloud_reader_with_wrong_key_cancels() {
         let master_key = [9u8; 32];
         let wrong_key = [1u8; 32];
-        let plaintext = b"managed cloud audio".to_vec();
+        let plaintext = b"remote cloud audio".to_vec();
         let encrypted = EncryptionService::from_key(master_key).encrypt(&plaintext);
 
-        let file_id = "file-managed-2";
+        let file_id = "file-remote-2";
         let storage_key = crate::storage::local::storage_path(file_id);
         let cloud: Arc<dyn CloudHome> = Arc::new(OneBlobCloud {
             key: storage_key,

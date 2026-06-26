@@ -3,8 +3,8 @@
 //!
 //! Tests:
 //! - Import with cover selection: verifies cover, audio formats, progress events
-//! - Unmanaged import: files stay in original location
-//! - Unmanaged delete preserves files on disk
+//! - Local import: files stay in original location
+//! - Local delete preserves files on disk
 mod support;
 use crate::support::{seed_discogs_test_release, test_config_and_keys, wait_for_import_complete};
 use bae_core::db::{Database, LibraryImageType};
@@ -50,9 +50,9 @@ async fn test_import_with_cover_selection() {
     run_import_with_cover_test().await;
 }
 
-/// Test unmanaged import: files stay in original location.
+/// Test local import: files stay in original location.
 #[tokio::test]
-async fn test_unmanaged_import() {
+async fn test_local_import() {
     tracing_init();
 
     let temp_root = TempDir::new().expect("temp root");
@@ -108,7 +108,7 @@ async fn test_unmanaged_import() {
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -151,32 +151,32 @@ async fn test_unmanaged_import() {
 
     info!("All tracks have audio_format records with file_id");
 
-    // Verify release is unmanaged with this device's in-place local copy.
+    // Verify release is local with this device's in-place local copy.
     let release = database
         .find_release_by_id(&release_id)
         .await
         .expect("query")
         .expect("release should exist");
-    assert!(!release.managed, "Unmanaged import should not be managed");
-    // The unmanaged-source row's existence + path IS the unmanaged state.
-    // Pinned-ness is coven cache state, never recorded for an unmanaged release.
+    assert!(!release.remote, "Local import should not be remote");
+    // The local-source row's existence + path IS the local state.
+    // Pinned-ness is coven cache state, never recorded for a local release.
     let source = database
-        .get_release_unmanaged_source(&release_id)
+        .get_release_local_source(&release_id)
         .await
         .expect("query")
-        .expect("unmanaged import should record an unmanaged source");
+        .expect("local import should record a local source");
     assert!(
         !source.path.is_empty(),
-        "Unmanaged import should set the in-place source path"
+        "Local import should set the in-place source path"
     );
 
-    info!("Release is correctly unmanaged");
+    info!("Release is correctly local");
 
     // Verify original files still exist in place
     for path in &original_files {
         assert!(
             path.exists(),
-            "Original file should still exist after unmanaged import: {:?}",
+            "Original file should still exist after local import: {:?}",
             path
         );
     }
@@ -184,12 +184,12 @@ async fn test_unmanaged_import() {
     info!("Original files preserved in place");
 }
 
-/// Test that deleting an unmanaged release preserves the original files on disk.
+/// Test that deleting a local release preserves the original files on disk.
 ///
-/// When a release is unmanaged, the files live at their original location.
+/// When a release is local, the files live at their original location.
 /// Deleting the release should only remove database records, NOT the actual files.
 #[tokio::test]
-async fn test_unmanaged_delete_preserves_files() {
+async fn test_local_delete_preserves_files() {
     tracing_init();
 
     let temp_root = TempDir::new().expect("temp root");
@@ -245,7 +245,7 @@ async fn test_unmanaged_delete_preserves_files() {
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -282,7 +282,7 @@ async fn test_unmanaged_delete_preserves_files() {
     for path in &original_files {
         assert!(
             path.exists(),
-            "File should still exist after unmanaged import: {:?}",
+            "File should still exist after local import: {:?}",
             path
         );
     }
@@ -317,12 +317,12 @@ async fn test_unmanaged_delete_preserves_files() {
     for path in &original_files {
         assert!(
             path.exists(),
-            "Original file must be preserved after deleting unmanaged release: {:?}",
+            "Original file must be preserved after deleting local release: {:?}",
             path
         );
     }
 
-    info!("Unmanaged delete preserves original files");
+    info!("Local delete preserves original files");
 }
 
 async fn run_import_with_cover_test() {
@@ -365,7 +365,7 @@ async fn run_import_with_cover_test() {
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
             selected_cover: Some(CoverSelection::Local(selected_cover.clone())),
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -392,26 +392,23 @@ async fn run_import_with_cover_test() {
     assert!(!release_id.is_empty(), "Should receive release completion");
 
     // Verify release storage state — without cloud home, this is a local
-    // (unmanaged) import, so it's not managed and records an in-place local copy.
+    // (local) import, so it's not remote and records an in-place local copy.
     let release = database
         .find_release_by_id(&release_id)
         .await
         .expect("Failed to query release")
         .expect("release should exist");
-    assert!(
-        !release.managed,
-        "Import without cloud home should be unmanaged"
-    );
+    assert!(!release.remote, "Import without cloud home should be local");
     let source = database
-        .get_release_unmanaged_source(&release_id)
+        .get_release_local_source(&release_id)
         .await
         .expect("query")
-        .expect("unmanaged import should record an unmanaged source");
+        .expect("local import should record a local source");
     assert!(
         !source.path.is_empty(),
         "Import without cloud home should set the in-place source path"
     );
-    info!("Release has an unmanaged source");
+    info!("Release has a local source");
 
     let releases = library_manager
         .get_releases_for_album(&release.album_id)
@@ -430,7 +427,7 @@ async fn run_import_with_cover_test() {
         .expect("Failed to get files");
     assert!(!files.is_empty(), "Should have file records");
 
-    // Verify original files still exist (unmanaged import keeps files in place)
+    // Verify original files still exist (local import keeps files in place)
     for file in &files {
         let original_path = album_dir.join(&file.original_filename);
         assert!(
@@ -680,7 +677,7 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
             "test",
             album_dir.clone(),
             None,
-            StorageMode::Unmanaged,
+            StorageMode::Local,
             false,
             IdentityChoice::Exact {
                 release_ref: MetadataRef::new(discogs_release_id.clone(), MetadataSource::Discogs),
@@ -697,13 +694,10 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
         .expect("Failed to get release")
         .expect("release should exist");
     let source = database
-        .get_release_unmanaged_source(&release_id)
+        .get_release_local_source(&release_id)
         .await
         .expect("query");
-    info!(
-        "managed: {}, unmanaged_source: {:?}",
-        release.managed, source
-    );
+    info!("remote: {}, local_source: {:?}", release.remote, source);
     let tracks = library_manager
         .get_tracks(&release_id)
         .await
@@ -741,13 +735,13 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
     info!("Cover library_image record exists");
 }
 
-/// An unmanaged (local-only) import records `unmanaged_path` at the folder the
+/// A local (local-only) import records `local_path` at the folder the
 /// files actually live in, not the system temp directory.
 ///
-/// The user imports a folder in place; `unmanaged_path` must reflect that
+/// The user imports a folder in place; `local_path` must reflect that
 /// on-disk location so playback, pin, and export read the originals.
 #[tokio::test]
-async fn test_unmanaged_import_not_in_temp_dir() {
+async fn test_local_import_not_in_temp_dir() {
     tracing_init();
 
     // The folder lives in the CWD (not system temp) to simulate a user's
@@ -759,7 +753,7 @@ async fn test_unmanaged_import_not_in_temp_dir() {
     fs::create_dir_all(&album_dir).expect("create album dir");
     let _file_data = generate_test_files(&album_dir);
 
-    // Set up library WITHOUT cloud home (local-only / unmanaged)
+    // Set up library WITHOUT cloud home (local-only / local)
     let lib_root = TempDir::new().expect("create lib root");
     let db_dir = lib_root.path().join("db");
     fs::create_dir_all(&db_dir).expect("create db dir");
@@ -795,7 +789,7 @@ async fn test_unmanaged_import_not_in_temp_dir() {
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -813,28 +807,28 @@ async fn test_unmanaged_import_not_in_temp_dir() {
         .await
         .expect("query release")
         .expect("release should exist");
-    let unmanaged_path = database
-        .get_release_unmanaged_source(&release_id)
+    let local_path = database
+        .get_release_local_source(&release_id)
         .await
-        .expect("query unmanaged source")
-        .expect("unmanaged library import should record an unmanaged source")
+        .expect("query local source")
+        .expect("local library import should record a local source")
         .path;
 
-    // The unmanaged_path must NOT be in the system temp directory — it must
+    // The local_path must NOT be in the system temp directory — it must
     // point at the folder the user imported in place.
     assert!(
-        !Path::new(&unmanaged_path).starts_with(std::env::temp_dir()),
-        "Unmanaged files must not live in the system temp directory.\n\
-         Got unmanaged_path: {unmanaged_path}\n\
+        !Path::new(&local_path).starts_with(std::env::temp_dir()),
+        "Local files must not live in the system temp directory.\n\
+         Got local_path: {local_path}\n\
          Temp: {:?}",
         std::env::temp_dir()
     );
 
     // Verify it's under the user-chosen download directory
     assert!(
-        Path::new(&unmanaged_path).starts_with(user_music_dir.path()),
-        "unmanaged_path should be under the user-chosen save directory.\n\
-         Got: {unmanaged_path}\n\
+        Path::new(&local_path).starts_with(user_music_dir.path()),
+        "local_path should be under the user-chosen save directory.\n\
+         Got: {local_path}\n\
          Expected prefix: {:?}",
         user_music_dir.path()
     );

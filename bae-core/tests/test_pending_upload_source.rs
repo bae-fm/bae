@@ -1,5 +1,5 @@
 #![cfg(feature = "test-utils")]
-//! A managed import that keeps no local copy (cloud-only) is playable and
+//! A remote import that keeps no local copy (cloud-only) is playable and
 //! readable while its upload is still queued: the outbox rows carry the
 //! original files' paths, and file resolution falls back to them until the
 //! upload lands. Without the fallback, playback issues cloud reads for
@@ -75,9 +75,9 @@ impl Fixture {
     }
 }
 
-/// Import one album as Managed{pin: false}: managed, no local-copy row, one
+/// Import one album as Remote{pin: false}: remote, no local-copy row, one
 /// queued upload per file whose source is the original on disk.
-async fn import_managed_unpinned(f: &Fixture, album_dir: &Path) -> String {
+async fn import_remote_unpinned(f: &Fixture, album_dir: &Path) -> String {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand::Folder {
@@ -85,7 +85,7 @@ async fn import_managed_unpinned(f: &Fixture, album_dir: &Path) -> String {
             candidate_key: "test".to_string(),
             folder: album_dir.to_path_buf(),
             selected_cover: None,
-            storage_mode: StorageMode::Managed,
+            storage_mode: StorageMode::Remote,
             pin: false,
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
@@ -96,7 +96,7 @@ async fn import_managed_unpinned(f: &Fixture, album_dir: &Path) -> String {
     release_id
 }
 
-/// Playback resolution of a managed-unpinned import lands on the original
+/// Playback resolution of a remote-unpinned import lands on the original
 /// file while its upload is queued — not on a cloud object that doesn't
 /// exist yet.
 #[tokio::test]
@@ -106,17 +106,17 @@ async fn pending_upload_source_resolves_for_playback() {
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     support::write_tagged_flac(&album_dir, "01.flac", "Track One");
-    let release_id = import_managed_unpinned(&f, &album_dir).await;
+    let release_id = import_remote_unpinned(&f, &album_dir).await;
 
-    // The import landed Unmanaged with its upload queued: it keeps its in-place
-    // source row (managed flips only once the upload drains) and a pending upload.
+    // The import landed Local with its upload queued: it keeps its in-place
+    // source row (remote flips only once the upload drains) and a pending upload.
     assert!(
         f.mgr
-            .get_release_unmanaged_source(&release_id)
+            .get_release_local_source(&release_id)
             .await
             .unwrap()
             .is_some(),
-        "a managed import stays Unmanaged-with-source until its upload drains"
+        "a remote import stays Local-with-source until its upload drains"
     );
     assert_eq!(
         f.mgr
@@ -146,7 +146,7 @@ async fn missing_pending_source_reports_upload_pending() {
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     support::write_tagged_flac(&album_dir, "01.flac", "Track One");
-    let release_id = import_managed_unpinned(&f, &album_dir).await;
+    let release_id = import_remote_unpinned(&f, &album_dir).await;
 
     fs::remove_dir_all(&album_dir).unwrap();
 
@@ -169,7 +169,7 @@ async fn read_release_file_bytes_uses_pending_source() {
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     let original_bytes = support::write_tagged_flac(&album_dir, "01.flac", "Track One");
-    let release_id = import_managed_unpinned(&f, &album_dir).await;
+    let release_id = import_remote_unpinned(&f, &album_dir).await;
 
     let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
     // The mock cloud holds NO blob: success proves the local fallback.

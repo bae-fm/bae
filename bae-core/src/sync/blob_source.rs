@@ -4,7 +4,7 @@
 //! carry blobs and where their local files live. `library_images` INSERTs carry
 //! blobs that move with the changeset (deletes go through the cloud outbox, not
 //! here). After a release's storage files finish uploading, the observer marks it
-//! managed (cloud-only) and drops this device's local copy.
+//! remote (cloud-only) and drops this device's local copy.
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
@@ -145,8 +145,8 @@ impl BlobSource for BaeBlobSource {
 }
 
 /// Tracks the outbox upload lifecycle for the UI and clears a release's
-/// `unmanaged_path` once all its storage files have uploaded (transitioning it
-/// from "importing from an external path" to fully managed).
+/// `local_path` once all its storage files have uploaded (transitioning it
+/// from "importing from an external path" to fully remote).
 ///
 /// `in_flight` maps each currently-uploading `file_id` to the live count of
 /// encrypted bytes that have reached the cloud for it, shared with the
@@ -155,7 +155,7 @@ impl BlobSource for BaeBlobSource {
 /// transfer so the snapshot can surface a rolling-window rate. `library_dir`
 /// lets the observer rebuild `ReleaseDetail` payloads (via
 /// `find_release_detail_with`) so the storage-state transition that lands at
-/// the end of an Unmanaged → Managed run emits a `ReleaseUpdated` event.
+/// the end of a Local → Remote run emits a `ReleaseUpdated` event.
 /// Every lifecycle callback re-emits the outbox snapshot as a
 /// `LibraryEvent::OutboxChanged`.
 pub struct ReleaseUploadObserver {
@@ -165,7 +165,7 @@ pub struct ReleaseUploadObserver {
     throughput: Arc<crate::library::UploadThroughput>,
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
     /// Releases the user stopped uploading mid-`manage`. A file that lands for
-    /// one of these must not flip it to managed; its blob is queued for delete
+    /// one of these must not flip it to remote; its blob is queued for delete
     /// instead so the release stays local-only.
     upload_cancelling: Arc<Mutex<HashSet<String>>>,
     events: broadcast::Sender<LibraryEvent>,
@@ -235,18 +235,18 @@ impl ReleaseUploadObserver {
         }
     }
 
-    /// Flip a release to managed once its last storage file uploads — the moment
+    /// Flip a release to remote once its last storage file uploads — the moment
     /// the cloud holds a durable copy of every file and the release's metadata is
     /// safe to push to your other devices. The release's bytes now live in coven's
     /// cache (pinned or evictable, per the upload's retain-pinned intent), so this
-    /// drops the in-place `release_unmanaged_source` row and deletes the now-
-    /// redundant source files. Every managed path (managed import and the "Manage"
-    /// action) lands the release `managed = false` and reaches `managed = true`
+    /// drops the in-place `release_local_source` row and deletes the now-
+    /// redundant source files. Every remote path (remote import and the "Manage"
+    /// action) lands the release `remote = false` and reaches `remote = true`
     /// here, so the synced row never references a blob the cloud doesn't hold yet.
     ///
     /// Returns whether this call flipped the release, so the caller can break the
     /// outbox drain and publish the now-synced rows.
-    async fn mark_managed_if_complete(&self, file_id: &str) -> bool {
+    async fn mark_remote_if_complete(&self, file_id: &str) -> bool {
         let release = match self.db.find_release_for_file(file_id).await {
             Ok(Some(r)) => r,
             Ok(None) => {
@@ -258,14 +258,14 @@ impl ReleaseUploadObserver {
                 return false;
             }
         };
-        if release.managed {
+        if release.remote {
             // Its uploads already completed and flipped it; nothing to do.
-            debug!("Release {} is already managed; nothing to mark", release.id);
+            debug!("Release {} is already remote; nothing to mark", release.id);
             return false;
         }
         if self.upload_cancelling.lock().unwrap().contains(&release.id) {
             // The user stopped this release's upload, but this file's write
-            // landed in the gap. Don't flip to managed — queue the now-orphaned
+            // landed in the gap. Don't flip to remote — queue the now-orphaned
             // blob for deletion so the release stays local-only.
             debug!(
                 "Release {} upload was cancelled; deleting orphaned blob for {file_id}",
@@ -290,32 +290,32 @@ impl ReleaseUploadObserver {
             Ok(true) => false, // More files still to upload.
             Ok(false) => {
                 // Last upload landed: the cloud now holds a durable copy of every
-                // file, so the release flips to managed and its in-place source is
+                // file, so the release flips to remote and its in-place source is
                 // redundant. Capture the source path BEFORE dropping its row.
                 info!(
-                    "All files uploaded for release {}, marking managed",
+                    "All files uploaded for release {}, marking remote",
                     release.id
                 );
                 let source = self
                     .db
-                    .get_release_unmanaged_source(&release.id)
+                    .get_release_local_source(&release.id)
                     .await
                     .unwrap_or_else(|e| {
-                        warn!("Failed to load unmanaged source for {}: {e}", release.id);
+                        warn!("Failed to load local source for {}: {e}", release.id);
                         None
                     });
-                // Flip the gate on + drop the unmanaged-source row, atomically. The
-                // cloud holds every blob, so `managed = true` never points at an
+                // Flip the gate on + drop the local-source row, atomically. The
+                // cloud holds every blob, so `remote = true` never points at an
                 // absent blob.
-                if let Err(e) = self.db.set_release_managed(&release.id).await {
-                    warn!("Failed to mark {} managed: {e}", release.id);
+                if let Err(e) = self.db.set_release_remote(&release.id).await {
+                    warn!("Failed to mark {} remote: {e}", release.id);
                     return false;
                 }
                 // Delete the now-redundant in-place source files. Best-effort: the
-                // release is already managed with its bytes in the cloud + coven's
+                // release is already remote with its bytes in the cloud + coven's
                 // cache, so a leftover original is harmless garbage, not wrong state.
                 if let Some(source) = source {
-                    self.delete_managed_source_files(&release.id, &source.path)
+                    self.delete_remote_source_files(&release.id, &source.path)
                         .await;
                 }
                 // Emit ReleaseUpdated so the UI's cached summary picks up the new
@@ -334,11 +334,11 @@ impl ReleaseUploadObserver {
 }
 
 impl ReleaseUploadObserver {
-    /// Delete a just-managed release's in-place source files at
+    /// Delete a just-remote release's in-place source files at
     /// `path/{original_filename}` — they are redundant now that the bytes are in
-    /// the cloud + coven's cache. Best-effort: the release is already managed, so a
+    /// the cloud + coven's cache. Best-effort: the release is already remote, so a
     /// file that can't be deleted is a harmless leftover, never wrong state.
-    async fn delete_managed_source_files(&self, release_id: &str, path: &str) {
+    async fn delete_remote_source_files(&self, release_id: &str, path: &str) {
         let files = match self.db.get_files_for_release(release_id).await {
             Ok(files) => files,
             Err(e) => {
@@ -350,7 +350,7 @@ impl ReleaseUploadObserver {
         for file in &files {
             let file_path = std::path::Path::new(path).join(&file.original_filename);
             match tokio::fs::remove_file(&file_path).await {
-                Ok(()) => info!("Deleted managed-source original: {}", file_path.display()),
+                Ok(()) => info!("Deleted remote-source original: {}", file_path.display()),
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                     debug!("Source original already gone: {}", file_path.display());
                 }
@@ -415,10 +415,10 @@ impl BlobUploadObserver for ReleaseUploadObserver {
                 self.throughput.record(remaining);
             }
         }
-        let flipped = self.mark_managed_if_complete(file_id).await;
+        let flipped = self.mark_remote_if_complete(file_id).await;
         self.emit_outbox_changed().await;
         // When this upload completed a release (its last blob landed and it
-        // flipped to managed), break the drain so the cycle publishes that
+        // flipped to remote), break the drain so the cycle publishes that
         // release's now-synced rows before draining the rest of the queue.
         if flipped {
             DrainControl::Publish
@@ -449,7 +449,7 @@ mod tests {
 
     /// Seed a release with one file (carrying `cloud_path`) and return a
     /// `(db, observer)` whose `upload_cancelling` already holds the release, so
-    /// `mark_managed_if_complete` exercises the cancelled-mid-upload branch.
+    /// `mark_remote_if_complete` exercises the cancelled-mid-upload branch.
     #[allow(clippy::type_complexity)]
     async fn observer_with_cancelled_release() -> (
         Arc<Database>,
@@ -507,7 +507,7 @@ mod tests {
             disc_id: None,
             metadata_source: ReleaseMetadataSource::FileTags,
             metadata_source_release_id: None,
-            managed: false,
+            remote: false,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,
@@ -552,15 +552,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn cancelled_release_skips_managed_flip_and_queues_blob_delete() {
+    async fn cancelled_release_skips_remote_flip_and_queues_blob_delete() {
         let (db, observer, file_id, cloud_key, _tmp) = observer_with_cancelled_release().await;
 
         // The file's blob landed after the user stopped the upload.
-        let flipped = observer.mark_managed_if_complete(&file_id).await;
+        let flipped = observer.mark_remote_if_complete(&file_id).await;
 
-        assert!(!flipped, "a cancelled release must not flip to managed");
+        assert!(!flipped, "a cancelled release must not flip to remote");
         let release = db.find_release_for_file(&file_id).await.unwrap().unwrap();
-        assert!(!release.managed, "release stays local-only");
+        assert!(!release.remote, "release stays local-only");
         let deletes: Vec<String> = db
             .get_pending_cloud_deletes()
             .await

@@ -11,7 +11,7 @@ use std::path::PathBuf;
 /// Compute disc ID and track count for a release already in the library.
 /// Used by the re-identify pipeline.
 ///
-/// Resolves the release's local files (unmanaged folder or pinned managed
+/// Resolves the release's local files (local folder or pinned remote
 /// storage), filters LOG / CUE / audio files, and computes a disc ID in the
 /// same order folder imports use: LOG first (most accurate), then CUE+audio
 /// pairs as fallback. Track count is read from the DB — the release's track
@@ -40,7 +40,7 @@ pub async fn resolve_release_identity(
         .map_err(|e| format!("Failed to load tracks: {e}"))?
         .len() as u32;
     let local_copy = library_manager
-        .get_release_unmanaged_source(release_id)
+        .get_release_local_source(release_id)
         .await
         .map_err(|e| format!("Failed to load local copy: {e}"))?;
 
@@ -103,7 +103,7 @@ pub async fn resolve_release_artwork_paths(
         .await
         .map_err(|e| format!("Failed to load release files: {e}"))?;
     let local_copy = library_manager
-        .get_release_unmanaged_source(release_id)
+        .get_release_local_source(release_id)
         .await
         .map_err(|e| format!("Failed to load local copy: {e}"))?;
 
@@ -207,14 +207,14 @@ mod tests {
     }
 
     /// Re-identify sources LOG/CUE from the release's library files,
-    /// not from a folder walk. For an unmanaged release, those files live
-    /// at `unmanaged_path`; for a pinned release they live under managed
-    /// storage. This test covers the unmanaged path: LOG + FLAC fixtures
+    /// not from a folder walk. For a local release, those files live
+    /// at `local_path`; for a pinned release they live under remote
+    /// storage. This test covers the local path: LOG + FLAC fixtures
     /// in a temp folder, release rows pointing at that folder, then
     /// `resolve_release_identity` returns the same disc ID a folder import
     /// would have computed.
     #[tokio::test]
-    async fn test_resolve_release_identity_unmanaged() {
+    async fn test_resolve_release_identity_local() {
         use crate::config::{Config, ConfigHandle};
         use crate::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease, DbTrack};
         use crate::keys::KeyService;
@@ -228,24 +228,24 @@ mod tests {
         let temp = tempfile::TempDir::new().unwrap();
         let library_root = temp.path().join("library");
         std::fs::create_dir_all(&library_root).unwrap();
-        let unmanaged_dir = temp.path().join("rip");
-        std::fs::create_dir_all(&unmanaged_dir).unwrap();
+        let local_dir = temp.path().join("rip");
+        std::fs::create_dir_all(&local_dir).unwrap();
 
-        // Stage LOG + FLAC fixtures under the unmanaged folder.
+        // Stage LOG + FLAC fixtures under the local folder.
         std::fs::copy(
             std::path::Path::new("tests/fixtures/test_album.log"),
-            unmanaged_dir.join("test_album.log"),
+            local_dir.join("test_album.log"),
         )
         .unwrap();
         let fixture_dir = std::path::Path::new("tests/fixtures/flac");
         std::fs::copy(
             fixture_dir.join("01 Test Track 1.flac"),
-            unmanaged_dir.join("01 Test Track 1.flac"),
+            local_dir.join("01 Test Track 1.flac"),
         )
         .unwrap();
         std::fs::copy(
             fixture_dir.join("02 Test Track 2.flac"),
-            unmanaged_dir.join("02 Test Track 2.flac"),
+            local_dir.join("02 Test Track 2.flac"),
         )
         .unwrap();
 
@@ -308,7 +308,7 @@ mod tests {
             disc_id: None,
             metadata_source: crate::db::ReleaseMetadataSource::FileTags,
             metadata_source_release_id: None,
-            managed: false,
+            remote: false,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,
@@ -317,17 +317,17 @@ mod tests {
         };
         database.insert_release(&release).await.unwrap();
         database
-            .upsert_release_unmanaged_source(&release.id, &unmanaged_dir.to_string_lossy())
+            .upsert_release_local_source(&release.id, &local_dir.to_string_lossy())
             .await
             .unwrap();
 
-        // One DbFile per real file on disk under the unmanaged folder.
+        // One DbFile per real file on disk under the local folder.
         for (filename, content_type) in [
             ("test_album.log", ContentType::PlainText),
             ("01 Test Track 1.flac", ContentType::Flac),
             ("02 Test Track 2.flac", ContentType::Flac),
         ] {
-            let abs = unmanaged_dir.join(filename);
+            let abs = local_dir.join(filename);
             let size = std::fs::metadata(&abs).unwrap().len() as i64;
             let file = DbFile {
                 id: Uuid::new_v4().to_string(),
@@ -363,7 +363,7 @@ mod tests {
 
         assert!(
             disc_id.is_some(),
-            "LOG file in unmanaged folder must produce a disc ID"
+            "LOG file in local folder must produce a disc ID"
         );
         assert_eq!(track_count, 2, "track count comes from the DB tracks");
     }

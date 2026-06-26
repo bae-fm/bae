@@ -434,7 +434,7 @@ mod tests {
             disc_id: None,
             metadata_source: ReleaseMetadataSource::FileTags,
             metadata_source_release_id: None,
-            managed: true,
+            remote: true,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,

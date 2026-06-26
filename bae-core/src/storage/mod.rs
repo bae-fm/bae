@@ -1,5 +1,5 @@
 //! bae's storage: coven's cloud backends + encrypted layout, with bae's local
-//! managed-storage layer (pin/unpin, deferred cleanup) on top.
+//! remote-storage layer (pin/unpin, deferred cleanup) on top.
 pub use coven::storage::cloud;
 pub mod local;
 pub mod readable_path;

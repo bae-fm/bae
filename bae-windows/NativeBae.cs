@@ -450,8 +450,8 @@ internal static class NativeBae
     [DllImport(Dll, EntryPoint = "bae_unpin_release", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr UnpinReleasePtr(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
 
-    [DllImport(Dll, EntryPoint = "bae_manage_release", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ManageReleasePtr(
+    [DllImport(Dll, EntryPoint = "bae_make_release_remote", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr MakeReleaseRemotePtr(
         IntPtr handle,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
         [MarshalAs(UnmanagedType.I1)] bool pin);
@@ -465,23 +465,23 @@ internal static class NativeBae
         ResultMessage(UnpinReleasePtr(handle, releaseId));
 
     /// <summary>
-    /// Manage an unmanaged release: upload it to the cloud and drop the in-place
-    /// source (a managed release has no local path). <paramref name="pin"/> keeps
+    /// Make a local release remote: upload it to the cloud and drop the in-place
+    /// source (a remote release has no local path). <paramref name="pin"/> keeps
     /// coven's blobs offline — the orthogonal "keep local" choice. Null on success,
     /// else the error.
     /// </summary>
-    internal static string? ManageRelease(IntPtr handle, string releaseId, bool pin) =>
-        ResultMessage(ManageReleasePtr(handle, releaseId, pin));
+    internal static string? MakeReleaseRemote(IntPtr handle, string releaseId, bool pin) =>
+        ResultMessage(MakeReleaseRemotePtr(handle, releaseId, pin));
 
-    [DllImport(Dll, EntryPoint = "bae_unmanage_release", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr UnmanageReleasePtr(
+    [DllImport(Dll, EntryPoint = "bae_make_release_local", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr MakeReleaseLocalPtr(
         IntPtr handle,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string newPath);
 
     /// <summary>Move a release's files out of the library; null on success, else the error.</summary>
-    internal static string? UnmanageRelease(IntPtr handle, string releaseId, string newPath) =>
-        ResultMessage(UnmanageReleasePtr(handle, releaseId, newPath));
+    internal static string? MakeReleaseLocal(IntPtr handle, string releaseId, string newPath) =>
+        ResultMessage(MakeReleaseLocalPtr(handle, releaseId, newPath));
 
     [DllImport(Dll, EntryPoint = "bae_outbox_snapshot", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr OutboxSnapshotPtr(IntPtr handle);

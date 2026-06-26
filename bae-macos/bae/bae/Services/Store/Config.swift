@@ -60,6 +60,6 @@ struct Config: Equatable {
     /// release pinned (offline) is the orthogonal `pin` argument to
     /// `startImport`, never folded in here.
     func importStorageMode(managed: Bool) -> BridgeStorageMode {
-        hasCloudHome && managed ? .managed : .unmanaged
+        hasCloudHome && managed ? .remote : .local
     }
 }

@@ -528,19 +528,23 @@ impl AppHandle {
         .map_err(BridgeError::internal)
     }
 
-    pub async fn manage_release(&self, release_id: String, pin: bool) -> Result<(), BridgeError> {
+    pub async fn make_release_remote(
+        &self,
+        release_id: String,
+        pin: bool,
+    ) -> Result<(), BridgeError> {
         let services = self.app_services.clone();
         self.spawn_on_runtime(async move {
             services
                 .library_manager()
-                .manage_release(&release_id, pin)
+                .make_release_remote(&release_id, pin)
                 .await
         })
         .await
         .map_err(BridgeError::internal)
     }
 
-    pub async fn unmanage_release(
+    pub async fn make_release_local(
         &self,
         release_id: String,
         new_path: String,
@@ -549,7 +553,7 @@ impl AppHandle {
         self.spawn_on_runtime(async move {
             services
                 .library_manager()
-                .unmanage_release(&release_id, &new_path)
+                .make_release_local(&release_id, &new_path)
                 .await
         })
         .await
@@ -716,7 +720,7 @@ impl AppHandle {
     }
 
     /// Cancel whatever transition a release is mid-flight — a pin (download), a
-    /// managed upload, or an unmanage — leaving it in its prior state. The UI
+    /// remote upload, or an unmanage — leaving it in its prior state. The UI
     /// calls this from the storage row and the queue pane without knowing which
     /// is running; a no-op if nothing is in progress.
     pub fn cancel_release_transition(&self, release_id: String) -> Result<(), BridgeError> {

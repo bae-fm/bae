@@ -144,7 +144,7 @@ where
             candidate_key: candidate_key.to_string(),
             folder: album_dir.clone(),
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -723,7 +723,7 @@ impl CueFlacTestFixture {
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
                 selected_cover: None,
-                storage_mode: StorageMode::Unmanaged,
+                storage_mode: StorageMode::Local,
                 pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -2975,7 +2975,7 @@ impl HighSampleRateTestFixture {
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
                 selected_cover: None,
-                storage_mode: StorageMode::Unmanaged,
+                storage_mode: StorageMode::Local,
                 pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -4017,7 +4017,7 @@ async fn test_restore_populates_last_position_display() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -4126,7 +4126,7 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -4254,7 +4254,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -4365,7 +4365,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -4608,7 +4608,7 @@ async fn test_preview_seek_while_paused_emits_position_update() {
     fixture.playback_handle.preview_stop();
 }
 
-/// A cloud-only managed track whose data lives only in the cloud. The reader
+/// A cloud-only remote track whose data lives only in the cloud. The reader
 /// streams in the background after `play_track` has already built the stream,
 /// so a cloud failure here is genuinely mid-flight — not a prepare-time error.
 struct CloudOnlyPlaybackFixture {
@@ -4620,7 +4620,7 @@ struct CloudOnlyPlaybackFixture {
 }
 
 impl CloudOnlyPlaybackFixture {
-    /// Import the FLAC fixtures as managed-unpinned, run the upload to put the
+    /// Import the FLAC fixtures as remote-unpinned, run the upload to put the
     /// encrypted blobs in the (mock) cloud and clear the outbox, then delete the
     /// import originals so resolution lands on the cloud reader. The mock cloud
     /// is returned so the test can arm a read failure before playing.
@@ -4668,7 +4668,7 @@ impl CloudOnlyPlaybackFixture {
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
                 selected_cover: None,
-                storage_mode: StorageMode::Managed,
+                storage_mode: StorageMode::Remote,
                 pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),

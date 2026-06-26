@@ -435,7 +435,7 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
             candidate_key: "test".to_string(),
             folder: album_dir,
             selected_cover: None,
-            storage_mode: StorageMode::Unmanaged,
+            storage_mode: StorageMode::Local,
             pin: false,
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
@@ -511,7 +511,7 @@ impl CueFlacCaptureFixture {
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
                 selected_cover: None,
-                storage_mode: StorageMode::Unmanaged,
+                storage_mode: StorageMode::Local,
                 pin: false,
                 identity_choice: IdentityChoice::Exact {
                     release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),

@@ -385,9 +385,9 @@ extension AlbumDetailView {
             pinRelease(releaseId: releaseId)
         case .unpin:
             unpinRelease(releaseId: releaseId)
-        case .manage:
+        case .makeRemote:
             presentManageConfirmSheet(releaseId: releaseId)
-        case .unmanage:
+        case .makeLocal:
             unmanageRelease(releaseId: releaseId)
         }
     }
@@ -1185,10 +1185,10 @@ private struct StorageStatusBand: View {
     private var storageStatus: some View {
         HStack(spacing: 6) {
             switch release.summary.storageState {
-            case .unmanaged:
+            case .local:
                 Image(systemName: "folder")
                 Text("Unmanaged")
-            case .managed:
+            case .remote:
                 if release.summary.pinned {
                     Image(systemName: "pin.fill")
                     Text("Pinned for offline")
