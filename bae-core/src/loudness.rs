@@ -308,13 +308,11 @@ mod tests {
         );
     }
 
-    /// Measuring a full-length track must stay fast. ebur128's pure-Rust
-    /// true-peak interpolator runs ~80x slower unoptimized, so an unoptimized
-    /// dev build made a whole-album loudness pass take minutes. The
+    /// Measuring a full-length track stays well under a second. ebur128's
+    /// pure-Rust true-peak interpolator is ~80x slower unoptimized, so the
     /// `[profile.dev.package.ebur128] opt-level = 3` override in the workspace
-    /// Cargo.toml keeps the dependency optimized even in dev/test builds; this
-    /// guards it — without the override this is ~20s, with it well under a
-    /// second.
+    /// Cargo.toml keeps it optimized even in dev/test builds; this test guards
+    /// that — an unoptimized build measures a 4-minute track in tens of seconds.
     #[test]
     fn measure_track_stays_fast_on_a_full_length_track() {
         let sr = 48_000u32;

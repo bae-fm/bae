@@ -302,7 +302,9 @@ impl LoudnessProgressSink {
             Some(total) if total > 0 => (self.done_frames as f32 / total as f32).min(1.0),
             _ => 0.0,
         };
-        let fraction = (self.idx as f32 + within) / self.tracks_total.max(1) as f32;
+        // `within` is already clamped to 0..1 above and `idx < tracks_total`, so
+        // `fraction` is in 0..1 by construction — consumers render it as-is.
+        let fraction = (self.idx as f32 + within) / self.tracks_total as f32;
         send_event(
             &self.event_tx,
             crate::import::handle::ImportEvent::ImportLoudnessProgress {
@@ -1891,7 +1893,7 @@ impl ImportService {
             let path = tf.file_path().to_path_buf();
             let Some(bytes) = file_bytes.get(&path).and_then(|b| b.clone()) else {
                 tracks_done += 1;
-                let fraction = tracks_done as f32 / tracks_total.max(1) as f32;
+                let fraction = tracks_done as f32 / tracks_total as f32;
                 self.emit_loudness_progress(candidate_key, tracks_done, tracks_total, fraction);
                 continue;
             };
@@ -1907,7 +1909,7 @@ impl ImportService {
             // streams: the sample window when known, else the track duration ×
             // sample rate. Absent both, the segment only steps at the post-track
             // tick.
-            let sample_rate = audio_formats[idx].sample_rate.max(0) as u64;
+            let sample_rate = audio_formats[idx].sample_rate as u64;
             let total_frames = match end_sample {
                 Some(end) => Some(end.saturating_sub(start_sample)),
                 None => tf
@@ -1968,7 +1970,7 @@ impl ImportService {
                 Err(e) => warn!("loudness: measurement task panicked: {e}; track stays unmeasured"),
             }
             tracks_done += 1;
-            let fraction = tracks_done as f32 / tracks_total.max(1) as f32;
+            let fraction = tracks_done as f32 / tracks_total as f32;
             self.emit_loudness_progress(candidate_key, tracks_done, tracks_total, fraction);
         }
 
