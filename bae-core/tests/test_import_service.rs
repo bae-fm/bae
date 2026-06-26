@@ -506,9 +506,8 @@ async fn import_produces_audio_format_records() {
 }
 
 /// The loudness pass emits a continuous `fraction` (0 → 1) as it scans, ticking
-/// ~0.1s of audio at a time rather than once per track, so the import UI fills a
-/// determinate bar smoothly through the otherwise-silent measure span instead of
-/// stepping (or showing a frozen spinner).
+/// ~0.1s of audio at a time rather than once per track, so the import UI bar
+/// advances during a track's measure span, not only at track boundaries.
 #[tokio::test]
 #[serial]
 async fn loudness_pass_emits_within_track_progress() {

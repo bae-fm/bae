@@ -76,7 +76,7 @@ class ImportLoudnessProgressNSView: NSView {
             Int(tracksDone),
             Int(tracksTotal)
         )
-        bar.doubleValue = min(1.0, max(0.0, fraction))
+        bar.doubleValue = fraction
     }
 }
 
