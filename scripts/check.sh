@@ -165,6 +165,11 @@ section "Rust tests"
 
 check "cargo test (bae-loc)"           cargo test -p bae-loc
 check "cargo test (bae-bridge --lib)"  cargo test -p bae-bridge --lib
+# Chrome-string orphan gate (the `core.*` keys are gated by loc_key_coverage in
+# the bae-bridge test above). Mirrors CI's "localization + bridge tests"; fails
+# on unreferenced, un-allowlisted catalog keys so dead/renamed keys are caught
+# locally, not only in CI.
+check "loc chrome orphans"             python3 scripts/loc-chrome-orphans.py
 
 # ── macOS ──────────────────────────────────────────────────────────────────────
 section "macOS"
