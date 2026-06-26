@@ -15,6 +15,14 @@ strip = true
 split-debuginfo = "packed"
 debug = "line-tables-only"
 
+# Optimize the CPU-heavy audio loudness dependency even in dev/test builds.
+# ebur128's pure-Rust true-peak interpolator runs ~80x slower unoptimized, which
+# made loudness measurement of a full album take minutes in `run.sh` debug
+# builds. It's a leaf dependency (compiled once, cached), so dev iteration on
+# bae's own code stays fast.
+[profile.dev.package.ebur128]
+opt-level = 3
+
 # Fork carrying two Swift template fixes we plan to upstream:
 # - `nonisolated(unsafe)` on callback `vtablePtr` for Swift 6 strict
 #   concurrency
