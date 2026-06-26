@@ -474,7 +474,7 @@ async fn run_import_with_cover_test() {
         .get_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .expect("Failed to get cover")
-        .expect("Cover should exist in library_images");
+        .expect("Cover should exist in the covers table");
     assert_eq!(cover.content_type, ContentType::Jpeg);
     assert_eq!(cover.source, "local");
     let source_url = cover.source_url.as_ref().expect("source_url should be set");
@@ -746,7 +746,7 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
         .get_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .expect("Failed to get cover");
-    assert!(cover.is_some(), "Should have a cover in library_images");
+    assert!(cover.is_some(), "Should have a cover in the covers table");
     info!("Cover library_image record exists");
 }
 

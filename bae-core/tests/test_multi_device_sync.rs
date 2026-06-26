@@ -141,6 +141,33 @@ async fn insert_remote_catalog(db: &Database) {
     .await;
 }
 
+/// Insert a `covers` row (a host-provided cover asset) for `release_id`. Its `id`
+/// IS the release id (the FK to `releases`), so the cover rides that release's gate.
+async fn insert_cover(db: &Database, release_id: &str, stamp: &str) {
+    exec(
+        db,
+        &format!(
+            "INSERT INTO covers (id, content_type, file_size, source, cloud_path, _updated_at, created_at) \
+             VALUES ('{release_id}', 'image/jpeg', 5, 'local', NULL, '{stamp}', '2026-01-01');"
+        ),
+    )
+    .await;
+}
+
+/// Insert an `artist_images` row (a host-provided artist-image asset) for
+/// `artist_id`. Its `id` IS the artist id (the FK to `artists`), so it rides the
+/// artist's gate but — being an asset — never keeps the artist alive on its own.
+async fn insert_artist_image(db: &Database, artist_id: &str, stamp: &str) {
+    exec(
+        db,
+        &format!(
+            "INSERT INTO artist_images (id, content_type, file_size, source, cloud_path, _updated_at, created_at) \
+             VALUES ('{artist_id}', 'image/jpeg', 5, 'discogs', NULL, '{stamp}', '2026-01-01');"
+        ),
+    )
+    .await;
+}
+
 /// Whether the cloud holds any changeset object for `device_id`.
 fn cloud_has_changeset(cloud: &SharedCloud, device_id: &str) -> bool {
     let prefix = format!("changes/{device_id}/");
@@ -378,5 +405,264 @@ async fn each_release_propagates_when_its_own_upload_flips_remote() {
         count(&db_b, "SELECT count(*) FROM tracks").await,
         2,
         "device B ends with both releases' tracks",
+    );
+}
+
+/// Gate-retract round-trip (Part 2 "Tests"): A makes a release Remote and a peer B
+/// pulls its whole subtree (release + tracks). When A makes the release Local again
+/// (the gate flips `remote` true→false, exactly what `make_local` does), coven's
+/// gate retract emits DELETEs for the subtree, so B loses the release and its
+/// tracks — while A keeps the rows locally (gated-false). Exercises bae's
+/// `synced_tables()` gate declaration end to end across two devices. (The cover
+/// asset's ride + retract is covered by the asset test below, which sets up the
+/// cover blob bytes the inline push needs.)
+#[tokio::test]
+async fn make_local_retracts_the_release_subtree_from_a_peer() {
+    let cloud = SharedCloud::new();
+    let key = [9u8; 32];
+
+    let tmp_a = tempfile::tempdir().unwrap();
+    let lib_a = LibraryDir::new(tmp_a.path().join("a"));
+    std::fs::create_dir_all(&*lib_a).unwrap();
+    let db_a = Database::new_test(lib_a.db_path().to_str().unwrap(), Arc::new(SystemClock))
+        .await
+        .unwrap();
+    let keypair_a = UserKeypair::generate();
+    let storage_a = CloudSyncStorage::new(
+        Arc::new(cloud.clone()),
+        CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
+        BlobPathScheme::Hashed,
+        keypair_a.clone(),
+    );
+
+    insert_remote_catalog(&db_a).await;
+    sync_cycle(&db_a, &storage_a, "device-a", &keypair_a, &lib_a).await;
+
+    let tmp_b = tempfile::tempdir().unwrap();
+    let lib_b = LibraryDir::new(tmp_b.path().join("b"));
+    std::fs::create_dir_all(&*lib_b).unwrap();
+    let db_b = Database::new_test(lib_b.db_path().to_str().unwrap(), Arc::new(SystemClock))
+        .await
+        .unwrap();
+    let keypair_b = UserKeypair::generate();
+    let storage_b = CloudSyncStorage::new(
+        Arc::new(cloud.clone()),
+        CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
+        BlobPathScheme::Hashed,
+        keypair_b.clone(),
+    );
+    sync_cycle(&db_b, &storage_b, "device-b", &keypair_b, &lib_b).await;
+    assert_eq!(
+        count(&db_b, "SELECT count(*) FROM releases WHERE id='re1'").await,
+        1,
+        "B receives the remote release",
+    );
+    assert_eq!(
+        count(&db_b, "SELECT count(*) FROM tracks WHERE release_id='re1'").await,
+        2,
+        "B receives the release's tracks",
+    );
+
+    // A makes re1 Local (the gate flips true→false, as `make_local` does), then
+    // syncs: the gate retract emits DELETEs for the subtree.
+    db_a.set_remote_for_test("re1", false).await.unwrap();
+    sync_cycle(&db_a, &storage_a, "device-a", &keypair_a, &lib_a).await;
+
+    // B applies the retract and loses the whole subtree.
+    sync_cycle(&db_b, &storage_b, "device-b", &keypair_b, &lib_b).await;
+    assert_eq!(
+        count(&db_b, "SELECT count(*) FROM releases WHERE id='re1'").await,
+        0,
+        "B's release is retracted when A makes it Local",
+    );
+    assert_eq!(
+        count(&db_b, "SELECT count(*) FROM tracks WHERE release_id='re1'").await,
+        0,
+        "B's tracks are retracted with the release",
+    );
+
+    // A keeps the rows locally (a gated-false Local release is private, not deleted).
+    assert_eq!(
+        count(&db_a, "SELECT count(*) FROM releases WHERE id='re1'").await,
+        1,
+        "A keeps the release locally after making it Local",
+    );
+}
+
+// Real-length ids: coven shards a blob by the first two byte-pairs of its
+// dash-stripped id, so an asset blob (uploaded with its row) needs an id long
+// enough to form that prefix — production ids are UUIDs.
+const AR1: &str = "a0000000-0000-0000-0000-000000000001"; // has a Remote release
+const AR2: &str = "a0000000-0000-0000-0000-000000000002"; // has a Local release
+const AR3: &str = "a0000000-0000-0000-0000-000000000003"; // orphan: only an image
+const AL1: &str = "b0000000-0000-0000-0000-000000000001";
+const AL2: &str = "b0000000-0000-0000-0000-000000000002";
+const RE1: &str = "c0000000-0000-0000-0000-000000000001"; // Remote
+const RE2: &str = "c0000000-0000-0000-0000-000000000002"; // Local
+
+/// Asset keep/leak (Part 2 "Tests"): a `covers` / `artist_images` asset rides its
+/// FK subject's gate when that subject is Remote, but never grants keep on its own.
+/// A holds (a) a Remote release whose artist also has an artist image, (b) a Local
+/// release with a cover, and (c) an orphan artist whose only row is an artist image
+/// (no Remote release references it). The cover/artist-image BYTES are seeded via
+/// `local_files::store` (coven's host-provided local store) so the inline push can
+/// upload the Remote ones. After A→B sync, B gets the Remote release + its cover +
+/// the artist + the artist's image, but NOT the Local release's cover, NOT the
+/// Local release, and NOT the orphan artist or its image.
+#[tokio::test]
+async fn assets_ride_remote_subjects_but_local_and_orphan_assets_do_not_leak() {
+    let cloud = SharedCloud::new();
+    let key = [9u8; 32];
+
+    let tmp_a = tempfile::tempdir().unwrap();
+    let lib_a = LibraryDir::new(tmp_a.path().join("a"));
+    std::fs::create_dir_all(&*lib_a).unwrap();
+    let db_a = Database::new_test(lib_a.db_path().to_str().unwrap(), Arc::new(SystemClock))
+        .await
+        .unwrap();
+    let keypair_a = UserKeypair::generate();
+    let storage_a = CloudSyncStorage::new(
+        Arc::new(cloud.clone()),
+        CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
+        BlobPathScheme::Hashed,
+        keypair_a.clone(),
+    );
+
+    exec(
+        &db_a,
+        &format!(
+            "INSERT INTO artists (id, name, _updated_at, created_at) VALUES ('{AR1}', 'Artist One', '0000000001000-0000-test-device', '2026-01-01');\n\
+             INSERT INTO artists (id, name, _updated_at, created_at) VALUES ('{AR2}', 'Artist Two', '0000000001001-0000-test-device', '2026-01-01');\n\
+             INSERT INTO artists (id, name, _updated_at, created_at) VALUES ('{AR3}', 'Artist Three', '0000000001002-0000-test-device', '2026-01-01');\n\
+             INSERT INTO albums (id, title, artist_id, is_compilation, _updated_at, created_at) VALUES ('{AL1}', 'Album One', '{AR1}', 0, '0000000001003-0000-test-device', '2026-01-01');\n\
+             INSERT INTO albums (id, title, artist_id, is_compilation, _updated_at, created_at) VALUES ('{AL2}', 'Album Two', '{AR2}', 0, '0000000001004-0000-test-device', '2026-01-01');\n\
+             INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at) VALUES ('aa1', '{AL1}', '{AR1}', 0, '0000000001005-0000-test-device', '2026-01-01');\n\
+             INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at) VALUES ('aa2', '{AL2}', '{AR2}', 0, '0000000001006-0000-test-device', '2026-01-01');\n\
+             INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at) VALUES ('{RE1}', '{AL1}', 'file_tags', 1, '0000000001007-0000-test-device', '2026-01-01');\n\
+             INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at) VALUES ('{RE2}', '{AL2}', 'file_tags', 0, '0000000001008-0000-test-device', '2026-01-01');"
+        ),
+    )
+    .await;
+    // Seed the cover / artist-image bytes in coven's host-provided local store, so
+    // the inline push can upload the Remote ones. (The Local release's cover and
+    // the orphan artist's image are gated out, never uploaded.)
+    coven::blob::local_files::store(&lib_a, "covers", RE1, b"cover-bytes-1")
+        .await
+        .unwrap();
+    coven::blob::local_files::store(&lib_a, "covers", RE2, b"cover-bytes-2")
+        .await
+        .unwrap();
+    coven::blob::local_files::store(&lib_a, "artist_images", AR1, b"artist-img-1")
+        .await
+        .unwrap();
+    coven::blob::local_files::store(&lib_a, "artist_images", AR3, b"artist-img-3")
+        .await
+        .unwrap();
+    insert_cover(&db_a, RE1, "0000000001020-0000-test-device").await;
+    insert_cover(&db_a, RE2, "0000000001021-0000-test-device").await;
+    insert_artist_image(&db_a, AR1, "0000000001022-0000-test-device").await;
+    insert_artist_image(&db_a, AR3, "0000000001023-0000-test-device").await;
+
+    sync_cycle(&db_a, &storage_a, "device-a", &keypair_a, &lib_a).await;
+
+    let tmp_b = tempfile::tempdir().unwrap();
+    let lib_b = LibraryDir::new(tmp_b.path().join("b"));
+    std::fs::create_dir_all(&*lib_b).unwrap();
+    let db_b = Database::new_test(lib_b.db_path().to_str().unwrap(), Arc::new(SystemClock))
+        .await
+        .unwrap();
+    let keypair_b = UserKeypair::generate();
+    let storage_b = CloudSyncStorage::new(
+        Arc::new(cloud.clone()),
+        CloudCipher::Encrypted(EncryptionService::new_with_key(&key)),
+        BlobPathScheme::Hashed,
+        keypair_b.clone(),
+    );
+    sync_cycle(&db_b, &storage_b, "device-b", &keypair_b, &lib_b).await;
+
+    // Rides when Remote: B gets the remote release, its cover, its artist, and the
+    // artist's image (the artist is kept by its remote release; the image rides).
+    assert_eq!(
+        count(
+            &db_b,
+            &format!("SELECT count(*) FROM releases WHERE id='{RE1}'")
+        )
+        .await,
+        1
+    );
+    assert_eq!(
+        count(
+            &db_b,
+            &format!("SELECT count(*) FROM covers WHERE id='{RE1}'")
+        )
+        .await,
+        1,
+        "cover rides the remote release",
+    );
+    assert_eq!(
+        count(
+            &db_b,
+            &format!("SELECT count(*) FROM artists WHERE id='{AR1}'")
+        )
+        .await,
+        1
+    );
+    assert_eq!(
+        count(
+            &db_b,
+            &format!("SELECT count(*) FROM artist_images WHERE id='{AR1}'")
+        )
+        .await,
+        1,
+        "the kept artist's image rides its gate",
+    );
+
+    // Does NOT leak while Local: the Local release, its cover, its artist.
+    assert_eq!(
+        count(
+            &db_b,
+            &format!("SELECT count(*) FROM releases WHERE id='{RE2}'")
+        )
+        .await,
+        0,
+        "a Local release does not sync"
+    );
+    assert_eq!(
+        count(
+            &db_b,
+            &format!("SELECT count(*) FROM covers WHERE id='{RE2}'")
+        )
+        .await,
+        0,
+        "a Local release's cover does not leak"
+    );
+    assert_eq!(
+        count(
+            &db_b,
+            &format!("SELECT count(*) FROM artists WHERE id='{AR2}'")
+        )
+        .await,
+        0
+    );
+
+    // An asset never grants keep: the orphan artist (only an artist image, no
+    // remote release) is not kept, and neither is its image.
+    assert_eq!(
+        count(
+            &db_b,
+            &format!("SELECT count(*) FROM artists WHERE id='{AR3}'")
+        )
+        .await,
+        0,
+        "an artist with only an image is not kept"
+    );
+    assert_eq!(
+        count(
+            &db_b,
+            &format!("SELECT count(*) FROM artist_images WHERE id='{AR3}'")
+        )
+        .await,
+        0,
+        "the orphan artist's image does not leak"
     );
 }

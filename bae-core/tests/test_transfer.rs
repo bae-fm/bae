@@ -240,6 +240,52 @@ async fn expect_release_updated(
 }
 
 // ---------------------------------------------------------------------------
+// Host-provided cover blob via coven's local store
+// ---------------------------------------------------------------------------
+
+/// A cover is a host-provided blob: its bytes go to coven's local store
+/// (`local_files::store`) and coven owns the copy. While the release is Local the
+/// cover lives in the local store and resolves to an on-disk path the UI loads —
+/// no cloud round-trip.
+#[tokio::test]
+async fn test_cover_blob_stored_via_local_files_is_readable() {
+    tracing_init();
+    let tmp = TempDir::new().unwrap();
+    let (db, mgr) = setup(&tmp).await;
+    let (_a, release_id, _f) = create_local_release(&db, &mgr, &tmp.path().join("src"), &[]).await;
+
+    // No cover yet → no on-disk path.
+    assert!(
+        mgr.cover_blob_path(&release_id).is_none(),
+        "no cover before one is stored"
+    );
+
+    // Hand the cover bytes to coven's host-provided local store (the same call
+    // `store_cover_blob` makes at import).
+    let bytes = b"cover-jpeg-bytes";
+    let lib_dir = LibraryDir::new(tmp.path());
+    coven::blob::local_files::store(
+        &lib_dir,
+        bae_core::sync::COVERS_NAMESPACE,
+        &release_id,
+        bytes,
+    )
+    .await
+    .unwrap();
+
+    // It now resolves to coven's local-store path and reads back byte-for-byte.
+    let path = mgr
+        .cover_blob_path(&release_id)
+        .expect("cover resolves to a local-store path once stored");
+    assert!(path.exists(), "the cover blob is on disk at {path:?}");
+    assert_eq!(
+        tokio::fs::read(&path).await.unwrap(),
+        bytes,
+        "the stored cover reads back byte-for-byte"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Pin / unpin guards
 // ---------------------------------------------------------------------------
 

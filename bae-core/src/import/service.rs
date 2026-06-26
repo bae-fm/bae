@@ -1392,13 +1392,23 @@ impl ImportService {
         // the external refs, deletes the source files, and re-emits the subtree
         // (the cover rides along). This runs BEFORE the events below so the outbox
         // already holds the upload by the time any consumer observes the release or
-        // `Complete`. The release is already a playable Local release, so a
-        // transition that can't start (e.g. sync not running) is logged, leaving it
-        // Local for the user to make Remote later, rather than failing the import.
+        // `Complete`.
+        //
+        // The release is already a finalized, playable Local release, so a failure
+        // to *start* the remote transition (sync not running, a truncated source)
+        // is NOT a reason to fail the whole import and discard the imported files —
+        // the user keeps a valid Local release whose storage row shows `Local` with
+        // a "Make Remote" action to retry. But it is a genuine failure of the
+        // requested Remote import, never a silent success: it is surfaced loudly at
+        // `error` (the requested Remote outcome was not achieved), not swallowed.
+        // (A dedicated UI "imported-local, upload-pending" state is a follow-up;
+        // the release's visible `Local` storage state + the retry action are the
+        // current surface.)
         if remote_intent {
             if let Err(e) = library_manager.coven_make_remote(&db_release.id, pin).await {
-                warn!(
-                    "Import of {} landed local but the remote transition could not start: {e}",
+                error!(
+                    "Remote import of {} could not start its cloud upload ({e}); the release \
+                     is imported as Local and can be made Remote manually",
                     db_release.id
                 );
             }

@@ -1876,7 +1876,15 @@ impl LibraryManager {
     pub(crate) fn blob_storage(&self) -> Box<dyn coven::sync::storage::SyncStorage> {
         match self.create_sync_storage() {
             Ok(storage) => Box::new(storage),
-            Err(_) => Box::new(crate::storage::OfflineSyncStorage),
+            // The only expected cause is "no cloud home configured" (a home-less,
+            // all-Local library), where coven never reaches storage anyway. Log the
+            // cause so a genuine build failure (a missing cipher / keypair on a
+            // library that DOES have a home) is visible rather than masked as
+            // offline — a Remote read against the offline stub then fails loud.
+            Err(e) => {
+                debug!("blob_storage: no live cloud storage ({e}); using the offline stub");
+                Box::new(crate::storage::OfflineSyncStorage)
+            }
         }
     }
 
@@ -2007,6 +2015,87 @@ impl LibraryManager {
     // coven-owned locality transitions (make-Remote / make-Local / cancel)
     // =========================================================================
 
+    /// The blob-path scheme the configured home keys objects under (`Hashed` for an
+    /// opaque home, `Plain` for a browsable one) — the single place bae reads it.
+    fn blob_path_scheme(&self) -> coven::sync::cloud_storage::BlobPathScheme {
+        coven::sync::cloud_storage::BlobPathScheme::for_storage(
+            self.config_handle.config().cloud_home.storage,
+        )
+    }
+
+    /// The make-Local destination map: each release file's blob id → the user path
+    /// (`new_path/original_filename`) its bytes go back to. Host-provided blobs (the
+    /// cover) take no dest — coven restores them to its local store. The single
+    /// place the dest shape is built, shared by the production transition and the
+    /// test driver.
+    async fn make_local_dest(
+        &self,
+        release_id: &str,
+        new_path: &str,
+    ) -> Result<HashMap<String, PathBuf>, LibraryError> {
+        let files = self.database.get_files_for_release(release_id).await?;
+        Ok(files
+            .iter()
+            .map(|f| {
+                (
+                    f.id.clone(),
+                    std::path::Path::new(new_path).join(&f.original_filename),
+                )
+            })
+            .collect())
+    }
+
+    /// Bridge bae's `CancellationToken` to the `watch::Receiver<bool>` coven's
+    /// make_local polls between blobs: when the token fires, flip the watch. Returns
+    /// the receiver and the bridge task's handle (abort it once make_local returns).
+    /// The single place the bridge lives.
+    fn cancel_token_to_watch(
+        cancel: &crate::library::CancellationToken,
+    ) -> (
+        tokio::sync::watch::Receiver<bool>,
+        tokio::task::JoinHandle<()>,
+    ) {
+        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+        let token = cancel.clone();
+        let handle = tokio::spawn(async move {
+            token.cancelled().await;
+            let _ = cancel_tx.send(true);
+        });
+        (cancel_rx, handle)
+    }
+
+    /// Map a coven `make_local` result to bae's: a cancel before the commit is a
+    /// clean stop (coven rolled back the partial copies and left the release
+    /// Remote), every other error is surfaced. Shared by the production transition
+    /// and the test driver.
+    fn map_make_local_result(
+        release_id: &str,
+        result: Result<(), coven::blob::transition::MakeLocalError>,
+    ) -> Result<(), LibraryError> {
+        match result {
+            Ok(()) => Ok(()),
+            Err(coven::blob::transition::MakeLocalError::Cancelled) => Ok(()),
+            Err(e) => Err(LibraryError::Storage(format!(
+                "make release {release_id} local: {e}"
+            ))),
+        }
+    }
+
+    /// Build a `ReleaseUploadObserver` over this manager's shared outbox/throughput/
+    /// event state — the same observer `build_sync_manager` wires into the live sync
+    /// loop. The single place that wiring lives outside the loop builder, shared by
+    /// the by-hand upload drain and the test-only make-Local driver.
+    fn build_upload_observer(&self) -> crate::sync::upload_observer::ReleaseUploadObserver {
+        crate::sync::upload_observer::ReleaseUploadObserver::new(
+            Arc::new(self.database.clone()),
+            self.library_dir.clone(),
+            self.outbox_in_flight.clone(),
+            self.upload_throughput.clone(),
+            self.sync_paused.clone(),
+            self.event_tx.clone(),
+        )
+    }
+
     /// Make a release Remote (Local → Remote) through coven: coven enqueues an
     /// upload per user-provided blob from its external file, uploads each, and on
     /// the last flips the `remote` gate true, drops the external refs, deletes the
@@ -2057,62 +2146,40 @@ impl LibraryManager {
         let sm = self
             .sync_manager_inner()
             .ok_or_else(|| LibraryError::Storage("sync not running".to_string()))?;
-
-        // `dest` maps each user-provided blob id (a release file) to the user path
-        // its bytes go back to. The host-provided cover takes no dest — coven
-        // restores it to its local store.
-        let files = self.database.get_files_for_release(release_id).await?;
-        let dest: HashMap<String, PathBuf> = files
-            .iter()
-            .map(|f| {
-                (
-                    f.id.clone(),
-                    std::path::Path::new(new_path).join(&f.original_filename),
-                )
-            })
-            .collect();
-
-        // Bridge bae's `CancellationToken` to the `watch::Receiver<bool>` coven's
-        // make_local polls between blobs: when the token fires, flip the watch.
-        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
-        let token = cancel.clone();
-        let bridge = tokio::spawn(async move {
-            token.cancelled().await;
-            let _ = cancel_tx.send(true);
-        });
-
+        let dest = self.make_local_dest(release_id, new_path).await?;
+        let (cancel_rx, bridge) = Self::cancel_token_to_watch(cancel);
         let result = sm
             .make_local("releases", release_id, &dest, &cancel_rx)
             .await;
         bridge.abort();
-        match result {
-            Ok(()) => Ok(()),
-            // The user cancelled before coven's commit: coven rolled back the
-            // partial copies and left the release Remote. A clean stop, not a
-            // failure — mirror the old cancel-unmanage handling.
-            Err(coven::blob::transition::MakeLocalError::Cancelled) => Ok(()),
-            Err(e) => Err(LibraryError::Storage(format!(
-                "make release {release_id} local: {e}"
-            ))),
-        }
+        Self::map_make_local_result(release_id, result)
     }
 
-    /// Test-only: enqueue a make-Remote via coven's transition (no live
-    /// SyncManager). The caller then drains with `process_cloud_uploads_with`,
-    /// which flips the gate and fires `on_root_made_remote`.
+    /// Test-only deterministic driver for make-Remote.
+    ///
+    /// WHY THIS EXISTS: the production path (`make_release_remote` →
+    /// `do_make_remote` → `coven_make_remote` → `SyncManager::make_remote`) needs a
+    /// live `SyncManager` for its seeded HLC and running drain. Tests inject a
+    /// `MockCloudHome` via `set_cloud_override` and can't stand a SyncManager over
+    /// it, and coven's Database HLC isn't exposed to bae. So this calls the SAME
+    /// coven `transition::make_remote` the SyncManager calls (same scheme helper,
+    /// `"releases"` root), with a fresh device HLC — the only unavoidable
+    /// divergence. The actual upload + the gate-flip COMPLETION are then driven
+    /// through the REAL production drain (`process_cloud_uploads_with` →
+    /// `coven::blob::upload::drain_uploads` + the real `ReleaseUploadObserver`), so
+    /// a regression in the completion path IS caught. The `do_make_remote` guards
+    /// (is-sync-ready, cloud-home, empty-files) are covered separately by a test
+    /// driving the real `make_release_remote`.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn make_remote_for_test(
         &self,
         release_id: &str,
         pin: bool,
     ) -> Result<(), LibraryError> {
-        let scheme = coven::sync::cloud_storage::BlobPathScheme::for_storage(
-            self.config_handle.config().cloud_home.storage,
-        );
         let hlc = coven::sync::hlc::Hlc::new(self.config_handle.config().device_id.clone());
         coven::blob::transition::make_remote(
             self.database.coven_db(),
-            scheme,
+            self.blob_path_scheme(),
             &hlc,
             "releases",
             release_id,
@@ -2122,10 +2189,15 @@ impl LibraryManager {
         .map_err(|e| LibraryError::Storage(format!("make_remote: {e}")))
     }
 
-    /// Test-only: run a make-Local via coven's transition (no live SyncManager),
-    /// wiring an observer that shares this manager's event channel so
-    /// `on_root_made_local` emits `ReleaseUpdated`. Mirrors `coven_make_local` but
-    /// sources storage from `blob_storage()` (the injected cloud override).
+    /// Test-only deterministic driver for make-Local — same rationale as
+    /// `make_remote_for_test`: tests can't run the SyncManager-backed production
+    /// path over the injected `MockCloudHome`. It calls the SAME coven
+    /// `transition::make_local` that `SyncManager::make_local` calls, reusing the
+    /// production helpers (`make_local_dest`, `cancel_token_to_watch`,
+    /// `build_upload_observer`, `map_make_local_result`) — no duplicated
+    /// dest/observer/cancel/result logic. It diverges only in the unavoidable bits:
+    /// storage from `blob_storage()` (the override) and a fresh device HLC (the gate
+    /// flip is a local write, so a fresh HLC is correct for single-device tests).
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn make_local_for_test(
         &self,
@@ -2133,43 +2205,16 @@ impl LibraryManager {
         new_path: &str,
         cancel: &crate::library::CancellationToken,
     ) -> Result<(), LibraryError> {
-        let scheme = coven::sync::cloud_storage::BlobPathScheme::for_storage(
-            self.config_handle.config().cloud_home.storage,
-        );
         let hlc = coven::sync::hlc::Hlc::new(self.config_handle.config().device_id.clone());
         let storage = self.blob_storage();
-        let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
-            Arc::new(self.database.clone()),
-            self.library_dir.clone(),
-            self.outbox_in_flight.clone(),
-            self.upload_throughput.clone(),
-            self.sync_paused.clone(),
-            self.event_tx.clone(),
-        );
-
-        let files = self.database.get_files_for_release(release_id).await?;
-        let dest: HashMap<String, PathBuf> = files
-            .iter()
-            .map(|f| {
-                (
-                    f.id.clone(),
-                    std::path::Path::new(new_path).join(&f.original_filename),
-                )
-            })
-            .collect();
-
-        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
-        let token = cancel.clone();
-        let bridge = tokio::spawn(async move {
-            token.cancelled().await;
-            let _ = cancel_tx.send(true);
-        });
-
+        let observer = self.build_upload_observer();
+        let dest = self.make_local_dest(release_id, new_path).await?;
+        let (cancel_rx, bridge) = Self::cancel_token_to_watch(cancel);
         let result = coven::blob::transition::make_local(
             self.database.coven_db(),
             storage.as_ref(),
             &self.library_dir,
-            scheme,
+            self.blob_path_scheme(),
             &hlc,
             Some(&observer),
             "releases",
@@ -2179,11 +2224,7 @@ impl LibraryManager {
         )
         .await;
         bridge.abort();
-        match result {
-            Ok(()) => Ok(()),
-            Err(coven::blob::transition::MakeLocalError::Cancelled) => Ok(()),
-            Err(e) => Err(LibraryError::Storage(format!("make_local: {e}"))),
-        }
+        Self::map_make_local_result(release_id, result)
     }
 
     pub fn generate_restore_code(&self) -> Result<String, String> {
@@ -2369,6 +2410,10 @@ impl LibraryManager {
             .await?)
     }
 
+    /// Seed an upload outbox row + refresh the snapshot. coven owns enqueueing in
+    /// `make_remote` now, so this is only a test helper for exercising the
+    /// outbox-snapshot / drain machinery directly.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_cloud_outbox_upload(
         &self,
         file_id: &str,
@@ -2388,11 +2433,8 @@ impl LibraryManager {
     /// `Plain` → `{ns}/{cloud_path}`). Used by the bae-side delete path, which
     /// stays bae's responsibility (the transitions are coven's).
     fn release_file_cloud_key(&self, file: &DbFile) -> Result<String, LibraryError> {
-        let scheme = coven::sync::cloud_storage::BlobPathScheme::for_storage(
-            self.config_handle.config().cloud_home.storage,
-        );
         coven::sync::cloud_storage::CloudSyncStorage::blob_key(
-            scheme,
+            self.blob_path_scheme(),
             crate::sync::RELEASE_FILES_NAMESPACE,
             &file.id,
             file.cloud_path.as_deref(),
@@ -2408,11 +2450,8 @@ impl LibraryManager {
         release_id: &str,
         cloud_path: Option<&str>,
     ) -> Result<String, LibraryError> {
-        let scheme = coven::sync::cloud_storage::BlobPathScheme::for_storage(
-            self.config_handle.config().cloud_home.storage,
-        );
         coven::sync::cloud_storage::CloudSyncStorage::blob_key(
-            scheme,
+            self.blob_path_scheme(),
             crate::sync::COVERS_NAMESPACE,
             release_id,
             cloud_path,
@@ -2498,14 +2537,7 @@ impl LibraryManager {
         cloud_home: &dyn CloudHome,
         encryption: &std::sync::RwLock<EncryptionService>,
     ) -> Result<usize, String> {
-        let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
-            Arc::new(self.database.clone()),
-            self.library_dir.clone(),
-            self.outbox_in_flight.clone(),
-            self.upload_throughput.clone(),
-            self.sync_paused.clone(),
-            self.event_tx.clone(),
-        );
+        let observer = self.build_upload_observer();
         // coven's `drain_uploads` takes the home's at-rest cipher. bae homes are
         // always encrypted, so wrap the library's `EncryptionService` as
         // `CloudCipher::Encrypted`. Clone the service under the read lock, then drop
@@ -4501,15 +4533,14 @@ impl LibraryManager {
     }
 
     /// Tombstone every file's cloud blob (cancelling any pending upload first) and
-    /// drop coven's local cache copies, for a remote release that is being
-    /// local or deleted.
+    /// drop coven's local cache copies, for a Remote release that is being deleted.
     ///
-    /// SAFETY: callers must already hold a durable copy elsewhere — this only
-    /// schedules removals of the remote copies. `queue_release_files_for_deletion`
-    /// calls it when removing a release; `do_make_local` calls it after every file is
-    /// durably written + verified at the new local path. `files` are
-    /// precomputed by the caller from the still-remote release, so the cloud keys
-    /// are correct even after the release has since flipped local.
+    /// SAFETY: the cloud copies are the only ones, so this is only safe when the
+    /// release is genuinely being removed. Its sole caller is
+    /// `queue_release_files_for_deletion` (the delete path); the make-Local
+    /// tombstoning is coven's now (it enqueues the deletes inside `make_local`'s
+    /// atomic commit). `files` are precomputed by the caller, so the cloud keys are
+    /// correct.
     pub(crate) async fn queue_storage_deletions(&self, files: &[DbFile]) {
         // Queue cloud outbox deletes and cancel pending uploads. The delete key
         // must match the key the blob was uploaded under, derived through coven

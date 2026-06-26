@@ -801,7 +801,7 @@ async fn two_sequential_imports() {
     println!("Two sequential imports verified");
 }
 
-/// 6. Import with local cover art: library_images row and image file on disk.
+/// 6. Import with local cover art: covers row + the cover blob in coven's local store.
 #[tokio::test]
 #[serial]
 async fn import_with_cover_art() {
@@ -860,6 +860,91 @@ async fn import_with_cover_art() {
     println!(
         "Import with cover art verified: DB row + {} bytes on disk",
         cover_bytes.len()
+    );
+}
+
+/// On a browsable home the readable cloud_path is computed AT IMPORT — for every
+/// release file and for the cover — and stored on its row, so coven keys the blob
+/// readably when the gate flips. (An opaque home leaves them NULL; covered by the
+/// other imports, which assert nothing here.)
+#[tokio::test]
+#[serial]
+async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
+    support::tracing_init();
+
+    let release = discogs_release("Browsable Album", &["Track"]);
+    let release_id_key = seed_discogs_test_release(release);
+    let f = ImportFixture::new().await;
+    // Make the home browsable BEFORE importing, so finalize computes readable keys.
+    f.handle
+        .library_manager
+        .set_home_storage(bae_core::config::HomeStorage::Browsable);
+
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_album_with_cover(&album_dir, &["01 Track.flac"]);
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    f.handle
+        .send_command(ImportCommand::Folder {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            },
+            user_edit: None,
+        })
+        .unwrap();
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+
+    let album_id =
+        f.db.find_release_by_id(&release_id)
+            .await
+            .unwrap()
+            .unwrap()
+            .album_id;
+    let prefix = format!("{album_id}/{release_id}/");
+
+    // Every release file carries a readable cloud_path under the release prefix.
+    let files = f.db.get_files_for_release(&release_id).await.unwrap();
+    assert!(!files.is_empty(), "the import recorded release files");
+    for file in &files {
+        // The readable key is `{album}/{release}/{source_folder}/{filename}` with
+        // path separators in the filename sanitized to `_` (so a `scans/back.jpg`
+        // image file keys as `.../scans_back.jpg`); assert the readable prefix +
+        // that the file's own name component is present, not the raw path.
+        let cp = file.cloud_path.as_deref().unwrap_or_else(|| {
+            panic!(
+                "file {} has no cloud_path on a browsable home",
+                file.original_filename
+            )
+        });
+        assert!(
+            cp.starts_with(&prefix),
+            "audio cloud_path {cp} is under the release prefix {prefix}",
+        );
+        let leaf = file.original_filename.rsplit('/').next().unwrap();
+        assert!(
+            cp.ends_with(leaf),
+            "audio cloud_path {cp} ends with the file's name {leaf}",
+        );
+    }
+
+    // The cover carries its readable cloud_path too.
+    let cover =
+        f.db.find_library_image(&release_id, &LibraryImageType::Cover)
+            .await
+            .unwrap()
+            .expect("cover row present");
+    assert_eq!(
+        cover.cloud_path.as_deref(),
+        Some(format!("{prefix}cover.jpg").as_str()),
+        "the cover's readable cloud_path is computed at import",
     );
 }
 

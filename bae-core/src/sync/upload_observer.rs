@@ -18,7 +18,7 @@ use std::sync::{Arc, Mutex};
 
 use coven::library_dir::LibraryDir;
 use tokio::sync::broadcast;
-use tracing::warn;
+use tracing::{debug, warn};
 
 use crate::db::Database;
 use crate::library::LibraryEvent;
@@ -85,6 +85,8 @@ impl ReleaseUploadObserver {
         .await
         {
             Ok(Some(release)) => {
+                // A `send` error here means no UI is currently subscribed to the
+                // broadcast channel — expected and harmless, so it is dropped.
                 let _ = self
                     .events
                     .send(LibraryEvent::ReleaseUpdated { album_id, release });
@@ -108,6 +110,7 @@ impl ReleaseUploadObserver {
         .await
         {
             Ok(snapshot) => {
+                // A `send` error means no UI is subscribed right now — harmless.
                 let _ = self.events.send(LibraryEvent::OutboxChanged { snapshot });
             }
             Err(e) => warn!("Failed to build outbox snapshot: {e}"),
@@ -142,7 +145,15 @@ impl coven::blob::BlobTransitionObserver for ReleaseUploadObserver {
                     *prev = bytes_done;
                     delta
                 }
-                None => return,
+                // A progress report after the file's terminal callback removed its
+                // in-flight entry: ignore it, but name the file so a stray report
+                // isn't fully invisible.
+                None => {
+                    debug!(
+                        "upload progress for {file_id} after it left the in-flight set; ignoring"
+                    );
+                    return;
+                }
             }
         };
         if delta > 0 {
@@ -159,12 +170,32 @@ impl coven::blob::BlobTransitionObserver for ReleaseUploadObserver {
         // than `file_size`; the rolling rate is approximate, so the small
         // discrepancy is immaterial. coven, not bae, flips the gate — this is a
         // notification only.
-        let already_counted = self.in_flight.lock().unwrap().remove(file_id).unwrap_or(0);
-        if let Ok(Some(file)) = self.db.find_file_by_id(file_id).await {
-            let remaining = (file.file_size as u64).saturating_sub(already_counted);
-            if remaining > 0 {
-                self.throughput.record(remaining);
+        let already_counted = match self.in_flight.lock().unwrap().remove(file_id) {
+            Some(counted) => counted,
+            // The file completed without an in-flight entry (no `started`/progress
+            // seen — e.g. a tiny file). Credit its whole size below; note it so the
+            // missing lifecycle isn't silent.
+            None => {
+                debug!(
+                    "upload of {file_id} completed with no in-flight entry; crediting full size"
+                );
+                0
             }
+        };
+        match self.db.find_file_by_id(file_id).await {
+            Ok(Some(file)) => {
+                let remaining = (file.file_size as u64).saturating_sub(already_counted);
+                if remaining > 0 {
+                    self.throughput.record(remaining);
+                }
+            }
+            // Missing row / DB error: the throughput credit is approximate UI
+            // bookkeeping, so a miss only loses a little rate accuracy — log it
+            // rather than swallow it.
+            Ok(None) => {
+                warn!("on_blob_uploaded: no file row for {file_id}; skipping throughput credit")
+            }
+            Err(e) => warn!("on_blob_uploaded: looking up {file_id} for throughput credit: {e}"),
         }
         self.emit_outbox_changed().await;
     }
@@ -188,6 +219,9 @@ impl coven::blob::BlobTransitionObserver for ReleaseUploadObserver {
     /// flips, and refresh the outbox snapshot now that the queue is empty.
     async fn on_root_made_remote(&self, root_table: &str, root_id: &str) {
         if root_table != "releases" {
+            // bae declares only `releases` as a gated root, so any other root is
+            // unexpected — name it rather than silently dropping the completion.
+            debug!("on_root_made_remote for non-release root {root_table:?}/{root_id}; ignoring");
             return;
         }
         self.emit_release_updated(root_id).await;
@@ -198,6 +232,7 @@ impl coven::blob::BlobTransitionObserver for ReleaseUploadObserver {
     /// gate retracted, cloud blobs queued for tombstoning): emit `ReleaseUpdated`.
     async fn on_root_made_local(&self, root_table: &str, root_id: &str) {
         if root_table != "releases" {
+            debug!("on_root_made_local for non-release root {root_table:?}/{root_id}; ignoring");
             return;
         }
         self.emit_release_updated(root_id).await;
