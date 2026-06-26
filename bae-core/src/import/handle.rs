@@ -40,6 +40,9 @@ pub enum ImportEvent {
         candidate_key: String,
         tracks_done: u32,
         tracks_total: u32,
+        /// Overall scan progress 0..1 for the determinate bar; advances within a
+        /// track as it's measured, not just at track boundaries.
+        fraction: f32,
     },
     /// Identify pipeline transitioned to a new state. Emitted by the
     /// `identify` module; carries the full state payload plus the pre-shaped

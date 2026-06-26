@@ -1410,12 +1410,14 @@ pub enum BridgeUiEvent {
         progress_percent: u32,
         step: Option<BridgeImportStep>,
     },
-    /// High-frequency per-track loudness tick — the UI routes it to a native
-    /// leaf view (determinate bar "N / M"), not the coarse candidate row.
+    /// High-frequency loudness-measurement tick — the UI routes it to a native
+    /// leaf view (a determinate bar driven by `fraction`, labelled "N / M"), not
+    /// the coarse candidate row.
     CandidateImportLoudnessProgress {
         key: String,
         tracks_done: u32,
         tracks_total: u32,
+        fraction: f32,
     },
     CandidateImportComplete {
         key: String,

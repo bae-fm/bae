@@ -446,15 +446,17 @@ extension UiEventReducer {
         case .candidateImportLoudnessProgress(
             let key,
             let tracksDone,
-            let tracksTotal
+            let tracksTotal,
+            let fraction
         ):
-            // High-frequency per-track tick — publish to the leaf bar's signal,
+            // High-frequency sub-track tick — publish to the leaf bar's signal,
             // never the @Observable candidate row.
             importStore.importLoudnessSubject.send(
                 ImportLoudnessProgressEvent(
                     key: key,
                     tracksDone: tracksDone,
-                    tracksTotal: tracksTotal
+                    tracksTotal: tracksTotal,
+                    fraction: Double(fraction)
                 )
             )
 

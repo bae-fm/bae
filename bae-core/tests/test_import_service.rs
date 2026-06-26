@@ -506,13 +506,13 @@ async fn import_produces_audio_format_records() {
     );
 }
 
-/// The loudness pass emits a start tick (0/N), one tick per track as it's
-/// measured, and a final tick (N/N) — so the import UI can show a live,
-/// determinate bar through the otherwise-silent decode span instead of a frozen
-/// spinner.
+/// The loudness pass emits a continuous `fraction` (0 → 1) as it scans, ticking
+/// ~0.1s of audio at a time rather than once per track, so the import UI fills a
+/// determinate bar smoothly through the otherwise-silent measure span instead of
+/// stepping (or showing a frozen spinner).
 #[tokio::test]
 #[serial]
-async fn loudness_pass_emits_per_track_progress() {
+async fn loudness_pass_emits_within_track_progress() {
     use bae_core::import::ImportEvent;
 
     support::tracing_init();
@@ -557,28 +557,45 @@ async fn loudness_pass_emits_per_track_progress() {
 
     // Drain the buffered events; keep the loudness ticks for our candidate in
     // arrival order.
-    let mut ticks: Vec<(u32, u32)> = Vec::new();
+    let mut ticks: Vec<(u32, u32, f32)> = Vec::new();
     while let Ok(event) = event_rx.try_recv() {
         if let ImportEvent::ImportLoudnessProgress {
             candidate_key,
             tracks_done,
             tracks_total,
+            fraction,
         } = event
         {
             if candidate_key == "test" {
-                ticks.push((tracks_done, tracks_total));
+                ticks.push((tracks_done, tracks_total, fraction));
             }
         }
     }
 
-    // Three tracks → a start tick plus one per measured track: 0/3, 1/3, 2/3,
-    // 3/3. `done` is monotonic and total is constant; the final tick reaches N/N
-    // so the bar always completes.
-    let done: Vec<u32> = ticks.iter().map(|(d, _)| *d).collect();
-    assert_eq!(done, vec![0, 1, 2, 3], "loudness ticks were {ticks:?}");
+    // Three tracks measured ~0.1s at a time → many ticks, not one per track, so
+    // the bar creeps within each track instead of stepping. `fraction` is the
+    // overall scan progress: monotonic, starting at 0 and reaching exactly 1.0 so
+    // the bar always completes; total is constant; the last track-count is N/N.
     assert!(
-        ticks.iter().all(|(_, total)| *total == 3),
+        ticks.len() > 4,
+        "within-track measurement emits many ticks, not one per track: {} ticks",
+        ticks.len()
+    );
+    assert!(
+        ticks.iter().all(|(_, total, _)| *total == 3),
         "every tick reports total=3: {ticks:?}"
+    );
+    let fractions: Vec<f32> = ticks.iter().map(|(_, _, f)| *f).collect();
+    assert!(
+        fractions.windows(2).all(|w| w[1] >= w[0]),
+        "fraction is monotonic non-decreasing: {fractions:?}"
+    );
+    assert_eq!(fractions.first().copied(), Some(0.0), "starts at 0");
+    assert_eq!(fractions.last().copied(), Some(1.0), "reaches exactly 1.0");
+    assert_eq!(
+        ticks.last().map(|(d, t, _)| (*d, *t)),
+        Some((3, 3)),
+        "final tick labels the last track N/N"
     );
 }
 
