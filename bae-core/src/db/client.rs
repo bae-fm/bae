@@ -3030,7 +3030,7 @@ impl Database {
         source_path: Option<&str>,
         retain_pinned: bool,
     ) -> Result<(), DbError> {
-        let created_at = self.inner.clock.now().to_rfc3339();
+        let created_at = self.register_stamp();
         self.inner
             .coven_db
             .enqueue_upload(
@@ -3046,7 +3046,7 @@ impl Database {
 
     /// Add a delete entry to the cloud outbox.
     pub async fn add_cloud_outbox_delete(&self, cloud_key: &str) -> Result<(), DbError> {
-        let created_at = self.inner.clock.now().to_rfc3339();
+        let created_at = self.register_stamp();
         self.inner
             .coven_db
             .enqueue_delete(cloud_key, &created_at)
@@ -3123,20 +3123,24 @@ impl Database {
                          ORDER BY co.id",
                 )?;
                 let rows = stmt.query_map([], |row| {
-                    // The queue row stores `created_at` as RFC 3339 text; the UI
-                    // needs an instant, so parse it to epoch millis here. bae
-                    // writes valid RFC 3339 at enqueue, so a parse failure is a
-                    // corrupt value — surface it as a column-conversion error
-                    // rather than masking it. The index is `created_at`'s
-                    // position in the SELECT (`co.id`=0, …, `co.created_at`=4) so
-                    // the diagnostic names the right column.
+                    // coven writes `created_at` as its HLC stamp
+                    // (`millis-counter-device`, the same format `make_remote`
+                    // enqueues with and `register_stamp` mints); the UI needs an
+                    // instant for the "queued N ago" label, so take the stamp's
+                    // physical millis. A value that isn't a coven stamp is corrupt
+                    // — surface it as a column-conversion error rather than masking
+                    // it. The index is `created_at`'s position in the SELECT
+                    // (`co.id`=0, …, `co.created_at`=4) so the diagnostic names the
+                    // right column.
                     let created_at_raw = row.get::<_, String>("created_at")?;
-                    let created_at = crate::config::rfc3339_to_epoch_millis(&created_at_raw)
-                        .map_err(|e| {
+                    let created_at = coven::sync::hlc::Timestamp::parse(&created_at_raw)
+                        .map(|t| t.millis as i64)
+                        .ok_or_else(|| {
                             coven::rusqlite::Error::FromSqlConversionFailure(
                                 4,
                                 coven::rusqlite::types::Type::Text,
-                                Box::new(e),
+                                format!("created_at {created_at_raw:?} is not a coven HLC stamp")
+                                    .into(),
                             )
                         })?;
                     Ok(DbOutboxRow {

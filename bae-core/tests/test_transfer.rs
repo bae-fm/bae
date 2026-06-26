@@ -240,6 +240,45 @@ async fn expect_release_updated(
 }
 
 // ---------------------------------------------------------------------------
+// The make-Remote enqueue is visible in the outbox snapshot before the drain
+// ---------------------------------------------------------------------------
+
+/// A Managed import lands Unmanaged-and-uploading: the make-Remote uploads are
+/// enqueued through coven, and the Storage Manager / import-progress UI reads
+/// them from `outbox_snapshot`. Assert they are visible the instant make-Remote
+/// returns — before any byte drains — so the upload shows up immediately rather
+/// than only after it finishes.
+#[tokio::test]
+async fn make_remote_uploads_are_visible_in_snapshot_before_drain() {
+    tracing_init();
+    let tmp = TempDir::new().unwrap();
+    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
+    let source = tmp.path().join("src");
+    let (_album_id, release_id, named) = create_local_release(
+        &db,
+        &mgr,
+        &source,
+        &[("01.flac", b"aaaaaaaa"), ("02.flac", b"bbbbbbbbbbbb")],
+    )
+    .await;
+
+    // Enqueue make-Remote through the real coven path; do NOT drain.
+    mgr.make_remote_for_test(&release_id, false).await.unwrap();
+
+    let snap = mgr.outbox_snapshot().await.unwrap();
+    assert_eq!(
+        snap.total.queued,
+        named.len() as u32,
+        "every file is queued in the snapshot immediately after make-Remote"
+    );
+    let per = snap
+        .per_release
+        .get(&release_id)
+        .expect("the uploading release is present in per_release");
+    assert_eq!(per.queued, named.len() as u32);
+}
+
+// ---------------------------------------------------------------------------
 // Host-provided cover blob via coven's local store
 // ---------------------------------------------------------------------------
 
