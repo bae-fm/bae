@@ -1613,10 +1613,12 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             key,
             tracks_done,
             tracks_total,
+            fraction,
         } => Some(BridgeUiEvent::CandidateImportLoudnessProgress {
             key,
             tracks_done,
             tracks_total,
+            fraction,
         }),
         UiBusEvent::CandidateImportComplete {
             key,
