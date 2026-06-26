@@ -1,22 +1,12 @@
 name: iOS build
 
-# Debug CI gate: on every push/PR, cross-compiles bae-bridge for iOS,
-# builds the Xcode app (simulator), and runs format and clippy checks.
-# Mirrors what android.yml covers for Android. Release-specific steps
-# (versioning, archive, IPA packaging, GitHub Release) live in release-ios.yml.
+# Reusable debug CI gate, called per-commit by build.yml: cross-compiles
+# bae-bridge for iOS, builds the Xcode app (simulator), and runs format and
+# clippy checks. Mirrors the Android gate. Release-specific steps (versioning,
+# archive, IPA packaging, GitHub Release) live in release-ios.yml.
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    # Bottom-of-chain only, matching ci.yml: non-bottom chain PRs target their
-    # predecessor and get validated once the chain rebases onto main.
-    branches: [main]
-  workflow_dispatch:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_call:
 
 env:
   CARGO_TERM_COLOR: always

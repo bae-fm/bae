@@ -1,13 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    # Bottom-of-chain only. Non-bottom PRs in a chain target their
-    # predecessor branch; their content gets validated when the chain
-    # rebases and the next PR becomes the bottom.
-    branches: [main]
   workflow_call:
     inputs:
       ref:
@@ -15,10 +8,6 @@ on:
         required: false
         type: string
         default: ''
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always

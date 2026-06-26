@@ -1,6 +1,6 @@
 name: Android build (reusable)
 
-# Shared Android build, called by android.yml (debug CI gate) and
+# Shared Android build, called by build.yml (per-commit debug gate) and
 # release-android.yml (signed release). Cross-compiles bae-bridge for the NDK
 # targets, runs the app unit tests, and assembles the APK — debug or, with
 # profile=release, a signed APK uploaded as the `bae-android-release` artifact.

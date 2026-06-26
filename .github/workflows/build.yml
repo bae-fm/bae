@@ -1,0 +1,45 @@
+name: Build
+
+# Per-commit debug gate for every platform, as one workflow run instead of four.
+# Each platform is a job that calls its reusable workflow on its own runner, all
+# in parallel. Release builds live in the release-* workflows.
+
+on:
+  push:
+    branches: [main, develop, windows-native]
+  pull_request:
+    # Bottom-of-chain only: non-bottom chain PRs target their predecessor branch
+    # and get validated once the chain rebases onto main.
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  android:
+    name: Android
+    # Build both editions so a feature-gate or source-set edit can't break the
+    # one this push doesn't exercise: full (the bae product) and baeium (the
+    # S3-only F-Droid app).
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [full, baeium]
+    uses: ./.github/workflows/android-build.yml
+    with:
+      profile: debug
+      edition: ${{ matrix.edition }}
+
+  ios:
+    name: iOS
+    uses: ./.github/workflows/ios.yml
+
+  windows:
+    name: Windows
+    uses: ./.github/workflows/windows.yml

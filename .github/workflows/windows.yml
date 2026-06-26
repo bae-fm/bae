@@ -9,15 +9,7 @@ name: Windows build
 # here: ffmpeg via bae-ffmpeg, libdiscid via MusicBrainz's prebuilt.
 
 on:
-  workflow_dispatch:
-  push:
-    branches: [main, develop, windows-native]
-  pull_request:
-    branches: [main]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_call:
 
 jobs:
   build:
