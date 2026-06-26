@@ -680,7 +680,22 @@ impl CueFlacTestFixture {
         next_capture_stream_from(&mut self.capture_stream_rx).await
     }
 
+    /// Full-speed capture: the drain pulls as fast as the decoder fills. Fast,
+    /// but a track can fully decode and gaplessly advance before a follow-up
+    /// command lands — use `with_realtime_capture` for seek/pause tests.
     async fn with_capture() -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_capture_paced(false).await
+    }
+
+    /// Real-time-paced capture: the drain sleeps each buffer's wall-clock
+    /// duration, so the decoder fills the ring and parks instead of racing
+    /// whole tracks ahead. Required for tests that play, then issue a command
+    /// (seek, pause) that must land on the track under test.
+    async fn with_realtime_capture() -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_capture_paced(true).await
+    }
+
+    async fn with_capture_paced(realtime: bool) -> Result<Self, Box<dyn std::error::Error>> {
         tracing_init();
         let temp_dir = TempDir::new()?;
         let db_path = temp_dir.path().join("test.db");
@@ -744,7 +759,11 @@ impl CueFlacTestFixture {
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
 
-        let (capture_output, capture_stream_rx) = bae_core::playback::CaptureAudioOutput::new();
+        let (capture_output, capture_stream_rx) = if realtime {
+            bae_core::playback::CaptureAudioOutput::new_realtime()
+        } else {
+            bae_core::playback::CaptureAudioOutput::new()
+        };
         let playback_handle = bae_core::playback::PlaybackService::start_with_output(
             library_manager.clone(),
             runtime_handle,
@@ -2621,7 +2640,10 @@ async fn test_cue_flac_playback() {
 async fn test_cue_flac_seek() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = match CueFlacTestFixture::with_capture().await {
+    // Real-time capture: a full-speed drain races the decoder past track 2 and
+    // gaplessly onto the next track before the seek below lands, leaving the
+    // post-seek stream empty (flaky under load — Linux CI hit it ~5%).
+    let mut fixture = match CueFlacTestFixture::with_realtime_capture().await {
         Ok(f) => f,
         Err(e) => {
             debug!("Failed to set up CUE/FLAC test fixture: {}", e);
@@ -3209,7 +3231,10 @@ async fn test_seek_lands_near_target_position() {
 async fn test_cue_flac_seek_respects_track_end_boundary() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = match CueFlacTestFixture::with_capture().await {
+    // Real-time capture: at full speed track 2's decoder finishes the whole
+    // track before the seek restarts it at 5s, so its sample count overshoots
+    // the boundary (flaky under load). Real-time keeps the decoder on the seek.
+    let mut fixture = match CueFlacTestFixture::with_realtime_capture().await {
         Ok(f) => f,
         Err(e) => {
             debug!("Failed to set up CUE/FLAC test fixture: {}", e);

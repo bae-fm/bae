@@ -107,6 +107,13 @@ pub trait AudioOutput: Send + 'static {
 pub struct CaptureAudioOutput {
     state: Arc<AtomicU8>,
     notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
+    /// When true, the drain paces itself to real time (sleeping one buffer's
+    /// wall-clock duration after each pull) instead of draining at full speed.
+    /// Full-speed draining lets the decoder run a whole track and gaplessly
+    /// advance before a test can issue a follow-up command (e.g. a seek); a
+    /// real-time drain keeps playback on the track under test, the way the cpal
+    /// sink does in production. Tests that just want samples fast use `new()`.
+    realtime: bool,
 }
 
 #[cfg(feature = "test-utils")]
@@ -117,10 +124,30 @@ impl CaptureAudioOutput {
         Self,
         tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
     ) {
+        Self::with_pacing(false)
+    }
+
+    /// Like `new()`, but the drain paces to real time. Use for tests whose
+    /// follow-up commands (seek, pause) must land on the track being played
+    /// rather than racing a full-speed decode that has already advanced.
+    pub fn new_realtime() -> (
+        Self,
+        tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
+    ) {
+        Self::with_pacing(true)
+    }
+
+    fn with_pacing(
+        realtime: bool,
+    ) -> (
+        Self,
+        tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
+    ) {
         let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
         let output = Self {
             state: Arc::new(AtomicU8::new(AudioState::Stopped as u8)),
             notify_tx,
+            realtime,
         };
         (output, notify_rx)
     }
@@ -180,8 +207,8 @@ impl AudioOutput for CaptureAudioOutput {
     fn create_stream(
         &mut self,
         source: Arc<Mutex<PlaybackSource>>,
-        _source_sample_rate: u32,
-        _source_channels: u32,
+        source_sample_rate: u32,
+        source_channels: u32,
         position_tx: mpsc::Sender<PositionEvent>,
         completion_tx: mpsc::Sender<CompletionEvent>,
         position_update_interval_ms: u32,
@@ -190,6 +217,8 @@ impl AudioOutput for CaptureAudioOutput {
         let _ = self.notify_tx.send(captured.clone());
 
         let state = self.state.clone();
+        let realtime = self.realtime;
+        let channels = source_channels.max(1);
         let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let stop_clone = stop.clone();
 
@@ -249,6 +278,17 @@ impl AudioOutput for CaptureAudioOutput {
                         tracing::debug!("Position tick: receiver dropped");
                     }
                     last_position_update = std::time::Instant::now();
+                }
+
+                // Real-time mode: release the source, then sleep this buffer's
+                // wall-clock duration so the decoder fills the ring and parks
+                // rather than racing a whole track ahead of the test's commands.
+                if realtime {
+                    let frames = (read as u32 / channels) as f64;
+                    drop(source_guard);
+                    std::thread::sleep(std::time::Duration::from_secs_f64(
+                        frames / source_sample_rate as f64,
+                    ));
                 }
             }
         });
