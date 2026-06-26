@@ -10,7 +10,7 @@ use std::fmt;
 use std::os::raw::{c_int, c_void};
 use std::ptr;
 use std::sync::Arc;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, warn};
 
 /// Buffer size for FFmpeg custom-IO (`avio`) contexts. The standard 32 KiB
 /// FFmpeg uses for its own file IO.
@@ -136,6 +136,21 @@ pub struct DecodedAudio {
     pub sample_rate: u32,
     pub channels: u32,
     pub bits_per_sample: u32,
+}
+
+/// Receives a decode as it streams: the format once, then interleaved-i32 chunks.
+///
+/// `decode_audio_to_sink` pushes each frame straight in instead of accumulating a
+/// `Vec`, so a consumer (loudness measurement) can process the audio as it arrives
+/// and never hold the whole track's PCM at once. A sink that fails mid-stream
+/// records the failure internally and keeps absorbing calls (the unsafe decoder
+/// can't unwind through it); the caller checks the sink afterward.
+pub trait DecodedSink {
+    /// Called once after the stream is probed, before any samples.
+    fn on_format(&mut self, sample_rate: u32, channels: u32, bits_per_sample: u32);
+    /// One interleaved-i32 chunk, already trimmed to the requested
+    /// `[start_sample, end_sample)` window.
+    fn on_samples(&mut self, samples: &[i32]);
 }
 
 /// Initialize FFmpeg (call once at startup)
@@ -539,8 +554,51 @@ pub fn decode_audio(
     start_sample: Option<u64>,
     end_sample: Option<u64>,
 ) -> Result<DecodedAudio, String> {
+    let mut sink = CollectingSink {
+        samples: Vec::new(),
+        format: None,
+    };
+    decode_audio_to_sink(data, start_sample, end_sample, &mut sink)?;
+    // `decode_audio_to_sink` returning Ok means the format was probed, so
+    // `on_format` ran before any samples.
+    let (sample_rate, channels, bits_per_sample) = sink
+        .format
+        .expect("decode produced samples without a format");
+    Ok(DecodedAudio {
+        samples: sink.samples,
+        sample_rate,
+        channels,
+        bits_per_sample,
+    })
+}
+
+/// The sink behind `decode_audio`: collects the whole decode into a `Vec` and
+/// records the probed format.
+struct CollectingSink {
+    samples: Vec<i32>,
+    format: Option<(u32, u32, u32)>,
+}
+
+impl DecodedSink for CollectingSink {
+    fn on_format(&mut self, sample_rate: u32, channels: u32, bits_per_sample: u32) {
+        self.format = Some((sample_rate, channels, bits_per_sample));
+    }
+    fn on_samples(&mut self, samples: &[i32]) {
+        self.samples.extend_from_slice(samples);
+    }
+}
+
+/// Stream-decode audio, pushing the format then each interleaved-i32 chunk into
+/// `sink` instead of returning a buffered `Vec`. Same window semantics as
+/// [`decode_audio`]; `start_sample`/`end_sample` trim the decoded range.
+pub fn decode_audio_to_sink(
+    data: &[u8],
+    start_sample: Option<u64>,
+    end_sample: Option<u64>,
+    sink: &mut dyn DecodedSink,
+) -> Result<(), String> {
     // Safety: FFmpeg operations are contained within this function
-    unsafe { decode_audio_avio(data, start_sample, end_sample) }
+    unsafe { decode_audio_avio(data, start_sample, end_sample, sink) }
 }
 
 /// Internal AVIO-based decode implementation
@@ -548,7 +606,8 @@ unsafe fn decode_audio_avio(
     data: &[u8],
     start_sample: Option<u64>,
     end_sample: Option<u64>,
-) -> Result<DecodedAudio, String> {
+    sink: &mut dyn DecodedSink,
+) -> Result<(), String> {
     use ffmpeg_sys_next::*;
 
     // Create our context for callbacks
@@ -663,6 +722,8 @@ unsafe fn decode_audio_avio(
         _ => 16,
     };
 
+    sink.on_format(sample_rate, channels, bits_per_sample);
+
     let time_base = (*stream).time_base;
 
     // Seek to start position if specified (using stream time_base for exact positioning)
@@ -690,7 +751,6 @@ unsafe fn decode_audio_avio(
         return Err("Failed to allocate frame/packet".to_string());
     }
 
-    let mut samples: Vec<i32> = Vec::new();
     let mut tracked_sample_pos: i64 = -1;
 
     // Read and decode packets, trimming by sample position
@@ -779,7 +839,7 @@ unsafe fn decode_audio_avio(
             };
 
             if skip_start < take_end {
-                samples.extend_from_slice(&frame_samples_vec[skip_start..take_end]);
+                sink.on_samples(&frame_samples_vec[skip_start..take_end]);
             }
         }
 
@@ -793,7 +853,7 @@ unsafe fn decode_audio_avio(
         avcodec_send_packet(codec_ctx, ptr::null());
         while avcodec_receive_frame(codec_ctx, frame) >= 0 {
             let frame_samples_vec = extract_samples_from_raw_frame(frame, channels as usize);
-            samples.extend_from_slice(&frame_samples_vec);
+            sink.on_samples(&frame_samples_vec);
         }
     }
 
@@ -807,18 +867,7 @@ unsafe fn decode_audio_avio(
     // Keep avio_ctx alive until here (prevent drop during FFmpeg operations)
     drop(avio_ctx);
 
-    trace!(
-        "Decoded {} samples ({} frames) from audio",
-        samples.len(),
-        samples.len() / channels.max(1) as usize
-    );
-
-    Ok(DecodedAudio {
-        samples,
-        sample_rate,
-        channels,
-        bits_per_sample,
-    })
+    Ok(())
 }
 
 /// Extract samples from a raw AVFrame as i32

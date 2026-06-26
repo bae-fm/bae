@@ -258,6 +258,116 @@ fn cue_track_byte_ends(file_path: &Path, cue_pair: &CueFlacAnalysis) -> Option<V
 /// Send an import event on the broadcast bus, logging on send failure.
 use crate::import::handle::send_event;
 
+/// The meter and the format-derived constants it needs, set together once the
+/// decode probes the format. Held as one `Option` so "no format yet" is a single
+/// absence, not several fields each separately nullable.
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+struct MeterState {
+    meter: crate::loudness::LoudnessMeter,
+    channels: u32,
+    /// Emit a progress tick once this many frames have been measured since the
+    /// last one (~0.1s of audio), so the bar creeps without an event per frame.
+    emit_every_frames: u64,
+}
+
+/// Streams one track's decode into a [`crate::loudness::LoudnessMeter`] and emits
+/// `ImportLoudnessProgress` as the scan advances, throttled to ~0.1s of audio per
+/// tick. A failed `add_chunk` is recorded and the meter dropped (later chunks are
+/// ignored); `into_result` surfaces the failure to the caller.
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+struct LoudnessProgressSink {
+    /// Authoritative source bit depth (NULL for lossy, where the decoded
+    /// container depth is used instead).
+    source_bits: Option<u32>,
+    state: Option<MeterState>,
+    error: Option<String>,
+    /// This track's total frame count, used to fill its bar segment. `None` when
+    /// neither the sample window nor a track duration is known — the segment then
+    /// only advances at the post-track tick.
+    total_frames: Option<u64>,
+    done_frames: u64,
+    frames_since_emit: u64,
+    event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
+    candidate_key: String,
+    idx: u32,
+    tracks_total: u32,
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+impl LoudnessProgressSink {
+    /// Overall scan `fraction` (0..1): this track is the `idx`-th of
+    /// `tracks_total` equal segments, filled by `done_frames / total_frames`.
+    fn emit(&self) {
+        let within = match self.total_frames {
+            Some(total) if total > 0 => (self.done_frames as f32 / total as f32).min(1.0),
+            _ => 0.0,
+        };
+        let fraction = (self.idx as f32 + within) / self.tracks_total.max(1) as f32;
+        send_event(
+            &self.event_tx,
+            crate::import::handle::ImportEvent::ImportLoudnessProgress {
+                candidate_key: self.candidate_key.clone(),
+                tracks_done: self.idx,
+                tracks_total: self.tracks_total,
+                fraction,
+            },
+        );
+    }
+
+    /// Finish the meter, surfacing any stored decode/measure failure.
+    fn into_result(
+        self,
+    ) -> Result<(ebur128::EbuR128, Option<crate::loudness::TrackLoudness>), String> {
+        if let Some(e) = self.error {
+            return Err(e);
+        }
+        let state = self
+            .state
+            .ok_or_else(|| "decode produced no audio format".to_string())?;
+        state.meter.finish()
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
+    fn on_format(&mut self, sample_rate: u32, channels: u32, bits_per_sample: u32) {
+        let sample_bits = self.source_bits.unwrap_or(bits_per_sample);
+        match crate::loudness::LoudnessMeter::new(channels, sample_rate, sample_bits) {
+            Ok(meter) => {
+                self.state = Some(MeterState {
+                    meter,
+                    channels,
+                    emit_every_frames: (sample_rate as u64 / 10).max(1),
+                })
+            }
+            Err(e) => self.error = Some(e),
+        }
+    }
+
+    fn on_samples(&mut self, samples: &[i32]) {
+        // No meter: either creation failed (`error` is set and surfaced by
+        // `into_result`) or a prior chunk failed and dropped it. Either way this
+        // track is already accounted for; stop feeding.
+        let Some(state) = self.state.as_mut() else {
+            return;
+        };
+        let channels = state.channels;
+        let emit_every_frames = state.emit_every_frames;
+        if let Err(e) = state.meter.add_chunk(samples) {
+            self.error = Some(e);
+            self.state = None;
+            return;
+        }
+        let frames = (samples.len() / channels.max(1) as usize) as u64;
+        self.done_frames += frames;
+        self.frames_since_emit += frames;
+        if self.frames_since_emit >= emit_every_frames {
+            self.frames_since_emit = 0;
+            self.emit();
+        }
+    }
+}
+
 #[cfg_attr(any(target_os = "ios", target_os = "android"), allow(dead_code))]
 pub struct ImportService {
     commands_rx: mpsc::UnboundedReceiver<ImportCommand>,
@@ -1787,54 +1897,53 @@ impl ImportService {
             };
             let start_sample = audio_formats[idx].start_sample as u64;
             let end_sample = audio_formats[idx].end_sample.map(|s| s as u64);
-            // The source's value range bit depth: `decode_audio` returns i32
-            // samples scaled to the source's bits (16-bit values for 16-bit
-            // FLAC, 24-bit for 24-bit), so the loudness measure must shift them
-            // up to full i32. The stored `bits_per_sample` is the authoritative
-            // source depth (NULL for lossy codecs, where the decoded container
-            // depth is used instead).
+            // The source's value range bit depth: the decoder hands the meter i32
+            // samples scaled to the source's bits (16-bit values for 16-bit FLAC,
+            // 24-bit for 24-bit), so the meter must shift them up to full i32. The
+            // stored `bits_per_sample` is the authoritative source depth (NULL for
+            // lossy codecs, where the decoded container depth is used instead).
             let source_bits = audio_formats[idx].bits_per_sample.map(|b| b as u32);
-            // Cloned into the blocking task so its per-chunk callback can emit
-            // progress on the import event channel directly (it can't reach
-            // `self`). `idx`/`tracks_total` place this track's scan in the bar.
+            // Frames in this track's window, to fill its bar segment as the decode
+            // streams: the sample window when known, else the track duration ×
+            // sample rate. Absent both, the segment only steps at the post-track
+            // tick.
+            let sample_rate = audio_formats[idx].sample_rate.max(0) as u64;
+            let total_frames = match end_sample {
+                Some(end) => Some(end.saturating_sub(start_sample)),
+                None => tf
+                    .db_track()
+                    .duration_ms
+                    .filter(|&ms| ms > 0 && sample_rate > 0)
+                    .map(|ms| ms as u64 * sample_rate / 1000),
+            };
+            // Cloned into the blocking task so the sink can emit progress on the
+            // import event channel directly (it can't reach `self`).
+            // `idx`/`tracks_total` place this track's scan in the bar.
             let event_tx = self.event_tx.clone();
             let key = candidate_key.to_string();
             let measured = tokio::task::spawn_blocking(move || {
-                let decoded = match crate::audio_codec::decode_audio(
+                let mut sink = LoudnessProgressSink {
+                    source_bits,
+                    state: None,
+                    error: None,
+                    total_frames,
+                    done_frames: 0,
+                    frames_since_emit: 0,
+                    event_tx,
+                    candidate_key: key,
+                    idx: idx as u32,
+                    tracks_total,
+                };
+                if let Err(e) = crate::audio_codec::decode_audio_to_sink(
                     &bytes,
                     Some(start_sample),
                     end_sample,
+                    &mut sink,
                 ) {
-                    Ok(d) => d,
-                    Err(e) => {
-                        warn!("loudness: decode failed for {path:?}: {e}; track stays unmeasured");
-                        return None;
-                    }
-                };
-                let sample_bits = source_bits.unwrap_or(decoded.bits_per_sample);
-                match crate::loudness::measure_track_with_progress(
-                    &decoded.samples,
-                    decoded.channels,
-                    decoded.sample_rate,
-                    sample_bits,
-                    |done, total| {
-                        let within = if total == 0 {
-                            0.0
-                        } else {
-                            done as f32 / total as f32
-                        };
-                        let fraction = (idx as f32 + within) / tracks_total.max(1) as f32;
-                        send_event(
-                            &event_tx,
-                            crate::import::handle::ImportEvent::ImportLoudnessProgress {
-                                candidate_key: key.clone(),
-                                tracks_done: idx as u32,
-                                tracks_total,
-                                fraction,
-                            },
-                        );
-                    },
-                ) {
+                    warn!("loudness: decode failed for {path:?}: {e}; track stays unmeasured");
+                    return None;
+                }
+                match sink.into_result() {
                     Ok((meter, Some(m))) => Some((meter, m.loudness_lufs, m.peak_linear)),
                     Ok((_, None)) => {
                         debug!("loudness: {path:?} has no usable loudness (silent); unmeasured");

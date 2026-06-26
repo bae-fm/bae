@@ -47,7 +47,7 @@ fn bench_loudness() {
     let measure = t.elapsed();
     eprintln!(
         "measure_track: {measure:?}  -> {:?} LUFS  | {:.1}x realtime",
-        m.1.map(|x| x.loudness_lufs),
+        m.1.as_ref().map(|x| x.loudness_lufs),
         frames as f64 / decoded.sample_rate as f64 / measure.as_secs_f64(),
     );
 
@@ -56,5 +56,51 @@ fn bench_loudness() {
         decode + measure,
         frames as f64 / decoded.sample_rate as f64 / (decode + measure).as_secs_f64(),
         (decode + measure) * 10,
+    );
+
+    // The import path: decode straight into the meter (no buffered PCM Vec), so
+    // measurement runs interleaved with the decode. The LUFS must equal the
+    // separate decode-then-measure above exactly.
+    struct StreamingSink {
+        meter: Option<bae_core::loudness::LoudnessMeter>,
+        source_bits: u32,
+    }
+    impl bae_core::audio_codec::DecodedSink for StreamingSink {
+        fn on_format(&mut self, sample_rate: u32, channels: u32, bits_per_sample: u32) {
+            let bits = if self.source_bits > 0 {
+                self.source_bits
+            } else {
+                bits_per_sample
+            };
+            self.meter =
+                Some(bae_core::loudness::LoudnessMeter::new(channels, sample_rate, bits).unwrap());
+        }
+        fn on_samples(&mut self, samples: &[i32]) {
+            self.meter.as_mut().unwrap().add_chunk(samples).unwrap();
+        }
+    }
+
+    let t = Instant::now();
+    let mut sink = StreamingSink {
+        meter: None,
+        source_bits: decoded.bits_per_sample,
+    };
+    bae_core::audio_codec::decode_audio_to_sink(&bytes, None, None, &mut sink).unwrap();
+    let streamed = sink.meter.unwrap().finish().unwrap();
+    let interleaved = t.elapsed();
+    eprintln!(
+        "STREAMED decode+measure (interleaved): {interleaved:?}  -> {:?} LUFS  | {:.1}x realtime",
+        streamed.1.as_ref().map(|x| x.loudness_lufs),
+        frames as f64 / decoded.sample_rate as f64 / interleaved.as_secs_f64(),
+    );
+    assert_eq!(
+        m.1.as_ref().map(|x| x.loudness_lufs),
+        streamed.1.as_ref().map(|x| x.loudness_lufs),
+        "streamed loudness must equal one-shot exactly"
+    );
+    assert_eq!(
+        m.1.as_ref().map(|x| x.peak_linear),
+        streamed.1.as_ref().map(|x| x.peak_linear),
+        "streamed true peak must equal one-shot exactly"
     );
 }
