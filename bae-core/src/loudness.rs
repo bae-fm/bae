@@ -27,97 +27,99 @@ pub struct TrackLoudness {
     pub peak_linear: f64,
 }
 
-/// Measure one track's PCM. `samples` is interleaved i32 as `decode_audio`
-/// returns it — values in the source's bit-depth range (16-bit values for a
-/// 16-bit source, 24-bit for 24-bit, full i32 for 32-bit/float), NOT pre-scaled
-/// to full i32. `sample_bits` is that source range (`DecodedAudio.bits_per_sample`),
-/// used to left-shift the samples so full scale maps to `i32::MAX`, which is the
-/// reference `ebur128`'s `add_frames_i32` and `true_peak` assume. The effective
-/// width is floored at 16 bits, because `read_sample` scales an 8-bit source up
-/// into the 16-bit range while still probing it as 8-bit. Skipping the shift
-/// makes a 16-bit track read ~96 dB too quiet (every track measures as silent) —
-/// the loudness equivalent of a unit error.
-///
-/// Returns the measurement alongside the meter the album combine reuses.
-/// `Ok(None)` for a track with no usable loudness (silent / near-silent or a
-/// non-finite reading) — the caller stores NULL and playback applies unity gain.
-/// `Err` is a measurement failure (the caller logs it and stores NULL).
+/// A streaming EBU R128 meter: feed a track's PCM in any number of chunks, then
+/// `finish` to read its loudness + true peak. `ebur128` carries its loudness and
+/// true-peak filter state across `add_frames` calls, so chunked feeding measures
+/// exactly the same value as one call — the import streams each decode chunk
+/// straight in (filling a determinate bar continuously through the decode)
+/// instead of buffering the whole track's PCM first.
+pub struct LoudnessMeter {
+    meter: EbuR128,
+    shift: u32,
+    channels: u32,
+}
+
+impl LoudnessMeter {
+    /// `sample_bits` is the source's value range (16 for 16-bit FLAC, 24 for
+    /// 24-bit, 32 for 32-bit/float) — the chunks fed in are interleaved i32 in
+    /// that range, NOT pre-scaled to full i32. The meter left-shifts them so full
+    /// scale maps to `i32::MAX`, which `ebur128`'s `add_frames_i32` and
+    /// `true_peak` assume. The effective width is floored at 16 bits because
+    /// `read_sample` scales an 8-bit source up into the 16-bit range while still
+    /// probing it as 8-bit; trusting the declared 8 would over-shift by 8 bits and
+    /// saturate every loud sample. Skipping the shift entirely makes a 16-bit
+    /// track read ~96 dB too quiet (every track measures as silent) — the loudness
+    /// equivalent of a unit error.
+    pub fn new(channels: u32, sample_rate: u32, sample_bits: u32) -> Result<Self, String> {
+        let effective_bits = sample_bits.max(16);
+        let shift = 32u32.saturating_sub(effective_bits);
+        let meter = EbuR128::new(channels, sample_rate, Mode::I | Mode::TRUE_PEAK)
+            .map_err(|e| format!("ebur128 init failed: {e:?}"))?;
+        Ok(Self {
+            meter,
+            shift,
+            channels,
+        })
+    }
+
+    /// Feed one interleaved-i32 chunk (frame-aligned: `len` a multiple of
+    /// `channels`). Scaling to full i32 (which `add_frames_i32` assumes) happens
+    /// here; a full-width source (shift 0) passes through untouched.
+    pub fn add_chunk(&mut self, samples: &[i32]) -> Result<(), String> {
+        if self.shift == 0 {
+            self.meter.add_frames_i32(samples)
+        } else {
+            // Saturating shift: a decoded sample never fills its nominal width to
+            // the sign-bit edge, so this won't overflow in practice, but
+            // `wrapping_shl` would silently corrupt a max-magnitude sample.
+            let scaled: Vec<i32> = samples
+                .iter()
+                .map(|&s| s.saturating_mul(1 << self.shift))
+                .collect();
+            self.meter.add_frames_i32(&scaled)
+        }
+        .map_err(|e| format!("ebur128 add_frames failed: {e:?}"))
+    }
+
+    /// Read the track's integrated loudness + true peak, returning the measurement
+    /// alongside the meter the album combine reuses. `Ok(None)` for a track with
+    /// no usable loudness (silent / near-silent or a non-finite reading) — the
+    /// caller stores NULL and playback applies unity gain. `Err` is a measurement
+    /// failure (the caller logs it and stores NULL).
+    pub fn finish(self) -> Result<(EbuR128, Option<TrackLoudness>), String> {
+        let loudness_lufs = self
+            .meter
+            .loudness_global()
+            .map_err(|e| format!("ebur128 loudness_global failed: {e:?}"))?;
+
+        if !loudness_lufs.is_finite() || loudness_lufs < SILENCE_FLOOR_LUFS {
+            return Ok((self.meter, None));
+        }
+
+        let peak_linear = max_true_peak(&self.meter, self.channels)?;
+        Ok((
+            self.meter,
+            Some(TrackLoudness {
+                loudness_lufs,
+                peak_linear,
+            }),
+        ))
+    }
+}
+
+/// Measure one track's PCM in a single shot. `samples` is interleaved i32 as
+/// `decode_audio` returns it — see [`LoudnessMeter::new`] for the `sample_bits`
+/// scaling. Returns the measurement alongside the meter the album combine reuses;
+/// the import path streams via [`LoudnessMeter`] directly instead.
 pub fn measure_track(
     samples: &[i32],
     channels: u32,
     sample_rate: u32,
     sample_bits: u32,
 ) -> Result<(EbuR128, Option<TrackLoudness>), String> {
-    measure_track_with_progress(samples, channels, sample_rate, sample_bits, |_, _| {})
-}
-
-/// Like [`measure_track`], but feeds the meter in ~0.1s chunks and calls
-/// `on_chunk(samples_done, samples_total)` after each, so the import can fill a
-/// determinate bar continuously through a track's scan instead of jumping once
-/// when the whole track finishes. `ebur128` carries its loudness + true-peak
-/// filter state across `add_frames` calls, so chunked feeding measures exactly
-/// the same value as one call.
-pub fn measure_track_with_progress(
-    samples: &[i32],
-    channels: u32,
-    sample_rate: u32,
-    sample_bits: u32,
-    mut on_chunk: impl FnMut(usize, usize),
-) -> Result<(EbuR128, Option<TrackLoudness>), String> {
-    // `read_sample` never emits a value range narrower than 16 bits: an 8-bit
-    // source is scaled up into the 16-bit range (`*256`) at
-    // `audio_codec::read_sample`, even though it is still probed as
-    // `bits_per_sample = 8`. So the shift to full i32 floors the effective width
-    // at 16 — trusting the declared 8 would over-shift by 8 bits and saturate
-    // every loud sample to full scale, measuring garbage loudness and peak.
-    let effective_bits = sample_bits.max(16);
-    let shift = 32u32.saturating_sub(effective_bits);
-
-    let mut meter = EbuR128::new(channels, sample_rate, Mode::I | Mode::TRUE_PEAK)
-        .map_err(|e| format!("ebur128 init failed: {e:?}"))?;
-
-    // Feed ~0.1s of audio at a time (frame-aligned), reporting progress after
-    // each, so the bar creeps rather than steps. Scaling to full i32 (which
-    // `add_frames_i32` assumes) happens per chunk; a full-width source (shift 0)
-    // passes through untouched.
-    let ch = channels.max(1) as usize;
-    let chunk_samples = (sample_rate as usize / 10).max(1) * ch;
-    let total = samples.len();
-    let mut done = 0;
-    for chunk in samples.chunks(chunk_samples) {
-        if shift == 0 {
-            meter.add_frames_i32(chunk)
-        } else {
-            // Saturating shift: a decoded sample never fills its nominal width to
-            // the sign-bit edge, so this won't overflow in practice, but
-            // `wrapping_shl` would silently corrupt a max-magnitude sample.
-            let scaled: Vec<i32> = chunk
-                .iter()
-                .map(|&s| s.saturating_mul(1 << shift))
-                .collect();
-            meter.add_frames_i32(&scaled)
-        }
-        .map_err(|e| format!("ebur128 add_frames failed: {e:?}"))?;
-        done += chunk.len();
-        on_chunk(done, total);
-    }
-
-    let loudness_lufs = meter
-        .loudness_global()
-        .map_err(|e| format!("ebur128 loudness_global failed: {e:?}"))?;
-
-    if !loudness_lufs.is_finite() || loudness_lufs < SILENCE_FLOOR_LUFS {
-        return Ok((meter, None));
-    }
-
-    let peak_linear = max_true_peak(&meter, channels)?;
-    Ok((
-        meter,
-        Some(TrackLoudness {
-            loudness_lufs,
-            peak_linear,
-        }),
-    ))
+    let mut meter = LoudnessMeter::new(channels, sample_rate, sample_bits)?;
+    meter.add_chunk(samples)?;
+    meter.finish()
 }
 
 /// The track's true peak: the max linear true-peak across its channels. The
@@ -196,6 +198,36 @@ mod tests {
             "loud {} should exceed quiet {} by >10 LUFS",
             loud.loudness_lufs,
             quiet.loudness_lufs
+        );
+    }
+
+    #[test]
+    fn chunked_measurement_equals_one_shot() {
+        // Feeding the meter in pieces must measure byte-identically to one shot —
+        // `ebur128` carries its filter state across `add_frames`. This is the
+        // guarantee the import relies on to stream each decode chunk straight in.
+        let sr = 48_000;
+        let pcm = sine(0.4, 1_000.0, sr, 5.0);
+
+        let (_, one_shot) = measure_track(&pcm, 2, sr, 16).unwrap();
+        let one_shot = one_shot.expect("tone has usable loudness");
+
+        let mut meter = LoudnessMeter::new(2, sr, 16).unwrap();
+        // Uneven, frame-aligned chunks (a multiple of the 2 channels), nothing
+        // like the one-shot's single call.
+        for chunk in pcm.chunks(7_001 * 2) {
+            meter.add_chunk(chunk).unwrap();
+        }
+        let (_, chunked) = meter.finish().unwrap();
+        let chunked = chunked.expect("tone has usable loudness");
+
+        assert_eq!(
+            one_shot.loudness_lufs, chunked.loudness_lufs,
+            "chunked loudness must equal one-shot exactly"
+        );
+        assert_eq!(
+            one_shot.peak_linear, chunked.peak_linear,
+            "chunked true peak must equal one-shot exactly"
         );
     }
 
