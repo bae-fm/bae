@@ -1506,17 +1506,25 @@ impl ImportService {
         );
     }
 
-    /// Emit a per-track loudness tick for the candidate's confirm pane. Routed
-    /// to a native leaf view (not the coarse candidate row), so the one-per-track
-    /// cadence never churns the row.
+    /// Emit a loudness-measurement tick for the candidate's confirm pane. Routed
+    /// to a native leaf view (not the coarse candidate row), so the sub-track
+    /// cadence never churns the row. `fraction` is overall scan progress (0..1)
+    /// for the determinate bar; `tracks_done`/`tracks_total` label which track.
     #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
-    fn emit_loudness_progress(&self, candidate_key: &str, tracks_done: u32, tracks_total: u32) {
+    fn emit_loudness_progress(
+        &self,
+        candidate_key: &str,
+        tracks_done: u32,
+        tracks_total: u32,
+        fraction: f32,
+    ) {
         send_event(
             &self.event_tx,
             crate::import::handle::ImportEvent::ImportLoudnessProgress {
                 candidate_key: candidate_key.to_string(),
                 tracks_done,
                 tracks_total,
+                fraction,
             },
         );
     }
@@ -1756,10 +1764,10 @@ impl ImportService {
         let tracks_total = audio_formats.len() as u32;
         let mut tracks_done: u32 = 0;
 
-        // Start tick (already counting any unreadable-file skips), then one tick
-        // per track as it's measured, so the determinate bar climbs steadily
-        // through the long decode pass.
-        self.emit_loudness_progress(candidate_key, tracks_done, tracks_total);
+        // Start tick (already counting any unreadable-file skips), then a tick per
+        // ~0.1s of audio measured (from inside the blocking task) so the
+        // determinate bar creeps continuously through each track's scan.
+        self.emit_loudness_progress(candidate_key, tracks_done, tracks_total, 0.0);
 
         // Decode + measure ONE track at a time: each decode runs on a blocking
         // thread (off the async worker) but is awaited before the next starts, so
@@ -1773,7 +1781,8 @@ impl ImportService {
             let path = tf.file_path().to_path_buf();
             let Some(bytes) = file_bytes.get(&path).and_then(|b| b.clone()) else {
                 tracks_done += 1;
-                self.emit_loudness_progress(candidate_key, tracks_done, tracks_total);
+                let fraction = tracks_done as f32 / tracks_total.max(1) as f32;
+                self.emit_loudness_progress(candidate_key, tracks_done, tracks_total, fraction);
                 continue;
             };
             let start_sample = audio_formats[idx].start_sample as u64;
@@ -1785,6 +1794,11 @@ impl ImportService {
             // source depth (NULL for lossy codecs, where the decoded container
             // depth is used instead).
             let source_bits = audio_formats[idx].bits_per_sample.map(|b| b as u32);
+            // Cloned into the blocking task so its per-chunk callback can emit
+            // progress on the import event channel directly (it can't reach
+            // `self`). `idx`/`tracks_total` place this track's scan in the bar.
+            let event_tx = self.event_tx.clone();
+            let key = candidate_key.to_string();
             let measured = tokio::task::spawn_blocking(move || {
                 let decoded = match crate::audio_codec::decode_audio(
                     &bytes,
@@ -1798,11 +1812,28 @@ impl ImportService {
                     }
                 };
                 let sample_bits = source_bits.unwrap_or(decoded.bits_per_sample);
-                match crate::loudness::measure_track(
+                match crate::loudness::measure_track_with_progress(
                     &decoded.samples,
                     decoded.channels,
                     decoded.sample_rate,
                     sample_bits,
+                    |done, total| {
+                        let within = if total == 0 {
+                            0.0
+                        } else {
+                            done as f32 / total as f32
+                        };
+                        let fraction = (idx as f32 + within) / tracks_total.max(1) as f32;
+                        send_event(
+                            &event_tx,
+                            crate::import::handle::ImportEvent::ImportLoudnessProgress {
+                                candidate_key: key.clone(),
+                                tracks_done: idx as u32,
+                                tracks_total,
+                                fraction,
+                            },
+                        );
+                    },
                 ) {
                     Ok((meter, Some(m))) => Some((meter, m.loudness_lufs, m.peak_linear)),
                     Ok((_, None)) => {
@@ -1828,7 +1859,8 @@ impl ImportService {
                 Err(e) => warn!("loudness: measurement task panicked: {e}; track stays unmeasured"),
             }
             tracks_done += 1;
-            self.emit_loudness_progress(candidate_key, tracks_done, tracks_total);
+            let fraction = tracks_done as f32 / tracks_total.max(1) as f32;
+            self.emit_loudness_progress(candidate_key, tracks_done, tracks_total, fraction);
         }
 
         let album_loudness = crate::loudness::album_loudness(&meters);

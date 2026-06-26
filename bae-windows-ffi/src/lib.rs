@@ -2794,6 +2794,9 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             key,
             tracks_done,
             tracks_total,
+            // `fraction` drives the macOS bar; the Windows text status shows the
+            // discrete track count, so it isn't carried across this FFI.
+            fraction: _,
         } => FfiEvent::CandidateImportLoudnessProgress {
             key: key.clone(),
             tracks_done: *tracks_done,

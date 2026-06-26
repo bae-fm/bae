@@ -4,22 +4,23 @@ import SwiftUI
 
 // MARK: - Event type
 
-/// Per-track loudness measurement tick for an importing candidate. `key` routes
-/// it to that candidate's confirm pane; `tracksDone`/`tracksTotal` drive the
-/// determinate bar and the "N / M" label.
+/// Loudness-measurement tick for an importing candidate. `key` routes it to that
+/// candidate's confirm pane; `fraction` (0...1) drives the determinate bar as the
+/// scan creeps through each track, and `tracksDone`/`tracksTotal` label "N / M".
 struct ImportLoudnessProgressEvent {
     let key: String
     let tracksDone: UInt32
     let tracksTotal: UInt32
+    let fraction: Double
 }
 
 /// AppKit view for the loudness-measurement bar shown during an import.
 ///
 /// Updated directly from the reducer's Combine signal, bypassing SwiftUI
 /// observation entirely — same pattern as `PreviewProgressNSView`, so the
-/// one-per-track ticks never re-render the confirm pane tree. The label is the
-/// localized `ui.import.loudness_progress` line ("Measuring loudness — N/M");
-/// the bar is its determinate ratio.
+/// high-frequency sub-track ticks never re-render the confirm pane tree. The
+/// label is the localized `ui.import.loudness_progress` line ("Measuring
+/// loudness — N/M"); the bar is the overall scan `fraction`.
 class ImportLoudnessProgressNSView: NSView {
     private let label: NSTextField
     private let bar: NSProgressIndicator
@@ -63,7 +64,8 @@ class ImportLoudnessProgressNSView: NSView {
 
     // MARK: - Direct updates (called from the reducer signal, not SwiftUI)
 
-    func setProgress(tracksDone: UInt32, tracksTotal: UInt32) {
+    func setProgress(tracksDone: UInt32, tracksTotal: UInt32, fraction: Double)
+    {
         label.stringValue = String(
             format: NSLocalizedString(
                 "ui.import.loudness_progress",
@@ -74,8 +76,7 @@ class ImportLoudnessProgressNSView: NSView {
             Int(tracksDone),
             Int(tracksTotal)
         )
-        bar.doubleValue =
-            tracksTotal == 0 ? 0 : Double(tracksDone) / Double(tracksTotal)
+        bar.doubleValue = min(1.0, max(0.0, fraction))
     }
 }
 
@@ -132,7 +133,8 @@ struct ImportLoudnessProgressRepresentable: NSViewRepresentable {
                 .sink { event in
                     view.setProgress(
                         tracksDone: event.tracksDone,
-                        tracksTotal: event.tracksTotal
+                        tracksTotal: event.tracksTotal,
+                        fraction: event.fraction
                     )
                 }
         }

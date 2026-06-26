@@ -206,14 +206,16 @@ pub enum UiBusEvent {
         progress_percent: u32,
         step: Option<crate::import::ImportStep>,
     },
-    /// High-frequency per-track loudness tick — goes to a native leaf view, not
-    /// the @Observable store, so the per-track ticks never churn the candidate
-    /// row. `key` routes it to the importing candidate's confirm pane;
-    /// `tracks_done`/`tracks_total` drive a determinate bar ("N / M").
+    /// High-frequency loudness-measurement tick — goes to a native leaf view, not
+    /// the @Observable store, so the sub-track cadence never churns the candidate
+    /// row. `key` routes it to the importing candidate's confirm pane; `fraction`
+    /// (0..1) drives the determinate bar and `tracks_done`/`tracks_total` label
+    /// which track ("N / M").
     CandidateImportLoudnessProgress {
         key: String,
         tracks_done: u32,
         tracks_total: u32,
+        fraction: f32,
     },
     CandidateImportComplete {
         key: String,
