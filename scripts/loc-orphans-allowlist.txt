@@ -3,8 +3,8 @@
 # Format: one key per line. Keep this minimal — only genuinely-dynamic keys.
 
 # Windows: Loc.Chrome($"storage.state.{State}") in StorageRow.cs
-storage.state.cloud_only
-storage.state.pinned
+# The FFI maps the two-state model to wire tags: Local -> "unmanaged", Remote -> "managed".
+storage.state.managed
 storage.state.unmanaged
 # Windows: Loc.Chrome($"outbox.upload.state.{State}") in OutboxSnapshot.cs
 outbox.upload.state.active
