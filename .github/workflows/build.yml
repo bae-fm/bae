@@ -44,7 +44,17 @@ jobs:
 
   ios:
     name: iOS
+    # Build both editions so a feature-gate or #if edit can't break the one this
+    # push doesn't exercise: full (OAuth + CloudKit) and baeium (S3-only). The
+    # iOS Swift app has its own OAuth/CloudKit #if surface, distinct from macOS,
+    # so the baeium iOS app must build on its own.
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [full, baeium]
     uses: ./.github/workflows/ios.yml
+    with:
+      edition: ${{ matrix.edition }}
 
   windows:
     name: Windows

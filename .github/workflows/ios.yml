@@ -7,6 +7,11 @@ name: iOS build
 
 on:
   workflow_call:
+    inputs:
+      edition:
+        description: "full (the bae product, OAuth providers + CloudKit on) or baeium (S3-only). Selects the cargo feature set the bridge compiles with and the Swift #if conditions derived from it."
+        type: string
+        default: full
 
 env:
   CARGO_TERM_COLOR: always
@@ -26,6 +31,18 @@ jobs:
 
     - name: Setup Rust environment
       uses: ./.github/actions/setup-rust
+
+    - name: Resolve edition (cargo feature set)
+      # build-ios.sh and the clippy step below read BAE_BRIDGE_FEATURES to pick the
+      # edition. An explicitly-empty value is baeium (S3-only) — build-ios.sh's
+      # default-when-UNSET is the full set (oauth-providers,cloudkit); iOS has no
+      # `desktop` feature, so baeium is the empty set.
+      run: |
+        if [ "${{ inputs.edition }}" = "baeium" ]; then
+          echo "BAE_BRIDGE_FEATURES=" >> "$GITHUB_ENV"
+        else
+          echo "BAE_BRIDGE_FEATURES=oauth-providers,cloudkit" >> "$GITHUB_ENV"
+        fi
 
     - name: Check Rust formatting
       run: cargo fmt --all -- --check
@@ -48,19 +65,31 @@ jobs:
       # dead-code warnings are caught. The host clippy in ci.yml targets macOS,
       # where not(any(target_os = "ios", target_os = "android")) is true and those
       # warnings don't fire. One target is enough; dead-code warnings are
-      # target-specific, not ABI-specific.
+      # target-specific, not ABI-specific — but they ARE feature-specific, so this
+      # runs per edition (the matrix's full and baeium cells) against this cell's
+      # BAE_BRIDGE_FEATURES.
       run: |
         rustup target add aarch64-apple-ios 2>/dev/null || true
         FFMPEG_PREFIX="$(pwd)/third_party/ffmpeg-ios/aarch64-apple-ios"
         DEVICE_SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+        FEATURES_ARG=""
+        [ -n "$BAE_BRIDGE_FEATURES" ] && FEATURES_ARG="--features $BAE_BRIDGE_FEATURES"
         IPHONEOS_DEPLOYMENT_TARGET=16.0 \
         FFMPEG_DIR="$FFMPEG_PREFIX" \
         BINDGEN_EXTRA_CLANG_ARGS="--target=arm64-apple-ios16.0 -isysroot $DEVICE_SDK -I$FFMPEG_PREFIX/include" \
         CARGO_TARGET_DIR="target-ios" \
-        cargo clippy --target aarch64-apple-ios -p bae-bridge -- -D warnings
+        cargo clippy --target aarch64-apple-ios -p bae-bridge $FEATURES_ARG -- -D warnings
 
-    - name: Install xcodegen, periphery, and swiftlint
-      run: brew install xcodegen peripheryapp/periphery/periphery swiftlint
+    - name: Install xcodegen
+      run: brew install xcodegen
+
+    - name: Install periphery + swiftlint
+      # Only the full cell runs the Swift lints (below): they read every .swift
+      # file's text regardless of which #if branch this edition compiles, so the
+      # result is edition-invariant — running them once is enough, and it keeps
+      # the baeium cell off the extra brew installs.
+      if: ${{ inputs.edition == 'full' }}
+      run: brew install peripheryapp/periphery/periphery swiftlint
 
     - name: Build Rust bridge (iOS xcframework)
       run: ./bae-bridge/build-ios.sh
@@ -82,17 +111,17 @@ jobs:
           build
 
     - name: Check Swift formatting
-      if: ${{ !cancelled() }}
+      if: ${{ inputs.edition == 'full' && !cancelled() }}
       run: |
         find bae-ios/bae/bae -name "*.swift" -not -name bae_bridge.swift -print0 \
           | xargs -0 xcrun swift-format lint -s
 
     - name: Swift lint (swiftlint)
-      if: ${{ !cancelled() }}
+      if: ${{ inputs.edition == 'full' && !cancelled() }}
       run: swiftlint lint --strict --config .swiftlint.yml bae-ios/bae/bae
 
     - name: Dead code check (periphery)
-      if: ${{ !cancelled() && steps.build_ios.conclusion == 'success' }}
+      if: ${{ inputs.edition == 'full' && !cancelled() && steps.build_ios.conclusion == 'success' }}
       run: |
         cd bae-ios/bae
         periphery scan --strict --skip-build \
