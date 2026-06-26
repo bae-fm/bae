@@ -9,7 +9,7 @@
 use crate::playback::source::{PlaybackSource, TrackFmt};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 #[cfg(feature = "test-utils")]
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::sync::{mpsc, Mutex};
 
@@ -273,5 +273,156 @@ impl AudioOutput for CaptureAudioOutput {
 
     fn get_volume(&self) -> f32 {
         1.0 // Capture output has no volume control
+    }
+}
+
+// -- Real-time CPU probe output for tests --
+
+/// Audio output that drives playback at real time and discards the samples, for
+/// measuring steady-state playback CPU. It runs the same per-buffer work the
+/// cpal sink does — `pull_samples`, the replay-gain/volume multiply, position
+/// ticks, completion — but paces itself by sleeping one buffer's wall-clock
+/// duration after each pull instead of being clocked by an audio device.
+///
+/// That real-time pacing is the point: it makes the decoder fill-then-park as it
+/// does in production, so the measured CPU reflects real playback (per-buffer
+/// drain, gain, ~20 Hz tick fan-out, decoder wakeups) rather than a full-speed
+/// decode, which is an order of magnitude cheaper. Needs no audio device, so the
+/// measurement runs headless on any platform.
+#[cfg(feature = "test-utils")]
+pub struct RealtimeProbeOutput {
+    state: Arc<AtomicU8>,
+    volume: Arc<AtomicU32>,
+}
+
+#[cfg(feature = "test-utils")]
+impl RealtimeProbeOutput {
+    pub fn new() -> Self {
+        Self {
+            state: Arc::new(AtomicU8::new(AudioState::Stopped as u8)),
+            // Full volume, like a real playing stream (10000 == 1.0).
+            volume: Arc::new(AtomicU32::new(10000)),
+        }
+    }
+}
+
+#[cfg(feature = "test-utils")]
+impl Default for RealtimeProbeOutput {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "test-utils")]
+impl AudioOutput for RealtimeProbeOutput {
+    fn create_stream(
+        &mut self,
+        source: Arc<Mutex<PlaybackSource>>,
+        source_sample_rate: u32,
+        source_channels: u32,
+        position_tx: mpsc::Sender<PositionEvent>,
+        completion_tx: mpsc::Sender<CompletionEvent>,
+        position_update_interval_ms: u32,
+    ) -> Result<Box<dyn AudioStream>, AudioError> {
+        let state = self.state.clone();
+        let volume = self.volume.clone();
+        let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let stop_clone = stop.clone();
+        let channels = source_channels.max(1);
+
+        let thread = std::thread::spawn(move || {
+            // 1024 frames/buffer — the pacing granularity, not the total work.
+            let mut buf = vec![0.0f32; 1024 * channels as usize];
+            let position_update_interval =
+                std::time::Duration::from_millis(position_update_interval_ms as u64);
+            let mut last_position_update = std::time::Instant::now();
+            let mut completion_sent = false;
+
+            loop {
+                if stop_clone.load(Ordering::Acquire) {
+                    break;
+                }
+
+                if AudioState::from_u8(state.load(Ordering::Relaxed)) != AudioState::Playing {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                    continue;
+                }
+
+                let mut source_guard = match source.try_lock() {
+                    Ok(guard) => guard,
+                    Err(_) => {
+                        std::thread::sleep(std::time::Duration::from_millis(1));
+                        continue;
+                    }
+                };
+
+                let read = source_guard.pull_samples(&mut buf);
+
+                if read == 0 {
+                    if source_guard.is_finished() && !completion_sent {
+                        state.store(AudioState::Stopped as u8, Ordering::Relaxed);
+                        if completion_tx.send(source_guard.completion_event()).is_err() {
+                            tracing::warn!("Failed to send completion signal");
+                        }
+                        completion_sent = true;
+                    }
+                    drop(source_guard);
+                    if completion_sent {
+                        break;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                    continue;
+                }
+
+                // The same in-place gain the cpal sink applies, so the probe's
+                // per-buffer work matches production. Output is discarded.
+                let vol = volume.load(Ordering::Relaxed) as f32 / 10000.0;
+                let combined = source_guard.current_replay_gain_linear() * vol;
+                for sample in &mut buf[..read] {
+                    *sample *= combined;
+                }
+
+                if last_position_update.elapsed() >= position_update_interval {
+                    if position_tx.send(source_guard.position_event()).is_err() {
+                        tracing::debug!("Position tick: receiver dropped");
+                    }
+                    last_position_update = std::time::Instant::now();
+                }
+
+                // Release the source before sleeping so the decoder and seek
+                // paths can take the lock, exactly as the cpal callback returns
+                // between invocations.
+                drop(source_guard);
+
+                // Pace to real time: this buffer carried `read / channels`
+                // frames of audio.
+                let frames = (read as u32 / channels) as f64;
+                std::thread::sleep(std::time::Duration::from_secs_f64(
+                    frames / source_sample_rate as f64,
+                ));
+            }
+        });
+
+        Ok(Box::new(CaptureStream {
+            stop,
+            thread: Some(thread),
+        }))
+    }
+
+    fn set_state(&self, new_state: AudioState) {
+        self.state.store(new_state as u8, Ordering::Relaxed);
+    }
+
+    fn get_state(&self) -> AudioState {
+        AudioState::from_u8(self.state.load(Ordering::Relaxed))
+    }
+
+    fn set_volume(&self, volume: f32) {
+        self.volume
+            .store((volume.clamp(0.0, 1.0) * 10000.0) as u32, Ordering::Relaxed);
+    }
+
+    fn get_volume(&self) -> f32 {
+        self.volume.load(Ordering::Relaxed) as f32 / 10000.0
     }
 }

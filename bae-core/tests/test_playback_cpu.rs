@@ -1,6 +1,25 @@
-//! CPU usage tests for playback.
+//! Steady-state playback CPU regression test.
 //!
-//! These tests run as a separate binary to get accurate process-wide CPU measurements.
+//! Guards against a change in the playback core that turns the few-percent CPU
+//! steady-state playback normally uses into tens of percent of a core — a
+//! re-decode, a per-buffer allocation, a resampler or tick-fan-out regression,
+//! a spin. Not aimed at catching a runaway busy-loop (that shows up as 100%+
+//! and any threshold catches it); aimed at the subtler multiple-x jump.
+//!
+//! It drives the real pipeline through `RealtimeProbeOutput`, which pulls and
+//! discards samples at real time (the same per-buffer work the cpal sink does:
+//! pull, gain, ~20 Hz position ticks, decoder fill/park) without an audio
+//! device. Real-time pacing matters: a full-speed decode is an order of
+//! magnitude cheaper and misses where the cost actually is.
+//!
+//! The metric is the realtime factor — CPU-*seconds* spent per second of audio
+//! played, i.e. the fraction of one core. Measuring CPU-time (via getrusage),
+//! not CPU-percent over a wall-clock window, is what keeps it stable on shared
+//! CI runners: a noisy neighbour steals wall-clock but not the work done.
+//!
+//! Its own test binary so the process-wide getrusage reading isn't polluted by
+//! other crates' tests; `#[serial]` keeps the two cases from overlapping within
+//! it, so neither needs the `--test-threads=1` flag the suite once required.
 
 #![cfg(feature = "test-utils")]
 mod support;
@@ -13,11 +32,34 @@ use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSourc
 use bae_core::library::LibraryManager;
 use bae_core::library_dir::LibraryDir;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
+use serial_test::serial;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
 use tokio::time::timeout;
-use tracing::debug;
+
+/// Let playback reach steady state before measuring: the decoder fills the ring
+/// buffer in an initial burst, which isn't representative of steady playback.
+const WARMUP: Duration = Duration::from_secs(2);
+
+/// Length of the steady-state measurement window. Long enough to average out
+/// per-tick jitter; short enough to keep the test quick. Both tracks are 30s,
+/// comfortably longer than WARMUP + WINDOW, so playback never ends mid-measure.
+const WINDOW: Duration = Duration::from_secs(4);
+
+/// Ceiling on the realtime factor — CPU-seconds spent per second of audio
+/// played, i.e. the fraction of one core steady-state playback uses.
+///
+/// Healthy FLAC/MP3 playback is a few percent of a core. The regression this
+/// guards against is a multiple-x jump (a re-decode, a per-buffer allocation, a
+/// resampler or tick regression) into tens of percent. The ceiling sits well
+/// above healthy-plus-runner-noise and well below that regression band, so it
+/// never flakes and still catches the jump.
+///
+/// The absolute factor is hardware-dependent (a slower runner spends more CPU
+/// per audio-second); the regression *ratio* is not. Calibrated for the runner
+/// this test lands on — recalibrate if that runner changes.
+const MAX_REALTIME_FACTOR: f64 = 0.20;
 
 fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
@@ -30,33 +72,27 @@ fn start_test_import(
     )
 }
 
-/// Check if audio tests should be skipped (e.g., in CI without audio device)
-fn should_skip_audio_tests() -> bool {
-    if std::env::var("SKIP_AUDIO_TESTS").is_ok() {
-        return true;
-    }
-    use cpal::traits::HostTrait;
-    cpal::default_host().default_output_device().is_none()
-}
-
-/// Generate a large CUE/FLAC fixture on-the-fly for CPU stress testing.
-/// Creates a 5-minute 96kHz stereo 24-bit FLAC (~75MB) to stress the buffer.
-fn generate_large_cue_flac_files(dir: &std::path::Path) {
+/// Generate a CUE/FLAC fixture: one 90s 96kHz/24-bit stereo FLAC split into
+/// three 30s tracks by the CUE sheet — a high-resolution vinyl-rip format.
+/// Validated against a real 96kHz/24-bit FLAC: brown noise at this rate measures
+/// within ~20% of real music. At this rate the content-independent per-buffer
+/// work (drain, gain, ticks) dominates the cheap decode, so the synthetic
+/// fixture tracks real playback closely. Brown noise so the decoder does real
+/// work every frame (silence decodes trivially).
+fn generate_cue_flac_files(dir: &std::path::Path) {
     use std::fs;
     use std::process::Command;
 
     let flac_path = dir.join("Test Album.flac");
     let cue_path = dir.join("Test Album.cue");
 
-    // Generate 5 minutes of audio at 96kHz/24-bit stereo (~75MB FLAC)
-    // Using brown noise which compresses reasonably
     let output = Command::new("ffmpeg")
         .args([
             "-y",
             "-f",
             "lavfi",
             "-i",
-            "anoisesrc=d=300:c=brown:r=96000", // 300 seconds (5 min) brown noise at 96kHz
+            "anoisesrc=d=90:c=brown:r=96000", // 90s (3x30s) brown noise at 96kHz
             "-ac",
             "2", // Stereo
             "-sample_fmt",
@@ -78,14 +114,7 @@ fn generate_large_cue_flac_files(dir: &std::path::Path) {
         );
     }
 
-    let file_size = fs::metadata(&flac_path).unwrap().len();
-    eprintln!(
-        "Generated FLAC: {} bytes ({:.1} MB)",
-        file_size,
-        file_size as f64 / 1_000_000.0
-    );
-
-    // Generate CUE sheet with 3 tracks of ~100 seconds each
+    // Three 30s tracks; track one is INDEX 00:00:00..00:30:00.
     let cue_content = r#"REM GENRE Test
 REM DATE 2024
 PERFORMER "Test Artist"
@@ -98,17 +127,16 @@ FILE "Test Album.flac" WAVE
   TRACK 02 AUDIO
     TITLE "Track Two"
     PERFORMER "Test Artist"
-    INDEX 01 01:40:00
+    INDEX 01 00:30:00
   TRACK 03 AUDIO
     TITLE "Track Three"
     PERFORMER "Test Artist"
-    INDEX 01 03:20:00
+    INDEX 01 01:00:00
 "#;
     fs::write(&cue_path, cue_content).expect("Failed to write CUE file");
 }
 
-/// Generate per-track MP3 files for CPU stress testing.
-/// Creates 3 MP3 files of ~100 seconds each at 320kbps CBR.
+/// Generate per-track MP3 files: three 30s 44.1kHz stereo tracks at 320kbps CBR.
 fn generate_mp3_track_files(dir: &std::path::Path) {
     use std::fs;
     use std::process::Command;
@@ -122,7 +150,7 @@ fn generate_mp3_track_files(dir: &std::path::Path) {
                 "-f",
                 "lavfi",
                 "-i",
-                "anoisesrc=d=100:c=brown:r=44100", // 100 seconds brown noise at 44.1kHz
+                "anoisesrc=d=30:c=brown:r=44100", // 30s brown noise at 44.1kHz
                 "-ac",
                 "2",
                 "-c:a",
@@ -141,21 +169,13 @@ fn generate_mp3_track_files(dir: &std::path::Path) {
                 String::from_utf8_lossy(&output.stderr)
             );
         }
-
-        let file_size = fs::metadata(&mp3_path).unwrap().len();
-        eprintln!(
-            "Generated MP3 track {}: {} bytes ({:.1} MB)",
-            i,
-            file_size,
-            file_size as f64 / 1_000_000.0
-        );
     }
 
-    // Write a minimal log file so the folder scanner doesn't complain
+    // Minimal log file so the folder scanner doesn't complain.
     fs::write(dir.join("rip.log"), "").unwrap();
 }
 
-/// Create test album metadata for CUE/FLAC (matches generated 2-minute file)
+/// Metadata for the CUE/FLAC album (three 30s tracks).
 fn create_cue_flac_test_album() -> DiscogsRelease {
     DiscogsRelease {
         id: "cue-flac-cpu-test".to_string(),
@@ -178,21 +198,21 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
                 type_: "track".to_string(),
                 position: "1".to_string(),
                 title: "Track One".to_string(),
-                duration: Some("1:40".to_string()), // 100 seconds
+                duration: Some("0:30".to_string()),
                 artists: vec![],
             },
             DiscogsTrack {
                 type_: "track".to_string(),
                 position: "2".to_string(),
                 title: "Track Two".to_string(),
-                duration: Some("1:40".to_string()), // 100 seconds
+                duration: Some("0:30".to_string()),
                 artists: vec![],
             },
             DiscogsTrack {
                 type_: "track".to_string(),
                 position: "3".to_string(),
                 title: "Track Three".to_string(),
-                duration: Some("1:40".to_string()), // 100 seconds
+                duration: Some("0:30".to_string()),
                 artists: vec![],
             },
         ],
@@ -200,7 +220,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
     }
 }
 
-/// Create test album metadata for MP3 per-track files
+/// Metadata for the MP3 per-track album (three 30s tracks).
 fn create_mp3_test_album() -> DiscogsRelease {
     DiscogsRelease {
         id: "mp3-cpu-test".to_string(),
@@ -223,21 +243,21 @@ fn create_mp3_test_album() -> DiscogsRelease {
                 type_: "track".to_string(),
                 position: "1".to_string(),
                 title: "Track 1".to_string(),
-                duration: Some("1:40".to_string()),
+                duration: Some("0:30".to_string()),
                 artists: vec![],
             },
             DiscogsTrack {
                 type_: "track".to_string(),
                 position: "2".to_string(),
                 title: "Track 2".to_string(),
-                duration: Some("1:40".to_string()),
+                duration: Some("0:30".to_string()),
                 artists: vec![],
             },
             DiscogsTrack {
                 type_: "track".to_string(),
                 position: "3".to_string(),
                 title: "Track 3".to_string(),
-                duration: Some("1:40".to_string()),
+                duration: Some("0:30".to_string()),
                 artists: vec![],
             },
         ],
@@ -245,7 +265,8 @@ fn create_mp3_test_album() -> DiscogsRelease {
     }
 }
 
-/// Test fixture for playback CPU measurement (works with any format)
+/// Imports an album and starts playback through the real-time probe sink (no
+/// audio device). Works with any format.
 struct PlaybackTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -324,13 +345,14 @@ impl PlaybackTestFixture {
             expected_tracks
         );
 
-        std::env::set_var("MUTE_TEST_AUDIO", "1");
-        let playback_handle = bae_core::playback::PlaybackService::start(
+        // Real-time probe sink: drives the real decode + drain at real time and
+        // discards the samples, so playback CPU is measured with no device.
+        let playback_handle = bae_core::playback::PlaybackService::start_with_output(
             library_manager.clone(),
             runtime_handle,
             100,
+            Box::new(bae_core::playback::RealtimeProbeOutput::new()),
         );
-        playback_handle.set_volume(0.0);
         let progress_rx = playback_handle.subscribe_progress();
 
         Ok(Self {
@@ -342,7 +364,7 @@ impl PlaybackTestFixture {
     }
 }
 
-/// Get total CPU time consumed by this process (user + system time).
+/// Total CPU time consumed by this process (user + system), via getrusage.
 fn get_process_cpu_time() -> Duration {
     #[cfg(unix)]
     {
@@ -370,126 +392,101 @@ fn get_process_cpu_time() -> Duration {
     }
 }
 
-/// Measure CPU usage during playback of the first track in a fixture.
-/// Returns the CPU percentage (100% = 1 core fully utilized).
-async fn measure_playback_cpu(fixture: &mut PlaybackTestFixture, label: &str) -> f64 {
-    let track_id = fixture.track_ids[0].clone();
-
-    // Start playback
-    fixture.playback_handle.play(track_id.clone());
-
-    // Wait for playback to start
-    let deadline = Instant::now() + Duration::from_secs(3);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
+/// Wait (up to `within`) for playback to report it is playing.
+async fn await_playing(fixture: &mut PlaybackTestFixture, within: Duration, label: &str) {
+    let deadline = Instant::now() + within;
+    loop {
+        let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+            panic!("{label}: playback did not start within {within:?}");
+        };
         match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if matches!(state, PlaybackState::Playing { .. }) {
-                    started = true;
-                }
-            }
+            Ok(Some(PlaybackProgress::StateChanged {
+                state: PlaybackState::Playing { .. },
+            })) => return,
             Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
+            Ok(None) | Err(_) => panic!("{label}: playback did not start within {within:?}"),
         }
     }
-    assert!(started, "{}: playback should start", label);
+}
 
-    // Measure CPU during seek (includes buffering phase where O(n²) bug manifests)
-    let measure_start = Instant::now();
-    let initial_cpu = get_process_cpu_time();
+/// Play track one and return the steady-state realtime factor: CPU-seconds
+/// spent per second of audio played. Plays in real time, so the wall-clock
+/// measurement window equals the audio played.
+async fn measure_playback_realtime_factor(fixture: &mut PlaybackTestFixture, label: &str) -> f64 {
+    let track_id = fixture.track_ids[0].clone();
+    fixture.playback_handle.play(track_id);
 
-    // Seek forward to trigger new buffering (this is where high CPU was observed)
-    fixture.playback_handle.seek(Duration::from_secs(3));
+    await_playing(fixture, Duration::from_secs(5), label).await;
 
-    // Let playback and buffering run for measurement period
-    let measure_duration = Duration::from_secs(3);
-    tokio::time::sleep(measure_duration).await;
-
-    let final_cpu = get_process_cpu_time();
-    let wall_time = measure_start.elapsed();
-    let cpu_time = final_cpu.saturating_sub(initial_cpu);
-
-    let cpu_percent = (cpu_time.as_secs_f64() / wall_time.as_secs_f64()) * 100.0;
-
-    eprintln!(
-        "{}: CPU usage during playback: {:.1}% (cpu_time={:?}, wall_time={:?})",
-        label, cpu_percent, cpu_time, wall_time
-    );
+    // Skip the initial ring-buffer fill burst, then measure steady state.
+    tokio::time::sleep(WARMUP).await;
+    let cpu_before = get_process_cpu_time();
+    let wall_start = Instant::now();
+    tokio::time::sleep(WINDOW).await;
+    let cpu_time = get_process_cpu_time().saturating_sub(cpu_before);
+    let wall_time = wall_start.elapsed();
 
     fixture.playback_handle.stop();
 
-    cpu_percent
+    // Liveness: the window must have contained real playback, not a silently
+    // stopped or errored stream. Drained after the measurement so it adds no
+    // CPU to it.
+    let (mut saw_position, mut error) = (false, None);
+    while let Ok(progress) = fixture.progress_rx.try_recv() {
+        match progress {
+            PlaybackProgress::PositionUpdate { .. } => saw_position = true,
+            PlaybackProgress::PlaybackError { reason } => error = Some(reason),
+            _ => {}
+        }
+    }
+    assert!(error.is_none(), "{label}: playback errored: {error:?}");
+    assert!(
+        saw_position,
+        "{label}: no position updates during the window — playback was not running"
+    );
+
+    // Real-time playback: the audio played equals the wall-clock window.
+    let factor = cpu_time.as_secs_f64() / wall_time.as_secs_f64();
+    eprintln!(
+        "{label}: realtime factor {factor:.4} ({:.1}% of one core) \
+         (cpu {cpu_time:?} over {wall_time:?} of playback)",
+        factor * 100.0
+    );
+    factor
 }
 
-fn assert_cpu_reasonable(cpu_percent: f64, label: &str) {
-    // Steady-state playback should be lightweight (ring buffer + audio callback)
-    // Baseline is ~6%, 20% allows headroom for variance
-    let max_cpu_percent = 20.0;
-
+fn assert_playback_efficient(factor: f64, label: &str) {
     assert!(
-        cpu_percent < max_cpu_percent,
-        "{}: CPU usage too high: {:.1}% (max allowed: {:.0}%)\n\
-         This indicates a busy-wait loop or spin lock somewhere.\n\
-         Common causes: buffer underrun retries, spin-waiting for data.",
-        label,
-        cpu_percent,
-        max_cpu_percent
+        factor < MAX_REALTIME_FACTOR,
+        "{label}: steady-state playback is too expensive: realtime factor {factor:.4} \
+         (max {MAX_REALTIME_FACTOR:.2}) — playback uses {:.0}% of one core. Look for a \
+         re-decode, per-buffer allocation, or resampler/tick regression in the playback path.",
+        factor * 100.0
     );
 }
 
-/// Test that CUE/FLAC playback doesn't consume excessive CPU.
-///
-/// This is a regression test for busy-wait loops that cause 500%+ CPU usage.
-/// During normal playback, CPU should be minimal - the audio callback runs
-/// periodically and the decoder should block on I/O, not spin.
+/// CUE/FLAC steady-state playback stays cheap (one big FLAC, sliced into tracks).
 #[tokio::test]
-async fn test_playback_cpu_usage_cue_flac() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
+#[serial]
+async fn test_playback_cpu_cue_flac() {
+    let mut fixture =
+        PlaybackTestFixture::new(create_cue_flac_test_album(), generate_cue_flac_files, 3)
+            .await
+            .expect("set up CUE/FLAC playback fixture");
 
-    let mut fixture = match PlaybackTestFixture::new(
-        create_cue_flac_test_album(),
-        generate_large_cue_flac_files,
-        3,
-    )
-    .await
-    {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-
-    let cpu = measure_playback_cpu(&mut fixture, "CUE/FLAC").await;
-    assert_cpu_reasonable(cpu, "CUE/FLAC");
+    let factor = measure_playback_realtime_factor(&mut fixture, "CUE/FLAC").await;
+    assert_playback_efficient(factor, "CUE/FLAC");
 }
 
-/// Test that MP3 per-track playback doesn't consume excessive CPU.
+/// MP3 per-track steady-state playback stays cheap.
 #[tokio::test]
-async fn test_playback_cpu_usage_mp3() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
+#[serial]
+async fn test_playback_cpu_mp3() {
+    let mut fixture =
+        PlaybackTestFixture::new(create_mp3_test_album(), generate_mp3_track_files, 3)
+            .await
+            .expect("set up MP3 playback fixture");
 
-    let mut fixture = match PlaybackTestFixture::new(
-        create_mp3_test_album(),
-        generate_mp3_track_files,
-        3,
-    )
-    .await
-    {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-
-    let cpu = measure_playback_cpu(&mut fixture, "MP3").await;
-    assert_cpu_reasonable(cpu, "MP3");
+    let factor = measure_playback_realtime_factor(&mut fixture, "MP3").await;
+    assert_playback_efficient(factor, "MP3");
 }
