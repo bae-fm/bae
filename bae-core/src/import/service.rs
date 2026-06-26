@@ -1756,27 +1756,36 @@ impl ImportService {
         let tracks_total = audio_formats.len() as u32;
         let mut tracks_done: u32 = 0;
 
-        // Spawn one blocking decode+measure per track; `JoinSet::join_next`
-        // yields each as it finishes, so the per-track tick fires on real
-        // completion order. The result carries its index so the album combine
-        // stays order-independent and the per-track write is exact.
-        let mut tasks = tokio::task::JoinSet::new();
-        for (idx, (af, tf)) in audio_formats.iter().zip(tracks_to_files).enumerate() {
+        // Start tick (already counting any unreadable-file skips), then one tick
+        // per track as it's measured, so the determinate bar climbs steadily
+        // through the long decode pass.
+        self.emit_loudness_progress(candidate_key, tracks_done, tracks_total);
+
+        // Decode + measure ONE track at a time: each decode runs on a blocking
+        // thread (off the async worker) but is awaited before the next starts, so
+        // the machine never runs N concurrent decodes — one core's worth of work,
+        // and the bar advances a track per completion instead of jumping at the
+        // end. `audio_formats` and `tracks_to_files` are index-aligned (the
+        // formats are built from the same tracks), so `idx` keys both.
+        let mut meters: Vec<EbuR128> = Vec::new();
+        let mut track_peaks: Vec<f64> = Vec::new();
+        for (idx, tf) in tracks_to_files.iter().enumerate() {
             let path = tf.file_path().to_path_buf();
             let Some(bytes) = file_bytes.get(&path).and_then(|b| b.clone()) else {
                 tracks_done += 1;
+                self.emit_loudness_progress(candidate_key, tracks_done, tracks_total);
                 continue;
             };
-            let start_sample = af.start_sample as u64;
-            let end_sample = af.end_sample.map(|s| s as u64);
+            let start_sample = audio_formats[idx].start_sample as u64;
+            let end_sample = audio_formats[idx].end_sample.map(|s| s as u64);
             // The source's value range bit depth: `decode_audio` returns i32
             // samples scaled to the source's bits (16-bit values for 16-bit
             // FLAC, 24-bit for 24-bit), so the loudness measure must shift them
             // up to full i32. The stored `bits_per_sample` is the authoritative
             // source depth (NULL for lossy codecs, where the decoded container
             // depth is used instead).
-            let source_bits = af.bits_per_sample.map(|b| b as u32);
-            tasks.spawn_blocking(move || {
+            let source_bits = audio_formats[idx].bits_per_sample.map(|b| b as u32);
+            let measured = tokio::task::spawn_blocking(move || {
                 let decoded = match crate::audio_codec::decode_audio(
                     &bytes,
                     Some(start_sample),
@@ -1785,7 +1794,7 @@ impl ImportService {
                     Ok(d) => d,
                     Err(e) => {
                         warn!("loudness: decode failed for {path:?}: {e}; track stays unmeasured");
-                        return (idx, None);
+                        return None;
                     }
                 };
                 let sample_bits = source_bits.unwrap_or(decoded.bits_per_sample);
@@ -1795,34 +1804,27 @@ impl ImportService {
                     decoded.sample_rate,
                     sample_bits,
                 ) {
-                    Ok((meter, Some(m))) => (idx, Some((meter, m.loudness_lufs, m.peak_linear))),
+                    Ok((meter, Some(m))) => Some((meter, m.loudness_lufs, m.peak_linear)),
                     Ok((_, None)) => {
                         debug!("loudness: {path:?} has no usable loudness (silent); unmeasured");
-                        (idx, None)
+                        None
                     }
                     Err(e) => {
                         warn!("loudness: measure failed for {path:?}: {e}; track stays unmeasured");
-                        (idx, None)
+                        None
                     }
                 }
-            });
-        }
+            })
+            .await;
 
-        // Start tick (already counting any unreadable-file skips), then one per
-        // completed track so the determinate bar tracks the long decode pass.
-        self.emit_loudness_progress(candidate_key, tracks_done, tracks_total);
-
-        let mut meters: Vec<EbuR128> = Vec::new();
-        let mut track_peaks: Vec<f64> = Vec::new();
-        while let Some(joined) = tasks.join_next().await {
-            match joined {
-                Ok((idx, Some((meter, loudness_lufs, peak_linear)))) => {
+            match measured {
+                Ok(Some((meter, loudness_lufs, peak_linear))) => {
                     audio_formats[idx].track_loudness_lufs = Some(loudness_lufs);
                     audio_formats[idx].track_peak_linear = Some(peak_linear);
                     meters.push(meter);
                     track_peaks.push(peak_linear);
                 }
-                Ok((_, None)) => {}
+                Ok(None) => {}
                 Err(e) => warn!("loudness: measurement task panicked: {e}; track stays unmeasured"),
             }
             tracks_done += 1;
