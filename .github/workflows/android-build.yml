@@ -5,10 +5,11 @@ name: Android build (reusable)
 # targets, runs the app unit tests, and assembles the APK — debug or, with
 # profile=release, a signed APK uploaded as the `bae-android-release` artifact.
 #
-# Runs on macOS because build-android.sh / build-ffmpeg-android.sh resolve the
-# NDK toolchain at .../prebuilt/darwin-x86_64. The host ffmpeg from setup-macos
-# backs the `cargo run --bin uniffi-bindgen` host build, which builds
-# bae-bridge → bae-core for the host to read the cross-built .so's metadata.
+# Runs on Linux: the NDK cross-compiles for Android from a Linux host (the build
+# scripts derive the toolchain's prebuilt/linux-x86_64 dir), and Linux runners
+# are far cheaper than macOS. The host ffmpeg from setup-linux backs the
+# `cargo run --bin uniffi-bindgen` host build, which builds bae-bridge → bae-core
+# for the host to read the cross-built .so's metadata.
 
 on:
   workflow_call:
@@ -61,14 +62,14 @@ env:
 jobs:
   build:
     name: Android
-    runs-on: macos-26
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
 
-    - name: Setup macOS environment
+    - name: Setup Linux environment
       # Host ffmpeg for the uniffi-bindgen host build.
-      uses: ./.github/actions/setup-macos
+      uses: ./.github/actions/setup-linux
 
     - name: Setup Rust environment
       uses: ./.github/actions/setup-rust
@@ -129,13 +130,14 @@ jobs:
 
     - name: Clippy (Android target)
       # Run clippy against the Android target so cfg(target_os = "android")-gated
-      # dead-code warnings are caught. The host clippy in ci.yml targets macOS,
-      # where not(any(target_os = "ios", target_os = "android")) is true and those
-      # warnings don't fire. One ABI is enough; dead-code warnings are
+      # dead-code warnings are caught. The host clippy in linux.yml targets the
+      # host, where not(any(target_os = "ios", target_os = "android")) is true and
+      # those warnings don't fire. One ABI is enough; dead-code warnings are
       # target-specific, not ABI-specific.
       run: |
         NDK_HOME="${ANDROID_NDK_HOME}"
-        TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64"
+        # ubuntu-latest is x86_64, so the NDK's prebuilt host toolchain is linux-x86_64.
+        TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
         FFMPEG_PREFIX="$(pwd)/third_party/ffmpeg-android"
         rustup target add aarch64-linux-android 2>/dev/null || true
         CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TOOLCHAIN/bin/aarch64-linux-android35-clang" \
@@ -181,8 +183,11 @@ jobs:
     - name: Check Kotlin formatting
       # ktlint on hand-written sources only. Generated bindings live under
       # bae-bridge/kotlin-bindings-*, not bae-android/, so they're not touched.
+      # Pinned to the version Homebrew shipped when this ran on macOS, so the
+      # ruleset doesn't drift now that it's a downloaded binary.
       run: |
-        brew install ktlint
+        curl -sSL https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint -o /usr/local/bin/ktlint
+        chmod +x /usr/local/bin/ktlint
         ktlint "bae-android/app/src/**/*.kt"
 
     - name: Kotlin dead code check (detekt)
@@ -190,10 +195,13 @@ jobs:
       # members. --build-upon-default-config applies the standard Kotlin ruleset;
       # bae-android/detekt.yml relaxes the opinionated rules the codebase doesn't
       # adopt (and allows Compose's PascalCase @Composable function names).
-      # Same scope as ktlint: hand-written sources only.
+      # Same scope as ktlint: hand-written sources only. Pinned version; runs on
+      # the JDK 17 set up above.
       run: |
-        brew install detekt
-        detekt --input bae-android/app/src/main/java \
+        DETEKT_VERSION=1.23.8
+        curl -sSL "https://github.com/detekt/detekt/releases/download/v${DETEKT_VERSION}/detekt-cli-${DETEKT_VERSION}.zip" -o detekt-cli.zip
+        unzip -q detekt-cli.zip
+        "detekt-cli-${DETEKT_VERSION}/bin/detekt-cli" --input bae-android/app/src/main/java \
           --config bae-android/detekt.yml --build-upon-default-config
 
     - name: Android Lint

@@ -45,7 +45,14 @@ case ",$BAE_BRIDGE_FEATURES," in
 esac
 
 NDK_HOME="${ANDROID_NDK_HOME:-/Users/dima/Library/Android/sdk/ndk/29.0.14206865}"
-TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64"
+# NDK prebuilt toolchains are named by host: darwin-x86_64 on macOS (incl Apple
+# Silicon via Rosetta), linux-x86_64 on the x86_64 Linux CI runner.
+case "$(uname -s)" in
+    Darwin) NDK_HOST_TAG="darwin-x86_64" ;;
+    Linux) NDK_HOST_TAG="linux-x86_64" ;;
+    *) echo "build-android.sh: unsupported host OS $(uname -s)" >&2; exit 1 ;;
+esac
+TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/$NDK_HOST_TAG"
 OBJCOPY="$TOOLCHAIN/bin/llvm-objcopy"
 STRIP="$TOOLCHAIN/bin/llvm-strip"
 

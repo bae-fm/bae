@@ -15,7 +15,14 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NDK="${ANDROID_NDK_HOME:-$HOME/Library/Android/sdk/ndk/29.0.14206865}"
-TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/darwin-x86_64"
+# NDK prebuilt toolchains are named by host: darwin-x86_64 on macOS (incl Apple
+# Silicon via Rosetta), linux-x86_64 on the x86_64 Linux CI runner.
+case "$(uname -s)" in
+    Darwin) NDK_HOST_TAG="darwin-x86_64" ;;
+    Linux) NDK_HOST_TAG="linux-x86_64" ;;
+    *) echo "build-ffmpeg-android.sh: unsupported host OS $(uname -s)" >&2; exit 1 ;;
+esac
+TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/$NDK_HOST_TAG"
 API=26 # matches minSdk in bae-android/app/build.gradle.kts
 FF_TAG="n7.1" # matches ffmpeg-sys-next 8.x (FFmpeg 7.1)
 
