@@ -1,7 +1,9 @@
 #![cfg(feature = "test-utils")]
 //! Integration tests for bae's cloud-outbox DB wrappers (`db/client.rs`): the
-//! enqueue/read/remove pass-throughs over coven's `cloud_outbox`, plus the
-//! `BlobScope::Master` default bae stamps at enqueue. The drains themselves
+//! delete enqueue and the remove/cancel seam bae keeps over coven's
+//! `cloud_outbox`, plus the `BlobScope::Master` default bae stamps when it seeds
+//! an upload. Pending-queue reads go through `coven_db()` directly (coven owns
+//! the queue; bae keeps no read wrapper). The drains themselves
 //! (`coven::blob::upload::drain_uploads`, the tombstone delete path) are coven's
 //! and covered by coven's own blob tests.
 
@@ -44,7 +46,7 @@ async fn test_add_and_get_pending_uploads_fifo() {
         .await
         .unwrap();
 
-    let uploads = db.get_pending_cloud_uploads().await.unwrap();
+    let uploads = db.coven_db().get_pending_cloud_uploads().await.unwrap();
     assert_eq!(uploads.len(), 3);
     assert_eq!(upload_file_id(&uploads[0]), "file-aaa");
     assert_eq!(upload_file_id(&uploads[1]), "file-bbb");
@@ -66,7 +68,7 @@ async fn test_outbox_upload_round_trips_master_scope() {
         .await
         .unwrap();
 
-    let uploads = db.get_pending_cloud_uploads().await.unwrap();
+    let uploads = db.coven_db().get_pending_cloud_uploads().await.unwrap();
     assert_eq!(uploads.len(), 1);
     let OutboxOperation::Upload { scope, .. } = &uploads[0].operation else {
         panic!("expected an upload operation");
@@ -80,7 +82,7 @@ async fn test_outbox_upload_round_trips_master_scope() {
     db.add_cloud_outbox_delete("storage/aa/bb/file-k")
         .await
         .unwrap();
-    let deletes = db.get_pending_cloud_deletes().await.unwrap();
+    let deletes = db.coven_db().get_pending_cloud_deletes().await.unwrap();
     assert_eq!(deletes.len(), 1);
     assert!(
         matches!(deletes[0].operation, OutboxOperation::Delete),
@@ -99,7 +101,7 @@ async fn test_add_and_get_pending_deletes() {
         .await
         .unwrap();
 
-    let deletes = db.get_pending_cloud_deletes().await.unwrap();
+    let deletes = db.coven_db().get_pending_cloud_deletes().await.unwrap();
     assert_eq!(deletes.len(), 2);
     assert_eq!(deletes[0].cloud_key, "storage/aa/bb/file-aaa");
     assert!(matches!(
@@ -121,13 +123,13 @@ async fn test_remove_outbox_entry() {
         .await
         .unwrap();
 
-    let uploads = db.get_pending_cloud_uploads().await.unwrap();
+    let uploads = db.coven_db().get_pending_cloud_uploads().await.unwrap();
     assert_eq!(uploads.len(), 1);
     let id = uploads[0].id;
 
     db.remove_cloud_outbox_entry(id).await.unwrap();
 
-    let uploads = db.get_pending_cloud_uploads().await.unwrap();
+    let uploads = db.coven_db().get_pending_cloud_uploads().await.unwrap();
     assert!(uploads.is_empty());
 }
 
@@ -146,7 +148,7 @@ async fn test_remove_uploads_for_key() {
         .await
         .unwrap();
 
-    let uploads = db.get_pending_cloud_uploads().await.unwrap();
+    let uploads = db.coven_db().get_pending_cloud_uploads().await.unwrap();
     assert_eq!(uploads.len(), 1);
     assert_eq!(upload_file_id(&uploads[0]), "file-bbb");
 }
@@ -164,6 +166,6 @@ async fn test_insert_or_ignore_idempotency() {
         .await
         .unwrap();
 
-    let uploads = db.get_pending_cloud_uploads().await.unwrap();
+    let uploads = db.coven_db().get_pending_cloud_uploads().await.unwrap();
     assert_eq!(uploads.len(), 1, "duplicate insert should be ignored");
 }

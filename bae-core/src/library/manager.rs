@@ -53,7 +53,6 @@ use crate::storage::cloud::CloudHome;
 use crate::storage::local::cleanup::{append_pending_deletions, PendingDeletion};
 use crate::storage::local::ReleaseStorageImpl;
 use crate::sync::sync_manager::{build_sync_manager, S3ConfigData, SyncManager};
-use coven::db::OutboxEntry;
 /// Comma-join artist names for display.
 pub(crate) fn join_artist_names(artists: &[DbArtist]) -> String {
     artists
@@ -2083,8 +2082,10 @@ impl LibraryManager {
 
     /// Build a `ReleaseUploadObserver` over this manager's shared outbox/throughput/
     /// event state — the same observer `build_sync_manager` wires into the live sync
-    /// loop. The single place that wiring lives outside the loop builder, shared by
-    /// the by-hand upload drain and the test-only make-Local driver.
+    /// loop. Production builds its observer inside the loop builder; this helper
+    /// exists only for the test drivers (the by-hand upload drain and the make-Local
+    /// driver) that run a transition without a live loop.
+    #[cfg(any(test, feature = "test-utils"))]
     fn build_upload_observer(&self) -> crate::sync::upload_observer::ReleaseUploadObserver {
         crate::sync::upload_observer::ReleaseUploadObserver::new(
             Arc::new(self.database.clone()),
@@ -2459,10 +2460,6 @@ impl LibraryManager {
         .map_err(|e| LibraryError::Storage(format!("cloud key for cover {release_id}: {e}")))
     }
 
-    pub async fn get_pending_cloud_uploads(&self) -> Result<Vec<OutboxEntry>, LibraryError> {
-        Ok(self.database.get_pending_cloud_uploads().await?)
-    }
-
     /// Retry failed uploads now: clear their backoff so the next cycle picks
     /// them up immediately, then kick the sync loop.
     pub async fn retry_outbox_now(&self) -> Result<(), LibraryError> {
@@ -2528,10 +2525,11 @@ impl LibraryManager {
         self.sync_paused.load(std::sync::atomic::Ordering::SeqCst)
     }
 
-    pub async fn get_pending_cloud_deletes(&self) -> Result<Vec<OutboxEntry>, LibraryError> {
-        Ok(self.database.get_pending_cloud_deletes().await?)
-    }
-
+    /// Drive coven's upload drain once against an injected cloud home, for tests
+    /// that have no live sync loop. A test seam over coven's real
+    /// `drain_uploads` (with bae's observer/cipher wiring) — production drains
+    /// from the sync loop — so it stays out of release builds.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn process_cloud_uploads_with(
         &self,
         cloud_home: &dyn CloudHome,
@@ -5812,7 +5810,12 @@ mod tests {
 
         // delete_release awaits the deletion queueing, so by now the remote
         // blob's cloud-outbox tombstone is enqueued.
-        let deletes = manager.get_pending_cloud_deletes().await.unwrap();
+        let deletes = manager
+            .database
+            .coven_db()
+            .get_pending_cloud_deletes()
+            .await
+            .unwrap();
         assert_eq!(
             deletes.len(),
             1,
@@ -5877,7 +5880,12 @@ mod tests {
             None,
         )
         .unwrap();
-        let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
+        let deletes = manager
+            .database
+            .coven_db()
+            .get_pending_cloud_deletes()
+            .await
+            .unwrap();
         assert!(
             deletes.iter().any(|d| d.cloud_key == cloud_key),
             "cover blob delete must be enqueued"
@@ -5927,7 +5935,12 @@ mod tests {
             None,
         )
         .unwrap();
-        let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
+        let deletes = manager
+            .database
+            .coven_db()
+            .get_pending_cloud_deletes()
+            .await
+            .unwrap();
         assert!(deletes.iter().any(|d| d.cloud_key == cloud_key));
     }
 
@@ -7291,6 +7304,7 @@ mod tests {
         // A recorded failure: failed with the stored error + attempt.
         manager
             .database
+            .coven_db()
             .record_cloud_upload_failure(item_id, "boom", "2024-06-01T00:00:00Z")
             .await
             .unwrap();
@@ -7305,7 +7319,12 @@ mod tests {
 
         // Reset backoff clears the timestamp but keeps the failure record.
         manager.database.reset_cloud_outbox_backoff().await.unwrap();
-        let uploads = manager.database.get_pending_cloud_uploads().await.unwrap();
+        let uploads = manager
+            .database
+            .coven_db()
+            .get_pending_cloud_uploads()
+            .await
+            .unwrap();
         assert_eq!(uploads[0].attempt_count, 1);
         assert!(uploads[0].last_attempt_at.is_none());
         assert_eq!(uploads[0].last_error.as_deref(), Some("boom"));

@@ -536,7 +536,12 @@ async fn test_make_local_cancelled_rolls_back_and_stays_remote() {
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
-    assert!(mgr.get_pending_cloud_deletes().await.unwrap().is_empty());
+    assert!(db
+        .coven_db()
+        .get_pending_cloud_deletes()
+        .await
+        .unwrap()
+        .is_empty());
 }
 
 /// A make-Local whose destination can't be written (the path is a file) fails,
@@ -575,7 +580,12 @@ async fn test_make_local_abort_on_dest_failure_queues_no_deletes() {
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
-    assert!(mgr.get_pending_cloud_deletes().await.unwrap().is_empty());
+    assert!(db
+        .coven_db()
+        .get_pending_cloud_deletes()
+        .await
+        .unwrap()
+        .is_empty());
 }
 
 // ---------------------------------------------------------------------------

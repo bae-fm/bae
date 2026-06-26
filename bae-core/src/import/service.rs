@@ -1187,10 +1187,10 @@ impl ImportService {
     /// DbFile + audio-format records, reference the files in place, finalize
     /// atomically as a LOCAL release (playable immediately), emit events.
     /// No bytes move here. If `storage_mode` is `Remote`, the release then
-    /// transitions to the cloud via `enqueue_remote_uploads` (the same flow the
+    /// transitions to the cloud via `coven_make_remote` (the same flow the
     /// "Manage" action runs), carrying `pin` as the upload's retain-pinned intent;
-    /// the observer flips `remote` true and deletes the in-place source once the
-    /// last upload lands. `pin` is ignored for an `Local` import.
+    /// coven flips `remote` true and deletes the in-place source once the last
+    /// upload lands. `pin` is ignored for an `Local` import.
     ///
     /// All DB writes happen in one atomic transaction at the end. DbTracks —
     /// including their populated `duration_ms` — live inside `tracks_to_files`.
@@ -1247,9 +1247,9 @@ impl ImportService {
         // Every import lands LOCAL: reference the files in place and record
         // their common-ancestor folder as the release's local source. No bytes
         // move here in any mode. A Remote import then transitions to the cloud
-        // (`enqueue_remote_uploads`, below), flipping `remote` true once the
-        // upload lands; until then it is a valid, playable local release, so
-        // another device never sees a release before its audio is in the cloud.
+        // (`coven_make_remote`, below); coven flips `remote` true once the upload
+        // lands; until then it is a valid, playable local release, so another
+        // device never sees a release before its audio is in the cloud.
         let local_root = {
             let mut ancestor: Option<&Path> = None;
             for file in discovered_files.iter() {

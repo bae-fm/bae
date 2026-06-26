@@ -3017,12 +3017,14 @@ impl Database {
 
     // ---- Cloud outbox ----
 
-    /// Add an upload entry to the cloud outbox. coven encrypts the blob with the
-    /// library master key (`BlobScope::Master`) at drain, long after this enqueue
-    /// site is gone. `retain_pinned` is the transient pin choice: when set, coven
-    /// populates `storage/pinned/<id>` from the plaintext on a successful upload so
-    /// the blob is kept local and budget-exempt; when unset it populates nothing
-    /// (the evictable cache fills on a later read-miss).
+    /// Seed an upload entry in coven's cloud outbox. Production never enqueues
+    /// uploads this way — coven's `make_remote` owns that — so this exists only
+    /// to exercise the outbox-snapshot / drain machinery in tests. coven encrypts
+    /// the blob with the library master key (`BlobScope::Master`) at drain;
+    /// `retain_pinned` is the transient pin choice (populate `storage/pinned/<id>`
+    /// from the plaintext on success, else fill the evictable cache on a later
+    /// read-miss).
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_cloud_outbox_upload(
         &self,
         file_id: &str,
@@ -3056,17 +3058,9 @@ impl Database {
     // The cloud_outbox table is coven's; bae drives the queue through coven's
     // Database API instead of hand-writing its SQL. The only direct read of the
     // shared table is `outbox_items` below, which joins it against bae's own
-    // domain tables (no coven API can express that).
-
-    /// Pending upload entries, oldest first.
-    pub async fn get_pending_cloud_uploads(&self) -> Result<Vec<coven::db::OutboxEntry>, DbError> {
-        self.inner.coven_db.get_pending_cloud_uploads().await
-    }
-
-    /// Pending delete entries, oldest first.
-    pub async fn get_pending_cloud_deletes(&self) -> Result<Vec<coven::db::OutboxEntry>, DbError> {
-        self.inner.coven_db.get_pending_cloud_deletes().await
-    }
+    // domain tables (no coven API can express that). Reading the raw pending
+    // queue (uploads/deletes) goes through `coven_db()` directly — bae keeps no
+    // wrapper, since coven owns the drain.
 
     /// Remove a cloud outbox entry by id.
     pub async fn remove_cloud_outbox_entry(&self, id: i64) -> Result<(), DbError> {
@@ -3082,19 +3076,6 @@ impl Database {
         self.inner
             .coven_db
             .remove_cloud_outbox_uploads_for_key(cloud_key)
-            .await
-    }
-
-    /// Record a failed upload attempt; the entry stays queued for retry.
-    pub async fn record_cloud_upload_failure(
-        &self,
-        id: i64,
-        error: &str,
-        attempted_at: &str,
-    ) -> Result<(), DbError> {
-        self.inner
-            .coven_db
-            .record_cloud_upload_failure(id, error, attempted_at)
             .await
     }
 

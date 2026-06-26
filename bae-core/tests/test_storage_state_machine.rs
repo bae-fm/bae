@@ -357,7 +357,11 @@ async fn test_manage_refused_when_sync_not_running() {
         "make-Remote must fail when the upload pipeline isn't running, got {result:?}"
     );
     assert!(
-        mgr.get_pending_cloud_uploads().await.unwrap().is_empty(),
+        db.coven_db()
+            .get_pending_cloud_uploads()
+            .await
+            .unwrap()
+            .is_empty(),
         "no upload may be enqueued when the pipeline can't drain it"
     );
     assert_eq!(
@@ -387,7 +391,7 @@ async fn test_manage_cloud_only_uploads_from_source_then_completes() {
     mgr.make_remote_for_test(&release_id, false).await.unwrap();
 
     // Outbox uploads read from the originals (source_path = Some).
-    let uploads = mgr.get_pending_cloud_uploads().await.unwrap();
+    let uploads = db.coven_db().get_pending_cloud_uploads().await.unwrap();
     assert_eq!(uploads.len(), files.len());
     assert!(uploads.iter().all(|u| matches!(
         &u.operation,
@@ -489,7 +493,11 @@ async fn test_manage_truncated_source_aborts_before_enqueue() {
     assert!(result.is_err(), "truncated source must abort make-Remote");
 
     assert!(
-        mgr.get_pending_cloud_uploads().await.unwrap().is_empty(),
+        db.coven_db()
+            .get_pending_cloud_uploads()
+            .await
+            .unwrap()
+            .is_empty(),
         "no upload may be enqueued when a source is truncated"
     );
     for (name, _) in &files {
@@ -551,7 +559,7 @@ async fn test_unmanage_from_remote_reads_through_cache_then_queues_deletes() {
             "external ref points at the new path"
         );
     }
-    let deletes = mgr.get_pending_cloud_deletes().await.unwrap();
+    let deletes = db.coven_db().get_pending_cloud_deletes().await.unwrap();
     assert_eq!(deletes.len(), files.len());
 }
 
@@ -585,7 +593,12 @@ async fn test_unmanage_from_remote_missing_blob_is_hard_error() {
         .await;
     assert!(result.is_err(), "missing blob must be a hard error");
 
-    assert!(mgr.get_pending_cloud_deletes().await.unwrap().is_empty());
+    assert!(db
+        .coven_db()
+        .get_pending_cloud_deletes()
+        .await
+        .unwrap()
+        .is_empty());
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
