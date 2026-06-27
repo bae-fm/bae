@@ -89,6 +89,34 @@ pub struct BridgeLibrary {
     pub is_active: bool,
 }
 
+/// A reference to a host-provided library image (a cover or an artist image):
+/// the image id plus a content version. The UI fetches the bytes by id
+/// (`fetch_image_bytes`) and caches them under `(id, version)`, so a grid of
+/// covers renders without re-crossing the bridge on scroll yet reloads when a
+/// cover is replaced. `version` is the image row's `_updated_at`, which moves
+/// when the bytes change. Mirrors `bae_core::album_detail::ImageRef`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeImageRef {
+    pub id: String,
+    pub version: String,
+}
+
+impl BridgeImageRef {
+    pub fn from_core(r: bae_core::album_detail::ImageRef) -> Self {
+        Self {
+            id: r.id,
+            version: r.version,
+        }
+    }
+
+    pub fn into_core(self) -> bae_core::album_detail::ImageRef {
+        bae_core::album_detail::ImageRef {
+            id: self.id,
+            version: self.version,
+        }
+    }
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeAlbum {
     pub id: String,
@@ -104,11 +132,10 @@ pub struct BridgeAlbum {
     /// release when unset in the DB. Always set: every album has at least one
     /// release.
     pub primary_release_id: String,
-    /// Cache-bustable identifier for the album's cover (`<path>#v=<mtime>`), or
-    /// `None` when no cover is cached on disk. Carried on the summary so a cover
-    /// change moves a field and the UI re-renders; the image loader strips the
-    /// `#v=…` suffix before opening the file.
-    pub cover_path: Option<String>,
+    /// Reference to the album's cover (the primary release's cover), or `None`
+    /// when it has no cover. The UI fetches the bytes by id and caches under
+    /// `(id, version)`; the version moves when the cover changes.
+    pub cover: Option<BridgeImageRef>,
 }
 
 /// A release's storage state — Local (a local file the user owns) or Remote
@@ -193,11 +220,10 @@ pub struct BridgeReleaseSummary {
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,
-    /// Cache-bustable identifier for this release's own cover
-    /// (`<path>#v=<mtime>`), or `None` when no cover is cached. Keyed on the
-    /// release id so each release renders its own art; the image loader strips
-    /// the `#v=…` suffix before opening the file.
-    pub cover_path: Option<String>,
+    /// Reference to this release's own cover (image id + version), or `None` when
+    /// it has no cover. Keyed on the release id so each release renders its own
+    /// art; the UI caches the bytes under `(id, version)`.
+    pub cover: Option<BridgeImageRef>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -224,19 +250,19 @@ pub struct BridgeRelease {
     pub track_groups: Vec<BridgeTrackGroup>,
     pub files: Vec<BridgeFile>,
     pub image_files: Vec<BridgeFile>,
-    /// Cover first (if on disk), then every image file the release has —
-    /// including cloud-only ones, which carry no local path and are fetched on
-    /// demand. Consumers render this as-is.
+    /// Cover slot first (if the release has one), then every image file the
+    /// release has. Each item is read by id; the cover slot carries a version and
+    /// is fetched via `fetch_image_bytes`, a release-file image via
+    /// `fetch_gallery_image`. Consumers render this as-is.
     pub gallery_items: Vec<BridgeGalleryItem>,
     /// Total duration across all tracks, in milliseconds. The UI formats it.
     pub total_duration_ms: i64,
     pub file_count: i64,
     pub total_size: i64,
-    /// Cache-bustable identifier for this release's own cover
-    /// (`<path>#v=<mtime>`), or `None` when no cover is cached. Mirrors
-    /// `BridgeReleaseSummary.cover_path` so a summary rebuilt from this fat
-    /// payload keeps its per-release art.
-    pub cover_path: Option<String>,
+    /// Reference to this release's own cover (image id + version), or `None` when
+    /// it has no cover. Mirrors `BridgeReleaseSummary.cover` so a summary rebuilt
+    /// from this fat payload keeps its per-release art.
+    pub cover: Option<BridgeImageRef>,
 }
 
 /// User's identity claim from the import flow. Mirrors
@@ -432,14 +458,17 @@ pub fn bridge_cloud_provider_label_key(provider: Option<BridgeCloudProvider>) ->
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeGalleryItem {
-    /// Stable identifier: "cover" for the release cover, or the file id. For a
-    /// cloud-only image, the file id the lightbox passes to `fetch_gallery_image`.
+    /// The image id: the cover image id (the release id) for the cover slot, else
+    /// the release-file id.
     pub id: String,
     /// Display label: "Cover" or the file's original filename.
     pub label: String,
-    /// Absolute local path when the image is on disk; `None` for a cloud-only
-    /// image file not downloaded here — the lightbox fetches its bytes on demand.
-    pub local_path: Option<String>,
+    /// `Some(version)` marks the release's own cover: the UI fetches its bytes by
+    /// image id via `fetch_image_bytes` and caches under `(id, version)`. `None`
+    /// marks a release-file image: the UI fetches its bytes by file id via
+    /// `fetch_gallery_image`. The discriminator the lightbox uses to pick the byte
+    /// source.
+    pub cover_version: Option<String>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -1904,10 +1933,10 @@ pub struct BridgeAlbumSearchResult {
     pub id: String,
     pub title: String,
     pub year: Option<i32>,
-    /// Album's primary release. Always set: every album has at least one
-    /// release.
-    pub primary_release_id: String,
     pub artist_name: String,
+    /// Reference to the album's cover (the primary release's cover), or `None`.
+    /// The UI fetches the bytes by id and caches under `(id, version)`.
+    pub cover: Option<BridgeImageRef>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
