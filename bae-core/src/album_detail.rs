@@ -450,13 +450,12 @@ pub struct AlbumSearchResult {
     pub id: String,
     pub title: String,
     pub year: Option<i32>,
-    /// User-chosen primary release, falling back to the album's first
-    /// release. Always set: every album has at least one release.
-    pub primary_release_id: String,
     pub artist_name: String,
     /// Reference to the album's cover — the primary release's cover (image id +
     /// version) — or `None` when it has no cover row. The search UI fetches its
-    /// bytes by image id and caches under `(id, version)`.
+    /// bytes by image id and caches under `(id, version)`. Resolved from the
+    /// album's primary release; the primary id itself isn't surfaced (the search
+    /// UI navigates by album id).
     pub cover: Option<ImageRef>,
 }
 

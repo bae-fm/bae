@@ -326,6 +326,8 @@ fn resolve_album_search_result(
     raw: DbAlbumSearchResult,
     resolve_cover: impl Fn(&str) -> Option<ImageRef>,
 ) -> AlbumSearchResult {
+    // The primary release id resolves the cover but isn't surfaced — the search
+    // UI navigates by album id.
     let primary_release_id = raw
         .primary_release_id
         .expect("album has at least one release");
@@ -334,7 +336,6 @@ fn resolve_album_search_result(
         id: raw.id,
         title: raw.title,
         year: raw.year,
-        primary_release_id,
         artist_name: raw.artist_name,
         cover,
     }
