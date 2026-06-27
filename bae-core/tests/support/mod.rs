@@ -183,7 +183,6 @@ pub fn setup_fresh_library(
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         runtime.handle().clone(),
-        None,
     );
 
     (lm, tmp)

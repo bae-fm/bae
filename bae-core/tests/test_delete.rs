@@ -28,7 +28,6 @@ async fn setup_test_environment() -> (LibraryManager, Database, TempDir) {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     (library_manager, database, temp_dir)
 }

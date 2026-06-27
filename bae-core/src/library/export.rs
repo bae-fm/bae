@@ -220,16 +220,7 @@ impl ExportService {
                 return Err("export cancelled".to_string());
             }
 
-            let cover_data =
-                plan.cover_image_path
-                    .as_ref()
-                    .and_then(|path| match std::fs::read(path) {
-                        Ok(data) => Some(data),
-                        Err(e) => {
-                            debug!("Could not read cover art at {}: {}", path.display(), e);
-                            None
-                        }
-                    });
+            let cover_data = plan.cover_image_bytes.as_deref();
 
             let tag_type = match format {
                 ExportFormat::Flac => lofty::tag::TagType::VorbisComments,
@@ -243,7 +234,7 @@ impl ExportService {
                 plan.track_number.map(|n| n as u32),
                 plan.total_tracks as u32,
                 plan.is_digital,
-                cover_data.as_deref(),
+                cover_data,
             )?;
 
             if cancel_for_blocking.load(Ordering::Relaxed) {

@@ -104,7 +104,6 @@ async fn import_single_m4a_fixture(
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
 
     let discogs_release = make_discogs_release("test-m4a", "Album Title", &["Track One"]);
@@ -343,7 +342,6 @@ async fn import_cue_alac_pair() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
 
     let discogs_release = make_discogs_release(

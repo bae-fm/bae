@@ -46,6 +46,9 @@ rand = "0.9"
 lru = "0.17"
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+# Staging a coven-held cover blob to a real file for the barcode-OCR reader,
+# which needs a path (the bytes come back through `read_image_blob`).
+tempfile = "3.8"
 notify = "8.2.0"
 notify-debouncer-full = "0.7.0"
 
@@ -103,7 +106,6 @@ ffmpeg-next = { version = "8.0", default-features = false, features = ["codec", 
 ffmpeg-sys-next = { version = "8.0", default-features = false, features = ["avcodec", "avformat", "swresample"] }
 
 [dev-dependencies]
-tempfile = "3.8"
 tokio = { version = "1.0", features = ["test-util"] }
 serial_test = "3.4.0"
 # coven's deterministic clock/id fakes for bae's tests (off in production builds).

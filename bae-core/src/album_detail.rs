@@ -229,12 +229,11 @@ pub struct ReleaseSummary {
     pub storage_actions: Vec<ReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,
-    /// Cache-bustable identifier for this release's own cover
-    /// (`<path>#v=<mtime>`), or `None` when no cover is cached on disk. Keyed on
-    /// the release id — covers are stored per release — so two releases of one
-    /// album resolve to their own art rather than the album's primary cover.
-    /// The image loader strips the `#v=…` suffix before opening the file.
-    pub cover_path: Option<String>,
+    /// Reference to this release's own cover (image id + version), or `None` when
+    /// the release has no cover row. Keyed on the release id — covers are stored
+    /// per release — so two releases of one album resolve to their own art rather
+    /// than the album's primary cover.
+    pub cover: Option<ImageRef>,
 }
 
 /// Resolved release detail: the fat projection for the album detail view.
@@ -273,17 +272,35 @@ pub struct ReleaseDetail {
     pub gallery_items: Vec<GalleryItem>,
 }
 
-/// One slot in a release's lightbox gallery.
+/// A host-provided library image's reference: the image id plus a content
+/// version. The id is the subject id (a release id for a cover, an artist id for
+/// an artist image); the version is the image row's `_updated_at`, which moves
+/// when the bytes change (the upsert bumps it). The UI fetches the bytes by id
+/// (`read_image_blob`) and caches them under `(id, version)`, so a grid of covers
+/// renders without re-crossing the boundary on scroll yet still reloads when a
+/// cover is replaced.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImageRef {
+    pub id: String,
+    pub version: String,
+}
+
+/// One slot in a release's lightbox gallery. Every slot is read by id — there is
+/// no filesystem path — and `cover_version` discriminates which byte source the
+/// UI calls.
 #[derive(Debug, Clone)]
 pub struct GalleryItem {
-    /// Stable identifier: `"cover"` for the release cover, or the file id. For a
-    /// cloud-only image this is the file id the lightbox passes back to fetch it.
+    /// The image id: the cover image id (the release id) when this is the cover
+    /// slot, otherwise the release-file id.
     pub id: String,
     /// Display label: `"Cover"` or the file's original filename.
     pub label: String,
-    /// Absolute local path when the image is on disk; `None` for a cloud-only
-    /// image file that hasn't been downloaded yet.
-    pub local_path: Option<String>,
+    /// `Some(version)` marks the release's own cover: the UI fetches its bytes by
+    /// image id (`read_image_blob`) and caches them under `(id, version)`. `None`
+    /// marks a release-file image: the UI fetches its bytes by file id through the
+    /// gallery read (`fetch_gallery_image`). The discriminator the lightbox uses to
+    /// pick the byte source.
+    pub cover_version: Option<String>,
 }
 
 /// Full album detail: album + releases (with tracks, files, gallery).
@@ -297,11 +314,11 @@ pub struct AlbumDetail {
     /// every album has at least one release (enforced by `delete_release`
     /// which removes the album row when its last release is deleted).
     pub primary_release_id: String,
-    /// Cache-bustable identifier for the album's cover (the primary release's
-    /// image at `<path>#v=<mtime>`), or `None` when no cover is cached. The
-    /// version moves when the cover bytes do, so the `AlbumUpdated` payload
-    /// carries a changed field and the UI re-renders the cover.
-    pub cover_path: Option<String>,
+    /// Reference to the album's cover — the primary release's cover (image id +
+    /// version) — or `None` when it has no cover row. The version moves when the
+    /// cover bytes do, so the `AlbumUpdated` payload carries a changed field and
+    /// the UI re-renders the cover.
+    pub cover: Option<ImageRef>,
 }
 
 /// Resolved album summary: the slim projection list views render. Produced
@@ -324,13 +341,12 @@ pub struct AlbumSummary {
     /// `delete_release` which removes the album row when its last release
     /// is deleted).
     pub primary_release_id: String,
-    /// Cache-bustable identifier for the album's cover (the primary release's
-    /// image at `<path>#v=<mtime>`), or `None` when no cover is cached on disk.
-    /// Carried on the summary so a cover change produces a changed field on the
-    /// `AlbumUpdated` event: the version moves when the bytes do, so the UI's
-    /// per-field re-render fires and the cover reloads. Stripping the `#v=…`
-    /// suffix back to the file path happens in each platform's image loader.
-    pub cover_path: Option<String>,
+    /// Reference to the album's cover — the primary release's cover (image id +
+    /// version) — or `None` when it has no cover row. Carried on the summary so a
+    /// cover change produces a changed field on the `AlbumUpdated` event: the
+    /// version moves when the bytes do, so the UI's per-field re-render fires and
+    /// the cover reloads.
+    pub cover: Option<ImageRef>,
 }
 
 /// Resolved per-release storage summary for the Storage Manager view.
@@ -438,6 +454,10 @@ pub struct AlbumSearchResult {
     /// release. Always set: every album has at least one release.
     pub primary_release_id: String,
     pub artist_name: String,
+    /// Reference to the album's cover — the primary release's cover (image id +
+    /// version) — or `None` when it has no cover row. The search UI fetches its
+    /// bytes by image id and caches under `(id, version)`.
+    pub cover: Option<ImageRef>,
 }
 
 /// Resolved track search result, produced from `DbTrackSearchResult`.

@@ -93,7 +93,6 @@ async fn test_local_import() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     let runtime_handle = tokio::runtime::Handle::current();
 
@@ -234,7 +233,6 @@ async fn test_local_delete_preserves_files() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     let runtime_handle = tokio::runtime::Handle::current();
 
@@ -354,7 +352,6 @@ async fn run_import_with_cover_test() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     let runtime_handle = tokio::runtime::Handle::current();
 
@@ -671,7 +668,6 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     let runtime_handle = tokio::runtime::Handle::current();
     // Use the real API resolver since this test exercises real Discogs data
@@ -790,7 +786,6 @@ async fn test_local_import_not_in_temp_dir() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     let runtime_handle = tokio::runtime::Handle::current();
 

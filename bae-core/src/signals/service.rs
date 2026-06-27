@@ -292,18 +292,21 @@ async fn run_extraction(
                 remove_own_entry(&inner, &key, generation);
                 return;
             }
-            let artwork_paths = match resolve_release_artwork_paths(
+            // `_cover_staging` holds the temp dir the cover blob was staged into;
+            // it must outlive the OCR pass below, so keep it bound until after
+            // `stream_extraction` returns.
+            let (artwork_paths, _cover_staging) = match resolve_release_artwork_paths(
                 &inner.library_manager,
                 &release_id,
             )
             .await
             {
-                Ok(paths) => paths,
+                Ok(staged) => staged,
                 Err(e) => {
                     warn!(
                             "signals: failed to resolve artwork for release {release_id}: {e}; extracting without cover art"
                         );
-                    Vec::new()
+                    (Vec::new(), None)
                 }
             };
             stream_extraction(
@@ -1114,7 +1117,6 @@ mod tests {
             clock,
             Arc::new(crate::id_provider::UuidProvider),
             tokio::runtime::Handle::current(),
-            None,
         );
         (manager, tmp)
     }

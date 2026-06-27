@@ -1133,7 +1133,6 @@ mod tests {
             std::sync::Arc::new(crate::clock::SystemClock),
             std::sync::Arc::new(crate::id_provider::UuidProvider),
             tokio::runtime::Handle::current(),
-            None,
         );
         (manager, temp_dir)
     }

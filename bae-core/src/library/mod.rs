@@ -7,7 +7,6 @@ pub mod manager;
 pub mod outbox_snapshot;
 pub mod sync_events;
 pub mod upload_throughput;
-pub mod versioned_image_path;
 pub use app_services::*;
 pub use download_queue::DownloadQueue;
 pub use download_snapshot::{DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState};

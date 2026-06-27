@@ -267,7 +267,6 @@ async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) 
         clock,
         Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     (manager, tmp)
 }

@@ -260,17 +260,10 @@ impl Database {
     // - ID from a function parameter, URL, UI event → find_*
     // - ID from a field on a DB record you already hold → get_*_for_*
 
-    /// The wall clock this database binds into write timestamps. Shared with
-    /// callers that mint rows outside `db/client.rs` (e.g. the import mappers)
-    /// so they read "now" from the same injected source.
-    pub(crate) fn clock(&self) -> &ClockRef {
-        &self.inner.clock
-    }
-
     /// The connection coven owns, the integration seam for coven's sync + blob
-    /// pipeline. `build_sync_manager` hands this to `coven::SyncManager::new`
-    /// (which reads the synced-table set and the shared register clock from it),
-    /// and coven's blob upload/delete drains take it directly.
+    /// pipeline. The [`CovenHandle`](coven::CovenHandle) is built over it (it reads
+    /// the synced-table set and the shared register clock from it), and coven's
+    /// blob upload/delete drains take it directly.
     pub fn coven_db(&self) -> &coven::Database {
         &self.inner.coven_db
     }
@@ -2376,6 +2369,58 @@ impl Database {
                 conn.query_row(&sql, params![id], |row| {
                     Ok(row_to_library_image(row, image_type.clone()))
                 })
+                .optional()
+                .map_err(DbError::from)
+            })
+            .await
+    }
+
+    /// The `_updated_at` version of each given release's `covers` row, for the ids
+    /// that have one. The version a cover [`ImageRef`](crate::album_detail::ImageRef)
+    /// carries: it moves when the cover bytes change (the upsert bumps it), so the
+    /// UI's `(id, version)` cache key and the `AlbumUpdated` re-render fire. Ids
+    /// with no cover row are absent from the map.
+    pub async fn cover_versions(
+        &self,
+        release_ids: &[String],
+    ) -> Result<HashMap<String, String>, DbError> {
+        if release_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let ids = release_ids.to_vec();
+        self.inner
+            .coven_db
+            .call(move |conn| {
+                let placeholders = (0..ids.len()).map(|_| "?").collect::<Vec<_>>().join(",");
+                let sql =
+                    format!("SELECT id, _updated_at FROM covers WHERE id IN ({placeholders})");
+                let mut stmt = conn.prepare(&sql)?;
+                let rows = stmt
+                    .query_map(coven::rusqlite::params_from_iter(ids.iter()), |row| {
+                        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                    })?;
+                let mut map = HashMap::new();
+                for row in rows {
+                    let (id, version) = row?;
+                    map.insert(id, version);
+                }
+                Ok(map)
+            })
+            .await
+    }
+
+    /// The `_updated_at` version of one release's `covers` row, or `None` when it
+    /// has no cover. The single-id form of [`cover_versions`](Self::cover_versions).
+    pub async fn cover_version(&self, release_id: &str) -> Result<Option<String>, DbError> {
+        let release_id = release_id.to_string();
+        self.inner
+            .coven_db
+            .call(move |conn| {
+                conn.query_row(
+                    "SELECT _updated_at FROM covers WHERE id = ?",
+                    params![release_id],
+                    |row| row.get::<_, String>(0),
+                )
                 .optional()
                 .map_err(DbError::from)
             })

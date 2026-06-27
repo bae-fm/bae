@@ -302,7 +302,6 @@ impl PlaybackTestFixture {
             std::sync::Arc::new(bae_core::clock::SystemClock),
             std::sync::Arc::new(bae_core::id_provider::UuidProvider),
             tokio::runtime::Handle::current(),
-            None,
         );
         let runtime_handle = tokio::runtime::Handle::current();
 

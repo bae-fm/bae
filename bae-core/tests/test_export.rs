@@ -63,7 +63,6 @@ impl ExportFixture {
             Arc::new(bae_core::clock::SystemClock),
             Arc::new(bae_core::id_provider::UuidProvider),
             tokio::runtime::Handle::current(),
-            None,
         );
         let cloud = Arc::new(MockCloudHome::new());
         mgr.set_cloud_override(cloud.clone(), EncryptionService::new_with_key(&[7u8; 32]));
