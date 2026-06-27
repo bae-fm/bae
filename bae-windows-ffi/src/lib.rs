@@ -715,8 +715,8 @@ pub unsafe extern "C" fn bae_export_track(
     }
 }
 
-/// One of a release's local image files, offered as a cover-art choice. The UI
-/// loads the thumbnail from [`bae_image_path`] of `id`.
+/// One of a release's image files, offered as a cover-art choice. The UI loads
+/// the thumbnail with [`bae_gallery_image_bytes`] of the release id and `id`.
 #[derive(Serialize)]
 struct FfiReleaseImage {
     id: String,
@@ -1413,15 +1413,34 @@ pub unsafe extern "C" fn bae_album_count(handle: *const BaeHandle) -> i64 {
     }
 }
 
-/// One album in a library page, as the WinUI grid renders it. `cover_path` is a
-/// cache-bustable identifier (`<path>#v=<mtime_secs>`) the C# `CoverImage.Load`
-/// resolves, or null when the album has no cover cached on disk.
+/// A reference to a host-provided library image (a cover): the image id plus a
+/// content version. The C# side fetches the bytes by id via `bae_image_bytes` and
+/// caches the decoded `BitmapImage` under `(id, version)`; the version moves when
+/// the cover changes. Mirrors `bae_core::album_detail::ImageRef`.
+#[derive(Serialize)]
+struct FfiImageRef {
+    id: String,
+    version: String,
+}
+
+impl FfiImageRef {
+    fn from_core(r: bae_core::album_detail::ImageRef) -> Self {
+        Self {
+            id: r.id,
+            version: r.version,
+        }
+    }
+}
+
+/// One album in a library page, as the WinUI grid renders it. `cover` is the
+/// album's cover reference (image id + version) the C# fetches bytes for, or null
+/// when the album has no cover.
 #[derive(Serialize)]
 struct FfiAlbum {
     id: String,
     title: String,
     artist: String,
-    cover_path: Option<String>,
+    cover: Option<FfiImageRef>,
 }
 
 /// Serialize `value` to a JSON C string the caller frees with [`bae_string_free`],
@@ -1507,14 +1526,14 @@ pub unsafe extern "C" fn bae_album_page(
             id: album.id,
             title: album.title,
             artist: album.artist_names,
-            cover_path: album.cover_path,
+            cover: album.cover.map(FfiImageRef::from_core),
         })
         .collect();
     json_cstring(&page)
 }
 
 /// Album results for `query` as the same JSON shape as [`bae_album_page`]
-/// (`{id, title, artist, cover_path}`), so the grid renders them directly.
+/// (`{id, title, artist, cover}`), so the grid renders them directly.
 /// Returns null on error. Free the result with [`bae_string_free`].
 ///
 /// # Safety
@@ -1542,28 +1561,30 @@ pub unsafe extern "C" fn bae_search(handle: *const BaeHandle, query: *const c_ch
     let albums: Vec<FfiAlbum> = results
         .albums
         .into_iter()
-        .map(|album| {
-            let cover_path = manager.image_path_if_exists(&album.primary_release_id);
-            FfiAlbum {
-                id: album.id,
-                title: album.title,
-                artist: album.artist_name,
-                cover_path,
-            }
+        .map(|album| FfiAlbum {
+            id: album.id,
+            title: album.title,
+            artist: album.artist_name,
+            cover: album.cover.map(FfiImageRef::from_core),
         })
         .collect();
     json_cstring(&albums)
 }
 
-/// One image in a release's gallery (lightbox).
+/// One image in a release's gallery (lightbox). Read by id: the C# side fetches
+/// the cover slot's bytes with `bae_image_bytes(id)` and a release-file image's
+/// bytes with `bae_gallery_image_bytes(release_id, id)`. `cover_version` is the
+/// discriminator — `Some` for the cover slot, null for a release-file image.
 #[derive(Serialize)]
 struct FfiGalleryItem {
+    id: String,
     label: String,
-    path: String,
+    cover_version: Option<String>,
 }
 
 /// A release's gallery images (cover + artwork) as a JSON array of
-/// `{label, path}`, or null on error / not found. Free with [`bae_string_free`].
+/// `{id, label, cover_version}`, or null on error / not found. Each item is read
+/// by id (no path). Free with [`bae_string_free`].
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
@@ -1600,14 +1621,10 @@ pub unsafe extern "C" fn bae_gallery(
     let items: Vec<FfiGalleryItem> = detail
         .gallery_items
         .into_iter()
-        // Local images only on Windows (the desktop pins releases on view); a
-        // cloud-only item has no local path here, so it's dropped rather than
-        // shown as a blank entry.
-        .filter_map(|item| {
-            item.local_path.map(|path| FfiGalleryItem {
-                label: item.label,
-                path,
-            })
+        .map(|item| FfiGalleryItem {
+            id: item.id,
+            label: item.label,
+            cover_version: item.cover_version,
         })
         .collect();
     json_cstring(&items)
@@ -2182,7 +2199,7 @@ struct FfiAlbumDetail {
     artist: String,
     /// The release to show first — the user's primary, or the first.
     primary_release_id: String,
-    cover_path: Option<String>,
+    cover: Option<FfiImageRef>,
     releases: Vec<FfiRelease>,
 }
 
@@ -2257,7 +2274,7 @@ pub unsafe extern "C" fn bae_album_detail(
         title: detail.album.title,
         artist: detail.artist_names,
         primary_release_id: detail.primary_release_id,
-        cover_path: detail.cover_path,
+        cover: detail.cover.map(FfiImageRef::from_core),
         releases,
     };
     json_cstring(&out)
@@ -2867,39 +2884,115 @@ pub unsafe extern "C" fn bae_subscribe(handle: *const BaeHandle, callback: Event
     });
 }
 
-/// Cache-bustable identifier for a library image id, or null if it isn't
-/// cached: the on-disk path with the file's modification time appended as
-/// `#v=<mtime_secs>`. The version changes when the cover does, so the WinUI
-/// bitmap cache key changes; `CoverImage.Load` strips the `#v=…` suffix before
-/// opening the file. Free with [`bae_string_free`].
+/// A byte buffer handed across the FFI: a pointer and its length. An empty buffer
+/// (`ptr` null, `len` 0) means "no bytes" (no such image, or a read error already
+/// logged). The C# side copies the bytes into a managed stream, then frees the
+/// buffer with [`bae_bytes_free`]. Never partially own it: free exactly what a
+/// bytes call returned.
+#[repr(C)]
+pub struct BaeBytes {
+    ptr: *mut u8,
+    len: usize,
+}
+
+impl BaeBytes {
+    fn empty() -> Self {
+        Self {
+            ptr: std::ptr::null_mut(),
+            len: 0,
+        }
+    }
+
+    fn from_vec(bytes: Vec<u8>) -> Self {
+        let boxed = bytes.into_boxed_slice();
+        let len = boxed.len();
+        let ptr = Box::into_raw(boxed) as *mut u8;
+        Self { ptr, len }
+    }
+}
+
+/// Free a [`BaeBytes`] returned by a bytes call (`bae_image_bytes` /
+/// `bae_gallery_image_bytes`). A no-op for an empty buffer.
+///
+/// # Safety
+/// `bytes` must be a value returned by a bytes call and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_bytes_free(bytes: BaeBytes) {
+    if !bytes.ptr.is_null() {
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+            bytes.ptr, bytes.len,
+        )));
+    }
+}
+
+/// Bytes of a host-provided library image (a cover) for `image_id`, read through
+/// coven's locality-aware read. An empty buffer when no such image exists or the
+/// read fails (logged). The C# side decodes a `BitmapImage` from the bytes and
+/// caches it under the `(id, version)` it already holds. Free with
+/// [`bae_bytes_free`].
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
 /// `image_id` must be a valid NUL-terminated UTF-8 C string.
 #[no_mangle]
-pub unsafe extern "C" fn bae_image_path(
+pub unsafe extern "C" fn bae_image_bytes(
     handle: *const BaeHandle,
     image_id: *const c_char,
-) -> *mut c_char {
+) -> BaeBytes {
     let Some(handle) = handle.as_ref() else {
-        tracing::error!("bae_image_path: null handle");
-        return std::ptr::null_mut();
+        tracing::error!("bae_image_bytes: null handle");
+        return BaeBytes::empty();
     };
     let Some(image_id) = cstr(image_id) else {
-        tracing::error!("bae_image_path: null or non-UTF-8 image_id");
-        return std::ptr::null_mut();
+        tracing::error!("bae_image_bytes: null or non-UTF-8 image_id");
+        return BaeBytes::empty();
     };
-    let Some(identifier) = handle
-        .0
-        .services
-        .library_manager()
-        .image_path_if_exists(&image_id)
-    else {
-        return std::ptr::null_mut();
+    let app = &handle.0;
+    match app
+        .runtime
+        .block_on(app.services.library_manager().read_image_blob(&image_id))
+    {
+        Ok(Some(bytes)) => BaeBytes::from_vec(bytes),
+        Ok(None) => BaeBytes::empty(),
+        Err(e) => {
+            tracing::error!("bae_image_bytes failed for {image_id}: {e}");
+            BaeBytes::empty()
+        }
+    }
+}
+
+/// Bytes of a release-file gallery image (`release_id`, `file_id`), read through
+/// coven (fetched and decrypted from the cloud when not on disk). An empty buffer
+/// on error (logged). Free with [`bae_bytes_free`].
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
+/// `release_id` and `file_id` must be valid NUL-terminated UTF-8 C strings.
+#[no_mangle]
+pub unsafe extern "C" fn bae_gallery_image_bytes(
+    handle: *const BaeHandle,
+    release_id: *const c_char,
+    file_id: *const c_char,
+) -> BaeBytes {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_gallery_image_bytes: null handle");
+        return BaeBytes::empty();
     };
-    match CString::new(identifier) {
-        Ok(cstring) => cstring.into_raw(),
-        Err(_) => std::ptr::null_mut(),
+    let (Some(release_id), Some(file_id)) = (cstr(release_id), cstr(file_id)) else {
+        tracing::error!("bae_gallery_image_bytes: null or non-UTF-8 id");
+        return BaeBytes::empty();
+    };
+    let app = &handle.0;
+    match app.runtime.block_on(
+        app.services
+            .library_manager()
+            .load_gallery_image(&release_id, &file_id),
+    ) {
+        Ok(bytes) => BaeBytes::from_vec(bytes),
+        Err(e) => {
+            tracing::error!("bae_gallery_image_bytes failed for {release_id}/{file_id}: {e}");
+            BaeBytes::empty()
+        }
     }
 }
 
