@@ -78,16 +78,23 @@ struct AlbumDetailView: View {
                         // release id + file id (downloaded on demand when cloud-
                         // only). The lightbox picks the byte source per item.
                         lightboxItems: selectedDetail.galleryItems.map { item in
-                            LightboxItem(
-                                id: item.id,
-                                label: item.label,
-                                source: item.coverVersion.map {
-                                    .libraryCover(imageId: item.id, version: $0)
-                                }
-                                    ?? .releaseFile(
+                            let source: LightboxItem.Source =
+                                switch item.source {
+                                case .cover(let image):
+                                    .libraryCover(
+                                        imageId: image.id,
+                                        version: image.version
+                                    )
+                                case .releaseFile:
+                                    .releaseFile(
                                         releaseId: selectedReleaseId,
                                         fileId: item.id
                                     )
+                                }
+                            return LightboxItem(
+                                id: item.id,
+                                label: item.label,
+                                source: source
                             )
                         },
                         releaseCursor: releaseCursorBinding(summary: summary),

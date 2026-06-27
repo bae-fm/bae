@@ -116,16 +116,21 @@ private struct GalleryPage: View {
     private var failed = false
 
     var body: some View {
-        Group {
+        // All states share one stable view identity: the placeholders stay
+        // mounted and toggle by opacity, and the image mounts once when its
+        // bytes arrive (it never unmounts — `bytes` doesn't revert to nil for a
+        // page). Conditionally swapping children would churn the pager's layout.
+        ZStack {
             if let bytes {
                 ZoomableGalleryImage(source: .data(bytes))
             }
-            else if failed {
-                GalleryFailedView()
-            }
-            else {
-                ProgressView().tint(.white)
-            }
+            GalleryFailedView()
+                .opacity(failed ? 1 : 0)
+                .allowsHitTesting(failed)
+            ProgressView()
+                .tint(.white)
+                .opacity(bytes == nil && !failed ? 1 : 0)
+                .allowsHitTesting(false)
         }
         .task(id: item.id) {
             do {

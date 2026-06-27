@@ -1571,20 +1571,30 @@ pub unsafe extern "C" fn bae_search(handle: *const BaeHandle, query: *const c_ch
     json_cstring(&albums)
 }
 
-/// One image in a release's gallery (lightbox). Read by id: the C# side fetches
-/// the cover slot's bytes with `bae_image_bytes(id)` and a release-file image's
-/// bytes with `bae_gallery_image_bytes(release_id, id)`. `cover_version` is the
-/// discriminator — `Some` for the cover slot, null for a release-file image.
+/// Which byte source a gallery slot is read from, as a `kind`-tagged JSON object:
+/// `{"kind":"cover","cover":{id,version}}` (fetch via `bae_image_bytes`) or
+/// `{"kind":"releaseFile"}` (fetch via `bae_gallery_image_bytes`). The C# side
+/// switches on `kind`.
+#[derive(Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+enum FfiGallerySource {
+    Cover { cover: FfiImageRef },
+    ReleaseFile,
+}
+
+/// One image in a release's gallery (lightbox). Read by id: the cover slot via
+/// `bae_image_bytes(id)`, a release-file image via
+/// `bae_gallery_image_bytes(release_id, id)`. `source` names which.
 #[derive(Serialize)]
 struct FfiGalleryItem {
     id: String,
     label: String,
-    cover_version: Option<String>,
+    source: FfiGallerySource,
 }
 
 /// A release's gallery images (cover + artwork) as a JSON array of
-/// `{id, label, cover_version}`, or null on error / not found. Each item is read
-/// by id (no path). Free with [`bae_string_free`].
+/// `{id, label, source}`, or null on error / not found. Each item is read by id
+/// (no path). Free with [`bae_string_free`].
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
@@ -1624,7 +1634,12 @@ pub unsafe extern "C" fn bae_gallery(
         .map(|item| FfiGalleryItem {
             id: item.id,
             label: item.label,
-            cover_version: item.cover_version,
+            source: match item.source {
+                bae_core::album_detail::GallerySource::Cover(image) => FfiGallerySource::Cover {
+                    cover: FfiImageRef::from_core(image),
+                },
+                bae_core::album_detail::GallerySource::ReleaseFile => FfiGallerySource::ReleaseFile,
+            },
         })
         .collect();
     json_cstring(&items)
@@ -2884,22 +2899,45 @@ pub unsafe extern "C" fn bae_subscribe(handle: *const BaeHandle, callback: Event
     });
 }
 
-/// A byte buffer handed across the FFI: a pointer and its length. An empty buffer
-/// (`ptr` null, `len` 0) means "no bytes" (no such image, or a read error already
-/// logged). The C# side copies the bytes into a managed stream, then frees the
-/// buffer with [`bae_bytes_free`]. Never partially own it: free exactly what a
-/// bytes call returned.
+/// How a bytes call ended, so the C# side can tell a legitimately absent image
+/// (show the placeholder) from a failed call (log / surface), neither of which
+/// carries bytes.
+#[repr(u8)]
+pub enum BaeBytesStatus {
+    /// Bytes are present (`ptr`/`len` valid).
+    Ok = 0,
+    /// No such image exists (no bytes — the placeholder is correct).
+    Absent = 1,
+    /// The call failed (bad handle/input, or a read error — already logged).
+    Error = 2,
+}
+
+/// A byte buffer handed across the FFI: a pointer, its length, and a `status`
+/// that distinguishes present bytes from a genuinely absent image and from a
+/// failed call. The C# side copies the bytes into a managed stream, then frees
+/// the buffer with [`bae_bytes_free`]. Never partially own it: free exactly what
+/// a bytes call returned.
 #[repr(C)]
 pub struct BaeBytes {
     ptr: *mut u8,
     len: usize,
+    status: BaeBytesStatus,
 }
 
 impl BaeBytes {
-    fn empty() -> Self {
+    fn absent() -> Self {
         Self {
             ptr: std::ptr::null_mut(),
             len: 0,
+            status: BaeBytesStatus::Absent,
+        }
+    }
+
+    fn error() -> Self {
+        Self {
+            ptr: std::ptr::null_mut(),
+            len: 0,
+            status: BaeBytesStatus::Error,
         }
     }
 
@@ -2907,12 +2945,16 @@ impl BaeBytes {
         let boxed = bytes.into_boxed_slice();
         let len = boxed.len();
         let ptr = Box::into_raw(boxed) as *mut u8;
-        Self { ptr, len }
+        Self {
+            ptr,
+            len,
+            status: BaeBytesStatus::Ok,
+        }
     }
 }
 
 /// Free a [`BaeBytes`] returned by a bytes call (`bae_image_bytes` /
-/// `bae_gallery_image_bytes`). A no-op for an empty buffer.
+/// `bae_gallery_image_bytes`). A no-op when it carries no bytes.
 ///
 /// # Safety
 /// `bytes` must be a value returned by a bytes call and not yet freed.
@@ -2926,9 +2968,10 @@ pub unsafe extern "C" fn bae_bytes_free(bytes: BaeBytes) {
 }
 
 /// Bytes of a host-provided library image (a cover) for `image_id`, read through
-/// coven's locality-aware read. An empty buffer when no such image exists or the
-/// read fails (logged). The C# side decodes a `BitmapImage` from the bytes and
-/// caches it under the `(id, version)` it already holds. Free with
+/// coven's locality-aware read. The `status` distinguishes present bytes,
+/// `Absent` (no such image — the placeholder is correct), and `Error` (bad
+/// input or a read failure, logged). The C# side decodes a `BitmapImage` from the
+/// bytes and caches it under the `(id, version)` it already holds. Free with
 /// [`bae_bytes_free`].
 ///
 /// # Safety
@@ -2941,11 +2984,11 @@ pub unsafe extern "C" fn bae_image_bytes(
 ) -> BaeBytes {
     let Some(handle) = handle.as_ref() else {
         tracing::error!("bae_image_bytes: null handle");
-        return BaeBytes::empty();
+        return BaeBytes::error();
     };
     let Some(image_id) = cstr(image_id) else {
         tracing::error!("bae_image_bytes: null or non-UTF-8 image_id");
-        return BaeBytes::empty();
+        return BaeBytes::error();
     };
     let app = &handle.0;
     match app
@@ -2953,17 +2996,18 @@ pub unsafe extern "C" fn bae_image_bytes(
         .block_on(app.services.library_manager().read_image_blob(&image_id))
     {
         Ok(Some(bytes)) => BaeBytes::from_vec(bytes),
-        Ok(None) => BaeBytes::empty(),
+        Ok(None) => BaeBytes::absent(),
         Err(e) => {
             tracing::error!("bae_image_bytes failed for {image_id}: {e}");
-            BaeBytes::empty()
+            BaeBytes::error()
         }
     }
 }
 
 /// Bytes of a release-file gallery image (`release_id`, `file_id`), read through
-/// coven (fetched and decrypted from the cloud when not on disk). An empty buffer
-/// on error (logged). Free with [`bae_bytes_free`].
+/// coven (fetched and decrypted from the cloud when not on disk). The `status` is
+/// `Ok` with bytes or `Error` on a bad input / read failure (logged) — a
+/// requested gallery image is never `Absent`. Free with [`bae_bytes_free`].
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
@@ -2976,11 +3020,11 @@ pub unsafe extern "C" fn bae_gallery_image_bytes(
 ) -> BaeBytes {
     let Some(handle) = handle.as_ref() else {
         tracing::error!("bae_gallery_image_bytes: null handle");
-        return BaeBytes::empty();
+        return BaeBytes::error();
     };
     let (Some(release_id), Some(file_id)) = (cstr(release_id), cstr(file_id)) else {
         tracing::error!("bae_gallery_image_bytes: null or non-UTF-8 id");
-        return BaeBytes::empty();
+        return BaeBytes::error();
     };
     let app = &handle.0;
     match app.runtime.block_on(
@@ -2991,7 +3035,7 @@ pub unsafe extern "C" fn bae_gallery_image_bytes(
         Ok(bytes) => BaeBytes::from_vec(bytes),
         Err(e) => {
             tracing::error!("bae_gallery_image_bytes failed for {release_id}/{file_id}: {e}");
-            BaeBytes::empty()
+            BaeBytes::error()
         }
     }
 }

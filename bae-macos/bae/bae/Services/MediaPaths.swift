@@ -6,7 +6,7 @@ import Foundation
 /// content `version`; a `releaseFile` (a release's own image file) is read by
 /// release id + file id via `fetchGalleryImage`, fetched from the release's
 /// cloud home when it isn't on disk here. The discriminator that picks the byte
-/// source mirrors `BridgeGalleryItem.coverVersion`.
+/// source mirrors `BridgeGallerySource`.
 enum LibraryImageSource: Equatable, Hashable, Sendable {
     /// `version` is nil for now-playing/queue covers, which carry only an id;
     /// those cache by id alone, accepted on those single/small surfaces.

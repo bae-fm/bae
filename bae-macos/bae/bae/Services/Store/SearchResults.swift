@@ -17,14 +17,14 @@ struct AlbumSearchResult: Equatable, Identifiable {
     let title: String
     let year: Int32?
     let artistName: String
-    let cover: ImageRef?
+    let cover: BridgeImageRef?
 
     init(bridge: BridgeAlbumSearchResult) {
         id = bridge.id
         title = bridge.title
         year = bridge.year
         artistName = bridge.artistName
-        cover = bridge.cover.map(ImageRef.init(bridge:))
+        cover = bridge.cover
     }
 }
 

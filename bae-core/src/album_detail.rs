@@ -285,22 +285,27 @@ pub struct ImageRef {
     pub version: String,
 }
 
+/// Which byte source a gallery slot is read from. The release's own cover is
+/// read by image id (`read_image_blob`), composing the [`ImageRef`] (id +
+/// version) so the UI caches it under `(id, version)`; a release-file image is
+/// read by file id through the gallery read (`fetch_gallery_image`).
+#[derive(Debug, Clone)]
+pub enum GallerySource {
+    Cover(ImageRef),
+    ReleaseFile,
+}
+
 /// One slot in a release's lightbox gallery. Every slot is read by id — there is
-/// no filesystem path — and `cover_version` discriminates which byte source the
-/// UI calls.
+/// no filesystem path — and `source` names which byte source the UI calls.
 #[derive(Debug, Clone)]
 pub struct GalleryItem {
-    /// The image id: the cover image id (the release id) when this is the cover
-    /// slot, otherwise the release-file id.
+    /// Stable list identity: `"cover"` for the cover slot, otherwise the
+    /// release-file id (also the id passed to `fetch_gallery_image`).
     pub id: String,
     /// Display label: `"Cover"` or the file's original filename.
     pub label: String,
-    /// `Some(version)` marks the release's own cover: the UI fetches its bytes by
-    /// image id (`read_image_blob`) and caches them under `(id, version)`. `None`
-    /// marks a release-file image: the UI fetches its bytes by file id through the
-    /// gallery read (`fetch_gallery_image`). The discriminator the lightbox uses to
-    /// pick the byte source.
-    pub cover_version: Option<String>,
+    /// Which byte source to read this slot from.
+    pub source: GallerySource,
 }
 
 /// Full album detail: album + releases (with tracks, files, gallery).

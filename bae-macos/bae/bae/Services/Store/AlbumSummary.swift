@@ -20,7 +20,7 @@ final class AlbumSummary: Identifiable {
     /// no cover is cached. Carried here so a cover change moves an observed
     /// field and the grid card re-renders; `ImageView` fetches the bytes by id
     /// and caches the decoded image under the version.
-    var cover: ImageRef?
+    var cover: BridgeImageRef?
 
     init(from bridge: BridgeAlbum) {
         id = bridge.id
@@ -30,7 +30,7 @@ final class AlbumSummary: Identifiable {
         artistNames = bridge.artistNames
         releaseIds = bridge.releaseIds
         primaryReleaseId = bridge.primaryReleaseId
-        cover = bridge.cover.map(ImageRef.init(bridge:))
+        cover = bridge.cover
     }
 
     /// Per-field conditional assignment. Only fields that changed
@@ -54,9 +54,8 @@ final class AlbumSummary: Identifiable {
         if primaryReleaseId != bridge.primaryReleaseId {
             primaryReleaseId = bridge.primaryReleaseId
         }
-        let cover = bridge.cover.map(ImageRef.init(bridge:))
-        if self.cover != cover {
-            self.cover = cover
+        if cover != bridge.cover {
+            cover = bridge.cover
         }
     }
 }

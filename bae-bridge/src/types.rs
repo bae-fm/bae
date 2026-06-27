@@ -456,19 +456,25 @@ pub fn bridge_cloud_provider_label_key(provider: Option<BridgeCloudProvider>) ->
     }
 }
 
+/// Which byte source a gallery slot is read from. `Cover` carries the cover's
+/// `BridgeImageRef` (id + version): the UI fetches its bytes via
+/// `fetch_image_bytes` and caches under `(id, version)`. `ReleaseFile` is read by
+/// file id via `fetch_gallery_image`. The lightbox matches on the variant.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeGallerySource {
+    Cover { image: BridgeImageRef },
+    ReleaseFile,
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeGalleryItem {
-    /// The image id: the cover image id (the release id) for the cover slot, else
-    /// the release-file id.
+    /// Stable list identity: `"cover"` for the cover slot, else the release-file
+    /// id (also the id passed to `fetch_gallery_image`).
     pub id: String,
     /// Display label: "Cover" or the file's original filename.
     pub label: String,
-    /// `Some(version)` marks the release's own cover: the UI fetches its bytes by
-    /// image id via `fetch_image_bytes` and caches under `(id, version)`. `None`
-    /// marks a release-file image: the UI fetches its bytes by file id via
-    /// `fetch_gallery_image`. The discriminator the lightbox uses to pick the byte
-    /// source.
-    pub cover_version: Option<String>,
+    /// Which byte source to read this slot from.
+    pub source: BridgeGallerySource,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

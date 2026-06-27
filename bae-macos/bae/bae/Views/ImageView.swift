@@ -191,7 +191,7 @@ extension ImageView {
     /// (no cover) renders the default placeholder, so callers don't wrap the
     /// view in their own `if let` / `Theme.placeholder` check.
     init(
-        imageRef: ImageRef?,
+        imageRef: BridgeImageRef?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat
     ) {

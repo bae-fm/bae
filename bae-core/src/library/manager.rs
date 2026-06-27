@@ -1508,13 +1508,19 @@ impl LibraryManager {
                 return;
             }
         };
-        let covers = match self.cover_refs(&raw_album.release_ids).await {
-            Ok(covers) => covers,
-            Err(e) => {
-                warn!("emit_release_added: cover lookup failed for album {album_id}: {e}");
-                return;
-            }
-        };
+        // The release/album rows are already committed, so the event must fire for
+        // them. A cover lookup failure degrades to no covers (the UI lazily fetches
+        // them by id) — never drops the event for committed state.
+        let covers = self
+            .cover_refs(&raw_album.release_ids)
+            .await
+            .unwrap_or_else(|e| {
+                warn!(
+                    "emit_release_added: cover lookup failed for album {album_id}: {e}; \
+                 emitting without covers"
+                );
+                HashMap::new()
+            });
         let album = resolve_album_summary(raw_album, |rid| covers.get(rid).cloned());
         self.emit(LibraryEvent::ReleaseAdded { album, release });
     }
@@ -1539,17 +1545,21 @@ impl LibraryManager {
     pub async fn emit_release_removed(&self, album_id: &str, release_id: &str) {
         // Ship the parent album's post-removal summary so the reducer interns it
         // rather than reading the old release list to patch it — a read-to-write
-        // that goes stale on the sync path, where no AlbumUpdated co-fires. None
-        // when the album itself was removed with its last release (so
-        // resolve_album_summary, which requires >=1 release, is not called).
+        // that goes stale on the sync path, where no AlbumUpdated co-fires. `None`
+        // means strictly "the album itself was removed with its last release"; a
+        // transient cover-lookup failure must NOT misreport the album as gone, so
+        // it degrades to a summary with no covers (the UI lazily fetches them).
         let album = match self.database.find_album_summary(album_id).await {
-            Ok(Some(raw)) => match self.cover_refs(&raw.release_ids).await {
-                Ok(covers) => Some(resolve_album_summary(raw, |rid| covers.get(rid).cloned())),
-                Err(e) => {
-                    warn!("emit_release_removed: cover lookup failed for album {album_id}: {e}");
-                    None
-                }
-            },
+            Ok(Some(raw)) => {
+                let covers = self.cover_refs(&raw.release_ids).await.unwrap_or_else(|e| {
+                    warn!(
+                        "emit_release_removed: cover lookup failed for album {album_id}: {e}; \
+                         emitting without covers"
+                    );
+                    HashMap::new()
+                });
+                Some(resolve_album_summary(raw, |rid| covers.get(rid).cloned()))
+            }
             Ok(None) => None,
             Err(e) => {
                 warn!("emit_release_removed: DB error for album {album_id}: {e}");
@@ -1884,6 +1894,26 @@ impl LibraryManager {
         ))
     }
 
+    /// The override-aware storage for a test that injected a mock cloud home via
+    /// `set_cloud_override`: `Some(storage)` when an override is set (the read/pin
+    /// paths use it because the handle builds its storage from `Config`, not the
+    /// override), `None` otherwise (production routes through the handle). The one
+    /// place the read/pin test branches build their storage.
+    #[cfg(any(test, feature = "test-utils"))]
+    fn test_override_storage(
+        &self,
+    ) -> Result<
+        Option<coven::sync::cloud_storage::CloudSyncStorage>,
+        coven::blob::cache::BlobCacheError,
+    > {
+        if self.test_overrides.cloud.is_none() {
+            return Ok(None);
+        }
+        self.create_sync_storage()
+            .map(Some)
+            .map_err(|e| coven::blob::cache::BlobCacheError::Io(e.to_string()))
+    }
+
     /// The coven `BlobRef` for a remote release file's audio blob — its identity
     /// in coven's cache (and the cloud on a miss). `cloud_path` is the row's value
     /// RELATIVE to the `release_files` namespace coven prepends. A release file is
@@ -1933,33 +1963,54 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Store a bae-produced cover blob's bytes in coven's local store
-    /// (`storage/local/covers/<release_id>`) — a host-provided Local blob. coven
-    /// owns the copy from here: it serves it locally while the release is Local
-    /// and moves it into the cache when the release is made Remote. The caller
-    /// writes the `covers` row separately (its readable cloud_path, file size).
+    /// Store a bae-produced host-provided image blob's bytes in coven's local
+    /// store (`storage/local/<namespace>/<id>`) — a host-provided Local blob.
+    /// coven owns the copy from here: it serves it locally while the subject is
+    /// Local and moves it into the cache when the subject is made Remote. The
+    /// caller writes the image row separately. `what` names the blob for the error
+    /// (`"cover blob"` / `"artist image blob"`).
+    async fn store_image_blob(
+        &self,
+        namespace: &str,
+        id: &str,
+        bytes: &[u8],
+        what: &str,
+    ) -> Result<(), LibraryError> {
+        self.handle
+            .store_blob(namespace, id, bytes)
+            .await
+            .map_err(|e| LibraryError::Storage(format!("store {what} {id}: {e}")))
+    }
+
+    /// Store a bae-produced cover blob's bytes (`storage/local/covers/<release_id>`).
     pub(crate) async fn store_cover_blob(
         &self,
         release_id: &str,
         bytes: &[u8],
     ) -> Result<(), LibraryError> {
-        self.handle
-            .store_blob(crate::sync::COVERS_NAMESPACE, release_id, bytes)
-            .await
-            .map_err(|e| LibraryError::Storage(format!("store cover blob {release_id}: {e}")))
+        self.store_image_blob(
+            crate::sync::COVERS_NAMESPACE,
+            release_id,
+            bytes,
+            "cover blob",
+        )
+        .await
     }
 
-    /// Store a bae-produced artist-image blob's bytes in coven's local store
-    /// (`storage/local/artist_images/<artist_id>`) — a host-provided Local blob.
+    /// Store a bae-produced artist-image blob's bytes
+    /// (`storage/local/artist_images/<artist_id>`).
     pub(crate) async fn store_artist_image_blob(
         &self,
         artist_id: &str,
         bytes: &[u8],
     ) -> Result<(), LibraryError> {
-        self.handle
-            .store_blob(crate::sync::ARTIST_IMAGES_NAMESPACE, artist_id, bytes)
-            .await
-            .map_err(|e| LibraryError::Storage(format!("store artist image blob {artist_id}: {e}")))
+        self.store_image_blob(
+            crate::sync::ARTIST_IMAGES_NAMESPACE,
+            artist_id,
+            bytes,
+            "artist image blob",
+        )
+        .await
     }
 
     /// Read a release file's whole plaintext through coven's locality-aware read:
@@ -1989,10 +2040,7 @@ impl LibraryManager {
         blob: &coven::blob::BlobRef,
     ) -> Result<Vec<u8>, coven::blob::cache::BlobCacheError> {
         #[cfg(any(test, feature = "test-utils"))]
-        if self.test_overrides.cloud.is_some() {
-            let storage = self
-                .create_sync_storage()
-                .map_err(|e| coven::blob::cache::BlobCacheError::Io(e.to_string()))?;
+        if let Some(storage) = self.test_override_storage()? {
             return coven::blob::cache::read_blob(
                 self.database.coven_db(),
                 &self.library_dir,
@@ -2029,14 +2077,7 @@ impl LibraryManager {
     /// The cover [`ImageRef`] for one release — its image id paired with the
     /// `covers` row's `_updated_at` — or `None` when the release has no cover row.
     async fn cover_ref(&self, release_id: &str) -> Result<Option<ImageRef>, LibraryError> {
-        Ok(self
-            .database
-            .cover_version(release_id)
-            .await?
-            .map(|version| ImageRef {
-                id: release_id.to_string(),
-                version,
-            }))
+        cover_ref_for(&self.database, release_id).await
     }
 
     /// The cover [`ImageRef`] for each of `release_ids` that has a `covers` row,
@@ -2110,10 +2151,7 @@ impl LibraryManager {
         blobs: &[coven::blob::BlobRef],
     ) -> Result<(), coven::blob::cache::BlobCacheError> {
         #[cfg(any(test, feature = "test-utils"))]
-        if self.test_overrides.cloud.is_some() {
-            let storage = self
-                .create_sync_storage()
-                .map_err(|e| coven::blob::cache::BlobCacheError::Io(e.to_string()))?;
+        if let Some(storage) = self.test_override_storage()? {
             return coven::blob::cache::pin(
                 self.database.coven_db(),
                 &self.library_dir,
@@ -2144,10 +2182,10 @@ impl LibraryManager {
 
     /// The blob-path scheme the configured home keys objects under (`Hashed` for an
     /// opaque home, `Plain` for a browsable one) — the single place bae reads it.
-    ///
-    /// coven-gap: feeds the bae-side delete-key derivation
-    /// (`release_file_cloud_key` / `cover_cloud_key`), which the handle exposes no
-    /// method for. Stays until coven surfaces a "cloud key for this blob" query.
+    /// It feeds the bae-side delete-key derivation (`release_file_cloud_key` /
+    /// `cover_cloud_key`): the cloud transitions are coven's, but enqueueing a
+    /// delete against the exact key a blob was uploaded under is bae's, so bae
+    /// derives that key through coven's scheme helper.
     fn blob_path_scheme(&self) -> coven::sync::cloud_storage::BlobPathScheme {
         coven::sync::cloud_storage::BlobPathScheme::for_storage(
             self.config_handle.config().cloud_home.storage,
@@ -3752,6 +3790,22 @@ impl LibraryManager {
     }
 }
 
+/// The cover [`ImageRef`] for one release from its `covers` row's `_updated_at`,
+/// or `None` when it has no cover row. Free function so the manager's `cover_ref`
+/// and the observer's `find_release_detail_with` share one construction.
+pub(crate) async fn cover_ref_for(
+    database: &Database,
+    release_id: &str,
+) -> Result<Option<ImageRef>, LibraryError> {
+    Ok(database
+        .cover_version(release_id)
+        .await?
+        .map(|version| ImageRef {
+            id: release_id.to_string(),
+            version,
+        }))
+}
+
 /// Free-function variant of `LibraryManager::find_release_detail`.
 ///
 /// Used by the manager and by the upload observer (which holds the same
@@ -3777,13 +3831,7 @@ pub(crate) async fn find_release_detail_with(
         .position(|r| r.id == release_id)
         .expect("release belongs to its album");
     let pinned = release_blob_pinned(library_dir, raw.files.first().map(|f| f.id.as_str())).await;
-    let cover = database
-        .cover_version(release_id)
-        .await?
-        .map(|version| ImageRef {
-            id: release_id.to_string(),
-            version,
-        });
+    let cover = cover_ref_for(database, release_id).await?;
     Ok(Some(resolve_release(
         raw,
         &album_artists,
@@ -3808,9 +3856,10 @@ pub(crate) async fn release_blob_pinned(
     let Some(file_id) = any_file_id else {
         return false;
     };
-    // coven-gap: the handle exposes no pin-state/locality query, so this stats
-    // coven's `storage/pinned/` directly. This is a state read, not a byte read —
-    // it stays until coven adds a pin-state query to the handle.
+    // Pin state is coven's cache-folder truth: a release is pinned on this device
+    // iff its representative blob is present under `storage/pinned/`. bae reads
+    // that folder truth directly — pinned-ness is coven cache state, never a bae
+    // row.
     let path = match library_dir.pinned_blob_path(crate::sync::RELEASE_FILES_NAMESPACE, file_id) {
         Ok(path) => path,
         Err(e) => {
@@ -3996,21 +4045,20 @@ pub(crate) fn resolve_release(
     // while Local, its cache while Remote).
     if let Some(cover_ref) = &cover {
         gallery.push(GalleryItem {
-            id: cover_ref.id.clone(),
+            id: "cover".to_string(),
             label: "Cover".to_string(),
-            cover_version: Some(cover_ref.version.clone()),
+            source: crate::album_detail::GallerySource::Cover(cover_ref.clone()),
         });
     }
     // Every image file the release has. coven owns the locality-aware read, so the
     // lightbox fetches an image file's bytes on demand by file id via
     // `fetch_gallery_image` (the user's own file when Local, the cache/cloud when
-    // Remote) — there is no stable bae path for it. `cover_version: None` marks it
-    // as a release-file image, not the cover.
+    // Remote) — there is no stable bae path for it.
     for f in &image_files {
         gallery.push(GalleryItem {
             id: f.id.clone(),
             label: f.original_filename.clone(),
-            cover_version: None,
+            source: crate::album_detail::GallerySource::ReleaseFile,
         });
     }
 
@@ -4665,10 +4713,9 @@ impl LibraryManager {
 
         // Drop coven's local cache copies (both pinned and evictable folders) so a
         // deleted release leaks nothing on disk. The release is Remote here, so its
-        // blobs are cache copies, not external refs. Best-effort.
-        //
-        // coven-gap: the handle exposes no cache-eviction method, so this calls the
-        // free function directly. Stays until coven adds a drop-cached-blob method.
+        // blobs are cache copies, not external refs. Dropping the on-device cache
+        // for a deleted blob is bae's delete-path responsibility. Best-effort: each
+        // drop logs and continues so a cleanup hiccup never aborts the delete.
         for file in files {
             if let Err(e) = coven::blob::cache::drop_cached_blob(
                 &self.library_dir,
@@ -6186,7 +6233,7 @@ mod tests {
             detail
                 .gallery_items
                 .iter()
-                .all(|item| item.cover_version.is_none()),
+                .all(|item| matches!(item.source, crate::album_detail::GallerySource::ReleaseFile)),
             "with no cover row there is no cover slot; the traversal image file is a \
              release-file item, read by id"
         );
@@ -6415,8 +6462,8 @@ mod tests {
             .expect("detail present");
 
         // The lightbox shows every image the release has: the image file is
-        // surfaced as a gallery item read by file id (fetched on demand), marked a
-        // release-file image (`cover_version: None`), not the cover slot.
+        // surfaced as a gallery item read by file id (fetched on demand), a
+        // release-file source, not the cover slot.
         let item = detail
             .gallery_items
             .iter()
@@ -6424,7 +6471,7 @@ mod tests {
             .expect("image file surfaced in gallery");
         assert_eq!(item.label, "back.jpg");
         assert!(
-            item.cover_version.is_none(),
+            matches!(item.source, crate::album_detail::GallerySource::ReleaseFile),
             "a release-file image is read by file id, not as the cover"
         );
     }

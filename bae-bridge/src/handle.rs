@@ -800,7 +800,7 @@ impl AppHandle {
 
     /// Bytes of a release's gallery image (a release-file image), fetched from the
     /// release's cloud home (and decrypted) when it isn't on disk here. The
-    /// lightbox calls this for gallery items whose `cover_version` is `None` — the
+    /// lightbox calls this for gallery items whose source is `ReleaseFile` — the
     /// release's image files. `file_id` is the gallery item's `id`.
     pub async fn fetch_gallery_image(
         &self,
@@ -1761,7 +1761,16 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
     let convert_gallery_item = |g: bae_core::album_detail::GalleryItem| BridgeGalleryItem {
         id: g.id,
         label: g.label,
-        cover_version: g.cover_version,
+        source: match g.source {
+            bae_core::album_detail::GallerySource::Cover(image) => {
+                crate::types::BridgeGallerySource::Cover {
+                    image: crate::types::BridgeImageRef::from_core(image),
+                }
+            }
+            bae_core::album_detail::GallerySource::ReleaseFile => {
+                crate::types::BridgeGallerySource::ReleaseFile
+            }
+        },
     };
     let convert_track = |t: bae_core::album_detail::TrackDetail| BridgeTrack {
         id: t.id,

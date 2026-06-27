@@ -51,7 +51,7 @@ final class ReleaseSummary: Identifiable {
     /// `nil` when none is cached. Keyed on the release id so each release
     /// renders its own art; `ImageView` fetches the bytes by id and caches the
     /// decoded image under the version.
-    var cover: ImageRef?
+    var cover: BridgeImageRef?
     /// Non-nil while a pin/unpin/manage/unmanage transition runs. Set from
     /// `ReleaseTransferProgress`, cleared on `ReleaseTransferEnded`. Not part of
     /// the wire payload — driven entirely by the transfer event stream, so the
@@ -74,7 +74,7 @@ final class ReleaseSummary: Identifiable {
         storageActions = bridge.storageActions
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
-        cover = bridge.cover.map(ImageRef.init(bridge:))
+        cover = bridge.cover
     }
 
     /// Build a summary from the fat `BridgeRelease` wire type. Used by
@@ -89,7 +89,7 @@ final class ReleaseSummary: Identifiable {
         storageActions = bridge.storageActions
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
-        cover = bridge.cover.map(ImageRef.init(bridge:))
+        cover = bridge.cover
     }
 
     /// Per-field conditional assignment. Only fields that changed
@@ -113,9 +113,8 @@ final class ReleaseSummary: Identifiable {
         if totalSize != bridge.totalSize {
             totalSize = bridge.totalSize
         }
-        let cover = bridge.cover.map(ImageRef.init(bridge:))
-        if self.cover != cover {
-            self.cover = cover
+        if cover != bridge.cover {
+            cover = bridge.cover
         }
     }
 
@@ -138,9 +137,8 @@ final class ReleaseSummary: Identifiable {
         if totalSize != bridge.totalSize {
             totalSize = bridge.totalSize
         }
-        let cover = bridge.cover.map(ImageRef.init(bridge:))
-        if self.cover != cover {
-            self.cover = cover
+        if cover != bridge.cover {
+            cover = bridge.cover
         }
     }
 }
