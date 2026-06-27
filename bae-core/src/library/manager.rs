@@ -1276,10 +1276,11 @@ impl LibraryManager {
         &self.ids
     }
 
-    /// The library's on-disk directory, used across platforms: playback resolves
-    /// blob reads under it (see `playback::data_source`), and the import layer
-    /// reads/writes its sibling appdata files (e.g. the watched-folder registry)
-    /// under it.
+    /// The library's on-disk directory. The import layer reads/writes its
+    /// sibling appdata files (e.g. the watched-folder registry) under it.
+    /// Desktop-only: the import module that uses it is gated off iOS/Android,
+    /// and playback reads blobs through coven's handle rather than this path.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn library_dir(&self) -> &LibraryDir {
         &self.library_dir
     }
