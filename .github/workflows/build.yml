@@ -6,7 +6,7 @@ name: Build
 
 on:
   push:
-    branches: [main, develop, windows-native]
+    branches: [main]
   pull_request:
     # Bottom-of-chain only: non-bottom chain PRs target their predecessor branch
     # and get validated once the chain rebases onto main.
