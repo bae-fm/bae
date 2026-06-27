@@ -7,6 +7,7 @@ use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{lookup_by_discid, DiscIdResult, MetadataResult};
 use crate::signals::LookupFailure;
 use std::path::PathBuf;
+use tracing::debug;
 
 /// Compute disc ID and track count for a release already in the library.
 /// Used by the re-identify pipeline.
@@ -91,26 +92,46 @@ pub async fn resolve_release_identity(
     Ok((disc_id, track_count))
 }
 
-/// Local artwork paths for a release, for the re-identify pipeline's
-/// barcode OCR phase. Includes the cover image (if on disk) and every
-/// release-attached image file resolvable to a local path. Cloud-only
-/// images without a cached copy are skipped — barcode OCR can't run on
-/// them and the pipeline silently degrades to "no signals."
+/// Local artwork paths for a release, for the re-identify pipeline's barcode OCR
+/// phase. Includes the release's cover (the bae-produced cover blob, staged to a
+/// real file the OCR reader can open) and every release-attached image file
+/// resolvable to the user's own path. Cloud-only image files without a local copy
+/// are skipped — barcode OCR can't run on them and the pipeline degrades to "no
+/// signals."
+///
+/// The cover blob lives in coven's store (no path bae may compute), so its bytes
+/// come back through `read_image_blob` and are written into a temp dir whose
+/// guard is returned alongside the paths: the caller holds it until the OCR pass
+/// finishes, then the staged file is cleaned up. `None` when the release has no
+/// cover.
 pub async fn resolve_release_artwork_paths(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
-) -> Result<Vec<PathBuf>, String> {
+) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), String> {
     let files = library_manager
         .get_files_for_release(release_id)
         .await
         .map_err(|e| format!("Failed to load release files: {e}"))?;
     let mut paths: Vec<PathBuf> = Vec::new();
 
-    // Cover image, in coven's local store (Local) or cache (Remote). Absent for
-    // releases without a cover; skip silently.
-    if let Some(cover_path) = library_manager.cover_blob_path(release_id) {
-        paths.push(cover_path);
-    }
+    // The release's cover, read through coven and staged to a real file the OCR
+    // reader opens. Absent for releases without a cover.
+    let cover_staging = match library_manager.read_image_blob(release_id).await {
+        Ok(Some(bytes)) => {
+            let dir = tempfile::tempdir()
+                .map_err(|e| format!("Failed to create cover staging dir: {e}"))?;
+            let cover_path = dir.path().join("cover");
+            std::fs::write(&cover_path, &bytes)
+                .map_err(|e| format!("Failed to stage cover for OCR: {e}"))?;
+            paths.push(cover_path);
+            Some(dir)
+        }
+        Ok(None) => {
+            debug!("artwork OCR: release {release_id} has no cover blob; skipping cover staging");
+            None
+        }
+        Err(e) => return Err(format!("Failed to read cover blob: {e}")),
+    };
 
     // Release-attached image files (in-folder artwork like cover.jpg), resolved
     // to the user's own file via coven's external ref (Local releases only).
@@ -129,7 +150,7 @@ pub async fn resolve_release_artwork_paths(
         }
     }
 
-    Ok(paths)
+    Ok((paths, cover_staging))
 }
 
 /// Look up a disc ID on MusicBrainz and annotate matches with library
@@ -286,7 +307,6 @@ mod tests {
             Arc::new(crate::clock::SystemClock),
             Arc::new(crate::id_provider::UuidProvider),
             tokio::runtime::Handle::current(),
-            None,
         );
 
         let album = DbAlbum {

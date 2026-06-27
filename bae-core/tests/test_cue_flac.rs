@@ -423,7 +423,6 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     let release_id_key = seed_discogs_test_release(create_test_discogs_release());
     let import_handle =
@@ -497,7 +496,6 @@ impl CueFlacCaptureFixture {
             std::sync::Arc::new(bae_core::clock::SystemClock),
             std::sync::Arc::new(bae_core::id_provider::UuidProvider),
             tokio::runtime::Handle::current(),
-            None,
         );
         let runtime_handle = tokio::runtime::Handle::current();
 

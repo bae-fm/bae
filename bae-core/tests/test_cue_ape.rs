@@ -139,7 +139,6 @@ async fn test_cue_ape_records_correct_durations() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
 
     let runtime_handle = tokio::runtime::Handle::current();
@@ -326,7 +325,6 @@ async fn test_cue_ape_records_track_timing() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
 
     let runtime_handle = tokio::runtime::Handle::current();
@@ -449,7 +447,6 @@ impl CueApeTestFixture {
             std::sync::Arc::new(bae_core::clock::SystemClock),
             std::sync::Arc::new(bae_core::id_provider::UuidProvider),
             tokio::runtime::Handle::current(),
-            None,
         );
         let runtime_handle = tokio::runtime::Handle::current();
 
@@ -1465,7 +1462,6 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
 
     // Discogs multi-disc tracklist: positions "1-1".."1-3", "2-1".."2-3".

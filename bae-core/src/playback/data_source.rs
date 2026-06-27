@@ -156,7 +156,7 @@ impl AudioDataReader for LocalReader {
 }
 
 /// Create the playback reader for a release file. coven owns locality: one reader
-/// streams every range through [`coven::blob::cache::open_blob_stream`], which
+/// streams every range through [`coven::CovenHandle::open_blob_stream`], which
 /// resolves *where the bytes are* per read — the user's own file (a Local
 /// user-provided blob's external ref), coven's local store (a Local host-provided
 /// blob), `storage/pinned`/`storage/cache` on a Remote hit, or the cloud on a
@@ -178,9 +178,7 @@ pub fn create_audio_reader(
         fill: coven::blob::CacheFill::CacheLazy,
     };
     Box::new(CovenBlobReader {
-        db: library_manager.coven_database().clone(),
-        library_dir: library_manager.library_dir().clone(),
-        storage: library_manager.blob_storage(),
+        handle: library_manager.handle().clone(),
         blob,
         source_size,
     })
@@ -191,9 +189,7 @@ pub fn create_audio_reader(
 /// the local store, the cache, or the cloud (decrypting as needed), so playback
 /// never branches on locality.
 pub struct CovenBlobReader {
-    db: coven::Database,
-    library_dir: coven::library_dir::LibraryDir,
-    storage: Box<dyn coven::sync::storage::SyncStorage>,
+    handle: coven::CovenHandle,
     blob: coven::blob::BlobRef,
     source_size: u64,
 }
@@ -205,9 +201,7 @@ impl AudioDataReader for CovenBlobReader {
         progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
     ) {
         let CovenBlobReader {
-            db,
-            library_dir,
-            storage,
+            handle,
             blob,
             source_size,
         } = *self;
@@ -216,15 +210,7 @@ impl AudioDataReader for CovenBlobReader {
         tokio::spawn(async move {
             info!("CovenBlobReader: source_size={source_size}");
             let result = fill_buffer_on_demand(buffer.clone(), wake, |src_off, len| {
-                let fut = coven::blob::cache::open_blob_stream(
-                    &db,
-                    &library_dir,
-                    storage.as_ref(),
-                    &blob,
-                    source_size,
-                    src_off,
-                    len,
-                );
+                let fut = handle.open_blob_stream(&blob, source_size, src_off, len);
                 async move { fut.await.map_err(|e| e.to_string()) }
             })
             .await;

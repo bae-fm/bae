@@ -96,7 +96,6 @@ async fn setup_manager(
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     let cloud = Arc::new(MockCloudHome::new());
     let enc = EncryptionService::new_with_key(&[9u8; 32]);

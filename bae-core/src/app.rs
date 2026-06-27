@@ -186,7 +186,6 @@ fn bootstrap_inner(
         Arc::clone(&clock),
         ids,
         runtime.handle().clone(),
-        None,
     );
 
     // Configure coven's per-namespace cache budgets (device-local, idempotent):

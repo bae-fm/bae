@@ -89,7 +89,7 @@ mod tests {
             artist_names: artist_names.to_string(),
             release_ids: vec![format!("{id}-r")],
             primary_release_id: format!("{id}-r"),
-            cover_path: None,
+            cover: None,
         }
     }
 

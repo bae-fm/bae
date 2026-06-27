@@ -67,7 +67,6 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
         Arc::new(bae_core::clock::SystemClock),
         Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     (db, mgr)
 }
@@ -283,9 +282,9 @@ async fn make_remote_uploads_are_visible_in_snapshot_before_drain() {
 // ---------------------------------------------------------------------------
 
 /// A cover is a host-provided blob: its bytes go to coven's local store
-/// (`local_files::store`) and coven owns the copy. While the release is Local the
-/// cover lives in the local store and resolves to an on-disk path the UI loads —
-/// no cloud round-trip.
+/// store and coven owns the copy. While the release is Local the cover lives in
+/// coven's local store and `read_image_blob` serves its bytes through the handle —
+/// no cloud round-trip and no bae path into coven's store.
 #[tokio::test]
 async fn test_cover_blob_stored_via_local_files_is_readable() {
     tracing_init();
@@ -293,14 +292,14 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
     let (db, mgr) = setup(&tmp).await;
     let (_a, release_id, _f) = create_local_release(&db, &mgr, &tmp.path().join("src"), &[]).await;
 
-    // No cover yet → no on-disk path.
+    // No cover row yet → no bytes.
     assert!(
-        mgr.cover_blob_path(&release_id).is_none(),
+        mgr.read_image_blob(&release_id).await.unwrap().is_none(),
         "no cover before one is stored"
     );
 
-    // Hand the cover bytes to coven's host-provided local store (the same call
-    // `store_cover_blob` makes at import).
+    // Store the cover bytes in coven's local store and write the `covers` row,
+    // exactly as import / change_cover does.
     let bytes = b"cover-jpeg-bytes";
     let lib_dir = LibraryDir::new(tmp.path());
     coven::blob::local_files::store(
@@ -311,17 +310,28 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
     )
     .await
     .unwrap();
+    mgr.upsert_library_image(&bae_core::db::DbLibraryImage {
+        id: release_id.clone(),
+        image_type: bae_core::db::LibraryImageType::Cover,
+        content_type: bae_core::util::content_type::ContentType::Jpeg,
+        file_size: bytes.len() as i64,
+        width: None,
+        height: None,
+        source: "local".to_string(),
+        source_url: None,
+        cloud_path: None,
+        created_at: chrono::Utc::now(),
+    })
+    .await
+    .unwrap();
 
-    // It now resolves to coven's local-store path and reads back byte-for-byte.
-    let path = mgr
-        .cover_blob_path(&release_id)
-        .expect("cover resolves to a local-store path once stored");
-    assert!(path.exists(), "the cover blob is on disk at {path:?}");
-    assert_eq!(
-        tokio::fs::read(&path).await.unwrap(),
-        bytes,
-        "the stored cover reads back byte-for-byte"
-    );
+    // read_image_blob serves it from coven's local store, byte-for-byte.
+    let read = mgr
+        .read_image_blob(&release_id)
+        .await
+        .unwrap()
+        .expect("cover resolves to bytes once stored");
+    assert_eq!(read, bytes, "the stored cover reads back byte-for-byte");
 }
 
 // ---------------------------------------------------------------------------

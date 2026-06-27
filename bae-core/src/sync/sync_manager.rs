@@ -1,27 +1,15 @@
-//! Construction of bae's sync manager + the `LibraryManager`↔bridge sync DTOs.
+//! The membership / join / restore DTOs and re-exports bae's sync surface uses.
 //!
 //! The sync manager itself is coven's — bae uses it directly (re-exported here so
-//! `crate::sync::sync_manager::SyncManager` resolves). `build_sync_manager` wires
-//! it up with bae's pieces: a config provider that reads bae's live `ConfigHandle`
-//! (so connect/disconnect are picked up without rebuilding) and the
-//! blob-transition observer. coven derives which rows carry blobs from the
-//! declarations the host passed to `Database::open`, so there is no blob source.
-
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-
-use tokio::sync::broadcast;
-
-use crate::config::ConfigHandle;
-use crate::db::Database;
-use crate::encryption::EncryptionService;
-use crate::keys::KeyService;
-use crate::library::{LibraryEvent, UploadThroughput};
-use crate::sync::upload_observer::ReleaseUploadObserver;
+//! `crate::sync::sync_manager::SyncManager` resolves). It is built lazily by
+//! [`CovenHandle::connect_sync`](coven::CovenHandle::connect_sync) when a provider
+//! is connected, wired with bae's config provider (which reads the live
+//! `ConfigHandle`, so connect/disconnect are picked up without rebuilding) and the
+//! blob-transition observer the handle holds.
 
 // coven owns the sync manager; bae uses it directly.
 pub use coven::sync::membership::MemberRole;
-pub use coven::sync::sync_manager::{MemberInfo, SyncManager};
+pub use coven::sync::sync_manager::{ConfigProvider, MemberInfo, SyncManager};
 
 /// A device's short identity for display: the first 8 characters of its
 /// hex-encoded Ed25519 public key. The single source for the value every
@@ -153,53 +141,4 @@ pub struct S3ConfigData {
     pub secret_key: String,
     /// Opaque (encrypted, obfuscated) or browsable (plaintext, readable) home.
     pub storage: crate::config::HomeStorage,
-}
-
-/// Build coven's `SyncManager` wired with bae's config provider and
-/// blob-transition observer. The provider reads bae's live config whenever coven
-/// needs it, so connecting/disconnecting a provider is reflected without
-/// rebuilding.
-///
-/// The manager takes the same `coven::Database` the host opened; it reads the
-/// synced-table set (including the per-table blob declarations) and the shared
-/// register clock from it, so coven derives every blob the host carries itself
-/// and the sync loop's advance-on-pull and envelope stamps order against the
-/// clock the host stamps rows from. Construction is synchronous and infallible:
-/// seeding happened in [`coven::Database::open`] at startup.
-#[allow(clippy::too_many_arguments)]
-pub fn build_sync_manager(
-    config_handle: Arc<ConfigHandle>,
-    key_service: KeyService,
-    encryption_service: Option<EncryptionService>,
-    database: Database,
-    outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
-    upload_throughput: Arc<UploadThroughput>,
-    sync_paused: Arc<std::sync::atomic::AtomicBool>,
-    events: broadcast::Sender<LibraryEvent>,
-) -> SyncManager {
-    let clock = database.clock().clone();
-    let coven_db = database.coven_db().clone();
-    let library_dir = config_handle.config().library_dir.clone();
-    let observer: Arc<dyn coven::blob::BlobTransitionObserver> =
-        Arc::new(ReleaseUploadObserver::new(
-            Arc::new(database),
-            library_dir,
-            outbox_in_flight,
-            upload_throughput,
-            sync_paused,
-            events,
-        ));
-
-    let ch = config_handle;
-    let config_provider: coven::sync::sync_manager::ConfigProvider =
-        Arc::new(move || ch.config().to_coven());
-
-    SyncManager::new(
-        config_provider,
-        key_service,
-        encryption_service,
-        coven_db,
-        clock,
-        Some(observer),
-    )
 }

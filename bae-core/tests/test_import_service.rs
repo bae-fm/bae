@@ -54,7 +54,6 @@ impl ImportFixture {
             std::sync::Arc::new(bae_core::clock::SystemClock),
             std::sync::Arc::new(bae_core::id_provider::UuidProvider),
             tokio::runtime::Handle::current(),
-            None,
         );
 
         let handle = ImportService::start(
@@ -919,22 +918,18 @@ async fn import_with_cover_art() {
     let cover = cover.unwrap();
     assert_eq!(cover.source, "local");
 
-    // Cover image file on disk (coven's local store while the release is Local)
-    let cover_path = f
+    // Cover bytes readable through the handle (coven's local store while Local).
+    let cover_bytes = f
         .handle
         .library_manager
-        .cover_blob_path(&release_id)
-        .expect("cover blob should exist on disk");
-    assert!(
-        cover_path.exists(),
-        "cover image file should exist at {:?}",
-        cover_path
-    );
-    let cover_bytes = fs::read(&cover_path).unwrap();
-    assert!(!cover_bytes.is_empty(), "cover file should not be empty");
+        .read_image_blob(&release_id)
+        .await
+        .unwrap()
+        .expect("cover blob should be readable");
+    assert!(!cover_bytes.is_empty(), "cover bytes should not be empty");
 
     println!(
-        "Import with cover art verified: DB row + {} bytes on disk",
+        "Import with cover art verified: DB row + {} bytes",
         cover_bytes.len()
     );
 }
@@ -1722,16 +1717,14 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
         "cover must be sourced from the embedded picture"
     );
 
-    let cover_path = f
+    let bytes = f
         .handle
         .library_manager
-        .cover_blob_path(&release_id)
-        .expect("cover blob should exist on disk");
-    let bytes = fs::read(&cover_path).expect("cover file on disk");
-    assert_eq!(
-        bytes, EMBEDDED_JPEG,
-        "on-disk bytes are the embedded picture"
-    );
+        .read_image_blob(&release_id)
+        .await
+        .unwrap()
+        .expect("cover blob readable");
+    assert_eq!(bytes, EMBEDDED_JPEG, "cover bytes are the embedded picture");
 }
 
 /// A folder image outranks the embedded picture: when both exist, the

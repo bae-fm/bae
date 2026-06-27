@@ -130,7 +130,6 @@ where
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         runtime_handle.clone(),
-        None,
     );
     configure(&library_manager)?;
 
@@ -718,7 +717,6 @@ impl CueFlacTestFixture {
             std::sync::Arc::new(bae_core::clock::SystemClock),
             std::sync::Arc::new(bae_core::id_provider::UuidProvider),
             tokio::runtime::Handle::current(),
-            None,
         );
         let runtime_handle = tokio::runtime::Handle::current();
 
@@ -2941,7 +2939,6 @@ impl HighSampleRateTestFixture {
             std::sync::Arc::new(bae_core::clock::SystemClock),
             std::sync::Arc::new(bae_core::id_provider::UuidProvider),
             tokio::runtime::Handle::current(),
-            None,
         );
         let runtime_handle = tokio::runtime::Handle::current();
 
@@ -3432,7 +3429,6 @@ async fn test_real_library_cpu_usage() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
 
     // Get first album and release
@@ -3615,7 +3611,6 @@ async fn test_pause_seek_cue_flac() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
 
     // Get albums (use first available CUE/FLAC album)
@@ -3846,7 +3841,6 @@ async fn test_playing_seek_cue_flac() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
 
     let albums = library_manager.get_albums(&[]).await.expect("get albums");
@@ -4028,7 +4022,6 @@ async fn test_restore_populates_last_position_display() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
@@ -4137,7 +4130,6 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
@@ -4265,7 +4257,6 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
@@ -4376,7 +4367,6 @@ async fn restore_test_library() -> RestoreTestLibrary {
         std::sync::Arc::new(bae_core::clock::SystemClock),
         std::sync::Arc::new(bae_core::id_provider::UuidProvider),
         tokio::runtime::Handle::current(),
-        None,
     );
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
@@ -4670,7 +4660,6 @@ impl CloudOnlyPlaybackFixture {
             std::sync::Arc::new(bae_core::clock::SystemClock),
             std::sync::Arc::new(bae_core::id_provider::UuidProvider),
             tokio::runtime::Handle::current(),
-            None,
         );
         let master_key = [11u8; 32];
         let cloud = Arc::new(support::MockCloudHome::new());
