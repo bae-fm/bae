@@ -9,8 +9,6 @@ struct SearchResultsView: View {
     let error: String?
     let onSelect: (String) -> Void
 
-    @Environment(MediaPaths.self)
-    private var mediaPaths
 
     var body: some View {
         if let error {
@@ -31,12 +29,7 @@ struct SearchResultsView: View {
                                 Button {
                                     onSelect(album.id)
                                 } label: {
-                                    AlbumResultRow(
-                                        album: album,
-                                        coverPath: mediaPaths.imagePathIfExists(
-                                            album.primaryReleaseId
-                                        )
-                                    )
+                                    AlbumResultRow(album: album)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -73,11 +66,10 @@ struct SearchResultsView: View {
 
 private struct AlbumResultRow: View {
     let album: AlbumSearchResult
-    let coverPath: String?
 
     var body: some View {
         HStack(spacing: 12) {
-            ImageView(path: coverPath, pointSize: 48)
+            ImageView(imageRef: album.cover, pointSize: 48)
                 .frame(width: 48, height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
             VStack(alignment: .leading, spacing: 2) {

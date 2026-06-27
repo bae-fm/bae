@@ -4,15 +4,16 @@ import os.log
 private let logger = Logger.bae("GalleryView")
 
 /// Full-screen artwork viewer over a release's gallery items (cover first, then
-/// every image file the release has). Swipeable when there's more than one. An
-/// item already on disk renders from its `localPath`; a cloud-only item (no
-/// local path) has its bytes fetched on demand via `loadImage`, keyed by the
-/// item's id. Each page pinch-zooms and snaps back on release.
+/// every image file the release has). Swipeable when there's more than one. Each
+/// item's bytes are fetched on demand via `loadImage` (the cover by image id, a
+/// release-file image by file id, downloaded when cloud-only). Each page
+/// pinch-zooms and snaps back on release.
 struct GalleryView: View {
     let items: [BridgeGalleryItem]
-    /// Fetches a cloud-only gallery item's bytes by its id, for items whose
-    /// `localPath` is nil (image files not downloaded on this device).
-    let loadImage: @Sendable (_ fileId: String) async throws -> Data
+    /// Fetches a gallery item's bytes — the release's cover by image id, or a
+    /// release-file image by file id. Nil when no such image exists.
+    let loadImage:
+        @Sendable (_ item: BridgeGalleryItem) async throws -> Data?
 
     @Environment(\.dismiss)
     private var dismiss
@@ -101,20 +102,50 @@ struct GalleryView: View {
 }
 
 /// One page of the gallery: a single view per `ForEach` element (so the paging
-/// container's element type stays stable) that renders an on-disk item from its
-/// path and fetches a cloud-only one on demand. Both kinds land in
-/// `ZoomableGalleryImage`, which handles the screen-fit-then-full-res decode and
-/// the pinch-to-zoom.
+/// container's element type stays stable) that fetches the item's bytes on
+/// demand and hands them to `ZoomableGalleryImage`, which handles the
+/// screen-fit-then-full-res decode and the pinch-to-zoom. A spinner shows while
+/// fetching, a warning glyph if the fetch fails or the item has no bytes.
 private struct GalleryPage: View {
     let item: BridgeGalleryItem
-    let loadImage: @Sendable (_ fileId: String) async throws -> Data
+    let loadImage: @Sendable (_ item: BridgeGalleryItem) async throws -> Data?
+
+    @State
+    private var bytes: Data?
+    @State
+    private var failed = false
 
     var body: some View {
-        if let path = item.localPath {
-            ZoomableGalleryImage(source: .local(path: path))
+        Group {
+            if let bytes {
+                ZoomableGalleryImage(source: .data(bytes))
+            }
+            else if failed {
+                GalleryFailedView()
+            }
+            else {
+                ProgressView().tint(.white)
+            }
         }
-        else {
-            RemoteGalleryImage(fileId: item.id, loadImage: loadImage)
+        .task(id: item.id) {
+            do {
+                guard let data = try await loadImage(item) else {
+                    logger.warning("gallery item \(item.id) has no bytes")
+                    failed = true
+                    return
+                }
+                bytes = data
+            }
+            catch is CancellationError {
+                // The viewer was dismissed mid-fetch; leave state as-is.
+                logger.debug("gallery image fetch cancelled: \(item.id)")
+            }
+            catch {
+                logger.warning(
+                    "Failed to load gallery image \(item.id): \(error)"
+                )
+                failed = true
+            }
         }
     }
 }
@@ -248,51 +279,6 @@ private struct ZoomableGalleryImage: View {
             logger.warning(
                 "Failed to decode full-res gallery image (\(source.description)): \(error)"
             )
-        }
-    }
-}
-
-/// A gallery image whose file isn't on disk here: fetch its bytes (downloaded
-/// from the release's cloud home and decrypted by core), then hand them to
-/// `ZoomableGalleryImage` to decode and display. A spinner shows while
-/// fetching, a warning glyph if the fetch fails.
-private struct RemoteGalleryImage: View {
-    let fileId: String
-    let loadImage: @Sendable (_ fileId: String) async throws -> Data
-
-    @State
-    private var bytes: Data?
-    @State
-    private var failed = false
-
-    var body: some View {
-        Group {
-            if let bytes {
-                ZoomableGalleryImage(source: .data(bytes))
-            }
-            else if failed {
-                GalleryFailedView()
-            }
-            else {
-                ProgressView().tint(.white)
-            }
-        }
-        .task(id: fileId) {
-            do {
-                bytes = try await loadImage(fileId)
-            }
-            catch is CancellationError {
-                // The viewer was dismissed mid-fetch; leave state as-is.
-                logger.debug(
-                    "gallery image fetch cancelled: \(fileId)"
-                )
-            }
-            catch {
-                logger.warning(
-                    "Failed to load gallery image \(fileId): \(error)"
-                )
-                failed = true
-            }
         }
     }
 }

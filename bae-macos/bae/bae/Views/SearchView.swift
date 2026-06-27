@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SearchView: View {
     let results: SearchResults?
-    let resolveImagePath: (String?) -> String?
     let onSelectAlbum: (String) -> Void
 
     var body: some View {
@@ -107,10 +106,7 @@ struct SearchView: View {
     }
 
     private func albumArt(_ album: AlbumSearchResult) -> some View {
-        ImageView(
-            localPath: resolveImagePath(album.primaryReleaseId),
-            pointSize: 32
-        )
+        ImageView(imageRef: album.cover, pointSize: 32)
     }
 }
 
@@ -119,7 +115,6 @@ struct SearchView: View {
 #Preview("With results") {
     SearchView(
         results: PreviewData.searchResults,
-        resolveImagePath: { _ in nil },
         onSelectAlbum: { _ in },
     )
     .frame(width: 600, height: 500)
@@ -132,7 +127,6 @@ struct SearchView: View {
             bridge: BridgeSearchResults(albums: [], tracks: []),
             query: "nonexistent"
         ),
-        resolveImagePath: { _ in nil },
         onSelectAlbum: { _ in },
     )
     .frame(width: 600, height: 400)

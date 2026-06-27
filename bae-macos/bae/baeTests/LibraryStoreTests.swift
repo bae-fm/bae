@@ -11,7 +11,7 @@ private func makeBridgeAlbum(
     artistNames: String = "Artist Name",
     releaseIds: [String]? = nil,
     primaryReleaseId: String = "release-1",
-    coverPath: String? = nil
+    cover: BridgeImageRef? = nil
 ) -> BridgeAlbum {
     BridgeAlbum(
         id: id,
@@ -21,7 +21,7 @@ private func makeBridgeAlbum(
         artistNames: artistNames,
         releaseIds: releaseIds ?? [primaryReleaseId],
         primaryReleaseId: primaryReleaseId,
-        coverPath: coverPath
+        cover: cover
     )
 }
 
@@ -30,13 +30,13 @@ private func makeBridgeRelease(
     albumId: String = "album-1",
     displayName: String = "Release One",
     format: String? = "FLAC",
-    storageState: BridgeReleaseStorageState = .managed,
+    storageState: BridgeReleaseStorageState = .remote,
     pinned: Bool = false,
     storageActions: [BridgeReleaseStorageAction] = [],
     totalDurationMs: Int64 = 2_700_000,
     fileCount: Int64 = 0,
     totalSize: Int64 = 0,
-    coverPath: String? = nil
+    cover: BridgeImageRef? = nil
 ) -> BridgeRelease {
     BridgeRelease(
         id: id,
@@ -59,7 +59,7 @@ private func makeBridgeRelease(
         totalDurationMs: totalDurationMs,
         fileCount: fileCount,
         totalSize: totalSize,
-        coverPath: coverPath
+        cover: cover
     )
 }
 
@@ -67,12 +67,12 @@ private func makeBridgeReleaseSummary(
     id: String = "release-1",
     albumId: String = "album-1",
     format: String? = "FLAC",
-    storageState: BridgeReleaseStorageState = .managed,
+    storageState: BridgeReleaseStorageState = .remote,
     pinned: Bool = false,
     storageActions: [BridgeReleaseStorageAction] = [],
     fileCount: Int64 = 0,
     totalSize: Int64 = 0,
-    coverPath: String? = nil
+    cover: BridgeImageRef? = nil
 ) -> BridgeReleaseSummary {
     BridgeReleaseSummary(
         id: id,
@@ -83,7 +83,7 @@ private func makeBridgeReleaseSummary(
         storageActions: storageActions,
         fileCount: fileCount,
         totalSize: totalSize,
-        coverPath: coverPath
+        cover: cover
     )
 }
 
@@ -182,21 +182,27 @@ struct InternAlbumSummaryTests {
     }
 
     @MainActor
-    @Test("a changed cover identifier updates coverPath on the same instance")
-    func internUpdatesCoverPath() {
-        // A cover change re-interns the summary with a new cache-busting
-        // identifier (`<path>#v=<mtime>`). The instance is identity-stable, so
-        // the cover card observing `coverPath` re-renders and reloads.
+    @Test("a changed cover version updates cover on the same instance")
+    func internUpdatesCover() {
+        // A cover change re-interns the summary with a bumped content version.
+        // The instance is identity-stable, so the cover card observing `cover`
+        // re-renders and reloads.
         let store = LibraryStore()
         let first = store.internAlbumSummary(
-            makeBridgeAlbum(coverPath: "/covers/release-1#v=1000"))
-        #expect(first.coverPath == "/covers/release-1#v=1000")
+            makeBridgeAlbum(
+                cover: BridgeImageRef(id: "cover-1", version: "1000")))
+        #expect(
+            first.cover
+                == ImageRef(bridge: BridgeImageRef(id: "cover-1", version: "1000")))
 
         let second = store.internAlbumSummary(
-            makeBridgeAlbum(coverPath: "/covers/release-1#v=2000"))
+            makeBridgeAlbum(
+                cover: BridgeImageRef(id: "cover-1", version: "2000")))
 
         #expect(first === second)
-        #expect(first.coverPath == "/covers/release-1#v=2000")
+        #expect(
+            first.cover
+                == ImageRef(bridge: BridgeImageRef(id: "cover-1", version: "2000")))
     }
 }
 
@@ -223,14 +229,14 @@ struct InternReleaseSummaryTests {
     func internUpdatesFields() {
         let store = LibraryStore()
         let bridge1 = makeBridgeReleaseSummary(
-            storageState: .managed,
+            storageState: .remote,
             pinned: false,
             totalSize: 100
         )
         let first = store.internReleaseSummary(bridge1)
 
         let bridge2 = makeBridgeReleaseSummary(
-            storageState: .managed,
+            storageState: .remote,
             pinned: true,
             totalSize: 200
         )
@@ -247,11 +253,11 @@ struct InternReleaseSummaryTests {
         let store = LibraryStore()
         let bridge = makeBridgeRelease(
             format: "MP3",
-            storageState: .managed,
+            storageState: .remote,
             pinned: true,
             fileCount: 12,
             totalSize: 5_000_000,
-            coverPath: "/img/release-1.jpg#v=7"
+            cover: BridgeImageRef(id: "release-1", version: "7")
         )
 
         let summary = store.internReleaseSummary(bridge)
@@ -259,11 +265,13 @@ struct InternReleaseSummaryTests {
         #expect(summary.id == "release-1")
         #expect(summary.albumId == "album-1")
         #expect(summary.format == "MP3")
-        #expect(summary.storageState == .managed)
+        #expect(summary.storageState == .remote)
         #expect(summary.pinned)
         #expect(summary.fileCount == 12)
         #expect(summary.totalSize == 5_000_000)
-        #expect(summary.coverPath == "/img/release-1.jpg#v=7")
+        #expect(
+            summary.cover
+                == ImageRef(bridge: BridgeImageRef(id: "release-1", version: "7")))
     }
 
     @MainActor
@@ -271,17 +279,23 @@ struct InternReleaseSummaryTests {
     func internCarriesReleaseCover() {
         let store = LibraryStore()
         let first = store.internReleaseSummary(
-            makeBridgeReleaseSummary(coverPath: "/img/release-1.jpg#v=1")
+            makeBridgeReleaseSummary(
+                cover: BridgeImageRef(id: "release-1", version: "1"))
         )
-        #expect(first.coverPath == "/img/release-1.jpg#v=1")
+        #expect(
+            first.cover
+                == ImageRef(bridge: BridgeImageRef(id: "release-1", version: "1")))
 
-        // Re-interning with a bumped cover identifier updates the existing
+        // Re-interning with a bumped cover version updates the existing
         // instance in place rather than replacing it.
         let second = store.internReleaseSummary(
-            makeBridgeReleaseSummary(coverPath: "/img/release-1.jpg#v=2")
+            makeBridgeReleaseSummary(
+                cover: BridgeImageRef(id: "release-1", version: "2"))
         )
         #expect(first === second)
-        #expect(first.coverPath == "/img/release-1.jpg#v=2")
+        #expect(
+            first.cover
+                == ImageRef(bridge: BridgeImageRef(id: "release-1", version: "2")))
     }
 }
 
@@ -322,7 +336,7 @@ struct InternReleaseDetailTests {
         let store = LibraryStore()
         let bridge1 = makeBridgeRelease(
             displayName: "V1",
-            storageState: .managed,
+            storageState: .remote,
             pinned: false
         )
         _ = store.internReleaseDetail(bridge1)
@@ -330,7 +344,7 @@ struct InternReleaseDetailTests {
 
         let bridge2 = makeBridgeRelease(
             displayName: "V2",
-            storageState: .managed,
+            storageState: .remote,
             pinned: true
         )
         _ = store.internReleaseDetail(bridge2)
@@ -443,7 +457,7 @@ struct AlbumEventTests {
         let r1 = makeBridgeRelease(
             id: "r-1",
             displayName: "V1",
-            storageState: .managed,
+            storageState: .remote,
             pinned: false
         )
         let initialDetail = makeBridgeAlbumDetail(
@@ -455,7 +469,7 @@ struct AlbumEventTests {
         let updatedR1 = makeBridgeRelease(
             id: "r-1",
             displayName: "V2",
-            storageState: .managed,
+            storageState: .remote,
             pinned: true
         )
         let updatedDetail = makeBridgeAlbumDetail(
@@ -582,7 +596,7 @@ struct ReleaseEventTests {
 
         let updated = makeBridgeRelease(
             displayName: "New",
-            storageState: .managed,
+            storageState: .remote,
             pinned: true
         )
         store.handleReleaseUpdated(release: updated)

@@ -26,7 +26,7 @@ struct ImageViewHitTestingTests {
         let size = NSSize(width: side, height: side)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             Button(action: { tapBox.tapped = true }) {
-                ImageView(localPath: nil, pointSize: side)
+                ImageView(imageRef: nil, pointSize: side)
                     .frame(width: side, height: side)
             }
             .buttonStyle(.plain)

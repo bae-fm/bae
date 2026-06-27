@@ -16,11 +16,11 @@ final class AlbumSummary: Identifiable {
     var artistNames: String
     var releaseIds: [String]
     var primaryReleaseId: String
-    /// Cache-bustable identifier for the cover (`<path>#v=<mtime>`), or nil when
+    /// Reference to the album's cover image (id + content version), or nil when
     /// no cover is cached. Carried here so a cover change moves an observed
-    /// field and the grid card re-renders; `ImageView` strips the `#v=…` suffix
-    /// before reading the file.
-    var coverPath: String?
+    /// field and the grid card re-renders; `ImageView` fetches the bytes by id
+    /// and caches the decoded image under the version.
+    var cover: ImageRef?
 
     init(from bridge: BridgeAlbum) {
         id = bridge.id
@@ -30,7 +30,7 @@ final class AlbumSummary: Identifiable {
         artistNames = bridge.artistNames
         releaseIds = bridge.releaseIds
         primaryReleaseId = bridge.primaryReleaseId
-        coverPath = bridge.coverPath
+        cover = bridge.cover.map(ImageRef.init(bridge:))
     }
 
     /// Per-field conditional assignment. Only fields that changed
@@ -54,8 +54,9 @@ final class AlbumSummary: Identifiable {
         if primaryReleaseId != bridge.primaryReleaseId {
             primaryReleaseId = bridge.primaryReleaseId
         }
-        if coverPath != bridge.coverPath {
-            coverPath = bridge.coverPath
+        let cover = bridge.cover.map(ImageRef.init(bridge:))
+        if self.cover != cover {
+            self.cover = cover
         }
     }
 }

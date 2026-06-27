@@ -3,17 +3,19 @@ import os.log
 
 private let logger = Logger.bae("ImageView")
 
-/// Renders a cover image from an absolute on-disk path, decoding off the main
-/// thread to a point-sized `UIImage` via the shared `ImageLoader`. Shows the
-/// theme placeholder while loading or when the file is absent (the cover isn't
-/// synced yet). Re-decodes when the `path` changes.
+/// Renders a library cover image, fetching its bytes by id through `MediaPaths`
+/// (which caches the decoded image by content version) and decoding off the
+/// main thread to a point-sized `UIImage`. Shows the theme placeholder while
+/// loading or when the cover is absent. Re-decodes when the `source` changes.
 struct ImageView: View {
-    let path: String?
+    let source: LibraryImageSource?
     /// Target point size for the thumbnail; pixels decoded are
     /// `pointSize * displayScale`.
     let pointSize: CGFloat
     var contentMode: ContentMode = .fill
 
+    @Environment(MediaPaths.self)
+    private var mediaPaths
     @Environment(\.displayScale)
     private var displayScale
     @State
@@ -30,32 +32,61 @@ struct ImageView: View {
                 Theme.placeholder
             }
         }
-        .task(id: path) {
+        .task(id: source) {
             await load()
         }
     }
 
     private func load() async {
-        guard let path else {
+        guard let source else {
             image = nil
             return
         }
         do {
-            image = try await ImageLoader.load(
-                source: .local(path: path),
-                size: .fitTo(points: pointSize),
+            image = try await mediaPaths.libraryImage(
+                source,
+                pointSize: pointSize,
                 displayScale: displayScale
             )
         }
         catch is CancellationError {
-            logger.debug("cover load cancelled: \(path)")
+            logger.debug("cover load cancelled: \(String(describing: source))")
             return
         }
         catch {
             logger.warning(
-                "Failed to load cover at \(path): \(error.localizedDescription)"
+                "Failed to load cover \(String(describing: source)): \(error.localizedDescription)"
             )
             image = nil
         }
+    }
+}
+
+extension ImageView {
+    /// A library cover, fetched by id and cached by content version.
+    init(
+        imageRef: ImageRef?,
+        contentMode: ContentMode = .fill,
+        pointSize: CGFloat
+    ) {
+        self.init(
+            source: imageRef.map { .cover(id: $0.id, version: $0.version) },
+            pointSize: pointSize,
+            contentMode: contentMode
+        )
+    }
+
+    /// A now-playing/queue cover, which carries only an image id (no content
+    /// version). Cached by id alone — accepted on these single/small surfaces.
+    init(
+        coverImageId: String?,
+        contentMode: ContentMode = .fill,
+        pointSize: CGFloat
+    ) {
+        self.init(
+            source: coverImageId.map { .cover(id: $0, version: nil) },
+            pointSize: pointSize,
+            contentMode: contentMode
+        )
     }
 }

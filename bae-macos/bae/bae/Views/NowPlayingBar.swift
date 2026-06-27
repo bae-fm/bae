@@ -5,8 +5,6 @@ import SwiftUI
 /// trigger SwiftUI re-evaluation. Position ticks bypass SwiftUI entirely via the AppKit
 /// PlaybackProgressNSView, which AppService updates directly.
 struct NowPlayingBarContainer: View {
-    @Environment(MediaPaths.self)
-    var mediaPaths
     @Environment(Playback.self)
     var playback
     @Environment(Queue.self)
@@ -26,17 +24,19 @@ struct NowPlayingBarContainer: View {
         let np = playbackStore.nowPlaying
         let track = np.track
         // Resolve the cover from the observed album summary when the playing
-        // album is in the library slice: its `coverPath` carries the cache-
-        // busting version, so changing the cover moves the field and this bar
-        // re-renders. Fall back to a live lookup for albums not yet interned
-        // (the bar can show a track before its album summary lands).
-        let coverPath =
-            track.flatMap { libraryStore.albumSummaries[$0.albumId]?.coverPath }
-            ?? track?.coverImageId.flatMap(mediaPaths.imagePathIfExists)
+        // album is in the library slice: its `cover` carries the content
+        // version, so changing the cover moves the field and this bar
+        // re-renders. Fall back to the track's bare cover image id for albums
+        // not yet interned (the bar can show a track before its summary lands).
+        let cover: ImageContent? =
+            track.flatMap { libraryStore.albumSummaries[$0.albumId]?.cover }
+            .map { .library(.cover(id: $0.id, version: $0.version)) }
+            ?? track?.coverImageId
+            .map { .library(.cover(id: $0, version: nil)) }
         NowPlayingBar(
             trackTitle: track?.trackTitle,
             secondaryLine: np.secondaryLine,
-            coverPath: coverPath,
+            cover: cover,
             isPlaying: np.isPlaying,
             isLoading: np.loadingTrackId != nil,
             durationMs: track?.durationMs,
@@ -47,10 +47,9 @@ struct NowPlayingBarContainer: View {
             queueIsActive: np.isActive,
             queueNowPlayingTitle: track?.trackTitle,
             queueNowPlayingArtist: track?.artistNames,
-            queueNowPlayingPath: coverPath,
+            queueNowPlayingCover: cover,
             queueManual: playbackStore.manualQueue,
             queueContext: playbackStore.queueContext,
-            resolveQueueImagePath: { $0.flatMap(mediaPaths.imagePathIfExists) },
             onPlayPause: { playback.togglePlayPause() },
             onNext: { playback.nextTrack() },
             onPrevious: { playback.previousTrack() },
@@ -100,7 +99,7 @@ private struct StablePopoverBehavior: NSViewRepresentable {
 struct NowPlayingBar: View {
     let trackTitle: String?
     let secondaryLine: String?
-    let coverPath: String?
+    let cover: ImageContent?
     let isPlaying: Bool
     let isLoading: Bool
     let durationMs: UInt64?
@@ -112,10 +111,9 @@ struct NowPlayingBar: View {
     let queueIsActive: Bool
     let queueNowPlayingTitle: String?
     let queueNowPlayingArtist: String?
-    let queueNowPlayingPath: String?
+    let queueNowPlayingCover: ImageContent?
     let queueManual: [QueueItem]
     let queueContext: QueuePlaybackContext?
-    let resolveQueueImagePath: (String?) -> String?
     let onPlayPause: () -> Void
     let onNext: () -> Void
     let onPrevious: () -> Void
@@ -195,7 +193,7 @@ struct NowPlayingBar: View {
     }
 
     private var albumArt: some View {
-        ImageView(localPath: coverPath, pointSize: 48)
+        ImageView(content: cover, pointSize: 48)
     }
 
     // MARK: - Center: transport controls + progress
@@ -283,10 +281,9 @@ struct NowPlayingBar: View {
                     isActive: queueIsActive,
                     nowPlayingTitle: queueNowPlayingTitle,
                     nowPlayingArtist: queueNowPlayingArtist,
-                    nowPlayingPath: queueNowPlayingPath,
+                    nowPlayingCover: queueNowPlayingCover,
                     manual: queueManual,
                     context: queueContext,
-                    resolveImagePath: resolveQueueImagePath,
                     onClose: { showQueue = false },
                     onClear: { onQueueClear() },
                     onSkipTo: { onQueueSkipTo($0) },
@@ -404,7 +401,7 @@ private struct NowPlayingBarPreview: View {
         NowPlayingBar(
             trackTitle: trackTitle,
             secondaryLine: artistNames,
-            coverPath: nil,
+            cover: nil,
             isPlaying: isPlaying,
             isLoading: isLoading,
             durationMs: 222_000,
@@ -415,10 +412,9 @@ private struct NowPlayingBarPreview: View {
             queueIsActive: queueIsActive,
             queueNowPlayingTitle: trackTitle,
             queueNowPlayingArtist: artistNames,
-            queueNowPlayingPath: nil,
+            queueNowPlayingCover: nil,
             queueManual: queueManual,
             queueContext: queueContext,
-            resolveQueueImagePath: { _ in nil },
             onPlayPause: {},
             onNext: {},
             onPrevious: {},

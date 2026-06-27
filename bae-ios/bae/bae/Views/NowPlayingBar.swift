@@ -10,8 +10,6 @@ struct NowPlayingBar: View {
     private var playbackStore
     @Environment(Playback.self)
     private var playback
-    @Environment(MediaPaths.self)
-    private var mediaPaths
 
     @State
     private var showQueue = false
@@ -67,13 +65,9 @@ struct NowPlayingBar: View {
             showExpanded = true
         } label: {
             HStack(spacing: 12) {
-                ImageView(
-                    path: track.coverImageId
-                        .flatMap(mediaPaths.imagePathIfExists),
-                    pointSize: 48
-                )
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                ImageView(coverImageId: track.coverImageId, pointSize: 48)
+                    .frame(width: 48, height: 48)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(track.trackTitle)
                         .font(.subheadline.weight(.medium))

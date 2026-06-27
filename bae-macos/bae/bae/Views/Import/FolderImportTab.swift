@@ -233,7 +233,7 @@ struct FolderImportTab: View {
                     LightboxItem(
                         id: file.localPath,
                         label: file.name,
-                        path: file.localPath
+                        source: .local(path: file.localPath)
                     )
                 }
                 uiStore.presentLightbox(items: items, preferring: tappedPath)

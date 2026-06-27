@@ -93,8 +93,16 @@ struct AlbumDetailView: View {
         .fullScreenCover(isPresented: $showGallery) {
             GalleryView(
                 items: detail.galleryItems,
-                loadImage: { fileId in
-                    try await mediaPaths.fetchGalleryImage(releaseId, fileId)
+                loadImage: { item in
+                    // The cover slot (carries a version) fetches by image id; a
+                    // release-file image fetches by release id + file id.
+                    if item.coverVersion != nil {
+                        return try await mediaPaths.fetchImageBytes(item.id)
+                    }
+                    return try await mediaPaths.fetchGalleryImage(
+                        releaseId,
+                        item.id
+                    )
                 }
             )
         }
@@ -106,16 +114,13 @@ struct AlbumDetailView: View {
         detail: ReleaseDetail
     ) -> some View {
         HStack(alignment: .top, spacing: 16) {
-            ImageView(
-                path: mediaPaths.imagePathIfExists(releaseId),
-                pointSize: 140
-            )
-            .frame(width: 140, height: 140)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .contentShape(Rectangle())
-            .onTapGesture {
-                if !detail.galleryItems.isEmpty { showGallery = true }
-            }
+            ImageView(imageRef: detail.summary.cover, pointSize: 140)
+                .frame(width: 140, height: 140)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if !detail.galleryItems.isEmpty { showGallery = true }
+                }
             VStack(alignment: .leading, spacing: 4) {
                 Text(summary.title)
                     .font(.title2.bold())

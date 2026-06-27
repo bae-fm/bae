@@ -5,13 +5,12 @@ struct QueueView: View {
     let isActive: Bool
     let nowPlayingTitle: String?
     let nowPlayingArtist: String?
-    let nowPlayingPath: String?
+    let nowPlayingCover: ImageContent?
     /// The manual lane ("Up Next"): explicitly enqueued tracks, drained first.
     let manual: [QueueItem]
     /// The context (the release being played from), or `nil` when nothing plays
     /// from a release. Rendered as a section distinct from the manual lane.
     let context: QueuePlaybackContext?
-    let resolveImagePath: (String?) -> String?
     let onClose: () -> Void
     let onClear: () -> Void
     let onSkipTo: (String) -> Void
@@ -79,7 +78,6 @@ struct QueueView: View {
                             shuffled: false,
                             items: manual,
                             acceptsExternalDrops: true,
-                            resolveImagePath: resolveImagePath,
                             draggedEntryId: $draggedEntryId,
                             onSkipTo: onSkipTo,
                             onRemove: onRemove,
@@ -94,7 +92,6 @@ struct QueueView: View {
                                 shuffled: context.shuffled,
                                 items: context.upcoming,
                                 acceptsExternalDrops: false,
-                                resolveImagePath: resolveImagePath,
                                 draggedEntryId: $draggedEntryId,
                                 onSkipTo: onSkipTo,
                                 onRemove: onRemove,
@@ -182,7 +179,7 @@ struct QueueView: View {
     }
 
     private var nowPlayingArt: some View {
-        ImageView(localPath: nowPlayingPath, pointSize: 48)
+        ImageView(content: nowPlayingCover, pointSize: 48)
     }
 }
 
@@ -198,7 +195,6 @@ private struct QueueSection: View {
     let shuffled: Bool
     let items: [QueueItem]
     let acceptsExternalDrops: Bool
-    let resolveImagePath: (String?) -> String?
     @Binding
     var draggedEntryId: String?
     let onSkipTo: (String) -> Void
@@ -318,7 +314,7 @@ private struct QueueSection: View {
     {
         let isHovered = hoveredIndex == index
         return ZStack {
-            queueItemArt(path: resolveImagePath(item.coverImageId))
+            queueItemArt(coverImageId: item.coverImageId)
                 .frame(width: 40, height: 40)
                 .clipShape(RoundedRectangle(cornerRadius: 3))
 
@@ -392,8 +388,8 @@ private struct QueueSection: View {
         }
     }
 
-    private func queueItemArt(path: String?) -> some View {
-        ImageView(localPath: path, pointSize: 40)
+    private func queueItemArt(coverImageId: String?) -> some View {
+        ImageView(coverImageId: coverImageId, pointSize: 40)
     }
 }
 
@@ -549,10 +545,9 @@ extension QueueView {
             isActive: isActive,
             nowPlayingTitle: nowPlayingTitle,
             nowPlayingArtist: nowPlayingArtist,
-            nowPlayingPath: nil,
+            nowPlayingCover: nil,
             manual: manual,
             context: context,
-            resolveImagePath: { _ in nil },
             onClose: {},
             onClear: {},
             onSkipTo: { _ in },

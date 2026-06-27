@@ -348,14 +348,26 @@ extension MediaControlService {
     }
 
     private func loadArtwork(imageId: String, appHandle: AppHandle) async {
-        guard let identifier = appHandle.imagePathIfExists(imageId: imageId) else {
+        let bytes: Data
+        do {
+            guard
+                let data = try await appHandle.fetchImageBytes(imageId: imageId)
+            else {
+                logger.debug("No Now Playing artwork for \(imageId)")
+                return
+            }
+            bytes = data
+        }
+        catch is CancellationError {
             return
         }
-        // Strip the `#v=<mtime>` cache-busting suffix before opening the file.
-        let path = MediaPaths.fileSystemPath(of: identifier)
+        catch {
+            logger.warning("Failed to fetch Now Playing artwork: \(error)")
+            return
+        }
         let image: UIImage? =
             await Task.detached(priority: .userInitiated) {
-                UIImage(contentsOfFile: path)
+                UIImage(data: bytes)
             }
             .value
         guard !Task.isCancelled, let image else {

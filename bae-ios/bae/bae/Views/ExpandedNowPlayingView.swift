@@ -18,8 +18,6 @@ struct ExpandedNowPlayingView: View {
     private var playback
     @Environment(Queue.self)
     private var queue
-    @Environment(MediaPaths.self)
-    private var mediaPaths
     @Environment(\.dismiss)
     private var dismiss
 
@@ -63,14 +61,10 @@ struct ExpandedNowPlayingView: View {
                 Spacer(minLength: 0)
             }
 
-            ImageView(
-                path: track.coverImageId
-                    .flatMap(mediaPaths.imagePathIfExists),
-                pointSize: 320
-            )
-            .aspectRatio(1, contentMode: .fit)
-            .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            ImageView(coverImageId: track.coverImageId, pointSize: 320)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(track.trackTitle)

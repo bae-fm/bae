@@ -64,6 +64,7 @@ targets:
       # preview and any sync-provider display.
       - path: ../../bae-macos/bae/bae/BridgeCloudProvider+DisplayName.swift
       - path: ../../bae-macos/bae/bae/Services/Store/Config.swift
+      - path: ../../bae-macos/bae/bae/Services/Store/ImageRef.swift
       - path: ../../bae-macos/bae/bae/Services/Store/AlbumSummary.swift
       - path: ../../bae-macos/bae/bae/Services/Store/ReleaseSummary.swift
       - path: ../../bae-macos/bae/bae/Services/Store/ReleaseDetail.swift

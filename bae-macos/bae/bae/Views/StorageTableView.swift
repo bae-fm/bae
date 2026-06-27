@@ -915,19 +915,9 @@ private struct StorageReleaseCell: View {
             switch column {
             case .album:
                 HStack(spacing: 8) {
-                    Group {
-                        if let coverPath = release.coverPath {
-                            ImageView(
-                                source: .local(path: coverPath),
-                                pointSize: 24
-                            )
-                        }
-                        else {
-                            Theme.placeholder
-                        }
-                    }
-                    .frame(width: 24, height: 24)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    ImageView(imageRef: release.cover, pointSize: 24)
+                        .frame(width: 24, height: 24)
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
                     Text(album.title).lineLimit(1)
                 }
             case .artist:
