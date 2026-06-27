@@ -253,7 +253,6 @@ object AppSessionHolder {
         config: BridgeConfig,
         appContext: Context,
     ): OpenLibrary {
-        val library = Library(handle)
         return OpenLibrary(
             libraryId = libraryId,
             appHandle = handle,
@@ -263,7 +262,6 @@ object AppSessionHolder {
                 BaeCorePlayer(
                     applicationLooper = Looper.getMainLooper(),
                     appHandle = handle,
-                    library = library,
                     context = appContext,
                     scope = appScope,
                     isAppForeground = {

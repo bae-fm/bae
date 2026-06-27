@@ -3,7 +3,6 @@ package fm.bae.app.playback
 import android.content.Context
 import android.os.Looper
 import androidx.media3.common.Player
-import fm.bae.app.data.Library
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,11 +33,10 @@ class PlaybackActivationTest {
         context: Context,
         foreground: Boolean,
     ): BaeCorePlayer {
-        val handle = FakeAppHandle(imagePaths = emptyMap())
+        val handle = FakeAppHandle()
         return BaeCorePlayer(
             applicationLooper = Looper.getMainLooper(),
             appHandle = handle,
-            library = Library(handle),
             context = context,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
             isAppForeground = { foreground },

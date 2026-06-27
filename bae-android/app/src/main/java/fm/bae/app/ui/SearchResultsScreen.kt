@@ -31,9 +31,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.formatDurationMs
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackSearchResult
@@ -43,19 +41,10 @@ private const val DEBOUNCE_MS = 300L
 private suspend fun fetchSearchResults(
     session: OpenLibrary,
     query: String,
-): Pair<BridgeSearchResults, Map<String, String>> {
+): BridgeSearchResults {
     delay(DEBOUNCE_MS)
-    val res = session.library.search(query)
-    // imagePathIfExists is a blocking FS read; resolve album thumbnails off-main
-    // (the search call itself is already suspend).
-    val covers =
-        withContext(Dispatchers.IO) {
-            res.albums
-                .mapNotNull { album ->
-                    session.library.imagePathIfExists(album.primaryReleaseId)?.let { album.id to it }
-                }.toMap()
-        }
-    return res to covers
+    // Each album carries its own cover reference; the rows fetch the bytes by id.
+    return session.library.search(query)
 }
 
 /**
@@ -72,7 +61,6 @@ fun SearchResultsScreen(
     onSelectAlbum: (String) -> Unit,
 ) {
     var results by remember { mutableStateOf<BridgeSearchResults?>(null) }
-    var coverPaths by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val appContext = LocalContext.current
@@ -85,9 +73,7 @@ fun SearchResultsScreen(
         loading = true
         error = null
         try {
-            val (res, covers) = fetchSearchResults(session, query)
-            results = res
-            coverPaths = covers
+            results = fetchSearchResults(session, query)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -124,7 +110,7 @@ fun SearchResultsScreen(
             current != null -> {
                 SearchResultsList(
                     results = current,
-                    coverPaths = coverPaths,
+                    loadImage = session.library::imageBytes,
                     onSelectAlbum = onSelectAlbum,
                 )
             }
@@ -135,7 +121,7 @@ fun SearchResultsScreen(
 @Composable
 private fun SearchResultsList(
     results: BridgeSearchResults,
-    coverPaths: Map<String, String>,
+    loadImage: suspend (imageId: String) -> ByteArray?,
     onSelectAlbum: (String) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -144,7 +130,7 @@ private fun SearchResultsList(
             items(results.albums, key = { "album:${it.id}" }) { album ->
                 AlbumResultRow(
                     album = album,
-                    coverPath = coverPaths[album.id],
+                    loadImage = loadImage,
                     onClick = { onSelectAlbum(album.id) },
                 )
             }
@@ -175,7 +161,7 @@ private fun SectionHeader(title: String) {
 @Composable
 private fun AlbumResultRow(
     album: BridgeAlbumSearchResult,
-    coverPath: String?,
+    loadImage: suspend (imageId: String) -> ByteArray?,
     onClick: () -> Unit,
 ) {
     Row(
@@ -187,7 +173,9 @@ private fun AlbumResultRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            path = coverPath,
+            coverId = album.cover?.id,
+            coverVersion = album.cover?.version,
+            loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),

@@ -58,7 +58,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeGalleryItem
-import java.io.File
 
 private const val FULL_RES_SCALE_THRESHOLD = 1.01f
 private const val DISMISS_THRESHOLD_DP = 150f
@@ -70,15 +69,16 @@ private val logger = BaeLogger(TAG)
 /**
  * Full-screen artwork viewer over a release's gallery items (cover first, then
  * every image file the release has). Swipeable when there's more than one, and a
- * downward swipe dismisses it. An item already on disk renders from its
- * [BridgeGalleryItem.localPath]; a cloud-only item (no local path) is fetched on
- * demand via [loadImage], keyed by the item's id. Each page pinch-zooms and snaps
- * back when you release.
+ * downward swipe dismisses it. Each item's bytes are fetched on demand: the
+ * cover slot (`coverVersion != null`) by image id via [loadCover], a release-file
+ * image by file id via [loadGalleryFile]. Each page pinch-zooms and snaps back
+ * when you release.
  */
 @Composable
 fun GalleryDialog(
     items: List<BridgeGalleryItem>,
-    loadImage: suspend (fileId: String) -> ByteArray,
+    loadCover: suspend (imageId: String) -> ByteArray?,
+    loadGalleryFile: suspend (fileId: String) -> ByteArray,
     onDismiss: () -> Unit,
 ) {
     Dialog(
@@ -124,7 +124,7 @@ fun GalleryDialog(
             ) {
                 Box(modifier = Modifier.fillMaxSize().graphicsLayer { translationY = offsetY }) {
                     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                        GalleryPage(item = items[page], loadImage = loadImage)
+                        GalleryPage(item = items[page], loadCover = loadCover, loadGalleryFile = loadGalleryFile)
                     }
                     GalleryCloseButton(onDismiss = onDismiss)
                     GalleryCaption(items = items, pagerState = pagerState)
@@ -135,25 +135,25 @@ fun GalleryDialog(
 }
 
 /**
- * One gallery page: an on-disk item renders from its path; a cloud-only item
- * fetches its bytes on demand.
+ * One gallery page. The cover slot (`coverVersion != null`) fetches the cover
+ * bytes by image id and keys its cache on `(id, version)` so a replaced cover
+ * reloads; a release-file image fetches by file id and keys on the file id.
  */
 @Composable
 private fun GalleryPage(
     item: BridgeGalleryItem,
-    loadImage: suspend (fileId: String) -> ByteArray,
+    loadCover: suspend (imageId: String) -> ByteArray?,
+    loadGalleryFile: suspend (fileId: String) -> ByteArray,
 ) {
-    val localPath = item.localPath
-    if (localPath != null) {
-        // The full identifier (with any `#v=<mtime>` suffix) is the cache key;
-        // [coverFile] strips it to the on-disk path.
-        ZoomableGalleryImage(
-            data = coverFile(localPath),
-            cacheKey = localPath,
-            contentDescription = item.label,
-        )
+    val coverVersion = item.coverVersion
+    if (coverVersion != null) {
+        RemoteGalleryImage(cacheKey = "${item.id}#$coverVersion", label = item.label) {
+            // Core handed us a cover reference, so absent bytes are an error, not a
+            // normal empty — surface it through the page's failure state.
+            loadCover(item.id) ?: throw IllegalStateException("cover image ${item.id} has no bytes")
+        }
     } else {
-        RemoteGalleryImage(fileId = item.id, label = item.label, loadImage = loadImage)
+        RemoteGalleryImage(cacheKey = item.id, label = item.label) { loadGalleryFile(item.id) }
     }
 }
 
@@ -218,15 +218,13 @@ private fun BoxScope.GalleryCaption(
  * downsampled image. The pinch scales the image around the gesture centroid and
  * releases back to fit, mirroring the macOS lightbox.
  *
- * [data] is the Coil model — a [java.io.File] for an on-disk image or a
- * [ByteArray] for fetched cloud bytes. [cacheKey] keys the downsampled image in
- * the memory/disk cache (the bridge identifier for a local file, the file id for
- * fetched bytes); the full-resolution request reuses it as its placeholder so
- * the upgrade doesn't flash.
+ * [bytes] are the fetched (and decrypted) image bytes Coil decodes. [cacheKey]
+ * keys the downsampled image in the memory cache; the full-resolution request
+ * reuses it as its placeholder so the upgrade doesn't flash.
  */
 @Composable
 private fun ZoomableGalleryImage(
-    data: Any,
+    bytes: ByteArray,
     cacheKey: String,
     contentDescription: String?,
 ) {
@@ -237,8 +235,8 @@ private fun ZoomableGalleryImage(
     val scope = rememberCoroutineScope()
 
     val model =
-        remember(data, cacheKey, fullRes) {
-            buildGalleryImageRequest(context, data, cacheKey, fullRes)
+        remember(bytes, cacheKey, fullRes) {
+            buildGalleryImageRequest(context, bytes, cacheKey, fullRes)
         }
 
     AsyncImage(
@@ -292,19 +290,17 @@ private fun ZoomableGalleryImage(
 
 private fun buildGalleryImageRequest(
     context: coil3.PlatformContext,
-    data: Any,
+    bytes: ByteArray,
     cacheKey: String,
     fullRes: Boolean,
 ): ImageRequest =
     ImageRequest
         .Builder(context)
-        .data(data)
+        .data(bytes)
         .crossfade(true)
         .apply {
-            // A local on-disk file can be disk-cached by its identifier;
-            // in-memory bytes (a fetched cloud image) aren't disk-cacheable,
-            // so the disk key only applies to the File source.
-            if (data is File) diskCacheKey(cacheKey)
+            // In-memory bytes (a fetched, decrypted image) aren't disk-cacheable,
+            // so only the memory cache is keyed.
             if (fullRes) {
                 // Decode at the source's full resolution and reuse the
                 // already-cached downsampled image as the placeholder, so
@@ -320,29 +316,30 @@ private fun buildGalleryImageRequest(
         }.build()
 
 /**
- * A gallery image whose file isn't on disk here: fetch its bytes (downloaded
- * from the release's cloud home and decrypted by core), then hand them to
- * [ZoomableGalleryImage] to decode and display. Shows a spinner while fetching
- * and the failure reason if the fetch fails. `result` is null while loading,
- * then success(bytes) or failure(error).
+ * A gallery image fetched on demand (downloaded from the release's cloud home and
+ * decrypted by core, or read from coven's image store for a cover), then handed
+ * to [ZoomableGalleryImage] to decode and display. Shows a spinner while fetching
+ * and a fixed failure message if [load] throws. [cacheKey] keys the decoded image
+ * and re-runs the fetch when it changes. `result` is null while loading, then
+ * success(bytes) or failure(error).
  */
 @Composable
 private fun RemoteGalleryImage(
-    fileId: String,
+    cacheKey: String,
     label: String,
-    loadImage: suspend (fileId: String) -> ByteArray,
+    load: suspend () -> ByteArray,
 ) {
-    var result: Result<ByteArray>? by remember(fileId) {
+    var result: Result<ByteArray>? by remember(cacheKey) {
         mutableStateOf<Result<ByteArray>?>(null)
     }
-    LaunchedEffect(fileId) {
+    LaunchedEffect(cacheKey) {
         result =
             try {
-                Result.success(withContext(Dispatchers.IO) { loadImage(fileId) })
+                Result.success(withContext(Dispatchers.IO) { load() })
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                logger.error("Failed to load gallery image $fileId", e)
+                logger.error("Failed to load gallery image $cacheKey", e)
                 Result.failure(e)
             }
     }
@@ -355,8 +352,8 @@ private fun RemoteGalleryImage(
 
             r.isSuccess -> {
                 ZoomableGalleryImage(
-                    data = r.getOrThrow(),
-                    cacheKey = fileId,
+                    bytes = r.getOrThrow(),
+                    cacheKey = cacheKey,
                     contentDescription = label,
                 )
             }

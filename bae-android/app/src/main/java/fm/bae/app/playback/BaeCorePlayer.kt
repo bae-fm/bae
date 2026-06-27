@@ -7,7 +7,6 @@ import android.content.IntentFilter
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
-import android.net.Uri
 import android.os.Looper
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -18,17 +17,14 @@ import androidx.media3.common.util.Util
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import fm.bae.app.BaeLogger
-import fm.bae.app.data.Library
 import fm.bae.app.formatDurationMs
 import fm.bae.app.formatRemainingMs
-import fm.bae.app.ui.coverFile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgePlaybackContext
@@ -44,7 +40,8 @@ data class NowPlaying(
     val trackId: String,
     val title: String,
     val artist: String,
-    val coverPath: String?,
+    /** The cover image id (a release id) the bar fetches bytes for, or null. */
+    val coverImageId: String?,
     val sidePausePrompt: BridgeSidePausePrompt?,
 )
 
@@ -61,9 +58,10 @@ data class PlaybackPosition(
 
 /** One queue entry the [fm.bae.app.ui.QueueScreen] renders. The UI projection
  *  of the player's internal queue metadata: [durationLabel] is pre-formatted by
- *  core, [coverPath] is already resolved to a local file path. [entryId] is the
- *  per-instance id the row keys on and that remove/reorder/skip target — unique
- *  even when the same track is queued twice. */
+ *  core, [coverImageId] is the cover image id (a release id) the row fetches
+ *  bytes for. [entryId] is the per-instance id the row keys on and that
+ *  remove/reorder/skip target — unique even when the same track is queued
+ *  twice. */
 data class QueueItem(
     val entryId: String,
     val trackId: String,
@@ -71,7 +69,7 @@ data class QueueItem(
     val artist: String,
     val albumTitle: String,
     val durationLabel: String,
-    val coverPath: String?,
+    val coverImageId: String?,
 )
 
 /** The context lane (the release being played from): its not-yet-played tail,
@@ -328,7 +326,6 @@ internal class PlaybackSystemHooks(
 class BaeCorePlayer(
     applicationLooper: Looper,
     private val appHandle: AppHandle,
-    private val library: Library,
     private val context: Context,
     private val scope: CoroutineScope,
     /**
@@ -368,7 +365,9 @@ class BaeCorePlayer(
          *  current-track override leaves it empty (the queue projection reads
          *  the label off the queue entry, not this override). */
         val durationLabel: String,
-        val coverPath: String?,
+        /** The cover image id (a release id) whose bytes the now-playing artwork
+         *  and the in-app rows fetch, or null when the track has no cover. */
+        val coverImageId: String?,
     )
 
     internal companion object {
@@ -431,12 +430,14 @@ class BaeCorePlayer(
             meta: Meta,
             playingTrackId: String?,
             durationMs: Long,
+            artwork: ByteArray?,
         ): MediaItemData {
             val currentDurationMs = itemDurationMs(meta, playingTrackId, durationMs)
             val metadata =
                 mediaMetadata(
                     meta,
                     if (currentDurationMs == C.TIME_UNSET) null else currentDurationMs,
+                    artwork,
                 )
             return MediaItemData
                 .Builder(meta.trackId)
@@ -455,6 +456,7 @@ class BaeCorePlayer(
         internal fun mediaMetadata(
             meta: Meta,
             durationMs: Long?,
+            artwork: ByteArray?,
         ): MediaMetadata {
             val metadataBuilder =
                 MediaMetadata
@@ -466,8 +468,11 @@ class BaeCorePlayer(
                     .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
                     .setIsPlayable(true)
                     .setIsBrowsable(false)
-            meta.coverPath?.let {
-                metadataBuilder.setArtworkUri(Uri.fromFile(coverFile(it)))
+            // The cover is host-provided image bytes, not a file URI; Media3 decodes
+            // the embedded artwork for the notification and lock screen. Only the
+            // current track carries bytes (see getState), so queue items have none.
+            artwork?.let {
+                metadataBuilder.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
             }
             return metadataBuilder.build()
         }
@@ -497,6 +502,15 @@ class BaeCorePlayer(
 
     /** Authoritative now-playing metadata from the latest Playing/Paused payload. */
     private var currentMeta: Meta? = null
+
+    /** The cover image id the current artwork was (or is being) fetched for, and
+     *  the fetched bytes once they arrive. The session embeds [currentArtwork] in
+     *  the now-playing item's metadata (the notification/lock-screen art); only
+     *  the current track's bytes are loaded, since that's the only art the system
+     *  shows. Fetching is async, so getState renders without art until the bytes
+     *  land and [refreshArtwork] republishes. */
+    private var currentArtworkCoverId: String? = null
+    private var currentArtwork: ByteArray? = null
 
     private var sidePausePrompt: BridgeSidePausePrompt? = null
 
@@ -632,9 +646,47 @@ class BaeCorePlayer(
             playingTrackId = current.meta.trackId
             currentMeta = current.meta
             durationMs = current.durationMs
+            refreshArtwork(current.meta.coverImageId)
         }
         publish()
         systemHooks.onPlaybackActivated()
+    }
+
+    /**
+     * Load the now-playing artwork bytes for [coverImageId] (a release id) and
+     * republish once they land, so the session embeds them in the notification /
+     * lock-screen art. A no-op when the cover hasn't changed (a pause on the same
+     * track keeps the loaded bytes). A null id, an absent image, or a fetch
+     * failure clears the art (the loss is logged, not masked).
+     */
+    private fun refreshArtwork(coverImageId: String?) {
+        if (coverImageId == currentArtworkCoverId) return
+        currentArtworkCoverId = coverImageId
+        currentArtwork = null
+        if (coverImageId == null) {
+            invalidateState()
+            return
+        }
+        scope.launch {
+            val bytes =
+                try {
+                    appHandle.fetchImageBytes(coverImageId)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.error("Failed to load now-playing artwork $coverImageId", e)
+                    null
+                }
+            // A later track change supersedes this fetch; only apply if the cover
+            // is still current.
+            if (currentArtworkCoverId == coverImageId) {
+                if (bytes == null) {
+                    logger.warning("now-playing artwork bytes absent for $coverImageId")
+                }
+                currentArtwork = bytes
+                invalidateState()
+            }
+        }
     }
 
     /** Bridge durations are 0 when unknown; map that to Media3's [C.TIME_UNSET]. */
@@ -645,6 +697,7 @@ class BaeCorePlayer(
         playWhenReady = false
         playingTrackId = event.trackId
         currentMeta = meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImageId)
+        refreshArtwork(event.coverImageId)
         sidePausePrompt =
             when (val reason = event.reason) {
                 BridgePlaybackPauseReason.Manual -> null
@@ -659,6 +712,7 @@ class BaeCorePlayer(
         playWhenReady = false
         playingTrackId = null
         currentMeta = null
+        refreshArtwork(null)
         sidePausePrompt = null
         anchorPositionMs = 0L
         durationMs = C.TIME_UNSET
@@ -684,7 +738,7 @@ class BaeCorePlayer(
             artist = artist,
             albumTitle = albumTitle,
             durationLabel = "",
-            coverPath = coverImageId?.let { library.imagePathIfExists(it) },
+            coverImageId = coverImageId,
         )
 
     override fun onProgress(
@@ -721,12 +775,10 @@ class BaeCorePlayer(
 
     /**
      * Hydrate the playlist from a `QueueUpdated` event. The core resolves each
-     * item's metadata before emitting, so map both lanes straight to entries off
-     * the main thread (cover ids resolve to local file paths via the image
-     * resolver, which stats the disk), then re-anchor on the application looper.
-     * The flat [entries] (manual lane then the context tail) drives the Media3
-     * session and skip-by-index; the two lanes are also kept apart for the
-     * in-app two-section projection.
+     * item's metadata (including its cover image id) before emitting, so map both
+     * lanes straight to entries. The flat [entries] (manual lane then the context
+     * tail) drives the Media3 session and skip-by-index; the two lanes are also
+     * kept apart for the in-app two-section projection.
      */
     override fun onQueueUpdated(
         manual: List<BridgeQueueEntry>,
@@ -734,29 +786,24 @@ class BaeCorePlayer(
         hasNext: Boolean,
         hasPrevious: Boolean,
     ) {
-        scope.launch {
-            // No context (nothing playing from a release) resolves to an empty
-            // context lane with no shuffle — a normal state, named here rather
-            // than defaulted around the absent value.
-            val (manualMetas, contextMetas) =
-                withContext(Dispatchers.IO) {
-                    val resolvedContext =
-                        when (context) {
-                            null -> emptyList()
-                            else -> context.upcoming.map { it.toEntry() }
-                        }
-                    manual.map { it.toEntry() } to resolvedContext
-                }
-            manualEntries = manualMetas
-            contextEntries = contextMetas
-            contextShuffled = context?.shuffled == true
-            contextKind = context?.kind
-            hasContext = context != null
-            entries = manualMetas + contextMetas
-            this@BaeCorePlayer.hasNext = hasNext
-            this@BaeCorePlayer.hasPrevious = hasPrevious
-            publish()
-        }
+        // No context (nothing playing from a release) resolves to an empty context
+        // lane with no shuffle — a normal state, named here rather than defaulted
+        // around the absent value.
+        val contextMetas =
+            when (context) {
+                null -> emptyList()
+                else -> context.upcoming.map { it.toEntry() }
+            }
+        val manualMetas = manual.map { it.toEntry() }
+        manualEntries = manualMetas
+        contextEntries = contextMetas
+        contextShuffled = context?.shuffled == true
+        contextKind = context?.kind
+        hasContext = context != null
+        entries = manualMetas + contextMetas
+        this.hasNext = hasNext
+        this.hasPrevious = hasPrevious
+        publish()
     }
 
     /**
@@ -769,7 +816,7 @@ class BaeCorePlayer(
         val meta = currentMeta
         _nowPlaying.value =
             meta?.let {
-                NowPlaying(it.trackId, it.title, it.artist, it.coverPath, sidePausePrompt)
+                NowPlaying(it.trackId, it.title, it.artist, it.coverImageId, sidePausePrompt)
             }
         _isPlaying.value = transport == Transport.READY && playWhenReady
         _isLoading.value = transport == Transport.BUFFERING
@@ -811,7 +858,7 @@ class BaeCorePlayer(
             artist = artist,
             albumTitle = albumTitle,
             durationLabel = durationLabel,
-            coverPath = coverPath,
+            coverImageId = coverImageId,
         )
     }
 
@@ -823,7 +870,7 @@ class BaeCorePlayer(
             artist = artistNames,
             albumTitle = albumTitle,
             durationLabel = formatDurationMs(durationMs),
-            coverPath = coverImageId?.let { library.imagePathIfExists(it) },
+            coverImageId = coverImageId,
         )
 
     // ── State projection ─────────────────────────────────────────────────
@@ -833,7 +880,14 @@ class BaeCorePlayer(
         // excludes the current track, so it must be prepended — otherwise the
         // session shows the first up-next track as now-playing.
         val metas = orderedMetas(entries, currentMeta)
-        val playlist = metas.map { meta -> mediaItemData(meta, playingTrackId, durationMs) }
+        // Only the current track carries artwork bytes; the notification/lock
+        // screen show that one cover, and fetching every queue item's would be
+        // wasteful.
+        val playlist =
+            metas.map { meta ->
+                val artwork = if (meta.trackId == playingTrackId) currentArtwork else null
+                mediaItemData(meta, playingTrackId, durationMs, artwork)
+            }
 
         val requestedIndex = playingTrackId?.let { id -> metas.indexOfFirst { it.trackId == id } }
         val currentIndex =
