@@ -6,7 +6,6 @@ import fm.bae.app.AppSessionHolder
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.OpenLibrary
 import fm.bae.app.data.ConfigStore
-import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -96,8 +95,7 @@ class PlaybackServiceTest {
         context: android.content.Context,
         looper: Looper,
     ): OpenLibrary {
-        val handle = FakeAppHandle(imagePaths = emptyMap())
-        val library = Library(handle)
+        val handle = FakeAppHandle()
         return OpenLibrary(
             libraryId = "lib-1",
             appHandle = handle,
@@ -107,7 +105,6 @@ class PlaybackServiceTest {
                 BaeCorePlayer(
                     applicationLooper = looper,
                     appHandle = handle,
-                    library = library,
                     context = context,
                     scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
                     isAppForeground = { false },
@@ -124,7 +121,7 @@ class PlaybackServiceTest {
 }
 
 internal class FakeAppHandle(
-    private val imagePaths: Map<String, String>,
+    private val imageBytes: Map<String, ByteArray> = emptyMap(),
 ) : AppHandle(NoHandle) {
     var pauseCount = 0
     var resumeCount = 0
@@ -143,5 +140,5 @@ internal class FakeAppHandle(
 
     override fun triggerSync() {}
 
-    override fun imagePathIfExists(imageId: String): String? = imagePaths[imageId]
+    override suspend fun fetchImageBytes(imageId: String): ByteArray? = imageBytes[imageId]
 }

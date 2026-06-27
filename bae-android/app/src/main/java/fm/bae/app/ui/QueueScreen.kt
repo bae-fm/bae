@@ -86,7 +86,7 @@ fun QueueScreen(
         nowPlaying?.let { np ->
             item(key = "nowplaying") {
                 SectionLabel(stringResource(R.string.queue_section_now_playing))
-                NowPlayingRow(np)
+                NowPlayingRow(np, session.library::imageBytes)
             }
         }
         queueContent(
@@ -259,6 +259,7 @@ private fun LazyListScope.queueRows(
             Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
                 QueueRow(
                     item = item,
+                    loadImage = session.library::imageBytes,
                     dragHandleModifier = Modifier.draggableHandle(),
                     onClick = {
                         try {
@@ -372,7 +373,10 @@ private fun ContextSectionLabel(
 }
 
 @Composable
-private fun NowPlayingRow(np: NowPlaying) {
+private fun NowPlayingRow(
+    np: NowPlaying,
+    loadImage: suspend (imageId: String) -> ByteArray?,
+) {
     Row(
         modifier =
             Modifier
@@ -381,7 +385,9 @@ private fun NowPlayingRow(np: NowPlaying) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            path = np.coverPath,
+            coverId = np.coverImageId,
+            coverVersion = null,
+            loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
@@ -408,6 +414,7 @@ private fun NowPlayingRow(np: NowPlaying) {
 @Composable
 private fun QueueRow(
     item: QueueItem,
+    loadImage: suspend (imageId: String) -> ByteArray?,
     dragHandleModifier: Modifier,
     onClick: () -> Unit,
     onRemove: () -> Unit,
@@ -421,7 +428,9 @@ private fun QueueRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            path = item.coverPath,
+            coverId = item.coverImageId,
+            coverVersion = null,
+            loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),

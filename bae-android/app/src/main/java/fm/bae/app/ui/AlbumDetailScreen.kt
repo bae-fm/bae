@@ -15,12 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
@@ -42,13 +40,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -60,6 +55,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
 
 private const val TAG = "bae.AlbumDetailScreen"
@@ -72,6 +68,7 @@ private data class AlbumPlaybackState(
 
 private data class AlbumDetailCallbacks(
     val fetchGalleryImage: suspend (releaseId: String, fileId: String) -> ByteArray,
+    val loadCoverImage: suspend (imageId: String) -> ByteArray?,
     val onSelectRelease: (String) -> Unit,
     val onTogglePlayPause: () -> Unit,
     val onPlayTrackAt: (Int) -> Unit,
@@ -142,7 +139,7 @@ fun AlbumDetailScreen(
                 AlbumDetailContent(
                     detail = loaded,
                     selectedRelease = release,
-                    coverPath = release?.coverPath,
+                    cover = release?.cover,
                     playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
                     callbacks = buildAlbumDetailCallbacks(session, release) { selectedReleaseId = it },
                 )
@@ -192,6 +189,7 @@ private fun buildAlbumDetailCallbacks(
 ): AlbumDetailCallbacks =
     AlbumDetailCallbacks(
         fetchGalleryImage = { releaseId, fileId -> session.appHandle.fetchGalleryImage(releaseId, fileId) },
+        loadCoverImage = session.library::imageBytes,
         onSelectRelease = onSelectRelease,
         onTogglePlayPause = { session.playback.togglePlayPause() },
         // play_release is a core transport command: ask core to play the release at a track index.
@@ -236,7 +234,7 @@ private fun buildAlbumDetailCallbacks(
 private fun AlbumDetailContent(
     detail: BridgeAlbumDetail,
     selectedRelease: BridgeRelease?,
-    coverPath: String?,
+    cover: BridgeImageRef?,
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
 ) {
@@ -250,7 +248,8 @@ private fun AlbumDetailContent(
     if (showGallery && galleryRelease != null && galleryItems.isNotEmpty()) {
         GalleryDialog(
             items = galleryItems,
-            loadImage = { fileId -> callbacks.fetchGalleryImage(galleryRelease.id, fileId) },
+            loadCover = callbacks.loadCoverImage,
+            loadGalleryFile = { fileId -> callbacks.fetchGalleryImage(galleryRelease.id, fileId) },
             onDismiss = { showGallery = false },
         )
     }
@@ -263,7 +262,8 @@ private fun AlbumDetailContent(
             AlbumDetailHeader(
                 detail = detail,
                 selectedRelease = selectedRelease,
-                coverPath = coverPath,
+                cover = cover,
+                loadImage = callbacks.loadCoverImage,
                 galleryItems = galleryItems,
                 onShowGallery = { showGallery = true },
             )
@@ -294,7 +294,8 @@ private fun AlbumDetailContent(
 private fun AlbumDetailHeader(
     detail: BridgeAlbumDetail,
     selectedRelease: BridgeRelease?,
-    coverPath: String?,
+    cover: BridgeImageRef?,
+    loadImage: suspend (imageId: String) -> ByteArray?,
     galleryItems: List<uniffi.bae_bridge.BridgeGalleryItem>,
     onShowGallery: () -> Unit,
 ) {
@@ -314,32 +315,18 @@ private fun AlbumDetailHeader(
         ).joinToString(" · ")
     }
     Row(verticalAlignment = Alignment.Top) {
-        Box(
+        CoverImage(
+            coverId = cover?.id,
+            coverVersion = cover?.version,
+            loadImage = loadImage,
+            cornerRadius = 6.dp,
+            iconPadding = 32.dp,
             modifier =
                 Modifier
                     .size(140.dp)
-                    .clip(RoundedCornerShape(6.dp))
                     .clickable(enabled = galleryItems.isNotEmpty(), onClick = onShowGallery),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (coverPath != null) {
-                AsyncImage(
-                    model = coverModel(coverPath),
-                    contentDescription = album.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Surface(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxSize()) {
-                    Icon(
-                        Icons.Filled.MusicNote,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(32.dp),
-                    )
-                }
-            }
-        }
+            contentDescription = album.title,
+        )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(text = album.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)

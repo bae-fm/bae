@@ -29,7 +29,7 @@ object BridgeFixtures {
             artistNames = "Artist Name",
             releaseIds = releaseIds,
             primaryReleaseId = primaryReleaseId,
-            coverPath = null,
+            cover = null,
         )
 
     fun release(
@@ -59,7 +59,7 @@ object BridgeFixtures {
             totalDurationMs = 0,
             fileCount = 0,
             totalSize = 0,
-            coverPath = null,
+            cover = null,
         )
 
     fun albumDetail(

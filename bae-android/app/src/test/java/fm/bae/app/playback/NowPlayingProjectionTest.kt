@@ -2,10 +2,10 @@ package fm.bae.app.playback
 
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Timeline
-import fm.bae.app.data.Library
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,7 +31,7 @@ class NowPlayingProjectionTest {
             artist = "Artist Name",
             albumTitle = "Album Title",
             durationLabel = "",
-            coverPath = null,
+            coverImageId = null,
         )
 
     @Test
@@ -68,8 +68,10 @@ class NowPlayingProjectionTest {
 
     @Test
     fun currentMediaItemCarriesLockScreenMetadata() {
-        val coverPath = "/tmp/release-cover.jpg#v=2"
-        val player = player(imagePaths = mapOf("cover-1" to coverPath))
+        val coverBytes = byteArrayOf(1, 2, 3, 4)
+        // Main.immediate runs the artwork fetch inline (the fake returns without
+        // suspending), so the current item already carries its bytes here.
+        val player = player(imageBytes = mapOf("cover-1" to coverBytes))
         player.onPlaying(
             BridgeUiEvent.PlaybackPlaying(
                 trackId = "cur",
@@ -90,7 +92,7 @@ class NowPlayingProjectionTest {
 
         assertEquals("cur", mediaItem.mediaId)
         assertEquals(185_000_000L, window.durationUs)
-        assertEquals("/tmp/release-cover.jpg", metadata.artworkUri?.path)
+        assertArrayEquals(coverBytes, metadata.artworkData)
         assertEquals("Title cur", sessionMetadata.title)
         assertEquals("Title cur", metadata.title)
         assertEquals("Artist Name", metadata.artist)
@@ -101,15 +103,13 @@ class NowPlayingProjectionTest {
         assertEquals(false, metadata.isBrowsable)
     }
 
-    private fun player(imagePaths: Map<String, String>): BaeCorePlayer {
+    private fun player(imageBytes: Map<String, ByteArray>): BaeCorePlayer {
         val context = RuntimeEnvironment.getApplication()
         val looper = android.os.Looper.getMainLooper()
-        val handle = FakeAppHandle(imagePaths)
-        val library = Library(handle)
+        val handle = FakeAppHandle(imageBytes)
         return BaeCorePlayer(
             applicationLooper = looper,
             appHandle = handle,
-            library = library,
             context = context,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
             isAppForeground = { false },

@@ -91,9 +91,10 @@ private class PageError(
 
 /**
  * Loads and accumulates the album grid one page at a time. Owns the loaded
- * albums, their display order, and resolved cover paths, plus the two loads:
- * the first page, and each next page as the grid scrolls near its end. Backed
- * by snapshot state so reads in composition recompose on change.
+ * albums and their display order, plus the two loads: the first page, and each
+ * next page as the grid scrolls near its end. Backed by snapshot state so reads
+ * in composition recompose on change. (Each album carries its own cover
+ * reference; the grid cards fetch the bytes by id.)
  */
 private class LibraryPage(
     private val session: OpenLibrary,
@@ -103,7 +104,6 @@ private class LibraryPage(
 ) {
     val albums = mutableStateMapOf<String, BridgeAlbum>()
     val order = mutableStateListOf<String>()
-    val coverPaths = mutableStateMapOf<String, String>()
     var totalCount by mutableStateOf(0)
         private set
     var loading by mutableStateOf(true)
@@ -112,35 +112,25 @@ private class LibraryPage(
         private set
     private var loadedOffset = 0
 
-    private fun ingest(
-        page: List<BridgeAlbum>,
-        covers: Map<String, String>,
-    ) {
+    private fun ingest(page: List<BridgeAlbum>) {
         page.forEach { album ->
             if (!albums.containsKey(album.id)) order.add(album.id)
             albums[album.id] = album
         }
-        coverPaths.putAll(covers)
     }
-
-    private fun resolveCovers(page: List<BridgeAlbum>): Map<String, String> =
-        page
-            .mapNotNull { album ->
-                session.library.imagePathIfExists(album.primaryReleaseId)?.let { album.id to it }
-            }.toMap()
 
     suspend fun loadFirst() {
         loading = true
         error = null
         try {
-            val (count, page, covers) =
+            val (count, page) =
                 withContext(Dispatchers.IO) {
                     val c = session.library.albumCount().toInt()
                     val p = session.library.albumPage(listOf(sortCriterion), 0u, PAGE_SIZE.toULong())
-                    Triple(c, p, resolveCovers(p))
+                    c to p
                 }
             totalCount = count
-            ingest(page, covers)
+            ingest(page)
             loadedOffset = PAGE_SIZE
         } catch (e: CancellationException) {
             throw e
@@ -156,12 +146,11 @@ private class LibraryPage(
         if (order.size >= totalCount) return
         val offset = loadedOffset
         try {
-            val (more, moreCovers) =
+            val more =
                 withContext(Dispatchers.IO) {
-                    val p = session.library.albumPage(listOf(sortCriterion), offset.toULong(), PAGE_SIZE.toULong())
-                    p to resolveCovers(p)
+                    session.library.albumPage(listOf(sortCriterion), offset.toULong(), PAGE_SIZE.toULong())
                 }
-            ingest(more, moreCovers)
+            ingest(more)
             loadedOffset = offset + PAGE_SIZE
         } catch (e: CancellationException) {
             throw e
@@ -361,7 +350,7 @@ private fun LibraryGridContent(
                         val album = page.albums[albumId] ?: return@items
                         AlbumGridCard(
                             album = album,
-                            coverPath = page.coverPaths[albumId],
+                            loadImage = session.library::imageBytes,
                             onClick = { onSelectAlbum(albumId) },
                         )
                     }
@@ -555,12 +544,14 @@ private fun ErrorBanner(
 @Composable
 private fun AlbumGridCard(
     album: BridgeAlbum,
-    coverPath: String?,
+    loadImage: suspend (imageId: String) -> ByteArray?,
     onClick: () -> Unit,
 ) {
     Column(modifier = Modifier.clickable(onClick = onClick)) {
         CoverImage(
-            path = coverPath,
+            coverId = album.cover?.id,
+            coverVersion = album.cover?.version,
+            loadImage = loadImage,
             cornerRadius = 6.dp,
             iconPadding = 40.dp,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),

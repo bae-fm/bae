@@ -88,7 +88,11 @@ fun NowPlayingBar(session: OpenLibrary) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                NowPlayingTrackInfo(track = track, onExpand = { expanded = true })
+                NowPlayingTrackInfo(
+                    track = track,
+                    loadImage = session.library::imageBytes,
+                    onExpand = { expanded = true },
+                )
                 NowPlayingTransportButtons(
                     session = session,
                     player = player,
@@ -104,6 +108,7 @@ fun NowPlayingBar(session: OpenLibrary) {
 @Composable
 private fun RowScope.NowPlayingTrackInfo(
     track: fm.bae.app.playback.NowPlaying,
+    loadImage: suspend (imageId: String) -> ByteArray?,
     onExpand: () -> Unit,
 ) {
     val nowPlayingDescription = stringResource(R.string.now_playing_track_by_artist, track.title, track.artist)
@@ -118,7 +123,14 @@ private fun RowScope.NowPlayingTrackInfo(
                 .semantics(mergeDescendants = true) { contentDescription = nowPlayingDescription },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CoverImage(path = track.coverPath, cornerRadius = 4.dp, iconPadding = 12.dp, modifier = Modifier.size(48.dp))
+        CoverImage(
+            coverId = track.coverImageId,
+            coverVersion = null,
+            loadImage = loadImage,
+            cornerRadius = 4.dp,
+            iconPadding = 12.dp,
+            modifier = Modifier.size(48.dp),
+        )
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(

@@ -3,7 +3,6 @@ package fm.bae.app.playback
 import android.content.Context
 import android.media.AudioManager
 import android.os.Looper
-import fm.bae.app.data.Library
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,7 +33,6 @@ class AudioFocusResumeTest {
         BaeCorePlayer(
             applicationLooper = Looper.getMainLooper(),
             appHandle = handle,
-            library = Library(handle),
             context = context,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
             isAppForeground = { false },

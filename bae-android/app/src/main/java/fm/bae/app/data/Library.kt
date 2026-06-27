@@ -8,9 +8,9 @@ import uniffi.bae_bridge.BridgeSortCriterion
 
 /**
  * Narrow projection of [AppHandle] for library browse and detail reads — DB
- * queries and on-disk cover lookups. These calls touch the database or
- * filesystem and must run off the main thread. Mirrors the macOS `Library` /
- * `MediaPaths` domain services.
+ * queries and library-image reads. The page/detail calls touch the database and
+ * must run off the main thread; the suspend calls cross the bridge themselves.
+ * Mirrors the macOS `Library` / `MediaPaths` domain services.
  */
 class Library(
     private val handle: AppHandle,
@@ -25,8 +25,9 @@ class Library(
 
     fun albumDetail(albumId: String): BridgeAlbumDetail = handle.getAlbumDetail(albumId)
 
-    /** Absolute path to an image (a release cover) by id, if the file is on disk. */
-    fun imagePathIfExists(imageId: String): String? = handle.imagePathIfExists(imageId)
+    /** Bytes of a library image (a cover or artist image) by id, read through
+     *  coven's locality-aware store, or null when no such image exists. */
+    suspend fun imageBytes(imageId: String): ByteArray? = handle.fetchImageBytes(imageId)
 
     /**
      * Search albums and tracks by free-text query. Suspends: the bridge call is
