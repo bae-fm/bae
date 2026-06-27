@@ -5,9 +5,9 @@
 //! dest failure), the Local↔Remote round-trip, the missing-external-source read
 //! error, and the `ReleaseUpdated` events coven's completions emit.
 //!
-//! coven owns the transitions; tests drive them through coven's free functions
-//! (`make_remote` + the upload drain via `process_cloud_uploads_with`,
-//! `make_local` via `make_local_for_test`) rather than a live `SyncManager`.
+//! coven owns the transitions; tests drive them through the manager's coven
+//! seams (`coven_make_remote` + the upload drain via `drain_uploads_for_test`,
+//! `coven_make_local`) over a `SyncManager` connected to an injected cloud home.
 
 mod support;
 
@@ -19,10 +19,11 @@ use bae_core::library_dir::LibraryDir;
 use bae_core::storage::local::transfer::{
     read_release_file_bytes, TransferProgress, TransferService,
 };
+use bae_core::sync::cloud_storage::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
 use std::path::Path;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use support::MockCloudHome;
 use tempfile::TempDir;
 use uuid::Uuid;
@@ -71,10 +72,10 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
     (db, mgr)
 }
 
-/// A manager with a `MockCloudHome` + encryption injected (the cloud read/write
-/// paths resolve without a live SyncManager) and the sync pipeline modelled as
-/// running. Opaque home (the default at-rest mode), so blobs are keyed hashed and
-/// `release_files.cloud_path` stays NULL.
+/// A manager with a `SyncManager` connected over an injected `MockCloudHome`,
+/// sealing blobs under `enc`. After this, `get_cloud_home` is Some and
+/// `is_sync_ready` is true. Opaque home (the default at-rest mode), so blobs are
+/// keyed hashed and `release_files.cloud_path` stays NULL.
 async fn setup_with_cloud(
     tmp: &TempDir,
 ) -> (
@@ -83,11 +84,12 @@ async fn setup_with_cloud(
     Arc<MockCloudHome>,
     EncryptionService,
 ) {
-    let (db, mut mgr) = setup(tmp).await;
+    let (db, mgr) = setup(tmp).await;
     let cloud = Arc::new(MockCloudHome::new());
     let enc = EncryptionService::new_with_key(&[9u8; 32]);
-    mgr.set_cloud_override(cloud.clone(), enc.clone());
-    mgr.set_force_sync_ready();
+    mgr.connect_test_cloud_home(cloud.clone(), CloudCipher::Encrypted(enc.clone()))
+        .await
+        .unwrap();
     (db, mgr, cloud, enc)
 }
 
@@ -170,15 +172,12 @@ async fn create_local_release(
 async fn create_remote_release(
     db: &Database,
     mgr: &LibraryManager,
-    cloud: &MockCloudHome,
-    enc_svc: EncryptionService,
     source_dir: &Path,
     files: &[(&str, &[u8])],
 ) -> String {
     let (_album_id, release_id, named) = create_local_release(db, mgr, source_dir, files).await;
-    mgr.make_remote_for_test(&release_id, false).await.unwrap();
-    let enc = RwLock::new(enc_svc);
-    let count = mgr.process_cloud_uploads_with(cloud, &enc).await.unwrap();
+    mgr.coven_make_remote(&release_id, false).await.unwrap();
+    let count = mgr.drain_uploads_for_test().await.unwrap();
     assert_eq!(count, named.len(), "all files uploaded");
     assert_eq!(
         storage(mgr, &release_id).await,
@@ -262,7 +261,7 @@ async fn make_remote_uploads_are_visible_in_snapshot_before_drain() {
     .await;
 
     // Enqueue make-Remote through the real coven path; do NOT drain.
-    mgr.make_remote_for_test(&release_id, false).await.unwrap();
+    mgr.coven_make_remote(&release_id, false).await.unwrap();
 
     let snap = mgr.outbox_snapshot().await.unwrap();
     assert_eq!(
@@ -299,17 +298,10 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
     );
 
     // Store the cover bytes in coven's local store and write the `covers` row,
-    // exactly as import / change_cover does.
+    // exactly as import / change_cover does (through the handle, via the manager's
+    // `store_cover_blob`).
     let bytes = b"cover-jpeg-bytes";
-    let lib_dir = LibraryDir::new(tmp.path());
-    coven::blob::local_files::store(
-        &lib_dir,
-        bae_core::sync::COVERS_NAMESPACE,
-        &release_id,
-        bytes,
-    )
-    .await
-    .unwrap();
+    mgr.store_cover_blob(&release_id, bytes).await.unwrap();
     mgr.upsert_library_image(&bae_core::db::DbLibraryImage {
         id: release_id.clone(),
         image_type: bae_core::db::LibraryImageType::Cover,
@@ -382,12 +374,10 @@ async fn test_unpin_rejects_local_release() {
 async fn test_pin_remote_fetches_into_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud, enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
         &db,
         &mgr,
-        cloud.as_ref(),
-        enc,
         &tmp.path().join("src"),
         &[("a.flac", b"pin-bytes-a"), ("b.flac", b"pin-bytes-b")],
     )
@@ -412,12 +402,10 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
 async fn test_unpin_remote_drops_from_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud, enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
         &db,
         &mgr,
-        cloud.as_ref(),
-        enc,
         &tmp.path().join("src"),
         &[("a.flac", b"unpin-bytes")],
     )
@@ -519,12 +507,10 @@ async fn test_missing_external_source_maps_to_error() {
 async fn test_make_local_cancelled_rolls_back_and_stays_remote() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud, enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
         &db,
         &mgr,
-        cloud.as_ref(),
-        enc,
         &tmp.path().join("src"),
         &[("a.flac", b"aaaa"), ("b.flac", b"bbbb")],
     )
@@ -535,7 +521,7 @@ async fn test_make_local_cancelled_rolls_back_and_stays_remote() {
     // back any partial copy, and leaves the release Remote.
     let token = CancellationToken::new();
     token.cancel();
-    mgr.make_local_for_test(&release_id, new_path.to_str().unwrap(), &token)
+    mgr.coven_make_local(&release_id, new_path.to_str().unwrap(), &token)
         .await
         .unwrap();
 
@@ -560,23 +546,16 @@ async fn test_make_local_cancelled_rolls_back_and_stays_remote() {
 async fn test_make_local_abort_on_dest_failure_queues_no_deletes() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud, enc) = setup_with_cloud(&tmp).await;
-    let release_id = create_remote_release(
-        &db,
-        &mgr,
-        cloud.as_ref(),
-        enc,
-        &tmp.path().join("src"),
-        &[("a.flac", b"aaaa")],
-    )
-    .await;
+    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
+    let release_id =
+        create_remote_release(&db, &mgr, &tmp.path().join("src"), &[("a.flac", b"aaaa")]).await;
 
     // Destination is a FILE, so writing `dest/a.flac` under it fails.
     let new_path = tmp.path().join("dest_is_a_file");
     tokio::fs::write(&new_path, b"blocker").await.unwrap();
 
     let result = mgr
-        .make_local_for_test(
+        .coven_make_local(
             &release_id,
             new_path.to_str().unwrap(),
             &CancellationToken::new(),
@@ -609,7 +588,7 @@ async fn test_make_local_abort_on_dest_failure_queues_no_deletes() {
 async fn test_round_trip_make_remote_make_local_make_remote() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud, enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
         create_local_release(&db, &mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
@@ -617,11 +596,8 @@ async fn test_round_trip_make_remote_make_local_make_remote() {
 
     // Local → Remote: enqueue + drain. The drain flips the gate and fires
     // on_root_made_remote → ReleaseUpdated.
-    mgr.make_remote_for_test(&release_id, false).await.unwrap();
-    let enc_lock = RwLock::new(enc);
-    mgr.process_cloud_uploads_with(cloud.as_ref(), &enc_lock)
-        .await
-        .unwrap();
+    mgr.coven_make_remote(&release_id, false).await.unwrap();
+    mgr.drain_uploads_for_test().await.unwrap();
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false),
@@ -631,7 +607,7 @@ async fn test_round_trip_make_remote_make_local_make_remote() {
 
     // Remote → Local: materialize back to a chosen folder.
     let dest = tmp.path().join("brought-back");
-    mgr.make_local_for_test(
+    mgr.coven_make_local(
         &release_id,
         dest.to_str().unwrap(),
         &CancellationToken::new(),
@@ -652,11 +628,8 @@ async fn test_round_trip_make_remote_make_local_make_remote() {
 
     // Local → Remote again: the external refs registered by make_local let the
     // re-upload read from the new folder.
-    mgr.make_remote_for_test(&release_id, false).await.unwrap();
-    let count = mgr
-        .process_cloud_uploads_with(cloud.as_ref(), &enc_lock)
-        .await
-        .unwrap();
+    mgr.coven_make_remote(&release_id, false).await.unwrap();
+    let count = mgr.drain_uploads_for_test().await.unwrap();
     assert_eq!(count, 1, "the file re-uploads on the second make_remote");
     assert_eq!(
         storage(&mgr, &release_id).await,

@@ -30,15 +30,8 @@ struct ExportFixture {
 /// fixture's cloud home is the default opaque home, so the blob is sharded by id
 /// under the `release_files` namespace (Hashed scheme, no readable cloud_path).
 /// Seeding/removing the mock cloud at this key matches what coven reads.
-fn cloud_key(file: &bae_core::db::DbFile) -> String {
-    use coven::sync::cloud_storage::{BlobPathScheme, CloudSyncStorage};
-    CloudSyncStorage::blob_key(
-        BlobPathScheme::Hashed,
-        "release_files",
-        &file.id,
-        file.cloud_path.as_deref(),
-    )
-    .expect("derive cloud key")
+async fn cloud_key(mgr: &LibraryManager, file: &bae_core::db::DbFile) -> String {
+    mgr.resolve_track_cloud_key_for_test(&file.id).await
 }
 
 impl ExportFixture {
@@ -55,7 +48,7 @@ impl ExportFixture {
         .unwrap();
         let library_dir = LibraryDir::new(db_dir.clone());
         let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
-        let mut mgr = LibraryManager::new(
+        let mgr = LibraryManager::new(
             db.clone(),
             library_dir,
             config_handle,
@@ -65,7 +58,14 @@ impl ExportFixture {
             tokio::runtime::Handle::current(),
         );
         let cloud = Arc::new(MockCloudHome::new());
-        mgr.set_cloud_override(cloud.clone(), EncryptionService::new_with_key(&[7u8; 32]));
+        mgr.connect_test_cloud_home(
+            cloud.clone(),
+            bae_core::sync::cloud_storage::CloudCipher::Encrypted(EncryptionService::new_with_key(
+                &[7u8; 32],
+            )),
+        )
+        .await
+        .unwrap();
 
         let handle = bae_core::import::ImportService::start(
             tokio::runtime::Handle::current(),
@@ -127,8 +127,10 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
         .get_encryption_service()
         .expect("the library is unlocked");
     let original_bytes = fs::read(album_dir.join(&files[0].original_filename)).unwrap();
-    f.cloud
-        .put(&cloud_key(&files[0]), master_enc.encrypt(&original_bytes));
+    f.cloud.put(
+        &cloud_key(&f.mgr, &files[0]).await,
+        master_enc.encrypt(&original_bytes),
+    );
 
     // Remove the originals — nothing local remains.
     fs::remove_dir_all(album_dir).unwrap();
@@ -206,7 +208,7 @@ async fn export_release_missing_blob_is_hard_error() {
 
     // Blow away the seeded blob.
     let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
-    f.cloud.remove(&cloud_key(&files[0]));
+    f.cloud.remove(&cloud_key(&f.mgr, &files[0]).await);
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();

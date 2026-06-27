@@ -4652,7 +4652,7 @@ impl CloudOnlyPlaybackFixture {
         .await?;
         let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
-        let mut library_manager = LibraryManager::new(
+        let library_manager = LibraryManager::new(
             database,
             library_dir,
             config_handle,
@@ -4663,11 +4663,14 @@ impl CloudOnlyPlaybackFixture {
         );
         let master_key = [11u8; 32];
         let cloud = Arc::new(support::MockCloudHome::new());
-        library_manager.set_cloud_override(
-            cloud.clone(),
-            bae_core::encryption::EncryptionService::new_with_key(&master_key),
-        );
-        library_manager.set_force_sync_ready();
+        library_manager
+            .connect_test_cloud_home(
+                cloud.clone(),
+                bae_core::sync::cloud_storage::CloudCipher::Encrypted(
+                    bae_core::encryption::EncryptionService::new_with_key(&master_key),
+                ),
+            )
+            .await?;
 
         let runtime_handle = tokio::runtime::Handle::current();
         let discogs_release = create_test_album();
@@ -4696,14 +4699,7 @@ impl CloudOnlyPlaybackFixture {
         // Run the upload so the encrypted blobs land in the cloud and the outbox
         // clears — after this the track resolves cloud-only (no local copy, no
         // pending upload).
-        let encryption = std::sync::RwLock::new(
-            bae_core::encryption::EncryptionService::new_with_key(&master_key),
-        );
-        while library_manager
-            .process_cloud_uploads_with(cloud.as_ref(), &encryption)
-            .await?
-            > 0
-        {}
+        while library_manager.drain_uploads_for_test().await? > 0 {}
 
         // Delete the import originals so file resolution can't fall back to them.
         std::fs::remove_dir_all(&album_dir)?;
