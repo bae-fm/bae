@@ -10,10 +10,10 @@ private let logger = Logger.bae("GalleryView")
 /// pinch-zooms and snaps back on release.
 struct GalleryView: View {
     let items: [BridgeGalleryItem]
-    /// Fetches a gallery item's bytes — the release's cover by image id, or a
-    /// release-file image by file id. Nil when no such image exists.
+    /// Fetches a gallery item's bytes from the bridge, which dispatches the read
+    /// in core on the item's `BridgeGallerySource` (its cover or an image file).
     let loadImage:
-        @Sendable (_ item: BridgeGalleryItem) async throws -> Data?
+        @Sendable (_ item: BridgeGalleryItem) async throws -> Data
 
     @Environment(\.dismiss)
     private var dismiss
@@ -105,10 +105,10 @@ struct GalleryView: View {
 /// container's element type stays stable) that fetches the item's bytes on
 /// demand and hands them to `ZoomableGalleryImage`, which handles the
 /// screen-fit-then-full-res decode and the pinch-to-zoom. A spinner shows while
-/// fetching, a warning glyph if the fetch fails or the item has no bytes.
+/// fetching, a warning glyph if the fetch fails.
 private struct GalleryPage: View {
     let item: BridgeGalleryItem
-    let loadImage: @Sendable (_ item: BridgeGalleryItem) async throws -> Data?
+    let loadImage: @Sendable (_ item: BridgeGalleryItem) async throws -> Data
 
     @State
     private var bytes: Data?
@@ -134,12 +134,7 @@ private struct GalleryPage: View {
         }
         .task(id: item.id) {
             do {
-                guard let data = try await loadImage(item) else {
-                    logger.warning("gallery item \(item.id) has no bytes")
-                    failed = true
-                    return
-                }
-                bytes = data
+                bytes = try await loadImage(item)
             }
             catch is CancellationError {
                 // The viewer was dismissed mid-fetch; leave state as-is.

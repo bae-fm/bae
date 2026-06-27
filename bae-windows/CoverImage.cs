@@ -7,10 +7,10 @@ namespace Bae.Windows;
 
 /// <summary>
 /// Decodes a library image into a <see cref="BitmapImage"/> for the WinUI image
-/// controls. The bytes come from the FFI by id (a cover via <c>bae_image_bytes</c>,
-/// a release-file gallery image via <c>bae_gallery_image_bytes</c>) — coven reads
-/// them locality-aware, fetching and decrypting from the cloud when they aren't on
-/// disk — so the UI never resolves a filesystem path itself.
+/// controls. The bytes come from the FFI: a cover by id via <c>bae_image_bytes</c>,
+/// a gallery slot by its forwarded <c>source</c> via <c>bae_gallery_bytes</c> —
+/// coven reads them locality-aware, fetching and decrypting from the cloud when
+/// they aren't on disk — so the UI never resolves a filesystem path itself.
 ///
 /// Decoding goes through an in-memory stream (<see cref="BitmapImage.SetSource"/>),
 /// not a <c>UriSource</c>: WinUI caches decoded images process-wide keyed by their
@@ -26,9 +26,9 @@ public static class CoverImage
     /// <summary>
     /// Decoded covers keyed by (image id, content version). The version is part of
     /// the key so a changed cover (new version) misses and re-decodes; the stale
-    /// entry is never served. Only the cover paths that carry a version populate
-    /// this — release-file gallery images and the version-less now-playing cover
-    /// decode fresh.
+    /// entry is never served. Only the grid tile populates this (via
+    /// <see cref="LoadByImageRef"/>); the gallery slots and the version-less
+    /// now-playing cover decode fresh.
     /// </summary>
     private static readonly Dictionary<(string Id, string Version), BitmapImage> Cache = new();
 
@@ -76,11 +76,13 @@ public static class CoverImage
     }
 
     /// <summary>
-    /// The decoded release-file gallery image for (release id, file id), or null
-    /// when the bytes can't be read or decoded.
+    /// The decoded image for a gallery slot, given the item's <c>source</c> JSON
+    /// forwarded verbatim to the FFI, which dispatches the read on its kind (a
+    /// cover or a release file). Decoded fresh each call; null when the bytes can't
+    /// be read or decoded.
     /// </summary>
-    public static BitmapImage? LoadGalleryImage(IntPtr handle, string releaseId, string fileId) =>
-        Decode(NativeBae.GalleryImageBytes(handle, releaseId, fileId));
+    public static BitmapImage? LoadGalleryBytes(IntPtr handle, string releaseId, string sourceJson) =>
+        Decode(NativeBae.GalleryBytes(handle, releaseId, sourceJson));
 
     /// <summary>
     /// Decode image bytes into a <see cref="BitmapImage"/> through an in-memory

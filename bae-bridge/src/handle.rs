@@ -23,9 +23,10 @@ use crate::types::BridgeHomeStorage;
 use crate::types::{
     bridge_home_storage_to_core, bridge_sort_to_core, BridgeAlbum, BridgeAlbumDetail,
     BridgeAlbumSearchResult, BridgeConfig, BridgeCoverSelection, BridgeError, BridgeFile,
-    BridgeGalleryItem, BridgeRelease, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
-    BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage,
-    BridgeStorageRow, BridgeStorageSort, BridgeTrack, BridgeTrackGroup, BridgeTrackSearchResult,
+    BridgeGalleryItem, BridgeGallerySource, BridgeRelease, BridgeReleaseSummary, BridgeRepeatMode,
+    BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter,
+    BridgeStoragePage, BridgeStorageRow, BridgeStorageSort, BridgeTrack, BridgeTrackGroup,
+    BridgeTrackSearchResult,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{bridge_storage_mode_to_core, BridgeStorageMode};
@@ -798,20 +799,20 @@ impl AppHandle {
             .map_err(|e| BridgeError::database(format!("{e}")))
     }
 
-    /// Bytes of a release's gallery image (a release-file image), fetched from the
-    /// release's cloud home (and decrypted) when it isn't on disk here. The
-    /// lightbox calls this for gallery items whose source is `ReleaseFile` — the
-    /// release's image files. `file_id` is the gallery item's `id`.
-    pub async fn fetch_gallery_image(
+    /// Bytes of one gallery slot. The lightbox calls this for EVERY gallery item,
+    /// passing the `source` it received; core dispatches the read on the variant
+    /// (a `Cover` by image id, a `ReleaseFile` by file id), so the UI never picks
+    /// the byte source itself. A read error surfaces, not masked.
+    pub async fn fetch_gallery_bytes(
         &self,
         release_id: String,
-        file_id: String,
+        source: BridgeGallerySource,
     ) -> Result<Vec<u8>, BridgeError> {
         self.app_services
             .library_manager()
-            .load_gallery_image(&release_id, &file_id)
+            .read_gallery_bytes(&release_id, &source.into_core())
             .await
-            .map_err(BridgeError::import)
+            .map_err(|e| BridgeError::database(format!("{e}")))
     }
 }
 
@@ -1767,8 +1768,8 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
                     image: crate::types::BridgeImageRef::from_core(image),
                 }
             }
-            bae_core::album_detail::GallerySource::ReleaseFile => {
-                crate::types::BridgeGallerySource::ReleaseFile
+            bae_core::album_detail::GallerySource::ReleaseFile { file_id } => {
+                crate::types::BridgeGallerySource::ReleaseFile { file_id }
             }
         },
     };

@@ -69,16 +69,19 @@ private val logger = BaeLogger(TAG)
 /**
  * Full-screen artwork viewer over a release's gallery items (cover first, then
  * every image file the release has). Swipeable when there's more than one, and a
- * downward swipe dismisses it. Each item's bytes are fetched on demand per its
- * [BridgeGalleryItem.source]: a [BridgeGallerySource.Cover] by image id via
- * [loadCover], a [BridgeGallerySource.ReleaseFile] by file id via
- * [loadGalleryFile]. Each page pinch-zooms and snaps back when you release.
+ * downward swipe dismisses it. Every item's bytes are fetched the same way via
+ * [loadImage] — handed the item's [BridgeGalleryItem.source] so core dispatches
+ * the read (cover by image id, release-file by file id) — and the decoded image
+ * is keyed on `releaseId` + the item's id (the cover slot's id is the constant
+ * `"cover"`, so the release scope keeps two releases' covers distinct in the
+ * process-wide image cache). Each page pinch-zooms and snaps back when you
+ * release.
  */
 @Composable
 fun GalleryDialog(
+    releaseId: String,
     items: List<BridgeGalleryItem>,
-    loadCover: suspend (imageId: String) -> ByteArray?,
-    loadGalleryFile: suspend (fileId: String) -> ByteArray,
+    loadImage: suspend (source: BridgeGallerySource) -> ByteArray,
     onDismiss: () -> Unit,
 ) {
     Dialog(
@@ -124,7 +127,11 @@ fun GalleryDialog(
             ) {
                 Box(modifier = Modifier.fillMaxSize().graphicsLayer { translationY = offsetY }) {
                     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                        GalleryPage(item = items[page], loadCover = loadCover, loadGalleryFile = loadGalleryFile)
+                        GalleryPage(
+                            releaseId = releaseId,
+                            item = items[page],
+                            loadImage = loadImage,
+                        )
                     }
                     GalleryCloseButton(onDismiss = onDismiss)
                     GalleryCaption(items = items, pagerState = pagerState)
@@ -135,30 +142,19 @@ fun GalleryDialog(
 }
 
 /**
- * One gallery page. A [BridgeGallerySource.Cover] fetches the cover bytes by
- * image id and keys its cache on `(id, version)` so a replaced cover reloads; a
- * [BridgeGallerySource.ReleaseFile] fetches by file id and keys on the file id.
+ * One gallery page. Fetches the item's bytes via [loadImage] — passing the item's
+ * [BridgeGalleryItem.source] for core to dispatch the read — and keys the decoded
+ * image on `releaseId/itemId` so the per-release cover slot (whose id is the
+ * constant `"cover"`) doesn't collide across releases in the process-wide cache.
  */
 @Composable
 private fun GalleryPage(
+    releaseId: String,
     item: BridgeGalleryItem,
-    loadCover: suspend (imageId: String) -> ByteArray?,
-    loadGalleryFile: suspend (fileId: String) -> ByteArray,
+    loadImage: suspend (source: BridgeGallerySource) -> ByteArray,
 ) {
-    when (val source = item.source) {
-        is BridgeGallerySource.Cover ->
-            RemoteGalleryImage(
-                cacheKey = "${source.image.id}#${source.image.version}",
-                label = item.label,
-            ) {
-                // Core handed us a cover reference, so absent bytes are an error, not a
-                // normal empty — surface it through the page's failure state.
-                loadCover(source.image.id)
-                    ?: throw IllegalStateException("cover image ${source.image.id} has no bytes")
-            }
-
-        is BridgeGallerySource.ReleaseFile ->
-            RemoteGalleryImage(cacheKey = item.id, label = item.label) { loadGalleryFile(item.id) }
+    RemoteGalleryImage(cacheKey = "$releaseId/${item.id}", label = item.label) {
+        loadImage(item.source)
     }
 }
 

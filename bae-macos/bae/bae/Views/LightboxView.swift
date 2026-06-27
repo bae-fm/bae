@@ -11,22 +11,25 @@ struct LightboxItem: Identifiable, Equatable {
     /// Where the lightbox reads this item's bytes.
     let source: Source
 
-    /// The byte source for a lightbox item: a release cover read by image id, a
-    /// release-file image read by release id + file id, or an import-candidate
-    /// file already on disk (the folder-import gallery, pre-coven).
+    /// The byte source for a lightbox item: a release's gallery slot (its cover
+    /// or an image file) read via the bridge from the whole `BridgeGallerySource`,
+    /// or an import-candidate file already on disk (the folder-import gallery).
     enum Source: Equatable {
-        case libraryCover(imageId: String, version: String)
-        case releaseFile(releaseId: String, fileId: String)
+        case gallery(releaseId: String, source: BridgeGallerySource)
         case local(path: String)
     }
 
     /// What the thumbnail strip renders for this item (decoded small and cached).
     var thumbnailContent: ImageContent {
         switch source {
-        case .libraryCover(let imageId, let version):
-            return .library(.cover(id: imageId, version: version))
-        case .releaseFile(let releaseId, let fileId):
-            return .library(.releaseFile(releaseId: releaseId, fileId: fileId))
+        case .gallery(let releaseId, let gallerySource):
+            return .library(
+                .gallery(
+                    releaseId: releaseId,
+                    source: gallerySource,
+                    cacheId: id
+                )
+            )
         case .local(let path):
             return .source(.local(path: path))
         }
@@ -121,22 +124,17 @@ struct LightboxView: View {
         }
     }
 
-    /// Resolves the current item to a decodable source, fetching library bytes
-    /// from the bridge when needed. Returns nil when a cover item has no bytes.
+    /// Resolves the current item to a decodable source, fetching the gallery
+    /// bytes from the bridge when the item is a library slot.
     private func resolveDecodeSource(
         _ item: LightboxItem
-    ) async throws -> ImageLoader.Source? {
+    ) async throws -> ImageLoader.Source {
         switch item.source {
         case .local(let path):
             return .local(path: path)
-        case .libraryCover(let imageId, _):
-            return try await mediaPaths.fetchImageBytes(imageId)
-                .map {
-                    .data($0)
-                }
-        case .releaseFile(let releaseId, let fileId):
+        case .gallery(let releaseId, let gallerySource):
             return .data(
-                try await mediaPaths.fetchGalleryImage(releaseId, fileId)
+                try await mediaPaths.fetchGalleryBytes(releaseId, gallerySource)
             )
         }
     }
@@ -148,7 +146,7 @@ struct LightboxView: View {
         loadFailed = false
         decodeSource = nil
 
-        let source: ImageLoader.Source?
+        let source: ImageLoader.Source
         do {
             source = try await resolveDecodeSource(cursor.current)
         }
@@ -159,11 +157,6 @@ struct LightboxView: View {
             logger.warning(
                 "Failed to fetch lightbox image \(cursor.current.id): \(error)"
             )
-            loadFailed = true
-            return
-        }
-        guard let source else {
-            logger.warning("Lightbox image \(cursor.current.id) has no bytes")
             loadFailed = true
             return
         }

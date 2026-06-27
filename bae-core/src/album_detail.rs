@@ -285,22 +285,23 @@ pub struct ImageRef {
     pub version: String,
 }
 
-/// Which byte source a gallery slot is read from. The release's own cover is
-/// read by image id (`read_image_blob`), composing the [`ImageRef`] (id +
-/// version) so the UI caches it under `(id, version)`; a release-file image is
-/// read by file id through the gallery read (`fetch_gallery_image`).
+/// Which byte source a gallery slot is read from. Each variant is
+/// self-contained: the release's own cover composes the [`ImageRef`] (id +
+/// version) and is read by image id, a release-file image carries its own file
+/// id and is read by it. Core dispatches the byte read on this (`read_gallery_bytes`)
+/// so the UI never picks the source itself.
 #[derive(Debug, Clone)]
 pub enum GallerySource {
     Cover(ImageRef),
-    ReleaseFile,
+    ReleaseFile { file_id: String },
 }
 
 /// One slot in a release's lightbox gallery. Every slot is read by id — there is
-/// no filesystem path — and `source` names which byte source the UI calls.
+/// no filesystem path — and `source` names which byte source core reads from.
 #[derive(Debug, Clone)]
 pub struct GalleryItem {
-    /// Stable list identity: `"cover"` for the cover slot, otherwise the
-    /// release-file id (also the id passed to `fetch_gallery_image`).
+    /// Stable list/ForEach identity only: `"cover"` for the cover slot, otherwise
+    /// the release-file id. The fetch id lives in `source`.
     pub id: String,
     /// Display label: `"Cover"` or the file's original filename.
     pub label: String,

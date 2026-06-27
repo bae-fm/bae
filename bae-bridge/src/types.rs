@@ -251,9 +251,9 @@ pub struct BridgeRelease {
     pub files: Vec<BridgeFile>,
     pub image_files: Vec<BridgeFile>,
     /// Cover slot first (if the release has one), then every image file the
-    /// release has. Each item is read by id; the cover slot carries a version and
-    /// is fetched via `fetch_image_bytes`, a release-file image via
-    /// `fetch_gallery_image`. Consumers render this as-is.
+    /// release has. Each item's bytes are read through `fetch_gallery_bytes`,
+    /// which takes the item's `source` and dispatches the read. Consumers render
+    /// this as-is.
     pub gallery_items: Vec<BridgeGalleryItem>,
     /// Total duration across all tracks, in milliseconds. The UI formats it.
     pub total_duration_ms: i64,
@@ -456,20 +456,33 @@ pub fn bridge_cloud_provider_label_key(provider: Option<BridgeCloudProvider>) ->
     }
 }
 
-/// Which byte source a gallery slot is read from. `Cover` carries the cover's
-/// `BridgeImageRef` (id + version): the UI fetches its bytes via
-/// `fetch_image_bytes` and caches under `(id, version)`. `ReleaseFile` is read by
-/// file id via `fetch_gallery_image`. The lightbox matches on the variant.
+/// Which byte source a gallery slot is read from — each variant self-contained.
+/// `Cover` carries the cover's `BridgeImageRef` (id + version); `ReleaseFile`
+/// carries its file id. The UI passes the whole value to `fetch_gallery_bytes`
+/// and never inspects it to pick a fetch.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeGallerySource {
     Cover { image: BridgeImageRef },
-    ReleaseFile,
+    ReleaseFile { file_id: String },
+}
+
+impl BridgeGallerySource {
+    pub fn into_core(self) -> bae_core::album_detail::GallerySource {
+        match self {
+            BridgeGallerySource::Cover { image } => {
+                bae_core::album_detail::GallerySource::Cover(image.into_core())
+            }
+            BridgeGallerySource::ReleaseFile { file_id } => {
+                bae_core::album_detail::GallerySource::ReleaseFile { file_id }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeGalleryItem {
-    /// Stable list identity: `"cover"` for the cover slot, else the release-file
-    /// id (also the id passed to `fetch_gallery_image`).
+    /// Stable list/ForEach identity only: `"cover"` for the cover slot, else the
+    /// release-file id. The fetch id lives in `source`.
     pub id: String,
     /// Display label: "Cover" or the file's original filename.
     pub label: String,
@@ -2345,6 +2358,7 @@ impl BridgeError {
     pub(crate) fn internal(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Internal, detail)
     }
+    #[cfg(feature = "desktop")]
     pub(crate) fn import(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Import, detail)
     }

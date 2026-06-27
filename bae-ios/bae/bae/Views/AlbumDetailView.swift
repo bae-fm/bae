@@ -94,17 +94,12 @@ struct AlbumDetailView: View {
             GalleryView(
                 items: detail.galleryItems,
                 loadImage: { item in
-                    // The cover slot fetches by image id; a release-file image
-                    // fetches by release id + file id.
-                    switch item.source {
-                    case .cover(let image):
-                        return try await mediaPaths.fetchImageBytes(image.id)
-                    case .releaseFile:
-                        return try await mediaPaths.fetchGalleryImage(
-                            releaseId,
-                            item.id
-                        )
-                    }
+                    // The lightbox passes the whole source to the bridge, which
+                    // dispatches the read in core. The UI never inspects it.
+                    try await mediaPaths.fetchGalleryBytes(
+                        releaseId,
+                        item.source
+                    )
                 }
             )
         }

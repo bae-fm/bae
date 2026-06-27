@@ -393,7 +393,9 @@ extension MediaControlService {
             return
         }
         catch {
-            logger.warning("Failed to fetch Now Playing artwork: \(error)")
+            logger.warning(
+                "Failed to fetch Now Playing artwork \(imageId): \(error)"
+            )
             return
         }
         let scale = await MainActor.run {
@@ -411,7 +413,9 @@ extension MediaControlService {
             return
         }
         catch {
-            logger.warning("Failed to decode Now Playing artwork: \(error)")
+            logger.warning(
+                "Failed to decode Now Playing artwork \(imageId): \(error)"
+            )
             return
         }
         guard !Task.isCancelled else {

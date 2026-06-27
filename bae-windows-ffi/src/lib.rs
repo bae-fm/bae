@@ -716,7 +716,8 @@ pub unsafe extern "C" fn bae_export_track(
 }
 
 /// One of a release's image files, offered as a cover-art choice. The UI loads
-/// the thumbnail with [`bae_gallery_image_bytes`] of the release id and `id`.
+/// the thumbnail with [`bae_gallery_bytes`] of the release id and a `ReleaseFile`
+/// source carrying this `id`.
 #[derive(Serialize)]
 struct FfiReleaseImage {
     id: String,
@@ -1417,7 +1418,7 @@ pub unsafe extern "C" fn bae_album_count(handle: *const BaeHandle) -> i64 {
 /// content version. The C# side fetches the bytes by id via `bae_image_bytes` and
 /// caches the decoded `BitmapImage` under `(id, version)`; the version moves when
 /// the cover changes. Mirrors `bae_core::album_detail::ImageRef`.
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct FfiImageRef {
     id: String,
     version: String,
@@ -1428,6 +1429,13 @@ impl FfiImageRef {
         Self {
             id: r.id,
             version: r.version,
+        }
+    }
+
+    fn into_core(self) -> bae_core::album_detail::ImageRef {
+        bae_core::album_detail::ImageRef {
+            id: self.id,
+            version: self.version,
         }
     }
 }
@@ -1572,19 +1580,31 @@ pub unsafe extern "C" fn bae_search(handle: *const BaeHandle, query: *const c_ch
 }
 
 /// Which byte source a gallery slot is read from, as a `kind`-tagged JSON object:
-/// `{"kind":"cover","cover":{id,version}}` (fetch via `bae_image_bytes`) or
-/// `{"kind":"releaseFile"}` (fetch via `bae_gallery_image_bytes`). The C# side
-/// switches on `kind`.
-#[derive(Serialize)]
+/// `{"kind":"cover","cover":{id,version}}` or `{"kind":"releaseFile","file_id":…}`.
+/// The C# forwards this verbatim to `bae_gallery_bytes` without inspecting it;
+/// core dispatches the read on the variant. The same derive round-trips it.
+#[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 enum FfiGallerySource {
     Cover { cover: FfiImageRef },
-    ReleaseFile,
+    ReleaseFile { file_id: String },
 }
 
-/// One image in a release's gallery (lightbox). Read by id: the cover slot via
-/// `bae_image_bytes(id)`, a release-file image via
-/// `bae_gallery_image_bytes(release_id, id)`. `source` names which.
+impl FfiGallerySource {
+    fn into_core(self) -> bae_core::album_detail::GallerySource {
+        match self {
+            FfiGallerySource::Cover { cover } => {
+                bae_core::album_detail::GallerySource::Cover(cover.into_core())
+            }
+            FfiGallerySource::ReleaseFile { file_id } => {
+                bae_core::album_detail::GallerySource::ReleaseFile { file_id }
+            }
+        }
+    }
+}
+
+/// One image in a release's gallery (lightbox). Each slot's bytes are read with
+/// `bae_gallery_bytes(release_id, source)`, which dispatches on `source`.
 #[derive(Serialize)]
 struct FfiGalleryItem {
     id: String,
@@ -1638,7 +1658,9 @@ pub unsafe extern "C" fn bae_gallery(
                 bae_core::album_detail::GallerySource::Cover(image) => FfiGallerySource::Cover {
                     cover: FfiImageRef::from_core(image),
                 },
-                bae_core::album_detail::GallerySource::ReleaseFile => FfiGallerySource::ReleaseFile,
+                bae_core::album_detail::GallerySource::ReleaseFile { file_id } => {
+                    FfiGallerySource::ReleaseFile { file_id }
+                }
             },
         })
         .collect();
@@ -2954,7 +2976,7 @@ impl BaeBytes {
 }
 
 /// Free a [`BaeBytes`] returned by a bytes call (`bae_image_bytes` /
-/// `bae_gallery_image_bytes`). A no-op when it carries no bytes.
+/// `bae_gallery_bytes`). A no-op when it carries no bytes.
 ///
 /// # Safety
 /// `bytes` must be a value returned by a bytes call and not yet freed.
@@ -3004,37 +3026,46 @@ pub unsafe extern "C" fn bae_image_bytes(
     }
 }
 
-/// Bytes of a release-file gallery image (`release_id`, `file_id`), read through
-/// coven (fetched and decrypted from the cloud when not on disk). The `status` is
-/// `Ok` with bytes or `Error` on a bad input / read failure (logged) — a
-/// requested gallery image is never `Absent`. Free with [`bae_bytes_free`].
+/// Bytes of one gallery slot for `release_id`, given the `source_json` the C#
+/// received on the gallery item (a `kind`-tagged [`FfiGallerySource`]). The C#
+/// forwards that source verbatim for EVERY item and never inspects it; core
+/// dispatches the read on the variant (a cover by image id, a release-file by
+/// file id). `status` is `Ok` with bytes or `Error` on a bad input / read
+/// failure (logged). Free with [`bae_bytes_free`].
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
-/// `release_id` and `file_id` must be valid NUL-terminated UTF-8 C strings.
+/// `release_id` and `source_json` must be valid NUL-terminated UTF-8 C strings.
 #[no_mangle]
-pub unsafe extern "C" fn bae_gallery_image_bytes(
+pub unsafe extern "C" fn bae_gallery_bytes(
     handle: *const BaeHandle,
     release_id: *const c_char,
-    file_id: *const c_char,
+    source_json: *const c_char,
 ) -> BaeBytes {
     let Some(handle) = handle.as_ref() else {
-        tracing::error!("bae_gallery_image_bytes: null handle");
+        tracing::error!("bae_gallery_bytes: null handle");
         return BaeBytes::error();
     };
-    let (Some(release_id), Some(file_id)) = (cstr(release_id), cstr(file_id)) else {
-        tracing::error!("bae_gallery_image_bytes: null or non-UTF-8 id");
+    let (Some(release_id), Some(source_json)) = (cstr(release_id), cstr(source_json)) else {
+        tracing::error!("bae_gallery_bytes: null or non-UTF-8 input");
         return BaeBytes::error();
+    };
+    let source: FfiGallerySource = match serde_json::from_str(&source_json) {
+        Ok(source) => source,
+        Err(e) => {
+            tracing::error!("bae_gallery_bytes: bad source JSON for release {release_id}: {e}");
+            return BaeBytes::error();
+        }
     };
     let app = &handle.0;
     match app.runtime.block_on(
         app.services
             .library_manager()
-            .load_gallery_image(&release_id, &file_id),
+            .read_gallery_bytes(&release_id, &source.into_core()),
     ) {
         Ok(bytes) => BaeBytes::from_vec(bytes),
         Err(e) => {
-            tracing::error!("bae_gallery_image_bytes failed for {release_id}/{file_id}: {e}");
+            tracing::error!("bae_gallery_bytes failed for release {release_id}: {e}");
             BaeBytes::error()
         }
     }

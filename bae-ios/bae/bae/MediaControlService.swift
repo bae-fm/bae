@@ -362,7 +362,9 @@ extension MediaControlService {
             return
         }
         catch {
-            logger.warning("Failed to fetch Now Playing artwork: \(error)")
+            logger.warning(
+                "Failed to fetch Now Playing artwork \(imageId): \(error)"
+            )
             return
         }
         let image: UIImage? =
@@ -370,7 +372,11 @@ extension MediaControlService {
                 UIImage(data: bytes)
             }
             .value
-        guard !Task.isCancelled, let image else {
+        guard !Task.isCancelled else {
+            return
+        }
+        guard let image else {
+            logger.warning("Failed to decode Now Playing artwork \(imageId)")
             return
         }
         let box = SendableImage(image)

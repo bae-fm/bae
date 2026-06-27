@@ -73,28 +73,18 @@ struct AlbumDetailView: View {
                     AlbumExpansionContent(
                         summary: summary,
                         selectedRelease: selectedDetail,
-                        // Every gallery item: the cover slot (carries a version)
-                        // fetches by image id; a release-file image fetches by
-                        // release id + file id (downloaded on demand when cloud-
-                        // only). The lightbox picks the byte source per item.
+                        // Every gallery item carries the whole `BridgeGallery-
+                        // Source`; the lightbox passes it to `fetchGalleryBytes`,
+                        // which dispatches the read in core. The UI never inspects
+                        // the source to pick a fetch.
                         lightboxItems: selectedDetail.galleryItems.map { item in
-                            let source: LightboxItem.Source =
-                                switch item.source {
-                                case .cover(let image):
-                                    .libraryCover(
-                                        imageId: image.id,
-                                        version: image.version
-                                    )
-                                case .releaseFile:
-                                    .releaseFile(
-                                        releaseId: selectedReleaseId,
-                                        fileId: item.id
-                                    )
-                                }
-                            return LightboxItem(
+                            LightboxItem(
                                 id: item.id,
                                 label: item.label,
-                                source: source
+                                source: .gallery(
+                                    releaseId: selectedReleaseId,
+                                    source: item.source
+                                )
                             )
                         },
                         releaseCursor: releaseCursorBinding(summary: summary),

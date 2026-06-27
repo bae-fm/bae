@@ -979,11 +979,11 @@ internal static class NativeBae
         IntPtr handle,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string imageId);
 
-    [DllImport(Dll, EntryPoint = "bae_gallery_image_bytes", CallingConvention = CallingConvention.Cdecl)]
-    private static extern BaeBytes GalleryImageBytesNative(
+    [DllImport(Dll, EntryPoint = "bae_gallery_bytes", CallingConvention = CallingConvention.Cdecl)]
+    private static extern BaeBytes GalleryBytesNative(
         IntPtr handle,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string fileId);
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string sourceJson);
 
     [DllImport(Dll, EntryPoint = "bae_bytes_free", CallingConvention = CallingConvention.Cdecl)]
     private static extern void BytesFree(BaeBytes bytes);
@@ -999,14 +999,16 @@ internal static class NativeBae
         CopyAndFreeBytes(ImageBytesNative(handle, imageId));
 
     /// <summary>
-    /// The bytes of a release-file gallery image by (release id, file id), read
-    /// through coven (fetched and decrypted from the cloud when not on disk), or
-    /// null on error (logged by the Rust side). Blocks on the read — call off the
-    /// UI thread for cloud-only images. Copies the buffer into managed memory and
-    /// frees the native one.
+    /// The bytes of one gallery slot for (release id, source), where
+    /// <paramref name="sourceJson"/> is the gallery item's <c>source</c> object
+    /// forwarded verbatim — core dispatches the read on its <c>kind</c> (a cover by
+    /// image id, a release file by file id). Read through coven (fetched and
+    /// decrypted from the cloud when not on disk), or null on error (logged by the
+    /// Rust side). Blocks on the read — call off the UI thread for cloud-only
+    /// images. Copies the buffer into managed memory and frees the native one.
     /// </summary>
-    internal static byte[]? GalleryImageBytes(IntPtr handle, string releaseId, string fileId) =>
-        CopyAndFreeBytes(GalleryImageBytesNative(handle, releaseId, fileId));
+    internal static byte[]? GalleryBytes(IntPtr handle, string releaseId, string sourceJson) =>
+        CopyAndFreeBytes(GalleryBytesNative(handle, releaseId, sourceJson));
 
     /// <summary>
     /// Copy a native byte buffer into a managed array and free the native one.

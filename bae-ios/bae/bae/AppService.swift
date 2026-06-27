@@ -64,8 +64,8 @@ final class AppService: Observable {
         mediaPaths = MediaPaths(
             filePath: { try appHandle.filePath(fileId: $0) },
             fetchImageBytes: { try await appHandle.fetchImageBytes(imageId: $0) },
-            fetchGalleryImage: {
-                try await appHandle.fetchGalleryImage(releaseId: $0, fileId: $1)
+            fetchGalleryBytes: {
+                try await appHandle.fetchGalleryBytes(releaseId: $0, source: $1)
             }
         )
         sync = Sync(handle: appHandle)
