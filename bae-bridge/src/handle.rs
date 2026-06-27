@@ -118,22 +118,12 @@ impl AppHandle {
         })
     }
 
-    /// Cache-bustable identifier for a library image (album cover, artist
-    /// photo) if it exists on disk: the file's path with its modification time
-    /// appended as `#v=<mtime_secs>`. The version changes when the cover does,
-    /// so the view's image cache key changes and it reloads; the loader strips
-    /// the `#v=…` suffix before reading the file. Returns `None` when no image
-    /// is cached for `image_id`.
-    pub fn image_path_if_exists(&self, image_id: String) -> Option<String> {
-        self.app_services
-            .library_manager()
-            .image_path_if_exists(&image_id)
-    }
-
-    /// Filesystem path for a library file. Returns `Ok(None)` if the file has
-    /// no readable local location (e.g. cloud-only and not cached). Returns
-    /// `Err` on DB failures so callers can distinguish a missing file from a
-    /// broken library state.
+    /// Filesystem path for the user's own external file behind a library file
+    /// (the DiscID re-read of a rip's LOG/CUE/audio). Returns `Ok(None)` if the
+    /// file has no readable local location (e.g. cloud-only and not cached).
+    /// Returns `Err` on DB failures so callers can distinguish a missing file
+    /// from a broken library state. NOT a substitute for a coven byte read —
+    /// library images are read by id via `fetch_image_bytes`.
     pub fn file_path(&self, file_id: String) -> Result<Option<String>, BridgeError> {
         self.runtime.block_on(async {
             let path = self
@@ -235,8 +225,8 @@ impl AppHandle {
                     id: a.id,
                     title: a.title,
                     year: a.year,
-                    primary_release_id: a.primary_release_id,
                     artist_name: a.artist_name,
+                    cover: a.cover.map(crate::types::BridgeImageRef::from_core),
                 })
                 .collect(),
             tracks: results
@@ -792,10 +782,26 @@ impl AppHandle {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
-    /// Bytes of a release's gallery image, fetched from the release's cloud home
-    /// (and decrypted) when it isn't on disk here. The lightbox calls this for
-    /// gallery items whose `local_path` is `None` — the release's cloud-only
-    /// image files. `file_id` is the gallery item's `id`.
+    /// Bytes of a host-provided library image (a cover or an artist image) for
+    /// `image_id`, read through coven's locality-aware read (local store while
+    /// Local, cache/cloud while Remote). `None` when no such image exists. The UI
+    /// decodes the bytes and caches them under `(id, version)` — the version it
+    /// already holds on the `BridgeImageRef`. A read error surfaces, not masked.
+    pub async fn fetch_image_bytes(
+        &self,
+        image_id: String,
+    ) -> Result<Option<Vec<u8>>, BridgeError> {
+        self.app_services
+            .library_manager()
+            .read_image_blob(&image_id)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))
+    }
+
+    /// Bytes of a release's gallery image (a release-file image), fetched from the
+    /// release's cloud home (and decrypted) when it isn't on disk here. The
+    /// lightbox calls this for gallery items whose `cover_version` is `None` — the
+    /// release's image files. `file_id` is the gallery item's `id`.
     pub async fn fetch_gallery_image(
         &self,
         release_id: String,
@@ -1755,7 +1761,7 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
     let convert_gallery_item = |g: bae_core::album_detail::GalleryItem| BridgeGalleryItem {
         id: g.id,
         label: g.label,
-        local_path: g.local_path,
+        cover_version: g.cover_version,
     };
     let convert_track = |t: bae_core::album_detail::TrackDetail| BridgeTrack {
         id: t.id,
@@ -1803,7 +1809,7 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
             .collect(),
         file_count: summary.file_count,
         total_size: summary.total_size,
-        cover_path: summary.cover_path,
+        cover: summary.cover.map(crate::types::BridgeImageRef::from_core),
     }
 }
 
@@ -1828,7 +1834,7 @@ fn convert_release_summary(s: bae_core::album_detail::ReleaseSummary) -> BridgeR
             .collect(),
         file_count: s.file_count,
         total_size: s.total_size,
-        cover_path: s.cover_path,
+        cover: s.cover.map(crate::types::BridgeImageRef::from_core),
     }
 }
 
@@ -1853,7 +1859,7 @@ fn convert_album_detail(detail: bae_core::album_detail::AlbumDetail) -> BridgeAl
             artist_names: detail.artist_names,
             primary_release_id: detail.primary_release_id,
             release_ids,
-            cover_path: detail.cover_path,
+            cover: detail.cover.map(crate::types::BridgeImageRef::from_core),
         },
         releases,
     }
@@ -1868,7 +1874,7 @@ fn convert_album_summary(a: bae_core::album_detail::AlbumSummary) -> BridgeAlbum
         artist_names: a.artist_names,
         release_ids: a.release_ids,
         primary_release_id: a.primary_release_id,
-        cover_path: a.cover_path,
+        cover: a.cover.map(crate::types::BridgeImageRef::from_core),
     }
 }
 
@@ -1881,7 +1887,7 @@ fn bridge_album_to_summary(a: BridgeAlbum) -> bae_core::album_detail::AlbumSumma
         artist_names: a.artist_names,
         release_ids: a.release_ids,
         primary_release_id: a.primary_release_id,
-        cover_path: a.cover_path,
+        cover: a.cover.map(crate::types::BridgeImageRef::into_core),
     }
 }
 
