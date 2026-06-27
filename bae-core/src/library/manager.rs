@@ -24,10 +24,10 @@ use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
 
 use crate::album_detail::{
-    AlbumDetail, AlbumSearchResult, AlbumSummary, FileDetail, GalleryItem, ImageRef, ReleaseDetail,
-    ReleaseStorageAction, ReleaseStorageSummary, ReleaseSummary, SearchResults, StorageFilter,
-    StoragePage, StorageRow, StorageSort, StorageSortDirection, StorageSortField, TrackDetail,
-    TrackGroup, TrackSearchResult,
+    AlbumDetail, AlbumSearchResult, AlbumSummary, FileDetail, GalleryItem, GallerySource, ImageRef,
+    ReleaseDetail, ReleaseStorageAction, ReleaseStorageSummary, ReleaseSummary, SearchResults,
+    StorageFilter, StoragePage, StorageRow, StorageSort, StorageSortDirection, StorageSortField,
+    TrackDetail, TrackGroup, TrackSearchResult,
 };
 use crate::clock::ClockRef;
 use crate::config::{CloudProvider, ConfigHandle};
@@ -4051,14 +4051,16 @@ pub(crate) fn resolve_release(
         });
     }
     // Every image file the release has. coven owns the locality-aware read, so the
-    // lightbox fetches an image file's bytes on demand by file id via
-    // `fetch_gallery_image` (the user's own file when Local, the cache/cloud when
+    // lightbox fetches an image file's bytes on demand by file id through
+    // `read_gallery_bytes` (the user's own file when Local, the cache/cloud when
     // Remote) — there is no stable bae path for it.
     for f in &image_files {
         gallery.push(GalleryItem {
             id: f.id.clone(),
             label: f.original_filename.clone(),
-            source: crate::album_detail::GallerySource::ReleaseFile,
+            source: crate::album_detail::GallerySource::ReleaseFile {
+                file_id: f.id.clone(),
+            },
         });
     }
 
@@ -4209,10 +4211,31 @@ impl LibraryManager {
         Ok(self.database.get_files_for_release(release_id).await?)
     }
 
+    /// Bytes of one gallery slot, dispatching the read on its [`GallerySource`]
+    /// so no caller picks the byte source itself: a `Cover` is read by image id
+    /// (`read_image_blob`), a `ReleaseFile` by file id (`load_gallery_image`).
+    /// The gallery carries a cover slot only when a cover exists, so a `Cover`
+    /// with no bytes here is exceptional and surfaces rather than being masked.
+    pub async fn read_gallery_bytes(
+        &self,
+        release_id: &str,
+        source: &GallerySource,
+    ) -> Result<Vec<u8>, LibraryError> {
+        match source {
+            GallerySource::Cover(image) => {
+                self.read_image_blob(&image.id).await?.ok_or_else(|| {
+                    LibraryError::Storage(format!("gallery cover image {} has no bytes", image.id))
+                })
+            }
+            GallerySource::ReleaseFile { file_id } => {
+                self.load_gallery_image(release_id, file_id).await
+            }
+        }
+    }
+
     /// Bytes of one of a release's image files, read from the local copy when it
     /// exists here and otherwise downloaded from the release's cloud home (and
-    /// decrypted). Backs the lightbox for cloud-only gallery items — the ones
-    /// whose `GalleryItem.local_path` is `None`.
+    /// decrypted). The `ReleaseFile` arm of [`read_gallery_bytes`](Self::read_gallery_bytes).
     pub async fn load_gallery_image(
         &self,
         release_id: &str,
@@ -6230,10 +6253,10 @@ mod tests {
             "a traversal release id has no cover row"
         );
         assert!(
-            detail
-                .gallery_items
-                .iter()
-                .all(|item| matches!(item.source, crate::album_detail::GallerySource::ReleaseFile)),
+            detail.gallery_items.iter().all(|item| matches!(
+                item.source,
+                crate::album_detail::GallerySource::ReleaseFile { .. }
+            )),
             "with no cover row there is no cover slot; the traversal image file is a \
              release-file item, read by id"
         );
@@ -6471,7 +6494,10 @@ mod tests {
             .expect("image file surfaced in gallery");
         assert_eq!(item.label, "back.jpg");
         assert!(
-            matches!(item.source, crate::album_detail::GallerySource::ReleaseFile),
+            matches!(
+                item.source,
+                crate::album_detail::GallerySource::ReleaseFile { .. }
+            ),
             "a release-file image is read by file id, not as the cover"
         );
     }

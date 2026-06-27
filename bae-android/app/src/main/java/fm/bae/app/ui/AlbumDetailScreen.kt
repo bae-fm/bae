@@ -55,6 +55,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
 
@@ -67,7 +68,7 @@ private data class AlbumPlaybackState(
 )
 
 private data class AlbumDetailCallbacks(
-    val fetchGalleryImage: suspend (releaseId: String, fileId: String) -> ByteArray,
+    val fetchGalleryBytes: suspend (releaseId: String, source: BridgeGallerySource) -> ByteArray,
     val loadCoverImage: suspend (imageId: String) -> ByteArray?,
     val onSelectRelease: (String) -> Unit,
     val onTogglePlayPause: () -> Unit,
@@ -188,7 +189,7 @@ private fun buildAlbumDetailCallbacks(
     onSelectRelease: (String) -> Unit,
 ): AlbumDetailCallbacks =
     AlbumDetailCallbacks(
-        fetchGalleryImage = { releaseId, fileId -> session.appHandle.fetchGalleryImage(releaseId, fileId) },
+        fetchGalleryBytes = { releaseId, source -> session.appHandle.fetchGalleryBytes(releaseId, source) },
         loadCoverImage = session.library::imageBytes,
         onSelectRelease = onSelectRelease,
         onTogglePlayPause = { session.playback.togglePlayPause() },
@@ -247,9 +248,9 @@ private fun AlbumDetailContent(
     val galleryItems = galleryRelease?.galleryItems ?: emptyList()
     if (showGallery && galleryRelease != null && galleryItems.isNotEmpty()) {
         GalleryDialog(
+            releaseId = galleryRelease.id,
             items = galleryItems,
-            loadCover = callbacks.loadCoverImage,
-            loadGalleryFile = { fileId -> callbacks.fetchGalleryImage(galleryRelease.id, fileId) },
+            loadImage = { source -> callbacks.fetchGalleryBytes(galleryRelease.id, source) },
             onDismiss = { showGallery = false },
         )
     }

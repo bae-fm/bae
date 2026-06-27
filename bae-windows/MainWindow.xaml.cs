@@ -3574,14 +3574,9 @@ public sealed partial class MainWindow : Window
         void Show()
         {
             var item = images[index];
-            // The cover slot fetches the cover bytes by id (cached under its content
-            // version); a release-file image fetches by release id + file id.
-            image.Source = item.Source.Kind switch
-            {
-                "cover" => CoverImage.LoadByImageRef(_handle, item.Source.Cover),
-                "releaseFile" => CoverImage.LoadGalleryImage(_handle, releaseId, item.Id),
-                var kind => throw new InvalidOperationException($"unknown gallery source kind: {kind}"),
-            };
+            // Forward the item's source verbatim; core dispatches the read on its
+            // kind (a cover by image id, a release file by file id).
+            image.Source = CoverImage.LoadGalleryBytes(_handle, releaseId, item.Source.GetRawText());
             label.Text = $"{item.Label} ({index + 1}/{images.Count})";
         }
         Show();
@@ -3696,7 +3691,9 @@ public sealed partial class MainWindow : Window
             };
             foreach (var file in releaseImages)
             {
-                var source = CoverImage.LoadGalleryImage(_handle, releaseId, file.Id);
+                var sourceJson = JsonSerializer.Serialize(
+                    new { kind = "releaseFile", file_id = file.Id });
+                var source = CoverImage.LoadGalleryBytes(_handle, releaseId, sourceJson);
                 var selection = JsonSerializer.Serialize(
                     new { type = "release_image", file_id = file.Id });
                 fileGrid.Children.Add(Tile(source, file.OriginalFilename, selection));
