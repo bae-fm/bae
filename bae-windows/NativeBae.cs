@@ -1026,12 +1026,12 @@ internal static class NativeBae
             switch (bytes.Status)
             {
                 case BaeBytesStatus.Ok:
-                {
-                    var length = checked((int)bytes.Len.ToUInt64());
-                    var managed = new byte[length];
-                    Marshal.Copy(bytes.Ptr, managed, 0, length);
-                    return managed;
-                }
+                    {
+                        var length = checked((int)bytes.Len.ToUInt64());
+                        var managed = new byte[length];
+                        Marshal.Copy(bytes.Ptr, managed, 0, length);
+                        return managed;
+                    }
                 case BaeBytesStatus.Absent:
                     return null;
                 case BaeBytesStatus.Error:
