@@ -3,9 +3,9 @@
 //! delete enqueue and the remove/cancel seam bae keeps over coven's
 //! `cloud_outbox`, plus the `BlobScope::Master` default bae stamps when it seeds
 //! an upload. Pending-queue reads go through `coven_db()` directly (coven owns
-//! the queue; bae keeps no read wrapper). The drains themselves
-//! (`coven::blob::upload::drain_uploads`, the tombstone delete path) are coven's
-//! and covered by coven's own blob tests.
+//! the queue; bae keeps no read wrapper). The drains themselves (coven's upload
+//! drain and the tombstone delete path) are coven's and covered by coven's own
+//! blob tests.
 
 use bae_core::db::Database;
 use tempfile::TempDir;
