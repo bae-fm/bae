@@ -248,9 +248,9 @@ impl Config {
         }
     }
 
-    /// The coven sync/cloud config bae embeds. For the coven calls that take a
-    /// `coven::config::Config` (`create_cloud_home`, `create_sync_storage`,
-    /// `SyncManager`, restore-code generation).
+    /// The coven sync/cloud config bae embeds. Handed to the `CovenHandle` (via
+    /// its config provider) and read fresh by coven for the cloud-home selection,
+    /// the blob-path scheme, sync, and restore-code generation.
     pub fn to_coven(&self) -> coven::config::Config {
         self.inner.clone()
     }

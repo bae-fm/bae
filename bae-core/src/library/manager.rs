@@ -1045,22 +1045,12 @@ pub struct LibraryManager {
 }
 
 /// Test-only overrides for state that production reads from a live
-/// `SyncManager`. Tests that exercise the cloud read/write paths inject these
-/// instead of standing up a full sync stack.
+/// `SyncManager`. The cloud read/write paths now run against a real manager a
+/// test connects via [`LibraryManager::connect_test_cloud_home`], so this holds
+/// only the cleanup-delay knob.
 #[cfg(any(test, feature = "test-utils"))]
 #[derive(Clone, Default)]
 struct TestOverrides {
-    /// Cloud home + encryption. Production wires the cloud home through
-    /// `SyncManager` (set by `connect`); tests that exercise the cloud paths
-    /// (e.g. `make_release_local` on a remote release) inject a mock here.
-    cloud: Option<(Arc<dyn CloudHome>, EncryptionService)>,
-    /// Force `is_sync_ready` true. Production reads the running sync loop; tests
-    /// that drive `process_cloud_uploads_with` by hand have no live loop, so
-    /// they set this to model "the upload pipeline is running". Independent of
-    /// `cloud` because in production a cloud home can be configured while the
-    /// loop is down — that's the bug the manage gate guards against, so the
-    /// refusal test leaves this false and exercises the real gate.
-    force_sync_ready: bool,
     /// Delay before the deferred storage-cleanup drain runs. Production uses
     /// the fixed `CLEANUP_DELAY`; tests set a near-zero delay so a delete's
     /// scheduled drain is observable without waiting the production interval.
@@ -1126,15 +1116,13 @@ impl LibraryManager {
         // builds. It shares this manager's outbox in-flight set, throughput
         // tracker, pause flag, and event channel, so the sync loop's upload
         // progress reaches the same UI state the manager reads.
-        let observer: Arc<dyn coven::blob::BlobTransitionObserver> =
-            Arc::new(crate::sync::upload_observer::ReleaseUploadObserver::new(
-                Arc::new(database.clone()),
-                library_dir.clone(),
-                outbox_in_flight.clone(),
-                upload_throughput.clone(),
-                sync_paused.clone(),
-                event_tx.clone(),
-            ));
+        let observer = Arc::new(crate::sync::upload_observer::ReleaseUploadObserver::new(
+            Arc::new(database.clone()),
+            outbox_in_flight.clone(),
+            upload_throughput.clone(),
+            sync_paused.clone(),
+            event_tx.clone(),
+        ));
         // coven reads the host's live config on demand (cloud-home selection,
         // blob-path scheme), so connect/disconnect is reflected without rebuilding
         // the handle.
@@ -1147,8 +1135,12 @@ impl LibraryManager {
             config_provider,
             key_service.clone(),
             clock.clone(),
-            Some(observer),
+            Some(observer.clone() as Arc<dyn coven::blob::BlobTransitionObserver>),
         );
+        // The handle owns the observer, so the observer can't take the handle at
+        // construction — install it now (the observer answers pin-state through it
+        // when it rebuilds a `ReleaseDetail` for a completed transition).
+        observer.set_handle(handle.clone());
 
         LibraryManager {
             database,
@@ -1170,26 +1162,23 @@ impl LibraryManager {
         }
     }
 
-    /// Inject a cloud home + encryption service for tests, so `get_cloud_home`
-    /// and `get_encryption_service` resolve without a live `SyncManager`. Used
-    /// by transfer tests that read/write the cloud (unmanage a remote release,
-    /// manage a local one).
+    /// Connect a real `SyncManager` over an injected cloud home for tests, so the
+    /// handle's make-Remote / make-Local / upload-drain / read paths all run
+    /// against a mock cloud with no live provider — the test counterpart of
+    /// `attach_and_start_sync`. `cipher` is the home's at-rest protection:
+    /// `Plaintext` for a browsable mock, `Encrypted(service)` for an opaque one.
+    /// After this, `get_cloud_home`, `get_encryption_service`, and `is_sync_ready`
+    /// all resolve off the connected manager, no override needed.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn set_cloud_override(
-        &mut self,
+    pub async fn connect_test_cloud_home(
+        &self,
         cloud_home: Arc<dyn CloudHome>,
-        encryption: EncryptionService,
-    ) {
-        self.test_overrides.cloud = Some((cloud_home, encryption));
-    }
-
-    /// Force `is_sync_ready` to report a live upload pipeline. A test that
-    /// drives uploads by hand via `process_cloud_uploads_with` calls this so the
-    /// manage gate treats the pipeline as running; the refusal test never calls
-    /// it, leaving the gate to read the real (absent) sync loop.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn set_force_sync_ready(&mut self) {
-        self.test_overrides.force_sync_ready = true;
+        cipher: crate::sync::cloud_storage::CloudCipher,
+    ) -> Result<(), String> {
+        self.handle
+            .connect_sync_with_test_home(cloud_home, cipher)
+            .await?;
+        Ok(())
     }
 
     /// Shorten the deferred storage-cleanup delay so a scheduled drain runs
@@ -1200,9 +1189,9 @@ impl LibraryManager {
     }
 
     /// Set the cloud home's storage mode in config, so a test can exercise the
-    /// browsable read/write paths against an injected cloud override (production
-    /// sets this through the cloud-setup wizard). `cloud_blob_cipher` reads it to
-    /// pick plaintext vs. encrypted.
+    /// browsable read/write paths against an injected cloud home (production sets
+    /// this through the cloud-setup wizard). The connected home's cipher must match
+    /// — `Plaintext` for browsable, `Encrypted` for opaque.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn set_home_storage(&self, storage: crate::config::HomeStorage) {
         self.config_handle
@@ -1286,10 +1275,6 @@ impl LibraryManager {
     }
 
     fn encryption_service_inner(&self) -> Option<EncryptionService> {
-        #[cfg(any(test, feature = "test-utils"))]
-        if let Some((_, encryption)) = &self.test_overrides.cloud {
-            return Some(encryption.clone());
-        }
         self.sync_manager_inner()
             .and_then(|sm| sm.encryption_service().cloned())
     }
@@ -1845,74 +1830,7 @@ impl LibraryManager {
     }
 
     pub fn get_cloud_home(&self) -> Option<Arc<dyn CloudHome>> {
-        #[cfg(any(test, feature = "test-utils"))]
-        if let Some((cloud_home, _)) = &self.test_overrides.cloud {
-            return Some(cloud_home.clone());
-        }
         self.sync_manager_inner().and_then(|sm| sm.cloud_home())
-    }
-
-    /// The at-rest cipher protecting this library's remote cloud blobs, from
-    /// the home's storage mode (see [`coven::sync::cloud_storage::CloudCipher::for_storage`]):
-    /// `Encrypted` under the master key for an opaque home, `Plaintext` for a
-    /// browsable one. `None` for an opaque home with no encryption service (a
-    /// locked library).
-    ///
-    /// Production reads route through [`CovenHandle`], which builds its own
-    /// storage; this remains only for the test helpers that drive coven's blob
-    /// free functions directly over an injected mock cloud (no live sync manager).
-    #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) fn cloud_blob_cipher(&self) -> Option<coven::sync::cloud_storage::CloudCipher> {
-        coven::sync::cloud_storage::CloudCipher::for_storage(
-            self.config_handle.config().cloud_home.storage,
-            self.get_encryption_service(),
-        )
-    }
-
-    /// Build a coven `SyncStorage` over the current cloud home, for the test
-    /// helpers that drive coven's blob free functions directly over an injected
-    /// mock cloud (production routes every read/write through [`CovenHandle`],
-    /// which builds its own storage). `Err` when no cloud home is configured.
-    #[cfg(any(test, feature = "test-utils"))]
-    fn create_sync_storage(
-        &self,
-    ) -> Result<coven::sync::cloud_storage::CloudSyncStorage, LibraryError> {
-        let home = self
-            .get_cloud_home()
-            .ok_or_else(|| LibraryError::Storage("no cloud home configured".to_string()))?;
-        let cipher = self
-            .cloud_blob_cipher()
-            .ok_or_else(|| LibraryError::Storage("no blob cipher for remote read".to_string()))?;
-        let scheme = coven::sync::cloud_storage::BlobPathScheme::for_storage(
-            self.config_handle.config().cloud_home.storage,
-        );
-        let keypair = self
-            .key_service
-            .get_or_create_user_keypair()
-            .map_err(|e| LibraryError::Storage(format!("load device keypair: {e}")))?;
-        Ok(coven::sync::cloud_storage::CloudSyncStorage::new(
-            home, cipher, scheme, keypair,
-        ))
-    }
-
-    /// The override-aware storage for a test that injected a mock cloud home via
-    /// `set_cloud_override`: `Some(storage)` when an override is set (the read/pin
-    /// paths use it because the handle builds its storage from `Config`, not the
-    /// override), `None` otherwise (production routes through the handle). The one
-    /// place the read/pin test branches build their storage.
-    #[cfg(any(test, feature = "test-utils"))]
-    fn test_override_storage(
-        &self,
-    ) -> Result<
-        Option<coven::sync::cloud_storage::CloudSyncStorage>,
-        coven::blob::cache::BlobCacheError,
-    > {
-        if self.test_overrides.cloud.is_none() {
-            return Ok(None);
-        }
-        self.create_sync_storage()
-            .map(Some)
-            .map_err(|e| coven::blob::cache::BlobCacheError::Io(e.to_string()))
     }
 
     /// The coven `BlobRef` for a remote release file's audio blob — its identity
@@ -1984,7 +1902,7 @@ impl LibraryManager {
     }
 
     /// Store a bae-produced cover blob's bytes (`storage/local/covers/<release_id>`).
-    pub(crate) async fn store_cover_blob(
+    pub async fn store_cover_blob(
         &self,
         release_id: &str,
         bytes: &[u8],
@@ -2023,34 +1941,10 @@ impl LibraryManager {
     /// storage error so the caller surfaces a "files missing / moved" state.
     pub(crate) async fn read_release_blob(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
         let blob = Self::release_file_blob_ref(file);
-        self.read_blob(&blob)
+        self.handle
+            .read_blob(&blob)
             .await
             .map_err(|e| LibraryError::Storage(format!("read of {}: {e}", file.id)))
-    }
-
-    /// Read a coven blob's whole bytes through coven's locality-aware read.
-    ///
-    /// Production routes through the [`CovenHandle`], which builds its read
-    /// storage from the connected provider's config. A test that injected a mock
-    /// cloud home via `set_cloud_override` can't reach it through the handle (the
-    /// handle reads the cloud config from bae's `Config`, not from the test
-    /// override), so it reads through bae's override-aware storage. The two reach
-    /// the same coven `cache::read_blob`; only the storage source differs.
-    async fn read_blob(
-        &self,
-        blob: &coven::blob::BlobRef,
-    ) -> Result<Vec<u8>, coven::blob::cache::BlobCacheError> {
-        #[cfg(any(test, feature = "test-utils"))]
-        if let Some(storage) = self.test_override_storage()? {
-            return coven::blob::cache::read_blob(
-                self.database.coven_db(),
-                &self.library_dir,
-                &storage,
-                blob,
-            )
-            .await;
-        }
-        self.handle.read_blob(blob).await
     }
 
     /// The coven `BlobRef` for a host-provided library image (a cover or an artist
@@ -2116,6 +2010,7 @@ impl LibraryManager {
             };
             let blob = Self::image_blob_ref(namespace, id, row.cloud_path.clone());
             let bytes = self
+                .handle
                 .read_blob(&blob)
                 .await
                 .map_err(|e| LibraryError::Storage(format!("read image {id}: {e}")))?;
@@ -2125,10 +2020,19 @@ impl LibraryManager {
     }
 
     /// Whether coven holds this release pinned on this device — true iff its
-    /// representative blob is in `storage/pinned/`. Delegates to
-    /// [`release_blob_pinned`]; see it for the representative-file rationale.
-    pub(crate) async fn release_pinned(&self, any_file_id: Option<&str>) -> bool {
-        release_blob_pinned(&self.library_dir, any_file_id).await
+    /// representative blob (any one of the release's files; pin/unpin act on all a
+    /// release's blobs together) is kept in coven's `storage/pinned/`. `None` (a
+    /// release with no files) reads as not pinned. Pinned-ness is coven cache
+    /// state, never a bae column — answered through the handle, not by stat-ing
+    /// coven's cache layout.
+    pub(crate) async fn release_pinned(
+        &self,
+        any_file_id: Option<&str>,
+    ) -> Result<bool, LibraryError> {
+        match any_file_id {
+            Some(file_id) => release_file_pinned(&self.handle, file_id).await,
+            None => Ok(false),
+        }
     }
 
     /// Pin a remote release's blobs for offline: coven fetches every blob into
@@ -2138,30 +2042,10 @@ impl LibraryManager {
     pub(crate) async fn pin_release_blobs(&self, release_id: &str) -> Result<(), LibraryError> {
         let files = self.database.get_files_for_release(release_id).await?;
         let blobs: Vec<_> = files.iter().map(Self::release_file_blob_ref).collect();
-        self.pin_blobs(&blobs)
+        self.handle
+            .pin(&blobs)
             .await
             .map_err(|e| LibraryError::Storage(format!("pin release {release_id}: {e}")))
-    }
-
-    /// Pin a blob set into the protected cache. Production routes through the
-    /// [`CovenHandle`]; a test with an injected mock cloud home reads through bae's
-    /// override-aware storage (see [`read_blob`](Self::read_blob) for why the
-    /// handle can't see the override).
-    async fn pin_blobs(
-        &self,
-        blobs: &[coven::blob::BlobRef],
-    ) -> Result<(), coven::blob::cache::BlobCacheError> {
-        #[cfg(any(test, feature = "test-utils"))]
-        if let Some(storage) = self.test_override_storage()? {
-            return coven::blob::cache::pin(
-                self.database.coven_db(),
-                &self.library_dir,
-                &storage,
-                blobs,
-            )
-            .await;
-        }
-        self.handle.pin(blobs).await
     }
 
     /// Unpin a remote release's blobs: coven moves every blob from
@@ -2180,18 +2064,6 @@ impl LibraryManager {
     // =========================================================================
     // coven-owned locality transitions (make-Remote / make-Local / cancel)
     // =========================================================================
-
-    /// The blob-path scheme the configured home keys objects under (`Hashed` for an
-    /// opaque home, `Plain` for a browsable one) — the single place bae reads it.
-    /// It feeds the bae-side delete-key derivation (`release_file_cloud_key` /
-    /// `cover_cloud_key`): the cloud transitions are coven's, but enqueueing a
-    /// delete against the exact key a blob was uploaded under is bae's, so bae
-    /// derives that key through coven's scheme helper.
-    fn blob_path_scheme(&self) -> coven::sync::cloud_storage::BlobPathScheme {
-        coven::sync::cloud_storage::BlobPathScheme::for_storage(
-            self.config_handle.config().cloud_home.storage,
-        )
-    }
 
     /// The make-Local destination map: each release file's blob id → the user path
     /// (`new_path/original_filename`) its bytes go back to. Host-provided blobs (the
@@ -2251,34 +2123,12 @@ impl LibraryManager {
         }
     }
 
-    /// Build a `ReleaseUploadObserver` over this manager's shared outbox/throughput/
-    /// event state — the same observer `build_sync_manager` wires into the live sync
-    /// loop. Production builds its observer inside the loop builder; this helper
-    /// exists only for the test drivers (the by-hand upload drain and the make-Local
-    /// driver) that run a transition without a live loop.
-    #[cfg(any(test, feature = "test-utils"))]
-    #[cfg(any(test, feature = "test-utils"))]
-    fn build_upload_observer(&self) -> crate::sync::upload_observer::ReleaseUploadObserver {
-        crate::sync::upload_observer::ReleaseUploadObserver::new(
-            Arc::new(self.database.clone()),
-            self.library_dir.clone(),
-            self.outbox_in_flight.clone(),
-            self.upload_throughput.clone(),
-            self.sync_paused.clone(),
-            self.event_tx.clone(),
-        )
-    }
-
     /// Make a release Remote (Local → Remote) through coven: coven enqueues an
     /// upload per user-provided blob from its external file, uploads each, and on
     /// the last flips the `remote` gate true, drops the external refs, deletes the
     /// source files, and re-emits the subtree (the host-provided cover then rides
     /// along). Returns once enqueued; completion fires `on_root_made_remote`.
-    pub(crate) async fn coven_make_remote(
-        &self,
-        release_id: &str,
-        pin: bool,
-    ) -> Result<(), LibraryError> {
+    pub async fn coven_make_remote(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
         self.handle
             .make_remote("releases", release_id, pin)
             .await
@@ -2306,7 +2156,7 @@ impl LibraryManager {
     /// cover to coven's local store (no dest) — then flips the `remote` gate false,
     /// registers the external refs, and enqueues the cloud deletes in one atomic
     /// commit. `cancel` aborts before the commit (the release stays Remote).
-    pub(crate) async fn coven_make_local(
+    pub async fn coven_make_local(
         &self,
         release_id: &str,
         new_path: &str,
@@ -2318,78 +2168,6 @@ impl LibraryManager {
             .handle
             .make_local("releases", release_id, &dest, &cancel_rx)
             .await;
-        bridge.abort();
-        Self::map_make_local_result(release_id, result)
-    }
-
-    /// Test-only deterministic driver for make-Remote.
-    ///
-    /// WHY THIS EXISTS: the production path (`make_release_remote` →
-    /// `do_make_remote` → `coven_make_remote` → `SyncManager::make_remote`) needs a
-    /// live `SyncManager` for its seeded HLC and running drain. Tests inject a
-    /// `MockCloudHome` via `set_cloud_override` and can't stand a SyncManager over
-    /// it, and coven's Database HLC isn't exposed to bae. So this calls the SAME
-    /// coven `transition::make_remote` the SyncManager calls (same scheme helper,
-    /// `"releases"` root), with a fresh device HLC — the only unavoidable
-    /// divergence. The actual upload + the gate-flip COMPLETION are then driven
-    /// through the REAL production drain (`process_cloud_uploads_with` →
-    /// `coven::blob::upload::drain_uploads` + the real `ReleaseUploadObserver`), so
-    /// a regression in the completion path IS caught. The `do_make_remote` guards
-    /// (is-sync-ready, cloud-home, empty-files) are covered separately by a test
-    /// driving the real `make_release_remote`.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn make_remote_for_test(
-        &self,
-        release_id: &str,
-        pin: bool,
-    ) -> Result<(), LibraryError> {
-        let hlc = coven::sync::hlc::Hlc::new(self.config_handle.config().device_id.clone());
-        coven::blob::transition::make_remote(
-            self.database.coven_db(),
-            self.blob_path_scheme(),
-            &hlc,
-            "releases",
-            release_id,
-            pin,
-        )
-        .await
-        .map_err(|e| LibraryError::Storage(format!("make_remote: {e}")))
-    }
-
-    /// Test-only deterministic driver for make-Local — same rationale as
-    /// `make_remote_for_test`: tests can't run the SyncManager-backed production
-    /// path over the injected `MockCloudHome`. It calls the SAME coven
-    /// `transition::make_local` that `SyncManager::make_local` calls, reusing the
-    /// production helpers (`make_local_dest`, `cancel_token_to_watch`,
-    /// `build_upload_observer`, `map_make_local_result`) — no duplicated
-    /// dest/observer/cancel/result logic. It diverges only in the unavoidable bits:
-    /// storage from `blob_storage()` (the override) and a fresh device HLC (the gate
-    /// flip is a local write, so a fresh HLC is correct for single-device tests).
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn make_local_for_test(
-        &self,
-        release_id: &str,
-        new_path: &str,
-        cancel: &crate::library::CancellationToken,
-    ) -> Result<(), LibraryError> {
-        let hlc = coven::sync::hlc::Hlc::new(self.config_handle.config().device_id.clone());
-        let storage = self.create_sync_storage()?;
-        let observer = self.build_upload_observer();
-        let dest = self.make_local_dest(release_id, new_path).await?;
-        let (cancel_rx, bridge) = Self::cancel_token_to_watch(cancel);
-        let result = coven::blob::transition::make_local(
-            self.database.coven_db(),
-            &storage,
-            &self.library_dir,
-            self.blob_path_scheme(),
-            &hlc,
-            Some(&observer),
-            "releases",
-            release_id,
-            &dest,
-            &cancel_rx,
-        )
-        .await;
         bridge.abort();
         Self::map_make_local_result(release_id, result)
     }
@@ -2574,13 +2352,9 @@ impl LibraryManager {
     /// `Plain` → `{ns}/{cloud_path}`). Used by the bae-side delete path, which
     /// stays bae's responsibility (the transitions are coven's).
     fn release_file_cloud_key(&self, file: &DbFile) -> Result<String, LibraryError> {
-        coven::sync::cloud_storage::CloudSyncStorage::blob_key(
-            self.blob_path_scheme(),
-            crate::sync::RELEASE_FILES_NAMESPACE,
-            &file.id,
-            file.cloud_path.as_deref(),
-        )
-        .map_err(|e| LibraryError::Storage(format!("cloud key for file {}: {e}", file.id)))
+        self.handle
+            .blob_cloud_key(&Self::release_file_blob_ref(file))
+            .map_err(|e| LibraryError::Storage(format!("cloud key for file {}: {e}", file.id)))
     }
 
     /// The full cloud object key a cover blob lives at (namespace `covers`),
@@ -2591,13 +2365,13 @@ impl LibraryManager {
         release_id: &str,
         cloud_path: Option<&str>,
     ) -> Result<String, LibraryError> {
-        coven::sync::cloud_storage::CloudSyncStorage::blob_key(
-            self.blob_path_scheme(),
-            crate::sync::COVERS_NAMESPACE,
-            release_id,
-            cloud_path,
-        )
-        .map_err(|e| LibraryError::Storage(format!("cloud key for cover {release_id}: {e}")))
+        self.handle
+            .blob_cloud_key(&Self::image_blob_ref(
+                crate::sync::COVERS_NAMESPACE,
+                release_id,
+                cloud_path.map(str::to_string),
+            ))
+            .map_err(|e| LibraryError::Storage(format!("cloud key for cover {release_id}: {e}")))
     }
 
     /// Retry failed uploads now: clear their backoff so the next cycle picks
@@ -2665,45 +2439,17 @@ impl LibraryManager {
         self.sync_paused.load(std::sync::atomic::Ordering::SeqCst)
     }
 
-    /// Drive coven's upload drain once against an injected cloud home, for tests
-    /// that have no live sync loop. A test seam over coven's real
-    /// `drain_uploads` (with bae's observer/cipher wiring) — production drains
-    /// from the sync loop — so it stays out of release builds.
+    /// Drive coven's upload drain once through the handle's connected sync
+    /// manager, for tests that connected an injected cloud home via
+    /// [`connect_test_cloud_home`](Self::connect_test_cloud_home). Returns the
+    /// number of blobs uploaded. Production drains from the running sync loop, so
+    /// this stays out of release builds.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn process_cloud_uploads_with(
-        &self,
-        cloud_home: &dyn CloudHome,
-        encryption: &std::sync::RwLock<EncryptionService>,
-    ) -> Result<usize, String> {
-        let observer = self.build_upload_observer();
-        // coven's `drain_uploads` takes the home's at-rest cipher. bae homes are
-        // always encrypted, so wrap the library's `EncryptionService` as
-        // `CloudCipher::Encrypted`. Clone the service under the read lock, then drop
-        // the lock before building the local cipher lock coven seals blobs through.
-        let cipher = {
-            let service = encryption.read().unwrap();
-            coven::sync::cloud_storage::CloudCipher::Encrypted(service.clone())
-        };
-        let cipher = std::sync::RwLock::new(cipher);
-        // coven's own register clock is private; this test helper drives the drain
-        // off a fresh HLC stamped with this device's id. The drain's gate flip is a
-        // local unconditional write, so the stamp's only role is the synced
-        // `_updated_at`, and a wall-clock-seeded HLC orders after the rows this
-        // device wrote earlier. (Production drives the drain from the sync loop with
-        // the Database's own clock.)
-        let device_id = self.config_handle.config().device_id.clone();
-        let hlc = coven::sync::hlc::Hlc::new(device_id);
-        coven::blob::upload::drain_uploads(
-            self.database.coven_db(),
-            cloud_home,
-            &cipher,
-            &self.library_dir,
-            self.clock.as_ref(),
-            &hlc,
-            Some(&observer),
-        )
-        .await
-        .map(|outcome| outcome.uploaded)
+    pub async fn drain_uploads_for_test(&self) -> Result<usize, String> {
+        self.handle
+            .drain_uploads()
+            .await
+            .map(|outcome| outcome.uploaded)
     }
 
     pub async fn get_tracks_for_release(
@@ -3610,7 +3356,7 @@ impl LibraryManager {
         let has_cloud_home = self.get_cloud_home().is_some();
         let mut out = Vec::with_capacity(raws.len());
         for raw in raws {
-            let pinned = self.release_pinned(raw.any_file_id.as_deref()).await;
+            let pinned = self.release_pinned(raw.any_file_id.as_deref()).await?;
             out.push(resolve_release_storage_summary(raw, has_cloud_home, pinned));
         }
         Ok(out)
@@ -3631,7 +3377,7 @@ impl LibraryManager {
             return Ok(None);
         };
         let has_cloud_home = self.get_cloud_home().is_some();
-        let pinned = self.release_pinned(raw.any_file_id.as_deref()).await;
+        let pinned = self.release_pinned(raw.any_file_id.as_deref()).await?;
         Ok(Some(resolve_release_storage_summary(
             raw,
             has_cloud_home,
@@ -3673,8 +3419,9 @@ impl LibraryManager {
             .iter()
             .position(|r| r.id == release_id)
             .expect("release belongs to its album");
-        let pinned =
-            release_blob_pinned(&self.library_dir, raw.files.first().map(|f| f.id.as_str())).await;
+        let pinned = self
+            .release_pinned(raw.files.first().map(|f| f.id.as_str()))
+            .await?;
         let cover = self.cover_ref(release_id).await?;
         Ok(Some(resolve_release(
             raw,
@@ -3722,7 +3469,7 @@ impl LibraryManager {
         for raw in raw_rows {
             let pinned = self
                 .release_pinned(raw.release.any_file_id.as_deref())
-                .await;
+                .await?;
             rows.push(resolve_storage_row(raw, has_cloud_home, pinned, |rid| {
                 covers.get(rid).cloned()
             }));
@@ -3767,9 +3514,9 @@ impl LibraryManager {
         for (i, r) in raw.releases.into_iter().enumerate() {
             // Ask coven's cache whether this release is pinned — the orthogonal
             // coven-cache property of a remote release.
-            let pinned =
-                release_blob_pinned(&self.library_dir, r.files.first().map(|f| f.id.as_str()))
-                    .await;
+            let pinned = self
+                .release_pinned(r.files.first().map(|f| f.id.as_str()))
+                .await?;
             let release_cover = covers.get(&r.release.id).cloned();
             releases.push(resolve_release(
                 r,
@@ -3810,14 +3557,14 @@ pub(crate) async fn cover_ref_for(
 /// Free-function variant of `LibraryManager::find_release_detail`.
 ///
 /// Used by the manager and by the upload observer (which holds the same
-/// `LibraryDir` and `Database` so it can emit `ReleaseUpdated` events for a
-/// release whose `local_path` just got cleared at the end of an upload
-/// run, without owning a manager). `has_cloud_home` is supplied by the
-/// caller; the observer fires inside a running sync cycle so it can pass
-/// `true`.
+/// `Database` and a `CovenHandle` so it can emit `ReleaseUpdated` events for a
+/// release whose `local_path` just got cleared at the end of an upload run,
+/// without owning a manager). The pin-state is answered through `handle`, the
+/// same door the manager uses. `has_cloud_home` is supplied by the caller; the
+/// observer fires inside a running sync cycle so it can pass `true`.
 pub(crate) async fn find_release_detail_with(
     database: &Database,
-    library_dir: &LibraryDir,
+    handle: &CovenHandle,
     has_cloud_home: bool,
     release_id: &str,
 ) -> Result<Option<ReleaseDetail>, LibraryError> {
@@ -3831,7 +3578,10 @@ pub(crate) async fn find_release_detail_with(
         .iter()
         .position(|r| r.id == release_id)
         .expect("release belongs to its album");
-    let pinned = release_blob_pinned(library_dir, raw.files.first().map(|f| f.id.as_str())).await;
+    let pinned = match raw.files.first() {
+        Some(file) => release_file_pinned(handle, &file.id).await?,
+        None => false,
+    };
     let cover = cover_ref_for(database, release_id).await?;
     Ok(Some(resolve_release(
         raw,
@@ -3843,37 +3593,37 @@ pub(crate) async fn find_release_detail_with(
     )))
 }
 
-/// Whether coven holds a release pinned on this device — true iff its
-/// representative blob (`any_file_id`, any one of the release's files) is in
-/// `storage/pinned/`. Pin/unpin act on all a release's blobs together, so one file
-/// represents the release. `None` (a release with no files) reads false.
-/// Best-effort: a bad id or a stat error reads as not-pinned (logged), so a
-/// storage-state derivation never fails on it. Pinned-ness is coven cache state —
-/// it is never a bae column.
-pub(crate) async fn release_blob_pinned(
-    library_dir: &LibraryDir,
-    any_file_id: Option<&str>,
-) -> bool {
-    let Some(file_id) = any_file_id else {
-        return false;
-    };
-    // Pin state is coven's cache-folder truth: a release is pinned on this device
-    // iff its representative blob is present under `storage/pinned/`. bae reads
-    // that folder truth directly — pinned-ness is coven cache state, never a bae
-    // row.
-    let path = match library_dir.pinned_blob_path(crate::sync::RELEASE_FILES_NAMESPACE, file_id) {
-        Ok(path) => path,
-        Err(e) => {
-            warn!("pinned-state check: bad blob id {file_id}: {e}");
-            return false;
+/// The release-files [`BlobRef`](coven::blob::BlobRef) addressing a representative
+/// file for a coven cache-state query (the pin check via
+/// [`CovenHandle::is_pinned`]), which keys only on namespace + id. The other
+/// fields carry the release-files constants (see
+/// [`LibraryManager::release_file_blob_ref`]); `cloud_path` is `None` because the
+/// pin check reads only `storage/pinned/<namespace>/<id>`, never the cloud layout.
+fn release_files_pin_ref(file_id: &str) -> coven::blob::BlobRef {
+    coven::blob::BlobRef {
+        namespace: crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
+        id: file_id.to_string(),
+        scope: coven::blob::BlobScope::Master,
+        cloud_path: None,
+        provenance: coven::blob::Provenance::UserProvided,
+        fill: coven::blob::CacheFill::CacheLazy,
+    }
+}
+
+/// Whether `file_id`'s release is pinned offline, answered through the handle's
+/// cache-state query. A structurally invalid blob id (e.g. a path-traversal
+/// token forged by a peer) can't name a real cached blob, so it reads as not
+/// pinned — the id is rejected, never trusted; a real I/O failure still surfaces.
+async fn release_file_pinned(handle: &CovenHandle, file_id: &str) -> Result<bool, LibraryError> {
+    match handle.is_pinned(&[release_files_pin_ref(file_id)]).await {
+        Ok(pinned) => Ok(pinned),
+        Err(coven::blob::cache::BlobCacheError::Path(e)) => {
+            warn!("pin-state check: rejecting bad blob id {file_id}: {e}");
+            Ok(false)
         }
-    };
-    match tokio::fs::try_exists(&path).await {
-        Ok(present) => present,
-        Err(e) => {
-            warn!("pinned-state check for {file_id}: {e}");
-            false
-        }
+        Err(e) => Err(LibraryError::Storage(format!(
+            "pin-state for {file_id}: {e}"
+        ))),
     }
 }
 
@@ -4741,15 +4491,13 @@ impl LibraryManager {
         // for a deleted blob is bae's delete-path responsibility. Best-effort: each
         // drop logs and continues so a cleanup hiccup never aborts the delete.
         for file in files {
-            if let Err(e) = coven::blob::cache::drop_cached_blob(
-                &self.library_dir,
-                crate::sync::RELEASE_FILES_NAMESPACE,
-                &file.id,
-            )
-            .await
+            if let Err(e) = self
+                .handle
+                .evict_blob(&Self::release_file_blob_ref(file))
+                .await
             {
                 warn!(
-                    "Failed to drop cache copy of {} during deletion: {e}",
+                    "Failed to drop on-device copies of {} during deletion: {e}",
                     file.id
                 );
             }
@@ -4782,7 +4530,8 @@ impl LibraryManager {
         };
 
         if was_remote {
-            // Remote: tombstone the cloud cover blob and drop the cache copy.
+            // Remote: tombstone the cloud cover blob (its on-device cache copy is
+            // dropped below, alongside the Local case).
             match self.cover_cloud_key(release_id, cover.cloud_path.as_deref()) {
                 Ok(cloud_key) => {
                     if let Err(e) = self.database.add_cloud_outbox_delete(&cloud_key).await {
@@ -4791,26 +4540,19 @@ impl LibraryManager {
                 }
                 Err(e) => warn!("Failed to derive cover blob key for {release_id}: {e}"),
             }
-            if let Err(e) = coven::blob::cache::drop_cached_blob(
-                &self.library_dir,
+        }
+        // Drop every on-device copy of the cover blob — a Remote release's cache
+        // copy or a Local release's local-store copy (it lived in at most one).
+        if let Err(e) = self
+            .handle
+            .evict_blob(&Self::image_blob_ref(
                 crate::sync::COVERS_NAMESPACE,
                 release_id,
-            )
+                cover.cloud_path.clone(),
+            ))
             .await
-            {
-                warn!("Failed to drop cover cache copy for {release_id}: {e}");
-            }
-        } else {
-            // Local: the cover is coven's own copy in the local store. Drop it.
-            if let Err(e) = coven::blob::local_files::drop_blob(
-                &self.library_dir,
-                crate::sync::COVERS_NAMESPACE,
-                release_id,
-            )
-            .await
-            {
-                warn!("Failed to drop cover local-store copy for {release_id}: {e}");
-            }
+        {
+            warn!("Failed to drop on-device cover copies for {release_id}: {e}");
         }
 
         self.emit_outbox_changed().await;
@@ -5436,10 +5178,6 @@ impl LibraryManager {
     /// release only becomes remote once the upload observer (which fires from
     /// inside the running loop) confirms the last upload landed.
     pub fn is_sync_ready(&self) -> bool {
-        #[cfg(any(test, feature = "test-utils"))]
-        if self.test_overrides.force_sync_ready {
-            return true;
-        }
         self.sync_manager_inner()
             .is_some_and(|sm| sm.is_sync_ready())
     }
@@ -5452,8 +5190,8 @@ impl LibraryManager {
 
     pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), String> {
         use crate::keys::CloudHomeCredentials;
-        use coven::storage::cloud::s3::S3CloudHome;
-        use coven::storage::cloud::CloudHome;
+        use crate::storage::cloud::s3::S3CloudHome;
+        use crate::storage::cloud::CloudHome;
 
         // Probe the bucket with the proposed credentials *before* persisting
         // anything. A typo or a missing bucket would otherwise leave the UI
@@ -5619,7 +5357,11 @@ impl LibraryManager {
             .map_err(|e| format!("list remote releases: {e}"))?;
         let mut count: u64 = 0;
         for any_file_id in &remote_file_ids {
-            if !self.release_pinned(any_file_id.as_deref()).await {
+            if !self
+                .release_pinned(any_file_id.as_deref())
+                .await
+                .map_err(|e| format!("pin-state check: {e}"))?
+            {
                 count += 1;
             }
         }
@@ -5646,7 +5388,7 @@ impl LibraryManager {
         &self,
         encryption_service: Option<EncryptionService>,
     ) -> Result<(), String> {
-        self.handle.connect_sync(encryption_service).await;
+        self.handle.connect_sync(encryption_service).await?;
         Ok(())
     }
 
@@ -5654,7 +5396,7 @@ impl LibraryManager {
     async fn ensure_sync_manager_and_start(&self) -> Result<(), String> {
         // If we already have a sync manager, just (re)start its loop.
         if self.sync_manager_inner().is_some() {
-            self.handle.start_sync().await;
+            self.handle.start_sync().await?;
             return Ok(());
         }
 
@@ -5677,40 +5419,22 @@ impl LibraryManager {
             (None, None)
         };
 
-        let sm = self.handle.connect_sync(enc_service).await;
+        // Connect the provider: build the cloud home, start the loop, and install
+        // the manager. A cloud-home build or loop-start failure returns `Err` with
+        // nothing installed, so it surfaces here rather than leaving a dead manager
+        // — and the encryption-key fingerprint below is reached only on success, so
+        // a failed setup stays a clean retry (no fingerprint telling the next
+        // launch's unlock flow "encryption is set up" while sync is still broken).
+        self.handle.connect_sync(enc_service).await?;
 
-        // For an opaque home, persist the encryption-key hint flag — but only once
-        // the sync loop has actually started. start_sync() silently bails when
-        // create_cloud_home fails or init_sync returns None (unreachable backend,
-        // missing creds, …); recording the fingerprint anyway would tell the
-        // unlock flow on the next launch "this library has encryption set up", and
-        // any subsequent setup attempt would skip the unlock prompt while sync is
-        // still broken. Leaving the fingerprint unwritten makes the next attempt a
-        // clean retry; the SyncManager is kept around so the reconnect banner can
-        // drive recovery. A browsable home records nothing — it has no key, so
-        // `encryption_key_stored` stays false and the next launch builds it keyless.
-        if sm.is_sync_ready() {
-            if let Some(fingerprint) = fingerprint {
-                self.config_handle
-                    .record_encryption_key_fingerprint(fingerprint)
-                    .map_err(|e| format!("Failed to save config: {e}"))?;
-            }
-        } else {
-            // The failure that caused is_sync_ready to return false was already
-            // logged by start_sync ("Cloud home not available" / "Failed to
-            // create sync storage" / etc., warn-level). Echo the configured
-            // provider here so the skip site lines up with a known prior log.
-            let cloud_home = self.config_handle.config().cloud_home.clone();
-            tracing::warn!(
-                provider = ?cloud_home.provider,
-                s3_bucket = ?cloud_home.s3_bucket,
-                google_drive_folder_id = ?cloud_home.google_drive_folder_id,
-                dropbox_folder_path = ?cloud_home.dropbox_folder_path,
-                onedrive_drive_id = ?cloud_home.onedrive_drive_id,
-                onedrive_folder_id = ?cloud_home.onedrive_folder_id,
-                "Sync loop did not start after setup; encryption-key fingerprint not recorded \
-                 — the next sync attempt will retry from a clean state."
-            );
+        // Sync started. For an opaque home, persist the encryption-key hint flag so
+        // the next launch's unlock flow knows this library has encryption set up. A
+        // browsable home records nothing — it has no key, so `encryption_key_stored`
+        // stays false and the next launch builds it keyless.
+        if let Some(fingerprint) = fingerprint {
+            self.config_handle
+                .record_encryption_key_fingerprint(fingerprint)
+                .map_err(|e| format!("Failed to save config: {e}"))?;
         }
 
         self.trigger_sync();
@@ -5724,6 +5448,10 @@ mod tests {
     use super::*;
     use crate::config::Config;
     use crate::db::{DbAlbum, DbRelease};
+    #[cfg(feature = "test-utils")]
+    use crate::storage::cloud::test_utils::InMemoryCloudHome;
+    #[cfg(feature = "test-utils")]
+    use crate::sync::cloud_storage::CloudCipher;
     use chrono::Utc;
     use tempfile::TempDir;
     use uuid::Uuid;
@@ -5816,20 +5544,6 @@ mod tests {
             album_peak_linear: None,
             created_at: Utc::now(),
         }
-    }
-
-    /// Mark a remote release's representative blob as pinned in coven's cache for
-    /// a test by creating the pinned cache file (`storage/pinned/<file_id>`) — its
-    /// presence is the pin truth `release_blob_pinned` reads. The release must
-    /// already be remote with `file_id` among its `release_files`. Pinned-ness is
-    /// coven cache state, never a bae column.
-    fn pin_file_in_cache(manager: &LibraryManager, file_id: &str) {
-        let path = manager
-            .library_dir
-            .pinned_blob_path(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
-            .unwrap();
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(&path, b"pinned-bytes").unwrap();
     }
 
     #[tokio::test]
@@ -5927,7 +5641,8 @@ mod tests {
         manager.database.insert_release(&release1).await.unwrap();
         manager.database.insert_release(&release2).await.unwrap();
 
-        // release1 is remote with one cloud blob, held pinned in coven's cache.
+        // release1 is remote with one cloud blob (the tombstone is enqueued for a
+        // remote release's blob regardless of whether it's cached on this device).
         let file = DbFile::new(
             &release1.id,
             "track1.flac",
@@ -5937,7 +5652,6 @@ mod tests {
             Utc::now(),
         );
         manager.add_file(&file).await.unwrap();
-        pin_file_in_cache(&manager, &file.id);
 
         manager.delete_release(&release1.id).await.unwrap();
 
@@ -6005,14 +5719,16 @@ mod tests {
             .unwrap()
             .is_none());
 
-        // Cloud blob delete enqueued under the `covers` namespace.
-        let cloud_key = crate::sync::CloudSyncStorage::blob_key(
-            crate::sync::BlobPathScheme::Hashed,
-            crate::sync::COVERS_NAMESPACE,
-            &release1.id,
-            None,
-        )
-        .unwrap();
+        // Cloud blob delete enqueued under the `covers` namespace — the same key
+        // the delete path derives, through the handle.
+        let cloud_key = manager
+            .handle()
+            .blob_cloud_key(&LibraryManager::image_blob_ref(
+                crate::sync::COVERS_NAMESPACE,
+                &release1.id,
+                None,
+            ))
+            .unwrap();
         let deletes = manager
             .database
             .coven_db()
@@ -6061,13 +5777,14 @@ mod tests {
             .await
             .unwrap()
             .is_none());
-        let cloud_key = crate::sync::CloudSyncStorage::blob_key(
-            crate::sync::BlobPathScheme::Hashed,
-            crate::sync::COVERS_NAMESPACE,
-            &release.id,
-            None,
-        )
-        .unwrap();
+        let cloud_key = manager
+            .handle()
+            .blob_cloud_key(&LibraryManager::image_blob_ref(
+                crate::sync::COVERS_NAMESPACE,
+                &release.id,
+                None,
+            ))
+            .unwrap();
         let deletes = manager
             .database
             .coven_db()
@@ -6229,8 +5946,8 @@ mod tests {
 
         // An image file whose id is also a traversal token — it drives the
         // gallery's `image_path(&file.id)` resolution, and (as the release's
-        // representative blob) the remote release's `release_blob_pinned`
-        // pinned-cache check; both must reject the bad id rather than panic.
+        // representative blob) the remote release's `is_pinned` pinned-cache
+        // check; both must reject the bad id rather than panic.
         let file = DbFile::new(
             &release.id,
             "cover.jpg",
@@ -6717,31 +6434,25 @@ mod tests {
     async fn storage_page_rows_carry_state_appropriate_actions() {
         use crate::album_detail::ReleaseStorageAction::{MakeLocal, MakeRemote, Pin, Unpin};
 
-        let (mut manager, _temp_dir) = setup_test_manager().await;
-        give_cloud_home(&mut manager);
+        let (manager, temp_dir) = setup_test_manager().await;
+        connect_test_cloud(&manager).await;
 
-        // Pinned: remote, with its blob held in coven's pinned cache.
-        let pinned_album = create_test_album();
-        let pinned = create_test_release(&pinned_album.id);
-        manager.database.insert_album(&pinned_album).await.unwrap();
-        manager.database.insert_release(&pinned).await.unwrap();
-        let pinned_file = DbFile::new(
-            &pinned.id,
-            "track.flac",
-            5,
-            crate::util::content_type::ContentType::Flac,
-            Uuid::new_v4().to_string(),
-            Utc::now(),
-        );
-        manager.add_file(&pinned_file).await.unwrap();
-        pin_file_in_cache(&manager, &pinned_file.id);
-
-        // Cloud-only: remote, blob not in the pinned cache.
-        let mut cloud_album = create_test_album();
-        cloud_album.title = "Cloud Album".to_string();
-        let cloud_only = create_test_release(&cloud_album.id);
-        manager.database.insert_album(&cloud_album).await.unwrap();
-        manager.database.insert_release(&cloud_only).await.unwrap();
+        // Pinned: made Remote with pin, so its blob lands in coven's offline cache.
+        let pinned = make_remote_release(
+            &manager,
+            &temp_dir.path().join("pinned"),
+            "Pinned Album",
+            true,
+        )
+        .await;
+        // Cloud-only: made Remote without pin, so its blob is evictable, not pinned.
+        let cloud_only = make_remote_release(
+            &manager,
+            &temp_dir.path().join("cloud"),
+            "Cloud Album",
+            false,
+        )
+        .await;
 
         // Local: not remote, files at a local path.
         let mut local_album = create_test_album();
@@ -6766,8 +6477,8 @@ mod tests {
             .map(|r| (r.release.id.clone(), r.release.storage_actions.clone()))
             .collect();
 
-        assert_eq!(actions[&pinned.id], vec![Unpin, MakeLocal]);
-        assert_eq!(actions[&cloud_only.id], vec![Pin, MakeLocal]);
+        assert_eq!(actions[&pinned], vec![Unpin, MakeLocal]);
+        assert_eq!(actions[&cloud_only], vec![Pin, MakeLocal]);
         assert_eq!(actions[&local.id], vec![MakeRemote]);
     }
 
@@ -6913,69 +6624,60 @@ mod tests {
         assert_eq!(local_page.rows[0].release.id, inserted_local.unwrap());
     }
 
-    /// A `CloudHome` that exists only so `get_cloud_home().is_some()`
-    /// returns true under test. These tests never drive cloud I/O, so every
-    /// method panics if called.
+    /// Connect a real `SyncManager` over an in-memory cloud home (opaque,
+    /// encrypted) so the manager's cloud read/write/transition paths run against
+    /// it — the in-module counterpart of the integration tests' `setup_with_cloud`.
+    /// After this, `get_cloud_home().is_some()` and `is_sync_ready()` both hold.
     #[cfg(feature = "test-utils")]
-    struct PresentCloudHome;
-
-    #[cfg(feature = "test-utils")]
-    #[async_trait::async_trait]
-    impl CloudHome for PresentCloudHome {
-        async fn write(
-            &self,
-            _: &str,
-            _: Vec<u8>,
-            _: &crate::storage::cloud::UploadProgress<'_>,
-        ) -> Result<(), crate::storage::cloud::CloudHomeError> {
-            unimplemented!("test cloud home never writes to the cloud")
-        }
-        async fn read(&self, _: &str) -> Result<Vec<u8>, crate::storage::cloud::CloudHomeError> {
-            unimplemented!("test cloud home never reads from the cloud")
-        }
-        async fn read_range(
-            &self,
-            _: &str,
-            _: u64,
-            _: u64,
-        ) -> Result<Vec<u8>, crate::storage::cloud::CloudHomeError> {
-            unimplemented!("test cloud home never reads from the cloud")
-        }
-        async fn list(
-            &self,
-            _: &str,
-        ) -> Result<Vec<String>, crate::storage::cloud::CloudHomeError> {
-            unimplemented!("test cloud home never lists the cloud")
-        }
-        async fn delete(&self, _: &str) -> Result<(), crate::storage::cloud::CloudHomeError> {
-            unimplemented!("test cloud home never deletes from the cloud")
-        }
-        async fn exists(&self, _: &str) -> Result<bool, crate::storage::cloud::CloudHomeError> {
-            unimplemented!("test cloud home never probes the cloud")
-        }
-        async fn grant_access(
-            &self,
-            _: &str,
-        ) -> Result<crate::storage::cloud::CloudHomeJoinInfo, crate::storage::cloud::CloudHomeError>
-        {
-            unimplemented!("test cloud home never grants access")
-        }
-        async fn revoke_access(
-            &self,
-            _: &str,
-        ) -> Result<(), crate::storage::cloud::CloudHomeError> {
-            unimplemented!("test cloud home never revokes access")
-        }
+    async fn connect_test_cloud(manager: &LibraryManager) -> Arc<InMemoryCloudHome> {
+        let cloud = Arc::new(InMemoryCloudHome::new());
+        manager
+            .connect_test_cloud_home(
+                cloud.clone(),
+                CloudCipher::Encrypted(EncryptionService::new_with_key(&[7u8; 32])),
+            )
+            .await
+            .expect("connect in-memory cloud home");
+        cloud
     }
 
-    /// Inject a present cloud home so the manager behaves like a synced
-    /// library (`get_cloud_home().is_some()`).
+    /// Create a Remote release the real way: a Local release with one source file
+    /// on disk (coven's external ref), made Remote (`pin` keeps its blob in the
+    /// offline cache) and drained so the gate flips. Returns its id. The manager
+    /// must already be connected via [`connect_test_cloud`].
     #[cfg(feature = "test-utils")]
-    fn give_cloud_home(manager: &mut LibraryManager) {
-        manager.set_cloud_override(
-            Arc::new(PresentCloudHome),
-            EncryptionService::new_with_key(&[7u8; 32]),
+    async fn make_remote_release(
+        manager: &LibraryManager,
+        dir: &std::path::Path,
+        album_title: &str,
+        pin: bool,
+    ) -> String {
+        let mut album = create_test_album();
+        album.title = album_title.to_string();
+        let mut release = create_test_release(&album.id);
+        release.remote = false;
+        manager.database.insert_album(&album).await.unwrap();
+        manager.database.insert_release(&release).await.unwrap();
+        std::fs::create_dir_all(dir).unwrap();
+        std::fs::write(dir.join("track.flac"), b"track-bytes").unwrap();
+        let file = DbFile::new(
+            &release.id,
+            "track.flac",
+            11,
+            crate::util::content_type::ContentType::Flac,
+            Uuid::new_v4().to_string(),
+            Utc::now(),
         );
+        manager.add_file(&file).await.unwrap();
+        manager
+            .database
+            .register_release_external_refs_for_test(&release.id, &dir.to_string_lossy())
+            .await
+            .unwrap();
+        manager.coven_make_remote(&release.id, pin).await.unwrap();
+        let n = manager.drain_uploads_for_test().await.unwrap();
+        assert_eq!(n, 1, "the release's one blob uploaded");
+        release.id
     }
 
     /// Insert a local release whose `local_path` points at a
@@ -7284,11 +6986,8 @@ mod tests {
     #[cfg(feature = "test-utils")]
     #[tokio::test]
     async fn unmanage_cancelled_before_copy_leaves_release_remote() {
-        let (mut manager, temp_dir) = setup_test_manager().await;
-        manager.set_cloud_override(
-            Arc::new(PresentCloudHome),
-            EncryptionService::new_with_key(&[7u8; 32]),
-        );
+        let (manager, temp_dir) = setup_test_manager().await;
+        connect_test_cloud(&manager).await;
         let album = create_test_album();
         let release = create_test_release(&album.id); // remote: true
         manager.database.insert_album(&album).await.unwrap();
@@ -7314,7 +7013,7 @@ mod tests {
         token.cancel();
         let dest = temp_dir.path().join("out");
         manager
-            .make_local_for_test(&release.id, dest.to_str().unwrap(), &token)
+            .coven_make_local(&release.id, dest.to_str().unwrap(), &token)
             .await
             .expect("a cancelled make-Local ends cleanly");
 
@@ -7473,7 +7172,6 @@ mod tests {
         // exactly as production wires it in `build_sync_manager`.
         let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
             Arc::new(manager.database.clone()),
-            manager.library_dir.clone(),
             manager.outbox_in_flight.clone(),
             manager.upload_throughput.clone(),
             manager.sync_paused.clone(),
@@ -7565,15 +7263,22 @@ mod tests {
     }
 
     /// An already-pinned release is skipped at enqueue rather than re-downloaded.
+    #[cfg(feature = "test-utils")]
     #[tokio::test]
     async fn download_queue_skips_already_pinned() {
-        let (manager, _temp_dir) = setup_test_manager().await;
-        let release_id = insert_pinnable_release(&manager).await;
+        let (manager, temp_dir) = setup_test_manager().await;
         manager.set_downloads_paused(true);
 
-        // Pinned: remote, with its blob held in coven's pinned cache.
-        // `insert_pinnable_release` seeds one file with id `<release>-file`.
-        pin_file_in_cache(&manager, &format!("{release_id}-file"));
+        // A genuinely pinned release: made Remote with pin, so its blob lands in
+        // coven's offline cache.
+        connect_test_cloud(&manager).await;
+        let release_id = make_remote_release(
+            &manager,
+            &temp_dir.path().join("pinned"),
+            "Test Album",
+            true,
+        )
+        .await;
         let summary = manager
             .find_release_storage_summary(&release_id)
             .await
@@ -7583,7 +7288,10 @@ mod tests {
             summary.storage_state,
             crate::album_detail::ReleaseStorageState::Remote
         );
-        assert!(summary.pinned, "the cache file makes it read as pinned");
+        assert!(
+            summary.pinned,
+            "the offline-cached blob makes it read as pinned"
+        );
 
         manager.enqueue_pins(vec![release_id.clone()]).await;
         assert!(manager.download_snapshot().downloads.is_empty());

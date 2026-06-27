@@ -2,13 +2,11 @@
 //! observer and a `SyncManager` wrapper layered on top.
 
 // The sync substrate lives in coven; these resolve `crate::sync::<m>` unchanged.
+// `cloud_storage` carries the `CloudCipher` a test hands to
+// `connect_sync_with_test_home`; blob-key derivation is coven's, reached through
+// `CovenHandle::blob_cloud_key`.
 pub use coven::join_code;
 pub use coven::sync::{cloud_storage, join, restore, restore_code};
-
-// Blob-key construction at bae's call sites: `CloudSyncStorage::blob_key` keyed
-// by a `BlobPathScheme`. An opaque home is `Hashed` (keyed by the id), a
-// browsable home is `Plain` (the row's readable `cloud_path` verbatim).
-pub use coven::sync::cloud_storage::{BlobPathScheme, CloudSyncStorage};
 
 // bae's blob-transition observer: UI bookkeeping for coven's upload drain and
 // make-Remote / make-Local completions (coven owns the lifecycle itself).
