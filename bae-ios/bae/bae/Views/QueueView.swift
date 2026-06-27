@@ -248,7 +248,7 @@ struct QueueRow: View {
         HStack(spacing: 12) {
             ImageView(coverImageId: item.coverImageId, pointSize: 44)
                 .frame(width: 44, height: 44)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(.body)

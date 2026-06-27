@@ -12,8 +12,7 @@ struct GalleryView: View {
     let items: [BridgeGalleryItem]
     /// Fetches a gallery item's bytes from the bridge, which dispatches the read
     /// in core on the item's `BridgeGallerySource` (its cover or an image file).
-    let loadImage:
-        @Sendable (_ item: BridgeGalleryItem) async throws -> Data
+    let loadImage: @Sendable (_ item: BridgeGalleryItem) async throws -> Data
 
     @Environment(\.dismiss)
     private var dismiss

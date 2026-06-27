@@ -9,7 +9,6 @@ struct SearchResultsView: View {
     let error: String?
     let onSelect: (String) -> Void
 
-
     var body: some View {
         if let error {
             centered(Text(error).foregroundStyle(.red))
