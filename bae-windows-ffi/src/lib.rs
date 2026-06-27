@@ -3030,7 +3030,7 @@ pub unsafe extern "C" fn bae_image_bytes(
 }
 
 /// Bytes of one gallery slot for `release_id`, given the `source_json` the C#
-/// received on the gallery item (a `kind`-tagged [`FfiGallerySource`]). The C#
+/// received on the gallery item (a `kind`-tagged `FfiGallerySource`). The C#
 /// forwards that source verbatim for EVERY item and never inspects it; core
 /// dispatches the read on the variant (a cover by image id, a release-file by
 /// file id). `status` is `Ok` with bytes or `Error` on a bad input / read
