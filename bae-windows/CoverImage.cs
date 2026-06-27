@@ -1,71 +1,110 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Bae.Windows;
 
 /// <summary>
-/// Decodes a library cover into a <see cref="BitmapImage"/> for the WinUI image
-/// controls, busting WinUI's image cache when the cover changes.
+/// Decodes a library image into a <see cref="BitmapImage"/> for the WinUI image
+/// controls. The bytes come from the FFI by id (a cover via <c>bae_image_bytes</c>,
+/// a release-file gallery image via <c>bae_gallery_image_bytes</c>) — coven reads
+/// them locality-aware, fetching and decrypting from the cloud when they aren't on
+/// disk — so the UI never resolves a filesystem path itself.
 ///
-/// A cover lives at a stable, content-addressed path, so changing it overwrites
-/// the file in place — the path never changes. WinUI's <c>BitmapImage</c> caches
-/// decoded images process-wide keyed by their <c>UriSource</c>, so
-/// <c>new BitmapImage(new Uri(path))</c> would keep serving the stale cover until
-/// the app restarted.
-///
-/// The FFI hands us a cache-bustable identifier (<c>&lt;path&gt;#v=&lt;mtime&gt;</c>,
-/// see bae-core's <c>versioned_image_path</c>): the version changes whenever the
-/// bytes change, so the binding that produces the identifier re-evaluates and
-/// calls back in here. We decode from a file <em>stream</em> via
-/// <see cref="BitmapImage.SetSource"/> rather than a <c>UriSource</c>: a stream
-/// source never consults WinUI's URI cache, so the current bytes on disk are
-/// always read and re-decoded. This is the same per-control decode cost as the
-/// old <c>UriSource</c> path — one decode per image — without the process-wide
-/// cache that caused the staleness.
+/// Decoding goes through an in-memory stream (<see cref="BitmapImage.SetSource"/>),
+/// not a <c>UriSource</c>: WinUI caches decoded images process-wide keyed by their
+/// URI, which would serve a stale cover after a change. A stream source bypasses
+/// that cache. Covers carry a content version that moves when the image changes,
+/// so <see cref="LoadByImageRef"/> keeps its own cache keyed by (id, version): a
+/// changed cover is a cache miss and re-decodes, while the library grid — which
+/// re-evaluates each tile's bound cover as it recycles on scroll — reuses the
+/// decoded bitmap instead of re-fetching and re-decoding.
 /// </summary>
 public static class CoverImage
 {
     /// <summary>
-    /// Separates the on-disk path from its cache-busting version in the FFI's
-    /// cover identifier. Mirrors <c>VERSION_SEPARATOR</c> in bae-core's
-    /// <c>versioned_image_path</c> and the macOS / iOS loaders.
+    /// Decoded covers keyed by (image id, content version). The version is part of
+    /// the key so a changed cover (new version) misses and re-decodes; the stale
+    /// entry is never served. Only the cover paths that carry a version populate
+    /// this — release-file gallery images and the version-less now-playing cover
+    /// decode fresh.
     /// </summary>
-    private const string VersionSeparator = "#v=";
+    private static readonly Dictionary<(string Id, string Version), BitmapImage> Cache = new();
 
     /// <summary>
-    /// Decode the cover at <paramref name="identifier"/> (the FFI's
-    /// <c>&lt;path&gt;#v=&lt;mtime&gt;</c> form, or a bare path), or null when the
-    /// identifier is null or the file can't be read. The <c>#v=…</c> suffix is the
-    /// cache key, not part of the filename, so it's stripped before opening.
+    /// The decoded cover for an image reference (id + version), or null when
+    /// <paramref name="cover"/> is null or the bytes can't be read or decoded.
+    /// Used by the grid tile and the gallery's cover slot.
     /// </summary>
-    public static BitmapImage? Load(string? identifier)
+    public static BitmapImage? LoadByImageRef(IntPtr handle, ImageRef? cover)
     {
-        if (string.IsNullOrEmpty(identifier))
+        if (cover is null)
         {
             return null;
         }
 
-        var separator = identifier.IndexOf(VersionSeparator, StringComparison.Ordinal);
-        var path = separator < 0 ? identifier : identifier[..separator];
+        var key = (cover.Id, cover.Version);
+        if (Cache.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
+        var bitmap = Decode(NativeBae.ImageBytes(handle, cover.Id));
+        if (bitmap is not null)
+        {
+            Cache[key] = bitmap;
+        }
+
+        return bitmap;
+    }
+
+    /// <summary>
+    /// The decoded cover for an image id alone — the now-playing cover, which the
+    /// event carries without a version. Decoded fresh each call (no version to
+    /// cache under); null when <paramref name="imageId"/> is empty or the bytes
+    /// can't be read or decoded.
+    /// </summary>
+    public static BitmapImage? LoadImage(IntPtr handle, string? imageId)
+    {
+        if (string.IsNullOrEmpty(imageId))
+        {
+            return null;
+        }
+
+        return Decode(NativeBae.ImageBytes(handle, imageId));
+    }
+
+    /// <summary>
+    /// The decoded release-file gallery image for (release id, file id), or null
+    /// when the bytes can't be read or decoded.
+    /// </summary>
+    public static BitmapImage? LoadGalleryImage(IntPtr handle, string releaseId, string fileId) =>
+        Decode(NativeBae.GalleryImageBytes(handle, releaseId, fileId));
+
+    /// <summary>
+    /// Decode image bytes into a <see cref="BitmapImage"/> through an in-memory
+    /// stream, or null when <paramref name="bytes"/> is null or undecodable.
+    /// </summary>
+    private static BitmapImage? Decode(byte[]? bytes)
+    {
+        if (bytes is null)
+        {
+            return null;
+        }
 
         try
         {
-            // OpenRead + SetSource decodes from a stream, bypassing WinUI's
-            // URI-keyed image cache — so the bytes currently on disk are read,
-            // not a cached decode of an earlier version at the same path.
-            using var stream = File.OpenRead(path);
+            using var stream = new MemoryStream(bytes);
             var bitmap = new BitmapImage();
             bitmap.SetSource(stream.AsRandomAccessStream());
             return bitmap;
         }
         catch (Exception)
         {
-            // The FFI only returns identifiers for files it found on disk, so a
-            // failure here is unexpected (file deleted between resolve and load,
-            // a permissions problem, or an undecodable image). This getter is
-            // evaluated by an x:Bind, so any escaping exception would crash the
-            // binding — render a blank tile instead.
+            // Undecodable bytes (a corrupt or unsupported image). This getter runs
+            // under an x:Bind, so an escaping exception would crash the binding —
+            // render a blank tile instead.
             return null;
         }
     }

@@ -943,15 +943,77 @@ internal static class NativeBae
     [DllImport(Dll, EntryPoint = "bae_subscribe", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void Subscribe(IntPtr handle, EventCallback callback);
 
-    /// <summary>On-disk path for a library image id, or null if not cached.</summary>
-    [DllImport(Dll, EntryPoint = "bae_image_path", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr ImagePathPtr(
+    /// <summary>
+    /// A byte buffer the native library hands back: a pointer and its length. An
+    /// empty buffer (<see cref="Ptr"/> = <see cref="IntPtr.Zero"/>, <see cref="Len"/>
+    /// = 0) means "no bytes" — no such image, or a read error the Rust side already
+    /// logged. Mirrors the FFI's <c>BaeBytes</c>. Free with <c>bae_bytes_free</c>.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BaeBytes
+    {
+        public IntPtr Ptr;
+        public UIntPtr Len;
+    }
+
+    [DllImport(Dll, EntryPoint = "bae_image_bytes", CallingConvention = CallingConvention.Cdecl)]
+    private static extern BaeBytes ImageBytesNative(
         IntPtr handle,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string imageId);
 
-    /// <summary>On-disk path for a library image id, or null. Copies and frees.</summary>
-    internal static string? ImagePath(IntPtr handle, string imageId) =>
-        CopyAndFree(ImagePathPtr(handle, imageId));
+    [DllImport(Dll, EntryPoint = "bae_gallery_image_bytes", CallingConvention = CallingConvention.Cdecl)]
+    private static extern BaeBytes GalleryImageBytesNative(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string fileId);
+
+    [DllImport(Dll, EntryPoint = "bae_bytes_free", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void BytesFree(BaeBytes bytes);
+
+    /// <summary>
+    /// The bytes of a library image (a cover or artist image) by id, read through
+    /// coven's locality-aware read (fetched and decrypted from the cloud when not
+    /// on disk), or null when there's no such image or the read failed (logged by
+    /// the Rust side). Blocks on the read — call off the UI thread for cloud-only
+    /// images. Copies the buffer into managed memory and frees the native one.
+    /// </summary>
+    internal static byte[]? ImageBytes(IntPtr handle, string imageId) =>
+        CopyAndFreeBytes(ImageBytesNative(handle, imageId));
+
+    /// <summary>
+    /// The bytes of a release-file gallery image by (release id, file id), read
+    /// through coven (fetched and decrypted from the cloud when not on disk), or
+    /// null on error (logged by the Rust side). Blocks on the read — call off the
+    /// UI thread for cloud-only images. Copies the buffer into managed memory and
+    /// frees the native one.
+    /// </summary>
+    internal static byte[]? GalleryImageBytes(IntPtr handle, string releaseId, string fileId) =>
+        CopyAndFreeBytes(GalleryImageBytesNative(handle, releaseId, fileId));
+
+    /// <summary>
+    /// Copy a native byte buffer into a managed array and free the native one, or
+    /// return null for an empty buffer (no bytes). Always frees what the bytes call
+    /// returned — <c>bae_bytes_free</c> is a no-op for an empty buffer.
+    /// </summary>
+    private static byte[]? CopyAndFreeBytes(BaeBytes bytes)
+    {
+        try
+        {
+            if (bytes.Ptr == IntPtr.Zero)
+            {
+                return null;
+            }
+
+            var length = checked((int)bytes.Len.ToUInt64());
+            var managed = new byte[length];
+            Marshal.Copy(bytes.Ptr, managed, 0, length);
+            return managed;
+        }
+        finally
+        {
+            BytesFree(bytes);
+        }
+    }
 
     /// <summary>Start playing a release (optionally shuffled). <paramref name="startTrackIndex"/>
     /// is the track to start from; a negative value starts from the first track.</summary>

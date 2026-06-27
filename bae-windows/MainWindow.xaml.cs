@@ -1380,7 +1380,7 @@ public sealed partial class MainWindow : Window
                 NpTitle.Text = evt.TrackTitle ?? string.Empty;
                 NpArtist.Text = evt.Artist ?? string.Empty;
                 NpPlayPause.Content = evt.Type == "PlaybackPlaying" ? "⏸" : "▶";
-                NpCover.Source = LoadCover(evt.CoverImageId);
+                NpCover.Source = CoverImage.LoadImage(_handle, evt.CoverImageId);
                 // Audio is flowing: drop the buffering spinner, restore the
                 // play/pause control.
                 NpLoading.IsActive = false;
@@ -2806,19 +2806,6 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private ImageSource? LoadCover(string? imageId)
-    {
-        if (string.IsNullOrEmpty(imageId))
-        {
-            return null;
-        }
-
-        // ImagePath returns the cache-bustable identifier (<path>#v=<mtime>);
-        // CoverImage.Load strips the version, opens the file, and bypasses
-        // WinUI's URI cache so a changed cover at the same path reloads.
-        return CoverImage.Load(NativeBae.ImagePath(_handle, imageId));
-    }
-
     /// <summary>
     /// A cover-art thumbnail tile: an image over a one-line caption, the whole
     /// tile a borderless button. The caller wires <c>Click</c> — the
@@ -2982,6 +2969,9 @@ public sealed partial class MainWindow : Window
             ?? new List<Album>();
         foreach (var album in albums)
         {
+            // The grid tile fetches its cover bytes by id, which needs the handle;
+            // the wire shape carries none, so inject it before the tile binds.
+            album.Handle = _handle;
             Albums.Add(album);
         }
 
@@ -3583,8 +3573,13 @@ public sealed partial class MainWindow : Window
         var label = new TextBlock { HorizontalAlignment = HorizontalAlignment.Center };
         void Show()
         {
-            image.Source = CoverImage.Load(images[index].Path);
-            label.Text = $"{images[index].Label} ({index + 1}/{images.Count})";
+            var item = images[index];
+            // A cover slot carries a version (fetch the cover bytes by id); a
+            // release-file image has none (fetch by release id + file id).
+            image.Source = item.CoverVersion is { } version
+                ? CoverImage.LoadByImageRef(_handle, new ImageRef { Id = item.Id, Version = version })
+                : CoverImage.LoadGalleryImage(_handle, releaseId, item.Id);
+            label.Text = $"{item.Label} ({index + 1}/{images.Count})";
         }
         Show();
 
@@ -3698,7 +3693,7 @@ public sealed partial class MainWindow : Window
             };
             foreach (var file in releaseImages)
             {
-                var source = LoadCover(file.Id);
+                var source = CoverImage.LoadGalleryImage(_handle, releaseId, file.Id);
                 var selection = JsonSerializer.Serialize(
                     new { type = "release_image", file_id = file.Id });
                 fileGrid.Children.Add(Tile(source, file.OriginalFilename, selection));
