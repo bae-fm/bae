@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +27,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import fm.bae.app.BaeLogger
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -36,10 +38,10 @@ private val logger = BaeLogger(TAG)
  * The bytes of recently-shown covers, keyed on [cacheKey] so a grid doesn't
  * re-cross the bridge for the same cover as it scrolls. Covers are re-fetchable
  * by id, so eviction just reloads; the cap is in bytes (via [LruCache.sizeOf]),
- * not entry count, since a single cover can be a few MB.
+ * not entry count, since a single cover can be a few MB. One instance is built at
+ * the composition root and handed to cover leaves through [LocalCoverBytesCache].
  */
-private object CoverBytesCache {
-    private const val MAX_BYTES = 32 * 1024 * 1024
+class CoverBytesCache {
     private val cache =
         object : LruCache<String, ByteArray>(MAX_BYTES) {
             override fun sizeOf(
@@ -56,7 +58,29 @@ private object CoverBytesCache {
     ) {
         cache.put(key, bytes)
     }
+
+    private companion object {
+        const val MAX_BYTES = 32 * 1024 * 1024
+    }
 }
+
+/**
+ * The cover-bytes cache for the open app, provided once at the composition root.
+ * No default: rendering a cover outside that provider is a wiring bug, so it
+ * fails loudly rather than handing out a throwaway per-call cache.
+ */
+val LocalCoverBytesCache =
+    staticCompositionLocalOf<CoverBytesCache> {
+        error("LocalCoverBytesCache not provided")
+    }
+
+/**
+ * The dispatcher cover and gallery byte fetches run on. Defaults to
+ * [Dispatchers.IO]; a test overrides it through the composition local to drive
+ * the fetches on its own scheduler.
+ */
+val LocalImageDispatcher =
+    staticCompositionLocalOf<CoroutineDispatcher> { Dispatchers.IO }
 
 /**
  * A cover's cache identity. A version (the image row's `_updated_at`) busts the
@@ -91,12 +115,14 @@ private fun rememberCoverState(
     coverVersion: String?,
     loadImage: suspend (imageId: String) -> ByteArray?,
 ): CoverState {
+    val coverCache = LocalCoverBytesCache.current
+    val dispatcher = LocalImageDispatcher.current
     val key = coverId?.let { cacheKey(it, coverVersion) }
     var state by remember(key) {
         mutableStateOf(
             when {
                 key == null -> CoverState.Absent
-                else -> CoverBytesCache.get(key)?.let { CoverState.Loaded(it, key) } ?: CoverState.Loading
+                else -> coverCache.get(key)?.let { CoverState.Loaded(it, key) } ?: CoverState.Loading
             },
         )
     }
@@ -104,14 +130,14 @@ private fun rememberCoverState(
         if (key == null || coverId == null || state is CoverState.Loaded) return@LaunchedEffect
         state =
             try {
-                val bytes = withContext(Dispatchers.IO) { loadImage(coverId) }
+                val bytes = withContext(dispatcher) { loadImage(coverId) }
                 if (bytes == null) {
                     // Core handed us a cover reference but its blob read returned
                     // nothing — unexpected, so note it rather than blanking silently.
                     logger.warning("cover image bytes absent for $coverId")
                     CoverState.Absent
                 } else {
-                    CoverBytesCache.put(key, bytes)
+                    coverCache.put(key, bytes)
                     CoverState.Loaded(bytes, key)
                 }
             } catch (e: CancellationException) {

@@ -327,7 +327,7 @@ struct AlbumCardView: View {
     let title: String
     let artistNames: String
     let year: Int32?
-    let cover: ImageRef?
+    let cover: BridgeImageRef?
     let isSelected: Bool
     let size: CGFloat
     let onPlay: () -> Void

@@ -65,7 +65,7 @@ struct ImageView: View {
 extension ImageView {
     /// A library cover, fetched by id and cached by content version.
     init(
-        imageRef: ImageRef?,
+        imageRef: BridgeImageRef?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat
     ) {

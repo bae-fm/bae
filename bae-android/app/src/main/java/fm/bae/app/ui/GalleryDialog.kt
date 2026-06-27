@@ -54,10 +54,10 @@ import coil3.size.Size
 import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeGalleryItem
+import uniffi.bae_bridge.BridgeGallerySource
 
 private const val FULL_RES_SCALE_THRESHOLD = 1.01f
 private const val DISMISS_THRESHOLD_DP = 150f
@@ -69,10 +69,10 @@ private val logger = BaeLogger(TAG)
 /**
  * Full-screen artwork viewer over a release's gallery items (cover first, then
  * every image file the release has). Swipeable when there's more than one, and a
- * downward swipe dismisses it. Each item's bytes are fetched on demand: the
- * cover slot (`coverVersion != null`) by image id via [loadCover], a release-file
- * image by file id via [loadGalleryFile]. Each page pinch-zooms and snaps back
- * when you release.
+ * downward swipe dismisses it. Each item's bytes are fetched on demand per its
+ * [BridgeGalleryItem.source]: a [BridgeGallerySource.Cover] by image id via
+ * [loadCover], a [BridgeGallerySource.ReleaseFile] by file id via
+ * [loadGalleryFile]. Each page pinch-zooms and snaps back when you release.
  */
 @Composable
 fun GalleryDialog(
@@ -135,9 +135,9 @@ fun GalleryDialog(
 }
 
 /**
- * One gallery page. The cover slot (`coverVersion != null`) fetches the cover
- * bytes by image id and keys its cache on `(id, version)` so a replaced cover
- * reloads; a release-file image fetches by file id and keys on the file id.
+ * One gallery page. A [BridgeGallerySource.Cover] fetches the cover bytes by
+ * image id and keys its cache on `(id, version)` so a replaced cover reloads; a
+ * [BridgeGallerySource.ReleaseFile] fetches by file id and keys on the file id.
  */
 @Composable
 private fun GalleryPage(
@@ -145,15 +145,20 @@ private fun GalleryPage(
     loadCover: suspend (imageId: String) -> ByteArray?,
     loadGalleryFile: suspend (fileId: String) -> ByteArray,
 ) {
-    val coverVersion = item.coverVersion
-    if (coverVersion != null) {
-        RemoteGalleryImage(cacheKey = "${item.id}#$coverVersion", label = item.label) {
-            // Core handed us a cover reference, so absent bytes are an error, not a
-            // normal empty — surface it through the page's failure state.
-            loadCover(item.id) ?: throw IllegalStateException("cover image ${item.id} has no bytes")
-        }
-    } else {
-        RemoteGalleryImage(cacheKey = item.id, label = item.label) { loadGalleryFile(item.id) }
+    when (val source = item.source) {
+        is BridgeGallerySource.Cover ->
+            RemoteGalleryImage(
+                cacheKey = "${source.image.id}#${source.image.version}",
+                label = item.label,
+            ) {
+                // Core handed us a cover reference, so absent bytes are an error, not a
+                // normal empty — surface it through the page's failure state.
+                loadCover(source.image.id)
+                    ?: throw IllegalStateException("cover image ${source.image.id} has no bytes")
+            }
+
+        is BridgeGallerySource.ReleaseFile ->
+            RemoteGalleryImage(cacheKey = item.id, label = item.label) { loadGalleryFile(item.id) }
     }
 }
 
@@ -329,13 +334,14 @@ private fun RemoteGalleryImage(
     label: String,
     load: suspend () -> ByteArray,
 ) {
+    val dispatcher = LocalImageDispatcher.current
     var result: Result<ByteArray>? by remember(cacheKey) {
         mutableStateOf<Result<ByteArray>?>(null)
     }
     LaunchedEffect(cacheKey) {
         result =
             try {
-                Result.success(withContext(Dispatchers.IO) { load() })
+                Result.success(withContext(dispatcher) { load() })
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

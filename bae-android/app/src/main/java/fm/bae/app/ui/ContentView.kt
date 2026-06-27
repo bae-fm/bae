@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,18 +56,24 @@ fun ContentView(
         }
     }
 
+    // One cover-bytes cache for the app's composition lifetime, handed to every
+    // cover leaf through the composition local so they don't each thread it.
+    val coverCache = remember { CoverBytesCache() }
+
     BaeTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
         ) {
-            Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                AppScreenRouter(
-                    screen = screen,
-                    oauthLinking = oauthLinking,
-                    oauthLinkingError = oauthLinkingError,
-                    onScreen = { screen = it },
-                )
+            CompositionLocalProvider(LocalCoverBytesCache provides coverCache) {
+                Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+                    AppScreenRouter(
+                        screen = screen,
+                        oauthLinking = oauthLinking,
+                        oauthLinkingError = oauthLinkingError,
+                        onScreen = { screen = it },
+                    )
+                }
             }
         }
     }

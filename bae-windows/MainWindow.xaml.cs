@@ -3574,11 +3574,14 @@ public sealed partial class MainWindow : Window
         void Show()
         {
             var item = images[index];
-            // A cover slot carries a version (fetch the cover bytes by id); a
-            // release-file image has none (fetch by release id + file id).
-            image.Source = item.CoverVersion is { } version
-                ? CoverImage.LoadByImageRef(_handle, new ImageRef { Id = item.Id, Version = version })
-                : CoverImage.LoadGalleryImage(_handle, releaseId, item.Id);
+            // The cover slot fetches the cover bytes by id (cached under its content
+            // version); a release-file image fetches by release id + file id.
+            image.Source = item.Source.Kind switch
+            {
+                "cover" => CoverImage.LoadByImageRef(_handle, item.Source.Cover),
+                "releaseFile" => CoverImage.LoadGalleryImage(_handle, releaseId, item.Id),
+                var kind => throw new InvalidOperationException($"unknown gallery source kind: {kind}"),
+            };
             label.Text = $"{item.Label} ({index + 1}/{images.Count})";
         }
         Show();

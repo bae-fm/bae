@@ -944,16 +944,34 @@ internal static class NativeBae
     internal static extern void Subscribe(IntPtr handle, EventCallback callback);
 
     /// <summary>
-    /// A byte buffer the native library hands back: a pointer and its length. An
-    /// empty buffer (<see cref="Ptr"/> = <see cref="IntPtr.Zero"/>, <see cref="Len"/>
-    /// = 0) means "no bytes" — no such image, or a read error the Rust side already
-    /// logged. Mirrors the FFI's <c>BaeBytes</c>. Free with <c>bae_bytes_free</c>.
+    /// How a bytes call ended. Mirrors the FFI's <c>BaeBytesStatus</c>
+    /// (<c>#[repr(u8)]</c>).
+    /// </summary>
+    private enum BaeBytesStatus : byte
+    {
+        /// <summary>Bytes are present (<c>Ptr</c>/<c>Len</c> valid).</summary>
+        Ok = 0,
+
+        /// <summary>No such image — the caller renders the placeholder.</summary>
+        Absent = 1,
+
+        /// <summary>The call failed (bad input or a read error — already logged in Rust).</summary>
+        Error = 2,
+    }
+
+    /// <summary>
+    /// A byte buffer the native library hands back: a pointer, its length, and a
+    /// <see cref="Status"/> that distinguishes present bytes from a genuinely absent
+    /// image and from a failed call. Mirrors the FFI's <c>BaeBytes</c>
+    /// (<c>#[repr(C)]</c>: <c>*mut u8</c>, <c>usize</c>, status byte). Free with
+    /// <c>bae_bytes_free</c>.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     private struct BaeBytes
     {
         public IntPtr Ptr;
         public UIntPtr Len;
+        public BaeBytesStatus Status;
     }
 
     [DllImport(Dll, EntryPoint = "bae_image_bytes", CallingConvention = CallingConvention.Cdecl)]
@@ -991,23 +1009,35 @@ internal static class NativeBae
         CopyAndFreeBytes(GalleryImageBytesNative(handle, releaseId, fileId));
 
     /// <summary>
-    /// Copy a native byte buffer into a managed array and free the native one, or
-    /// return null for an empty buffer (no bytes). Always frees what the bytes call
-    /// returned — <c>bae_bytes_free</c> is a no-op for an empty buffer.
+    /// Copy a native byte buffer into a managed array and free the native one.
+    /// Returns the bytes on <see cref="BaeBytesStatus.Ok"/>; null on
+    /// <see cref="BaeBytesStatus.Absent"/> (no such image — the caller renders the
+    /// placeholder) and on <see cref="BaeBytesStatus.Error"/> (the read failed). The
+    /// error is logged here so it isn't mistaken for an absent image; the Rust side
+    /// logged the cause. Always frees what the bytes call returned —
+    /// <c>bae_bytes_free</c> is a no-op for an empty buffer.
     /// </summary>
     private static byte[]? CopyAndFreeBytes(BaeBytes bytes)
     {
         try
         {
-            if (bytes.Ptr == IntPtr.Zero)
+            switch (bytes.Status)
             {
-                return null;
+                case BaeBytesStatus.Ok:
+                {
+                    var length = checked((int)bytes.Len.ToUInt64());
+                    var managed = new byte[length];
+                    Marshal.Copy(bytes.Ptr, managed, 0, length);
+                    return managed;
+                }
+                case BaeBytesStatus.Absent:
+                    return null;
+                case BaeBytesStatus.Error:
+                    BaeDiagnostics.Logger.Warning("image bytes read failed (cause logged in core)");
+                    return null;
+                default:
+                    throw new InvalidOperationException($"unknown bytes status: {bytes.Status}");
             }
-
-            var length = checked((int)bytes.Len.ToUInt64());
-            var managed = new byte[length];
-            Marshal.Copy(bytes.Ptr, managed, 0, length);
-            return managed;
         }
         finally
         {

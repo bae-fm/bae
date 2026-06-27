@@ -2412,19 +2412,8 @@ impl Database {
     /// The `_updated_at` version of one release's `covers` row, or `None` when it
     /// has no cover. The single-id form of [`cover_versions`](Self::cover_versions).
     pub async fn cover_version(&self, release_id: &str) -> Result<Option<String>, DbError> {
-        let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT _updated_at FROM covers WHERE id = ?",
-                    params![release_id],
-                    |row| row.get::<_, String>(0),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+        let ids = [release_id.to_string()];
+        Ok(self.cover_versions(&ids).await?.remove(release_id))
     }
 
     /// Delete a host-provided image row by its subject id, from the table its type

@@ -11,8 +11,6 @@ struct NowPlayingBarContainer: View {
     var queue
     @Environment(PlaybackStore.self)
     var playbackStore
-    @Environment(LibraryStore.self)
-    var libraryStore
     @Environment(UiStore.self)
     var uiStore
     let onQueueInsertTracks: ([String], Int) -> Void
@@ -23,16 +21,12 @@ struct NowPlayingBarContainer: View {
         var uiStore = uiStore
         let np = playbackStore.nowPlaying
         let track = np.track
-        // Resolve the cover from the observed album summary when the playing
-        // album is in the library slice: its `cover` carries the content
-        // version, so changing the cover moves the field and this bar
-        // re-renders. Fall back to the track's bare cover image id for albums
-        // not yet interned (the bar can show a track before its summary lands).
+        // The now-playing/queue cover is id-only by design: load by image id and
+        // cache by id alone. No store lookup to backfill a content version —
+        // these single/small surfaces don't need the reload-on-replace the grid
+        // covers get from their versioned refs.
         let cover: ImageContent? =
-            track.flatMap { libraryStore.albumSummaries[$0.albumId]?.cover }
-            .map { .library(.cover(id: $0.id, version: $0.version)) }
-            ?? track?.coverImageId
-            .map { .library(.cover(id: $0, version: nil)) }
+            track?.coverImageId.map { .library(.cover(id: $0, version: nil)) }
         NowPlayingBar(
             trackTitle: track?.trackTitle,
             secondaryLine: np.secondaryLine,

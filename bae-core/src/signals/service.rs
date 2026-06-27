@@ -40,7 +40,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, warn};
+use tracing::{debug, error, warn};
 
 /// Where a candidate's signals come from: a folder on disk, or an existing
 /// library release being re-identified.
@@ -294,7 +294,11 @@ async fn run_extraction(
             }
             // `_cover_staging` holds the temp dir the cover blob was staged into;
             // it must outlive the OCR pass below, so keep it bound until after
-            // `stream_extraction` returns.
+            // `stream_extraction` returns. An error here is fatal — the release's
+            // files can't be read at all (an optional missing cover is already
+            // handled inside as a skip), so the artwork can't be resolved. Fail
+            // loud and abort this run rather than masking it as "no artwork" and
+            // emitting a misleading settled-with-no-signals result.
             let (artwork_paths, _cover_staging) = match resolve_release_artwork_paths(
                 &inner.library_manager,
                 &release_id,
@@ -303,10 +307,9 @@ async fn run_extraction(
             {
                 Ok(staged) => staged,
                 Err(e) => {
-                    warn!(
-                            "signals: failed to resolve artwork for release {release_id}: {e}; extracting without cover art"
-                        );
-                    (Vec::new(), None)
+                    error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
+                    remove_own_entry(&inner, &key, generation);
+                    return;
                 }
             };
             stream_extraction(

@@ -7,7 +7,7 @@ use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{lookup_by_discid, DiscIdResult, MetadataResult};
 use crate::signals::LookupFailure;
 use std::path::PathBuf;
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// Compute disc ID and track count for a release already in the library.
 /// Used by the re-identify pipeline.
@@ -115,22 +115,21 @@ pub async fn resolve_release_artwork_paths(
     let mut paths: Vec<PathBuf> = Vec::new();
 
     // The release's cover, read through coven and staged to a real file the OCR
-    // reader opens. Absent for releases without a cover.
+    // reader opens. The cover is one of several OCR artwork inputs (the in-folder
+    // image files below are the others), so a read/staging failure logs and skips
+    // just the cover rather than failing the whole resolve.
     let cover_staging = match library_manager.read_image_blob(release_id).await {
-        Ok(Some(bytes)) => {
-            let dir = tempfile::tempdir()
-                .map_err(|e| format!("Failed to create cover staging dir: {e}"))?;
-            let cover_path = dir.path().join("cover");
-            std::fs::write(&cover_path, &bytes)
-                .map_err(|e| format!("Failed to stage cover for OCR: {e}"))?;
-            paths.push(cover_path);
-            Some(dir)
-        }
+        Ok(Some(bytes)) => stage_cover_for_ocr(release_id, &bytes, &mut paths),
         Ok(None) => {
             debug!("artwork OCR: release {release_id} has no cover blob; skipping cover staging");
             None
         }
-        Err(e) => return Err(format!("Failed to read cover blob: {e}")),
+        Err(e) => {
+            warn!(
+                "artwork OCR: reading cover for release {release_id} failed: {e}; skipping cover"
+            );
+            None
+        }
     };
 
     // Release-attached image files (in-folder artwork like cover.jpg), resolved
@@ -151,6 +150,30 @@ pub async fn resolve_release_artwork_paths(
     }
 
     Ok((paths, cover_staging))
+}
+
+/// Stage cover bytes to a temp file the OCR reader can open, pushing its path
+/// onto `paths` and returning the temp-dir guard. A staging IO failure logs and
+/// skips the cover (an optional OCR input) rather than failing the whole resolve.
+fn stage_cover_for_ocr(
+    release_id: &str,
+    bytes: &[u8],
+    paths: &mut Vec<PathBuf>,
+) -> Option<tempfile::TempDir> {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            warn!("artwork OCR: cover staging dir for release {release_id} failed: {e}; skipping cover");
+            return None;
+        }
+    };
+    let cover_path = dir.path().join("cover");
+    if let Err(e) = std::fs::write(&cover_path, bytes) {
+        warn!("artwork OCR: staging cover for release {release_id} failed: {e}; skipping cover");
+        return None;
+    }
+    paths.push(cover_path);
+    Some(dir)
 }
 
 /// Look up a disc ID on MusicBrainz and annotate matches with library
