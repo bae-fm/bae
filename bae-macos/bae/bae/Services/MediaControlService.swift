@@ -379,8 +379,21 @@ extension MediaControlService {
         imageId: String,
         appHandle: AppHandle
     ) async {
-        guard let path = appHandle.imagePathIfExists(imageId: imageId)
-        else {
+        let bytes: Data
+        do {
+            guard
+                let data = try await appHandle.fetchImageBytes(imageId: imageId)
+            else {
+                logger.debug("No Now Playing artwork for \(imageId)")
+                return
+            }
+            bytes = data
+        }
+        catch is CancellationError {
+            return
+        }
+        catch {
+            logger.warning("Failed to fetch Now Playing artwork: \(error)")
             return
         }
         let scale = await MainActor.run {
@@ -389,19 +402,16 @@ extension MediaControlService {
         let nsImage: NSImage
         do {
             nsImage = try await ImageLoader.load(
-                source: .local(path: path),
+                source: .data(bytes),
                 size: .fitTo(points: 600),
-                displayScale: scale,
-                fetchRemoteBytes: {
-                    try await appHandle.fetchCoverBytes(url: $0)
-                }
+                displayScale: scale
             )
         }
         catch is CancellationError {
             return
         }
         catch {
-            logger.warning("Failed to load Now Playing artwork: \(error)")
+            logger.warning("Failed to decode Now Playing artwork: \(error)")
             return
         }
         guard !Task.isCancelled else {

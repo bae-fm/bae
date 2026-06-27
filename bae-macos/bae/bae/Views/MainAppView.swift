@@ -15,8 +15,6 @@ struct SearchFieldAnchorKey: PreferenceKey {
 }
 
 struct MainAppView: View {
-    @Environment(MediaPaths.self)
-    var mediaPaths
     @Environment(Queue.self)
     var queue
     @Environment(Library.self)
@@ -97,9 +95,6 @@ struct MainAppView: View {
 
                     SearchView(
                         results: uiStore.searchResults,
-                        resolveImagePath: {
-                            $0.flatMap(mediaPaths.imagePathIfExists)
-                        },
                         onSelectAlbum: selectAlbum,
                     )
                     .frame(width: 400, height: 350, alignment: .topTrailing)

@@ -311,8 +311,6 @@ private struct AlbumCell: View {
 
     @Environment(LibraryStore.self)
     private var libraryStore
-    @Environment(MediaPaths.self)
-    private var mediaPaths
 
     var body: some View {
         Group {
@@ -321,9 +319,6 @@ private struct AlbumCell: View {
             {
                 AlbumCard(
                     summary: summary,
-                    coverPath: mediaPaths.imagePathIfExists(
-                        summary.primaryReleaseId
-                    ),
                     onTap: { onSelect(albumId) }
                 )
             }
@@ -342,13 +337,12 @@ private struct AlbumCell: View {
 
 private struct AlbumCard: View {
     let summary: AlbumSummary
-    let coverPath: String?
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 6) {
-                ImageView(path: coverPath, pointSize: 150)
+                ImageView(imageRef: summary.cover, pointSize: 150)
                     .aspectRatio(1, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                 Text(summary.title)

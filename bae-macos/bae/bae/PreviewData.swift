@@ -77,22 +77,22 @@ enum PreviewData {
                     id: "a-02",
                     title: "Pacific Standard",
                     year: 2019,
-                    primaryReleaseId: "r-02",
-                    artistName: "Glass Harbor"
+                    artistName: "Glass Harbor",
+                    cover: nil
                 ),
                 BridgeAlbumSearchResult(
                     id: "a-14",
                     title: "Landlocked",
                     year: 2022,
-                    primaryReleaseId: "r-14",
-                    artistName: "Glass Harbor"
+                    artistName: "Glass Harbor",
+                    cover: nil
                 ),
                 BridgeAlbumSearchResult(
                     id: "a-03",
                     title: "Proof by Induction",
                     year: 2021,
-                    primaryReleaseId: "r-03",
-                    artistName: "Velvet Mathematics"
+                    artistName: "Velvet Mathematics",
+                    cover: nil
                 ),
             ],
             tracks: [
@@ -224,7 +224,7 @@ enum PreviewData {
                 artistNames: artist,
                 releaseIds: ["rel-\(id)"],
                 primaryReleaseId: "rel-\(id)",
-                coverPath: nil,
+                cover: nil,
             ),
             releases: [
                 BridgeRelease(
@@ -253,7 +253,7 @@ enum PreviewData {
                     totalDurationMs: 2_340_000,
                     fileCount: 0,
                     totalSize: 0,
-                    coverPath: nil,
+                    cover: nil,
                 )
             ],
         )
@@ -284,7 +284,7 @@ enum PreviewData {
                 artistNames: artist,
                 releaseIds: ["rel-\(id)"],
                 primaryReleaseId: "rel-\(id)",
-                coverPath: nil,
+                cover: nil,
             ),
             releases: [
                 BridgeRelease(
@@ -308,7 +308,7 @@ enum PreviewData {
                     totalDurationMs: 2_340_000,
                     fileCount: 0,
                     totalSize: 0,
-                    coverPath: nil,
+                    cover: nil,
                 )
             ],
         )
@@ -375,7 +375,7 @@ enum PreviewData {
                     totalDurationMs: 2_340_000,
                     fileCount: 0,
                     totalSize: 0,
-                    coverPath: nil,
+                    cover: nil,
                 )
             }
         return BridgeAlbumDetail(
@@ -387,7 +387,7 @@ enum PreviewData {
                 artistNames: artist,
                 releaseIds: releaseIds,
                 primaryReleaseId: releaseIds[0],
-                coverPath: nil,
+                cover: nil,
             ),
             releases: bridgeReleases,
         )

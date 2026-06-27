@@ -77,8 +77,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
                                                     artistNames: summary
                                                         .artistNames,
                                                     year: summary.year,
-                                                    coverPath: summary
-                                                        .coverPath,
+                                                    cover: summary.cover,
                                                     isSelected: selectedAlbumId
                                                         == summary.id,
                                                     size: cardWidth,
@@ -328,7 +327,7 @@ struct AlbumCardView: View {
     let title: String
     let artistNames: String
     let year: Int32?
-    let coverPath: String?
+    let cover: ImageRef?
     let isSelected: Bool
     let size: CGFloat
     let onPlay: () -> Void
@@ -386,7 +385,7 @@ struct AlbumCardView: View {
     }
 
     private var albumArt: some View {
-        ImageView(localPath: coverPath, pointSize: size)
+        ImageView(imageRef: cover, pointSize: size)
             .frame(width: size, height: size)
     }
 }
@@ -528,7 +527,7 @@ private class MenuItem: NSMenuItem {
                 title: album.title,
                 artistNames: album.artistNames,
                 year: album.year,
-                coverPath: nil,
+                cover: nil,
                 isSelected: false,
                 size: albumCardSize,
                 onPlay: {},
@@ -539,7 +538,7 @@ private class MenuItem: NSMenuItem {
                 title: selected.title,
                 artistNames: selected.artistNames,
                 year: selected.year,
-                coverPath: nil,
+                cover: nil,
                 isSelected: true,
                 size: albumCardSize,
                 onPlay: {},

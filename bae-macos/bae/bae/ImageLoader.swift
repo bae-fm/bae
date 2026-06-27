@@ -17,15 +17,15 @@ import ImageIO
 
 enum ImageLoader {
     enum Source: Equatable {
-        /// A local image addressed by the bridge's cache-bustable identifier
-        /// (`<path>#v=<mtime>`, or a bare path when no version is stamped). The
-        /// whole identifier is the cache key; the file is opened at
-        /// `MediaPaths.fileSystemPath(of:)` with the version stripped.
+        /// A file already on disk: an import-candidate image the user is
+        /// previewing before it enters the library (cover-sheet options, the
+        /// folder-import gallery). Library images are not paths — they load by
+        /// id through `MediaPaths`.
         case local(path: String)
         case remote(url: String)
-        /// Image bytes already in memory — a cloud-only gallery image the
-        /// caller fetched and decrypted itself (iOS lightbox). Decoded at the
-        /// requested size without any further fetch.
+        /// Image bytes already in memory — a library image the caller fetched
+        /// (a cover or a release-file gallery image) or a cloud-only gallery
+        /// image. Decoded at the requested size without any further fetch.
         case data(Data)
 
         init(bridge: BridgeCoverImageSource) {
@@ -87,10 +87,7 @@ enum ImageLoader {
         }
     ) async throws -> PlatformImage {
         switch source {
-        case .local(let identifier):
-            // Open the bare file path, not the cache-busting identifier: the
-            // `#v=<mtime>` suffix is the cache key, not part of the filename.
-            let path = MediaPaths.fileSystemPath(of: identifier)
+        case .local(let path):
             return try await decodeAsPlatformImage(displayScale: displayScale) {
                 let url = URL(fileURLWithPath: path) as CFURL
                 guard let cgSource = CGImageSourceCreateWithURL(url, nil)

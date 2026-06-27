@@ -59,11 +59,11 @@ final class AppService: Observable {
         // All nine queue ops are in the common impl block (present on iOS), so
         // the convenience init wires them directly.
         queue = Queue(handle: appHandle)
-        // `fetchCoverBytes` (remote cover fetch) is desktop-only; iOS renders
-        // on-disk covers, so build `MediaPaths` without it.
+        // `fetchCoverBytes` (remote cover-art search) is desktop-only; iOS has
+        // no import flow, so build `MediaPaths` without it.
         mediaPaths = MediaPaths(
-            imagePathIfExists: { appHandle.imagePathIfExists(imageId: $0) },
             filePath: { try appHandle.filePath(fileId: $0) },
+            fetchImageBytes: { try await appHandle.fetchImageBytes(imageId: $0) },
             fetchGalleryImage: {
                 try await appHandle.fetchGalleryImage(releaseId: $0, fileId: $1)
             }

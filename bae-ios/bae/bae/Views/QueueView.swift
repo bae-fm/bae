@@ -17,8 +17,6 @@ struct QueueView: View {
     private var queue
     @Environment(PlaybackStore.self)
     private var playbackStore
-    @Environment(MediaPaths.self)
-    private var mediaPaths
     @Environment(\.dismiss)
     private var dismiss
     // Own the edit state rather than letting EditButton drive an implicit one,
@@ -33,12 +31,7 @@ struct QueueView: View {
             List {
                 if let track = playbackStore.nowPlaying.track {
                     Section("Now Playing") {
-                        NowPlayingRow(
-                            track: track,
-                            coverPath: track.coverImageId.flatMap(
-                                mediaPaths.imagePathIfExists
-                            )
-                        )
+                        NowPlayingRow(track: track)
                     }
                 }
 
@@ -225,11 +218,10 @@ func upNextRows(
 
 private struct NowPlayingRow: View {
     let track: NowPlayingTrack
-    let coverPath: String?
 
     var body: some View {
         HStack(spacing: 12) {
-            ImageView(path: coverPath, pointSize: 44)
+            ImageView(coverImageId: track.coverImageId, pointSize: 44)
                 .frame(width: 44, height: 44)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
             VStack(alignment: .leading, spacing: 2) {
@@ -248,20 +240,14 @@ private struct NowPlayingRow: View {
 }
 
 /// One "Up Next" row — shared by the queue sheet and the expanded now-playing
-/// view's embedded queue. Resolves its own cover path so the lookup (and its
-/// dependency on `MediaPaths`) stays at the leaf.
+/// view's embedded queue.
 struct QueueRow: View {
-    @Environment(MediaPaths.self)
-    private var mediaPaths
     let item: QueueItem
 
     var body: some View {
         HStack(spacing: 12) {
-            ImageView(
-                path: item.coverImageId.flatMap(mediaPaths.imagePathIfExists),
-                pointSize: 44
-            )
-            .frame(width: 44, height: 44)
+            ImageView(coverImageId: item.coverImageId, pointSize: 44)
+                .frame(width: 44, height: 44)
             .clipShape(RoundedRectangle(cornerRadius: 4))
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)

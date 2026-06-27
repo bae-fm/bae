@@ -4,8 +4,26 @@ import SwiftUI
 
 private let logger = Logger.bae("ImageView")
 
+/// What an `ImageView` renders: either a one-shot `ImageLoader.Source` (an
+/// import-candidate file on disk, a remote cover-art URL, in-memory bytes) or a
+/// library image fetched by id and cached by content version.
+enum ImageContent: Equatable {
+    case source(ImageLoader.Source)
+    case library(LibraryImageSource)
+
+    /// Human-readable description for failure logs.
+    var description: String {
+        switch self {
+        case .source(let source):
+            return source.description
+        case .library(let source):
+            return "library image: \(source)"
+        }
+    }
+}
+
 struct ImageView: View {
-    let source: ImageLoader.Source?
+    let content: ImageContent?
     var contentMode: ContentMode = .fill
     let pointSize: CGFloat
 
@@ -17,26 +35,28 @@ struct ImageView: View {
     private var loadState: ImageLoadState
 
     init(
-        source: ImageLoader.Source?,
+        content: ImageContent?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat
     ) {
-        self.source = source
+        self.content = content
         self.contentMode = contentMode
         self.pointSize = pointSize
-        _loadState = State(initialValue: ImageLoadState.initial(source: source))
+        _loadState = State(
+            initialValue: ImageLoadState.initial(content: content)
+        )
     }
 
     var body: some View {
-        content
+        contentView
             .contentShape(Rectangle())
-            .task(id: source) {
+            .task(id: content) {
                 await load()
             }
     }
 
     @ViewBuilder
-    private var content: some View {
+    private var contentView: some View {
         switch loadState {
         case .loaded(let image):
             Image(nsImage: image)
@@ -48,32 +68,47 @@ struct ImageView: View {
     }
 
     private func load() async {
-        loadState = ImageLoadState.initial(source: source)
-        guard let source else {
+        loadState = ImageLoadState.initial(content: content)
+        guard let content else {
             return
         }
         do {
-            loadState = .loaded(
-                try await ImageLoader.load(
-                    source: source,
-                    size: .fitTo(points: pointSize),
-                    displayScale: displayScale,
-                    fetchRemoteBytes: mediaPaths.fetchCoverBytes
+            switch content {
+            case .source(let source):
+                loadState = .loaded(
+                    try await ImageLoader.load(
+                        source: source,
+                        size: .fitTo(points: pointSize),
+                        displayScale: displayScale,
+                        fetchRemoteBytes: mediaPaths.fetchCoverBytes
+                    )
                 )
-            )
+            case .library(let source):
+                if let image = try await mediaPaths.libraryImage(
+                    source,
+                    pointSize: pointSize,
+                    displayScale: displayScale
+                ) {
+                    loadState = .loaded(image)
+                }
+                else {
+                    // No such image — render the unavailable placeholder.
+                    loadState = .pending(.unavailable)
+                }
+            }
         }
         catch is CancellationError {
             return
         }
         catch {
             // OSLog redacts interpolated values to `<private>` by default
-            // — the source description is a cover-art URL and the error
-            // is a bridge string, neither secret. The whole point of the
-            // log is to know which load failed and why.
+            // — the content description is a cover-art URL or an image id and
+            // the error is a bridge string, neither secret. The whole point of
+            // the log is to know which load failed and why.
             logger.warning(
                 """
                 Failed to load \
-                \(source.description): \
+                \(content.description): \
                 \(error.localizedDescription)
                 """
             )
@@ -86,8 +121,8 @@ enum ImageLoadState {
     case pending(PlaceholderReason)
     case loaded(NSImage)
 
-    static func initial(source: ImageLoader.Source?) -> Self {
-        .pending(source == nil ? .unavailable : .loading)
+    static func initial(content: ImageContent?) -> Self {
+        .pending(content == nil ? .unavailable : .loading)
     }
 }
 
@@ -138,16 +173,48 @@ struct ImagePlaceholderView: View {
 }
 
 extension ImageView {
-    /// A local image whose path may be absent. A nil path renders the default
-    /// placeholder, so callers don't wrap the view in their own `if let path` /
-    /// `Theme.placeholder` check.
+    /// A one-shot `ImageLoader.Source` (import-candidate file, remote cover-art
+    /// URL, or in-memory bytes). A nil source renders the default placeholder.
     init(
-        localPath: String?,
+        source: ImageLoader.Source?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat
     ) {
         self.init(
-            source: localPath.map { .local(path: $0) },
+            content: source.map { .source($0) },
+            contentMode: contentMode,
+            pointSize: pointSize
+        )
+    }
+
+    /// A library cover, fetched by id and cached by content version. A nil ref
+    /// (no cover) renders the default placeholder, so callers don't wrap the
+    /// view in their own `if let` / `Theme.placeholder` check.
+    init(
+        imageRef: ImageRef?,
+        contentMode: ContentMode = .fill,
+        pointSize: CGFloat
+    ) {
+        self.init(
+            content: imageRef.map {
+                .library(.cover(id: $0.id, version: $0.version))
+            },
+            contentMode: contentMode,
+            pointSize: pointSize
+        )
+    }
+
+    /// A now-playing/queue cover, which carries only an image id (no content
+    /// version). Cached by id alone — accepted on these single/small surfaces.
+    init(
+        coverImageId: String?,
+        contentMode: ContentMode = .fill,
+        pointSize: CGFloat
+    ) {
+        self.init(
+            content: coverImageId.map {
+                .library(.cover(id: $0, version: nil))
+            },
             contentMode: contentMode,
             pointSize: pointSize
         )

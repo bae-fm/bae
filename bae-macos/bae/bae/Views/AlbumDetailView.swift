@@ -73,17 +73,21 @@ struct AlbumDetailView: View {
                     AlbumExpansionContent(
                         summary: summary,
                         selectedRelease: selectedDetail,
-                        coverPath: mediaPaths.imagePathIfExists(
-                            selectedReleaseId
-                        ),
-                        // Every gallery item; a cloud-only one carries a nil path
-                        // and the lightbox renders it as "No image" (the desktop
-                        // pins releases on view, so it doesn't fetch on demand).
-                        lightboxItems: selectedDetail.galleryItems.map {
+                        // Every gallery item: the cover slot (carries a version)
+                        // fetches by image id; a release-file image fetches by
+                        // release id + file id (downloaded on demand when cloud-
+                        // only). The lightbox picks the byte source per item.
+                        lightboxItems: selectedDetail.galleryItems.map { item in
                             LightboxItem(
-                                id: $0.id,
-                                label: $0.label,
-                                path: $0.localPath
+                                id: item.id,
+                                label: item.label,
+                                source: item.coverVersion.map {
+                                    .libraryCover(imageId: item.id, version: $0)
+                                }
+                                    ?? .releaseFile(
+                                        releaseId: selectedReleaseId,
+                                        fileId: item.id
+                                    )
                             )
                         },
                         releaseCursor: releaseCursorBinding(summary: summary),
@@ -632,7 +636,6 @@ struct AlbumExpansionContent: View {
     let summary: AlbumSummary
     /// Fat detail for the release the user is currently viewing.
     let selectedRelease: ReleaseDetail
-    let coverPath: String?
     let lightboxItems: [LightboxItem]
     /// Cursor over the album's releases. Drives the release picker and
     /// guarantees a valid selection on every read.
@@ -789,7 +792,7 @@ struct AlbumExpansionContent: View {
     }
 
     private var albumArt: some View {
-        ImageView(localPath: coverPath, pointSize: 400)
+        ImageView(imageRef: selectedRelease.summary.cover, pointSize: 400)
     }
 
     private var releasePicker: some View {

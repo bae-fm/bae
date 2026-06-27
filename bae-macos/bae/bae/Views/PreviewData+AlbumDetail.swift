@@ -58,7 +58,6 @@
             AlbumExpansionContent(
                 summary: summary,
                 selectedRelease: selectedRelease,
-                coverPath: nil,
                 lightboxItems: [],
                 releaseCursor: releaseCursor,
                 currentTrackId: currentTrackId,

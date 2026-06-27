@@ -47,11 +47,11 @@ final class ReleaseSummary: Identifiable {
     var storageActions: [BridgeReleaseStorageAction]
     var fileCount: Int64
     var totalSize: Int64
-    /// Cache-bustable identifier for this release's own cover
-    /// (`<path>#v=<mtime>`), or `nil` when none is cached. Keyed on the release
-    /// id so each release renders its own art; `ImageView` strips the `#v=…`
-    /// suffix before opening the file.
-    var coverPath: String?
+    /// Reference to this release's own cover image (id + content version), or
+    /// `nil` when none is cached. Keyed on the release id so each release
+    /// renders its own art; `ImageView` fetches the bytes by id and caches the
+    /// decoded image under the version.
+    var cover: ImageRef?
     /// Non-nil while a pin/unpin/manage/unmanage transition runs. Set from
     /// `ReleaseTransferProgress`, cleared on `ReleaseTransferEnded`. Not part of
     /// the wire payload — driven entirely by the transfer event stream, so the
@@ -74,7 +74,7 @@ final class ReleaseSummary: Identifiable {
         storageActions = bridge.storageActions
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
-        coverPath = bridge.coverPath
+        cover = bridge.cover.map(ImageRef.init(bridge:))
     }
 
     /// Build a summary from the fat `BridgeRelease` wire type. Used by
@@ -89,7 +89,7 @@ final class ReleaseSummary: Identifiable {
         storageActions = bridge.storageActions
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
-        coverPath = bridge.coverPath
+        cover = bridge.cover.map(ImageRef.init(bridge:))
     }
 
     /// Per-field conditional assignment. Only fields that changed
@@ -113,8 +113,9 @@ final class ReleaseSummary: Identifiable {
         if totalSize != bridge.totalSize {
             totalSize = bridge.totalSize
         }
-        if coverPath != bridge.coverPath {
-            coverPath = bridge.coverPath
+        let cover = bridge.cover.map(ImageRef.init(bridge:))
+        if self.cover != cover {
+            self.cover = cover
         }
     }
 
@@ -137,8 +138,9 @@ final class ReleaseSummary: Identifiable {
         if totalSize != bridge.totalSize {
             totalSize = bridge.totalSize
         }
-        if coverPath != bridge.coverPath {
-            coverPath = bridge.coverPath
+        let cover = bridge.cover.map(ImageRef.init(bridge:))
+        if self.cover != cover {
+            self.cover = cover
         }
     }
 }
