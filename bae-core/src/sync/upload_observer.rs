@@ -14,9 +14,9 @@
 //! `should_skip_uploads` lets the host pause the upload pipeline without touching
 //! the queue.
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
-use coven::library_dir::LibraryDir;
+use coven::CovenHandle;
 use tokio::sync::broadcast;
 use tracing::{debug, warn};
 
@@ -31,12 +31,15 @@ use crate::library::LibraryEvent;
 /// encrypted bytes that have reached the cloud for it, shared with the
 /// `LibraryManager` so its outbox snapshot reports the "uploading" state and
 /// drives the per-file bar. `throughput` records the byte deltas as they transfer
-/// so the snapshot can surface a rolling-window rate. `library_dir` lets the
-/// observer rebuild `ReleaseDetail` payloads (via `find_release_detail_with`) so
-/// a completed transition emits a `ReleaseUpdated` event.
+/// so the snapshot can surface a rolling-window rate. `handle` lets the observer
+/// rebuild `ReleaseDetail` payloads (via `find_release_detail_with`, whose
+/// pin-state query routes through it) so a completed transition emits a
+/// `ReleaseUpdated` event. It is filled by [`set_handle`](Self::set_handle) right
+/// after the handle is built — the handle owns this observer, so it can't be
+/// passed at construction.
 pub struct ReleaseUploadObserver {
     db: Arc<Database>,
-    library_dir: LibraryDir,
+    handle: OnceLock<CovenHandle>,
     in_flight: Arc<Mutex<HashMap<String, u64>>>,
     throughput: Arc<crate::library::UploadThroughput>,
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
@@ -46,7 +49,6 @@ pub struct ReleaseUploadObserver {
 impl ReleaseUploadObserver {
     pub fn new(
         db: Arc<Database>,
-        library_dir: LibraryDir,
         in_flight: Arc<Mutex<HashMap<String, u64>>>,
         throughput: Arc<crate::library::UploadThroughput>,
         sync_paused: Arc<std::sync::atomic::AtomicBool>,
@@ -54,12 +56,29 @@ impl ReleaseUploadObserver {
     ) -> Self {
         Self {
             db,
-            library_dir,
+            handle: OnceLock::new(),
             in_flight,
             throughput,
             sync_paused,
             events,
         }
+    }
+
+    /// Install the handle the observer answers pin-state through. Called once,
+    /// right after the `CovenHandle` (which owns this observer) is built, so the
+    /// observer can rebuild `ReleaseDetail` payloads when a transition completes.
+    pub fn set_handle(&self, handle: CovenHandle) {
+        if self.handle.set(handle).is_err() {
+            warn!("ReleaseUploadObserver handle already set; ignoring");
+        }
+    }
+
+    /// The installed handle. Set right after construction and before any
+    /// transition can fire, so its absence is a wiring bug, not a runtime state.
+    fn handle(&self) -> &CovenHandle {
+        self.handle
+            .get()
+            .expect("observer handle set before any blob transition fires")
     }
 
     /// Emit a `ReleaseUpdated` event after coven completes a transition, so the
@@ -78,7 +97,7 @@ impl ReleaseUploadObserver {
         };
         match crate::library::manager::find_release_detail_with(
             &self.db,
-            &self.library_dir,
+            self.handle(),
             true,
             release_id,
         )
