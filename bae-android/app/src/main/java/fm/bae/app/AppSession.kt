@@ -252,8 +252,8 @@ object AppSessionHolder {
         handle: AppHandle,
         config: BridgeConfig,
         appContext: Context,
-    ): OpenLibrary {
-        return OpenLibrary(
+    ): OpenLibrary =
+        OpenLibrary(
             libraryId = libraryId,
             appHandle = handle,
             libraryStore = LibraryStore(),
@@ -273,5 +273,4 @@ object AppSessionHolder {
                 ),
             appContext = appContext,
         )
-    }
 }

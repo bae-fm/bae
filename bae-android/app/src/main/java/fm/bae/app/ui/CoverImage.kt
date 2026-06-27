@@ -173,20 +173,25 @@ fun CoverImage(
         contentAlignment = Alignment.Center,
     ) {
         when (val state = rememberCoverState(coverId, coverVersion, loadImage)) {
-            is CoverState.Loaded ->
+            is CoverState.Loaded -> {
                 AsyncImage(
                     model = coverModel(state.bytes, state.cacheKey),
                     contentDescription = contentDescription,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
+            }
 
             // A cover exists but its bytes aren't in yet: a plain tile (no glyph),
             // so the art pops in without a placeholder flash beforehand.
-            CoverState.Loading -> CoverTile(showIcon = false, iconPadding = iconPadding)
+            CoverState.Loading -> {
+                CoverTile(showIcon = false, iconPadding = iconPadding)
+            }
 
             // No cover, or its bytes were absent/failed (logged in rememberCoverState).
-            CoverState.Absent -> CoverTile(showIcon = true, iconPadding = iconPadding)
+            CoverState.Absent -> {
+                CoverTile(showIcon = true, iconPadding = iconPadding)
+            }
         }
     }
 }
