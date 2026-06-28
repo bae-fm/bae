@@ -63,7 +63,7 @@ pub struct ExtractionServiceHandle {
 struct ExtractionServiceInner {
     runtime_handle: tokio::runtime::Handle,
     event_tx: broadcast::Sender<ImportEvent>,
-    clock: crate::clock::ClockRef,
+    clock: coven::ClockRef,
     analyzer: Mutex<Arc<dyn ArtworkAnalyzer>>,
     /// Resolves a release's library files for the `Release` re-identify path.
     library_manager: LibraryManager,
@@ -85,7 +85,7 @@ impl ExtractionService {
     pub fn start(
         runtime_handle: tokio::runtime::Handle,
         event_tx: broadcast::Sender<ImportEvent>,
-        clock: crate::clock::ClockRef,
+        clock: coven::ClockRef,
         library_manager: LibraryManager,
     ) -> ExtractionServiceHandle {
         ExtractionServiceHandle {
@@ -1092,14 +1092,14 @@ mod tests {
     /// must outlive the manager.
     async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
         let tmp = TempDir::new().unwrap();
-        let clock: crate::clock::ClockRef = Arc::new(crate::clock::SystemClock);
+        let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let database = crate::db::Database::new_test(
             tmp.path().join("test.db").to_str().unwrap(),
             clock.clone(),
         )
         .await
         .unwrap();
-        let library_dir = crate::library_dir::LibraryDir::new(tmp.path());
+        let library_dir = coven::LibraryDir::new(tmp.path());
         // Unique id per test so keyring entries don't collide in the shared
         // process-global mock store (see `install_test_keyring`).
         let library_id = format!("test-{}", uuid::Uuid::new_v4());
@@ -1118,7 +1118,7 @@ mod tests {
             config_handle,
             key_service,
             clock,
-            Arc::new(crate::id_provider::UuidProvider),
+            Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
         (manager, tmp)
@@ -1135,7 +1135,7 @@ mod tests {
         let handle = ExtractionService::start(
             tokio::runtime::Handle::current(),
             tx,
-            Arc::new(crate::clock::SystemClock),
+            Arc::new(coven::SystemClock),
             library_manager,
         );
         (handle, rx, lib_tmp)

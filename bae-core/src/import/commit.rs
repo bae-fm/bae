@@ -6,11 +6,11 @@
 
 use tracing::warn;
 
-use crate::clock::Clock;
 use crate::discogs::client::DiscogsError;
 use crate::discogs::DiscogsClient;
-use crate::id_provider::IdProvider;
 use crate::musicbrainz;
+use coven::Clock;
+use coven::IdProvider;
 
 use super::discogs_mapper;
 use super::types::MetadataSource;

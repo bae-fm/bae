@@ -13,11 +13,11 @@ use bae_core::import::{
     PressingEdit, ReleaseUserEdit, ScanEvent, StorageMode, TrackUserEdit,
 };
 use bae_core::library::LibraryManager;
-use bae_core::library_dir::LibraryDir;
 use bae_core::musicbrainz::{
     ExternalUrls, MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseGroupRef,
     MbReleaseResponse, MbTrack,
 };
+use coven::LibraryDir;
 use serial_test::serial;
 use std::fs;
 use std::path::Path;
@@ -40,7 +40,7 @@ impl ImportFixture {
 
         let db = Database::new_test(
             db_dir.join("test.db").to_str().unwrap(),
-            std::sync::Arc::new(bae_core::clock::SystemClock),
+            std::sync::Arc::new(coven::SystemClock),
         )
         .await
         .unwrap();
@@ -51,8 +51,8 @@ impl ImportFixture {
             library_dir.clone(),
             config_handle,
             key_service,
-            std::sync::Arc::new(bae_core::clock::SystemClock),
-            std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
 

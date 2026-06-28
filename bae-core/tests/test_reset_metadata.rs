@@ -12,9 +12,9 @@ use bae_core::db::{
 };
 use bae_core::import::{MetadataSource, ReleaseIdentity};
 use bae_core::library::LibraryManager;
-use bae_core::library_dir::LibraryDir;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
+use coven::LibraryDir;
 use std::path::PathBuf;
 use tempfile::TempDir;
 use uuid::Uuid;
@@ -26,7 +26,7 @@ async fn setup() -> (LibraryManager, Database, TempDir) {
     let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
     let database = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .unwrap();
@@ -36,8 +36,8 @@ async fn setup() -> (LibraryManager, Database, TempDir) {
         library_dir,
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     (library_manager, database, temp_dir)

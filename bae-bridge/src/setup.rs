@@ -3,7 +3,7 @@
 //! These run before an AppHandle exists (they create or configure the library
 //! that AppHandle will later open).
 
-fn parse_oauth_tokens(json: &str) -> Result<bae_core::oauth::OAuthTokens, BridgeError> {
+fn parse_oauth_tokens(json: &str) -> Result<coven::OAuthTokens, BridgeError> {
     serde_json::from_str(json)
         .map_err(|e| BridgeError::config(format!("Invalid OAuth token JSON: {e}")))
 }
@@ -98,7 +98,7 @@ use crate::types::{
 use crate::cloudkit::get_cloudkit_ops;
 
 #[cfg(not(feature = "cloudkit"))]
-fn get_cloudkit_ops() -> Option<std::sync::Arc<dyn bae_core::storage::cloud::CloudKitOps>> {
+fn get_cloudkit_ops() -> Option<std::sync::Arc<dyn coven::CloudKitOps>> {
     None
 }
 
@@ -113,8 +113,8 @@ fn restore_error_to_bridge(error: RestoreFromCodeError) -> BridgeError {
 
 async fn restore_from_code_config(
     code: String,
-    oauth_tokens: Option<bae_core::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::CloudKitOps>>,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: Option<CancellationToken>,
 ) -> Result<Config, BridgeError> {
     match cancel {
@@ -198,7 +198,7 @@ pub fn discover_libraries() -> Result<Vec<BridgeLibrary>, BridgeError> {
 /// Create a new library. The library is set as the active library.
 #[uniffi::export]
 pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError> {
-    let ids = std::sync::Arc::new(bae_core::id_provider::UuidProvider);
+    let ids = std::sync::Arc::new(coven::UuidProvider);
     let config = match name {
         Some(n) => bae_core::library::create_library(n, ids.as_ref()),
         None => bae_core::library::create_library_default(ids.as_ref()),
@@ -351,8 +351,8 @@ pub fn restore_from_code(
 #[derive(uniffi::Object)]
 pub struct RestoreFromCodeOperation {
     code: String,
-    oauth_tokens: Option<bae_core::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::CloudKitOps>>,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: CancellationToken,
     started: Mutex<bool>,
 }
@@ -459,8 +459,8 @@ fn join_error_to_bridge(error: JoinFromCodeError) -> BridgeError {
 
 async fn join_from_code_config(
     code: String,
-    oauth_tokens: Option<bae_core::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::CloudKitOps>>,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: Option<CancellationToken>,
 ) -> Result<Config, BridgeError> {
     match cancel {
@@ -505,8 +505,8 @@ pub fn join_from_code(
 #[derive(uniffi::Object)]
 pub struct JoinFromCodeOperation {
     code: String,
-    oauth_tokens: Option<bae_core::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::CloudKitOps>>,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: CancellationToken,
     started: Mutex<bool>,
 }
@@ -581,8 +581,8 @@ pub fn oauth_authorize(provider: BridgeCloudProvider) -> Result<String, BridgeEr
 
     let result = on_worker(move || async move {
         let core_provider = bridge_cloud_provider_to_core(provider);
-        let clock = std::sync::Arc::new(bae_core::clock::SystemClock);
-        let tokens = bae_core::oauth::authorize_provider(core_provider, cancel, clock.as_ref())
+        let clock = std::sync::Arc::new(coven::SystemClock);
+        let tokens = coven::authorize_provider(core_provider, cancel, clock.as_ref())
             .await
             .map_err(|e| BridgeError::config(format!("OAuth authorization failed: {e}")))?;
 
@@ -633,13 +633,13 @@ pub fn set_oauth_client_creds(creds_json: String) -> Result<(), BridgeError> {
             .map(str::to_string);
         creds.insert(
             provider,
-            bae_core::oauth::OAuthClientCreds {
+            coven::OAuthClientCreds {
                 client_id,
                 client_secret,
             },
         );
     }
-    bae_core::oauth::set_oauth_client_creds(creds);
+    coven::set_oauth_client_creds(creds);
     Ok(())
 }
 
@@ -656,7 +656,7 @@ pub fn oauth_begin(
     redirect_uri: String,
 ) -> Result<BridgeOAuthRequest, BridgeError> {
     let core_provider = bridge_cloud_provider_to_core(provider);
-    let req = bae_core::oauth::build_authorize_request_for_provider(core_provider, &redirect_uri)
+    let req = coven::build_authorize_request_for_provider(core_provider, &redirect_uri)
         .map_err(|e| BridgeError::config(format!("OAuth begin failed: {e}")))?;
     Ok(BridgeOAuthRequest {
         auth_url: req.auth_url,
@@ -677,8 +677,8 @@ pub fn oauth_complete(
 ) -> Result<String, BridgeError> {
     let core_provider = bridge_cloud_provider_to_core(provider);
     let tokens = on_worker(move || async move {
-        let clock = std::sync::Arc::new(bae_core::clock::SystemClock);
-        bae_core::oauth::exchange_code_for_provider(
+        let clock = std::sync::Arc::new(coven::SystemClock);
+        coven::exchange_code_for_provider(
             core_provider,
             &code,
             &verifier,

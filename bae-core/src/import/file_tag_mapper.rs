@@ -21,11 +21,11 @@
 //! rather than being defaulted.
 
 use super::ParsedAlbum;
-use crate::clock::Clock;
 use crate::db::ReleaseMetadataSource;
 use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbTrack, DbTrackArtist};
-use crate::id_provider::IdProvider;
 use crate::util::content_type::ContentType;
+use coven::Clock;
+use coven::IdProvider;
 use lofty::file::FileType;
 use lofty::prelude::*;
 use lofty::probe::Probe;
@@ -461,8 +461,8 @@ fn format_from_file_type(file_type: FileType) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::clock::FixedClock;
-    use crate::id_provider::SequentialIdProvider;
+    use coven::FixedClock;
+    use coven::SequentialIdProvider;
     use lofty::config::WriteOptions;
     use lofty::tag::items::Timestamp;
     use lofty::tag::{Tag, TagType};

@@ -106,7 +106,7 @@ pub fn tracing_init() {
 /// HTTP work. (coven's KeyService reads the keyring, not env vars.)
 #[allow(dead_code)]
 pub fn test_config_and_keys(
-    library_dir: &bae_core::library_dir::LibraryDir,
+    library_dir: &coven::LibraryDir,
 ) -> (
     std::sync::Arc<bae_core::config::ConfigHandle>,
     bae_core::keys::KeyService,
@@ -142,8 +142,7 @@ pub fn setup_fresh_library(
     let tmp = tempfile::TempDir::new().unwrap();
     let library_id = uuid::Uuid::new_v4().to_string();
     let device_id = uuid::Uuid::new_v4().to_string();
-    let library_dir =
-        bae_core::library_dir::LibraryDir::new(tmp.path().join("libraries").join(&library_id));
+    let library_dir = coven::LibraryDir::new(tmp.path().join("libraries").join(&library_id));
     std::fs::create_dir_all(&*library_dir).expect("create library dir");
     let config = bae_core::config::Config::with_defaults(
         library_id.clone(),
@@ -158,7 +157,7 @@ pub fn setup_fresh_library(
     let database = runtime
         .block_on(bae_core::db::Database::new_test(
             db_path.to_str().unwrap(),
-            std::sync::Arc::new(bae_core::clock::SystemClock),
+            std::sync::Arc::new(coven::SystemClock),
         ))
         .expect("create database");
 
@@ -180,8 +179,8 @@ pub fn setup_fresh_library(
         library_dir,
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         runtime.handle().clone(),
     );
 
@@ -355,15 +354,15 @@ impl MockCloudHome {
 }
 
 #[async_trait::async_trait]
-impl bae_core::storage::cloud::CloudHome for MockCloudHome {
+impl coven::CloudHome for MockCloudHome {
     async fn write(
         &self,
         key: &str,
         data: Vec<u8>,
-        progress: &bae_core::storage::cloud::UploadProgress<'_>,
-    ) -> Result<(), bae_core::storage::cloud::CloudHomeError> {
+        progress: &coven::UploadProgress<'_>,
+    ) -> Result<(), coven::CloudHomeError> {
         if self.fail_writes.load(std::sync::atomic::Ordering::SeqCst) {
-            return Err(bae_core::storage::cloud::CloudHomeError::Storage(
+            return Err(coven::CloudHomeError::Storage(
                 "mock write failure".to_string(),
             ));
         }
@@ -373,12 +372,15 @@ impl bae_core::storage::cloud::CloudHome for MockCloudHome {
         Ok(())
     }
 
-    async fn read(&self, key: &str) -> Result<Vec<u8>, bae_core::storage::cloud::CloudHomeError> {
+    async fn read(&self, key: &str) -> Result<Vec<u8>, coven::CloudHomeError> {
         self.full_reads
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        self.blobs.lock().unwrap().get(key).cloned().ok_or_else(|| {
-            bae_core::storage::cloud::CloudHomeError::Storage(format!("missing key {key}"))
-        })
+        self.blobs
+            .lock()
+            .unwrap()
+            .get(key)
+            .cloned()
+            .ok_or_else(|| coven::CloudHomeError::Storage(format!("missing key {key}")))
     }
 
     /// Serve `start..end` (inclusive..exclusive) of the stored blob. The first
@@ -388,7 +390,7 @@ impl bae_core::storage::cloud::CloudHome for MockCloudHome {
         key: &str,
         start: u64,
         end: u64,
-    ) -> Result<Vec<u8>, bae_core::storage::cloud::CloudHomeError> {
+    ) -> Result<Vec<u8>, coven::CloudHomeError> {
         if self
             .fail_next_range_reads
             .fetch_update(
@@ -398,19 +400,19 @@ impl bae_core::storage::cloud::CloudHome for MockCloudHome {
             )
             .is_ok()
         {
-            return Err(bae_core::storage::cloud::CloudHomeError::Storage(
+            return Err(coven::CloudHomeError::Storage(
                 "mock range read failure".to_string(),
             ));
         }
 
         let blobs = self.blobs.lock().unwrap();
-        let blob = blobs.get(key).ok_or_else(|| {
-            bae_core::storage::cloud::CloudHomeError::Storage(format!("missing key {key}"))
-        })?;
+        let blob = blobs
+            .get(key)
+            .ok_or_else(|| coven::CloudHomeError::Storage(format!("missing key {key}")))?;
         let start = usize::try_from(start).unwrap();
         let end = usize::try_from(end).unwrap();
         if start > end || end > blob.len() {
-            return Err(bae_core::storage::cloud::CloudHomeError::Storage(format!(
+            return Err(coven::CloudHomeError::Storage(format!(
                 "range {start}..{end} outside blob length {}",
                 blob.len()
             )));
@@ -418,34 +420,27 @@ impl bae_core::storage::cloud::CloudHome for MockCloudHome {
         Ok(blob[start..end].to_vec())
     }
 
-    async fn list(
-        &self,
-        _prefix: &str,
-    ) -> Result<Vec<String>, bae_core::storage::cloud::CloudHomeError> {
+    async fn list(&self, _prefix: &str) -> Result<Vec<String>, coven::CloudHomeError> {
         Ok(self.blobs.lock().unwrap().keys().cloned().collect())
     }
 
-    async fn delete(&self, key: &str) -> Result<(), bae_core::storage::cloud::CloudHomeError> {
+    async fn delete(&self, key: &str) -> Result<(), coven::CloudHomeError> {
         self.blobs.lock().unwrap().remove(key);
         Ok(())
     }
 
-    async fn exists(&self, key: &str) -> Result<bool, bae_core::storage::cloud::CloudHomeError> {
+    async fn exists(&self, key: &str) -> Result<bool, coven::CloudHomeError> {
         Ok(self.blobs.lock().unwrap().contains_key(key))
     }
 
     async fn grant_access(
         &self,
         _member_id: &str,
-    ) -> Result<bae_core::storage::cloud::CloudHomeJoinInfo, bae_core::storage::cloud::CloudHomeError>
-    {
+    ) -> Result<coven::CloudHomeJoinInfo, coven::CloudHomeError> {
         unimplemented!("grant_access not used by storage transition tests")
     }
 
-    async fn revoke_access(
-        &self,
-        _member_id: &str,
-    ) -> Result<(), bae_core::storage::cloud::CloudHomeError> {
+    async fn revoke_access(&self, _member_id: &str) -> Result<(), coven::CloudHomeError> {
         unimplemented!("revoke_access not used by storage transition tests")
     }
 }

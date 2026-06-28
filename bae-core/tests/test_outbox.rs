@@ -15,7 +15,7 @@ async fn setup_db() -> (Database, TempDir) {
     let db_path = tmp.path().join("test.db");
     let db = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("create database");

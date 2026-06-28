@@ -509,7 +509,7 @@ pub unsafe extern "C" fn bae_set_oauth_client_creds(creds_json: *const c_char) -
             .map(str::to_string);
         creds.insert(
             provider,
-            bae_core::oauth::OAuthClientCreds {
+            coven::OAuthClientCreds {
                 client_id: client_id.to_string(),
                 client_secret,
             },
@@ -518,7 +518,7 @@ pub unsafe extern "C" fn bae_set_oauth_client_creds(creds_json: *const c_char) -
     if creds.is_empty() {
         return error_cstring("oauth creds json registered no providers");
     }
-    bae_core::oauth::set_oauth_client_creds(creds);
+    coven::set_oauth_client_creds(creds);
     std::ptr::null_mut()
 }
 
@@ -549,7 +549,7 @@ pub extern "C" fn bae_libraries() -> *mut c_char {
 /// or null on error. Free with [`bae_string_free`]. Requires [`bae_startup`].
 #[no_mangle]
 pub extern "C" fn bae_create_library() -> *mut c_char {
-    match bae_core::library::create_library_default(&bae_core::id_provider::UuidProvider) {
+    match bae_core::library::create_library_default(&coven::UuidProvider) {
         Ok(config) => error_cstring(&config.library_id),
         Err(e) => {
             tracing::error!("bae_create_library failed: {e}");
@@ -1032,12 +1032,8 @@ pub unsafe extern "C" fn bae_oauth_authorize(provider: *const c_char) -> *mut c_
     // abort the flow immediately. Windows exposes no cancel button yet — the
     // sender stays untouched (value never set true) until the flow returns.
     let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
-    let clock = bae_core::clock::SystemClock;
-    let result = runtime.block_on(bae_core::oauth::authorize_provider(
-        core_provider,
-        cancel_rx,
-        &clock,
-    ));
+    let clock = coven::SystemClock;
+    let result = runtime.block_on(coven::authorize_provider(core_provider, cancel_rx, &clock));
     drop(cancel_tx);
     let out = match result {
         Ok(tokens) => match serde_json::to_string(&tokens) {
@@ -1080,7 +1076,7 @@ pub unsafe extern "C" fn bae_restore_from_code(
         });
     };
     let oauth_tokens = match cstr(oauth_token_json) {
-        Some(json) => match serde_json::from_str::<bae_core::oauth::OAuthTokens>(&json) {
+        Some(json) => match serde_json::from_str::<coven::OAuthTokens>(&json) {
             Ok(tokens) => Some(tokens),
             Err(e) => {
                 return json_cstring(&FfiRestoreResult {
@@ -1251,7 +1247,7 @@ pub unsafe extern "C" fn bae_join_from_code(
         });
     };
     let oauth_tokens = match cstr(oauth_token_json) {
-        Some(json) => match serde_json::from_str::<bae_core::oauth::OAuthTokens>(&json) {
+        Some(json) => match serde_json::from_str::<coven::OAuthTokens>(&json) {
             Ok(tokens) => Some(tokens),
             Err(e) => {
                 return json_cstring(&FfiRestoreResult {

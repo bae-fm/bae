@@ -10,14 +10,14 @@ use std::sync::Arc;
 
 use tracing::info;
 
-use crate::clock::{ClockRef, SystemClock};
 use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
-use crate::id_provider::{IdRef, UuidProvider};
 use crate::keys::KeyService;
 use crate::library::AppServices;
 use crate::playback::PlaybackService;
 use crate::ui::UiEventBus;
+use coven::{ClockRef, SystemClock};
+use coven::{IdRef, UuidProvider};
 
 /// A fully constructed, running application: the tokio runtime that owns all
 /// background work, the composed service layer, and the UI event bus already
@@ -146,11 +146,9 @@ fn bootstrap_inner(
     // caller prompt the user to unlock.
     let pending_enc = if config.encryption_key_stored {
         match key_service.get_encryption_key() {
-            Ok(Some(key_hex)) => Some(
-                crate::encryption::EncryptionService::new(&key_hex).map_err(|e| {
-                    BootstrapError::Config(format!("Failed to initialize encryption: {e}"))
-                })?,
-            ),
+            Ok(Some(key_hex)) => Some(coven::EncryptionService::new(&key_hex).map_err(|e| {
+                BootstrapError::Config(format!("Failed to initialize encryption: {e}"))
+            })?),
             Ok(None) => {
                 tracing::warn!(
                     "encryption key marked stored but not found in keyring; deferring sync until unlocked"

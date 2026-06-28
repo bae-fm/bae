@@ -1762,8 +1762,8 @@ impl ImportService {
     fn build_audio_formats(
         tracks_to_files: &[TrackFile],
         file_ids: &HashMap<PathBuf, String>,
-        clock: &dyn crate::clock::Clock,
-        ids: &dyn crate::id_provider::IdProvider,
+        clock: &dyn coven::Clock,
+        ids: &dyn coven::IdProvider,
     ) -> Result<Vec<crate::db::DbAudioFormat>, String> {
         let now = clock.now();
         let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
@@ -2048,8 +2048,8 @@ fn apply_user_edit_to_seed(
     artists: &mut Vec<crate::db::DbArtist>,
     album_artists: &mut Vec<crate::db::DbAlbumArtist>,
     track_artists: &mut Vec<crate::db::DbTrackArtist>,
-    clock: &dyn crate::clock::Clock,
-    ids: &dyn crate::id_provider::IdProvider,
+    clock: &dyn coven::Clock,
+    ids: &dyn coven::IdProvider,
 ) -> Result<(), String> {
     use crate::db::{DbAlbumArtist, DbArtist, DbTrackArtist};
 
@@ -2265,8 +2265,8 @@ pub(crate) async fn prepare_release(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::clock::FixedClock;
-    use crate::id_provider::SequentialIdProvider;
+    use coven::FixedClock;
+    use coven::SequentialIdProvider;
 
     #[test]
     fn affected_roots_maps_changed_paths_to_their_watched_roots() {

@@ -29,7 +29,6 @@ use crate::album_detail::{
     StorageFilter, StoragePage, StorageRow, StorageSort, StorageSortDirection, StorageSortField,
     TrackDetail, TrackGroup, TrackSearchResult,
 };
-use crate::clock::ClockRef;
 use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::{
     Database, DbAlbum, DbAlbumArtist, DbAlbumSearchResult, DbAlbumSummary, DbArtist, DbAudioFormat,
@@ -39,20 +38,21 @@ use crate::db::{
     StorageFilter as DbStorageFilter, StorageSortCriterion as DbStorageSortCriterion,
     StorageSortField as DbStorageSortField,
 };
-use crate::encryption::EncryptionService;
-use crate::id_provider::IdRef;
 use crate::keys::BaeKeyServiceExt;
 use crate::keys::KeyService;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::library::export::ExportService;
-use crate::library_dir::LibraryDir;
 use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
-use crate::storage::cloud::CloudHome;
 use crate::storage::local::cleanup::{append_pending_deletions, PendingDeletion};
 use crate::storage::local::ReleaseStorageImpl;
 use crate::sync::sync_manager::{S3ConfigData, SyncManager};
+use coven::ClockRef;
+use coven::CloudHome;
 use coven::CovenHandle;
+use coven::EncryptionService;
+use coven::IdRef;
+use coven::LibraryDir;
 /// Comma-join artist names for display.
 pub(crate) fn join_artist_names(artists: &[DbArtist]) -> String {
     artists
@@ -417,8 +417,8 @@ async fn project_musicbrainz_from_cache(
     database: &Database,
     release_id: &str,
     source_release_id: &str,
-    clock: &dyn crate::clock::Clock,
-    ids: &dyn crate::id_provider::IdProvider,
+    clock: &dyn coven::Clock,
+    ids: &dyn coven::IdProvider,
 ) -> Result<crate::import::ParsedAlbum, LibraryError> {
     let pairs = database.get_release_metadata_by_source(release_id).await?;
     let mb_json = pairs.get("musicbrainz").ok_or_else(|| {
@@ -470,8 +470,8 @@ async fn project_discogs_from_cache(
     database: &Database,
     release_id: &str,
     source_release_id: &str,
-    clock: &dyn crate::clock::Clock,
-    ids: &dyn crate::id_provider::IdProvider,
+    clock: &dyn coven::Clock,
+    ids: &dyn coven::IdProvider,
 ) -> Result<crate::import::ParsedAlbum, LibraryError> {
     let pairs = database.get_release_metadata_by_source(release_id).await?;
     let discogs_json = pairs.get("discogs").ok_or_else(|| {
@@ -606,7 +606,7 @@ pub enum LibraryError {
     #[error("Track mapping error: {0}")]
     TrackMapping(String),
     #[error("Encryption error: {0}")]
-    Encryption(#[from] crate::encryption::EncryptionError),
+    Encryption(#[from] coven::EncryptionError),
     #[error("Storage error: {0}")]
     Storage(String),
 }
@@ -5190,8 +5190,8 @@ impl LibraryManager {
 
     pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), String> {
         use crate::keys::CloudHomeCredentials;
-        use crate::storage::cloud::CloudHome;
-        use crate::storage::cloud::S3CloudHome;
+        use coven::CloudHome;
+        use coven::S3CloudHome;
 
         // Probe the bucket with the proposed credentials *before* persisting
         // anything. A typo or a missing bucket would otherwise leave the UI
@@ -5242,7 +5242,7 @@ impl LibraryManager {
         provider: CloudProvider,
         storage: crate::config::HomeStorage,
     ) -> Result<(), String> {
-        use crate::storage::cloud as setup;
+        use coven::{sign_in_dropbox, sign_in_google_drive, sign_in_onedrive};
 
         // Hold the sender alive across the await so cancel.wait_for inside
         // oauth::authorize never fires (this fn doesn't surface a cancel
@@ -5257,7 +5257,7 @@ impl LibraryManager {
         match provider {
             CloudProvider::GoogleDrive => {
                 let folder_id =
-                    setup::sign_in_google_drive(&self.key_service, &library_name, cancel_rx, clock)
+                    sign_in_google_drive(&self.key_service, &library_name, cancel_rx, clock)
                         .await
                         .map_err(|e| e.to_string())?;
                 self.config_handle
@@ -5270,7 +5270,7 @@ impl LibraryManager {
             }
             CloudProvider::Dropbox => {
                 let folder_path =
-                    setup::sign_in_dropbox(&self.key_service, &library_name, cancel_rx, clock)
+                    sign_in_dropbox(&self.key_service, &library_name, cancel_rx, clock)
                         .await
                         .map_err(|e| e.to_string())?;
                 self.config_handle
@@ -5282,10 +5282,9 @@ impl LibraryManager {
                     .map_err(|e| e.to_string())?;
             }
             CloudProvider::OneDrive => {
-                let (drive_id, folder_id) =
-                    setup::sign_in_onedrive(&self.key_service, cancel_rx, clock)
-                        .await
-                        .map_err(|e| e.to_string())?;
+                let (drive_id, folder_id) = sign_in_onedrive(&self.key_service, cancel_rx, clock)
+                    .await
+                    .map_err(|e| e.to_string())?;
                 self.config_handle
                     .update(move |c| {
                         c.cloud_home.provider = Some(CloudProvider::OneDrive);
@@ -5449,10 +5448,10 @@ mod tests {
     use crate::config::Config;
     use crate::db::{DbAlbum, DbRelease};
     #[cfg(feature = "test-utils")]
-    use crate::storage::cloud::InMemoryCloudHome;
-    #[cfg(feature = "test-utils")]
     use crate::sync::CloudCipher;
     use chrono::Utc;
+    #[cfg(feature = "test-utils")]
+    use coven::InMemoryCloudHome;
     use tempfile::TempDir;
     use uuid::Uuid;
 
@@ -5469,12 +5468,9 @@ mod tests {
     async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager, TempDir) {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
-        let database = Database::new_test(
-            db_path.to_str().unwrap(),
-            Arc::new(crate::clock::SystemClock),
-        )
-        .await
-        .unwrap();
+        let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
+            .await
+            .unwrap();
 
         // Insert the test artist that create_test_album() references
         let artist = DbArtist {
@@ -5502,8 +5498,8 @@ mod tests {
             library_dir,
             config_handle,
             key_service,
-            Arc::new(crate::clock::SystemClock),
-            Arc::new(crate::id_provider::UuidProvider),
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
         (manager, temp_dir)

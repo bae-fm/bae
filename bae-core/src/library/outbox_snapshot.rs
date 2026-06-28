@@ -345,12 +345,12 @@ pub(crate) async fn build_outbox_snapshot(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::clock::SystemClock;
     use crate::db::{
         Database, DbAlbum, DbArtist, DbFile, DbRelease, Pressing, ReleaseMetadataSource,
     };
     use crate::util::content_type::ContentType;
     use chrono::Utc;
+    use coven::SystemClock;
     use std::sync::Arc;
     use tempfile::TempDir;
 

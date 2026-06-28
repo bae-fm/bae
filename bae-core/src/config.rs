@@ -1,4 +1,4 @@
-use crate::library_dir::LibraryDir;
+use coven::LibraryDir;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::sync::watch;
@@ -416,7 +416,7 @@ impl std::ops::DerefMut for Config {
 }
 
 impl Config {
-    pub fn load(ids: &dyn crate::id_provider::IdProvider) -> Self {
+    pub fn load(ids: &dyn coven::IdProvider) -> Self {
         let dev_mode = std::env::var("BAE_DEV_MODE").is_ok() || {
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             {
@@ -436,7 +436,7 @@ impl Config {
         }
     }
 
-    fn from_env(ids: &dyn crate::id_provider::IdProvider) -> Self {
+    fn from_env(ids: &dyn coven::IdProvider) -> Self {
         // Use the same active-library pointer file as production mode
         let home_dir = dirs::home_dir().expect("Failed to get home directory");
         let bae_dir = home_dir.join(".bae");
@@ -459,7 +459,7 @@ impl Config {
             // `encryption_key_stored = true` with no fingerprint would let any
             // key later unlock the library (the fingerprint guard short-circuits
             // on None), so surface the parse failure loudly.
-            let fingerprint = crate::encryption::EncryptionService::new(key)
+            let fingerprint = coven::EncryptionService::new(key)
                 .expect("BAE_ENCRYPTION_KEY is malformed")
                 .fingerprint();
             config.encryption_key_stored = true;
@@ -506,16 +506,13 @@ impl Config {
         config
     }
 
-    fn from_config_file(ids: &dyn crate::id_provider::IdProvider) -> Self {
+    fn from_config_file(ids: &dyn coven::IdProvider) -> Self {
         let home_dir = dirs::home_dir().expect("Failed to get home directory");
         let bae_dir = home_dir.join(".bae");
         Self::load_from_bae_dir(&bae_dir, ids)
     }
 
-    fn load_from_bae_dir(
-        bae_dir: &std::path::Path,
-        ids: &dyn crate::id_provider::IdProvider,
-    ) -> Self {
+    fn load_from_bae_dir(bae_dir: &std::path::Path, ids: &dyn coven::IdProvider) -> Self {
         // Read active library UUID from pointer file
         let pointer_file = bae_dir.join("active-library");
         let active_id = read_active_library_id(bae_dir);
@@ -949,10 +946,8 @@ mod tests {
         config.save_to_config_yaml().unwrap();
         std::fs::write(bae_dir.join("active-library"), library_id).unwrap();
 
-        let loaded = Config::load_from_bae_dir(
-            bae_dir,
-            &crate::id_provider::SequentialIdProvider::new("device"),
-        );
+        let loaded =
+            Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"));
         assert_eq!(loaded.library_id, library_id);
         assert_eq!(&*loaded.library_dir, library_path.as_path());
     }
@@ -968,10 +963,8 @@ mod tests {
             .save_to_config_yaml()
             .unwrap();
 
-        let loaded = Config::load_from_bae_dir(
-            bae_dir,
-            &crate::id_provider::SequentialIdProvider::new("device"),
-        );
+        let loaded =
+            Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"));
         assert_eq!(loaded.library_id, "auto-lib");
     }
 
@@ -979,10 +972,7 @@ mod tests {
     #[should_panic(expected = "no libraries found")]
     fn load_from_bae_dir_panics_without_pointer_or_libraries() {
         let tmp = TempDir::new().unwrap();
-        Config::load_from_bae_dir(
-            tmp.path(),
-            &crate::id_provider::SequentialIdProvider::new("device"),
-        );
+        Config::load_from_bae_dir(tmp.path(), &coven::SequentialIdProvider::new("device"));
     }
 
     #[test]
@@ -991,10 +981,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         // Pointer to a UUID that doesn't exist anywhere
         std::fs::write(tmp.path().join("active-library"), "nonexistent-uuid").unwrap();
-        Config::load_from_bae_dir(
-            tmp.path(),
-            &crate::id_provider::SequentialIdProvider::new("device"),
-        );
+        Config::load_from_bae_dir(tmp.path(), &coven::SequentialIdProvider::new("device"));
     }
 
     /// A library dir whose name isn't valid UTF-8 can't round-trip through the
@@ -1046,10 +1033,7 @@ mod tests {
         // Dir exists but no config.yaml — library is invisible to find_library_by_id
         std::fs::write(bae_dir.join("active-library"), "some-id").unwrap();
 
-        Config::load_from_bae_dir(
-            bae_dir,
-            &crate::id_provider::SequentialIdProvider::new("device"),
-        );
+        Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"));
     }
 
     #[test]
@@ -1063,10 +1047,7 @@ mod tests {
         std::fs::write(library_path.join("config.yaml"), "library_name: Test\n").unwrap();
         std::fs::write(bae_dir.join("active-library"), "some-id").unwrap();
 
-        Config::load_from_bae_dir(
-            bae_dir,
-            &crate::id_provider::SequentialIdProvider::new("device"),
-        );
+        Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"));
     }
 
     #[test]
@@ -1196,7 +1177,7 @@ mod tests {
             bae_dir,
             library_id.to_string(),
             "Test Library".to_string(),
-            &crate::id_provider::SequentialIdProvider::new("device"),
+            &coven::SequentialIdProvider::new("device"),
         )
         .unwrap();
 

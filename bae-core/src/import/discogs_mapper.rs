@@ -1,11 +1,11 @@
 use super::ParsedAlbum;
-use crate::clock::Clock;
 use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbTrack, DbTrackArtist};
 use crate::discogs::DiscogsRelease;
-use crate::id_provider::IdProvider;
 use crate::import::types::ReleaseIdentity;
 use crate::import::MetadataSource;
 use crate::musicbrainz::MbReleaseResponse;
+use coven::Clock;
+use coven::IdProvider;
 
 /// Map Discogs release metadata into database models including artist information.
 ///
@@ -372,9 +372,9 @@ fn extract_artist_name(title: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::clock::FixedClock;
     use crate::discogs::models::{DiscogsArtist, DiscogsTrack};
-    use crate::id_provider::SequentialIdProvider;
+    use coven::FixedClock;
+    use coven::SequentialIdProvider;
 
     /// Run the mapper with deterministic fakes. Exercises the real
     /// `map_discogs_to_db`; only the clock/id inputs are faked.

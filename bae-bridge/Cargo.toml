@@ -20,6 +20,9 @@ path = "uniffi-bindgen.rs"
 
 [dependencies]
 bae-core = { path = "../bae-core" }
+# The CloudKit adapter implements coven's CloudKitOps, so it names coven types
+# directly (same pinned instance bae-core uses, via the workspace dep).
+coven = { workspace = true }
 uniffi = { version = "0.31", features = ["cli", "tokio"] }
 tokio = { version = "1.0", features = ["full"] }
 tracing = { workspace = true }

@@ -6,7 +6,7 @@
 //! the import service loads the registry and scans each folder; the folders
 //! survive restart.
 
-use crate::library_dir::LibraryDir;
+use coven::LibraryDir;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::{debug, warn};

@@ -239,14 +239,14 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
 /// outlive the manager.
 async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) {
     let tmp = TempDir::new().expect("library temp dir");
-    let clock: bae_core::clock::ClockRef = Arc::new(bae_core::clock::SystemClock);
+    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
     let database = bae_core::db::Database::new_test(
         tmp.path().join("test.db").to_str().unwrap(),
         clock.clone(),
     )
     .await
     .unwrap();
-    let library_dir = bae_core::library_dir::LibraryDir::new(tmp.path());
+    let library_dir = coven::LibraryDir::new(tmp.path());
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
     let library_id = format!("test-{}", uuid::Uuid::new_v4());
@@ -265,7 +265,7 @@ async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) 
         config_handle,
         key_service,
         clock,
-        Arc::new(bae_core::id_provider::UuidProvider),
+        Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     (manager, tmp)
@@ -281,7 +281,7 @@ async fn drive_fixture(
     let handle: ExtractionServiceHandle = ExtractionService::start(
         tokio::runtime::Handle::current(),
         tx,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
         library_manager,
     );
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(FixtureAnalyzer::new(ocr_map));

@@ -1,10 +1,10 @@
-use crate::clock::ClockRef;
 use crate::db::models::*;
 use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use coven::rusqlite::{params, Connection, OptionalExtension, Row};
+use coven::ClockRef;
 use coven::DbError;
 use coven::SyncedTable;
 use coven::UpdatedAtStamper;
@@ -3823,7 +3823,7 @@ mod readable_cloud_path_tests {
 #[cfg(test)]
 mod playback_state_load_tests {
     use super::*;
-    use crate::clock::SystemClock;
+    use coven::SystemClock;
 
     async fn empty_db() -> (Database, tempfile::TempDir) {
         let tmp = tempfile::TempDir::new().unwrap();

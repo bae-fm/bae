@@ -14,8 +14,8 @@ use bae_core::import::{
     MetadataSource, StorageMode,
 };
 use bae_core::library::LibraryManager;
-use bae_core::library_dir::LibraryDir;
 use bae_core::util::content_type::ContentType;
+use coven::LibraryDir;
 use std::path::Path;
 use std::{fs, path::PathBuf};
 use tempfile::TempDir;
@@ -79,7 +79,7 @@ async fn test_local_import() {
     let db_file = db_dir.join("test.db");
     let database = Database::new_test(
         db_file.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("database");
@@ -90,8 +90,8 @@ async fn test_local_import() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -219,7 +219,7 @@ async fn test_local_delete_preserves_files() {
     let db_file = db_dir.join("test.db");
     let database = Database::new_test(
         db_file.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("database");
@@ -230,8 +230,8 @@ async fn test_local_delete_preserves_files() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -338,7 +338,7 @@ async fn run_import_with_cover_test() {
     let db_file = db_dir.join("test.db");
     let database = Database::new_test(
         db_file.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("Failed to create database");
@@ -349,8 +349,8 @@ async fn run_import_with_cover_test() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -654,7 +654,7 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
     let db_file = db_dir.join("test.db");
     let database = Database::new_test(
         db_file.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("Failed to create database");
@@ -665,8 +665,8 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -772,7 +772,7 @@ async fn test_local_import_not_in_temp_dir() {
     let db_file = db_dir.join("test.db");
     let database = Database::new_test(
         db_file.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("create database");
@@ -783,8 +783,8 @@ async fn test_local_import_not_in_temp_dir() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();

@@ -15,12 +15,12 @@
 //! is resolved via MB's URL endpoint.
 
 use super::ParsedAlbum;
-use crate::clock::Clock;
 use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbTrack, DbTrackArtist};
-use crate::id_provider::IdProvider;
 use crate::import::types::ReleaseIdentity;
 use crate::import::MetadataSource;
 use crate::musicbrainz::{fetch_release_group_json, ExternalUrls, MbReleaseResponse};
+use coven::Clock;
+use coven::IdProvider;
 use tracing::warn;
 
 /// Extract the leading numeric Discogs release ID from a Discogs release URL.
@@ -357,11 +357,11 @@ pub fn map_mb_response_to_db(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::clock::FixedClock;
-    use crate::id_provider::SequentialIdProvider;
     use crate::musicbrainz::{
         MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseResponse, MbTrack,
     };
+    use coven::FixedClock;
+    use coven::SequentialIdProvider;
 
     /// Run the mapper with deterministic fakes. Exercises the real
     /// `map_mb_response_to_db`; only the clock/id inputs are faked.

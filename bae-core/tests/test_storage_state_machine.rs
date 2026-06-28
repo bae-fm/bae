@@ -23,12 +23,12 @@ mod support;
 
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{Database, DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource};
-use bae_core::encryption::EncryptionService;
 use bae_core::library::{CancellationToken, LibraryManager};
-use bae_core::library_dir::LibraryDir;
 use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
+use coven::EncryptionService;
+use coven::LibraryDir;
 use std::sync::Arc;
 use support::MockCloudHome;
 use tempfile::TempDir;
@@ -72,7 +72,7 @@ async fn setup_manager(
     let db_path = tmp.path().join("test.db");
     let db = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .unwrap();
@@ -81,8 +81,8 @@ async fn setup_manager(
         library_dir,
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     let cloud = Arc::new(MockCloudHome::new());

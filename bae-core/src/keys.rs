@@ -12,9 +12,7 @@ use tracing::{info, warn};
 
 // `read_keyring` / `keyring_service` back the bae-domain keyring credentials
 // below (Discogs key, encryption-key forget).
-pub use coven::{
-    keyring_service, read_keyring, set_keyring_service, CloudHomeCredentials, KeyError, KeyService,
-};
+pub use coven::{keyring_service, read_keyring, CloudHomeCredentials, KeyError, KeyService};
 
 /// A namespaced keyring account, matching coven's own `base:library_id` scheme.
 fn account(ks: &KeyService, base: &str) -> String {
