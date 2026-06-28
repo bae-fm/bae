@@ -2116,7 +2116,10 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         match result {
             Ok(()) => Ok(()),
-            Err(coven::MakeLocalError::Cancelled) => Ok(()),
+            Err(coven::MakeLocalError::Cancelled) => {
+                debug!(release_id, "make-local cancelled before commit; release stays Remote");
+                Ok(())
+            }
             Err(e) => Err(LibraryError::Storage(format!(
                 "make release {release_id} local: {e}"
             ))),
