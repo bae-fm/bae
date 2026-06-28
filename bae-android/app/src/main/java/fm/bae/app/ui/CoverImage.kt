@@ -127,7 +127,7 @@ private fun rememberCoverState(
         )
     }
     LaunchedEffect(key) {
-        if (key == null || coverId == null || state is CoverState.Loaded) return@LaunchedEffect
+        if (key == null || state is CoverState.Loaded) return@LaunchedEffect
         state =
             try {
                 val bytes = withContext(dispatcher) { loadImage(coverId) }
