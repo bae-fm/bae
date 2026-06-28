@@ -9,6 +9,13 @@ exceptions:
     active: false
 
 complexity:
+  # @Composable functions take many parameters by design: Compose hoists state
+  # and event callbacks into the parameter list, so the default threshold of 6
+  # under-fits idiomatic Compose. Same Compose exemption already applied to
+  # FunctionNaming/MatchingDeclarationName below. LongMethod stays on for
+  # composables — an over-long composable is a real recomposition-scope smell.
+  LongParameterList:
+    ignoreAnnotated: ["Composable"]
   TooManyFunctions:
     ignoreOverridden: true
 
