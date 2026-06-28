@@ -117,9 +117,7 @@ pub struct InviteCodeInfo {
 }
 
 /// Decode an invite code and return UI-ready info for the join preview.
-pub fn decode_invite_code_info(
-    code: &str,
-) -> Result<InviteCodeInfo, coven::JoinCodeError> {
+pub fn decode_invite_code_info(code: &str) -> Result<InviteCodeInfo, coven::JoinCodeError> {
     let info = coven::decode_invite_code_info(code)?;
     Ok(InviteCodeInfo {
         owner_fingerprint: pubkey_fingerprint(&info.owner_pubkey),

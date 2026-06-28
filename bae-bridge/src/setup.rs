@@ -98,8 +98,7 @@ use crate::types::{
 use crate::cloudkit::get_cloudkit_ops;
 
 #[cfg(not(feature = "cloudkit"))]
-fn get_cloudkit_ops() -> Option<std::sync::Arc<dyn bae_core::storage::cloud::CloudKitOps>>
-{
+fn get_cloudkit_ops() -> Option<std::sync::Arc<dyn bae_core::storage::cloud::CloudKitOps>> {
     None
 }
 
@@ -319,8 +318,7 @@ pub fn restore_from_cloud(
 /// Decode a restore code string and return info for UI preview.
 #[uniffi::export]
 pub fn decode_restore_code(code: String) -> Result<BridgeRestoreCodeInfo, BridgeError> {
-    let info = bae_core::sync::decode_restore_code_info(&code)
-        .map_err(BridgeError::config)?;
+    let info = bae_core::sync::decode_restore_code_info(&code).map_err(BridgeError::config)?;
 
     Ok(BridgeRestoreCodeInfo {
         library_id: info.library_id,

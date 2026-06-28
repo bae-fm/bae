@@ -608,12 +608,7 @@ impl Config {
         library_name: String,
     ) -> Self {
         Self {
-            inner: coven::Config::with_defaults(
-                library_id,
-                device_id,
-                library_dir,
-                library_name,
-            ),
+            inner: coven::Config::with_defaults(library_id, device_id, library_dir, library_name),
             discogs: None,
             replay_gain_mode: default_replay_gain_mode(),
             pause_between_sides: false,
