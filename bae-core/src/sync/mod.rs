@@ -84,9 +84,8 @@ pub const ARTIST_IMAGES_CACHE_BUDGET: u64 = 256 * 1024 * 1024; // 256 MiB
 ///     — no `_updated_at`. coven's own bookkeeping tables (`sync_state`,
 ///     `sync_cursors`, `cloud_outbox`) live outside bae's migration entirely.
 ///
-/// Passed to [`coven::Database::open`], which attaches the capture session to
-/// exactly these tables and owns the set thereafter (read back via
-/// `coven::Database::synced_tables`).
+/// Passed to [`coven::Coven::builder`], which attaches the capture session to
+/// exactly these tables when the library is opened.
 pub fn synced_tables() -> Vec<SyncedTable> {
     vec![
         SyncedTable::new("artists").gated_by_descendants(),

@@ -91,7 +91,7 @@ async fn setup_manager(
 }
 
 /// Build a manager with a connected `SyncManager` over an injected
-/// `MockCloudHome`, sealing blobs under `enc`. After this, `get_cloud_home` is
+/// `MockCloudHome`, sealing blobs under `enc`. After this, `has_cloud_home` is
 /// Some and `is_sync_ready` is true, so the manager's make-Remote gate is open
 /// and the upload drain routes through the connected home.
 async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager, Arc<MockCloudHome>) {
@@ -305,7 +305,7 @@ async fn test_manage_refused_when_sync_not_running() {
         "precondition: no cloud home / sync loop not running"
     );
     assert!(
-        mgr.get_cloud_home().is_none(),
+        !mgr.has_cloud_home(),
         "precondition: no cloud home connected"
     );
     let source_dir = tmp.path().join("originals");
@@ -325,11 +325,7 @@ async fn test_manage_refused_when_sync_not_running() {
         "make-Remote must fail when the upload pipeline isn't running, got {result:?}"
     );
     assert!(
-        db.coven_db()
-            .get_pending_cloud_uploads()
-            .await
-            .unwrap()
-            .is_empty(),
+        db.get_pending_cloud_uploads().await.unwrap().is_empty(),
         "no upload may be enqueued when the pipeline can't drain it"
     );
     assert_eq!(
@@ -359,7 +355,7 @@ async fn test_manage_cloud_only_uploads_from_source_then_completes() {
     mgr.coven_make_remote(&release_id, false).await.unwrap();
 
     // Outbox uploads read from the originals (source_path = Some).
-    let uploads = db.coven_db().get_pending_cloud_uploads().await.unwrap();
+    let uploads = db.get_pending_cloud_uploads().await.unwrap();
     assert_eq!(uploads.len(), files.len());
     assert!(uploads.iter().all(|u| matches!(
         &u.operation,
@@ -455,11 +451,7 @@ async fn test_manage_truncated_source_aborts_before_enqueue() {
     assert!(result.is_err(), "truncated source must abort make-Remote");
 
     assert!(
-        db.coven_db()
-            .get_pending_cloud_uploads()
-            .await
-            .unwrap()
-            .is_empty(),
+        db.get_pending_cloud_uploads().await.unwrap().is_empty(),
         "no upload may be enqueued when a source is truncated"
     );
     for (name, _) in &files {
@@ -519,7 +511,7 @@ async fn test_unmanage_from_remote_reads_through_cache_then_queues_deletes() {
             "external ref points at the new path"
         );
     }
-    let deletes = db.coven_db().get_pending_cloud_deletes().await.unwrap();
+    let deletes = db.get_pending_cloud_deletes().await.unwrap();
     assert_eq!(deletes.len(), files.len());
 }
 
@@ -551,12 +543,7 @@ async fn test_unmanage_from_remote_missing_blob_is_hard_error() {
         .await;
     assert!(result.is_err(), "missing blob must be a hard error");
 
-    assert!(db
-        .coven_db()
-        .get_pending_cloud_deletes()
-        .await
-        .unwrap()
-        .is_empty());
+    assert!(db.get_pending_cloud_deletes().await.unwrap().is_empty());
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)

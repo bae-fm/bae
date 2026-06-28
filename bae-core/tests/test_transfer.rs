@@ -54,22 +54,15 @@ async fn storage(mgr: &LibraryManager, release_id: &str) -> (ReleaseStorageState
 async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
     let library_dir = LibraryDir::new(tmp.path());
     let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
-    let db = Database::new_test(
-        tmp.path().join("test.db").to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
-    let mgr = LibraryManager::new(
-        db.clone(),
-        library_dir,
+    let mgr = LibraryManager::open(
         config_handle,
         key_service,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
-    );
-    (db, mgr)
+    )
+    .unwrap();
+    (mgr.database_for_test(), mgr)
 }
 
 /// A manager with a `SyncManager` connected over an injected `MockCloudHome`,
@@ -290,23 +283,24 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
         "no cover before one is stored"
     );
 
-    // Store the cover bytes in coven's local store and write the `covers` row,
-    // exactly as import / change_cover does (through the handle, via the manager's
-    // `store_cover_blob`).
+    // Store the cover bytes and `covers` row in one coven batch, exactly as
+    // import / change_cover does.
     let bytes = b"cover-jpeg-bytes";
-    mgr.store_cover_blob(&release_id, bytes).await.unwrap();
-    mgr.upsert_library_image(&bae_core::db::DbLibraryImage {
-        id: release_id.clone(),
-        image_type: bae_core::db::LibraryImageType::Cover,
-        content_type: bae_core::util::content_type::ContentType::Jpeg,
-        file_size: bytes.len() as i64,
-        width: None,
-        height: None,
-        source: "local".to_string(),
-        source_url: None,
-        cloud_path: None,
-        created_at: chrono::Utc::now(),
-    })
+    mgr.store_library_image_blob(
+        &bae_core::db::DbLibraryImage {
+            id: release_id.clone(),
+            image_type: bae_core::db::LibraryImageType::Cover,
+            content_type: bae_core::util::content_type::ContentType::Jpeg,
+            file_size: bytes.len() as i64,
+            width: None,
+            height: None,
+            source: "local".to_string(),
+            source_url: None,
+            cloud_path: None,
+            created_at: chrono::Utc::now(),
+        },
+        bytes,
+    )
     .await
     .unwrap();
 
@@ -525,12 +519,7 @@ async fn test_make_local_cancelled_rolls_back_and_stays_remote() {
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
-    assert!(db
-        .coven_db()
-        .get_pending_cloud_deletes()
-        .await
-        .unwrap()
-        .is_empty());
+    assert!(db.get_pending_cloud_deletes().await.unwrap().is_empty());
 }
 
 /// A make-Local whose destination can't be written (the path is a file) fails,
@@ -562,12 +551,7 @@ async fn test_make_local_abort_on_dest_failure_queues_no_deletes() {
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
-    assert!(db
-        .coven_db()
-        .get_pending_cloud_deletes()
-        .await
-        .unwrap()
-        .is_empty());
+    assert!(db.get_pending_cloud_deletes().await.unwrap().is_empty());
 }
 
 // ---------------------------------------------------------------------------

@@ -4,12 +4,9 @@ use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use coven::rusqlite::{params, Connection, OptionalExtension, Row};
-use coven::ClockRef;
-use coven::DbError;
-use coven::SyncedTable;
-use coven::UpdatedAtStamper;
+use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -22,6 +19,72 @@ fn image_table(image_type: &LibraryImageType) -> &'static str {
         LibraryImageType::Cover => "covers",
         LibraryImageType::Artist => "artist_images",
     }
+}
+
+fn image_namespace(image_type: &LibraryImageType) -> &'static str {
+    match image_type {
+        LibraryImageType::Cover => crate::sync::COVERS_NAMESPACE,
+        LibraryImageType::Artist => crate::sync::ARTIST_IMAGES_NAMESPACE,
+    }
+}
+
+fn register_external_blob_on(
+    conn: &Connection,
+    blob_id: &str,
+    namespace: &str,
+    path: &Path,
+    size: u64,
+) -> Result<(), DbError> {
+    let path = path.to_str().ok_or_else(|| {
+        DbError(format!(
+            "external blob path for {blob_id} is not valid UTF-8: {path:?}"
+        ))
+    })?;
+    conn.execute(
+        "INSERT INTO local_blob_refs (blob_id, namespace, path, size) \
+         VALUES (?1, ?2, ?3, ?4) \
+         ON CONFLICT(blob_id) DO UPDATE SET \
+             namespace = excluded.namespace, \
+             path = excluded.path, \
+             size = excluded.size",
+        (blob_id, namespace, path, size as i64),
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+fn clear_external_blob_on(conn: &Connection, blob_id: &str) -> Result<(), DbError> {
+    conn.execute("DELETE FROM local_blob_refs WHERE blob_id = ?1", [blob_id])
+        .map(|_| ())
+        .map_err(DbError::from)
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+fn row_to_outbox_entry(row: &Row<'_>) -> coven::rusqlite::Result<coven::OutboxEntry> {
+    let op_tag: String = row.get(1)?;
+    let operation = match op_tag.as_str() {
+        "upload" => {
+            let scope_str: String = row.get(5)?;
+            let scope = coven::BlobScope::from_outbox_str(&scope_str)
+                .unwrap_or_else(|| panic!("invalid cloud_outbox.scope: {scope_str:?}"));
+            coven::OutboxOperation::Upload {
+                file_id: row.get(2)?,
+                source_path: row.get(4)?,
+                scope,
+                retain_pinned: row.get(6)?,
+            }
+        }
+        "delete" => coven::OutboxOperation::Delete,
+        "cancel" => coven::OutboxOperation::Cancel,
+        other => panic!("invalid cloud_outbox.operation: {other:?}"),
+    };
+    Ok(coven::OutboxEntry {
+        id: row.get(0)?,
+        cloud_key: row.get(3)?,
+        attempt_count: row.get(7)?,
+        last_attempt_at: row.get(8)?,
+        operation,
+    })
 }
 
 /// Build a `DbLibraryImage` from a `covers`/`artist_images` row. The table is the
@@ -197,26 +260,26 @@ fn parse_album_summary_row(row: &Row) -> Result<DbAlbumSummary, DbError> {
 }
 
 struct DatabaseInner {
-    /// The connection coven owns, on its dedicated thread. Every read and write
-    /// runs through `coven_db.call(|conn| …)`; writes to synced tables are
-    /// captured by coven's session.
-    coven_db: coven::Database,
-    /// The last-writer-wins stamper for every synced row's `_updated_at`,
-    /// returned (non-optional, already seeded) from `coven::Database::open`. It
-    /// wraps the same `Arc<Hlc>` coven's sync loop advances on pull and stamps
-    /// envelopes from, so the host's stamps and coven's sync resolve conflicts
-    /// off one clock.
-    stamper: UpdatedAtStamper,
+    /// The top-level coven handle owns the connection and exposes the host SQL
+    /// path. Writes to synced tables are captured by coven's attached session.
+    handle: CovenHandle,
     /// Wall clock for `created_at` and status timestamps bound into write SQL.
-    /// Synced-table `_updated_at` is stamped from [`stamper`] instead.
+    /// Synced-table `_updated_at` is stamped from coven's SQL context.
     clock: ClockRef,
+}
+
+/// An external user-owned file a blob id resolves to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExternalBlob {
+    pub path: PathBuf,
+    pub size: u64,
 }
 
 /// Database client over coven's owned connection.
 ///
-/// All reads and writes run on coven's single connection thread via
-/// [`coven::Database::call`]. Writes to synced tables are captured by coven's
-/// attached session for changeset sync; reads share the same serialized thread.
+/// All reads and writes run through [`CovenHandle::sql`]. Writes to synced
+/// tables are captured by coven's attached session for changeset sync; reads
+/// share the same serialized connection.
 #[derive(Clone)]
 pub struct Database {
     inner: Arc<DatabaseInner>,
@@ -260,48 +323,94 @@ impl Database {
     // - ID from a function parameter, URL, UI event → find_*
     // - ID from a field on a DB record you already hold → get_*_for_*
 
-    /// The connection coven owns, the integration seam for coven's sync + blob
-    /// pipeline. The [`CovenHandle`](coven::CovenHandle) is built over it (it reads
-    /// the synced-table set and the shared register clock from it), and coven's
-    /// blob upload/delete drains take it directly.
-    pub fn coven_db(&self) -> &coven::Database {
-        &self.inner.coven_db
+    /// The one coven handle backing bae's SQL, blob, and sync operations.
+    pub fn handle(&self) -> &CovenHandle {
+        &self.inner.handle
     }
 
-    /// Stamp a synced row's `_updated_at` from coven's HLC register. Every
-    /// INSERT/UPDATE of a synced table binds this, so the host and coven's sync
-    /// layer resolve row conflicts off one shared clock.
-    fn register_stamp(&self) -> String {
-        self.inner.stamper.stamp()
+    fn coven_error(error: CovenError) -> DbError {
+        match error {
+            CovenError::Database(error) => error,
+            other => DbError(other.to_string()),
+        }
     }
 
-    /// Open the database at `path`, running coven's bookkeeping migration plus
-    /// bae's schema (idempotent, so re-running over a snapshot-bootstrapped DB
-    /// is a no-op). coven seeds the register clock off the on-disk rows, attaches
-    /// the capture session over `synced_tables`, and owns the connection on a
-    /// dedicated thread; the returned stamper mints every synced row's
-    /// `_updated_at`.
+    async fn call<R>(
+        &self,
+        f: impl FnOnce(&Connection) -> Result<R, DbError> + Send + 'static,
+    ) -> Result<R, DbError>
+    where
+        R: Send + 'static,
+    {
+        self.inner
+            .handle
+            .sql(move |sql| f(sql.connection()).map_err(CovenError::from))
+            .await
+            .map_err(Self::coven_error)
+    }
+
+    /// Stamp a synced row's `_updated_at` from coven's SQL context.
+    async fn register_stamp(&self) -> Result<String, DbError> {
+        self.inner
+            .handle
+            .sql(|sql| Ok(sql.stamp()))
+            .await
+            .map_err(Self::coven_error)
+    }
+
+    pub fn from_handle(handle: CovenHandle, clock: ClockRef) -> Self {
+        Database {
+            inner: Arc::new(DatabaseInner { handle, clock }),
+        }
+    }
+
+    /// Open the database through coven's top-level builder, running coven's
+    /// bookkeeping migration plus bae's schema.
+    pub fn open(
+        config: impl Into<coven::CovenConfig>,
+        clock: ClockRef,
+        key_service: coven::KeyService,
+        synced_tables: Vec<coven::SyncedTable>,
+        observer: Option<Arc<dyn coven::BlobTransitionObserver>>,
+    ) -> Result<Self, DbError> {
+        let mut builder = Coven::builder(config)
+            .synced_tables(synced_tables)
+            .clock(clock.clone())
+            .key_service(key_service);
+        if let Some(observer) = observer {
+            builder = builder.observer(observer);
+        }
+        let handle = builder
+            .open(|conn| {
+                conn.execute_batch(include_str!("../../migrations/001_initial.sql"))?;
+                Ok(())
+            })
+            .map_err(Self::coven_error)?;
+        Ok(Self::from_handle(handle, clock))
+    }
+
+    /// Open a test database using a coven library directory derived from `path`.
     pub async fn new(
         database_path: &str,
         clock: ClockRef,
         device_id: String,
-        synced_tables: Vec<SyncedTable>,
+        synced_tables: Vec<coven::SyncedTable>,
     ) -> Result<Self, DbError> {
         info!("Opening database at {}", database_path);
-
-        let (coven_db, stamper) =
-            coven::Database::open(Path::new(database_path), synced_tables, device_id, |conn| {
-                conn.execute_batch(include_str!("../../migrations/001_initial.sql"))
-                    .map_err(DbError::from)
-            })?;
-
-        Ok(Database {
-            inner: Arc::new(DatabaseInner {
-                coven_db,
-                stamper,
-                clock,
-            }),
-        })
+        let path = Path::new(database_path);
+        let library_root = path
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .ok_or_else(|| DbError(format!("database path has no parent: {database_path}")))?;
+        let library_dir = coven::LibraryDir::new(library_root);
+        let config = coven::Config::with_defaults(
+            "test-library".to_string(),
+            device_id,
+            library_dir,
+            "Test Library".to_string(),
+        );
+        let key_service = coven::KeyService::new(config.library_id.clone());
+        Self::open(config, clock, key_service, synced_tables, None)
     }
 
     /// Test convenience: open over `path` with a fresh device id and bae's real
@@ -393,32 +502,30 @@ impl Database {
     /// Insert a new artist
     pub async fn insert_artist(&self, artist: &DbArtist) -> Result<(), DbError> {
         let artist = artist.clone();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute(
-                    r#"
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| {
+            conn.execute(
+                r#"
                     INSERT INTO artists (
                         id, name, sort_name, discogs_artist_id,
                         musicbrainz_artist_id,
                         _updated_at, created_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?)
                     "#,
-                    params![
-                        artist.id,
-                        artist.name,
-                        artist.sort_name,
-                        artist.discogs_artist_id,
-                        artist.musicbrainz_artist_id,
-                        reg,
-                        artist.created_at.to_rfc3339(),
-                    ],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
+                params![
+                    artist.id,
+                    artist.name,
+                    artist.sort_name,
+                    artist.discogs_artist_id,
+                    artist.musicbrainz_artist_id,
+                    reg,
+                    artist.created_at.to_rfc3339(),
+                ],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
     /// Look up a single artist by a one-parameter equality query. The four
     /// `get_artist_by_*` / `find_artist_by_id` lookups differ only in which
@@ -428,14 +535,12 @@ impl Database {
         sql: &'static str,
         value: String,
     ) -> Result<Option<DbArtist>, DbError> {
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(sql, params![value], |row| Ok(Self::row_to_artist(row)))
-                    .optional()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(sql, params![value], |row| Ok(Self::row_to_artist(row)))
+                .optional()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Get artist by Discogs artist ID (for deduplication)
@@ -483,12 +588,10 @@ impl Database {
             mb_id.map(str::to_string),
             sort_name.map(str::to_string),
         );
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute(
-                    r#"
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| {
+            conn.execute(
+                r#"
                     UPDATE artists SET
                         discogs_artist_id = COALESCE(discogs_artist_id, ?),
                         musicbrainz_artist_id = COALESCE(musicbrainz_artist_id, ?),
@@ -496,42 +599,36 @@ impl Database {
                         _updated_at = ?
                     WHERE id = ?
                     "#,
-                    params![discogs_id, mb_id, sort_name, reg, id],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
+                params![discogs_id, mb_id, sort_name, reg, id],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Insert album-artist relationship
     pub async fn insert_album_artist(&self, album_artist: &DbAlbumArtist) -> Result<(), DbError> {
         let album_artist = album_artist.clone();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| insert_album_artist_row(conn, &album_artist, &reg))
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| insert_album_artist_row(conn, &album_artist, &reg))
             .await
     }
     /// Insert track-artist relationship
     pub async fn insert_track_artist(&self, track_artist: &DbTrackArtist) -> Result<(), DbError> {
         let track_artist = track_artist.clone();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| insert_track_artist_row(conn, &track_artist, &reg))
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| insert_track_artist_row(conn, &track_artist, &reg))
             .await
     }
     /// Get artists for an album (ordered by position)
     pub async fn get_artists_for_album(&self, album_id: &str) -> Result<Vec<DbArtist>, DbError> {
         let album_id = album_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                // Primary artist from FK (sort_key = -1 so it's first),
-                // then additional artists from junction table ordered by position.
-                let mut stmt = conn.prepare(
-                    r#"
+        self.call(move |conn| {
+            // Primary artist from FK (sort_key = -1 so it's first),
+            // then additional artists from junction table ordered by position.
+            let mut stmt = conn.prepare(
+                r#"
                         SELECT a.*, -1 AS sort_key FROM artists a
                         JOIN albums alb ON alb.artist_id = a.id
                         WHERE alb.id = ?
@@ -541,34 +638,32 @@ impl Database {
                         WHERE aa.album_id = ?
                         ORDER BY sort_key
                         "#,
-                )?;
-                let rows = stmt.query_map(params![album_id, album_id], |row| {
-                    Ok(Self::row_to_artist(row))
-                })?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+            )?;
+            let rows = stmt.query_map(params![album_id, album_id], |row| {
+                Ok(Self::row_to_artist(row))
+            })?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
     /// Get artists for a track (ordered by position)
     pub async fn get_artists_for_track(&self, track_id: &str) -> Result<Vec<DbArtist>, DbError> {
         let track_id = track_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare(
-                    r#"
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(
+                r#"
                         SELECT a.* FROM artists a
                         JOIN track_artists ta ON a.id = ta.artist_id
                         WHERE ta.track_id = ?
                         ORDER BY ta.position
                         "#,
-                )?;
-                let rows = stmt.query_map(params![track_id], |row| Ok(Self::row_to_artist(row)))?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+            )?;
+            let rows = stmt.query_map(params![track_id], |row| Ok(Self::row_to_artist(row)))?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
     /// Find artist by ID. Caller-provided ID — may not exist.
     pub async fn find_artist_by_id(&self, artist_id: &str) -> Result<Option<DbArtist>, DbError> {
@@ -586,27 +681,25 @@ impl Database {
         }
 
         let track_ids = track_ids.to_vec();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let placeholders = track_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-                let sql = format!(
-                    "SELECT t.id AS track_id, r.album_id FROM tracks t \
+        self.call(move |conn| {
+            let placeholders = track_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            let sql = format!(
+                "SELECT t.id AS track_id, r.album_id FROM tracks t \
                      JOIN releases r ON t.release_id = r.id \
                      WHERE t.id IN ({placeholders})"
-                );
-                let mut stmt = conn.prepare(&sql)?;
-                let rows =
-                    stmt.query_map(coven::rusqlite::params_from_iter(track_ids.iter()), |row| {
-                        Ok((
-                            row.get::<_, String>("track_id")?,
-                            row.get::<_, String>("album_id")?,
-                        ))
-                    })?;
-                rows.collect::<coven::rusqlite::Result<HashMap<_, _>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+            );
+            let mut stmt = conn.prepare(&sql)?;
+            let rows =
+                stmt.query_map(coven::rusqlite::params_from_iter(track_ids.iter()), |row| {
+                    Ok((
+                        row.get::<_, String>("track_id")?,
+                        row.get::<_, String>("album_id")?,
+                    ))
+                })?;
+            rows.collect::<coven::rusqlite::Result<HashMap<_, _>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Search across albums and tracks by title
@@ -618,8 +711,7 @@ impl Database {
         let pattern = format!("%{}%", query);
         let limit_i64 = limit as i64;
 
-        self.inner
-            .coven_db
+        self
             .call(move |conn| {
                 // Search albums by title, with primary artist name.
                 // COALESCE the primary_release_id to the album's first release so
@@ -689,28 +781,22 @@ impl Database {
     /// Insert a new album
     pub async fn insert_album(&self, album: &DbAlbum) -> Result<(), DbError> {
         let album = album.clone();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| insert_album_row(conn, &album, &reg))
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| insert_album_row(conn, &album, &reg))
             .await
     }
     /// Insert a new release.
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
         let release = release.clone();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| insert_release_row(conn, &release, &reg))
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| insert_release_row(conn, &release, &reg))
             .await
     }
     /// Insert a new track
     pub async fn insert_track(&self, track: &DbTrack) -> Result<(), DbError> {
         let track = track.clone();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| insert_track_row(conn, &track, &reg))
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| insert_track_row(conn, &track, &reg))
             .await
     }
     /// Insert album, release, and tracks in a single transaction
@@ -731,25 +817,23 @@ impl Database {
             track_artists.to_vec(),
         );
         // One HLC register stamp for every synced row this transaction writes.
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
-                insert_album_row(&tx, &album, &reg)?;
-                insert_release_row(&tx, &release, &reg)?;
-                for track in &tracks {
-                    insert_track_row(&tx, track, &reg)?;
-                }
-                for ta in &track_artists {
-                    insert_track_artist_row(&tx, ta, &reg)?;
-                }
-                for meta in &metadata {
-                    insert_release_metadata_row(&tx, meta)?;
-                }
-                tx.commit().map_err(DbError::from)
-            })
-            .await?;
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| {
+            let tx = conn;
+            insert_album_row(tx, &album, &reg)?;
+            insert_release_row(tx, &release, &reg)?;
+            for track in &tracks {
+                insert_track_row(tx, track, &reg)?;
+            }
+            for ta in &track_artists {
+                insert_track_artist_row(tx, ta, &reg)?;
+            }
+            for meta in &metadata {
+                insert_release_metadata_row(tx, meta)?;
+            }
+            Ok(())
+        })
+        .await?;
         Ok(())
     }
 
@@ -767,24 +851,22 @@ impl Database {
             track_artists.to_vec(),
         );
         // One HLC register stamp for every synced row this transaction writes.
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
-                insert_release_row(&tx, &release, &reg)?;
-                for track in &tracks {
-                    insert_track_row(&tx, track, &reg)?;
-                }
-                for ta in &track_artists {
-                    insert_track_artist_row(&tx, ta, &reg)?;
-                }
-                for meta in &metadata {
-                    insert_release_metadata_row(&tx, meta)?;
-                }
-                tx.commit().map_err(DbError::from)
-            })
-            .await?;
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| {
+            let tx = conn;
+            insert_release_row(tx, &release, &reg)?;
+            for track in &tracks {
+                insert_track_row(tx, track, &reg)?;
+            }
+            for ta in &track_artists {
+                insert_track_artist_row(tx, ta, &reg)?;
+            }
+            for meta in &metadata {
+                insert_release_metadata_row(tx, meta)?;
+            }
+            Ok(())
+        })
+        .await?;
         Ok(())
     }
 
@@ -823,68 +905,65 @@ impl Database {
         );
         let now = self.inner.clock.now().to_rfc3339();
         // One HLC register stamp for every synced row this edit touches.
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| {
+            let tx = conn;
 
-                // 1. Update album.
-                tx.execute(
-                    r#"UPDATE albums SET title = ?, artist_id = ?, year = ?, is_compilation = ?,
+            // 1. Update album.
+            tx.execute(
+                r#"UPDATE albums SET title = ?, artist_id = ?, year = ?, is_compilation = ?,
                     _updated_at = ? WHERE id = ?"#,
-                    params![
-                        album.title,
-                        album.artist_id,
-                        album.year,
-                        album.is_compilation,
-                        reg,
-                        album_id,
-                    ],
-                )?;
+                params![
+                    album.title,
+                    album.artist_id,
+                    album.year,
+                    album.is_compilation,
+                    reg,
+                    album_id,
+                ],
+            )?;
 
-                // 2. Update release pressing fields.
-                tx.execute(
-                    r#"UPDATE releases SET year = ?, format = ?, label = ?, catalog_number = ?,
+            // 2. Update release pressing fields.
+            tx.execute(
+                r#"UPDATE releases SET year = ?, format = ?, label = ?, catalog_number = ?,
                     country = ?, barcode = ?, _updated_at = ? WHERE id = ?"#,
+                params![
+                    release.pressing.year,
+                    release.pressing.format,
+                    release.pressing.label,
+                    release.pressing.catalog_number,
+                    release.pressing.country,
+                    release.pressing.barcode,
+                    reg,
+                    release_id,
+                ],
+            )?;
+
+            // 3. Update tracks by existing ID.
+            for (existing_id, new_track) in &track_updates {
+                tx.execute(
+                    r#"UPDATE tracks SET title = ?, side = ?, track_number = ?,
+                        _updated_at = ? WHERE id = ?"#,
                     params![
-                        release.pressing.year,
-                        release.pressing.format,
-                        release.pressing.label,
-                        release.pressing.catalog_number,
-                        release.pressing.country,
-                        release.pressing.barcode,
+                        new_track.title,
+                        new_track.side,
+                        new_track.track_number,
                         reg,
-                        release_id,
+                        existing_id,
                     ],
                 )?;
+            }
 
-                // 3. Update tracks by existing ID.
-                for (existing_id, new_track) in &track_updates {
-                    tx.execute(
-                        r#"UPDATE tracks SET title = ?, side = ?, track_number = ?,
-                        _updated_at = ? WHERE id = ?"#,
-                        params![
-                            new_track.title,
-                            new_track.side,
-                            new_track.track_number,
-                            reg,
-                            existing_id,
-                        ],
-                    )?;
-                }
+            // 4. Replace album_artists.
+            replace_album_artists(tx, &album_id, &album_artists, &reg, &now)?;
 
-                // 4. Replace album_artists.
-                replace_album_artists(&tx, &album_id, &album_artists, &reg, &now)?;
+            // 5. Replace track_artists for the affected tracks.
+            let track_ids: Vec<&str> = track_updates.iter().map(|(id, _)| id.as_str()).collect();
+            replace_track_artists(tx, &track_ids, &track_artists, &reg, &now)?;
 
-                // 5. Replace track_artists for the affected tracks.
-                let track_ids: Vec<&str> =
-                    track_updates.iter().map(|(id, _)| id.as_str()).collect();
-                replace_track_artists(&tx, &track_ids, &track_artists, &reg, &now)?;
-
-                tx.commit().map_err(DbError::from)
-            })
-            .await
+            Ok(())
+        })
+        .await
     }
 
     /// Get all albums, sorted by the given criteria.
@@ -909,15 +988,13 @@ impl Database {
             ORDER BY {order_by}"
         );
 
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare(&query)?;
-                let rows = stmt.query_map([], |row| Ok(Self::row_to_album(row)))?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(&query)?;
+            let rows = stmt.query_map([], |row| Ok(Self::row_to_album(row)))?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Get a page of albums with LIMIT/OFFSET for lazy loading.
@@ -939,32 +1016,28 @@ impl Database {
             select = ALBUM_SUMMARY_SELECT,
         );
 
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare(&query)?;
-                let mut rows = stmt.query(params![limit as i64, offset as i64])?;
-                let mut albums = Vec::new();
-                while let Some(row) = rows.next()? {
-                    albums.push(parse_album_summary_row(row)?);
-                }
-                Ok(albums)
-            })
-            .await
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(&query)?;
+            let mut rows = stmt.query(params![limit as i64, offset as i64])?;
+            let mut albums = Vec::new();
+            while let Some(row) = rows.next()? {
+                albums.push(parse_album_summary_row(row)?);
+            }
+            Ok(albums)
+        })
+        .await
     }
 
     /// Count total albums.
     pub async fn get_album_count(&self) -> Result<u64, DbError> {
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row("SELECT COUNT(*) FROM albums", [], |row| {
-                    row.get::<_, i64>(0)
-                })
-                .map(|c| c as u64)
-                .map_err(DbError::from)
+        self.call(move |conn| {
+            conn.query_row("SELECT COUNT(*) FROM albums", [], |row| {
+                row.get::<_, i64>(0)
             })
-            .await
+            .map(|c| c as u64)
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// The SELECT for a release's storage summary (`DbReleaseStorageSummary`).
@@ -1026,15 +1099,13 @@ impl Database {
         &self,
     ) -> Result<Vec<DbReleaseStorageSummary>, DbError> {
         let query = Self::release_storage_summary_query("ORDER BY a.title, r.created_at");
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare(&query)?;
-                let rows = stmt.query_map([], Self::row_to_release_storage_summary)?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(&query)?;
+            let rows = stmt.query_map([], Self::row_to_release_storage_summary)?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// The storage summary for a single release, or `None` if it doesn't exist.
@@ -1047,14 +1118,12 @@ impl Database {
     ) -> Result<Option<DbReleaseStorageSummary>, DbError> {
         let release_id = release_id.to_string();
         let query = Self::release_storage_summary_query("WHERE r.id = ?1");
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(&query, [release_id], Self::row_to_release_storage_summary)
-                    .optional()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(&query, [release_id], Self::row_to_release_storage_summary)
+                .optional()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// A representative file id for every remote release — one per release, or
@@ -1064,18 +1133,16 @@ impl Database {
     /// remote release is reachable only through the cloud. Pin/unpin act on all a
     /// release's blobs together, so one file represents the release.
     pub async fn get_remote_release_file_ids(&self) -> Result<Vec<Option<String>>, DbError> {
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare(
-                    "SELECT (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) \
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) \
                      FROM releases r WHERE r.remote = 1",
-                )?;
-                let rows = stmt.query_map([], |row| row.get::<_, Option<String>>(0))?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+            )?;
+            let rows = stmt.query_map([], |row| row.get::<_, Option<String>>(0))?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Raw album-summary lookup for a single album. Shares the JSON
@@ -1086,16 +1153,14 @@ impl Database {
     ) -> Result<Option<DbAlbumSummary>, DbError> {
         let album_id = album_id.to_string();
         let query = format!("{ALBUM_SUMMARY_SELECT} FROM albums a WHERE a.id = ?");
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(&query, params![album_id], |row| {
-                    Ok(parse_album_summary_row(row))
-                })
-                .optional()?
-                .transpose()
+        self.call(move |conn| {
+            conn.query_row(&query, params![album_id], |row| {
+                Ok(parse_album_summary_row(row))
             })
-            .await
+            .optional()?
+            .transpose()
+        })
+        .await
     }
 
     /// Count storage rows matching `filter`. Mirrors the filter logic of
@@ -1105,14 +1170,12 @@ impl Database {
         let where_clause = storage_filter_where(filter);
         let query = format!("SELECT COUNT(*) FROM releases r {where_clause}");
 
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(&query, [], |row| row.get::<_, i64>(0))
-                    .map(|c| c as u64)
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(&query, [], |row| row.get::<_, i64>(0))
+                .map(|c| c as u64)
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Paginated storage-page query. Joins releases × albums × (optional)
@@ -1170,52 +1233,48 @@ impl Database {
             LIMIT ? OFFSET ?",
         );
 
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare(&query)?;
-                let mut rows = stmt.query(params![limit as i64, offset as i64])?;
-                let mut storage_rows = Vec::new();
-                while let Some(row) = rows.next()? {
-                    let release = DbReleaseSummary {
-                        id: row.get("release_id")?,
-                        album_id: row.get("album_id")?,
-                        format: row.get("release_format")?,
-                        remote: row.get("remote")?,
-                        any_file_id: row.get("any_file_id")?,
-                        file_count: row.get("file_count")?,
-                        total_size: row.get("total_size")?,
-                    };
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(&query)?;
+            let mut rows = stmt.query(params![limit as i64, offset as i64])?;
+            let mut storage_rows = Vec::new();
+            while let Some(row) = rows.next()? {
+                let release = DbReleaseSummary {
+                    id: row.get("release_id")?,
+                    album_id: row.get("album_id")?,
+                    format: row.get("release_format")?,
+                    remote: row.get("remote")?,
+                    any_file_id: row.get("any_file_id")?,
+                    file_count: row.get("file_count")?,
+                    total_size: row.get("total_size")?,
+                };
 
-                    let release_ids_json: String = row.get("release_ids_json")?;
-                    let release_ids: Vec<String> = serde_json::from_str(&release_ids_json)
-                        .map_err(|e| DbError(e.to_string()))?;
+                let release_ids_json: String = row.get("release_ids_json")?;
+                let release_ids: Vec<String> =
+                    serde_json::from_str(&release_ids_json).map_err(|e| DbError(e.to_string()))?;
 
-                    let album = DbAlbumSummary {
-                        id: row.get("album_id_out")?,
-                        title: row.get("title")?,
-                        year: row.get("year")?,
-                        is_compilation: row.get("is_compilation")?,
-                        artist_names: row.get("artist_names")?,
-                        release_ids,
-                        primary_release_id: row.get("primary_release_id")?,
-                    };
+                let album = DbAlbumSummary {
+                    id: row.get("album_id_out")?,
+                    title: row.get("title")?,
+                    year: row.get("year")?,
+                    is_compilation: row.get("is_compilation")?,
+                    artist_names: row.get("artist_names")?,
+                    release_ids,
+                    primary_release_id: row.get("primary_release_id")?,
+                };
 
-                    storage_rows.push(DbStorageRow { release, album });
-                }
-                Ok(storage_rows)
-            })
-            .await
+                storage_rows.push(DbStorageRow { release, album });
+            }
+            Ok(storage_rows)
+        })
+        .await
     }
 
     /// Find album by ID. Caller-provided ID — may not exist.
     pub async fn find_album_by_id(&self, album_id: &str) -> Result<Option<DbAlbum>, DbError> {
         let album_id = album_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    r#"
+        self.call(move |conn| {
+            conn.query_row(
+                r#"
                     SELECT
                         id, title, artist_id, year, primary_release_id,
                         is_compilation,
@@ -1223,41 +1282,37 @@ impl Database {
                     FROM albums
                     WHERE id = ?
                     "#,
-                    params![album_id],
-                    |row| Ok(Self::row_to_album(row)),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+                params![album_id],
+                |row| Ok(Self::row_to_album(row)),
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Follow DbTrack.release_id -> DbRelease.
     /// FK navigation — row must exist. See method conventions above.
     pub async fn get_release_for_track(&self, track: &DbTrack) -> Result<DbRelease, DbError> {
         let release_id = track.release_id.clone();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT * FROM releases WHERE id = ?",
-                    params![release_id],
-                    |row| Ok(Self::row_to_release(row)),
-                )
-                .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT * FROM releases WHERE id = ?",
+                params![release_id],
+                |row| Ok(Self::row_to_release(row)),
+            )
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Follow DbRelease.album_id -> DbAlbum.
     /// FK navigation — row must exist. See method conventions above.
     pub async fn get_album_for_release(&self, release: &DbRelease) -> Result<DbAlbum, DbError> {
         let album_id = release.album_id.clone();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    r#"
+        self.call(move |conn| {
+            conn.query_row(
+                r#"
                     SELECT
                         id, title, artist_id, year, primary_release_id,
                         is_compilation,
@@ -1265,12 +1320,12 @@ impl Database {
                     FROM albums
                     WHERE id = ?
                     "#,
-                    params![album_id],
-                    |row| Ok(Self::row_to_album(row)),
-                )
-                .map_err(DbError::from)
-            })
-            .await
+                params![album_id],
+                |row| Ok(Self::row_to_album(row)),
+            )
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Get the raw album-detail aggregate: album + artists + releases
@@ -1337,34 +1392,29 @@ impl Database {
     /// Get all releases for an album
     pub async fn get_releases_for_album(&self, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
         let album_id = album_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt =
-                    conn.prepare("SELECT * FROM releases WHERE album_id = ? ORDER BY created_at")?;
-                let rows =
-                    stmt.query_map(params![album_id], |row| Ok(Self::row_to_release(row)))?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            let mut stmt =
+                conn.prepare("SELECT * FROM releases WHERE album_id = ? ORDER BY created_at")?;
+            let rows = stmt.query_map(params![album_id], |row| Ok(Self::row_to_release(row)))?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Find track by ID. Caller-provided ID — may not exist.
     pub async fn find_track_by_id(&self, track_id: &str) -> Result<Option<DbTrack>, DbError> {
         let track_id = track_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT * FROM tracks WHERE id = ?",
-                    params![track_id],
-                    row_to_track,
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT * FROM tracks WHERE id = ?",
+                params![track_id],
+                row_to_track,
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
     /// Find album_id for a release. Caller-provided ID — may not exist.
     pub async fn find_album_id_for_release(
@@ -1372,18 +1422,16 @@ impl Database {
         release_id: &str,
     ) -> Result<Option<String>, DbError> {
         let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT album_id FROM releases WHERE id = ?",
-                    params![release_id],
-                    |row| row.get::<_, String>("album_id"),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT album_id FROM releases WHERE id = ?",
+                params![release_id],
+                |row| row.get::<_, String>("album_id"),
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Enrich a list of queue entries with album/artist metadata for display.
@@ -1397,8 +1445,7 @@ impl Database {
         }
 
         let entries = entries.to_vec();
-        self.inner
-            .coven_db
+        self
             .call(move |conn| {
                 let track_ids: Vec<String> =
                     entries.iter().map(|e| e.track_id.clone()).collect();
@@ -1455,17 +1502,15 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<String>, DbError> {
         let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare(
-                    "SELECT id FROM tracks WHERE release_id = ? ORDER BY side, track_number, id",
-                )?;
-                let rows = stmt.query_map(params![release_id], |row| row.get::<_, String>("id"))?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT id FROM tracks WHERE release_id = ? ORDER BY side, track_number, id",
+            )?;
+            let rows = stmt.query_map(params![release_id], |row| row.get::<_, String>("id"))?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Every track id in the library, in a deterministic base order (the same
@@ -1473,16 +1518,14 @@ impl Database {
     /// match the per-release order — by release, then side, track number, id — so
     /// the library and a single release agree on what "source order" means.
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, DbError> {
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn
-                    .prepare("SELECT id FROM tracks ORDER BY release_id, side, track_number, id")?;
-                let rows = stmt.query_map([], |row| row.get::<_, String>("id"))?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            let mut stmt =
+                conn.prepare("SELECT id FROM tracks ORDER BY release_id, side, track_number, id")?;
+            let rows = stmt.query_map([], |row| row.get::<_, String>("id"))?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Return the subset of `track_ids` that exist in the tracks table.
@@ -1496,44 +1539,38 @@ impl Database {
             return Ok(Vec::new());
         }
         let track_ids = track_ids.to_vec();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let placeholders = track_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-                let query = format!("SELECT id FROM tracks WHERE id IN ({placeholders})");
-                let mut stmt = conn.prepare(&query)?;
-                let rows = stmt
-                    .query_map(coven::rusqlite::params_from_iter(track_ids.iter()), |row| {
-                        row.get::<_, String>("id")
-                    })?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            let placeholders = track_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            let query = format!("SELECT id FROM tracks WHERE id IN ({placeholders})");
+            let mut stmt = conn.prepare(&query)?;
+            let rows = stmt
+                .query_map(coven::rusqlite::params_from_iter(track_ids.iter()), |row| {
+                    row.get::<_, String>("id")
+                })?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Get tracks for a release
     pub async fn get_tracks_for_release(&self, release_id: &str) -> Result<Vec<DbTrack>, DbError> {
         let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare(
-                    "SELECT * FROM tracks WHERE release_id = ? ORDER BY side, track_number, id",
-                )?;
-                let rows = stmt.query_map(params![release_id], row_to_track)?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT * FROM tracks WHERE release_id = ? ORDER BY side, track_number, id",
+            )?;
+            let rows = stmt.query_map(params![release_id], row_to_track)?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
     /// Insert a new file record
     pub async fn insert_file(&self, file: &DbFile) -> Result<(), DbError> {
         let file = file.clone();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| insert_file_row(conn, &file, &reg))
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| insert_file_row(conn, &file, &reg))
             .await
     }
     /// Get every audio-format row for a release, joined through its tracks.
@@ -1545,49 +1582,43 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<DbAudioFormat>, DbError> {
         let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare(
-                    "SELECT af.* FROM audio_formats af \
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT af.* FROM audio_formats af \
                      JOIN tracks t ON t.id = af.track_id \
                      WHERE t.release_id = ?",
-                )?;
-                let rows = stmt.query_map(params![release_id], row_to_audio_format)?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+            )?;
+            let rows = stmt.query_map(params![release_id], row_to_audio_format)?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Get files for a release
     pub async fn get_files_for_release(&self, release_id: &str) -> Result<Vec<DbFile>, DbError> {
         let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare("SELECT * FROM release_files WHERE release_id = ?")?;
-                let rows = stmt.query_map(params![release_id], |row| Ok(Self::row_to_file(row)))?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            let mut stmt = conn.prepare("SELECT * FROM release_files WHERE release_id = ?")?;
+            let rows = stmt.query_map(params![release_id], |row| Ok(Self::row_to_file(row)))?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
     /// Find file by ID. Caller-provided ID — may not exist.
     pub async fn find_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, DbError> {
         let file_id = file_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT * FROM release_files WHERE id = ?",
-                    params![file_id],
-                    |row| Ok(Self::row_to_file(row)),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT * FROM release_files WHERE id = ?",
+                params![file_id],
+                |row| Ok(Self::row_to_file(row)),
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
     /// Find audio format by track ID. Caller-provided ID — may not exist.
     pub async fn find_audio_format_by_track_id(
@@ -1595,18 +1626,16 @@ impl Database {
         track_id: &str,
     ) -> Result<Option<DbAudioFormat>, DbError> {
         let track_id = track_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT * FROM audio_formats WHERE track_id = ?",
-                    params![track_id],
-                    row_to_audio_format,
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT * FROM audio_formats WHERE track_id = ?",
+                params![track_id],
+                row_to_audio_format,
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// All data needed to atomically finalize an import in a single transaction.
@@ -1623,7 +1652,7 @@ impl Database {
         album_artists: &[DbAlbumArtist],
         files: &[DbFile],
         audio_formats: &[DbAudioFormat],
-        library_image: Option<&DbLibraryImage>,
+        library_image: Option<(&DbLibraryImage, &[u8])>,
         primary_release_id: Option<(&str, &str)>, // (album_id, release_id)
         import_id: &str,
         identities: &[crate::import::ReleaseIdentity],
@@ -1648,7 +1677,7 @@ impl Database {
         let album_artists = album_artists.to_vec();
         let files = files.to_vec();
         let audio_formats = audio_formats.to_vec();
-        let library_image = library_image.cloned();
+        let library_image = library_image.map(|(image, bytes)| (image.clone(), bytes.to_vec()));
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let import_id = import_id.to_string();
         let identities = identities.to_vec();
@@ -1657,138 +1686,148 @@ impl Database {
         let now_dt = self.inner.clock.now();
         let now = now_dt.to_rfc3339();
         let now_ts = now_dt.timestamp();
-        // Every synced row this transaction inserts shares one HLC register stamp
-        // for `_updated_at`; wall-clock `now` stays for `created_at`.
-        let reg = self.register_stamp();
-
         self.inner
-            .coven_db
-            .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
+            .handle
+            .write(move |w| {
+                if let Some((image, bytes)) = &library_image {
+                    w.put_blob(
+                        image_namespace(&image.image_type),
+                        image.id.clone(),
+                        bytes.clone(),
+                    );
+                }
 
-                // 1. Insert album (if new)
-                if let Some(album) = &album {
-                    insert_album_row(&tx, album, &reg)?;
+                w.sql(move |sql| {
+                    let tx = sql.connection();
+                    // Every synced row this transaction inserts shares one HLC
+                    // register stamp for `_updated_at`; wall-clock `now` stays
+                    // for `created_at`.
+                    let reg = sql.stamp();
 
-                    // Album artists (only for new albums)
-                    for aa in &album_artists {
-                        insert_album_artist_row(&tx, aa, &reg)?;
+                    // 1. Insert album (if new)
+                    if let Some(album) = &album {
+                        insert_album_row(tx, album, &reg)?;
+
+                        // Album artists (only for new albums)
+                        for aa in &album_artists {
+                            insert_album_artist_row(tx, aa, &reg)?;
+                        }
                     }
-                }
 
-                // 2. Insert release
-                insert_release_row(&tx, &release, &reg)?;
+                    // 2. Insert release
+                    insert_release_row(tx, &release, &reg)?;
 
-                // 2b. Insert per-source identity rows. Empty for Unknown imports.
-                //     `release_identities` is uniquely keyed on `(release_id, source)`,
-                //     so a release never carries two rows for the same source.
-                for identity in &identities {
-                    insert_release_identity_row(&tx, &release.id, identity, &reg, &now)?;
-                }
+                    // 2b. Insert per-source identity rows. Empty for Unknown
+                    //     imports. `release_identities` is uniquely keyed on
+                    //     `(release_id, source)`, so a release never carries two
+                    //     rows for the same source.
+                    for identity in &identities {
+                        insert_release_identity_row(tx, &release.id, identity, &reg, &now)?;
+                    }
 
-                // 3. Insert tracks. DbTracks live inside `tracks_to_files`; their
-                //    `duration_ms` was populated by the mapper from the CUE sheet or
-                //    a standalone-file probe.
-                for track in &tracks {
-                    insert_track_row(&tx, track, &reg)?;
-                }
+                    // 3. Insert tracks. DbTracks live inside `tracks_to_files`;
+                    //    their `duration_ms` was populated by the mapper from
+                    //    the CUE sheet or a standalone-file probe.
+                    for track in &tracks {
+                        insert_track_row(tx, track, &reg)?;
+                    }
 
-                // 4. Insert track artists
-                for ta in &track_artists {
-                    insert_track_artist_row(&tx, ta, &reg)?;
-                }
+                    // 4. Insert track artists
+                    for ta in &track_artists {
+                        insert_track_artist_row(tx, ta, &reg)?;
+                    }
 
-                // 5. Insert release metadata
-                for meta in &metadata {
-                    insert_release_metadata_row(&tx, meta)?;
-                }
+                    // 5. Insert release metadata
+                    for meta in &metadata {
+                        insert_release_metadata_row(tx, meta)?;
+                    }
 
-                // 6. Insert files, and register each as a coven user-provided
-                //    external ref (the user's own file in place). Every import
-                //    lands Local — the files ARE the user's files at `local_path`,
-                //    tracked in coven's `local_blob_refs` so the locality-aware
-                //    read serves them and a later make-Remote uploads from them and
-                //    drops the refs. On a browsable home the readable cloud_path is
-                //    computed now (the album/release rows exist in this tx), so it
-                //    is ready when the gate flips; an opaque home leaves it NULL
-                //    (coven hashes the id). A populated key on a Local row is
-                //    harmless.
-                for file in &files {
-                    let cloud_path = if storage.is_browsable() {
-                        Some(resolve_audio_cloud_path(
-                            &tx,
-                            &file.release_id,
-                            &file.original_filename,
-                        )?)
-                    } else {
-                        None
-                    };
-                    let file = DbFile {
-                        cloud_path,
-                        ..file.clone()
-                    };
-                    insert_file_row(&tx, &file, &reg)?;
-                    let path = std::path::Path::new(&local_path).join(&file.original_filename);
-                    coven::Database::register_external_blob_on(
-                        &tx,
-                        &file.id,
-                        crate::sync::RELEASE_FILES_NAMESPACE,
-                        &path,
-                        file.file_size as u64,
-                    )?;
-                }
+                    // 6. Insert files, and register each as a coven
+                    //    user-provided external ref (the user's own file in
+                    //    place). Every import lands Local — the files ARE the
+                    //    user's files at `local_path`, tracked in coven's
+                    //    `local_blob_refs` so the locality-aware read serves
+                    //    them and a later make-Remote uploads from them and
+                    //    drops the refs. On a browsable home the readable
+                    //    cloud_path is computed now (the album/release rows
+                    //    exist in this tx), so it is ready when the gate flips;
+                    //    an opaque home leaves it NULL (coven hashes the id).
+                    //    A populated key on a Local row is harmless.
+                    for file in &files {
+                        let cloud_path = if storage.is_browsable() {
+                            Some(resolve_audio_cloud_path(
+                                tx,
+                                &file.release_id,
+                                &file.original_filename,
+                            )?)
+                        } else {
+                            None
+                        };
+                        let file = DbFile {
+                            cloud_path,
+                            ..file.clone()
+                        };
+                        insert_file_row(tx, &file, &reg)?;
+                        let path = std::path::Path::new(&local_path).join(&file.original_filename);
+                        register_external_blob_on(
+                            tx,
+                            &file.id,
+                            crate::sync::RELEASE_FILES_NAMESPACE,
+                            &path,
+                            file.file_size as u64,
+                        )?;
+                    }
 
-                // 7. Insert audio formats
-                for af in &audio_formats {
-                    insert_audio_format_row(&tx, af, &reg)?;
-                }
+                    // 7. Insert audio formats
+                    for af in &audio_formats {
+                        insert_audio_format_row(tx, af, &reg)?;
+                    }
 
-                // 8. Write the cover row (its bytes were stored in coven's local
-                //    store by the import worker). The cover is a host-provided
-                //    asset of its release: on a browsable home its readable
-                //    cloud_path (`{album}/{release}/cover.{ext}`) is computed now,
-                //    ready when the gate flips; an opaque home leaves it NULL
-                //    (hashed). The cover rides the release's gate, so a Local
-                //    release's cover stays private until it is made Remote.
-                if let Some(image) = &library_image {
-                    let cloud_path = if storage.is_browsable() {
-                        Some(resolve_cover_cloud_path(
-                            &tx,
-                            &image.id,
-                            &image.content_type,
-                        )?)
-                    } else {
-                        None
-                    };
-                    let image = DbLibraryImage {
-                        cloud_path,
-                        ..image.clone()
-                    };
-                    upsert_library_image_row(&tx, &image, &reg)?;
-                }
+                    // 8. Write the cover row and its host-provided blob in one
+                    //    coven write. On a browsable home its readable cloud_path
+                    //    (`{album}/{release}/cover.{ext}`) is computed now,
+                    //    ready when the gate flips; an opaque home leaves it
+                    //    NULL (hashed). The cover rides the release's gate, so a
+                    //    Local release's cover stays private until it is made
+                    //    Remote.
+                    if let Some((image, _)) = &library_image {
+                        let cloud_path = if storage.is_browsable() {
+                            Some(resolve_cover_cloud_path(tx, &image.id, &image.content_type)?)
+                        } else {
+                            None
+                        };
+                        let image = DbLibraryImage {
+                            cloud_path,
+                            ..image.clone()
+                        };
+                        upsert_library_image_row(tx, &image, &reg)?;
+                    }
 
-                // 9. Set album primary_release_id
-                if let Some((album_id, release_id)) = &primary_release_id {
+                    // 9. Set album primary_release_id
+                    if let Some((album_id, release_id)) = &primary_release_id {
+                        tx.execute(
+                            "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
+                            params![release_id, reg, album_id],
+                        )?;
+                    }
+
+                    // 10. Link import to release and mark complete
                     tx.execute(
-                        "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
-                        params![release_id, reg, album_id],
+                        "UPDATE imports SET release_id = ?, status = ?, updated_at = ? WHERE id = ?",
+                        params![
+                            release.id,
+                            ImportOperationStatus::Complete.as_str(),
+                            now_ts,
+                            import_id,
+                        ],
                     )?;
-                }
 
-                // 10. Link import to release and mark complete
-                tx.execute(
-                    "UPDATE imports SET release_id = ?, status = ?, updated_at = ? WHERE id = ?",
-                    params![
-                        release.id,
-                        ImportOperationStatus::Complete.as_str(),
-                        now_ts,
-                        import_id,
-                    ],
-                )?;
-
-                tx.commit().map_err(DbError::from)
+                    Ok(())
+                })?;
+                Ok(())
             })
-            .await?;
+            .await
+            .map_err(Self::coven_error)?;
         Ok(())
     }
 
@@ -1801,18 +1840,16 @@ impl Database {
     /// - Import records referencing this release (cleared before delete)
     pub async fn delete_release(&self, release_id: &str) -> Result<(), DbError> {
         let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
-                tx.execute(
-                    "UPDATE imports SET release_id = NULL WHERE release_id = ?",
-                    params![release_id],
-                )?;
-                tx.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
-                tx.commit().map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            let tx = conn;
+            tx.execute(
+                "UPDATE imports SET release_id = NULL WHERE release_id = ?",
+                params![release_id],
+            )?;
+            tx.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
+            Ok(())
+        })
+        .await
     }
     /// Delete an album by ID
     ///
@@ -1824,16 +1861,15 @@ impl Database {
     /// - Import records referencing this album's releases (cleared before delete)
     pub async fn delete_album(&self, album_id: &str) -> Result<(), DbError> {
         let album_id = album_id.to_string();
-        self.inner
-            .coven_db
+        self
             .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
+                let tx = conn;
                 tx.execute(
                     "UPDATE imports SET release_id = NULL WHERE release_id IN (SELECT id FROM releases WHERE album_id = ?)",
                     params![album_id],
                 )?;
                 tx.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
-                tx.commit().map_err(DbError::from)
+                Ok(())
             })
             .await
     }
@@ -1849,16 +1885,14 @@ impl Database {
         let release_id = release_id.to_string();
         let identities = identities.to_vec();
         let now = self.inner.clock.now().to_rfc3339();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                for identity in &identities {
-                    insert_release_identity_row(conn, &release_id, identity, &reg, &now)?;
-                }
-                Ok(())
-            })
-            .await
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| {
+            for identity in &identities {
+                insert_release_identity_row(conn, &release_id, identity, &reg, &now)?;
+            }
+            Ok(())
+        })
+        .await
     }
 
     /// All identity rows for a release. Empty if the release has no
@@ -1868,44 +1902,42 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<crate::import::ReleaseIdentity>, DbError> {
         let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare(
-                    r#"
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(
+                r#"
                         SELECT source, source_group_id, source_release_id
                         FROM release_identities
                         WHERE release_id = ?
                         "#,
-                )?;
-                let raw = stmt
-                    .query_map(params![release_id], |row| {
-                        Ok((
-                            row.get::<_, String>("source")?,
-                            row.get::<_, String>("source_group_id")?,
-                            row.get::<_, Option<String>>("source_release_id")?,
-                        ))
-                    })?
-                    .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+            )?;
+            let raw = stmt
+                .query_map(params![release_id], |row| {
+                    Ok((
+                        row.get::<_, String>("source")?,
+                        row.get::<_, String>("source_group_id")?,
+                        row.get::<_, Option<String>>("source_release_id")?,
+                    ))
+                })?
+                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
 
-                let mut identities = Vec::with_capacity(raw.len());
-                for (source_str, source_group_id, source_release_id) in raw {
-                    let Ok(source) = crate::import::MetadataSource::from_str(&source_str) else {
-                        tracing::warn!(
-                            %release_id, source = %source_str,
-                            "skipping release_identities row with unknown source"
-                        );
-                        continue;
-                    };
-                    identities.push(crate::import::ReleaseIdentity {
-                        source,
-                        source_group_id,
-                        source_release_id,
-                    });
-                }
-                Ok(identities)
-            })
-            .await
+            let mut identities = Vec::with_capacity(raw.len());
+            for (source_str, source_group_id, source_release_id) in raw {
+                let Ok(source) = crate::import::MetadataSource::from_str(&source_str) else {
+                    tracing::warn!(
+                        %release_id, source = %source_str,
+                        "skipping release_identities row with unknown source"
+                    );
+                    continue;
+                };
+                identities.push(crate::import::ReleaseIdentity {
+                    source,
+                    source_group_id,
+                    source_release_id,
+                });
+            }
+            Ok(identities)
+        })
+        .await
     }
 
     /// Cached `release_metadata` rows for a release, keyed by `source`.
@@ -1920,21 +1952,19 @@ impl Database {
         release_id: &str,
     ) -> Result<HashMap<String, String>, DbError> {
         let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt =
-                    conn.prepare("SELECT source, json FROM release_metadata WHERE release_id = ?")?;
-                let rows = stmt.query_map(params![release_id], |row| {
-                    Ok((
-                        row.get::<_, String>("source")?,
-                        row.get::<_, String>("json")?,
-                    ))
-                })?;
-                rows.collect::<coven::rusqlite::Result<HashMap<_, _>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            let mut stmt =
+                conn.prepare("SELECT source, json FROM release_metadata WHERE release_id = ?")?;
+            let rows = stmt.query_map(params![release_id], |row| {
+                Ok((
+                    row.get::<_, String>("source")?,
+                    row.get::<_, String>("json")?,
+                ))
+            })?;
+            rows.collect::<coven::rusqlite::Result<HashMap<_, _>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Insert a single `release_metadata` row. Used by tests to seed cached
@@ -1942,9 +1972,7 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_release_metadata(&self, meta: &DbReleaseMetadata) -> Result<(), DbError> {
         let meta = meta.clone();
-        self.inner
-            .coven_db
-            .call(move |conn| insert_release_metadata_row(conn, &meta))
+        self.call(move |conn| insert_release_metadata_row(conn, &meta))
             .await
     }
 
@@ -1973,16 +2001,14 @@ impl Database {
             return Ok(None);
         }
 
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let placeholders = exact_pairs
-                    .iter()
-                    .map(|_| "(?, ?)")
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let sql = format!(
-                    r#"
+        self.call(move |conn| {
+            let placeholders = exact_pairs
+                .iter()
+                .map(|_| "(?, ?)")
+                .collect::<Vec<_>>()
+                .join(", ");
+            let sql = format!(
+                r#"
                     SELECT
                         a.id, a.title, a.artist_id, a.year, a.primary_release_id,
                         a.is_compilation, a.created_at
@@ -1992,21 +2018,21 @@ impl Database {
                     WHERE (ri.source, ri.source_release_id) IN ({placeholders})
                     LIMIT 1
                     "#,
-                );
-                let mut binds: Vec<&str> = Vec::with_capacity(exact_pairs.len() * 2);
-                for (source, release_id) in &exact_pairs {
-                    binds.push(source);
-                    binds.push(release_id);
-                }
-                conn.query_row(
-                    &sql,
-                    coven::rusqlite::params_from_iter(binds.iter()),
-                    |row| Ok(Self::row_to_album(row)),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+            );
+            let mut binds: Vec<&str> = Vec::with_capacity(exact_pairs.len() * 2);
+            for (source, release_id) in &exact_pairs {
+                binds.push(source);
+                binds.push(release_id);
+            }
+            conn.query_row(
+                &sql,
+                coven::rusqlite::params_from_iter(binds.iter()),
+                |row| Ok(Self::row_to_album(row)),
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Look up an album by `release_identities` group rows. Returns the
@@ -2026,37 +2052,35 @@ impl Database {
             .map(|id| (id.source.as_str().to_string(), id.source_group_id.clone()))
             .collect();
 
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let placeholders = pairs
-                    .iter()
-                    .map(|_| "(?, ?)")
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let sql = format!(
-                    r#"
+        self.call(move |conn| {
+            let placeholders = pairs
+                .iter()
+                .map(|_| "(?, ?)")
+                .collect::<Vec<_>>()
+                .join(", ");
+            let sql = format!(
+                r#"
                     SELECT r.album_id
                     FROM releases r
                     JOIN release_identities ri ON ri.release_id = r.id
                     WHERE (ri.source, ri.source_group_id) IN ({placeholders})
                     LIMIT 1
                     "#,
-                );
-                let mut binds: Vec<&str> = Vec::with_capacity(pairs.len() * 2);
-                for (source, group_id) in &pairs {
-                    binds.push(source);
-                    binds.push(group_id);
-                }
-                conn.query_row(
-                    &sql,
-                    coven::rusqlite::params_from_iter(binds.iter()),
-                    |row| row.get::<_, String>("album_id"),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+            );
+            let mut binds: Vec<&str> = Vec::with_capacity(pairs.len() * 2);
+            for (source, group_id) in &pairs {
+                binds.push(source);
+                binds.push(group_id);
+            }
+            conn.query_row(
+                &sql,
+                coven::rusqlite::params_from_iter(binds.iter()),
+                |row| row.get::<_, String>("album_id"),
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Same as `find_album_by_identity_group`, but ignores rows belonging to
@@ -2078,16 +2102,14 @@ impl Database {
             .collect();
         let exclude_release_id = exclude_release_id.to_string();
 
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let placeholders = pairs
-                    .iter()
-                    .map(|_| "(?, ?)")
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let sql = format!(
-                    r#"
+        self.call(move |conn| {
+            let placeholders = pairs
+                .iter()
+                .map(|_| "(?, ?)")
+                .collect::<Vec<_>>()
+                .join(", ");
+            let sql = format!(
+                r#"
                     SELECT r.album_id
                     FROM releases r
                     JOIN release_identities ri ON ri.release_id = r.id
@@ -2095,22 +2117,22 @@ impl Database {
                       AND ri.release_id != ?
                     LIMIT 1
                     "#,
-                );
-                let mut binds: Vec<&str> = Vec::with_capacity(pairs.len() * 2 + 1);
-                for (source, group_id) in &pairs {
-                    binds.push(source);
-                    binds.push(group_id);
-                }
-                binds.push(&exclude_release_id);
-                conn.query_row(
-                    &sql,
-                    coven::rusqlite::params_from_iter(binds.iter()),
-                    |row| row.get::<_, String>("album_id"),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+            );
+            let mut binds: Vec<&str> = Vec::with_capacity(pairs.len() * 2 + 1);
+            for (source, group_id) in &pairs {
+                binds.push(source);
+                binds.push(group_id);
+            }
+            binds.push(&exclude_release_id);
+            conn.query_row(
+                &sql,
+                coven::rusqlite::params_from_iter(binds.iter()),
+                |row| row.get::<_, String>("album_id"),
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Replace `release_identities` rows for `release_id`, update the
@@ -2166,18 +2188,17 @@ impl Database {
         let new_metadata = new_metadata.to_vec();
         let now = self.inner.clock.now().to_rfc3339();
         // One HLC register stamp for every synced row this transaction touches.
-        let reg = self.register_stamp();
+        let reg = self.register_stamp().await?;
 
-        self.inner
-            .coven_db
+        self
             .call(move |conn| {
-                let tx = conn.unchecked_transaction()?;
+                let tx = conn;
 
                 // 1. Insert the destination album (if brand-new). Must come
                 //    before the release UPDATE so the FK on `releases.album_id`
                 //    points at an existing row.
                 if let Some(album) = &new_album {
-                    insert_album_row(&tx, album, &reg)?;
+                    insert_album_row(tx, album, &reg)?;
 
                     // Copy album_artists from the source. Each row gets a fresh
                     // PK (generated in Rust to match the rest of the codebase)
@@ -2223,7 +2244,7 @@ impl Database {
                     params![release_id],
                 )?;
                 for identity in &new_identities {
-                    insert_release_identity_row(&tx, &release_id, identity, &reg, &now)?;
+                    insert_release_identity_row(tx, &release_id, identity, &reg, &now)?;
                 }
 
                 // 3. Update release: album, metadata source.
@@ -2333,7 +2354,6 @@ impl Database {
                     }
                 }
 
-                tx.commit()?;
                 Ok(SetIdentityOutcome {
                     source_album_deleted,
                 })
@@ -2344,11 +2364,35 @@ impl Database {
     /// Upsert a library image record
     pub async fn upsert_library_image(&self, image: &DbLibraryImage) -> Result<(), DbError> {
         let image = image.clone();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| upsert_library_image_row(conn, &image, &reg))
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| upsert_library_image_row(conn, &image, &reg))
             .await
+    }
+
+    /// Write a host-provided image blob and its `covers`/`artist_images` row as
+    /// one coven batch.
+    pub async fn write_library_image_blob(
+        &self,
+        image: &DbLibraryImage,
+        bytes: &[u8],
+    ) -> Result<(), DbError> {
+        let image = image.clone();
+        let namespace = image_namespace(&image.image_type).to_string();
+        let id = image.id.clone();
+        let bytes = bytes.to_vec();
+        self.inner
+            .handle
+            .write(move |w| {
+                w.put_blob(namespace, id, bytes);
+                w.sql(move |sql| {
+                    let reg = sql.stamp();
+                    upsert_library_image_row(sql.connection(), &image, &reg)
+                        .map_err(CovenError::from)
+                })?;
+                Ok(())
+            })
+            .await
+            .map_err(Self::coven_error)
     }
 
     /// Find a host-provided image (cover / artist image) by its subject id. The
@@ -2363,16 +2407,14 @@ impl Database {
         let image_type = image_type.clone();
         let table = image_table(&image_type);
         let sql = format!("SELECT * FROM {table} WHERE id = ?");
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(&sql, params![id], |row| {
-                    Ok(row_to_library_image(row, image_type.clone()))
-                })
-                .optional()
-                .map_err(DbError::from)
+        self.call(move |conn| {
+            conn.query_row(&sql, params![id], |row| {
+                Ok(row_to_library_image(row, image_type.clone()))
             })
-            .await
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// The `_updated_at` version of each given release's `covers` row, for the ids
@@ -2388,25 +2430,21 @@ impl Database {
             return Ok(HashMap::new());
         }
         let ids = release_ids.to_vec();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let placeholders = (0..ids.len()).map(|_| "?").collect::<Vec<_>>().join(",");
-                let sql =
-                    format!("SELECT id, _updated_at FROM covers WHERE id IN ({placeholders})");
-                let mut stmt = conn.prepare(&sql)?;
-                let rows = stmt
-                    .query_map(coven::rusqlite::params_from_iter(ids.iter()), |row| {
-                        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-                    })?;
-                let mut map = HashMap::new();
-                for row in rows {
-                    let (id, version) = row?;
-                    map.insert(id, version);
-                }
-                Ok(map)
-            })
-            .await
+        self.call(move |conn| {
+            let placeholders = (0..ids.len()).map(|_| "?").collect::<Vec<_>>().join(",");
+            let sql = format!("SELECT id, _updated_at FROM covers WHERE id IN ({placeholders})");
+            let mut stmt = conn.prepare(&sql)?;
+            let rows = stmt.query_map(coven::rusqlite::params_from_iter(ids.iter()), |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?;
+            let mut map = HashMap::new();
+            for row in rows {
+                let (id, version) = row?;
+                map.insert(id, version);
+            }
+            Ok(map)
+        })
+        .await
     }
 
     /// The `_updated_at` version of one release's `covers` row, or `None` when it
@@ -2427,14 +2465,12 @@ impl Database {
         let id = id.to_string();
         let table = image_table(image_type);
         let sql = format!("DELETE FROM {table} WHERE id = ?");
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute(&sql, params![id])
-                    .map(|_| ())
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.execute(&sql, params![id])
+                .map(|_| ())
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Update album's primary_release_id
@@ -2444,18 +2480,16 @@ impl Database {
         primary_release_id: &str,
     ) -> Result<(), DbError> {
         let (album_id, primary_release_id) = (album_id.to_string(), primary_release_id.to_string());
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute(
-                    "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
-                    params![primary_release_id, reg, album_id],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| {
+            conn.execute(
+                "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
+                params![primary_release_id, reg, album_id],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Clear an album's primary_release_id so summary queries fall back
@@ -2463,146 +2497,136 @@ impl Database {
     /// that primary_release_id pointed at.
     pub async fn clear_album_primary_release(&self, album_id: &str) -> Result<(), DbError> {
         let album_id = album_id.to_string();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute(
-                    "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
-                    params![reg, album_id],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| {
+            conn.execute(
+                "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
+                params![reg, album_id],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
     /// Find release by ID. Caller-provided ID — may not exist.
     pub async fn find_release_by_id(&self, release_id: &str) -> Result<Option<DbRelease>, DbError> {
         let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT * FROM releases WHERE id = ?",
-                    params![release_id],
-                    |row| Ok(Self::row_to_release(row)),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT * FROM releases WHERE id = ?",
+                params![release_id],
+                |row| Ok(Self::row_to_release(row)),
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Write the single device-local `playback_state` row (id = 'current'),
     /// replacing any existing one. Never synced.
     pub async fn save_playback_state(&self, state: &DbPlaybackState) -> Result<(), DbError> {
         let state = state.clone();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                // Flatten the context substruct back to the table's three
-                // nullable columns: all three NULL when no context is playing.
-                let (source, shuffle_seed, cursor) = match &state.context {
-                    Some(ctx) => (Some(&ctx.source), ctx.shuffle_seed, Some(ctx.cursor)),
-                    None => (None, None, None),
-                };
-                conn.execute(
-                    "INSERT OR REPLACE INTO playback_state \
+        self.call(move |conn| {
+            // Flatten the context substruct back to the table's three
+            // nullable columns: all three NULL when no context is playing.
+            let (source, shuffle_seed, cursor) = match &state.context {
+                Some(ctx) => (Some(&ctx.source), ctx.shuffle_seed, Some(ctx.cursor)),
+                None => (None, None, None),
+            };
+            conn.execute(
+                "INSERT OR REPLACE INTO playback_state \
                      (id, source, shuffle_seed, cursor, manual, repeat, \
                       current_track_id, position_ms, volume, is_muted) \
                      VALUES ('current', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    params![
-                        source,
-                        shuffle_seed,
-                        cursor,
-                        state.manual,
-                        state.repeat,
-                        state.current_track_id,
-                        state.position_ms,
-                        state.volume,
-                        state.is_muted,
-                    ],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
+                params![
+                    source,
+                    shuffle_seed,
+                    cursor,
+                    state.manual,
+                    state.repeat,
+                    state.current_track_id,
+                    state.position_ms,
+                    state.volume,
+                    state.is_muted,
+                ],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Read the device-local `playback_state` row, or `None` if none is stored
     /// (or if the row is corrupt — the resume cache is discarded at this
     /// boundary so no caller downstream sees a malformed context).
     pub async fn load_playback_state(&self) -> Result<Option<DbPlaybackState>, DbError> {
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                // The closure yields `Option<DbPlaybackState>`: `None` is a corrupt
-                // row that discards the whole cache, distinct from the outer `None`
-                // for no row at all. The outer `.optional()` then flattens both to
-                // a single "no resume state" answer.
-                conn.query_row(
-                    "SELECT source, shuffle_seed, cursor, manual, repeat, \
+        self.call(move |conn| {
+            // The closure yields `Option<DbPlaybackState>`: `None` is a corrupt
+            // row that discards the whole cache, distinct from the outer `None`
+            // for no row at all. The outer `.optional()` then flattens both to
+            // a single "no resume state" answer.
+            conn.query_row(
+                "SELECT source, shuffle_seed, cursor, manual, repeat, \
                      current_track_id, position_ms, volume, is_muted \
                      FROM playback_state WHERE id = 'current'",
-                    [],
-                    |row| {
-                        // `source` and `cursor` are written together (with
-                        // `shuffle_seed`, NULL = sequential): both present is a
-                        // context, both absent is none, exactly one present is a
-                        // corrupt row.
-                        let source: Option<String> = row.get("source")?;
-                        let shuffle_seed: Option<i64> = row.get("shuffle_seed")?;
-                        let cursor: Option<i64> = row.get("cursor")?;
-                        let context = match (source, cursor) {
-                            (Some(source), Some(cursor)) => Some(DbPlaybackContext {
-                                source,
-                                shuffle_seed,
-                                cursor,
-                            }),
-                            (None, None) => None,
-                            (Some(source), None) => {
-                                warn!(
-                                    "discarding the playback resume cache: source {source:?} \
+                [],
+                |row| {
+                    // `source` and `cursor` are written together (with
+                    // `shuffle_seed`, NULL = sequential): both present is a
+                    // context, both absent is none, exactly one present is a
+                    // corrupt row.
+                    let source: Option<String> = row.get("source")?;
+                    let shuffle_seed: Option<i64> = row.get("shuffle_seed")?;
+                    let cursor: Option<i64> = row.get("cursor")?;
+                    let context = match (source, cursor) {
+                        (Some(source), Some(cursor)) => Some(DbPlaybackContext {
+                            source,
+                            shuffle_seed,
+                            cursor,
+                        }),
+                        (None, None) => None,
+                        (Some(source), None) => {
+                            warn!(
+                                "discarding the playback resume cache: source {source:?} \
                                      present but cursor is NULL"
-                                );
-                                return Ok(None);
-                            }
-                            (None, Some(cursor)) => {
-                                warn!(
-                                    "discarding the playback resume cache: cursor {cursor} \
+                            );
+                            return Ok(None);
+                        }
+                        (None, Some(cursor)) => {
+                            warn!(
+                                "discarding the playback resume cache: cursor {cursor} \
                                      present but source is NULL"
-                                );
-                                return Ok(None);
-                            }
-                        };
-                        Ok(Some(DbPlaybackState {
-                            context,
-                            manual: row.get("manual")?,
-                            repeat: row.get("repeat")?,
-                            current_track_id: row.get("current_track_id")?,
-                            position_ms: row.get("position_ms")?,
-                            volume: row.get("volume")?,
-                            is_muted: row.get("is_muted")?,
-                        }))
-                    },
-                )
-                .optional()
-                .map(Option::flatten)
-                .map_err(DbError::from)
-            })
-            .await
+                            );
+                            return Ok(None);
+                        }
+                    };
+                    Ok(Some(DbPlaybackState {
+                        context,
+                        manual: row.get("manual")?,
+                        repeat: row.get("repeat")?,
+                        current_track_id: row.get("current_track_id")?,
+                        position_ms: row.get("position_ms")?,
+                        volume: row.get("volume")?,
+                        is_muted: row.get("is_muted")?,
+                    }))
+                },
+            )
+            .optional()
+            .map(Option::flatten)
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Delete the device-local `playback_state` row (playback stopped).
     pub async fn clear_playback_state(&self) -> Result<(), DbError> {
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute("DELETE FROM playback_state", [])
-                    .map(|_| ())
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.execute("DELETE FROM playback_state", [])
+                .map(|_| ())
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Test-only: flip a release's `remote` gate column directly (bumping
@@ -2611,18 +2635,16 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn set_remote_for_test(&self, release_id: &str, remote: bool) -> Result<(), DbError> {
         let release_id = release_id.to_string();
-        let reg = self.register_stamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute(
-                    "UPDATE releases SET remote = ?, _updated_at = ? WHERE id = ?",
-                    params![remote, reg, release_id],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| {
+            conn.execute(
+                "UPDATE releases SET remote = ?, _updated_at = ? WHERE id = ?",
+                params![remote, reg, release_id],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Test-only: register each of a release's files as a coven user-provided
@@ -2638,15 +2660,13 @@ impl Database {
         let files = self.get_files_for_release(release_id).await?;
         for file in &files {
             let path = std::path::Path::new(folder).join(&file.original_filename);
-            self.inner
-                .coven_db
-                .register_external_blob(
-                    &file.id,
-                    crate::sync::RELEASE_FILES_NAMESPACE,
-                    &path,
-                    file.file_size as u64,
-                )
-                .await?;
+            self.register_external_blob(
+                &file.id,
+                crate::sync::RELEASE_FILES_NAMESPACE,
+                &path,
+                file.file_size as u64,
+            )
+            .await?;
         }
         Ok(())
     }
@@ -2654,20 +2674,18 @@ impl Database {
     /// Get the release that owns a given file.
     pub async fn find_release_for_file(&self, file_id: &str) -> Result<Option<DbRelease>, DbError> {
         let file_id = file_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT r.* FROM releases r \
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT r.* FROM releases r \
                      JOIN release_files rf ON rf.release_id = r.id \
                      WHERE rf.id = ?",
-                    params![file_id],
-                    |row| Ok(Self::row_to_release(row)),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+                params![file_id],
+                |row| Ok(Self::row_to_release(row)),
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Count pending upload outbox entries for files belonging to a release.
@@ -2676,92 +2694,83 @@ impl Database {
         release_id: &str,
     ) -> Result<i64, DbError> {
         let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT COUNT(*) FROM cloud_outbox co \
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT COUNT(*) FROM cloud_outbox co \
                      JOIN release_files rf ON rf.id = co.file_id \
                      WHERE rf.release_id = ? AND co.operation = 'upload'",
-                    params![release_id],
-                    |row| row.get::<_, i64>(0),
-                )
-                .map_err(DbError::from)
-            })
-            .await
+                params![release_id],
+                |row| row.get::<_, i64>(0),
+            )
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Check if any upload outbox entries remain for files belonging to a release.
     pub async fn has_pending_uploads_for_release(&self, release_id: &str) -> Result<bool, DbError> {
         let release_id = release_id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT 1 FROM cloud_outbox co \
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT 1 FROM cloud_outbox co \
                      JOIN release_files rf ON rf.id = co.file_id \
                      WHERE rf.release_id = ? AND co.operation = 'upload' \
                      LIMIT 1",
-                    params![release_id],
-                    |_| Ok(()),
-                )
-                .optional()
-                .map(|o| o.is_some())
-                .map_err(DbError::from)
-            })
-            .await
+                params![release_id],
+                |_| Ok(()),
+            )
+            .optional()
+            .map(|o| o.is_some())
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Insert a new import operation record
     pub async fn insert_import(&self, import: &DbImport) -> Result<(), DbError> {
         let import = import.clone();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute(
-                    r#"
+        self.call(move |conn| {
+            conn.execute(
+                r#"
                     INSERT INTO imports (
                         id, status, release_id, album_title, artist_name,
                         folder_path, created_at, updated_at, error_message
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     "#,
-                    params![
-                        import.id,
-                        import.status.as_str(),
-                        import.release_id,
-                        import.album_title,
-                        import.artist_name,
-                        import.folder_path,
-                        import.created_at,
-                        import.updated_at,
-                        import.error_message,
-                    ],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
+                params![
+                    import.id,
+                    import.status.as_str(),
+                    import.release_id,
+                    import.album_title,
+                    import.artist_name,
+                    import.folder_path,
+                    import.created_at,
+                    import.updated_at,
+                    import.error_message,
+                ],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
     /// Find import by ID. Caller-provided ID — may not exist.
     pub async fn find_import_by_id(&self, id: &str) -> Result<Option<DbImport>, DbError> {
         let id = id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT * FROM imports WHERE id = ?",
-                    params![id],
-                    row_to_import,
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT * FROM imports WHERE id = ?",
+                params![id],
+                row_to_import,
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
     }
     /// Get all active (non-complete, non-failed) imports
     pub async fn get_active_imports(&self) -> Result<Vec<DbImport>, DbError> {
-        self.inner
-            .coven_db
+        self
             .call(move |conn| {
                 let mut stmt = conn
                     .prepare(
@@ -2782,65 +2791,57 @@ impl Database {
         let id = id.to_string();
         let status = status.as_str().to_string();
         let now = self.inner.clock.now().timestamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute(
-                    "UPDATE imports SET status = ?, updated_at = ? WHERE id = ?",
-                    params![status, now, id],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.execute(
+                "UPDATE imports SET status = ?, updated_at = ? WHERE id = ?",
+                params![status, now, id],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
     /// Update import with error message and set status to Failed
     pub async fn update_import_error(&self, id: &str, error: &str) -> Result<(), DbError> {
         let (id, error) = (id.to_string(), error.to_string());
         let now = self.inner.clock.now().timestamp();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute(
-                    "UPDATE imports SET status = ?, error_message = ?, updated_at = ? WHERE id = ?",
-                    params![ImportOperationStatus::Failed.as_str(), error, now, id],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.execute(
+                "UPDATE imports SET status = ?, error_message = ?, updated_at = ? WHERE id = ?",
+                params![ImportOperationStatus::Failed.as_str(), error, now, id],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
     /// Delete an import record from the database.
     /// Used by UI to dismiss stuck imports so they don't reappear after restart.
     pub async fn delete_import(&self, id: &str) -> Result<(), DbError> {
         let id = id.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.execute("DELETE FROM imports WHERE id = ?", params![id])
-                    .map(|_| ())
-                    .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.execute("DELETE FROM imports WHERE id = ?", params![id])
+                .map(|_| ())
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Whether a release's source folder name was already imported.
     /// Used for duplicate detection when scanning folders.
     pub async fn is_source_folder_name_imported(&self, name: &str) -> Result<bool, DbError> {
         let name = name.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT 1 FROM releases WHERE source_folder_name = ? LIMIT 1",
-                    params![name],
-                    |_| Ok(()),
-                )
-                .optional()
-                .map(|o| o.is_some())
-                .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT 1 FROM releases WHERE source_folder_name = ? LIMIT 1",
+                params![name],
+                |_| Ok(()),
+            )
+            .optional()
+            .map(|o| o.is_some())
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Release ids whose stored `content_hash` equals `hash`. Normally zero or
@@ -2848,16 +2849,14 @@ impl Database {
     /// matches so a re-import sweeps any pre-existing duplicates.
     pub async fn release_ids_for_content_hash(&self, hash: &str) -> Result<Vec<String>, DbError> {
         let hash = hash.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare("SELECT id FROM releases WHERE content_hash = ?")?;
-                let ids = stmt
-                    .query_map(params![hash], |row| row.get::<_, String>(0))?
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(ids)
-            })
-            .await
+        self.call(move |conn| {
+            let mut stmt = conn.prepare("SELECT id FROM releases WHERE content_hash = ?")?;
+            let ids = stmt
+                .query_map(params![hash], |row| row.get::<_, String>(0))?
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(ids)
+        })
+        .await
     }
 
     /// The album id of a release stored from the file structure that hashes to
@@ -2867,19 +2866,17 @@ impl Database {
     /// to mark a scanned folder as already added.
     pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, DbError> {
         let hash = hash.to_string();
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT 1 FROM releases WHERE content_hash = ? LIMIT 1",
-                    params![hash],
-                    |_| Ok(()),
-                )
-                .optional()
-                .map(|o| o.is_some())
-                .map_err(DbError::from)
-            })
-            .await
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT 1 FROM releases WHERE content_hash = ? LIMIT 1",
+                params![hash],
+                |_| Ok(()),
+            )
+            .optional()
+            .map(|o| o.is_some())
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Check, for each candidate in `checks`, whether the library already
@@ -2918,21 +2915,19 @@ impl Database {
             })
             .collect();
 
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut statuses = Vec::with_capacity(checks.len());
+        self.call(move |conn| {
+            let mut statuses = Vec::with_capacity(checks.len());
 
-                for (source, release_id, group_id) in &checks {
-                    let mut release_in_library = false;
-                    let mut album_in_library = false;
-                    let mut album_title: Option<String> = None;
-                    let mut album_id: Option<String> = None;
+            for (source, release_id, group_id) in &checks {
+                let mut release_in_library = false;
+                let mut album_in_library = false;
+                let mut album_title: Option<String> = None;
+                let mut album_id: Option<String> = None;
 
-                    // Per-pressing match — exact identity at the specific release.
-                    let row = conn
-                        .query_row(
-                            r#"
+                // Per-pressing match — exact identity at the specific release.
+                let row = conn
+                    .query_row(
+                        r#"
                             SELECT
                                 a.id, a.title, a.artist_id, a.year, a.primary_release_id,
                                 a.is_compilation, a.created_at
@@ -2942,22 +2937,22 @@ impl Database {
                             WHERE ri.source = ? AND ri.source_release_id = ?
                             LIMIT 1
                             "#,
-                            params![source, release_id],
-                            |row| Ok(Self::row_to_album(row)),
-                        )
-                        .optional()?;
+                        params![source, release_id],
+                        |row| Ok(Self::row_to_album(row)),
+                    )
+                    .optional()?;
 
-                    if let Some(album) = row {
-                        release_in_library = true;
-                        album_in_library = true;
-                        album_title = Some(album.title);
-                        album_id = Some(album.id);
-                    } else if let Some(group_id) = group_id {
-                        // Album-level match — any release in the library shares
-                        // the candidate's group identity.
-                        let row = conn
-                            .query_row(
-                                r#"
+                if let Some(album) = row {
+                    release_in_library = true;
+                    album_in_library = true;
+                    album_title = Some(album.title);
+                    album_id = Some(album.id);
+                } else if let Some(group_id) = group_id {
+                    // Album-level match — any release in the library shares
+                    // the candidate's group identity.
+                    let row = conn
+                        .query_row(
+                            r#"
                                 SELECT
                                     a.id, a.title, a.artist_id, a.year, a.primary_release_id,
                                     a.is_compilation, a.created_at
@@ -2967,30 +2962,30 @@ impl Database {
                                 WHERE ri.source = ? AND ri.source_group_id = ?
                                 LIMIT 1
                                 "#,
-                                params![source, group_id],
-                                |row| Ok(Self::row_to_album(row)),
-                            )
-                            .optional()?;
+                            params![source, group_id],
+                            |row| Ok(Self::row_to_album(row)),
+                        )
+                        .optional()?;
 
-                        if let Some(album) = row {
-                            album_in_library = true;
-                            album_title = Some(album.title);
-                            album_id = Some(album.id);
-                        }
+                    if let Some(album) = row {
+                        album_in_library = true;
+                        album_title = Some(album.title);
+                        album_id = Some(album.id);
                     }
-
-                    statuses.push(super::models::LibraryStatus {
-                        release_id: release_id.clone(),
-                        release_in_library,
-                        album_in_library,
-                        album_title,
-                        album_id,
-                    });
                 }
 
-                Ok(statuses)
-            })
-            .await
+                statuses.push(super::models::LibraryStatus {
+                    release_id: release_id.clone(),
+                    release_in_library,
+                    album_in_library,
+                    album_title,
+                    album_id,
+                });
+            }
+
+            Ok(statuses)
+        })
+        .await
     }
 
     // ---- Readable cloud paths (browsable homes) ----
@@ -3012,10 +3007,7 @@ impl Database {
         if !storage.is_browsable() {
             return Ok(None);
         }
-        self.inner
-            .coven_db
-            .call(move |conn| resolve(conn).map(Some))
-            .await
+        self.call(move |conn| resolve(conn).map(Some)).await
     }
 
     /// The `cloud_path` for a cover image under `storage`: `None` for an opaque
@@ -3049,15 +3041,52 @@ impl Database {
         Some(resolve_artist_cloud_path(artist_id, content_type))
     }
 
+    // ---- Local blob refs ----
+
+    pub async fn register_external_blob(
+        &self,
+        blob_id: &str,
+        namespace: &str,
+        path: &Path,
+        size: u64,
+    ) -> Result<(), DbError> {
+        let blob_id = blob_id.to_string();
+        let namespace = namespace.to_string();
+        let path = path.to_path_buf();
+        self.call(move |conn| register_external_blob_on(conn, &blob_id, &namespace, &path, size))
+            .await
+    }
+
+    pub async fn clear_external_blob(&self, blob_id: &str) -> Result<(), DbError> {
+        let blob_id = blob_id.to_string();
+        self.call(move |conn| clear_external_blob_on(conn, &blob_id))
+            .await
+    }
+
+    pub async fn external_blob(&self, blob_id: &str) -> Result<Option<ExternalBlob>, DbError> {
+        let blob_id = blob_id.to_string();
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT path, size FROM local_blob_refs WHERE blob_id = ?1",
+                [blob_id],
+                |row| {
+                    Ok(ExternalBlob {
+                        path: PathBuf::from(row.get::<_, String>(0)?),
+                        size: row.get::<_, i64>(1)? as u64,
+                    })
+                },
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
+    }
+
     // ---- Cloud outbox ----
 
     /// Seed an upload entry in coven's cloud outbox. Production never enqueues
     /// uploads this way — coven's `make_remote` owns that — so this exists only
-    /// to exercise the outbox-snapshot / drain machinery in tests. coven encrypts
-    /// the blob with the library master key (`BlobScope::Master`) at drain;
-    /// `retain_pinned` is the transient pin choice (populate `storage/pinned/<id>`
-    /// from the plaintext on success, else fill the evictable cache on a later
-    /// read-miss).
+    /// to exercise the outbox-snapshot / drain machinery in tests.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_cloud_outbox_upload(
         &self,
@@ -3066,39 +3095,66 @@ impl Database {
         source_path: Option<&str>,
         retain_pinned: bool,
     ) -> Result<(), DbError> {
-        let created_at = self.register_stamp();
-        self.inner
-            .coven_db
-            .enqueue_upload(
-                file_id,
-                cloud_key,
-                source_path,
-                coven::BlobScope::Master,
-                retain_pinned,
-                &created_at,
+        let created_at = self.register_stamp().await?;
+        let file_id = file_id.to_string();
+        let cloud_key = cloud_key.to_string();
+        let source_path = source_path.map(str::to_string);
+        self.call(move |conn| {
+            conn.execute(
+                "DELETE FROM cloud_outbox WHERE operation = 'delete' AND cloud_key = ?1",
+                [&cloud_key],
             )
-            .await
+            .map_err(DbError::from)?;
+            conn.execute(
+                "INSERT OR IGNORE INTO cloud_outbox \
+                 (operation, file_id, cloud_key, source_path, scope, retain_pinned, created_at) \
+                 VALUES ('upload', ?1, ?2, ?3, ?4, ?5, ?6)",
+                (
+                    file_id,
+                    cloud_key,
+                    source_path,
+                    coven::BlobScope::Master.to_outbox_str(),
+                    retain_pinned,
+                    created_at,
+                ),
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Add a delete entry to the cloud outbox.
     pub async fn add_cloud_outbox_delete(&self, cloud_key: &str) -> Result<(), DbError> {
-        let created_at = self.register_stamp();
-        self.inner
-            .coven_db
-            .enqueue_delete(cloud_key, &created_at)
-            .await
+        let created_at = self.register_stamp().await?;
+        let cloud_key = cloud_key.to_string();
+        self.call(move |conn| {
+            conn.execute(
+                "DELETE FROM cloud_outbox \
+                 WHERE operation IN ('upload', 'cancel') AND cloud_key = ?1",
+                [&cloud_key],
+            )
+            .map_err(DbError::from)?;
+            conn.execute(
+                "INSERT OR IGNORE INTO cloud_outbox \
+                 (operation, cloud_key, scope, created_at) \
+                 VALUES ('delete', ?1, NULL, ?2)",
+                (&cloud_key, &created_at),
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
-
-    // The cloud_outbox table is coven's; bae drives the queue through coven's
-    // Database API instead of hand-writing its SQL. The only direct read of the
-    // shared table is `outbox_items` below, which joins it against bae's own
-    // domain tables (no coven API can express that). Reading the raw pending
-    // queue (uploads/deletes) goes through `coven_db()` directly — bae keeps no
-    // wrapper, since coven owns the drain.
 
     /// Remove a cloud outbox entry by id.
     pub async fn remove_cloud_outbox_entry(&self, id: i64) -> Result<(), DbError> {
-        self.inner.coven_db.remove_cloud_outbox_entry(id).await
+        self.call(move |conn| {
+            conn.execute("DELETE FROM cloud_outbox WHERE id = ?1", [id])
+                .map(|_| ())
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Remove all pending upload entries for a given cloud key. Used when a file
@@ -3107,26 +3163,89 @@ impl Database {
         &self,
         cloud_key: &str,
     ) -> Result<(), DbError> {
-        self.inner
-            .coven_db
-            .remove_cloud_outbox_uploads_for_key(cloud_key)
-            .await
+        let cloud_key = cloud_key.to_string();
+        self.call(move |conn| {
+            conn.execute(
+                "DELETE FROM cloud_outbox WHERE operation = 'upload' AND cloud_key = ?1",
+                [cloud_key],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Clear the backoff timestamp on failed uploads so the next cycle retries.
     pub async fn reset_cloud_outbox_backoff(&self) -> Result<(), DbError> {
-        self.inner.coven_db.reset_cloud_outbox_backoff().await
+        self.call(move |conn| {
+            conn.execute(
+                "UPDATE cloud_outbox SET last_attempt_at = NULL \
+                 WHERE operation = 'upload' AND attempt_count > 0",
+                [],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn record_cloud_upload_failure(
+        &self,
+        id: i64,
+        error: &str,
+        attempted_at: &str,
+    ) -> Result<(), DbError> {
+        let error = error.to_string();
+        let attempted_at = attempted_at.to_string();
+        self.call(move |conn| {
+            conn.execute(
+                "UPDATE cloud_outbox \
+                 SET attempt_count = attempt_count + 1, last_error = ?1, last_attempt_at = ?2 \
+                 WHERE id = ?3",
+                (error, attempted_at, id),
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn get_pending_cloud_uploads(&self) -> Result<Vec<coven::OutboxEntry>, DbError> {
+        self.pending_outbox("upload").await
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn get_pending_cloud_deletes(&self) -> Result<Vec<coven::OutboxEntry>, DbError> {
+        self.pending_outbox("delete").await
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    async fn pending_outbox(
+        &self,
+        operation: &'static str,
+    ) -> Result<Vec<coven::OutboxEntry>, DbError> {
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT id, operation, file_id, cloud_key, source_path, scope, \
+                        retain_pinned, attempt_count, last_attempt_at \
+                 FROM cloud_outbox WHERE operation = ?1 ORDER BY id",
+            )?;
+            let rows = stmt.query_map([operation], row_to_outbox_entry)?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 
     /// All outbox entries (uploads and deletes), oldest first, each paired with
     /// the album title of the release its `file_id` belongs to (uploads only —
     /// `None` for deletes or an orphaned file). Backs the processing snapshot.
     pub async fn outbox_items(&self) -> Result<Vec<DbOutboxRow>, DbError> {
-        self.inner
-            .coven_db
-            .call(move |conn| {
-                let mut stmt = conn.prepare(
-                    "SELECT co.id, co.operation, co.file_id, co.cloud_key, \
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT co.id, co.operation, co.file_id, co.cloud_key, \
                                 co.created_at, co.attempt_count, co.last_error, \
                                 rf.release_id AS release_id, rf.file_size AS file_size, \
                                 rf.original_filename AS file_name, \
@@ -3136,47 +3255,47 @@ impl Database {
                          LEFT JOIN releases r ON r.id = rf.release_id \
                          LEFT JOIN albums a ON a.id = r.album_id \
                          ORDER BY co.id",
-                )?;
-                let rows = stmt.query_map([], |row| {
-                    // coven writes `created_at` as its HLC stamp
-                    // (`millis-counter-device`, the same format `make_remote`
-                    // enqueues with and `register_stamp` mints); the UI needs an
-                    // instant for the "queued N ago" label, so take the stamp's
-                    // physical millis. A value that isn't a coven stamp is corrupt
-                    // — surface it as a column-conversion error rather than masking
-                    // it. The index is `created_at`'s position in the SELECT
-                    // (`co.id`=0, …, `co.created_at`=4) so the diagnostic names the
-                    // right column.
-                    let created_at_raw = row.get::<_, String>("created_at")?;
-                    let created_at = coven::Timestamp::parse(&created_at_raw)
-                        .map(|t| t.millis as i64)
-                        .ok_or_else(|| {
-                            coven::rusqlite::Error::FromSqlConversionFailure(
-                                4,
-                                coven::rusqlite::types::Type::Text,
-                                format!("created_at {created_at_raw:?} is not a coven HLC stamp")
-                                    .into(),
-                            )
-                        })?;
-                    Ok(DbOutboxRow {
-                        id: row.get("id")?,
-                        operation: OutboxOpKind::parse(&row.get::<_, String>("operation")?)
-                            .expect("invalid outbox operation in DB"),
-                        file_id: row.get("file_id")?,
-                        cloud_key: row.get("cloud_key")?,
-                        created_at,
-                        attempt_count: row.get("attempt_count")?,
-                        last_error: row.get("last_error")?,
-                        release_id: row.get("release_id")?,
-                        title: row.get("title")?,
-                        file_name: row.get("file_name")?,
-                        file_size: row.get("file_size")?,
-                    })
-                })?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+            )?;
+            let rows = stmt.query_map([], |row| {
+                // coven writes `created_at` as its HLC stamp
+                // (`millis-counter-device`, the same format `make_remote`
+                // enqueues with and `register_stamp` mints); the UI needs an
+                // instant for the "queued N ago" label, so take the stamp's
+                // physical millis. A value that isn't a coven stamp is corrupt
+                // — surface it as a column-conversion error rather than masking
+                // it. The index is `created_at`'s position in the SELECT
+                // (`co.id`=0, …, `co.created_at`=4) so the diagnostic names the
+                // right column.
+                let created_at_raw = row.get::<_, String>("created_at")?;
+                let created_at = coven::Timestamp::parse(&created_at_raw)
+                    .map(|t| t.millis as i64)
+                    .ok_or_else(|| {
+                        coven::rusqlite::Error::FromSqlConversionFailure(
+                            4,
+                            coven::rusqlite::types::Type::Text,
+                            format!("created_at {created_at_raw:?} is not a coven HLC stamp")
+                                .into(),
+                        )
+                    })?;
+                Ok(DbOutboxRow {
+                    id: row.get("id")?,
+                    operation: OutboxOpKind::parse(&row.get::<_, String>("operation")?)
+                        .expect("invalid outbox operation in DB"),
+                    file_id: row.get("file_id")?,
+                    cloud_key: row.get("cloud_key")?,
+                    created_at,
+                    attempt_count: row.get("attempt_count")?,
+                    last_error: row.get("last_error")?,
+                    release_id: row.get("release_id")?,
+                    title: row.get("title")?,
+                    file_name: row.get("file_name")?,
+                    file_size: row.get("file_size")?,
+                })
+            })?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
 }
 
@@ -3843,21 +3962,20 @@ mod playback_state_load_tests {
 
         // Write a row by hand with a present source but a NULL cursor —
         // `save_playback_state` never produces this, so we insert it directly.
-        db.coven_db()
-            .call(|conn| {
-                conn.execute(
-                    "INSERT INTO playback_state \
+        db.call(|conn| {
+            conn.execute(
+                "INSERT INTO playback_state \
                      (id, source, shuffle_seed, cursor, manual, repeat, \
                       current_track_id, position_ms, volume, is_muted) \
                      VALUES ('current', 'rel-1', NULL, NULL, '[]', 'off', \
                       NULL, NULL, 1.0, 0)",
-                    [],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
-            .unwrap();
+                [],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
 
         assert!(db.load_playback_state().await.unwrap().is_none());
     }

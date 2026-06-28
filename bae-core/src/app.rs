@@ -11,7 +11,6 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::config::{Config, ConfigHandle};
-use crate::db::Database;
 use crate::keys::KeyService;
 use crate::library::AppServices;
 use crate::playback::PlaybackService;
@@ -109,24 +108,6 @@ fn bootstrap_inner(
 
     crate::audio_codec::init();
 
-    // Open the database. coven owns the connection, runs its bookkeeping
-    // migration plus bae's schema, seeds the `_updated_at` register off the rows
-    // on disk, attaches the capture session over the synced-table set, and hands
-    // back the non-optional stamper every synced-row write binds. It's built from
-    // the device id, the database, and the synced-table set alone — independent of
-    // encryption, keys, or a cloud provider — so a fresh local-only library writes
-    // stamped synced rows without minting an encryption key or standing up a
-    // `SyncManager`.
-    let db_path = config.library_dir.db_path();
-    let database = runtime
-        .block_on(Database::new(
-            db_path.to_str().expect("database path must be valid UTF-8"),
-            Arc::clone(&clock),
-            config.device_id.clone(),
-            crate::sync::synced_tables(),
-        ))
-        .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
-
     // Dev mode keeps bae's secrets in `BAE_*` env vars; coven's keyring-only
     // KeyService can't see those, so bridge them into the keyring it reads.
     // No-op in production.
@@ -176,15 +157,14 @@ fn bootstrap_inner(
 
     let config_handle = Arc::new(ConfigHandle::new(config));
 
-    let library_manager = crate::library::LibraryManager::new(
-        database.clone(),
-        config_handle.config().library_dir.clone(),
+    let library_manager = crate::library::LibraryManager::open(
         Arc::clone(&config_handle),
         key_service.clone(),
         Arc::clone(&clock),
         ids,
         runtime.handle().clone(),
-    );
+    )
+    .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
 
     // Configure coven's per-namespace cache budgets (device-local, idempotent):
     // the bulk for audio, a small reserved slice each for covers / artist images.

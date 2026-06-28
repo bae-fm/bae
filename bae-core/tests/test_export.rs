@@ -115,7 +115,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
     assert_eq!(files.len(), 1);
     for file in &files {
-        f.db.coven_db().clear_external_blob(&file.id).await.unwrap();
+        f.db.clear_external_blob(&file.id).await.unwrap();
     }
 
     // Seed the cloud home with each file's bytes encrypted under the library

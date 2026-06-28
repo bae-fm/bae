@@ -71,21 +71,6 @@ pub async fn fetch_and_save_artist_image(
         return false;
     }
 
-    // Hand the bytes to coven's local store (a host-provided Local blob coven owns
-    // from here); the row below points at it.
-    if let Err(e) = library_manager
-        .store_artist_image_blob(artist_id, &bytes)
-        .await
-    {
-        warn!("Failed to store artist image blob: {e}");
-        return false;
-    }
-
-    info!(
-        "Saved artist image ({} bytes) for artist {artist_id}",
-        bytes.len()
-    );
-
     let now = library_manager.clock().now();
     // Under a browsable home the artist image blob lands at an `{artist_id}/
     // artist.{ext}` key, stored here; an opaque home leaves `cloud_path` NULL
@@ -104,9 +89,18 @@ pub async fn fetch_and_save_artist_image(
         created_at: now,
     };
 
-    if let Err(e) = library_manager.upsert_library_image(&db_image).await {
-        warn!("Failed to upsert artist library image: {}", e);
+    if let Err(e) = library_manager
+        .store_library_image_blob(&db_image, &bytes)
+        .await
+    {
+        warn!("Failed to store artist library image: {}", e);
+        return false;
     }
+
+    info!(
+        "Saved artist image ({} bytes) for artist {artist_id}",
+        bytes.len()
+    );
 
     true
 }

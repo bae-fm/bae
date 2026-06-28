@@ -1,15 +1,9 @@
 //! The membership / join / restore DTOs and re-exports bae's sync surface uses.
 //!
-//! The sync manager itself is coven's — bae uses it directly (re-exported here so
-//! `crate::sync::sync_manager::SyncManager` resolves). It is built lazily by
-//! [`CovenHandle::connect_sync`](coven::CovenHandle::connect_sync) when a provider
-//! is connected, wired with bae's config provider (which reads the live
-//! `ConfigHandle`, so connect/disconnect are picked up without rebuilding) and the
-//! blob-transition observer the handle holds.
+//! The sync manager itself is coven's private implementation. bae drives it
+//! through `CovenHandle` and keeps only the membership types needed by the UI.
 
-// coven owns the sync manager; bae uses it directly.
-pub use coven::MemberRole;
-pub use coven::{ConfigProvider, MemberInfo, SyncManager};
+pub use coven::{MemberInfo, MemberRole};
 
 /// A device's short identity for display: the first 8 characters of its
 /// hex-encoded Ed25519 public key. The single source for the value every

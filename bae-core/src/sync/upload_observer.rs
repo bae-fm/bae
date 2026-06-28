@@ -38,7 +38,7 @@ use crate::library::LibraryEvent;
 /// after the handle is built — the handle owns this observer, so it can't be
 /// passed at construction.
 pub struct ReleaseUploadObserver {
-    db: Arc<Database>,
+    db: OnceLock<Arc<Database>>,
     handle: OnceLock<CovenHandle>,
     in_flight: Arc<Mutex<HashMap<String, u64>>>,
     throughput: Arc<crate::library::UploadThroughput>,
@@ -48,19 +48,25 @@ pub struct ReleaseUploadObserver {
 
 impl ReleaseUploadObserver {
     pub fn new(
-        db: Arc<Database>,
         in_flight: Arc<Mutex<HashMap<String, u64>>>,
         throughput: Arc<crate::library::UploadThroughput>,
         sync_paused: Arc<std::sync::atomic::AtomicBool>,
         events: broadcast::Sender<LibraryEvent>,
     ) -> Self {
         Self {
-            db,
+            db: OnceLock::new(),
             handle: OnceLock::new(),
             in_flight,
             throughput,
             sync_paused,
             events,
+        }
+    }
+
+    /// Install the bae database wrapper after coven has opened the handle it owns.
+    pub fn set_database(&self, db: Arc<Database>) {
+        if self.db.set(db).is_err() {
+            panic!("ReleaseUploadObserver database already set — the observer was wired twice");
         }
     }
 
@@ -81,10 +87,18 @@ impl ReleaseUploadObserver {
             .expect("observer handle set before any blob transition fires")
     }
 
+    /// The installed bae database wrapper. Set before sync can start.
+    fn db(&self) -> &Database {
+        self.db
+            .get()
+            .expect("observer database set before any blob transition fires")
+            .as_ref()
+    }
+
     /// Emit a `ReleaseUpdated` event after coven completes a transition, so the
     /// UI's cached summary picks up the new `storage_state`.
     async fn emit_release_updated(&self, release_id: &str) {
-        let album_id = match self.db.find_release_by_id(release_id).await {
+        let album_id = match self.db().find_release_by_id(release_id).await {
             Ok(Some(release)) => release.album_id,
             Ok(None) => {
                 warn!("emit_release_updated: release {release_id} not found");
@@ -96,7 +110,7 @@ impl ReleaseUploadObserver {
             }
         };
         match crate::library::manager::find_release_detail_with(
-            &self.db,
+            self.db(),
             self.handle(),
             true,
             release_id,
@@ -121,7 +135,7 @@ impl ReleaseUploadObserver {
         let in_flight = { self.in_flight.lock().unwrap().clone() };
         let paused = self.sync_paused.load(std::sync::atomic::Ordering::SeqCst);
         match crate::library::outbox_snapshot::build_outbox_snapshot(
-            &self.db,
+            self.db(),
             &in_flight,
             &self.throughput,
             paused,
@@ -201,7 +215,7 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
                 0
             }
         };
-        match self.db.find_file_by_id(file_id).await {
+        match self.db().find_file_by_id(file_id).await {
             Ok(Some(file)) => {
                 let remaining = (file.file_size as u64).saturating_sub(already_counted);
                 if remaining > 0 {

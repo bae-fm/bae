@@ -278,7 +278,7 @@ async fn do_make_remote(
     if release.remote {
         return Err("Release is already remote".into());
     }
-    if mgr.get_cloud_home().is_none() {
+    if !mgr.has_cloud_home() {
         return Err("Cannot make a release remote without a cloud home".into());
     }
     let files = mgr.get_files_for_release(release_id).await?;

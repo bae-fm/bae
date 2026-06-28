@@ -1483,19 +1483,14 @@ impl ImportService {
                 _ => None,
             };
 
-        // The winning cover (Remote > Local folder image > embedded): its bytes go
-        // to coven's local store (a host-provided Local blob coven now owns), its
-        // row is written by finalize.
+        // The winning cover (Remote > Local folder image > embedded): finalize
+        // writes its bytes and row in one coven batch.
         let cover_winner = remote_cover_image
             .or(local_cover_image)
             .or(embedded_cover_image);
-        if let Some((_, bytes)) = &cover_winner {
-            library_manager
-                .store_cover_blob(&db_release.id, bytes)
-                .await
-                .map_err(|e| format!("Failed to store cover blob: {e}"))?;
-        }
-        let library_image = cover_winner.as_ref().map(|(image, _)| image);
+        let library_image = cover_winner
+            .as_ref()
+            .map(|(image, bytes)| (image, bytes.as_slice()));
         let cover_rel_id = Some((album_id, db_release.id.as_str()));
 
         self.emit_phase_progress(

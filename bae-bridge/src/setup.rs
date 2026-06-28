@@ -176,8 +176,8 @@ pub fn set_ca_cert_dir(dirs: String) {
 /// store.
 ///
 /// coven's synced-table set is no longer registered here: the host hands it to
-/// `coven::Database::open` (and to restore) at the point the connection is
-/// opened, so there is no separate process-global registration step.
+/// `Coven::builder(...).synced_tables(...)` at the point the library is opened,
+/// so there is no separate process-global registration step.
 #[uniffi::export]
 pub fn init_keyring() {
     bae_core::config::init_keyring();
