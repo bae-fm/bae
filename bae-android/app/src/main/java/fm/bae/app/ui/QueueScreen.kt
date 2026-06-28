@@ -436,25 +436,7 @@ private fun QueueRow(
             modifier = Modifier.size(48.dp),
         )
         Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-            )
-            Text(
-                text =
-                    if (item.albumTitle.isEmpty()) {
-                        item.artist
-                    } else {
-                        "${item.artist} — ${item.albumTitle}"
-                    },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
+        QueueItemText(item, modifier = Modifier.weight(1f))
         // durationLabel is pre-formatted (empty when core has no duration); keep
         // the slot in the tree and toggle via alpha so rows align.
         Text(
@@ -478,6 +460,32 @@ private fun QueueRow(
             contentDescription = stringResource(R.string.queue_drag_to_reorder),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = dragHandleModifier.size(24.dp),
+        )
+    }
+}
+
+@Composable
+private fun QueueItemText(
+    item: QueueItem,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+        )
+        Text(
+            text =
+                if (item.albumTitle.isEmpty()) {
+                    item.artist
+                } else {
+                    "${item.artist} — ${item.albumTitle}"
+                },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
         )
     }
 }
