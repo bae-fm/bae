@@ -487,7 +487,7 @@ impl UiEventBus {
 mod tests {
     use super::*;
     use crate::config::{Config, ConfigHandle};
-    use crate::library_dir::LibraryDir;
+    use coven::LibraryDir;
     use std::time::Duration;
     use tempfile::TempDir;
 

@@ -22,8 +22,8 @@ use bae_core::import::{
     IdentityChoice, ImportCommand, ImportService, MetadataRef, MetadataSource, StorageMode,
 };
 use bae_core::library::LibraryManager;
-use bae_core::library_dir::LibraryDir;
 use bae_core::util::content_type::ContentType;
+use coven::LibraryDir;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use tracing::info;
@@ -90,7 +90,7 @@ async fn import_single_m4a_fixture(
     let db_file = db_dir.join("test.db");
     let database = Database::new_test(
         db_file.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("database");
@@ -101,8 +101,8 @@ async fn import_single_m4a_fixture(
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
 
@@ -328,7 +328,7 @@ async fn import_cue_alac_pair() {
     let db_file = db_dir.join("test.db");
     let database = Database::new_test(
         db_file.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("database");
@@ -339,8 +339,8 @@ async fn import_cue_alac_pair() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
 

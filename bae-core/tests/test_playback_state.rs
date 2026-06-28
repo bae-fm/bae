@@ -9,7 +9,7 @@ async fn setup_db() -> (Database, TempDir) {
     let db_path = temp_dir.path().join("test.db");
     let database = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("Failed to create database");

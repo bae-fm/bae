@@ -3,10 +3,10 @@ use std::collections::{HashSet, VecDeque};
 use tracing::warn;
 
 use super::RepeatMode;
-use crate::id_provider::IdRef;
 use crate::playback::context::{
     shuffled_traversal, ContextSource, ContextStart, PlaybackContext, Traversal,
 };
+use coven::IdRef;
 
 /// Per-instance identity for an enqueued track. Distinct from `track_id`: the
 /// same track enqueued twice yields two entries with two ids, each removable,
@@ -712,7 +712,7 @@ impl PlaybackQueue {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::id_provider::SequentialIdProvider;
+    use coven::SequentialIdProvider;
     use std::sync::Arc;
 
     fn queue() -> PlaybackQueue {

@@ -10,7 +10,7 @@
 fn main() {
     bae_core::config::init_keyring();
 
-    let ids = bae_core::id_provider::UuidProvider;
+    let ids = coven::UuidProvider;
     let config = bae_core::config::Config::load(&ids);
     let dev_mode = bae_core::config::Config::is_dev_mode();
 

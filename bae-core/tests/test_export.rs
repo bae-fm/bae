@@ -8,10 +8,10 @@
 mod support;
 
 use bae_core::db::Database;
-use bae_core::encryption::EncryptionService;
 use bae_core::import::{IdentityChoice, ImportCommand, StorageMode};
 use bae_core::library::{ExportFormat, LibraryManager};
-use bae_core::library_dir::LibraryDir;
+use coven::EncryptionService;
+use coven::LibraryDir;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -42,7 +42,7 @@ impl ExportFixture {
 
         let db = Database::new_test(
             db_dir.join("test.db").to_str().unwrap(),
-            Arc::new(bae_core::clock::SystemClock),
+            Arc::new(coven::SystemClock),
         )
         .await
         .unwrap();
@@ -53,8 +53,8 @@ impl ExportFixture {
             library_dir,
             config_handle,
             key_service,
-            Arc::new(bae_core::clock::SystemClock),
-            Arc::new(bae_core::id_provider::UuidProvider),
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
         let cloud = Arc::new(MockCloudHome::new());

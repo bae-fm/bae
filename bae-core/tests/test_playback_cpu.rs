@@ -30,8 +30,8 @@ use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
-use bae_core::library_dir::LibraryDir;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
+use coven::LibraryDir;
 use serial_test::serial;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -288,7 +288,7 @@ impl PlaybackTestFixture {
 
         let database = Database::new_test(
             db_path.to_str().unwrap(),
-            std::sync::Arc::new(bae_core::clock::SystemClock),
+            std::sync::Arc::new(coven::SystemClock),
         )
         .await?;
         let database_arc = Arc::new(database.clone());
@@ -299,8 +299,8 @@ impl PlaybackTestFixture {
             library_dir.clone(),
             config_handle,
             key_service,
-            std::sync::Arc::new(bae_core::clock::SystemClock),
-            std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
         let runtime_handle = tokio::runtime::Handle::current();

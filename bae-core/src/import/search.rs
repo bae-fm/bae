@@ -678,8 +678,8 @@ pub async fn prefetch_discogs_release(
 pub async fn commit_discogs_release(
     client: &DiscogsClient,
     release_id: &str,
-    clock: &dyn crate::clock::Clock,
-    ids: &dyn crate::id_provider::IdProvider,
+    clock: &dyn coven::Clock,
+    ids: &dyn coven::IdProvider,
 ) -> Result<crate::import::folder_scanner::PreparedRelease, String> {
     let (parsed, metadata_pairs) =
         crate::import::commit::fetch_and_map_discogs(client, release_id, clock, ids)

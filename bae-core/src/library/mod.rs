@@ -20,9 +20,9 @@ pub use outbox_snapshot::{
 pub use upload_throughput::UploadThroughput;
 
 use crate::config::{Config, ConfigError, ConfigYaml};
-use crate::encryption::{EncryptionError, EncryptionService};
 use crate::keys::KeyService;
-use crate::library_dir::LibraryDir;
+use coven::LibraryDir;
+use coven::{EncryptionError, EncryptionService};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, warn};
@@ -49,16 +49,11 @@ fn restore_error(error: impl ToString) -> RestoreFromCodeError {
 ///
 /// Generates a UUID, optional random name, creates the directory, and
 /// writes the active-library marker.
-pub fn create_library_default(
-    ids: &dyn crate::id_provider::IdProvider,
-) -> Result<Config, ConfigError> {
+pub fn create_library_default(ids: &dyn coven::IdProvider) -> Result<Config, ConfigError> {
     create_library(crate::library_name::generate_library_name(), ids)
 }
 
-pub fn create_library(
-    name: String,
-    ids: &dyn crate::id_provider::IdProvider,
-) -> Result<Config, ConfigError> {
+pub fn create_library(name: String, ids: &dyn coven::IdProvider) -> Result<Config, ConfigError> {
     let home_dir = dirs::home_dir().ok_or_else(|| {
         ConfigError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
@@ -115,8 +110,8 @@ pub async fn restore_from_cloud(
         source,
         &keypair,
         &app_dir,
-        std::sync::Arc::new(crate::clock::SystemClock),
-        std::sync::Arc::new(crate::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         on_status,
     )
     .await
@@ -127,8 +122,8 @@ pub async fn restore_from_cloud(
 /// Restore a library from a restore code. Wraps coven's `restore_from_code`.
 pub async fn restore_from_code(
     code: &str,
-    oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
     restore_from_code_with_cancel(code, oauth_tokens, cloudkit_ops, None, on_status)
@@ -138,8 +133,8 @@ pub async fn restore_from_code(
 
 pub async fn restore_from_code_cancellable(
     code: &str,
-    oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: CancellationToken,
     on_status: impl Fn(&str),
 ) -> Result<Config, RestoreFromCodeError> {
@@ -148,8 +143,8 @@ pub async fn restore_from_code_cancellable(
 
 async fn restore_from_code_with_cancel(
     code: &str,
-    oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: Option<CancellationToken>,
     on_status: impl Fn(&str),
 ) -> Result<Config, RestoreFromCodeError> {
@@ -170,8 +165,8 @@ async fn restore_from_code_with_cancel(
         oauth_tokens,
         cloudkit_ops,
         &app_dir,
-        std::sync::Arc::new(crate::clock::SystemClock),
-        std::sync::Arc::new(crate::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         on_status,
     );
     let coven_config = if let Some((cancel, library_dir, library_dir_existed)) = cancel {
@@ -235,8 +230,8 @@ fn join_error(error: impl ToString) -> JoinFromCodeError {
 /// joining device authorizes its own cloud account), exactly as restore does.
 pub async fn join_from_code(
     code: &str,
-    oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
     join_from_code_with_cancel(code, oauth_tokens, cloudkit_ops, None, on_status)
@@ -246,8 +241,8 @@ pub async fn join_from_code(
 
 pub async fn join_from_code_cancellable(
     code: &str,
-    oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: CancellationToken,
     on_status: impl Fn(&str),
 ) -> Result<Config, JoinFromCodeError> {
@@ -256,8 +251,8 @@ pub async fn join_from_code_cancellable(
 
 async fn join_from_code_with_cancel(
     code: &str,
-    oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: Option<CancellationToken>,
     on_status: impl Fn(&str),
 ) -> Result<Config, JoinFromCodeError> {
@@ -278,8 +273,8 @@ async fn join_from_code_with_cancel(
         &synced_tables,
         oauth_tokens,
         cloudkit_ops,
-        std::sync::Arc::new(crate::clock::SystemClock),
-        std::sync::Arc::new(crate::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         on_status,
     );
     let coven_config = if let Some((cancel, library_dir, library_dir_existed)) = cancel {

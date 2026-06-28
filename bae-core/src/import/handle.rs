@@ -1096,7 +1096,7 @@ mod tests {
     use uuid::Uuid;
 
     fn test_config_and_keys(
-        library_dir: &crate::library_dir::LibraryDir,
+        library_dir: &coven::LibraryDir,
     ) -> (
         std::sync::Arc<crate::config::ConfigHandle>,
         crate::keys::KeyService,
@@ -1122,19 +1122,19 @@ mod tests {
         let db_path = temp_dir.path().join("test.db");
         let database = Database::new_test(
             db_path.to_str().unwrap(),
-            std::sync::Arc::new(crate::clock::SystemClock),
+            std::sync::Arc::new(coven::SystemClock),
         )
         .await
         .unwrap();
-        let library_dir = crate::library_dir::LibraryDir::new(temp_dir.path());
+        let library_dir = coven::LibraryDir::new(temp_dir.path());
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let manager = LibraryManager::new(
             database,
             library_dir,
             config_handle,
             key_service,
-            std::sync::Arc::new(crate::clock::SystemClock),
-            std::sync::Arc::new(crate::id_provider::UuidProvider),
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
         (manager, temp_dir)

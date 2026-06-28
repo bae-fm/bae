@@ -18,9 +18,9 @@ use bae_core::import::{
     IdentityChoice, ImportCommand, ImportService, MetadataRef, MetadataSource, StorageMode,
 };
 use bae_core::library::LibraryManager;
-use bae_core::library_dir::LibraryDir;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_core::util::content_type::ContentType;
+use coven::LibraryDir;
 use std::path::Path;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
@@ -409,7 +409,7 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
     copy_cue_flac_fixture_with_seektable(&album_dir);
     let database = Database::new_test(
         db_dir.join("test.db").to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("database");
@@ -420,8 +420,8 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
         library_dir,
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     let release_id_key = seed_discogs_test_release(create_test_discogs_release());
@@ -483,7 +483,7 @@ impl CueFlacCaptureFixture {
 
         let database = Database::new_test(
             db_path.to_str().unwrap(),
-            std::sync::Arc::new(bae_core::clock::SystemClock),
+            std::sync::Arc::new(coven::SystemClock),
         )
         .await?;
         let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
@@ -493,8 +493,8 @@ impl CueFlacCaptureFixture {
             library_dir.clone(),
             config_handle,
             key_service,
-            std::sync::Arc::new(bae_core::clock::SystemClock),
-            std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
         let runtime_handle = tokio::runtime::Handle::current();

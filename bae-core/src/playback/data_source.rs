@@ -233,7 +233,7 @@ impl AudioDataReader for CovenBlobReader {
 // range read). A larger window means fewer such calls per second of playback, so
 // the per-call overhead stays well under the playback CPU budget; 4 MiB keeps the
 // readahead and per-track memory modest while cutting the call rate.
-const CLOUD_STREAM_READ_SIZE: u64 = crate::encryption::CHUNK_SIZE as u64 * 64;
+const CLOUD_STREAM_READ_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
 
 /// The minimum the fill keeps buffered ahead of a reader, regardless of its
 /// track ceiling. A few windows so the decoder's ring can't underrun: it's the

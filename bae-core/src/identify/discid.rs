@@ -263,9 +263,9 @@ mod tests {
         use crate::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease, DbTrack};
         use crate::keys::KeyService;
         use crate::library::LibraryManager;
-        use crate::library_dir::LibraryDir;
         use crate::util::content_type::ContentType;
         use chrono::Utc;
+        use coven::LibraryDir;
         use std::sync::Arc;
         use uuid::Uuid;
 
@@ -295,7 +295,7 @@ mod tests {
 
         let database = Database::new_test(
             library_root.join("test.db").to_str().unwrap(),
-            Arc::new(crate::clock::SystemClock),
+            Arc::new(coven::SystemClock),
         )
         .await
         .unwrap();
@@ -327,8 +327,8 @@ mod tests {
             library_dir,
             config_handle,
             key_service,
-            Arc::new(crate::clock::SystemClock),
-            Arc::new(crate::id_provider::UuidProvider),
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
 

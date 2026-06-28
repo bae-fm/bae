@@ -16,9 +16,9 @@ use bae_core::import::{
     IdentityChoice, ImportCommand, ImportService, MetadataRef, MetadataSource, StorageMode,
 };
 use bae_core::library::LibraryManager;
-use bae_core::library_dir::LibraryDir;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_core::util::content_type::ContentType;
+use coven::LibraryDir;
 use std::path::Path;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
@@ -125,7 +125,7 @@ async fn test_cue_ape_records_correct_durations() {
     let db_file = db_dir.join("test.db");
     let database = Database::new_test(
         db_file.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("database");
@@ -136,8 +136,8 @@ async fn test_cue_ape_records_correct_durations() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
 
@@ -311,7 +311,7 @@ async fn test_cue_ape_records_track_timing() {
     let db_file = db_dir.join("test.db");
     let database = Database::new_test(
         db_file.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("database");
@@ -322,8 +322,8 @@ async fn test_cue_ape_records_track_timing() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
 
@@ -434,7 +434,7 @@ impl CueApeTestFixture {
 
         let database = Database::new_test(
             db_path.to_str().unwrap(),
-            std::sync::Arc::new(bae_core::clock::SystemClock),
+            std::sync::Arc::new(coven::SystemClock),
         )
         .await?;
         let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
@@ -444,8 +444,8 @@ impl CueApeTestFixture {
             library_dir.clone(),
             config_handle,
             key_service,
-            std::sync::Arc::new(bae_core::clock::SystemClock),
-            std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
         let runtime_handle = tokio::runtime::Handle::current();
@@ -1448,7 +1448,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
     let db_file = db_dir.join("test.db");
     let database = Database::new_test(
         db_file.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("database");
@@ -1459,8 +1459,8 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
 

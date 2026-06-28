@@ -6,14 +6,14 @@ use crate::support::{
 };
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
-use bae_core::id_provider::{IdProvider, SequentialIdProvider};
 use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
-use bae_core::library_dir::LibraryDir;
 use bae_core::playback::{
     PlaybackPauseReason, PlaybackProgress, PlaybackState, RepeatMode,
     SIDE_PAUSE_CASSETTE_MESSAGE_KEY, SIDE_PAUSE_VINYL_MESSAGE_KEY,
 };
+use coven::LibraryDir;
+use coven::{IdProvider, SequentialIdProvider};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
@@ -115,7 +115,7 @@ where
 
     let database = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await?;
     let database_arc = Arc::new(database.clone());
@@ -127,8 +127,8 @@ where
         library_dir,
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         runtime_handle.clone(),
     );
     configure(&library_manager)?;
@@ -703,7 +703,7 @@ impl CueFlacTestFixture {
 
         let database = Database::new_test(
             db_path.to_str().unwrap(),
-            std::sync::Arc::new(bae_core::clock::SystemClock),
+            std::sync::Arc::new(coven::SystemClock),
         )
         .await?;
         let database_arc = Arc::new(database.clone());
@@ -714,8 +714,8 @@ impl CueFlacTestFixture {
             library_dir.clone(),
             config_handle,
             key_service,
-            std::sync::Arc::new(bae_core::clock::SystemClock),
-            std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
         let runtime_handle = tokio::runtime::Handle::current();
@@ -2925,7 +2925,7 @@ impl HighSampleRateTestFixture {
 
         let database = Database::new_test(
             db_path.to_str().unwrap(),
-            std::sync::Arc::new(bae_core::clock::SystemClock),
+            std::sync::Arc::new(coven::SystemClock),
         )
         .await?;
         let database_arc = Arc::new(database.clone());
@@ -2936,8 +2936,8 @@ impl HighSampleRateTestFixture {
             library_dir.clone(),
             config_handle,
             key_service,
-            std::sync::Arc::new(bae_core::clock::SystemClock),
-            std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
         let runtime_handle = tokio::runtime::Handle::current();
@@ -3415,7 +3415,7 @@ async fn test_real_library_cpu_usage() {
     let bae_dir = dirs::home_dir().expect("home dir").join(".bae");
     let database = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("open db");
@@ -3426,8 +3426,8 @@ async fn test_real_library_cpu_usage() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
 
@@ -3597,7 +3597,7 @@ async fn test_pause_seek_cue_flac() {
     let bae_dir = dirs::home_dir().expect("home dir").join(".bae");
     let database = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("open db");
@@ -3608,8 +3608,8 @@ async fn test_pause_seek_cue_flac() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
 
@@ -3827,7 +3827,7 @@ async fn test_playing_seek_cue_flac() {
     let bae_dir = dirs::home_dir().expect("home dir").join(".bae");
     let database = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("open db");
@@ -3838,8 +3838,8 @@ async fn test_playing_seek_cue_flac() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
 
@@ -4007,7 +4007,7 @@ async fn test_restore_populates_last_position_display() {
     std::fs::create_dir_all(&album_dir).unwrap();
     let database = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .unwrap();
@@ -4019,8 +4019,8 @@ async fn test_restore_populates_last_position_display() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -4115,7 +4115,7 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
     std::fs::create_dir_all(&album_dir).unwrap();
     let database = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .unwrap();
@@ -4127,8 +4127,8 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -4242,7 +4242,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     std::fs::create_dir_all(&album_dir).unwrap();
     let database = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .unwrap();
@@ -4254,8 +4254,8 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -4352,7 +4352,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
     std::fs::create_dir_all(&album_dir).unwrap();
     let database = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .unwrap();
@@ -4364,8 +4364,8 @@ async fn restore_test_library() -> RestoreTestLibrary {
         library_dir.clone(),
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -4647,7 +4647,7 @@ impl CloudOnlyPlaybackFixture {
         std::fs::create_dir_all(&album_dir)?;
         let database = Database::new_test(
             db_path.to_str().unwrap(),
-            std::sync::Arc::new(bae_core::clock::SystemClock),
+            std::sync::Arc::new(coven::SystemClock),
         )
         .await?;
         let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
@@ -4657,8 +4657,8 @@ impl CloudOnlyPlaybackFixture {
             library_dir,
             config_handle,
             key_service,
-            std::sync::Arc::new(bae_core::clock::SystemClock),
-            std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
             tokio::runtime::Handle::current(),
         );
         let master_key = [11u8; 32];
@@ -4666,9 +4666,9 @@ impl CloudOnlyPlaybackFixture {
         library_manager
             .connect_test_cloud_home(
                 cloud.clone(),
-                bae_core::sync::CloudCipher::Encrypted(
-                    bae_core::encryption::EncryptionService::new_with_key(&master_key),
-                ),
+                bae_core::sync::CloudCipher::Encrypted(coven::EncryptionService::new_with_key(
+                    &master_key,
+                )),
             )
             .await?;
 

@@ -6,8 +6,8 @@ use bae_core::db::{
     Database, DbAlbum, DbAlbumArtist, DbRelease, DbTrack, Pressing, ReleaseMetadataSource,
 };
 use bae_core::library::{LibraryEvent, LibraryManager};
-use bae_core::library_dir::LibraryDir;
 use chrono::Utc;
+use coven::LibraryDir;
 use std::time::Duration;
 use tempfile::TempDir;
 use uuid::Uuid;
@@ -19,7 +19,7 @@ async fn setup() -> (LibraryManager, Database, TempDir) {
     let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
     let database = Database::new_test(
         db_path.to_str().unwrap(),
-        std::sync::Arc::new(bae_core::clock::SystemClock),
+        std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("Failed to create database");
@@ -29,8 +29,8 @@ async fn setup() -> (LibraryManager, Database, TempDir) {
         library_dir,
         config_handle,
         key_service,
-        std::sync::Arc::new(bae_core::clock::SystemClock),
-        std::sync::Arc::new(bae_core::id_provider::UuidProvider),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
     );
     (library_manager, database, temp_dir)

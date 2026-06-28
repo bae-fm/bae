@@ -15,6 +15,9 @@ crate-type = ["cdylib"]
 
 [dependencies]
 bae-core = { path = "../bae-core" }
+# The C-ABI surface names coven types directly (UuidProvider, SystemClock, the
+# OAuth DTOs) — same pinned instance bae-core uses, via the workspace dep.
+coven = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Complex results cross the C ABI as JSON; the C# side deserializes them.
@@ -34,4 +37,4 @@ bae-loc = { path = "../bae-loc" }
 # Enables the OAuth cloud-provider C-ABI surface (bae_oauth_authorize,
 # bae_sign_in_cloud, bae_set_oauth_client_creds) via bae-core/coven. Off by
 # default → the baeium build; the bae build turns it on.
-oauth-providers = ["bae-core/oauth-providers"]
+oauth-providers = ["bae-core/oauth-providers", "coven/oauth-providers"]
