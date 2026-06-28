@@ -26,7 +26,7 @@ use bae_core::db::{Database, DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetada
 use bae_core::encryption::EncryptionService;
 use bae_core::library::{CancellationToken, LibraryManager};
 use bae_core::library_dir::LibraryDir;
-use bae_core::sync::cloud_storage::CloudCipher;
+use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
 use std::sync::Arc;
@@ -363,7 +363,7 @@ async fn test_manage_cloud_only_uploads_from_source_then_completes() {
     assert_eq!(uploads.len(), files.len());
     assert!(uploads.iter().all(|u| matches!(
         &u.operation,
-        coven::db::OutboxOperation::Upload {
+        coven::OutboxOperation::Upload {
             source_path: Some(_),
             ..
         }

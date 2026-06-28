@@ -1,12 +1,13 @@
 //! bae's sync: coven's sync substrate re-exported, with bae's blob-transition
 //! observer and a `SyncManager` wrapper layered on top.
 
-// The sync substrate lives in coven; these resolve `crate::sync::<m>` unchanged.
-// `cloud_storage` carries the `CloudCipher` a test hands to
-// `connect_sync_with_test_home`; blob-key derivation is coven's, reached through
-// `CovenHandle::blob_cloud_key`.
-pub use coven::join_code;
-pub use coven::sync::{cloud_storage, join, restore, restore_code};
+// The sync substrate lives in coven; these resolve `crate::sync::<item>`
+// unchanged. `CloudCipher` is what a test hands to `connect_sync_with_test_home`;
+// blob-key derivation is coven's, reached through `CovenHandle::blob_cloud_key`.
+pub use coven::{
+    decode_invite_code_info, decode_restore_code_info, join_from_invite_code, restore_from_cloud,
+    restore_from_code, CloudCipher, RestoreSource,
+};
 
 // bae's blob-transition observer: UI bookkeeping for coven's upload drain and
 // make-Remote / make-Local completions (coven owns the lifecycle itself).
@@ -15,8 +16,8 @@ pub mod upload_observer;
 // bae's SyncManager wrapper owns and drives coven's SyncManager.
 pub mod sync_manager;
 
-use coven::blob::{CacheFill, Provenance};
-use coven::sync::session::{BlobDecl, SyncedTable};
+use coven::{CacheFill, Provenance};
+use coven::{BlobDecl, SyncedTable};
 
 /// Cloud namespace for release-file (audio/image/text/…) blobs — the user's own
 /// imported files. coven keys them under `release_files/…` and segments their

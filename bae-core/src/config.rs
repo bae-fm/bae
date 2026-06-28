@@ -16,7 +16,7 @@ pub fn init_keyring() {
     // otherwise. "bae" keeps bae's coven key entries from colliding with any
     // other coven-based app on the same machine. Set-once, so it's safe to run
     // through every init path (bridge, windows-ffi, bae-core bootstrap, tests).
-    coven::keys::set_keyring_service("bae");
+    coven::set_keyring_service("bae");
 
     #[cfg(target_os = "macos")]
     {
@@ -92,7 +92,7 @@ pub fn seed_dev_keyring(library_id: &str) {
         return;
     }
 
-    let keys = coven::keys::KeyService::new(library_id.to_string());
+    let keys = coven::KeyService::new(library_id.to_string());
 
     if let Some(key) = dev_env_secret("BAE_ENCRYPTION_KEY") {
         match keys.set_encryption_key(&key) {
@@ -102,7 +102,7 @@ pub fn seed_dev_keyring(library_id: &str) {
     }
 
     if let Some(creds_json) = dev_env_secret("BAE_CLOUD_HOME_CREDENTIALS") {
-        match serde_json::from_str::<coven::keys::CloudHomeCredentials>(&creds_json) {
+        match serde_json::from_str::<coven::CloudHomeCredentials>(&creds_json) {
             Ok(creds) => match keys.set_cloud_home_credentials(&creds) {
                 Ok(()) => info!("dev: seeded cloud home credentials from env"),
                 Err(e) => warn!("dev: failed to seed cloud home credentials: {e}"),
@@ -143,14 +143,14 @@ pub fn install_test_keyring() {
         keyring_core::set_default_store(
             keyring_core::mock::Store::new().expect("create mock keyring store"),
         );
-        coven::keys::set_keyring_service("bae");
+        coven::set_keyring_service("bae");
     });
 }
 
 /// Cloud home provider selection. bae uses coven's enum directly — same
 /// variants, same serialization, same `needs_oauth` — rather than maintaining a
 /// duplicate it would have to keep mapping back and forth.
-pub use coven::config::CloudProvider;
+pub use coven::CloudProvider;
 
 /// Parse an RFC 3339 timestamp into Unix epoch milliseconds. coven and bae's
 /// own queue both store sync/created times as RFC 3339 text, but the UI only
@@ -163,14 +163,14 @@ pub fn rfc3339_to_epoch_millis(s: &str) -> Result<i64, chrono::ParseError> {
 
 /// Cloud home settings (provider + per-provider fields). bae uses coven's type
 /// directly — same fields, extracted from bae — instead of a parallel copy.
-pub use coven::config::CloudHomeConfig;
+pub use coven::CloudHomeConfig;
 
 /// How a cloud home stores its objects: opaque (encrypted, obfuscated blob
 /// paths) or browsable (stored in the clear at readable paths). The host picks
 /// this when creating a cloud home; it drives both encryption-at-rest and the
 /// blob-path scheme. Not access control — the provider's own credentials gate
 /// the bucket either way; this is only about whether what's stored is legible.
-pub use coven::config::HomeStorage;
+pub use coven::HomeStorage;
 
 /// The validation state of a stored Discogs API key. Only carried when a key
 /// exists (`Config::discogs` is `Some`). Distinct from `DiscogsTokenStatus`:
@@ -251,7 +251,7 @@ impl Config {
     /// The coven sync/cloud config bae embeds. Handed to the `CovenHandle` (via
     /// its config provider) and read fresh by coven for the cloud-home selection,
     /// the blob-path scheme, sync, and restore-code generation.
-    pub fn to_coven(&self) -> coven::config::Config {
+    pub fn to_coven(&self) -> coven::Config {
         self.inner.clone()
     }
 
@@ -276,7 +276,7 @@ impl Config {
 
     /// Wrap coven's config, filling bae-only fields with defaults. Used after a
     /// restore where coven produced the synced/cloud config.
-    pub fn from_coven(c: coven::config::Config) -> Self {
+    pub fn from_coven(c: coven::Config) -> Self {
         let mut cfg = Self::with_defaults(
             c.library_id.clone(),
             c.device_id.clone(),
@@ -290,7 +290,7 @@ impl Config {
 
 /// Configuration errors. bae uses coven's enum directly — identical, and it was
 /// extracted from bae.
-pub use coven::config::ConfigError;
+pub use coven::ConfigError;
 
 /// bae's application directory (`~/.bae`). The base coven's restore/join build
 /// per-library dirs under (`<app_dir>/libraries/<id>`).
@@ -340,7 +340,7 @@ impl ConfigYaml {
     /// if missing from YAML) and provides the library_dir.
     fn into_config(self, device_id: String, library_dir: LibraryDir) -> Config {
         Config {
-            inner: coven::config::Config {
+            inner: coven::Config {
                 library_id: self.library_id,
                 device_id,
                 library_dir,
@@ -391,7 +391,7 @@ pub struct LibraryInfo {
 #[derive(Clone, Debug)]
 pub struct Config {
     /// Sync/cloud config coven owns — embedded, not re-declared.
-    pub inner: coven::config::Config,
+    pub inner: coven::Config,
     /// The stored Discogs key's validation state, or `None` when no key is
     /// configured. `Some` doubles as the hint that a key is in the keyring, so
     /// settings render without a keyring read.
@@ -403,7 +403,7 @@ pub struct Config {
 }
 
 impl std::ops::Deref for Config {
-    type Target = coven::config::Config;
+    type Target = coven::Config;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
@@ -608,7 +608,7 @@ impl Config {
         library_name: String,
     ) -> Self {
         Self {
-            inner: coven::config::Config::with_defaults(
+            inner: coven::Config::with_defaults(
                 library_id,
                 device_id,
                 library_dir,

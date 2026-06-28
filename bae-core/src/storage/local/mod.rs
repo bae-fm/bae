@@ -5,4 +5,4 @@
 pub mod cleanup;
 pub mod transfer;
 
-pub use coven::storage::local::BlobStore as ReleaseStorageImpl;
+pub use coven::BlobStore as ReleaseStorageImpl;

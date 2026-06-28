@@ -652,7 +652,7 @@ async fn test_user_edit_track_count_mismatch_errors() {
 #[test]
 fn test_sync_changeset_walker_dedupes_per_album() {
     use bae_core::library::sync_events::changes_from_row_changes;
-    use coven::changeset::{ChangeOp, RowChange};
+    use coven::{ChangeOp, RowChange};
 
     // Column layouts match the synced schema: albums col0=id; releases col0=id,
     // col1=album_id; tracks col0=id, col1=release_id.
@@ -686,7 +686,7 @@ fn test_sync_changeset_walker_dedupes_per_album() {
 #[test]
 fn test_sync_changeset_album_delete_carries_child_release_ids() {
     use bae_core::library::sync_events::{changes_from_row_changes, AlbumChangeEvent};
-    use coven::changeset::{ChangeOp, RowChange};
+    use coven::{ChangeOp, RowChange};
 
     fn delete(table: &str, cols: &[&str]) -> RowChange {
         RowChange {

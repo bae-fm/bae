@@ -598,7 +598,7 @@ fn resolve_search_results(
 #[derive(Error, Debug)]
 pub enum LibraryError {
     #[error("Database error: {0}")]
-    Database(#[from] coven::database::DbError),
+    Database(#[from] coven::DbError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Import error: {0}")]
@@ -1135,7 +1135,7 @@ impl LibraryManager {
             config_provider,
             key_service.clone(),
             clock.clone(),
-            Some(observer.clone() as Arc<dyn coven::blob::BlobTransitionObserver>),
+            Some(observer.clone() as Arc<dyn coven::BlobTransitionObserver>),
         );
         // The handle owns the observer, so the observer can't take the handle at
         // construction — install it now (the observer answers pin-state through it
@@ -1173,7 +1173,7 @@ impl LibraryManager {
     pub async fn connect_test_cloud_home(
         &self,
         cloud_home: Arc<dyn CloudHome>,
-        cipher: crate::sync::cloud_storage::CloudCipher,
+        cipher: crate::sync::CloudCipher,
     ) -> Result<(), String> {
         self.handle
             .connect_sync_with_test_home(cloud_home, cipher)
@@ -1840,14 +1840,14 @@ impl LibraryManager {
     /// file at the user's path (an external ref coven holds), Remote = uploaded and
     /// `CacheLazy` (fetched into the cache on first read). coven resolves which by
     /// where the bytes are — the same `BlobRef` addresses every locality.
-    pub(crate) fn release_file_blob_ref(file: &DbFile) -> coven::blob::BlobRef {
-        coven::blob::BlobRef {
+    pub(crate) fn release_file_blob_ref(file: &DbFile) -> coven::BlobRef {
+        coven::BlobRef {
             namespace: crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
             id: file.id.clone(),
-            scope: coven::blob::BlobScope::Master,
+            scope: coven::BlobScope::Master,
             cloud_path: file.cloud_path.clone(),
-            provenance: coven::blob::Provenance::UserProvided,
-            fill: coven::blob::CacheFill::CacheLazy,
+            provenance: coven::Provenance::UserProvided,
+            fill: coven::CacheFill::CacheLazy,
         }
     }
 
@@ -1958,14 +1958,14 @@ impl LibraryManager {
         namespace: &str,
         id: &str,
         cloud_path: Option<String>,
-    ) -> coven::blob::BlobRef {
-        coven::blob::BlobRef {
+    ) -> coven::BlobRef {
+        coven::BlobRef {
             namespace: namespace.to_string(),
             id: id.to_string(),
-            scope: coven::blob::BlobScope::Master,
+            scope: coven::BlobScope::Master,
             cloud_path,
-            provenance: coven::blob::Provenance::HostProvided,
-            fill: coven::blob::CacheFill::CacheEager,
+            provenance: coven::Provenance::HostProvided,
+            fill: coven::CacheFill::CacheEager,
         }
     }
 
@@ -2112,11 +2112,11 @@ impl LibraryManager {
     /// and the test driver.
     fn map_make_local_result(
         release_id: &str,
-        result: Result<(), coven::blob::transition::MakeLocalError>,
+        result: Result<(), coven::MakeLocalError>,
     ) -> Result<(), LibraryError> {
         match result {
             Ok(()) => Ok(()),
-            Err(coven::blob::transition::MakeLocalError::Cancelled) => Ok(()),
+            Err(coven::MakeLocalError::Cancelled) => Ok(()),
             Err(e) => Err(LibraryError::Storage(format!(
                 "make release {release_id} local: {e}"
             ))),
@@ -3593,20 +3593,20 @@ pub(crate) async fn find_release_detail_with(
     )))
 }
 
-/// The release-files [`BlobRef`](coven::blob::BlobRef) addressing a representative
+/// The release-files [`BlobRef`](coven::BlobRef) addressing a representative
 /// file for a coven cache-state query (the pin check via
 /// [`CovenHandle::is_pinned`]), which keys only on namespace + id. The other
 /// fields carry the release-files constants (see
 /// [`LibraryManager::release_file_blob_ref`]); `cloud_path` is `None` because the
 /// pin check reads only `storage/pinned/<namespace>/<id>`, never the cloud layout.
-fn release_files_pin_ref(file_id: &str) -> coven::blob::BlobRef {
-    coven::blob::BlobRef {
+fn release_files_pin_ref(file_id: &str) -> coven::BlobRef {
+    coven::BlobRef {
         namespace: crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
         id: file_id.to_string(),
-        scope: coven::blob::BlobScope::Master,
+        scope: coven::BlobScope::Master,
         cloud_path: None,
-        provenance: coven::blob::Provenance::UserProvided,
-        fill: coven::blob::CacheFill::CacheLazy,
+        provenance: coven::Provenance::UserProvided,
+        fill: coven::CacheFill::CacheLazy,
     }
 }
 
@@ -3617,7 +3617,7 @@ fn release_files_pin_ref(file_id: &str) -> coven::blob::BlobRef {
 async fn release_file_pinned(handle: &CovenHandle, file_id: &str) -> Result<bool, LibraryError> {
     match handle.is_pinned(&[release_files_pin_ref(file_id)]).await {
         Ok(pinned) => Ok(pinned),
-        Err(coven::blob::cache::BlobCacheError::Path(e)) => {
+        Err(coven::BlobCacheError::Path(e)) => {
             warn!("pin-state check: rejecting bad blob id {file_id}: {e}");
             Ok(false)
         }
@@ -5190,7 +5190,7 @@ impl LibraryManager {
 
     pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), String> {
         use crate::keys::CloudHomeCredentials;
-        use crate::storage::cloud::s3::S3CloudHome;
+        use crate::storage::cloud::S3CloudHome;
         use crate::storage::cloud::CloudHome;
 
         // Probe the bucket with the proposed credentials *before* persisting
@@ -5242,7 +5242,7 @@ impl LibraryManager {
         provider: CloudProvider,
         storage: crate::config::HomeStorage,
     ) -> Result<(), String> {
-        use crate::storage::cloud::setup;
+        use crate::storage::cloud as setup;
 
         // Hold the sender alive across the await so cancel.wait_for inside
         // oauth::authorize never fires (this fn doesn't surface a cancel
@@ -5449,9 +5449,9 @@ mod tests {
     use crate::config::Config;
     use crate::db::{DbAlbum, DbRelease};
     #[cfg(feature = "test-utils")]
-    use crate::storage::cloud::test_utils::InMemoryCloudHome;
+    use crate::storage::cloud::InMemoryCloudHome;
     #[cfg(feature = "test-utils")]
-    use crate::sync::cloud_storage::CloudCipher;
+    use crate::sync::CloudCipher;
     use chrono::Utc;
     use tempfile::TempDir;
     use uuid::Uuid;
@@ -7144,7 +7144,7 @@ mod tests {
     #[tokio::test]
     async fn observer_progress_advances_snapshot_bytes_done() {
         use crate::library::UploadState;
-        use coven::blob::BlobTransitionObserver;
+        use coven::BlobTransitionObserver;
 
         let (manager, _temp_dir) = setup_test_manager().await;
         let album = create_test_album();

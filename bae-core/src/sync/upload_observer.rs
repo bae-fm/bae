@@ -138,7 +138,7 @@ impl ReleaseUploadObserver {
 }
 
 #[async_trait::async_trait]
-impl coven::blob::BlobTransitionObserver for ReleaseUploadObserver {
+impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     async fn on_blob_upload_started(&self, file_id: &str) {
         {
             self.in_flight

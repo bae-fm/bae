@@ -8,8 +8,8 @@
 //! blob-transition observer the handle holds.
 
 // coven owns the sync manager; bae uses it directly.
-pub use coven::sync::membership::MemberRole;
-pub use coven::sync::sync_manager::{ConfigProvider, MemberInfo, SyncManager};
+pub use coven::MemberRole;
+pub use coven::{ConfigProvider, MemberInfo, SyncManager};
 
 /// A device's short identity for display: the first 8 characters of its
 /// hex-encoded Ed25519 public key. The single source for the value every
@@ -78,8 +78,8 @@ pub struct JoinRequest {
 /// Generate this device's join-request code and the fingerprint of the public
 /// key it carries. Creates this device's keypair if one doesn't exist yet.
 pub fn generate_join_request() -> Result<JoinRequest, crate::keys::KeyError> {
-    let code = coven::join_code::generate_join_request(None)?;
-    let pubkey = coven::join_code::decode_join_request(&code)
+    let code = coven::generate_join_request(None)?;
+    let pubkey = coven::decode_join_request(&code)
         .expect("a code this device just encoded decodes")
         .public_key;
     let fingerprint = pubkey_fingerprint(&pubkey);
@@ -96,8 +96,8 @@ pub struct JoinRequestInfo {
 }
 
 /// Decode a join-request code to preview the joining device before approving it.
-pub fn decode_join_request(code: &str) -> Result<JoinRequestInfo, coven::join_code::JoinCodeError> {
-    let req = coven::join_code::decode_join_request(code)?;
+pub fn decode_join_request(code: &str) -> Result<JoinRequestInfo, coven::JoinCodeError> {
+    let req = coven::decode_join_request(code)?;
     Ok(JoinRequestInfo {
         fingerprint: pubkey_fingerprint(&req.public_key),
         pubkey: req.public_key,
@@ -119,8 +119,8 @@ pub struct InviteCodeInfo {
 /// Decode an invite code and return UI-ready info for the join preview.
 pub fn decode_invite_code_info(
     code: &str,
-) -> Result<InviteCodeInfo, coven::join_code::JoinCodeError> {
-    let info = coven::join_code::decode_invite_code_info(code)?;
+) -> Result<InviteCodeInfo, coven::JoinCodeError> {
+    let info = coven::decode_invite_code_info(code)?;
     Ok(InviteCodeInfo {
         owner_fingerprint: pubkey_fingerprint(&info.owner_pubkey),
         library_id: info.library_id,

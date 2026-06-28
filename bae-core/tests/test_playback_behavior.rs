@@ -4666,7 +4666,7 @@ impl CloudOnlyPlaybackFixture {
         library_manager
             .connect_test_cloud_home(
                 cloud.clone(),
-                bae_core::sync::cloud_storage::CloudCipher::Encrypted(
+                bae_core::sync::CloudCipher::Encrypted(
                     bae_core::encryption::EncryptionService::new_with_key(&master_key),
                 ),
             )
