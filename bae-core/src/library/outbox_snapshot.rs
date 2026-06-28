@@ -183,7 +183,7 @@ pub(crate) async fn build_outbox_snapshot(
     in_flight: &HashMap<String, u64>,
     throughput: &UploadThroughput,
     paused: bool,
-) -> Result<OutboxSnapshot, coven::database::DbError> {
+) -> Result<OutboxSnapshot, coven::DbError> {
     let rows = db.outbox_items().await?;
 
     let mut uploads = Vec::new();

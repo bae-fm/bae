@@ -4,9 +4,9 @@ use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
-use coven::database::DbError;
+use coven::DbError;
 use coven::rusqlite::{params, Connection, OptionalExtension, Row};
-use coven::sync::session::SyncedTable;
+use coven::SyncedTable;
 use coven::UpdatedAtStamper;
 use std::collections::HashMap;
 use std::path::Path;
@@ -3073,7 +3073,7 @@ impl Database {
                 file_id,
                 cloud_key,
                 source_path,
-                coven::blob::BlobScope::Master,
+                coven::BlobScope::Master,
                 retain_pinned,
                 &created_at,
             )
@@ -3148,7 +3148,7 @@ impl Database {
                     // (`co.id`=0, …, `co.created_at`=4) so the diagnostic names the
                     // right column.
                     let created_at_raw = row.get::<_, String>("created_at")?;
-                    let created_at = coven::sync::hlc::Timestamp::parse(&created_at_raw)
+                    let created_at = coven::Timestamp::parse(&created_at_raw)
                         .map(|t| t.millis as i64)
                         .ok_or_else(|| {
                             coven::rusqlite::Error::FromSqlConversionFailure(

@@ -959,7 +959,7 @@ pub unsafe extern "C" fn bae_decode_restore_code(code: *const c_char) -> *mut c_
         tracing::error!("bae_decode_restore_code: null or non-UTF-8 code");
         return std::ptr::null_mut();
     };
-    match bae_core::sync::restore_code::decode_restore_code_info(&code) {
+    match bae_core::sync::decode_restore_code_info(&code) {
         Ok(info) => json_cstring(&FfiRestoreCodeInfo {
             library_id: info.library_id,
             library_name: info.library_name,
@@ -1347,7 +1347,7 @@ pub unsafe extern "C" fn bae_restore_from_cloud(
             endpoint,
             access_key,
             secret_key,
-        }) => bae_core::sync::restore::RestoreSource::S3 {
+        }) => bae_core::sync::RestoreSource::S3 {
             bucket,
             region,
             endpoint: endpoint.filter(|e| !e.trim().is_empty()),

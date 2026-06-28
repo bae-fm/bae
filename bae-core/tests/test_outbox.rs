@@ -25,9 +25,9 @@ async fn setup_db() -> (Database, TempDir) {
 /// The `file_id` an upload entry carries, panicking if the entry is not an
 /// upload. coven nests it inside `OutboxOperation::Upload`; the tests assert FIFO
 /// order by it.
-fn upload_file_id(entry: &coven::db::OutboxEntry) -> &str {
+fn upload_file_id(entry: &coven::OutboxEntry) -> &str {
     match &entry.operation {
-        coven::db::OutboxOperation::Upload { file_id, .. } => file_id,
+        coven::OutboxOperation::Upload { file_id, .. } => file_id,
         other => panic!("expected an upload entry, got {other:?}"),
     }
 }
@@ -59,8 +59,8 @@ async fn test_add_and_get_pending_uploads_fifo() {
 /// silently mis-encrypt. Deletes carry no scope.
 #[tokio::test]
 async fn test_outbox_upload_round_trips_master_scope() {
-    use coven::blob::BlobScope;
-    use coven::db::OutboxOperation;
+    use coven::BlobScope;
+    use coven::OutboxOperation;
 
     let (db, _tmp) = setup_db().await;
 
@@ -106,12 +106,12 @@ async fn test_add_and_get_pending_deletes() {
     assert_eq!(deletes[0].cloud_key, "storage/aa/bb/file-aaa");
     assert!(matches!(
         deletes[0].operation,
-        coven::db::OutboxOperation::Delete
+        coven::OutboxOperation::Delete
     ));
     assert_eq!(deletes[1].cloud_key, "storage/bb/cc/file-bbb");
     assert!(matches!(
         deletes[1].operation,
-        coven::db::OutboxOperation::Delete
+        coven::OutboxOperation::Delete
     ));
 }
 

@@ -7,7 +7,7 @@
 //! artists).
 use std::collections::{HashMap, HashSet};
 
-use coven::changeset::{ChangeOp, RowChange};
+use coven::{ChangeOp, RowChange};
 
 /// An album-level event to emit after processing a changeset.
 #[derive(Debug, Clone)]

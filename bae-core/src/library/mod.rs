@@ -81,7 +81,7 @@ pub fn create_library(
 
 /// coven's restore/join returns the recovered Config; wrap it in bae's Config
 /// (which adds Discogs fields) and persist it.
-fn save_coven_library(coven_config: coven::config::Config) -> Result<Config, String> {
+fn save_coven_library(coven_config: coven::Config) -> Result<Config, String> {
     let config = Config::from_coven(coven_config);
     config.save_to_config_yaml().map_err(|e| e.to_string())?;
     Ok(config)
@@ -93,7 +93,7 @@ pub async fn restore_from_cloud(
     library_id: &str,
     encryption_key_hex: &str,
     library_name: &str,
-    source: crate::sync::restore::RestoreSource,
+    source: crate::sync::RestoreSource,
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
     let app_dir = crate::config::bae_dir().map_err(|e| e.to_string())?;
@@ -107,7 +107,7 @@ pub async fn restore_from_cloud(
     // library key, so coven rebuilds the encrypted, obfuscated home from its
     // presence (`Some`). A browsable home has no key and restores through the
     // restore-code path instead, where the absent `ek` selects it.
-    let coven_config = crate::sync::restore::restore_from_cloud(
+    let coven_config = crate::sync::restore_from_cloud(
         library_id,
         Some(encryption_key_hex),
         library_name,
@@ -128,7 +128,7 @@ pub async fn restore_from_cloud(
 pub async fn restore_from_code(
     code: &str,
     oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::cloudkit::CloudKitOps>>,
+    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
     restore_from_code_with_cancel(code, oauth_tokens, cloudkit_ops, None, on_status)
@@ -139,7 +139,7 @@ pub async fn restore_from_code(
 pub async fn restore_from_code_cancellable(
     code: &str,
     oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::cloudkit::CloudKitOps>>,
+    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
     cancel: CancellationToken,
     on_status: impl Fn(&str),
 ) -> Result<Config, RestoreFromCodeError> {
@@ -149,14 +149,14 @@ pub async fn restore_from_code_cancellable(
 async fn restore_from_code_with_cancel(
     code: &str,
     oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::cloudkit::CloudKitOps>>,
+    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
     cancel: Option<CancellationToken>,
     on_status: impl Fn(&str),
 ) -> Result<Config, RestoreFromCodeError> {
     let app_dir = crate::config::bae_dir().map_err(restore_error)?;
     let cancel = if let Some(cancel) = cancel {
         let info =
-            crate::sync::restore_code::decode_restore_code_info(code).map_err(restore_error)?;
+            crate::sync::decode_restore_code_info(code).map_err(restore_error)?;
         let library_dir = library_dir_path(&app_dir, &info.library_id);
         let library_dir_existed = library_dir.try_exists().map_err(restore_error)?;
         Some((cancel, library_dir, library_dir_existed))
@@ -165,7 +165,7 @@ async fn restore_from_code_with_cancel(
     };
     let synced_tables = crate::sync::synced_tables();
 
-    let restore = crate::sync::restore::restore_from_code(
+    let restore = crate::sync::restore_from_code(
         code,
         &synced_tables,
         oauth_tokens,
@@ -237,7 +237,7 @@ fn join_error(error: impl ToString) -> JoinFromCodeError {
 pub async fn join_from_code(
     code: &str,
     oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::cloudkit::CloudKitOps>>,
+    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
     join_from_code_with_cancel(code, oauth_tokens, cloudkit_ops, None, on_status)
@@ -248,7 +248,7 @@ pub async fn join_from_code(
 pub async fn join_from_code_cancellable(
     code: &str,
     oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::cloudkit::CloudKitOps>>,
+    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
     cancel: CancellationToken,
     on_status: impl Fn(&str),
 ) -> Result<Config, JoinFromCodeError> {
@@ -258,13 +258,13 @@ pub async fn join_from_code_cancellable(
 async fn join_from_code_with_cancel(
     code: &str,
     oauth_tokens: Option<crate::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::cloudkit::CloudKitOps>>,
+    cloudkit_ops: Option<Arc<dyn crate::storage::cloud::CloudKitOps>>,
     cancel: Option<CancellationToken>,
     on_status: impl Fn(&str),
 ) -> Result<Config, JoinFromCodeError> {
     let app_dir = crate::config::bae_dir().map_err(join_error)?;
     let cancel = if let Some(cancel) = cancel {
-        let info = crate::sync::join_code::decode_invite_code_info(code).map_err(join_error)?;
+        let info = crate::sync::decode_invite_code_info(code).map_err(join_error)?;
         let library_dir = library_dir_path(&app_dir, &info.library_id);
         let library_dir_existed = library_dir.try_exists().map_err(join_error)?;
         Some((cancel, library_dir, library_dir_existed))
@@ -273,7 +273,7 @@ async fn join_from_code_with_cancel(
     };
     let synced_tables = crate::sync::synced_tables();
 
-    let join = crate::sync::join::join_from_invite_code(
+    let join = crate::sync::join_from_invite_code(
         code,
         &app_dir,
         &synced_tables,

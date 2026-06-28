@@ -169,13 +169,13 @@ pub fn create_audio_reader(
     cloud_path: Option<&str>,
     source_size: u64,
 ) -> Box<dyn AudioDataReader> {
-    let blob = coven::blob::BlobRef {
+    let blob = coven::BlobRef {
         namespace: crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
         id: file_id.to_string(),
-        scope: coven::blob::BlobScope::Master,
+        scope: coven::BlobScope::Master,
         cloud_path: cloud_path.map(str::to_string),
-        provenance: coven::blob::Provenance::UserProvided,
-        fill: coven::blob::CacheFill::CacheLazy,
+        provenance: coven::Provenance::UserProvided,
+        fill: coven::CacheFill::CacheLazy,
     };
     Box::new(CovenBlobReader {
         handle: library_manager.handle().clone(),
@@ -190,7 +190,7 @@ pub fn create_audio_reader(
 /// never branches on locality.
 pub struct CovenBlobReader {
     handle: coven::CovenHandle,
-    blob: coven::blob::BlobRef,
+    blob: coven::BlobRef,
     source_size: u64,
 }
 

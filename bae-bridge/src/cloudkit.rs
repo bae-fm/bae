@@ -21,7 +21,7 @@ struct CloudKitDriverAdapter {
     driver: Arc<dyn CloudKitDriver>,
 }
 
-impl bae_core::storage::cloud::cloudkit::CloudKitOps for CloudKitDriverAdapter {
+impl bae_core::storage::cloud::CloudKitOps for CloudKitDriverAdapter {
     fn write_record(
         &self,
         key: &str,
@@ -112,7 +112,7 @@ pub fn set_cloudkit_driver(driver: Box<dyn CloudKitDriver>) {
 }
 
 /// Get a CloudKit ops adapter, if a driver has been registered.
-pub(crate) fn get_cloudkit_ops() -> Option<Arc<dyn bae_core::storage::cloud::cloudkit::CloudKitOps>>
+pub(crate) fn get_cloudkit_ops() -> Option<Arc<dyn bae_core::storage::cloud::CloudKitOps>>
 {
     let driver = CLOUDKIT_DRIVER
         .lock()

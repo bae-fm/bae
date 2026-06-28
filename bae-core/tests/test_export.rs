@@ -60,7 +60,7 @@ impl ExportFixture {
         let cloud = Arc::new(MockCloudHome::new());
         mgr.connect_test_cloud_home(
             cloud.clone(),
-            bae_core::sync::cloud_storage::CloudCipher::Encrypted(EncryptionService::new_with_key(
+            bae_core::sync::CloudCipher::Encrypted(EncryptionService::new_with_key(
                 &[7u8; 32],
             )),
         )

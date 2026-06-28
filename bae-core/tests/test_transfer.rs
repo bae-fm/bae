@@ -19,7 +19,7 @@ use bae_core::library_dir::LibraryDir;
 use bae_core::storage::local::transfer::{
     read_release_file_bytes, TransferProgress, TransferService,
 };
-use bae_core::sync::cloud_storage::CloudCipher;
+use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
 use std::path::Path;

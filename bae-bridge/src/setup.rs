@@ -98,7 +98,7 @@ use crate::types::{
 use crate::cloudkit::get_cloudkit_ops;
 
 #[cfg(not(feature = "cloudkit"))]
-fn get_cloudkit_ops() -> Option<std::sync::Arc<dyn bae_core::storage::cloud::cloudkit::CloudKitOps>>
+fn get_cloudkit_ops() -> Option<std::sync::Arc<dyn bae_core::storage::cloud::CloudKitOps>>
 {
     None
 }
@@ -115,7 +115,7 @@ fn restore_error_to_bridge(error: RestoreFromCodeError) -> BridgeError {
 async fn restore_from_code_config(
     code: String,
     oauth_tokens: Option<bae_core::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::cloudkit::CloudKitOps>>,
+    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::CloudKitOps>>,
     cancel: Option<CancellationToken>,
 ) -> Result<Config, BridgeError> {
     match cancel {
@@ -248,7 +248,7 @@ pub fn restore_from_cloud(
     library_name: Option<String>,
     source: BridgeRestoreSource,
 ) -> Result<BridgeLibrary, BridgeError> {
-    use bae_core::sync::restore::RestoreSource;
+    use bae_core::sync::RestoreSource;
     let library_name = library_name.unwrap_or_else(bae_core::library_name::generate_library_name);
 
     on_worker(move || async move {
@@ -319,7 +319,7 @@ pub fn restore_from_cloud(
 /// Decode a restore code string and return info for UI preview.
 #[uniffi::export]
 pub fn decode_restore_code(code: String) -> Result<BridgeRestoreCodeInfo, BridgeError> {
-    let info = bae_core::sync::restore_code::decode_restore_code_info(&code)
+    let info = bae_core::sync::decode_restore_code_info(&code)
         .map_err(BridgeError::config)?;
 
     Ok(BridgeRestoreCodeInfo {
@@ -354,7 +354,7 @@ pub fn restore_from_code(
 pub struct RestoreFromCodeOperation {
     code: String,
     oauth_tokens: Option<bae_core::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::cloudkit::CloudKitOps>>,
+    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::CloudKitOps>>,
     cancel: CancellationToken,
     started: Mutex<bool>,
 }
@@ -462,7 +462,7 @@ fn join_error_to_bridge(error: JoinFromCodeError) -> BridgeError {
 async fn join_from_code_config(
     code: String,
     oauth_tokens: Option<bae_core::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::cloudkit::CloudKitOps>>,
+    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::CloudKitOps>>,
     cancel: Option<CancellationToken>,
 ) -> Result<Config, BridgeError> {
     match cancel {
@@ -508,7 +508,7 @@ pub fn join_from_code(
 pub struct JoinFromCodeOperation {
     code: String,
     oauth_tokens: Option<bae_core::oauth::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::cloudkit::CloudKitOps>>,
+    cloudkit_ops: Option<Arc<dyn bae_core::storage::cloud::CloudKitOps>>,
     cancel: CancellationToken,
     started: Mutex<bool>,
 }
