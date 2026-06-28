@@ -49,7 +49,7 @@ default = []
 # Enables the OAuth cloud-provider surface (sign-in + the desktop/host OAuth
 # flows) via bae-core/coven. Off by default → the baeium build; the bae
 # build turns it on.
-oauth-providers = ["bae-core/oauth-providers"]
+oauth-providers = ["bae-core/oauth-providers", "coven/oauth-providers"]
 cloudkit = []
 desktop = []
 
