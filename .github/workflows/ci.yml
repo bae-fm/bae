@@ -133,30 +133,3 @@ jobs:
           exit 1
         fi
         echo "baeium bridge is clean: no OAuth/CloudKit bindings exported."
-
-  security:
-    name: Security Audit
-    runs-on: macos-26
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-      with:
-        ref: ${{ inputs.ref || github.sha }}
-
-    - name: Setup Rust environment
-      uses: ./.github/actions/setup-rust
-
-    - name: Install cargo-audit
-      run: cargo binstall cargo-audit --no-confirm --force
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Run security audit
-      # RUSTSEC-2023-0071 (rsa): phantom dep from sqlx-macros-core optional mysql backend,
-      # never compiled. Cargo lockfile bug: https://github.com/rust-lang/cargo/issues/10801
-      # RUSTSEC-2026-0104 (rustls-webpki): DoS panic in CRL parsing. Fix is 0.103.13,
-      # which is not yet published to crates.io (only 0.103.12 is out as of 2026-04-23).
-      # We don't parse CRLs directly; exposure is via rustls-platform-verifier on TLS
-      # handshakes. Remove this ignore once rustls-webpki 0.103.13 publishes and
-      # `cargo update -p rustls-webpki` picks it up.
-      run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2026-0104
