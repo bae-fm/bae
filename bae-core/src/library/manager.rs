@@ -1045,9 +1045,9 @@ pub struct LibraryManager {
 }
 
 /// Test-only overrides for state that production reads from a live
-/// `SyncManager`. The cloud read/write paths now run against a real manager a
-/// test connects via [`LibraryManager::connect_test_cloud_home`], so this holds
-/// only the cleanup-delay knob.
+/// `SyncManager`. The cloud read/write paths run against a real manager a test
+/// connects via [`LibraryManager::connect_test_cloud_home`], so this holds only
+/// the cleanup-delay knob.
 #[cfg(any(test, feature = "test-utils"))]
 #[derive(Clone, Default)]
 struct TestOverrides {
@@ -6629,16 +6629,14 @@ mod tests {
     /// it — the in-module counterpart of the integration tests' `setup_with_cloud`.
     /// After this, `get_cloud_home().is_some()` and `is_sync_ready()` both hold.
     #[cfg(feature = "test-utils")]
-    async fn connect_test_cloud(manager: &LibraryManager) -> Arc<InMemoryCloudHome> {
-        let cloud = Arc::new(InMemoryCloudHome::new());
+    async fn connect_test_cloud(manager: &LibraryManager) {
         manager
             .connect_test_cloud_home(
-                cloud.clone(),
+                Arc::new(InMemoryCloudHome::new()),
                 CloudCipher::Encrypted(EncryptionService::new_with_key(&[7u8; 32])),
             )
             .await
             .expect("connect in-memory cloud home");
-        cloud
     }
 
     /// Create a Remote release the real way: a Local release with one source file

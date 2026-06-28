@@ -76,21 +76,14 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
 /// sealing blobs under `enc`. After this, `get_cloud_home` is Some and
 /// `is_sync_ready` is true. Opaque home (the default at-rest mode), so blobs are
 /// keyed hashed and `release_files.cloud_path` stays NULL.
-async fn setup_with_cloud(
-    tmp: &TempDir,
-) -> (
-    Database,
-    LibraryManager,
-    Arc<MockCloudHome>,
-    EncryptionService,
-) {
+async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager) {
     let (db, mgr) = setup(tmp).await;
     let cloud = Arc::new(MockCloudHome::new());
     let enc = EncryptionService::new_with_key(&[9u8; 32]);
-    mgr.connect_test_cloud_home(cloud.clone(), CloudCipher::Encrypted(enc.clone()))
+    mgr.connect_test_cloud_home(cloud, CloudCipher::Encrypted(enc))
         .await
         .unwrap();
-    (db, mgr, cloud, enc)
+    (db, mgr)
 }
 
 /// Insert a Local release: an album + release with `remote = false`, its originals
@@ -250,7 +243,7 @@ async fn expect_release_updated(
 async fn make_remote_uploads_are_visible_in_snapshot_before_drain() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr) = setup_with_cloud(&tmp).await;
     let source = tmp.path().join("src");
     let (_album_id, release_id, named) = create_local_release(
         &db,
@@ -374,7 +367,7 @@ async fn test_unpin_rejects_local_release() {
 async fn test_pin_remote_fetches_into_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr) = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
         &db,
         &mgr,
@@ -402,7 +395,7 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
 async fn test_unpin_remote_drops_from_pinned_cache() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr) = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
         &db,
         &mgr,
@@ -507,7 +500,7 @@ async fn test_missing_external_source_maps_to_error() {
 async fn test_make_local_cancelled_rolls_back_and_stays_remote() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr) = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
         &db,
         &mgr,
@@ -546,7 +539,7 @@ async fn test_make_local_cancelled_rolls_back_and_stays_remote() {
 async fn test_make_local_abort_on_dest_failure_queues_no_deletes() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr) = setup_with_cloud(&tmp).await;
     let release_id =
         create_remote_release(&db, &mgr, &tmp.path().join("src"), &[("a.flac", b"aaaa")]).await;
 
@@ -588,7 +581,7 @@ async fn test_make_local_abort_on_dest_failure_queues_no_deletes() {
 async fn test_round_trip_make_remote_make_local_make_remote() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
         create_local_release(&db, &mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;

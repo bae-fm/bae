@@ -69,7 +69,7 @@ impl ReleaseUploadObserver {
     /// observer can rebuild `ReleaseDetail` payloads when a transition completes.
     pub fn set_handle(&self, handle: CovenHandle) {
         if self.handle.set(handle).is_err() {
-            warn!("ReleaseUploadObserver handle already set; ignoring");
+            panic!("ReleaseUploadObserver handle already set — the observer was wired twice");
         }
     }
 
