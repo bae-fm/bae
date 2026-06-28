@@ -10,9 +10,11 @@
 //! encryption-key/credentials env vars are.
 use tracing::{info, warn};
 
+pub use coven::{CloudHomeCredentials, KeyError, KeyService};
 // `read_keyring` / `keyring_service` back the bae-domain keyring credentials
-// below (Discogs key, encryption-key forget).
-pub use coven::{keyring_service, read_keyring, CloudHomeCredentials, KeyError, KeyService};
+// below (Discogs key, encryption-key forget); they're used only here, so they
+// stay a private import rather than re-exported `bae_core::keys` surface.
+use coven::{keyring_service, read_keyring};
 
 /// A namespaced keyring account, matching coven's own `base:library_id` scheme.
 fn account(ks: &KeyService, base: &str) -> String {
