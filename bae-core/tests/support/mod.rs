@@ -316,12 +316,12 @@ impl MockCloudHome {
         m
     }
 
-    /// Toggle whether `write` fails, so a test can connect over a working home
-    /// (its sync bootstrap writes succeed) and then arm upload failures before
-    /// driving the drain.
-    pub fn set_fail_writes(&self, fail: bool) {
+    /// Arm `write` to fail, so a test can connect over a working home (its sync
+    /// bootstrap writes succeed) and then make uploads fail before driving the
+    /// drain.
+    pub fn arm_write_failures(&self) {
         self.fail_writes
-            .store(fail, std::sync::atomic::Ordering::SeqCst);
+            .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
     /// Make the next `n` `read_range` calls fail before any serve real bytes.

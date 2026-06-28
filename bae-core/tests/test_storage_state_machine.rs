@@ -94,19 +94,12 @@ async fn setup_manager(
 /// `MockCloudHome`, sealing blobs under `enc`. After this, `get_cloud_home` is
 /// Some and `is_sync_ready` is true, so the manager's make-Remote gate is open
 /// and the upload drain routes through the connected home.
-async fn setup_with_cloud(
-    tmp: &TempDir,
-) -> (
-    Database,
-    LibraryManager,
-    Arc<MockCloudHome>,
-    EncryptionService,
-) {
+async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager, Arc<MockCloudHome>) {
     let (db, mgr, cloud, enc) = setup_manager(tmp).await;
-    mgr.connect_test_cloud_home(cloud.clone(), CloudCipher::Encrypted(enc.clone()))
+    mgr.connect_test_cloud_home(cloud.clone(), CloudCipher::Encrypted(enc))
         .await
         .unwrap();
-    (db, mgr, cloud, enc)
+    (db, mgr, cloud)
 }
 
 /// Insert an artist + album + a Local release, write its originals under
@@ -220,7 +213,7 @@ async fn create_remote_cloud_only_release(
 #[tokio::test]
 async fn test_remote_import_becomes_pinned_after_upload() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud, _enc_svc) = setup_with_cloud(&tmp).await;
+    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) =
         create_local_release(&db, &mgr, &source_dir, &[("track1.flac", b"track1-bytes")]).await;
@@ -258,7 +251,7 @@ async fn test_remote_import_becomes_pinned_after_upload() {
 #[tokio::test]
 async fn test_multiple_releases_independent_completion() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud, _enc_svc) = setup_with_cloud(&tmp).await;
+    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
 
     let (release_a, _a) =
         create_local_release(&db, &mgr, &tmp.path().join("a"), &[("track.flac", b"aaa")]).await;
@@ -353,7 +346,7 @@ async fn test_manage_refused_when_sync_not_running() {
 #[tokio::test]
 async fn test_manage_cloud_only_uploads_from_source_then_completes() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud, _enc_svc) = setup_with_cloud(&tmp).await;
+    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
         &db,
@@ -404,7 +397,7 @@ async fn test_manage_cloud_only_uploads_from_source_then_completes() {
 #[tokio::test]
 async fn test_manage_upload_failure_keeps_source() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud, _enc_svc) = setup_with_cloud(&tmp).await;
+    let (db, mgr, cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
         &db,
@@ -418,7 +411,7 @@ async fn test_manage_upload_failure_keeps_source() {
 
     // The connect bootstrap already wrote through the home; arm the failure only
     // now, so the upload drain fails every blob.
-    cloud.set_fail_writes(true);
+    cloud.arm_write_failures();
     let count = mgr.drain_uploads_for_test().await.unwrap();
     assert_eq!(count, 0, "no upload should succeed");
 
@@ -443,7 +436,7 @@ async fn test_manage_upload_failure_keeps_source() {
 #[tokio::test]
 async fn test_manage_truncated_source_aborts_before_enqueue() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
         &db,
@@ -486,7 +479,7 @@ async fn test_manage_truncated_source_aborts_before_enqueue() {
 #[tokio::test]
 async fn test_unmanage_from_remote_reads_through_cache_then_queues_deletes() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud, _enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
@@ -535,7 +528,7 @@ async fn test_unmanage_from_remote_reads_through_cache_then_queues_deletes() {
 #[tokio::test]
 async fn test_unmanage_from_remote_missing_blob_is_hard_error() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud, _enc) = setup_with_cloud(&tmp).await;
+    let (db, mgr, cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
