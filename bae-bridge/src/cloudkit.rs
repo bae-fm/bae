@@ -112,8 +112,7 @@ pub fn set_cloudkit_driver(driver: Box<dyn CloudKitDriver>) {
 }
 
 /// Get a CloudKit ops adapter, if a driver has been registered.
-pub(crate) fn get_cloudkit_ops() -> Option<Arc<dyn bae_core::storage::cloud::CloudKitOps>>
-{
+pub(crate) fn get_cloudkit_ops() -> Option<Arc<dyn bae_core::storage::cloud::CloudKitOps>> {
     let driver = CLOUDKIT_DRIVER
         .lock()
         .expect("CloudKit driver mutex poisoned")

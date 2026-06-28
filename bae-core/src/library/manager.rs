@@ -5190,8 +5190,8 @@ impl LibraryManager {
 
     pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), String> {
         use crate::keys::CloudHomeCredentials;
-        use crate::storage::cloud::S3CloudHome;
         use crate::storage::cloud::CloudHome;
+        use crate::storage::cloud::S3CloudHome;
 
         // Probe the bucket with the proposed credentials *before* persisting
         // anything. A typo or a missing bucket would otherwise leave the UI

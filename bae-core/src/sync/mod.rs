@@ -16,8 +16,8 @@ pub mod upload_observer;
 // bae's SyncManager wrapper owns and drives coven's SyncManager.
 pub mod sync_manager;
 
-use coven::{CacheFill, Provenance};
 use coven::{BlobDecl, SyncedTable};
+use coven::{CacheFill, Provenance};
 
 /// Cloud namespace for release-file (audio/image/text/…) blobs — the user's own
 /// imported files. coven keys them under `release_files/…` and segments their

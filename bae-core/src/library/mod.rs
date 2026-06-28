@@ -155,8 +155,7 @@ async fn restore_from_code_with_cancel(
 ) -> Result<Config, RestoreFromCodeError> {
     let app_dir = crate::config::bae_dir().map_err(restore_error)?;
     let cancel = if let Some(cancel) = cancel {
-        let info =
-            crate::sync::decode_restore_code_info(code).map_err(restore_error)?;
+        let info = crate::sync::decode_restore_code_info(code).map_err(restore_error)?;
         let library_dir = library_dir_path(&app_dir, &info.library_id);
         let library_dir_existed = library_dir.try_exists().map_err(restore_error)?;
         Some((cancel, library_dir, library_dir_existed))
