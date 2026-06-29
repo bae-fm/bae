@@ -4,7 +4,7 @@
 //! blob-refs / pin state through the [`CovenHandle`] and [`Database`], distinct
 //! from the sync-provider control in `sync.rs`.
 
-use super::resolve::*;
+use super::release::cover_ref_for;
 use super::*;
 
 impl LibraryManager {
