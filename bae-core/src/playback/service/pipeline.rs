@@ -392,7 +392,7 @@ impl PlaybackService {
     pub(super) async fn stop(&mut self) {
         self.pending_side_pause = None;
         // Stop any active preview first (without resuming main, since we're stopping)
-        self.stop_preview_without_resume();
+        self.preview.stop();
         self.main_was_playing_before_preview = false;
 
         // Tear down the current track (stream, source, buffer, decoder,

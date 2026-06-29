@@ -9,6 +9,7 @@ mod decoded_pcm;
 mod error;
 pub mod format;
 mod persisted;
+mod preview_player;
 pub mod progress;
 mod queue;
 mod repeat_mode;
