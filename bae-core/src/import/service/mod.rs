@@ -76,31 +76,10 @@ fn storage_mode_label(mode: &StorageMode) -> &'static str {
 /// Send an import event on the broadcast bus, logging on send failure.
 use crate::import::handle::send_event;
 
-#[cfg_attr(any(target_os = "ios", target_os = "android"), allow(dead_code))]
 pub struct ImportService {
     commands_rx: mpsc::UnboundedReceiver<ImportCommand>,
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     library_manager: LibraryManager,
-}
-
-#[cfg(any(target_os = "ios", target_os = "android"))]
-impl ImportService {
-    pub fn start(
-        _runtime_handle: tokio::runtime::Handle,
-        library_manager: LibraryManager,
-    ) -> ImportServiceHandle {
-        let (commands_tx, _commands_rx) = mpsc::unbounded_channel();
-        let (scan_tx, _scan_rx) = mpsc::unbounded_channel();
-        let (event_tx, _) = broadcast::channel(1024);
-
-        ImportServiceHandle::new(
-            commands_tx,
-            library_manager,
-            _runtime_handle,
-            scan_tx,
-            event_tx,
-        )
-    }
 }
 
 /// The watched roots that contain at least one of the `changed` paths, in

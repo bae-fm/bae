@@ -49,10 +49,7 @@ pub struct ImportFolderRegistry {
     folders: Vec<String>,
     /// Candidate folder paths the user manually marked as skipped. A skipped
     /// candidate still scans but renders under the import view's "Skipped" tab
-    /// instead of "New". `#[serde(default)]` so an `import_folders.yaml` that
-    /// omits this field (only `folders`) still loads as an empty skip set
-    /// instead of failing to deserialize.
-    #[serde(default)]
+    /// instead of "New".
     skipped: Vec<String>,
 }
 
@@ -300,12 +297,11 @@ mod tests {
     }
 
     #[test]
-    fn loads_file_omitting_skipped_field() {
-        // An `import_folders.yaml` that omits the `skipped` field (only
-        // `folders`) must still load, defaulting to an empty skip set.
+    fn loads_file_with_both_fields() {
+        // An `import_folders.yaml` carrying both fields loads as written.
         let (_tmp, library_dir) = temp_library_dir();
         let path = ImportFolderRegistry::file_path(&library_dir);
-        std::fs::write(&path, "folders:\n  - /a\n").unwrap();
+        std::fs::write(&path, "folders:\n  - /a\nskipped:\n  - /a/Album\n").unwrap();
 
         let registry = ImportFolderRegistry::load(&library_dir);
         assert_eq!(
@@ -315,6 +311,7 @@ mod tests {
                 name: "a".to_string(),
             }]
         );
+        assert!(registry.is_skipped("/a/Album"));
         assert!(!registry.is_skipped("/a"));
     }
 }
