@@ -1,0 +1,172 @@
+//! The accumulating text pool fed to the classifier pipeline: it gathers
+//! per-source-tagged lines and folder-bracket catalogs, dedups them, and
+//! classifies the contents into `(catalogs, free_text)` incrementally as the
+//! extraction pass adds more lines.
+
+use crate::identify::candidate_text::{
+    self, apply_free_text_cutoff, catalog_numbers_sourced, cluster_lines_incremental,
+    rank_clusters_in_place, Cluster, Source, SourcedLine,
+};
+use crate::signals::{SignalOrigin, SourcedValue};
+use std::collections::HashSet;
+
+/// Accumulating pool fed to the classifier pipeline. `lines` carries per-
+/// source-tagged text for filter / cluster / rank. `bracket_catalogs` holds
+/// folder-bracket extractions routed straight to the catalog pool (they
+/// bypass the free-text catalog regex, which is too strict for real-world
+/// formats like `Z1 12345`).
+///
+/// The pool keeps two caches alongside the lines:
+///
+/// * `seen` — dedup set for `push`, so inserts stay O(1) as the pool grows.
+/// * `clusters` + `clustered_through` — persistent cluster state so
+///   `classify` can do incremental work on newly-added lines instead of
+///   re-clustering the entire pool each emission.
+#[derive(Default)]
+pub(super) struct Pool {
+    pub(super) lines: Vec<SourcedLine>,
+    pub(super) bracket_catalogs: Vec<String>,
+    seen: HashSet<(Source, String)>,
+    clusters: Vec<Cluster>,
+    clustered_through: usize,
+}
+
+impl Pool {
+    pub(super) fn push(&mut self, line: SourcedLine) {
+        if line.text.is_empty() {
+            return;
+        }
+        // Dedupe by (source, text) via the HashSet. Keeps the Vec ordered
+        // by insertion so clustering walks in insertion order.
+        let key = (line.source.clone(), line.text.clone());
+        if !self.seen.insert(key) {
+            return;
+        }
+        self.lines.push(line);
+    }
+
+    pub(super) fn push_bracket(&mut self, s: String) {
+        if !s.is_empty() && !self.bracket_catalogs.contains(&s) {
+            self.bracket_catalogs.push(s);
+        }
+    }
+
+    /// Classify the pool's current contents into `(catalogs, free_text)`.
+    /// Catalog extraction is a whole-pool regex pass (cheap). Free-text
+    /// clustering is incremental: only lines added since the last call are
+    /// classified against the existing clusters.
+    pub(super) fn classify(&mut self) -> (Vec<SourcedValue>, Vec<String>) {
+        // Catalogs: regex over the sourced line text (each survivor keeps its
+        // line's origin), plus the bracket-routed extras from folder names.
+        let mut catalogs = catalog_numbers_sourced(&self.lines);
+        let mut seen_catalog: HashSet<String> = catalogs.iter().map(|c| c.value.clone()).collect();
+        for extra in &self.bracket_catalogs {
+            if seen_catalog.insert(extra.clone()) {
+                catalogs.push(SourcedValue::new(extra.clone(), SignalOrigin::FolderName));
+            }
+        }
+
+        // Free text: classify only the newly-added lines against existing
+        // clusters. Lines rejected by `should_reject_line` don't count as
+        // "classified" at all — they never feed a cluster.
+        let new_slice = &self.lines[self.clustered_through..];
+        let filtered: Vec<SourcedLine> = new_slice
+            .iter()
+            .filter(|l| !candidate_text::should_reject_line(&l.text))
+            .cloned()
+            .collect();
+        cluster_lines_incremental(&mut self.clusters, &filtered);
+        self.clustered_through = self.lines.len();
+
+        // Rank + cutoff operate on a local copy so the pool's insertion-
+        // order clusters aren't mutated for display.
+        let mut ranked = self.clusters.clone();
+        rank_clusters_in_place(&mut ranked);
+        let free_text = apply_free_text_cutoff(&ranked);
+
+        (catalogs, free_text)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    // MARK: - Pool::classify end-to-end (one-shot on a fresh pool)
+
+    fn cue_line(text: &str) -> SourcedLine {
+        SourcedLine {
+            source: Source::CueField,
+            text: text.to_string(),
+        }
+    }
+
+    fn path_line(text: &str) -> SourcedLine {
+        SourcedLine {
+            source: Source::PathComponent,
+            text: text.to_string(),
+        }
+    }
+
+    fn artwork_line(path: &str, text: &str) -> SourcedLine {
+        SourcedLine {
+            source: Source::Artwork(PathBuf::from(path)),
+            text: text.to_string(),
+        }
+    }
+
+    /// Push lines + brackets into a fresh pool and classify once, projecting
+    /// the catalog `SourcedValue`s back to their bare strings for assertions.
+    fn classify_pool(lines: Vec<SourcedLine>, brackets: &[&str]) -> (Vec<String>, Vec<String>) {
+        let mut pool = Pool::default();
+        for line in lines {
+            pool.push(line);
+        }
+        for b in brackets {
+            pool.push_bracket((*b).to_string());
+        }
+        let (catalogs, free_text) = pool.classify();
+        (catalogs.into_iter().map(|c| c.value).collect(), free_text)
+    }
+
+    #[test]
+    fn classify_promotes_high_score_clusters() {
+        // Three sources agree on "Artist Alpha" — the cluster outscores a
+        // one-off OCR credit line, which the reject rules drop.
+        let lines = vec![
+            cue_line("Artist Alpha"),
+            path_line("Artist Alpha"),
+            artwork_line("/a.jpg", "Artist Alpha"),
+            artwork_line("/b.jpg", "Engineered by Name One"),
+        ];
+        let (_catalogs, free_text) = classify_pool(lines, &[]);
+        assert!(
+            free_text.iter().any(|s| s == "Artist Alpha"),
+            "expected Artist Alpha to dominate, got {free_text:?}",
+        );
+        assert!(
+            !free_text.iter().any(|s| s.contains("Engineered by")),
+            "credit line should have been filtered, got {free_text:?}",
+        );
+    }
+
+    #[test]
+    fn classify_includes_bracket_catalogs_in_catalog_pool() {
+        let (catalogs, _) = classify_pool(vec![cue_line("Artist Alpha")], &["XX34b"]);
+        assert_eq!(catalogs, vec!["XX34b".to_string()]);
+    }
+
+    #[test]
+    fn classify_falls_back_when_no_cluster_clears_threshold() {
+        // Single artwork image, all-singleton clusters. Should NOT return
+        // empty — fall back to the top N by score.
+        let lines = vec![
+            artwork_line("/a.jpg", "Artist Alpha"),
+            artwork_line("/a.jpg", "Album Title B"),
+            artwork_line("/a.jpg", "Label Name"),
+        ];
+        let (_, free_text) = classify_pool(lines, &[]);
+        assert!(!free_text.is_empty(), "expected fallback top-N pool");
+    }
+}
