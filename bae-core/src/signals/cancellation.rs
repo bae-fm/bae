@@ -7,17 +7,22 @@
 //! task racing its successor on the way out can't evict the newer entry.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
-/// Generation-guarded map of candidate key to its in-flight extraction's
-/// `(generation, cancellation token)`. The generation counter is atomic so
-/// `register` can allocate a fresh id without holding the map lock.
+/// Mutable state of the registry: the generation-guarded map of candidate key
+/// to its in-flight extraction's `(generation, cancellation token)`, plus the
+/// counter that hands out generations. Both live under one mutex so a
+/// generation and its map entry advance together.
+#[derive(Default)]
+struct RegistryState {
+    cancel_tokens: HashMap<String, (u64, CancellationToken)>,
+    next_generation: u64,
+}
+
 #[derive(Default)]
 pub(super) struct CancellationRegistry {
-    cancel_tokens: Mutex<HashMap<String, (u64, CancellationToken)>>,
-    next_generation: AtomicU64,
+    state: Mutex<RegistryState>,
 }
 
 impl CancellationRegistry {
@@ -26,16 +31,16 @@ impl CancellationRegistry {
     /// Returns the new token and generation for the task to carry.
     pub(super) fn register(&self, key: String) -> (CancellationToken, u64) {
         let token = CancellationToken::new();
-        let generation = self.next_generation.fetch_add(1, Ordering::Relaxed);
 
-        // Swap in the new entry atomically, cancelling any prior one — this
-        // keeps register() consistent with cancel() even when a previous task
-        // is mid-teardown.
-        let prior = self
-            .cancel_tokens
-            .lock()
-            .unwrap()
-            .insert(key, (generation, token.clone()));
+        // Invariant: the generation and the map entry advance under one lock
+        // hold, so two concurrent same-key registers are serialized and the
+        // higher generation always wins the map.
+        let mut state = self.state.lock().unwrap();
+        let generation = state.next_generation;
+        state.next_generation += 1;
+        let prior = state.cancel_tokens.insert(key, (generation, token.clone()));
+        drop(state);
+
         if let Some((_, prior_token)) = prior {
             prior_token.cancel();
         }
@@ -45,7 +50,7 @@ impl CancellationRegistry {
 
     /// Remove the entry for `key` and cancel its token.
     pub(super) fn cancel(&self, key: &str) {
-        let entry = self.cancel_tokens.lock().unwrap().remove(key);
+        let entry = self.state.lock().unwrap().cancel_tokens.remove(key);
         if let Some((_, token)) = entry {
             token.cancel();
         }
@@ -55,11 +60,61 @@ impl CancellationRegistry {
     /// Prevents a teardown from an older task erasing the entry for a newer
     /// task that already overwrote it.
     pub(super) fn release_if_current(&self, key: &str, generation: u64) {
-        let mut tokens = self.cancel_tokens.lock().unwrap();
-        if let Some((current_generation, _)) = tokens.get(key) {
+        let mut state = self.state.lock().unwrap();
+        if let Some((current_generation, _)) = state.cancel_tokens.get(key) {
             if *current_generation == generation {
-                tokens.remove(key);
+                state.cancel_tokens.remove(key);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn re_registering_a_key_advances_the_generation_and_replaces_the_token() {
+        let registry = CancellationRegistry::default();
+
+        let (first_token, first_gen) = registry.register("cand".to_string());
+        let (second_token, second_gen) = registry.register("cand".to_string());
+
+        // Each register hands out a strictly newer generation.
+        assert!(second_gen > first_gen);
+        // Registering the successor cancels the prior token.
+        assert!(first_token.is_cancelled());
+        assert!(!second_token.is_cancelled());
+    }
+
+    #[test]
+    fn generations_are_unique_across_keys() {
+        let registry = CancellationRegistry::default();
+
+        let (_, a_gen) = registry.register("a".to_string());
+        let (_, b_gen) = registry.register("b".to_string());
+
+        assert_ne!(a_gen, b_gen);
+    }
+
+    #[test]
+    fn release_if_current_only_removes_the_matching_generation() {
+        let registry = CancellationRegistry::default();
+
+        let (_, stale_gen) = registry.register("cand".to_string());
+        let (live_token, live_gen) = registry.register("cand".to_string());
+
+        // A teardown carrying the older generation must not evict the newer
+        // entry that already overwrote it.
+        registry.release_if_current("cand", stale_gen);
+        assert!(!live_token.is_cancelled());
+
+        // The live generation's own teardown removes its entry; a repeat
+        // release is then a no-op rather than touching a later entry.
+        registry.release_if_current("cand", live_gen);
+        let (_, post_gen) = registry.register("cand".to_string());
+        registry.release_if_current("cand", live_gen);
+        assert!(post_gen > live_gen);
+        registry.cancel("cand");
     }
 }
