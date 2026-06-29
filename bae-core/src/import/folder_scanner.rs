@@ -22,15 +22,7 @@ const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "txt", "m3u", "m3u8"];
 /// Extensions used by download clients and browsers to mark an
 /// in-progress download. Presence of any of these anywhere in a folder means
 /// the folder is mid-download and should not surface as an import candidate.
-const PARTIAL_MARKER_EXTENSIONS: &[&str] = &[
-    "part",
-    "crdownload",
-    "download",
-    "!qb",
-    "!ut",
-    "aria2",
-    "partial",
-];
+const PARTIAL_MARKER_EXTENSIONS: &[&str] = &["part", "crdownload", "download", "aria2", "partial"];
 
 // ── Public types ────────────────────────────────────────────────────────────
 
@@ -468,7 +460,7 @@ fn is_noise_file(path: &Path) -> bool {
 }
 
 /// True when `path`'s extension matches a known in-progress-download marker
-/// (e.g. `01.flac.part`, `02.flac.!qB`, `03.aria2`). Match is case-insensitive.
+/// (e.g. `01.flac.part`, `02.flac.crdownload`, `03.aria2`). Match is case-insensitive.
 fn is_partial_marker_file(path: &Path) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())
@@ -511,7 +503,7 @@ fn tree_has_nested_audio_dirs(tree: &FileTree, dir: &Path) -> bool {
 /// True when `dir` or any of its descendants contain a partial-download
 /// marker. Applied when a directory has been identified as a candidate
 /// (leaf) so we refuse to emit an in-progress release whose markers live
-/// one or more levels down (e.g. `Album/Disc 2/01.flac.!qB` under a
+/// one or more levels down (e.g. `Album/Disc 2/01.flac.part` under a
 /// multi-disc leaf).
 fn tree_has_partial_markers_deep(tree: &FileTree, dir: &Path) -> bool {
     tree.all_files_under(dir)

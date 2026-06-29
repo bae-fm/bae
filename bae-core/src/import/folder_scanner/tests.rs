@@ -1281,14 +1281,14 @@ enum FileKind {
         file_reference: &'static str,
     },
     /// Partial-download marker. The argument is the trailing extension
-    /// (e.g. `"part"`, `"!qB"`, `"crdownload"`) — purely self-documenting,
+    /// (e.g. `"part"`, `"crdownload"`, `"aria2"`) — purely self-documenting,
     /// the walker does not inspect it. The full file name lives in the
     /// entry's `rel_path`, so different rippers' conventions (`01.flac.part`,
-    /// `01.flac.!qB`, `01.flac.!ut`) are all expressible.
+    /// `01.flac.crdownload`, `01.flac.aria2`) are all expressible.
     PartialMarker(&'static str),
     // Root-level non-music junk.
     Pdf,
-    Torrent,
+    Zip,
     Dmg,
 }
 
@@ -1330,7 +1330,7 @@ fn bytes_for(kind: FileKind) -> Vec<u8> {
         } => make_cue_content_no_header(file_reference, n_tracks).into_bytes(),
         FileKind::PartialMarker(_) => b"partial data".to_vec(),
         FileKind::Pdf => b"%PDF-1.4\n".to_vec(),
-        FileKind::Torrent => b"d8:announce".to_vec(),
+        FileKind::Zip => b"PK\x03\x04".to_vec(),
         FileKind::Dmg => b"koly".to_vec(),
     }
 }
@@ -1508,7 +1508,7 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
         | FileKind::Ffp
         | FileKind::TracklistTxt
         | FileKind::Pdf
-        | FileKind::Torrent
+        | FileKind::Zip
         | FileKind::Dmg => {
             // Presence-only kinds: the scanner does not validate their bytes.
         }
@@ -1765,7 +1765,7 @@ fn test_write_partial_marker() {
     for (name, ext) in [
         ("01.flac.part", "part"),
         ("02.flac.crdownload", "crdownload"),
-        ("03.flac.!qB", "!qB"),
+        ("03.flac.aria2", "aria2"),
     ] {
         let path = write_one(tmp.path(), name, FileKind::PartialMarker(ext));
         // Markers must NOT register as audio.
@@ -1777,7 +1777,7 @@ fn test_write_partial_marker() {
 fn test_write_junk_kinds() {
     let tmp = tempfile::tempdir().unwrap();
     write_one(tmp.path(), "loose.pdf", FileKind::Pdf);
-    write_one(tmp.path(), "loose.torrent", FileKind::Torrent);
+    write_one(tmp.path(), "loose.zip", FileKind::Zip);
     write_one(tmp.path(), "loose.dmg", FileKind::Dmg);
 }
 
@@ -1824,8 +1824,8 @@ fn reference_fixture() -> Vec<FixtureEntry> {
             kind: FileKind::Pdf,
         },
         FixtureEntry::File {
-            rel_path: "loose.torrent".into(),
-            kind: FileKind::Torrent,
+            rel_path: "loose.zip".into(),
+            kind: FileKind::Zip,
         },
         FixtureEntry::File {
             rel_path: "loose.dmg".into(),
@@ -2118,21 +2118,21 @@ fn reference_fixture() -> Vec<FixtureEntry> {
     });
     entries.extend(flat_audio("Album D - Multi-Disc/Disc 2", 6, FileKind::Flac));
 
-    // --- In-progress — torrent zero-byte (A1). SKIP. ---
+    // --- In-progress — zero-byte audio (A1). SKIP. ---
     entries.push(FixtureEntry::Expect {
-        rel_path: "In-Progress - Torrent".into(),
+        rel_path: "In-Progress - Zero Byte".into(),
         top_level_candidate: false,
     });
     entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - Torrent/01.flac".into(),
+        rel_path: "In-Progress - Zero Byte/01.flac".into(),
         kind: FileKind::Flac,
     });
     entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - Torrent/02.flac".into(),
+        rel_path: "In-Progress - Zero Byte/02.flac".into(),
         kind: FileKind::ZeroByteFlac,
     });
     entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - Torrent/03.flac".into(),
+        rel_path: "In-Progress - Zero Byte/03.flac".into(),
         kind: FileKind::ZeroByteFlac,
     });
 
@@ -2154,24 +2154,6 @@ fn reference_fixture() -> Vec<FixtureEntry> {
         kind: FileKind::Jpeg,
     });
 
-    // --- In-progress — qBittorrent markers mixed with one real FLAC. SKIP. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "In-Progress - qBittorrent".into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - qBittorrent/01.flac".into(),
-        kind: FileKind::Flac,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - qBittorrent/02.flac.!qB".into(),
-        kind: FileKind::PartialMarker("!qB"),
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - qBittorrent/03.flac.!qB".into(),
-        kind: FileKind::PartialMarker("!qB"),
-    });
-
     // --- In-progress — aria2 marker only. SKIP. ---
     entries.push(FixtureEntry::Expect {
         rel_path: "In-Progress - aria2".into(),
@@ -2190,20 +2172,6 @@ fn reference_fixture() -> Vec<FixtureEntry> {
     entries.push(FixtureEntry::File {
         rel_path: "In-Progress - Safari/01.flac.download".into(),
         kind: FileKind::PartialMarker("download"),
-    });
-
-    // --- In-progress — µTorrent ".!ut" marker mixed with one real FLAC. SKIP. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "In-Progress - uTorrent".into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - uTorrent/01.flac".into(),
-        kind: FileKind::Flac,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - uTorrent/02.flac.!ut".into(),
-        kind: FileKind::PartialMarker("!ut"),
     });
 
     // --- In-progress — generic ".partial" marker only. SKIP. ---
@@ -2579,15 +2547,7 @@ fn loose_marker_at_scan_root_does_not_suppress_sibling_albums() {
 /// Table-driven: one subtest per extension.
 #[test]
 fn each_partial_marker_extension_skips_release() {
-    for ext in [
-        "part",
-        "crdownload",
-        "download",
-        "!qB",
-        "!ut",
-        "aria2",
-        "partial",
-    ] {
+    for ext in ["part", "crdownload", "download", "aria2", "partial"] {
         let result = run_scenario(vec![
             FixtureEntry::File {
                 rel_path: "Album/01.flac".into(),
@@ -2879,7 +2839,7 @@ fn non_audio_folder_emits_no_candidates() {
     assert!(result.top_level_paths().is_empty());
 }
 
-/// L1.26 — Loose junk at the scan root (.pdf, .torrent, .dmg, .jpg) is
+/// L1.26 — Loose junk at the scan root (.pdf, .zip, .dmg, .jpg) is
 /// ignored; a release subfolder still surfaces.
 #[test]
 fn loose_junk_at_scan_root_ignored() {
@@ -2889,8 +2849,8 @@ fn loose_junk_at_scan_root_ignored() {
             kind: FileKind::Pdf,
         },
         FixtureEntry::File {
-            rel_path: "loose.torrent".into(),
-            kind: FileKind::Torrent,
+            rel_path: "loose.zip".into(),
+            kind: FileKind::Zip,
         },
         FixtureEntry::File {
             rel_path: "loose.dmg".into(),
@@ -3300,8 +3260,8 @@ fn multi_disc_with_partial_marker_in_one_disc_suppresses_whole_album() {
         kind: FileKind::Flac,
     });
     entries.push(FixtureEntry::File {
-        rel_path: "Album/Disc 2/02.flac.!qB".into(),
-        kind: FileKind::PartialMarker("!qB"),
+        rel_path: "Album/Disc 2/02.flac.part".into(),
+        kind: FileKind::PartialMarker("part"),
     });
     let result = run_scenario(entries);
     assert!(
