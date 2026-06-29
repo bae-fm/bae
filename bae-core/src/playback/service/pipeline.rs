@@ -53,7 +53,6 @@ impl PlaybackService {
         }
         self.abort_current_listeners();
         self.current_prepared = None;
-        self.current_track_info = None;
         self.current_decoder_handle = None;
     }
 
@@ -352,7 +351,6 @@ impl PlaybackService {
         };
         let sample_rate = prepared.sample_rate;
         let channels = prepared.channels;
-        self.current_track_info = Some(prepared.track_info.clone());
         let fmt = prepared.track_fmt(position_offset);
 
         // Store prepared track state so the shared tail reads this load's buffer

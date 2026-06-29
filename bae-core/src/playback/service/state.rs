@@ -36,12 +36,11 @@ impl PlaybackService {
     /// prepared track. Position data is excluded — it flows through
     /// PositionUpdate/Seeked events.
     pub(super) fn current_state_fields(&self) -> (PlaybackTrackInfo, u64) {
-        let track_info = self
-            .current_track_info
-            .clone()
-            .expect("no current_track_info");
         let prepared = self.current_prepared.as_ref().expect("no current_prepared");
-        (track_info, pregap_adjusted_duration(prepared))
+        (
+            prepared.track_info.clone(),
+            pregap_adjusted_duration(prepared),
+        )
     }
 
     /// Build a Playing state from the current prepared track and track info.
@@ -302,7 +301,7 @@ impl PlaybackService {
         self.pending_side_pause = None;
         self.audio_output
             .set_state(crate::playback::audio_output::AudioState::Paused);
-        if self.current_prepared.is_some() && self.current_track_info.is_some() {
+        if self.current_prepared.is_some() {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::StateChanged {
@@ -326,7 +325,7 @@ impl PlaybackService {
 
         self.audio_output
             .set_state(crate::playback::audio_output::AudioState::Playing);
-        if self.current_prepared.is_some() && self.current_track_info.is_some() {
+        if self.current_prepared.is_some() {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::StateChanged {

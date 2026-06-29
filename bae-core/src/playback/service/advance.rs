@@ -127,7 +127,11 @@ impl PlaybackService {
             return Ok(None);
         }
 
-        let Some(current) = self.current_track_info.clone() else {
+        let Some(current) = self
+            .current_prepared
+            .as_ref()
+            .map(|prepared| prepared.track_info.clone())
+        else {
             error!("side-pause decision requested without current track metadata");
             return Err(());
         };
@@ -367,7 +371,6 @@ impl PlaybackService {
             }
         }
 
-        self.current_track_info = Some(next_prepared.track_info.clone());
         self.current_prepared = Some(next_prepared);
 
         // Advance the queue position to the now-playing track.
@@ -456,8 +459,6 @@ impl PlaybackService {
                 .await;
             return;
         }
-
-        self.current_track_info = Some(next_prepared.track_info.clone());
 
         // Recover the preloaded next source (staged in the gapless chain or held
         // for the rebuild path) BEFORE tearing down the current stream.
