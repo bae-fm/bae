@@ -6,7 +6,7 @@ resolver = "2"
 # coven: bae's data layer (local-first store + cloud sync). Pinned by rev here so
 # every crate that touches it (bae-core, and bae-bridge's CloudKit adapter, which
 # implements coven's CloudKitOps) resolves the same instance.
-coven = { git = "https://github.com/bae-fm/coven", rev = "6d450fffd8bdad9dbd60e15743acfa47e376d3a3" }
+coven = { git = "https://github.com/bae-fm/coven", rev = "61d0d1071389cff8a275f36cb6223eec9e2b441c" }
 # HTTP
 reqwest = { version = "0.13", default-features = false }
 # Logging
