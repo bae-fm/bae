@@ -869,10 +869,11 @@ fn resolve_release_path(
     Ok(make_key(&album_id, release_id, source_folder.as_deref()))
 }
 
-/// The cloud key for a release file on a browsable home:
-/// `storage/{album_id}/{release_id}/{source_folder}/{filename}`, mirroring the
-/// imported folder. Ids are immutable and unique, so the key is stable and
-/// collision-free by construction — no disambiguation.
+/// The `cloud_path` for a release file on a browsable home:
+/// `{album_id}/{release_id}/{source_folder}/{filename}` (relative to the
+/// `release_files` namespace coven prepends), mirroring the imported folder. Ids
+/// are immutable and unique, so the key is stable and collision-free by
+/// construction — no disambiguation.
 fn resolve_audio_cloud_path(
     conn: &Connection,
     release_id: &str,

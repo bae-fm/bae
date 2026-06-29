@@ -66,11 +66,11 @@ pub(super) fn resolve_album_summary(
     }
 }
 
-/// Resolve a raw release-summary aggregate: derives `storage_state` from
-/// `remote` + this device's `release_local_copy` row.
-/// `has_cloud_home` is read once by the caller and passed down (DI) so
-/// `storage_actions` reflects whether remote storage exists at all.
-/// `resolve_cover` maps the release's own id to its cover reference.
+/// Resolve a raw release-summary aggregate: derives `storage_state` from the
+/// `remote` gate alone. `pinned` and `has_cloud_home` are read by the caller
+/// and passed down (DI) — `pinned` from coven's offline-cache check,
+/// `has_cloud_home` so `storage_actions` reflects whether remote storage exists
+/// at all. `resolve_cover` maps the release's own id to its cover reference.
 fn resolve_release_summary(
     raw: DbReleaseSummary,
     has_cloud_home: bool,
