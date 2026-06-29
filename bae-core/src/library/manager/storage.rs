@@ -39,10 +39,10 @@ impl LibraryManager {
     // =========================================================================
 
     pub fn has_encryption(&self) -> bool {
-        self.encryption_service_inner().is_some()
+        self.sync.has_encryption()
     }
 
     pub fn get_encryption_service(&self) -> Option<EncryptionService> {
-        self.encryption_service_inner()
+        self.sync.get_encryption_service()
     }
 }

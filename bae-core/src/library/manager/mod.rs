@@ -29,7 +29,9 @@ use crate::album_detail::{
     StorageFilter, StoragePage, StorageRow, StorageSort, StorageSortDirection, StorageSortField,
     TrackDetail, TrackGroup, TrackSearchResult,
 };
-use crate::config::{CloudProvider, ConfigHandle};
+#[cfg(feature = "oauth-providers")]
+use crate::config::CloudProvider;
+use crate::config::ConfigHandle;
 use crate::db::{
     Database, DbAlbum, DbAlbumArtist, DbAlbumSearchResult, DbAlbumSummary, DbArtist, DbAudioFormat,
     DbFile, DbImport, DbLibraryImage, DbLibrarySearchResults, DbRelease, DbReleaseStorageSummary,
@@ -42,6 +44,7 @@ use crate::keys::BaeKeyServiceExt;
 use crate::keys::KeyService;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::library::export::ExportService;
+use crate::library::sync_controller::SyncController;
 use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 use crate::storage::local::cleanup::{append_pending_deletions, PendingDeletion};
@@ -560,30 +563,11 @@ pub struct LibraryManager {
     /// (a `BlobRef`, a root id) and never assembles coven's internals by hand.
     handle: CovenHandle,
     event_tx: broadcast::Sender<LibraryEvent>,
-    /// `file_id`s whose upload is in flight right now, mapped to the live count
-    /// of encrypted bytes that have reached the cloud for that file. Shared with
-    /// the sync loop's `ReleaseUploadObserver`, which inserts on upload start,
-    /// advances the byte count from coven's mid-upload progress callback, and
-    /// removes on completion/failure; read by `outbox_snapshot` to mark the
-    /// "uploading" state and drive the per-file bar. Transient (empty after a
-    /// restart).
-    outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
-    /// Rolling-window upload-throughput tracker. The observer records bytes
-    /// on every successful upload; the snapshot builder reads the rate.
-    /// Transient (zeroed after a restart, like `outbox_in_flight`).
-    upload_throughput: Arc<crate::library::UploadThroughput>,
-    /// User-driven pause flag for the cloud-upload pipeline. When true,
-    /// coven's `drain_uploads` short-circuits before each entry, so the
-    /// queue stops draining but in-flight uploads (and new enqueues) keep
-    /// flowing. Transient (Running after a restart).
-    sync_paused: Arc<std::sync::atomic::AtomicBool>,
-    /// Whether a sync manager is installed in the coven handle. Public coven no
-    /// longer exposes the manager itself, so bae records the connection fact at
-    /// the points where it calls connect/disconnect.
-    sync_connected: Arc<std::sync::atomic::AtomicBool>,
-    /// The active encryption service for opaque homes, kept for UI state and
-    /// tests that seed encrypted fixtures. Browsable homes leave this empty.
-    encryption_service: Arc<RwLock<Option<EncryptionService>>>,
+    /// The cloud-sync responsibility: the upload pipeline (outbox in-flight,
+    /// throughput, pause), the connection lifecycle and provider config, the
+    /// encryption-service cell, membership, and the coven make-Remote/make-Local
+    /// primitives. The manager delegates its public sync API here.
+    sync: SyncController,
     /// Cancellation tokens for in-progress foreground transfers (unmanage),
     /// keyed by release id. `cancel_release_transition` fires the token; the
     /// transfer observes it between files, deletes the partial copies it wrote,
@@ -634,11 +618,7 @@ impl Clone for LibraryManager {
             runtime_handle: self.runtime_handle.clone(),
             handle: self.handle.clone(),
             event_tx: self.event_tx.clone(),
-            outbox_in_flight: self.outbox_in_flight.clone(),
-            upload_throughput: self.upload_throughput.clone(),
-            sync_paused: self.sync_paused.clone(),
-            sync_connected: self.sync_connected.clone(),
-            encryption_service: self.encryption_service.clone(),
+            sync: self.sync.clone(),
             transfer_cancels: self.transfer_cancels.clone(),
             download_queue: self.download_queue.clone(),
             #[cfg(any(test, feature = "test-utils"))]
@@ -688,6 +668,19 @@ impl LibraryManager {
         observer.set_handle(handle.clone());
         let library_dir = config_handle.config().library_dir.clone();
 
+        let sync = SyncController::new(
+            handle.clone(),
+            config_handle.clone(),
+            key_service.clone(),
+            event_tx.clone(),
+            database.clone(),
+            encryption_service,
+            outbox_in_flight,
+            upload_throughput,
+            sync_paused,
+            sync_connected,
+        );
+
         Ok(LibraryManager {
             database,
             library_dir,
@@ -698,11 +691,7 @@ impl LibraryManager {
             runtime_handle,
             handle,
             event_tx,
-            outbox_in_flight,
-            upload_throughput,
-            sync_paused,
-            sync_connected,
-            encryption_service,
+            sync,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             #[cfg(any(test, feature = "test-utils"))]
@@ -725,10 +714,20 @@ impl LibraryManager {
         runtime_handle: tokio::runtime::Handle,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(16);
-        let outbox_in_flight = Arc::new(Mutex::new(HashMap::new()));
-        let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
-        let sync_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let handle = database.handle().clone();
+
+        let sync = SyncController::new(
+            handle.clone(),
+            config_handle.clone(),
+            key_service.clone(),
+            event_tx.clone(),
+            database.clone(),
+            Arc::new(RwLock::new(None)),
+            Arc::new(Mutex::new(HashMap::new())),
+            Arc::new(crate::library::UploadThroughput::new()),
+            Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        );
 
         LibraryManager {
             database,
@@ -740,11 +739,7 @@ impl LibraryManager {
             runtime_handle,
             handle,
             event_tx,
-            outbox_in_flight,
-            upload_throughput,
-            sync_paused,
-            sync_connected: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-            encryption_service: Arc::new(RwLock::new(None)),
+            sync,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             #[cfg(any(test, feature = "test-utils"))]
@@ -765,17 +760,7 @@ impl LibraryManager {
         cloud_home: Arc<dyn CloudHome>,
         cipher: crate::sync::CloudCipher,
     ) -> Result<(), String> {
-        let active_encryption = match &cipher {
-            crate::sync::CloudCipher::Encrypted(service) => Some(service.clone()),
-            crate::sync::CloudCipher::Plaintext => None,
-        };
-        self.handle
-            .connect_sync_with_test_home(cloud_home, cipher)
-            .await?;
-        *self.encryption_service.write().unwrap() = active_encryption;
-        self.sync_connected
-            .store(true, std::sync::atomic::Ordering::SeqCst);
-        Ok(())
+        self.sync.connect_test_cloud_home(cloud_home, cipher).await
     }
 
     /// Shorten the deferred storage-cleanup delay so a scheduled drain runs
@@ -844,11 +829,6 @@ impl LibraryManager {
     // Internal accessors (pub(crate))
     // =========================================================================
 
-    fn sync_connected(&self) -> bool {
-        self.sync_connected
-            .load(std::sync::atomic::Ordering::SeqCst)
-    }
-
     /// The injected wall clock. The import layer and the mappers read "now"
     /// through this so the whole import shares one clock under test.
     pub(crate) fn clock(&self) -> &ClockRef {
@@ -870,10 +850,6 @@ impl LibraryManager {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn library_dir(&self) -> &LibraryDir {
         &self.library_dir
-    }
-
-    fn encryption_service_inner(&self) -> Option<EncryptionService> {
-        self.encryption_service.read().unwrap().clone()
     }
 
     /// Start background listeners (sync status → library events).
@@ -954,19 +930,7 @@ impl LibraryManager {
     /// at every outbox mutation, once per sync cycle, and on each upload
     /// lifecycle callback so the Storage Manager's queue panel stays current.
     pub(crate) async fn emit_outbox_changed(&self) {
-        let in_flight = { self.outbox_in_flight.lock().unwrap().clone() };
-        let paused = self.is_sync_paused();
-        match crate::library::outbox_snapshot::build_outbox_snapshot(
-            &self.database,
-            &in_flight,
-            &self.upload_throughput,
-            paused,
-        )
-        .await
-        {
-            Ok(snapshot) => self.emit(LibraryEvent::OutboxChanged { snapshot }),
-            Err(e) => warn!("Failed to build outbox snapshot: {e}"),
-        }
+        self.sync.emit_outbox_changed().await
     }
 
     /// Build the current download-queue snapshot and emit it as
@@ -993,15 +957,7 @@ impl LibraryManager {
     /// a pre-formatted summary. Seeds the Storage Manager panel before the first
     /// `OutboxChanged` event arrives.
     pub async fn outbox_snapshot(&self) -> Result<crate::library::OutboxSnapshot, LibraryError> {
-        let in_flight = { self.outbox_in_flight.lock().unwrap().clone() };
-        let paused = self.is_sync_paused();
-        Ok(crate::library::outbox_snapshot::build_outbox_snapshot(
-            &self.database,
-            &in_flight,
-            &self.upload_throughput,
-            paused,
-        )
-        .await?)
+        self.sync.outbox_snapshot().await
     }
 
     // ── Fat-event emit helpers ───────────────────────────────────────

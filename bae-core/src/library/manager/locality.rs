@@ -4,80 +4,13 @@
 use super::*;
 
 impl LibraryManager {
-    /// The make-Local destination map: each release file's blob id → the user path
-    /// (`new_path/original_filename`) its bytes go back to. Host-provided blobs (the
-    /// cover) take no dest — coven restores them to its local store. The single
-    /// place the dest shape is built, shared by the production transition and the
-    /// test driver.
-    async fn make_local_dest(
-        &self,
-        release_id: &str,
-        new_path: &str,
-    ) -> Result<HashMap<String, PathBuf>, LibraryError> {
-        let files = self.database.get_files_for_release(release_id).await?;
-        Ok(files
-            .iter()
-            .map(|f| {
-                (
-                    f.id.clone(),
-                    std::path::Path::new(new_path).join(&f.original_filename),
-                )
-            })
-            .collect())
-    }
-
-    /// Bridge bae's `CancellationToken` to the `watch::Receiver<bool>` coven's
-    /// make_local polls between blobs: when the token fires, flip the watch. Returns
-    /// the receiver and the bridge task's handle (abort it once make_local returns).
-    /// The single place the bridge lives.
-    fn cancel_token_to_watch(
-        cancel: &crate::library::CancellationToken,
-    ) -> (
-        tokio::sync::watch::Receiver<bool>,
-        tokio::task::JoinHandle<()>,
-    ) {
-        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
-        let token = cancel.clone();
-        let handle = tokio::spawn(async move {
-            token.cancelled().await;
-            let _ = cancel_tx.send(true);
-        });
-        (cancel_rx, handle)
-    }
-
-    /// Map a coven `make_local` result to bae's: a cancel before the commit is a
-    /// clean stop (coven rolled back the partial copies and left the release
-    /// Remote), every other error is surfaced. Shared by the production transition
-    /// and the test driver.
-    fn map_make_local_result(
-        release_id: &str,
-        result: Result<(), coven::MakeLocalError>,
-    ) -> Result<(), LibraryError> {
-        match result {
-            Ok(()) => Ok(()),
-            Err(coven::MakeLocalError::Cancelled) => {
-                debug!(
-                    release_id,
-                    "make-local cancelled before commit; release stays Remote"
-                );
-                Ok(())
-            }
-            Err(e) => Err(LibraryError::Storage(format!(
-                "make release {release_id} local: {e}"
-            ))),
-        }
-    }
-
     /// Make a release Remote (Local → Remote) through coven: coven enqueues an
     /// upload per user-provided blob from its external file, uploads each, and on
     /// the last flips the `remote` gate true, drops the external refs, deletes the
     /// source files, and re-emits the subtree (the host-provided cover then rides
     /// along). Returns once enqueued; completion fires `on_root_made_remote`.
     pub async fn coven_make_remote(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
-        self.handle
-            .make_remote("releases", release_id, pin)
-            .await
-            .map_err(|e| LibraryError::Storage(format!("make release {release_id} remote: {e}")))
+        self.sync.coven_make_remote(release_id, pin).await
     }
 
     /// Cancel an in-flight make-Remote of `release_id` through coven: clears the
@@ -87,12 +20,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<(), LibraryError> {
-        self.handle
-            .cancel_make_remote("releases", release_id)
-            .await
-            .map_err(|e| {
-                LibraryError::Storage(format!("cancel make release {release_id} remote: {e}"))
-            })
+        self.sync.coven_cancel_make_remote(release_id).await
     }
 
     /// Make a release Local (Remote → Local) through coven: coven materializes each
@@ -107,26 +35,20 @@ impl LibraryManager {
         new_path: &str,
         cancel: &crate::library::CancellationToken,
     ) -> Result<(), LibraryError> {
-        let dest = self.make_local_dest(release_id, new_path).await?;
-        let (cancel_rx, bridge) = Self::cancel_token_to_watch(cancel);
-        let result = self
-            .handle
-            .make_local("releases", release_id, &dest, &cancel_rx)
-            .await;
-        bridge.abort();
-        Self::map_make_local_result(release_id, result)
+        self.sync
+            .coven_make_local(release_id, new_path, cancel)
+            .await
     }
 
     pub fn generate_restore_code(&self) -> Result<String, String> {
-        self.handle.generate_restore_code()
+        self.sync.generate_restore_code()
     }
 
     /// The library's membership: its devices (with this device flagged, each
     /// member's fingerprint, and whether it can be removed) and whether the
     /// running device is an owner.
     pub async fn get_members(&self) -> Result<crate::sync::sync_manager::Membership, String> {
-        let members = self.handle.get_members().await?;
-        Ok(crate::sync::sync_manager::Membership::from_members(members))
+        self.sync.get_members().await
     }
 
     /// Approve a device into the library by its public key, wrapping the library
@@ -134,22 +56,14 @@ impl LibraryManager {
     /// back to the joining device. bae adds every device as a `Member`; the
     /// founding device is the `Owner`.
     pub async fn invite_member(&self, public_key_hex: &str) -> Result<String, String> {
-        self.handle
-            .invite_member(
-                public_key_hex,
-                crate::sync::sync_manager::MemberRole::Member,
-            )
-            .await
+        self.sync.invite_member(public_key_hex).await
     }
 
     /// Remove a device from the library and rotate the library key so the removed
     /// device can no longer read new data. Records the rotated key's fingerprint
     /// in this device's config.
     pub async fn remove_member(&self, public_key_hex: &str) -> Result<(), String> {
-        let fingerprint = self.handle.remove_member(public_key_hex).await?;
-        self.config_handle
-            .record_encryption_key_fingerprint(fingerprint)
-            .map_err(|e| e.to_string())
+        self.sync.remove_member(public_key_hex).await
     }
 
     // ── Download (pin) queue ─────────────────────────────────────────
