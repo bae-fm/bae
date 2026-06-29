@@ -17,7 +17,7 @@ use std::collections::HashMap;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
 use thiserror::Error;
 use tokio::sync::broadcast;
@@ -635,8 +635,6 @@ impl LibraryManager {
         let outbox_in_flight = Arc::new(Mutex::new(HashMap::new()));
         let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
         let sync_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let sync_connected = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let encryption_service = Arc::new(RwLock::new(None));
 
         let observer = Arc::new(crate::sync::upload_observer::ReleaseUploadObserver::new(
             outbox_in_flight.clone(),
@@ -668,11 +666,9 @@ impl LibraryManager {
             key_service.clone(),
             event_tx.clone(),
             database.clone(),
-            encryption_service,
             outbox_in_flight,
             upload_throughput,
             sync_paused,
-            sync_connected,
         );
 
         let discogs = DiscogsCredentials::new(config_handle.clone(), key_service.clone());
@@ -719,10 +715,8 @@ impl LibraryManager {
             key_service.clone(),
             event_tx.clone(),
             database.clone(),
-            Arc::new(RwLock::new(None)),
             Arc::new(Mutex::new(HashMap::new())),
             Arc::new(crate::library::UploadThroughput::new()),
-            Arc::new(std::sync::atomic::AtomicBool::new(false)),
             Arc::new(std::sync::atomic::AtomicBool::new(false)),
         );
 

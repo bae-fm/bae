@@ -12,7 +12,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
 use tokio::sync::broadcast;
 use tracing::{debug, info, warn};
@@ -40,9 +40,6 @@ pub(crate) struct SyncController {
     key_service: KeyService,
     event_tx: broadcast::Sender<LibraryEvent>,
     database: Database,
-    /// The active encryption service for opaque homes, kept for UI state and
-    /// tests that seed encrypted fixtures. Browsable homes leave this empty.
-    encryption_service: Arc<RwLock<Option<EncryptionService>>>,
     /// `file_id`s whose upload is in flight right now, mapped to the live count
     /// of encrypted bytes that have reached the cloud for that file. Shared with
     /// the sync loop's `ReleaseUploadObserver`. Read by `outbox_snapshot`.
@@ -52,8 +49,6 @@ pub(crate) struct SyncController {
     upload_throughput: Arc<UploadThroughput>,
     /// User-driven pause flag for the cloud-upload pipeline.
     sync_paused: Arc<AtomicBool>,
-    /// Whether a sync manager is installed in the coven handle.
-    sync_connected: Arc<AtomicBool>,
 }
 
 impl SyncController {
@@ -64,11 +59,9 @@ impl SyncController {
         key_service: KeyService,
         event_tx: broadcast::Sender<LibraryEvent>,
         database: Database,
-        encryption_service: Arc<RwLock<Option<EncryptionService>>>,
         outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
         upload_throughput: Arc<UploadThroughput>,
         sync_paused: Arc<AtomicBool>,
-        sync_connected: Arc<AtomicBool>,
     ) -> Self {
         Self {
             handle,
@@ -76,11 +69,9 @@ impl SyncController {
             key_service,
             event_tx,
             database,
-            encryption_service,
             outbox_in_flight,
             upload_throughput,
             sync_paused,
-            sync_connected,
         }
     }
 
@@ -92,21 +83,12 @@ impl SyncController {
         }
     }
 
-    fn sync_connected(&self) -> bool {
-        self.sync_connected
-            .load(std::sync::atomic::Ordering::SeqCst)
-    }
-
-    fn encryption_service_inner(&self) -> Option<EncryptionService> {
-        self.encryption_service.read().unwrap().clone()
-    }
-
     pub(crate) fn has_encryption(&self) -> bool {
-        self.encryption_service_inner().is_some()
+        self.handle.encryption_service().is_some()
     }
 
     pub(crate) fn get_encryption_service(&self) -> Option<EncryptionService> {
-        self.encryption_service_inner()
+        self.handle.encryption_service()
     }
 
     /// The shared upload-in-flight map, for tests that drive the outbox snapshot
@@ -143,7 +125,7 @@ impl SyncController {
     }
 
     pub(crate) fn has_cloud_home(&self) -> bool {
-        self.sync_connected()
+        self.handle.is_connected()
     }
 
     /// Whether the background sync loop is running and draining uploads. The
@@ -151,7 +133,7 @@ impl SyncController {
     /// release only becomes remote once the upload observer (which fires from
     /// inside the running loop) confirms the last upload landed.
     pub(crate) fn is_sync_ready(&self) -> bool {
-        self.sync_connected() && self.handle.is_syncing()
+        self.handle.is_syncing()
     }
 
     pub(crate) fn trigger_sync(&self) {
@@ -525,9 +507,6 @@ impl SyncController {
         // Stop the sync loop and drop the installed manager; the library becomes
         // home-less until the next connect.
         self.handle.disconnect_sync();
-        self.sync_connected
-            .store(false, std::sync::atomic::Ordering::SeqCst);
-        *self.encryption_service.write().unwrap() = None;
 
         // Connecting fills the whole cloud home; disconnecting clears it as a unit.
         self.config_handle
@@ -550,10 +529,7 @@ impl SyncController {
         &self,
         encryption_service: Option<EncryptionService>,
     ) -> Result<(), String> {
-        self.handle.connect_sync(encryption_service.clone()).await?;
-        *self.encryption_service.write().unwrap() = encryption_service;
-        self.sync_connected
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self.handle.connect_sync(encryption_service).await?;
         Ok(())
     }
 
@@ -570,23 +546,16 @@ impl SyncController {
         cloud_home: Arc<dyn CloudHome>,
         cipher: crate::sync::CloudCipher,
     ) -> Result<(), String> {
-        let active_encryption = match &cipher {
-            crate::sync::CloudCipher::Encrypted(service) => Some(service.clone()),
-            crate::sync::CloudCipher::Plaintext => None,
-        };
         self.handle
             .connect_sync_with_test_home(cloud_home, cipher)
             .await?;
-        *self.encryption_service.write().unwrap() = active_encryption;
-        self.sync_connected
-            .store(true, std::sync::atomic::Ordering::SeqCst);
         Ok(())
     }
 
     /// Ensure a SyncManager exists (creating encryption key if needed) and start sync.
     async fn ensure_sync_manager_and_start(&self) -> Result<(), String> {
         // If we already have a sync manager, just (re)start its loop.
-        if self.sync_connected() {
+        if self.handle.is_connected() {
             self.handle.start_sync().await?;
             return Ok(());
         }
@@ -616,10 +585,7 @@ impl SyncController {
         // — and the encryption-key fingerprint below is reached only on success, so
         // a failed setup stays a clean retry (no fingerprint telling the next
         // launch's unlock flow "encryption is set up" while sync is still broken).
-        self.handle.connect_sync(enc_service.clone()).await?;
-        *self.encryption_service.write().unwrap() = enc_service;
-        self.sync_connected
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self.handle.connect_sync(enc_service).await?;
 
         // Sync started. For an opaque home, persist the encryption-key hint flag so
         // the next launch's unlock flow knows this library has encryption set up. A
@@ -631,9 +597,6 @@ impl SyncController {
                 .record_encryption_key_fingerprint(fingerprint)
             {
                 self.handle.disconnect_sync();
-                *self.encryption_service.write().unwrap() = None;
-                self.sync_connected
-                    .store(false, std::sync::atomic::Ordering::SeqCst);
                 return Err(format!("Failed to save config: {e}"));
             }
         }
