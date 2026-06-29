@@ -13,7 +13,7 @@ impl PlaybackService {
             self.audio_output
                 .set_state(crate::playback::audio_output::AudioState::Paused);
 
-            if self.current_prepared.is_some() && self.current_track_info.is_some() {
+            if self.current_prepared.is_some() {
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::StateChanged {
@@ -33,7 +33,7 @@ impl PlaybackService {
         self.audio_output
             .set_state(crate::playback::audio_output::AudioState::Playing);
 
-        if self.current_prepared.is_some() && self.current_track_info.is_some() {
+        if self.current_prepared.is_some() {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::StateChanged {

@@ -646,8 +646,6 @@ pub struct PlaybackService {
     /// Mute state — core tracks this so UI doesn't need to.
     is_muted: bool,
     pre_mute_volume: f32,
-    /// Cached track info for the currently playing track.
-    current_track_info: Option<PlaybackTrackInfo>,
     /// The preview player — a self-contained second player for auditioning a
     /// local file. The service only coordinates pause/resume of the main player
     /// around it; the preview's own state lives entirely in `PreviewPlayer`.
@@ -1000,7 +998,6 @@ impl PlaybackService {
                     next_prepared: None,
                     next_track_stream: None,
                     next_decoder_handle: None,
-                    current_track_info: None,
                     preview,
                     main_was_playing_before_preview: false,
                     is_muted: false,
