@@ -8,7 +8,7 @@
 use super::pool::Pool;
 use super::SourcedValue;
 use crate::identify::candidate_text::{self, Source, SourcedLine};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use tracing::warn;
 
@@ -27,7 +27,7 @@ pub(super) fn dump_scan(
     now: chrono::DateTime<chrono::Utc>,
 ) -> std::io::Result<()> {
     let Some(home) = dirs::home_dir() else {
-        warn!("candidate_text: no home dir, skipping dump");
+        warn!("signals: no home dir, skipping dump");
         return Ok(());
     };
     let dir = home.join(".bae").join("candidate-text-scans");
@@ -115,11 +115,11 @@ fn build_dump_json(
         })
         .collect();
 
-    let mut sources_artwork: HashMap<PathBuf, Vec<String>> = HashMap::new();
+    let mut sources_artwork: BTreeMap<PathBuf, Vec<String>> = BTreeMap::new();
     let mut path_components: Vec<String> = Vec::new();
     let mut filenames: Vec<serde_json::Value> = Vec::new();
     let mut cue_fields: Vec<String> = Vec::new();
-    let mut text_files: HashMap<PathBuf, Vec<String>> = HashMap::new();
+    let mut text_files: BTreeMap<PathBuf, Vec<String>> = BTreeMap::new();
     for line in &pool.lines {
         match &line.source {
             Source::Artwork(p) => {
