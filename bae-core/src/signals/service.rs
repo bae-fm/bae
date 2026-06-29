@@ -155,11 +155,13 @@ async fn run_extraction(
                 key,
                 token,
                 generation,
-                fast.disc_id,
-                fast.cue_barcodes,
-                pool,
-                fast.artwork_paths,
-                Some(folder),
+                ExtractionInputs {
+                    disc_id: fast.disc_id,
+                    barcodes: fast.cue_barcodes,
+                    pool,
+                    artwork_paths: fast.artwork_paths,
+                    dump_folder: Some(folder),
+                },
             )
             .await;
         }
@@ -208,33 +210,50 @@ async fn run_extraction(
                 key,
                 token,
                 generation,
-                disc_id,
-                Vec::new(),
-                Pool::default(),
-                artwork_paths,
-                None,
+                ExtractionInputs {
+                    disc_id,
+                    barcodes: Vec::new(),
+                    pool: Pool::default(),
+                    artwork_paths,
+                    dump_folder: None,
+                },
             )
             .await;
         }
     }
 }
 
+/// Everything a candidate's source yields for the streaming pass to consume:
+/// the settled disc ID, the CUE barcodes, the text pool, the artwork images to
+/// OCR, and the diagnostic dump folder. A folder scan and a release re-identify
+/// each build one of these, differing only in which fields are populated.
+struct ExtractionInputs {
+    disc_id: DiscIdSignal,
+    barcodes: Vec<SourcedValue>,
+    pool: Pool,
+    artwork_paths: Vec<PathBuf>,
+    /// `Some` for folder sources — the diagnostic corpus dump runs after the
+    /// final emit; `None` for a release re-identify, which has no folder.
+    dump_folder: Option<PathBuf>,
+}
+
 /// Stream `Signals` over the artwork OCR pass: emit the fast-pass snapshot,
 /// then one cumulative snapshot per image that adds a barcode or text line,
-/// then a final settled snapshot. `dump_folder` is `Some` for folder sources —
-/// the diagnostic corpus dump runs after the final emit.
-#[allow(clippy::too_many_arguments)]
+/// then a final settled snapshot.
 async fn stream_extraction(
     inner: Arc<ExtractionServiceInner>,
     key: String,
     token: CancellationToken,
     generation: u64,
-    disc_id: DiscIdSignal,
-    mut barcodes: Vec<SourcedValue>,
-    mut pool: Pool,
-    artwork_paths: Vec<PathBuf>,
-    dump_folder: Option<PathBuf>,
+    inputs: ExtractionInputs,
 ) {
+    let ExtractionInputs {
+        disc_id,
+        mut barcodes,
+        mut pool,
+        artwork_paths,
+        dump_folder,
+    } = inputs;
     let has_artwork = !artwork_paths.is_empty();
 
     if token.is_cancelled() {
