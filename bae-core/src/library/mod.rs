@@ -107,6 +107,7 @@ pub async fn restore_from_cloud(
         Some(encryption_key_hex),
         library_name,
         &crate::sync::synced_tables(),
+        &crate::migrations::all(),
         source,
         &keypair,
         &app_dir,
@@ -158,10 +159,12 @@ async fn restore_from_code_with_cancel(
         None
     };
     let synced_tables = crate::sync::synced_tables();
+    let migrations = crate::migrations::all();
 
     let restore = crate::sync::restore_from_code(
         code,
         &synced_tables,
+        &migrations,
         oauth_tokens,
         cloudkit_ops,
         &app_dir,
@@ -266,11 +269,13 @@ async fn join_from_code_with_cancel(
         None
     };
     let synced_tables = crate::sync::synced_tables();
+    let migrations = crate::migrations::all();
 
     let join = crate::sync::join_from_invite_code(
         code,
         &app_dir,
         &synced_tables,
+        &migrations,
         oauth_tokens,
         cloudkit_ops,
         std::sync::Arc::new(coven::SystemClock),

@@ -1127,10 +1127,8 @@ impl LibraryManager {
             .clock(clock.clone())
             .key_service(key_service.clone())
             .observer(observer.clone() as Arc<dyn coven::BlobTransitionObserver>)
-            .open(|conn| {
-                conn.execute_batch(include_str!("../../migrations/001_initial.sql"))?;
-                Ok(())
-            })
+            .migrations(crate::migrations::all())
+            .open()
             .map_err(|e| match e {
                 coven::CovenError::Database(error) => error,
                 other => coven::DbError(other.to_string()),

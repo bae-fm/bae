@@ -381,10 +381,8 @@ impl Database {
             builder = builder.observer(observer);
         }
         let handle = builder
-            .open(|conn| {
-                conn.execute_batch(include_str!("../../migrations/001_initial.sql"))?;
-                Ok(())
-            })
+            .migrations(crate::migrations::all())
+            .open()
             .map_err(Self::coven_error)?;
         Ok(Self::from_handle(handle, clock))
     }
