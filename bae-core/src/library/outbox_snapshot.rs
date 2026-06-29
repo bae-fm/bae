@@ -71,7 +71,6 @@ pub struct UploadOp {
 #[derive(Debug, Clone)]
 pub struct DeleteOp {
     pub id: i64,
-    pub file_id: String,
     pub cloud_key: String,
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
@@ -195,8 +194,13 @@ pub(crate) async fn build_outbox_snapshot(
     for row in rows {
         match row.operation {
             OutboxOpKind::Upload => {
+                // An upload row always carries the file id it reports progress
+                // under; only a delete has none.
+                let file_id = row
+                    .file_id
+                    .expect("an upload outbox row always carries a file_id");
                 let bytes_total = row.file_size.unwrap_or(0) as u64;
-                let state = if let Some(&live) = in_flight.get(&row.file_id) {
+                let state = if let Some(&live) = in_flight.get(&file_id) {
                     // The reported count is of the encrypted payload, which can
                     // edge just past the stored plaintext size; clamp so the
                     // bar never exceeds 100% or skews the ETA math.
@@ -249,7 +253,7 @@ pub(crate) async fn build_outbox_snapshot(
                 };
                 uploads.push(UploadOp {
                     id: row.id,
-                    file_id: row.file_id,
+                    file_id,
                     release_id: row.release_id,
                     title: row.title,
                     display_name,
@@ -263,7 +267,6 @@ pub(crate) async fn build_outbox_snapshot(
             OutboxOpKind::Delete => {
                 deletes.push(DeleteOp {
                     id: row.id,
-                    file_id: row.file_id,
                     cloud_key: row.cloud_key,
                     created_at: row.created_at,
                 });

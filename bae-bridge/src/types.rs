@@ -1605,7 +1605,6 @@ pub enum BridgeUploadActivity {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDeleteOp {
     pub id: i64,
-    pub file_id: String,
     pub cloud_key: String,
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,

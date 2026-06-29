@@ -1365,7 +1365,6 @@ fn convert_outbox_snapshot(
         .into_iter()
         .map(|op| BridgeDeleteOp {
             id: op.id,
-            file_id: op.file_id,
             cloud_key: op.cloud_key,
             created_at: op.created_at,
         })

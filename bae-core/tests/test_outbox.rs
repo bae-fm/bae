@@ -169,3 +169,35 @@ async fn test_insert_or_ignore_idempotency() {
     let uploads = db.get_pending_cloud_uploads().await.unwrap();
     assert_eq!(uploads.len(), 1, "duplicate insert should be ignored");
 }
+
+/// The UI snapshot query reads only upload/delete rows. coven's upload drain
+/// queues `cancel` rows for tombstone removal; `outbox_items` must skip them, not
+/// choke on an operation kind it doesn't render. A cancel row left in the result
+/// makes `OutboxOpKind::parse` fail and the query panic.
+#[tokio::test]
+async fn test_outbox_items_skips_tombstone_cancels() {
+    let (db, _tmp) = setup_db().await;
+
+    db.add_cloud_outbox_upload("file-aaa", "storage/aa/bb/file-aaa", None, false)
+        .await
+        .unwrap();
+    db.add_cloud_outbox_delete("storage/bb/cc/file-bbb")
+        .await
+        .unwrap();
+    db.add_cloud_outbox_cancel("storage/cc/dd/file-ccc")
+        .await
+        .unwrap();
+
+    let items = db.outbox_items().await.unwrap();
+    assert_eq!(
+        items.len(),
+        2,
+        "cancel row must be excluded from the snapshot"
+    );
+    assert!(
+        items
+            .iter()
+            .all(|r| r.cloud_key != "storage/cc/dd/file-ccc"),
+        "no cancel row should reach the snapshot"
+    );
+}

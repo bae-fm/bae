@@ -1163,14 +1163,16 @@ impl OutboxOpKind {
 /// the joined release id, album title, and file size. The snapshot builder
 /// uses these to construct `UploadOp` / `DeleteOp`.
 ///
-/// `release_id`, `title`, `file_name`, and `file_size` are `Option` because the
-/// `release_files` join may miss an orphaned `file_id` (the row's file was
-/// deleted before the outbox drained).
+/// `file_id` is `None` for a delete (it carries no file id — the blob is named
+/// by `cloud_key`); only an upload has one. `release_id`, `title`, `file_name`,
+/// and `file_size` are `Option` because the `release_files` join finds nothing
+/// for a delete, or misses an orphaned `file_id` (the row's file was deleted
+/// before the outbox drained).
 #[derive(Debug, Clone)]
 pub struct DbOutboxRow {
     pub id: i64,
     pub operation: OutboxOpKind,
-    pub file_id: String,
+    pub file_id: Option<String>,
     pub cloud_key: String,
     /// Enqueue time as Unix epoch milliseconds, parsed from the queue row's
     /// RFC 3339 `created_at` column at read time so consumers carry an instant.

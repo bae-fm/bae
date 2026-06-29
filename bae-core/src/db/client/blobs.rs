@@ -249,6 +249,26 @@ impl Database {
         .await
     }
 
+    /// Seed a tombstone-cancel entry — the coven-internal row its upload drain
+    /// queues when an inline tombstone delete fails. Test-only: bae never
+    /// enqueues cancels itself, but the UI snapshot query must tolerate them.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn add_cloud_outbox_cancel(&self, cloud_key: &str) -> Result<(), DbError> {
+        let created_at = self.register_stamp().await?;
+        let cloud_key = cloud_key.to_string();
+        self.call(move |conn| {
+            conn.execute(
+                "INSERT OR IGNORE INTO cloud_outbox \
+                 (operation, cloud_key, scope, created_at) \
+                 VALUES ('cancel', ?1, NULL, ?2)",
+                (&cloud_key, &created_at),
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+    }
+
     /// Add a delete entry to the cloud outbox.
     pub async fn add_cloud_outbox_delete(&self, cloud_key: &str) -> Result<(), DbError> {
         let created_at = self.register_stamp().await?;
@@ -364,9 +384,11 @@ impl Database {
         .await
     }
 
-    /// All outbox entries (uploads and deletes), oldest first, each paired with
-    /// the album title of the release its `file_id` belongs to (uploads only —
-    /// `None` for deletes or an orphaned file). Backs the processing snapshot.
+    /// The user-facing outbox entries (uploads and deletes), oldest first, each
+    /// paired with the album title of the release its `file_id` belongs to
+    /// (uploads only — `None` for deletes or an orphaned file). Backs the
+    /// processing snapshot. coven's internal `cancel` rows (tombstone removals
+    /// it retries after an upload) are excluded — they render nothing.
     pub async fn outbox_items(&self) -> Result<Vec<DbOutboxRow>, DbError> {
         self.call(move |conn| {
             let mut stmt = conn.prepare(
@@ -379,6 +401,7 @@ impl Database {
                          LEFT JOIN release_files rf ON rf.id = co.file_id \
                          LEFT JOIN releases r ON r.id = rf.release_id \
                          LEFT JOIN albums a ON a.id = r.album_id \
+                         WHERE co.operation IN ('upload', 'delete') \
                          ORDER BY co.id",
             )?;
             let rows = stmt.query_map([], |row| {
