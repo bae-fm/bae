@@ -76,8 +76,13 @@ fn row_to_outbox_entry(row: &Row<'_>) -> coven::rusqlite::Result<coven::OutboxEn
     let operation = match op_tag.as_str() {
         "upload" => {
             let scope_str: String = row.get(5)?;
-            let scope = coven::BlobScope::from_outbox_str(&scope_str)
-                .unwrap_or_else(|| panic!("invalid cloud_outbox.scope: {scope_str:?}"));
+            let scope = coven::BlobScope::from_outbox_str(&scope_str).ok_or_else(|| {
+                coven::rusqlite::Error::FromSqlConversionFailure(
+                    5,
+                    coven::rusqlite::types::Type::Text,
+                    format!("invalid cloud_outbox.scope: {scope_str:?}").into(),
+                )
+            })?;
             coven::OutboxOperation::Upload {
                 file_id: row.get(2)?,
                 source_path: row.get(4)?,
@@ -87,7 +92,13 @@ fn row_to_outbox_entry(row: &Row<'_>) -> coven::rusqlite::Result<coven::OutboxEn
         }
         "delete" => coven::OutboxOperation::Delete,
         "cancel" => coven::OutboxOperation::Cancel,
-        other => panic!("invalid cloud_outbox.operation: {other:?}"),
+        other => {
+            return Err(coven::rusqlite::Error::FromSqlConversionFailure(
+                1,
+                coven::rusqlite::types::Type::Text,
+                format!("invalid cloud_outbox.operation: {other:?}").into(),
+            ));
+        }
     };
     Ok(coven::OutboxEntry {
         id: row.get(0)?,
@@ -114,9 +125,7 @@ fn row_to_library_image(
         source: row.get("source")?,
         source_url: row.get("source_url")?,
         cloud_path: row.get("cloud_path")?,
-        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-            .unwrap()
-            .with_timezone(&Utc),
+        created_at: rfc3339_column(row, "created_at")?,
     })
 }
 
@@ -464,11 +473,42 @@ impl Database {
 
 // ─── Row-map helpers (free functions; take `&Row`) ──────────────────────────
 
+/// Build a column-conversion error for a named column whose stored text the
+/// mapper could not turn into its typed value. A corrupt column then surfaces
+/// like any other bad read instead of panicking or silently mis-defaulting.
+fn column_conversion_error(row: &Row, column: &str, message: String) -> coven::rusqlite::Error {
+    // The column was just read, so its index resolves; if it somehow doesn't,
+    // that lookup error is itself a faithful failure to return.
+    match row.as_ref().column_index(column) {
+        Ok(idx) => coven::rusqlite::Error::FromSqlConversionFailure(
+            idx,
+            coven::rusqlite::types::Type::Text,
+            message.into(),
+        ),
+        Err(e) => e,
+    }
+}
+
+/// Read a named rfc3339 timestamp column, surfacing a malformed value as a
+/// column-conversion error rather than panicking on the parse.
+fn rfc3339_column(row: &Row, column: &str) -> coven::rusqlite::Result<DateTime<Utc>> {
+    let raw: String = row.get(column)?;
+    DateTime::parse_from_rfc3339(&raw)
+        .map(|dt| dt.with_timezone(&Utc))
+        .map_err(|e| {
+            column_conversion_error(
+                row,
+                column,
+                format!("{column} {raw:?} is not a valid rfc3339 timestamp: {e}"),
+            )
+        })
+}
+
 fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
     let metadata_source: String = row.get("metadata_source")?;
     let metadata_source = metadata_source
         .parse::<ReleaseMetadataSource>()
-        .expect("releases.metadata_source must be one of 'musicbrainz' | 'discogs' | 'file_tags'");
+        .map_err(|e| column_conversion_error(row, "metadata_source", format!("releases.{e}")))?;
     Ok(DbRelease {
         id: row.get("id")?,
         album_id: row.get("album_id")?,
@@ -489,9 +529,7 @@ fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
         content_hash: row.get("content_hash")?,
         album_loudness_lufs: row.get("album_loudness_lufs")?,
         album_peak_linear: row.get("album_peak_linear")?,
-        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-            .unwrap()
-            .with_timezone(&Utc),
+        created_at: rfc3339_column(row, "created_at")?,
     })
 }
 
@@ -503,9 +541,7 @@ fn row_to_file(row: &Row) -> coven::rusqlite::Result<DbFile> {
         file_size: row.get("file_size")?,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         cloud_path: row.get("cloud_path")?,
-        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-            .unwrap()
-            .with_timezone(&Utc),
+        created_at: rfc3339_column(row, "created_at")?,
     })
 }
 
@@ -516,9 +552,7 @@ fn row_to_artist(row: &Row) -> coven::rusqlite::Result<DbArtist> {
         sort_name: row.get("sort_name")?,
         discogs_artist_id: row.get("discogs_artist_id")?,
         musicbrainz_artist_id: row.get("musicbrainz_artist_id")?,
-        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-            .unwrap()
-            .with_timezone(&Utc),
+        created_at: rfc3339_column(row, "created_at")?,
     })
 }
 
@@ -531,9 +565,7 @@ fn row_to_album(row: &Row) -> coven::rusqlite::Result<DbAlbum> {
         year: row.get("year")?,
         primary_release_id: row.get("primary_release_id")?,
         is_compilation: row.get("is_compilation")?,
-        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-            .unwrap()
-            .with_timezone(&Utc),
+        created_at: rfc3339_column(row, "created_at")?,
     })
 }
 
@@ -546,9 +578,7 @@ fn row_to_track(row: &Row) -> coven::rusqlite::Result<DbTrack> {
         track_number: row.get("track_number")?,
         duration_ms: row.get("duration_ms")?,
         discogs_position: row.get("discogs_position")?,
-        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-            .unwrap()
-            .with_timezone(&Utc),
+        created_at: rfc3339_column(row, "created_at")?,
     })
 }
 
@@ -567,9 +597,7 @@ fn row_to_audio_format(row: &Row) -> coven::rusqlite::Result<DbAudioFormat> {
         end_byte: row.get("end_byte")?,
         track_loudness_lufs: row.get("track_loudness_lufs")?,
         track_peak_linear: row.get("track_peak_linear")?,
-        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-            .unwrap()
-            .with_timezone(&Utc),
+        created_at: rfc3339_column(row, "created_at")?,
     })
 }
 
@@ -579,7 +607,13 @@ fn row_to_import(row: &Row) -> coven::rusqlite::Result<DbImport> {
         "importing" | "preparing" => ImportOperationStatus::Importing,
         "complete" => ImportOperationStatus::Complete,
         "failed" => ImportOperationStatus::Failed,
-        _ => ImportOperationStatus::Importing,
+        other => {
+            return Err(column_conversion_error(
+                row,
+                "status",
+                format!("imports.status {other:?} is not a known import status"),
+            ));
+        }
     };
     Ok(DbImport {
         id: row.get("id")?,

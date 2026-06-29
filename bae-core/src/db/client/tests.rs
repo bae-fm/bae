@@ -128,6 +128,139 @@ mod readable_cloud_path_tests {
 }
 
 #[cfg(test)]
+mod row_mapper_error_tests {
+    use super::super::*;
+
+    /// An in-memory DB on the real schema with one artist/album/release whose
+    /// `created_at`/`metadata_source` are valid, so a test can corrupt one
+    /// column and prove the mapper rejects it.
+    fn seeded_conn() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(include_str!("../../../migrations/001_initial.sql"))
+            .unwrap();
+        let now = "2026-01-01T00:00:00Z";
+        conn.execute(
+            "INSERT INTO artists (id, name, _updated_at, created_at) VALUES ('artist-1', 'Artist Name', ?, ?)",
+            params![now, now],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO albums (id, title, artist_id, is_compilation, _updated_at, created_at) \
+             VALUES ('album-1', 'Album Title', 'artist-1', 0, ?, ?)",
+            params![now, now],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at) \
+             VALUES ('rel-1', 'album-1', 'file_tags', 1, ?, ?)",
+            params![now, now],
+        )
+        .unwrap();
+        conn
+    }
+
+    #[test]
+    fn row_to_release_rejects_malformed_created_at() {
+        // A corrupt timestamp must propagate as an error, not panic the mapper.
+        let conn = seeded_conn();
+        conn.execute(
+            "UPDATE releases SET created_at = 'not-a-timestamp' WHERE id = 'rel-1'",
+            [],
+        )
+        .unwrap();
+        let result = conn.query_row(
+            "SELECT * FROM releases WHERE id = 'rel-1'",
+            [],
+            row_to_release,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn row_to_release_rejects_unknown_metadata_source() {
+        // An unknown enum string must propagate, not panic via expect.
+        let conn = seeded_conn();
+        conn.execute(
+            "UPDATE releases SET metadata_source = 'bogus' WHERE id = 'rel-1'",
+            [],
+        )
+        .unwrap();
+        let result = conn.query_row(
+            "SELECT * FROM releases WHERE id = 'rel-1'",
+            [],
+            row_to_release,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn row_to_import_rejects_unknown_status() {
+        // An unrecognized status must surface as an error rather than silently
+        // defaulting to `Importing`.
+        let conn = seeded_conn();
+        conn.execute(
+            "INSERT INTO imports \
+                 (id, status, album_title, artist_name, folder_path, created_at, updated_at) \
+             VALUES ('imp-1', 'bogus', 'Album', 'Artist', '/tmp/x', 0, 0)",
+            [],
+        )
+        .unwrap();
+        let result = conn.query_row(
+            "SELECT * FROM imports WHERE id = 'imp-1'",
+            [],
+            row_to_import,
+        );
+        assert!(result.is_err());
+    }
+
+    /// A `cloud_outbox` shaped like the real `pending_outbox` SELECT, so the
+    /// positional reads in `row_to_outbox_entry` line up.
+    fn outbox_conn() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE cloud_outbox ( \
+                 id INTEGER PRIMARY KEY, operation TEXT, file_id TEXT, cloud_key TEXT, \
+                 source_path TEXT, scope TEXT, retain_pinned INTEGER, \
+                 attempt_count INTEGER, last_attempt_at INTEGER )",
+        )
+        .unwrap();
+        conn
+    }
+
+    const PENDING_OUTBOX_SELECT: &str = "SELECT id, operation, file_id, cloud_key, source_path, \
+                                          scope, retain_pinned, attempt_count, last_attempt_at \
+                                          FROM cloud_outbox WHERE id = 1";
+
+    #[test]
+    fn row_to_outbox_entry_rejects_unknown_operation() {
+        // An unknown operation must propagate, not panic.
+        let conn = outbox_conn();
+        conn.execute(
+            "INSERT INTO cloud_outbox (id, operation, attempt_count) VALUES (1, 'bogus', 0)",
+            [],
+        )
+        .unwrap();
+        let result = conn.query_row(PENDING_OUTBOX_SELECT, [], row_to_outbox_entry);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn row_to_outbox_entry_rejects_unknown_scope() {
+        // An upload row with an unknown scope must propagate, not panic.
+        let conn = outbox_conn();
+        conn.execute(
+            "INSERT INTO cloud_outbox \
+                 (id, operation, file_id, cloud_key, source_path, scope, retain_pinned, attempt_count) \
+             VALUES (1, 'upload', 'file-1', 'cloud-key', '/tmp/x', 'bogus', 0, 0)",
+            [],
+        )
+        .unwrap();
+        let result = conn.query_row(PENDING_OUTBOX_SELECT, [], row_to_outbox_entry);
+        assert!(result.is_err());
+    }
+}
+
+#[cfg(test)]
 mod playback_state_load_tests {
     use super::super::*;
     use coven::SystemClock;
