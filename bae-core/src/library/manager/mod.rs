@@ -57,6 +57,7 @@ use coven::IdRef;
 use coven::LibraryDir;
 
 mod config;
+mod coven_blobs;
 mod domain_ops;
 mod locality;
 mod playback_state;
