@@ -2,11 +2,12 @@
 //! renders directly. Each identifying signal — the disc ID, the barcode, and
 //! every catalog candidate — becomes one [`ToolbarSignal`] carrying its value,
 //! where it came from, its lookup state, and whether the user has excluded it
-//! from triangulation. The UI iterates and renders; all of the per-signal
-//! state derivation lives here.
+//! from triangulation. The UI iterates and renders.
 //!
-//! Built by [`crate::identify::IdentifyState::toolbar`] and broadcast alongside
-//! each identify-state transition.
+//! This module defines the badge types. The per-signal state derivation that
+//! produces them from `IdentifyState` lives in [`super::state`], built by
+//! [`crate::identify::IdentifyState::toolbar`] and broadcast alongside each
+//! identify-state transition.
 
 use crate::signals::{LookupFailure, SignalOrigin};
 

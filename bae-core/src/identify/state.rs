@@ -339,8 +339,8 @@ impl IdentifyState {
                     context,
                 }
             }
-            // Settled states re-combine immediately; `Idle`/`Error` (no
-            // context) are unreachable here behind `has_context` but stay total.
+            // Settled states re-combine immediately; `Idle` (no context) is
+            // unreachable here behind `has_context` but stays total.
             other => match other.context_cloned() {
                 Some(mut context) => {
                     context.toggle(signal);
@@ -354,7 +354,7 @@ impl IdentifyState {
     /// Project the current state into the flat list of toolbar badges the UI
     /// renders: the disc-ID badge, the barcode badge, then one badge per
     /// catalog candidate. Each carries its value, origin, live state, and
-    /// whether the user has excluded it. `Idle` and `Error` have no toolbar.
+    /// whether the user has excluded it. `Idle` has no toolbar.
     pub fn toolbar(&self) -> Vec<ToolbarSignal> {
         let Some(context) = self.context_cloned() else {
             return Vec::new();
