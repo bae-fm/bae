@@ -46,27 +46,4 @@ impl ImportService {
             },
         );
     }
-
-    /// Emit a loudness-measurement tick for the candidate's confirm pane. Routed
-    /// to a native leaf view (not the coarse candidate row), so the sub-track
-    /// cadence never churns the row. `fraction` is overall scan progress (0..1)
-    /// for the determinate bar; `tracks_done`/`tracks_total` label which track.
-    #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
-    pub(super) fn emit_loudness_progress(
-        &self,
-        candidate_key: &str,
-        tracks_done: u32,
-        tracks_total: u32,
-        fraction: f32,
-    ) {
-        send_event(
-            &self.event_tx,
-            crate::import::handle::ImportEvent::ImportLoudnessProgress {
-                candidate_key: candidate_key.to_string(),
-                tracks_done,
-                tracks_total,
-                fraction,
-            },
-        );
-    }
 }
