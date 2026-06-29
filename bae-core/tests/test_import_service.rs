@@ -218,6 +218,7 @@ fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
         thumb: None,
         catno: None,
         artists: vec![],
+        extraartists: Some(vec![]),
         tracklist: tracks
             .iter()
             .enumerate()
@@ -227,6 +228,7 @@ fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
                 title: t.to_string(),
                 duration: Some("3:00".to_string()),
                 artists: vec![],
+                extraartists: None,
             })
             .collect(),
         master_id: None,
@@ -279,8 +281,6 @@ async fn folder_scan_produces_candidates() {
     let names: std::collections::BTreeSet<_> = candidates.iter().map(|c| c.name.as_str()).collect();
     assert!(names.contains("Artist - First Album"));
     assert!(names.contains("Artist - Second Album"));
-
-    println!("Folder scan produced 2 independent candidates");
 }
 
 /// The watcher reconciles a folder against the candidates it last emitted: a new
@@ -499,11 +499,6 @@ async fn import_produces_audio_format_records() {
     assert!(format.is_some(), "should have audio format record");
     let format = format.unwrap();
     assert_eq!(format.content_type.as_str(), "audio/flac");
-
-    println!(
-        "Audio format records verified: {}",
-        format.content_type.as_str()
-    );
 }
 
 /// The loudness pass emits a continuous `fraction` (0 → 1) as it scans, ticking
@@ -887,8 +882,6 @@ async fn two_sequential_imports() {
             .unwrap();
     assert_eq!(album1.title, "First Album");
     assert_eq!(album2.title, "Second Album");
-
-    println!("Two sequential imports verified");
 }
 
 /// 6. Import with local cover art: covers row + the cover blob in coven's local store.
@@ -933,19 +926,11 @@ async fn import_with_cover_art() {
     let cover = cover.unwrap();
     assert_eq!(cover.source, "local");
 
-    // Cover bytes readable through the handle (coven's local store while Local).
-    let cover_bytes = f
-        .library_manager
-        .read_image_blob(&release_id)
+    // Cover bytes readable through the image ref path (coven's local store while Local).
+    let cover_bytes = support::read_cover_image_blob(&f.db, &f.library_manager, &release_id)
         .await
-        .unwrap()
         .expect("cover blob should be readable");
     assert!(!cover_bytes.is_empty(), "cover bytes should not be empty");
-
-    println!(
-        "Import with cover art verified: DB row + {} bytes",
-        cover_bytes.len()
-    );
 }
 
 /// On a browsable home the readable cloud_path is computed AT IMPORT — for every
@@ -1050,6 +1035,7 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
         thumb: None,
         catno: Some("CAT-001".to_string()),
         artists: vec![],
+        extraartists: Some(vec![]),
         tracklist: tracks
             .iter()
             .enumerate()
@@ -1059,6 +1045,7 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
                 title: t.to_string(),
                 duration: Some("3:00".to_string()),
                 artists: vec![],
+                extraartists: None,
             })
             .collect(),
         master_id: Some(master_id.to_string()),
@@ -1316,12 +1303,14 @@ fn seed_discogs_for_xref(release_id: &str, master_id: &str, title: &str) -> Stri
             id: "discogs-artist-1".to_string(),
             name: "Artist Name".to_string(),
         }],
+        extraartists: Some(vec![]),
         tracklist: vec![DiscogsTrack {
             type_: "track".to_string(),
             position: "1".to_string(),
             title: "Track One".to_string(),
             duration: Some("3:00".to_string()),
             artists: vec![],
+            extraartists: None,
         }],
         master_id: Some(master_id.to_string()),
     };
@@ -1366,7 +1355,10 @@ fn seed_mb_with_discogs_xref(
                 title: None,
                 length: None,
                 recording: Some(MbRecording {
+                    id: None,
                     title: Some("Track One".to_string()),
+                    artist_credit: vec![],
+                    relations: vec![],
                 }),
                 artist_credit: vec![],
             }],
@@ -1730,11 +1722,8 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
         "cover must be sourced from the embedded picture"
     );
 
-    let bytes = f
-        .library_manager
-        .read_image_blob(&release_id)
+    let bytes = support::read_cover_image_blob(&f.db, &f.library_manager, &release_id)
         .await
-        .unwrap()
         .expect("cover blob readable");
     assert_eq!(bytes, EMBEDDED_JPEG, "cover bytes are the embedded picture");
 }

@@ -99,6 +99,8 @@ final class PaginatedList<Row: Identifiable & Sendable> where Row.ID: Sendable {
     @ObservationIgnored
     private let ingest: ([Row]) -> Void
     @ObservationIgnored
+    private let onError: (DisplayError) -> Void
+    @ObservationIgnored
     private var reloadTask: Task<Void, Never>?
     // In-flight `loadRange` fetches, keyed "offset:end:generation", so concurrent
     // callers asking for the same range coalesce onto one DB query instead of
@@ -106,9 +108,14 @@ final class PaginatedList<Row: Identifiable & Sendable> where Row.ID: Sendable {
     @ObservationIgnored
     private var inFlight: [String: Task<Void, Never>] = [:]
 
-    init(pageSource: any PageSource<Row>, ingest: @escaping ([Row]) -> Void) {
+    init(
+        pageSource: any PageSource<Row>,
+        ingest: @escaping ([Row]) -> Void,
+        onError: @escaping (DisplayError) -> Void
+    ) {
         self.pageSource = pageSource
         self.ingest = ingest
+        self.onError = onError
     }
 
     // MARK: - Queries
@@ -155,6 +162,7 @@ final class PaginatedList<Row: Identifiable & Sendable> where Row.ID: Sendable {
         }
         catch {
             logger.error("Failed to load count: \(error.localizedDescription)")
+            onError(DisplayError(line: error.localizedDescription))
         }
     }
 
@@ -225,6 +233,7 @@ final class PaginatedList<Row: Identifiable & Sendable> where Row.ID: Sendable {
             logger.error(
                 "Failed to load range [\(offset) ..< \(end)]: \(error.localizedDescription)"
             )
+            onError(DisplayError(line: error.localizedDescription))
         }
     }
 
@@ -258,6 +267,7 @@ final class PaginatedList<Row: Identifiable & Sendable> where Row.ID: Sendable {
                 logger.error(
                     "invalidate() failed: \(error.localizedDescription)"
                 )
+                onError(DisplayError(line: error.localizedDescription))
             }
         }
     }

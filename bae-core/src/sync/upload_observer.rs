@@ -257,6 +257,9 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
             debug!("on_root_made_remote for non-release root {root_table:?}/{root_id}; ignoring");
             return;
         }
+        if let Err(e) = self.db().complete_import_for_release(root_id).await {
+            warn!("on_root_made_remote: marking import complete for {root_id}: {e}");
+        }
         self.emit_release_updated(root_id).await;
         self.emit_outbox_changed().await;
     }

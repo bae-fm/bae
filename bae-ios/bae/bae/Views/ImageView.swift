@@ -70,7 +70,7 @@ extension ImageView {
         pointSize: CGFloat
     ) {
         self.init(
-            source: imageRef.map { .cover(id: $0.id, version: $0.version) },
+            source: imageRef.map { .image($0) },
             pointSize: pointSize,
             contentMode: contentMode
         )

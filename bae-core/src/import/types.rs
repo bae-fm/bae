@@ -24,10 +24,11 @@
 //! - Store track audio format records
 use crate::cue_flac::{CueSheet, FlacInfo};
 use crate::db::DbTrack;
+use serde::{Deserialize, Serialize};
 use std::{path::Path, path::PathBuf, sync::Arc};
 
 /// Metadata source for a release.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MetadataSource {
     MusicBrainz,
     Discogs,
@@ -499,6 +500,11 @@ pub enum ImportProgress {
         import_id: Option<String>,
     },
     Complete {
+        id: String,
+        import_id: String,
+        album_id: String,
+    },
+    RemoteUploadQueued {
         id: String,
         import_id: String,
         album_id: String,

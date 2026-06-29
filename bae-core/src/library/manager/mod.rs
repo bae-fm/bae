@@ -29,9 +29,11 @@ use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
 
 use crate::album_detail::{
-    join_artist_names, AlbumDetail, AlbumSummary, GallerySource, ImageRef, ReleaseDetail,
-    ReleaseResolveCtx, ReleaseStorageAction, ReleaseStorageSummary, SearchResults, StorageFilter,
-    StoragePage, StorageRow, StorageSort, StorageSortDirection, StorageSortField,
+    join_artist_names, AlbumDetail, AlbumSummary, ComposerDetail, ComposerSummary,
+    ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail, ReleaseResolveCtx,
+    ReleaseStorageAction, ReleaseStorageSummary, ReleaseSummary, SearchResults, StorageFilter,
+    StoragePage, StorageRow, StorageSort, StorageSortDirection, StorageSortField, WorkDetail,
+    WorkSummary,
 };
 #[cfg(feature = "oauth-providers")]
 use crate::config::CloudProvider;
@@ -63,6 +65,7 @@ use coven::LibraryDir;
 
 mod album;
 mod artist;
+mod composer;
 mod config;
 mod coven_blobs;
 mod export;

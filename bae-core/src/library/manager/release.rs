@@ -961,6 +961,7 @@ pub(crate) async fn cover_ref_for(
         .map(|version| ImageRef {
             id: release_id.to_string(),
             version,
+            image_type: LibraryImageType::Cover,
         }))
 }
 

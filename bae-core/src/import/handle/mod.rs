@@ -234,6 +234,27 @@ impl ImportServiceHandle {
     }
 }
 
+pub fn remap_artist_links<T: Clone>(
+    links: &[T],
+    artist_id_map: &HashMap<String, String>,
+    label: &str,
+    artist_id: impl Fn(&T) -> &str,
+    assign_artist_id: impl Fn(&mut T, String),
+) -> Result<Vec<T>, String> {
+    links
+        .iter()
+        .map(|link| {
+            let parsed_artist_id = artist_id(link);
+            let actual_id = artist_id_map.get(parsed_artist_id).ok_or_else(|| {
+                format!("{label} artist ID {parsed_artist_id} not found in artist map")
+            })?;
+            let mut remapped = link.clone();
+            assign_artist_id(&mut remapped, actual_id.clone());
+            Ok(remapped)
+        })
+        .collect()
+}
+
 /// Remap track artist IDs from the parsed (temporary) artist IDs to the actual DB IDs.
 ///
 /// The ParsedAlbum's track_artists reference artist IDs generated during parsing, but
@@ -243,17 +264,13 @@ pub fn remap_track_artists(
     track_artists: &[crate::db::DbTrackArtist],
     artist_id_map: &HashMap<String, String>,
 ) -> Result<Vec<crate::db::DbTrackArtist>, String> {
-    track_artists
-        .iter()
-        .map(|ta| {
-            let actual_id = artist_id_map.get(&ta.artist_id).ok_or_else(|| {
-                format!("Track artist ID {} not found in artist map", ta.artist_id)
-            })?;
-            let mut remapped = ta.clone();
-            remapped.artist_id = actual_id.clone();
-            Ok(remapped)
-        })
-        .collect()
+    remap_artist_links(
+        track_artists,
+        artist_id_map,
+        "track artist",
+        |ta| &ta.artist_id,
+        |ta, artist_id| ta.artist_id = artist_id,
+    )
 }
 
 /// Remap album artist IDs from the parsed (temporary) artist IDs to the actual DB IDs.
@@ -261,17 +278,13 @@ pub fn remap_album_artists(
     album_artists: &[crate::db::DbAlbumArtist],
     artist_id_map: &HashMap<String, String>,
 ) -> Result<Vec<crate::db::DbAlbumArtist>, String> {
-    album_artists
-        .iter()
-        .map(|aa| {
-            let actual_id = artist_id_map.get(&aa.artist_id).ok_or_else(|| {
-                format!("Album artist ID {} not found in artist map", aa.artist_id)
-            })?;
-            let mut remapped = aa.clone();
-            remapped.artist_id = actual_id.clone();
-            Ok(remapped)
-        })
-        .collect()
+    remap_artist_links(
+        album_artists,
+        artist_id_map,
+        "album artist",
+        |aa| &aa.artist_id,
+        |aa, artist_id| aa.artist_id = artist_id,
+    )
 }
 
 /// Fetch artist images for artists that have a Discogs ID but no image yet.

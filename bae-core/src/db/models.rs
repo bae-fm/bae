@@ -107,6 +107,67 @@ pub struct DbTrackArtist {
     pub position: i32,
     pub created_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DbWork {
+    pub id: String,
+    pub title: String,
+    pub disambiguation: Option<String>,
+    pub work_type: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DbWorkArtist {
+    pub id: String,
+    pub work_id: String,
+    pub artist_id: String,
+    pub position: i32,
+    pub source: MetadataSource,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DbWorkPart {
+    pub id: String,
+    pub parent_work_id: String,
+    pub child_work_id: String,
+    pub position: i32,
+    pub source: MetadataSource,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DbTrackWork {
+    pub id: String,
+    pub track_id: String,
+    pub work_id: String,
+    pub position: i32,
+    pub source: MetadataSource,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DbReleaseArtistRole {
+    pub id: String,
+    pub release_id: String,
+    pub artist_id: String,
+    pub position: i32,
+    pub source: MetadataSource,
+    pub source_credit: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DbTrackArtistRole {
+    pub id: String,
+    pub track_id: String,
+    pub artist_id: String,
+    pub position: i32,
+    pub source: MetadataSource,
+    pub source_credit: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
 /// Album metadata - represents a logical album (the "master")
 ///
 /// A logical album can have multiple physical releases (e.g., "1973 Original", "2016 Remaster").
@@ -479,6 +540,128 @@ impl DbTrackArtist {
             track_id: track_id.to_string(),
             artist_id: artist_id.to_string(),
             position,
+            created_at: now,
+        }
+    }
+}
+
+impl DbWork {
+    pub fn new(
+        work_id: &str,
+        title: &str,
+        disambiguation: Option<String>,
+        work_type: Option<String>,
+        now: DateTime<Utc>,
+    ) -> Self {
+        DbWork {
+            id: work_id.to_string(),
+            title: title.to_string(),
+            disambiguation,
+            work_type,
+            created_at: now,
+        }
+    }
+}
+
+impl DbWorkArtist {
+    pub fn new(
+        work_id: &str,
+        artist_id: &str,
+        position: i32,
+        source: MetadataSource,
+        id: String,
+        now: DateTime<Utc>,
+    ) -> Self {
+        DbWorkArtist {
+            id,
+            work_id: work_id.to_string(),
+            artist_id: artist_id.to_string(),
+            position,
+            source,
+            created_at: now,
+        }
+    }
+}
+
+impl DbWorkPart {
+    pub fn new(
+        parent_work_id: &str,
+        child_work_id: &str,
+        position: i32,
+        source: MetadataSource,
+        id: String,
+        now: DateTime<Utc>,
+    ) -> Self {
+        DbWorkPart {
+            id,
+            parent_work_id: parent_work_id.to_string(),
+            child_work_id: child_work_id.to_string(),
+            position,
+            source,
+            created_at: now,
+        }
+    }
+}
+
+impl DbTrackWork {
+    pub fn new(
+        track_id: &str,
+        work_id: &str,
+        position: i32,
+        source: MetadataSource,
+        id: String,
+        now: DateTime<Utc>,
+    ) -> Self {
+        DbTrackWork {
+            id,
+            track_id: track_id.to_string(),
+            work_id: work_id.to_string(),
+            position,
+            source,
+            created_at: now,
+        }
+    }
+}
+
+impl DbReleaseArtistRole {
+    pub fn new(
+        release_id: &str,
+        artist_id: &str,
+        position: i32,
+        source: MetadataSource,
+        source_credit: Option<String>,
+        id: String,
+        now: DateTime<Utc>,
+    ) -> Self {
+        DbReleaseArtistRole {
+            id,
+            release_id: release_id.to_string(),
+            artist_id: artist_id.to_string(),
+            position,
+            source,
+            source_credit,
+            created_at: now,
+        }
+    }
+}
+
+impl DbTrackArtistRole {
+    pub fn new(
+        track_id: &str,
+        artist_id: &str,
+        position: i32,
+        source: MetadataSource,
+        source_credit: Option<String>,
+        id: String,
+        now: DateTime<Utc>,
+    ) -> Self {
+        DbTrackArtistRole {
+            id,
+            track_id: track_id.to_string(),
+            artist_id: artist_id.to_string(),
+            position,
+            source,
+            source_credit,
             created_at: now,
         }
     }
@@ -904,7 +1087,7 @@ impl DbImport {
     }
 }
 /// Type discriminator for library images
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LibraryImageType {
     Cover,
     Artist,
@@ -915,6 +1098,13 @@ impl LibraryImageType {
         match self {
             LibraryImageType::Cover => "cover",
             LibraryImageType::Artist => "artist",
+        }
+    }
+
+    pub fn namespace(&self) -> &'static str {
+        match self {
+            LibraryImageType::Cover => crate::sync::COVERS_NAMESPACE,
+            LibraryImageType::Artist => crate::sync::ARTIST_IMAGES_NAMESPACE,
         }
     }
 }
@@ -969,6 +1159,8 @@ pub struct DbLibraryImage {
 pub struct DbLibrarySearchResults {
     pub albums: Vec<DbAlbumSearchResult>,
     pub tracks: Vec<DbTrackSearchResult>,
+    pub composers: Vec<DbComposerSummary>,
+    pub works: Vec<DbWorkSummary>,
 }
 
 /// Raw album search-result row with the primary artist name joined in SQL.
@@ -991,6 +1183,67 @@ pub struct DbTrackSearchResult {
     pub album_id: String,
     pub album_title: String,
     pub artist_name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbComposerSummary {
+    pub artist: DbArtist,
+    pub work_count: i64,
+    pub linked_release_count: i64,
+    pub unlinked_credit_count: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbWorkSummary {
+    pub work: DbWork,
+    pub parent_work_id: Option<String>,
+    pub representative_release_id: Option<String>,
+    pub composer_names: Option<String>,
+    pub linked_release_count: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbComposerDetail {
+    pub composer: DbComposerSummary,
+    pub work_groups: Vec<DbComposerWorkGroup>,
+    pub unlinked_release_roles: Vec<DbReleaseRoleSummary>,
+    pub unlinked_track_roles: Vec<DbTrackRoleSummary>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbComposerWorkGroup {
+    pub id: String,
+    pub parent: Option<DbWorkSummary>,
+    pub works: Vec<DbWorkSummary>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbWorkDetail {
+    pub work: DbWorkSummary,
+    pub child_works: Vec<DbWorkSummary>,
+    pub releases: Vec<DbReleaseSummary>,
+    pub tracks: Vec<DbWorkTrackSummary>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbReleaseRoleSummary {
+    pub role: DbReleaseArtistRole,
+    pub album: DbAlbum,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbTrackRoleSummary {
+    pub role: DbTrackArtistRole,
+    pub track: DbTrack,
+    pub album: DbAlbum,
+    pub artist: DbArtist,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbWorkTrackSummary {
+    pub link: DbTrackWork,
+    pub track: DbTrack,
+    pub album: DbAlbum,
 }
 
 /// Raw per-release storage summary assembled via a single SQL query (no
@@ -1040,6 +1293,19 @@ pub enum SortDirection {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AlbumSortCriterion {
     pub field: AlbumSortField,
+    pub direction: SortDirection,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ComposerSortField {
+    Name,
+    WorkCount,
+    LinkedReleaseCount,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ComposerSortCriterion {
+    pub field: ComposerSortField,
     pub direction: SortDirection,
 }
 

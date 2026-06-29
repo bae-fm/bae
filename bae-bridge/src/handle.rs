@@ -12,8 +12,6 @@ use crate::bridge_utils::build_bridge_config;
 #[cfg(feature = "desktop")]
 use crate::types::BridgeDiscogsSaveOutcome;
 #[cfg(feature = "desktop")]
-use crate::types::BridgeMetadataSource;
-#[cfg(feature = "desktop")]
 use crate::types::BridgeRemoteCover;
 #[cfg(feature = "oauth-providers")]
 use crate::types::{bridge_cloud_provider_to_core, BridgeCloudProvider};
@@ -23,12 +21,15 @@ use crate::types::{bridge_cloud_provider_to_core, BridgeCloudProvider};
 #[cfg(any(feature = "oauth-providers", feature = "cloudkit"))]
 use crate::types::BridgeHomeStorage;
 use crate::types::{
-    bridge_home_storage_to_core, bridge_sort_to_core, BridgeAlbum, BridgeAlbumDetail,
-    BridgeAlbumSearchResult, BridgeConfig, BridgeCoverSelection, BridgeError, BridgeFile,
-    BridgeGalleryItem, BridgeGallerySource, BridgeRelease, BridgeReleaseSummary, BridgeRepeatMode,
+    bridge_composer_sort_to_core, bridge_home_storage_to_core, bridge_sort_to_core, BridgeAlbum,
+    BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeComposerDetail, BridgeComposerSortCriterion,
+    BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig, BridgeCoverSelection,
+    BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource, BridgeMetadataSource,
+    BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode,
     BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter,
     BridgeStoragePage, BridgeStorageRow, BridgeStorageSort, BridgeTrack, BridgeTrackGroup,
-    BridgeTrackSearchResult,
+    BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkSummary,
+    BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{bridge_storage_mode_to_core, BridgeMcpServerStatus, BridgeStorageMode};
@@ -96,12 +97,72 @@ impl AppHandle {
         })
     }
 
+    pub fn get_composer_count(&self) -> Result<u64, BridgeError> {
+        self.runtime.block_on(async {
+            self.services
+                .library_manager()
+                .get_composer_count()
+                .await
+                .map_err(|e| BridgeError::database(format!("{e}")))
+        })
+    }
+
+    pub fn get_composer_page(
+        &self,
+        sort_criterion: BridgeComposerSortCriterion,
+        offset: u64,
+        limit: u64,
+    ) -> Result<Vec<BridgeComposerSummary>, BridgeError> {
+        self.runtime.block_on(async {
+            let sort = bridge_composer_sort_to_core(&sort_criterion);
+            let composers = self
+                .services
+                .library_manager()
+                .get_composer_page(sort, offset, limit)
+                .await
+                .map_err(|e| BridgeError::database(format!("{e}")))?;
+            Ok(composers
+                .into_iter()
+                .map(convert_composer_summary)
+                .collect())
+        })
+    }
+
+    pub fn get_composer_detail(
+        &self,
+        artist_id: String,
+    ) -> Result<Option<BridgeComposerDetail>, BridgeError> {
+        self.runtime.block_on(async {
+            let detail = self
+                .services
+                .library_manager()
+                .get_composer_detail(&artist_id)
+                .await
+                .map_err(|e| BridgeError::database(format!("{e}")))?;
+            Ok(detail.map(convert_composer_detail))
+        })
+    }
+
+    pub fn get_work_detail(
+        &self,
+        work_id: String,
+    ) -> Result<Option<BridgeWorkDetail>, BridgeError> {
+        self.runtime.block_on(async {
+            let detail = self
+                .services
+                .library_manager()
+                .get_work_detail(&work_id)
+                .await
+                .map_err(|e| BridgeError::database(format!("{e}")))?;
+            Ok(detail.map(convert_work_detail))
+        })
+    }
+
     /// Filesystem path for the user's own external file behind a library file
     /// (the DiscID re-read of a rip's LOG/CUE/audio). Returns `Ok(None)` if the
     /// file has no readable local location (e.g. cloud-only and not cached).
     /// Returns `Err` on DB failures so callers can distinguish a missing file
-    /// from a broken library state. NOT a substitute for a coven byte read —
-    /// library images are read by id via `fetch_image_bytes`.
+    /// from a broken library state. NOT a substitute for a coven byte read.
     pub fn file_path(&self, file_id: String) -> Result<Option<String>, BridgeError> {
         self.runtime.block_on(async {
             let path = self
@@ -218,6 +279,16 @@ impl AppHandle {
                     album_title: t.album_title,
                     artist_name: t.artist_name,
                 })
+                .collect(),
+            composers: results
+                .composers
+                .into_iter()
+                .map(convert_composer_summary)
+                .collect(),
+            works: results
+                .works
+                .into_iter()
+                .map(convert_work_summary)
                 .collect(),
         })
     }
@@ -753,18 +824,32 @@ fn bridge_mcp_error(error: bae_desktop::McpServerError) -> crate::types::BridgeM
 
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
-    /// Bytes of a host-provided library image (a cover or an artist image) for
-    /// `image_id`, read through coven's locality-aware read (local store while
-    /// Local, cache/cloud while Remote). `None` when no such image exists. The UI
-    /// decodes the bytes and caches them under `(id, version)` — the version it
-    /// already holds on the `BridgeImageRef`. A read error surfaces, not masked.
+    /// Bytes of a host-provided library image (a cover or an artist image), read
+    /// through coven's locality-aware read (local store while Local, cache/cloud
+    /// while Remote). `None` when no such image exists. The `BridgeImageRef`
+    /// carries the image kind, so core reads the known image namespace directly.
+    /// A read error surfaces, not masked.
     pub async fn fetch_image_bytes(
         &self,
-        image_id: String,
+        image: crate::types::BridgeImageRef,
     ) -> Result<Option<Vec<u8>>, BridgeError> {
         self.services
             .library_manager()
-            .read_image_blob(&image_id)
+            .read_image_blob(&image.into_core())
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))
+    }
+
+    /// Bytes of a release cover image, read through coven's locality-aware
+    /// store. Use this for cover-only UI payloads that carry a release id rather
+    /// than a full `BridgeImageRef`.
+    pub async fn fetch_cover_image_bytes(
+        &self,
+        release_id: String,
+    ) -> Result<Option<Vec<u8>>, BridgeError> {
+        self.services
+            .library_manager()
+            .read_cover_image_blob(&release_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))
     }
@@ -1882,6 +1967,121 @@ fn convert_album_summary(a: bae_core::album_detail::AlbumSummary) -> BridgeAlbum
     }
 }
 
+fn convert_composer_summary(s: bae_core::album_detail::ComposerSummary) -> BridgeComposerSummary {
+    BridgeComposerSummary {
+        artist_id: s.raw.artist.id,
+        name: s.raw.artist.name,
+        sort_name: s.raw.artist.sort_name,
+        work_count: s.raw.work_count,
+        linked_release_count: s.raw.linked_release_count,
+        unlinked_credit_count: s.raw.unlinked_credit_count,
+        image: s.image.map(crate::types::BridgeImageRef::from_core),
+    }
+}
+
+fn convert_work_summary(s: bae_core::album_detail::WorkSummary) -> BridgeWorkSummary {
+    BridgeWorkSummary {
+        work_id: s.raw.work.id,
+        title: s.raw.work.title,
+        disambiguation: s.raw.work.disambiguation,
+        work_type: s.raw.work.work_type,
+        parent_work_id: s.raw.parent_work_id,
+        composer_names: s.raw.composer_names,
+        linked_release_count: s.raw.linked_release_count,
+        representative_release_id: s.raw.representative_release_id,
+        representative_cover: s
+            .representative_cover
+            .map(crate::types::BridgeImageRef::from_core),
+    }
+}
+
+fn convert_release_role_summary(
+    s: bae_core::album_detail::ReleaseRoleSummary,
+) -> BridgeReleaseRoleSummary {
+    BridgeReleaseRoleSummary {
+        release_id: s.role.release_id,
+        album_id: s.album.id,
+        album_title: s.album.title,
+        source: BridgeMetadataSource::from_core(s.role.source),
+        source_credit: s.role.source_credit,
+    }
+}
+
+fn convert_track_role_summary(
+    s: bae_core::album_detail::TrackRoleSummary,
+) -> BridgeTrackRoleSummary {
+    BridgeTrackRoleSummary {
+        track_id: s.role.track_id,
+        track_title: s.track.title,
+        release_id: s.track.release_id,
+        album_id: s.album.id,
+        album_title: s.album.title,
+        artist_id: s.role.artist_id,
+        artist_name: s.artist.name,
+        source: BridgeMetadataSource::from_core(s.role.source),
+        source_credit: s.role.source_credit,
+    }
+}
+
+fn convert_work_track_summary(
+    s: bae_core::album_detail::WorkTrackSummary,
+) -> BridgeWorkTrackSummary {
+    BridgeWorkTrackSummary {
+        track_id: s.link.track_id,
+        track_title: s.track.title,
+        release_id: s.track.release_id,
+        album_id: s.album.id,
+        album_title: s.album.title,
+    }
+}
+
+fn convert_composer_detail(d: bae_core::album_detail::ComposerDetail) -> BridgeComposerDetail {
+    BridgeComposerDetail {
+        composer: convert_composer_summary(d.composer),
+        work_groups: d
+            .work_groups
+            .into_iter()
+            .map(|group| BridgeComposerWorkGroup {
+                id: group.id,
+                parent: group.parent.map(convert_work_summary),
+                works: group.works.into_iter().map(convert_work_summary).collect(),
+            })
+            .collect(),
+        unlinked_release_roles: d
+            .unlinked_release_roles
+            .into_iter()
+            .map(convert_release_role_summary)
+            .collect(),
+        unlinked_track_roles: d
+            .unlinked_track_roles
+            .into_iter()
+            .map(convert_track_role_summary)
+            .collect(),
+        default_work_id: d.default_work_id,
+    }
+}
+
+fn convert_work_detail(d: bae_core::album_detail::WorkDetail) -> BridgeWorkDetail {
+    BridgeWorkDetail {
+        work: convert_work_summary(d.work),
+        child_works: d
+            .child_works
+            .into_iter()
+            .map(convert_work_summary)
+            .collect(),
+        releases: d
+            .releases
+            .into_iter()
+            .map(convert_release_summary)
+            .collect(),
+        tracks: d
+            .tracks
+            .into_iter()
+            .map(convert_work_track_summary)
+            .collect(),
+    }
+}
+
 fn bridge_album_to_summary(a: BridgeAlbum) -> bae_core::album_detail::AlbumSummary {
     bae_core::album_detail::AlbumSummary {
         id: a.id,
@@ -1995,6 +2195,8 @@ pub fn raw_release_edit_from_user_edit(
 
 #[cfg(test)]
 mod tests {
+    use bae_core::album_detail::{ComposerDetail, ComposerSummary, ComposerWorkGroup, WorkSummary};
+    use bae_core::db::{DbArtist, DbComposerSummary, DbWork, DbWorkSummary};
     use std::sync::{Arc, Mutex};
 
     /// Records every delivered event so tests can assert on the stream.
@@ -2040,6 +2242,88 @@ mod tests {
                 [crate::types::BridgeUiEvent::MuteChanged { is_muted: true }]
             ),
             "expected the event behind the lag to still be delivered, got: {events:?}",
+        );
+    }
+
+    #[test]
+    fn composer_detail_conversion_preserves_work_groups() {
+        let created_at = "2026-01-01T00:00:00Z".parse().unwrap();
+        let detail = ComposerDetail {
+            composer: ComposerSummary {
+                raw: DbComposerSummary {
+                    artist: DbArtist {
+                        id: "artist-composer-a".to_string(),
+                        name: "Composer Name A".to_string(),
+                        sort_name: Some("Composer Name Sort A".to_string()),
+                        discogs_artist_id: None,
+                        musicbrainz_artist_id: None,
+                        created_at,
+                    },
+                    work_count: 2,
+                    linked_release_count: 1,
+                    unlinked_credit_count: 0,
+                },
+                image: None,
+            },
+            work_groups: vec![ComposerWorkGroup {
+                id: "work-parent-a".to_string(),
+                parent: Some(WorkSummary {
+                    raw: DbWorkSummary {
+                        work: DbWork {
+                            id: "work-parent-a".to_string(),
+                            title: "Parent Work A".to_string(),
+                            disambiguation: None,
+                            work_type: Some("work".to_string()),
+                            created_at,
+                        },
+                        parent_work_id: None,
+                        composer_names: Some("Composer Name A".to_string()),
+                        linked_release_count: 1,
+                        representative_release_id: Some("release-a".to_string()),
+                    },
+                    representative_cover: None,
+                }),
+                works: vec![WorkSummary {
+                    raw: DbWorkSummary {
+                        work: DbWork {
+                            id: "work-child-a".to_string(),
+                            title: "Child Work A".to_string(),
+                            disambiguation: None,
+                            work_type: Some("part".to_string()),
+                            created_at,
+                        },
+                        parent_work_id: Some("work-parent-a".to_string()),
+                        composer_names: Some("Composer Name A".to_string()),
+                        linked_release_count: 1,
+                        representative_release_id: Some("release-a".to_string()),
+                    },
+                    representative_cover: None,
+                }],
+            }],
+            unlinked_release_roles: Vec::new(),
+            unlinked_track_roles: Vec::new(),
+            default_work_id: Some("work-parent-a".to_string()),
+        };
+
+        let bridge = super::convert_composer_detail(detail);
+
+        assert_eq!(bridge.work_groups.len(), 1);
+        assert_eq!(bridge.default_work_id.as_deref(), Some("work-parent-a"));
+        let group = &bridge.work_groups[0];
+        assert_eq!(group.id, "work-parent-a");
+        assert_eq!(
+            group.parent.as_ref().map(|work| work.work_id.as_str()),
+            Some("work-parent-a")
+        );
+        assert_eq!(group.works.len(), 1);
+        assert_eq!(group.works[0].work_id, "work-child-a");
+        assert_eq!(
+            group.works[0].parent_work_id.as_deref(),
+            Some("work-parent-a")
+        );
+        assert_eq!(
+            group.works[0].representative_release_id.as_deref(),
+            Some("release-a")
         );
     }
 }

@@ -17,9 +17,11 @@ use bae_core::import::{
 };
 use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
+use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
-use coven::LibraryDir;
+use coven::{EncryptionService, InMemoryCloudHome, LibraryDir};
 use std::path::Path;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
 use tokio::time::timeout;
@@ -65,6 +67,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
         thumb: None,
         catno: None,
         artists: vec![],
+        extraartists: Some(vec![]),
         tracklist: vec![
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -72,6 +75,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
                 title: "Track One".to_string(),
                 duration: Some("0:30".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -79,6 +83,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
                 title: "Track Two".to_string(),
                 duration: Some("0:30".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -86,6 +91,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
                 title: "Track Three".to_string(),
                 duration: Some("0:30".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
         ],
         master_id: Some("test-master".to_string()),
@@ -1445,24 +1451,29 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         std::fs::write(dir.join("CDImage.cue"), cue_body).expect("write cue");
     }
 
-    let db_file = db_dir.join("test.db");
-    let database = Database::new_test(
-        db_file.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-    )
-    .await
-    .expect("database");
     let library_dir = LibraryDir::new(db_dir.clone());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
-    let library_manager = LibraryManager::new(
-        database.clone(),
-        library_dir.clone(),
+    let library_manager = LibraryManager::open(
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
-    );
+    )
+    .expect("open library manager");
+    if storage_mode == StorageMode::Remote {
+        library_manager
+            .connect_test_cloud_home(
+                Arc::new(InMemoryCloudHome::new()),
+                CloudCipher::Encrypted(EncryptionService::new_with_key(&[7u8; 32])),
+            )
+            .await
+            .expect("connect in-memory cloud home");
+        assert!(
+            library_manager.is_sync_ready(),
+            "remote import test cloud should start sync"
+        );
+    }
 
     // Discogs multi-disc tracklist: positions "1-1".."1-3", "2-1".."2-3".
     // `parse_side_from_position` maps these to side=1 and side=2.
@@ -1479,6 +1490,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         thumb: None,
         catno: None,
         artists: vec![],
+        extraartists: Some(vec![]),
         tracklist: (1..=2)
             .flat_map(|disc| {
                 (1..=3).map(move |n| DiscogsTrack {
@@ -1487,6 +1499,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
                     title: format!("Disc {} Track {}", disc, n),
                     duration: Some("0:30".to_string()),
                     artists: vec![],
+                    extraartists: None,
                 })
             })
             .collect(),
@@ -1513,7 +1526,9 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         .expect("send command");
 
     let mut progress_rx = import_handle.subscribe_import(import_id);
-    let (release_id, _) = wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) =
+        wait_for_multi_disc_cue_ape_import_ready(&library_manager, storage_mode, &mut progress_rx)
+            .await;
 
     let tracks = library_manager
         .get_tracks(&release_id)
@@ -1572,6 +1587,45 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
             track.title, track.side,
         );
     }
+}
+
+async fn wait_for_multi_disc_cue_ape_import_ready(
+    library_manager: &LibraryManager,
+    storage_mode: StorageMode,
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
+) -> (String, String) {
+    match storage_mode {
+        StorageMode::Local => wait_for_import_complete(progress_rx).await,
+        StorageMode::Remote => {
+            let (release_id, album_id) = wait_for_remote_upload_queued(progress_rx).await;
+            let uploaded = library_manager
+                .drain_uploads_for_test()
+                .await
+                .expect("drain queued remote import uploads");
+            assert_eq!(
+                uploaded, 4,
+                "remote multi-disc CUE/APE import uploads 4 files"
+            );
+            (release_id, album_id)
+        }
+    }
+}
+
+async fn wait_for_remote_upload_queued(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
+) -> (String, String) {
+    while let Some(progress) = progress_rx.recv().await {
+        match progress {
+            bae_core::import::ImportProgress::RemoteUploadQueued { id, album_id, .. } => {
+                return (id, album_id)
+            }
+            bae_core::import::ImportProgress::Failed { error, .. } => {
+                panic!("Import failed: {}", error);
+            }
+            _ => {}
+        }
+    }
+    panic!("Progress channel closed without remote upload being queued");
 }
 
 /// Regression: multi-disc CUE/APE imports must link each track to its OWN disc's

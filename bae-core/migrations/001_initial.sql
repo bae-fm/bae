@@ -135,6 +135,82 @@ CREATE TABLE IF NOT EXISTS track_artists (
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS works (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    disambiguation TEXT,
+    work_type TEXT,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS work_artists (
+    id TEXT PRIMARY KEY,
+    work_id TEXT NOT NULL,
+    artist_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    UNIQUE(work_id, artist_id, position)
+);
+
+CREATE TABLE IF NOT EXISTS work_parts (
+    id TEXT PRIMARY KEY,
+    parent_work_id TEXT NOT NULL,
+    child_work_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (parent_work_id) REFERENCES works (id) ON DELETE CASCADE,
+    FOREIGN KEY (child_work_id) REFERENCES works (id) ON DELETE CASCADE,
+    UNIQUE(parent_work_id, child_work_id)
+);
+
+CREATE TABLE IF NOT EXISTS track_works (
+    id TEXT PRIMARY KEY,
+    track_id TEXT NOT NULL,
+    work_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
+    FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
+    UNIQUE(track_id, work_id)
+);
+
+CREATE TABLE IF NOT EXISTS release_artist_roles (
+    id TEXT PRIMARY KEY,
+    release_id TEXT NOT NULL,
+    artist_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    source_credit TEXT,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    UNIQUE(release_id, artist_id, position, source)
+);
+
+CREATE TABLE IF NOT EXISTS track_artist_roles (
+    id TEXT PRIMARY KEY,
+    track_id TEXT NOT NULL,
+    artist_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    source_credit TEXT,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    UNIQUE(track_id, artist_id, position, source)
+);
+
 CREATE TABLE IF NOT EXISTS release_files (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
@@ -284,6 +360,18 @@ CREATE TABLE IF NOT EXISTS attribution_names (
 -- device-local convention as coven's own bookkeeping tables. A single row
 -- (id = 'current'). `source` is the context's release id (NULL for a single
 -- track); `shuffle_seed` NULL means sequential, else shuffled with that seed.
+
+CREATE INDEX IF NOT EXISTS idx_work_artists_artist ON work_artists(artist_id);
+CREATE INDEX IF NOT EXISTS idx_work_artists_work ON work_artists(work_id);
+CREATE INDEX IF NOT EXISTS idx_work_parts_parent ON work_parts(parent_work_id);
+CREATE INDEX IF NOT EXISTS idx_work_parts_child ON work_parts(child_work_id);
+CREATE INDEX IF NOT EXISTS idx_track_works_track ON track_works(track_id);
+CREATE INDEX IF NOT EXISTS idx_track_works_work ON track_works(work_id);
+CREATE INDEX IF NOT EXISTS idx_release_artist_roles_artist ON release_artist_roles(artist_id);
+CREATE INDEX IF NOT EXISTS idx_release_artist_roles_release ON release_artist_roles(release_id);
+CREATE INDEX IF NOT EXISTS idx_track_artist_roles_artist ON track_artist_roles(artist_id);
+CREATE INDEX IF NOT EXISTS idx_track_artist_roles_track ON track_artist_roles(track_id);
+
 CREATE TABLE IF NOT EXISTS playback_state (
     id               TEXT PRIMARY KEY,
     source           TEXT,

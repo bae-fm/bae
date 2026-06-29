@@ -193,6 +193,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
             name: "Test Artist".to_string(),
             id: "test-artist-1".to_string(),
         }],
+        extraartists: Some(vec![]),
         tracklist: vec![
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -200,6 +201,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
                 title: "Track One".to_string(),
                 duration: Some("0:30".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -207,6 +209,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
                 title: "Track Two".to_string(),
                 duration: Some("0:30".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -214,6 +217,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
                 title: "Track Three".to_string(),
                 duration: Some("0:30".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
         ],
         master_id: Some("test-master".to_string()),
@@ -238,6 +242,7 @@ fn create_mp3_test_album() -> DiscogsRelease {
             name: "Test Artist".to_string(),
             id: "test-artist-2".to_string(),
         }],
+        extraartists: Some(vec![]),
         tracklist: vec![
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -245,6 +250,7 @@ fn create_mp3_test_album() -> DiscogsRelease {
                 title: "Track 1".to_string(),
                 duration: Some("0:30".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -252,6 +258,7 @@ fn create_mp3_test_album() -> DiscogsRelease {
                 title: "Track 2".to_string(),
                 duration: Some("0:30".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -259,6 +266,7 @@ fn create_mp3_test_album() -> DiscogsRelease {
                 title: "Track 3".to_string(),
                 duration: Some("0:30".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
         ],
         master_id: Some("test-master-mp3".to_string()),

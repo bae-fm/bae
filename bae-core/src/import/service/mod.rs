@@ -9,7 +9,8 @@ use crate::library::LibraryManager;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use {
     crate::db::{
-        DbAlbum, DbAlbumArtist, DbFile, DbRelease, DbReleaseMetadata, DbTrack, DbTrackArtist,
+        DbAlbum, DbAlbumArtist, DbFile, DbRelease, DbReleaseArtistRole, DbReleaseMetadata, DbTrack,
+        DbTrackArtist, DbTrackArtistRole, ImportOperationStatus,
     },
     crate::import::folder_registry::ImportFolderRegistry,
     crate::import::folder_scanner::{
@@ -17,6 +18,7 @@ use {
     },
     crate::import::track_to_file_mapper::map_tracks_to_files,
     crate::import::types::{CoverSelection, DiscoveredFile, ImportPhase, PrepareStep, TrackFile},
+    crate::import::ParsedWorkGraph,
     notify::RecursiveMode,
     notify_debouncer_full::{new_debouncer, DebounceEventResult},
     std::collections::{HashMap, HashSet},
@@ -58,6 +60,9 @@ struct PreparedMetadata {
     existing_album_id: Option<String>,
     remapped_track_artists: Vec<DbTrackArtist>,
     remapped_album_artists: Vec<DbAlbumArtist>,
+    work_graph: ParsedWorkGraph,
+    remapped_release_artist_roles: Vec<DbReleaseArtistRole>,
+    remapped_track_artist_roles: Vec<DbTrackArtistRole>,
     /// Per-source identity rows for the release. Empty for Unknown.
     /// Commit writes one `release_identities` row per element.
     identities: Vec<crate::import::types::ReleaseIdentity>,
@@ -537,6 +542,9 @@ impl ImportService {
             existing_album_id,
             remapped_track_artists,
             remapped_album_artists,
+            work_graph,
+            remapped_release_artist_roles,
+            remapped_track_artist_roles,
             identities,
             album_title,
             artist_name,
@@ -743,6 +751,9 @@ impl ImportService {
             &db_metadata,
             &remapped_track_artists,
             &remapped_album_artists,
+            &work_graph,
+            &remapped_release_artist_roles,
+            &remapped_track_artist_roles,
             existing_album_id.is_none().then_some(&db_album),
             &album_id,
             &identities,
@@ -831,6 +842,9 @@ impl ImportService {
         db_metadata: &[DbReleaseMetadata],
         remapped_track_artists: &[crate::db::DbTrackArtist],
         remapped_album_artists: &[crate::db::DbAlbumArtist],
+        work_graph: &ParsedWorkGraph,
+        remapped_release_artist_roles: &[crate::db::DbReleaseArtistRole],
+        remapped_track_artist_roles: &[crate::db::DbTrackArtistRole],
         new_album: Option<&crate::db::DbAlbum>,
         album_id: &str,
         identities: &[crate::import::types::ReleaseIdentity],
@@ -1014,6 +1028,11 @@ impl ImportService {
         );
 
         let remote_intent = matches!(storage_mode, StorageMode::Remote);
+        let finalized_import_status = if remote_intent {
+            ImportOperationStatus::Importing
+        } else {
+            ImportOperationStatus::Complete
+        };
         library_manager
             .finalize_import_atomic(
                 new_album,
@@ -1022,11 +1041,18 @@ impl ImportService {
                 db_metadata,
                 remapped_track_artists,
                 remapped_album_artists,
+                &work_graph.works,
+                &work_graph.work_artists,
+                &work_graph.work_parts,
+                &work_graph.track_works,
+                remapped_release_artist_roles,
+                remapped_track_artist_roles,
                 &db_files,
                 &audio_formats,
                 library_image,
                 cover_rel_id,
                 import_id,
+                finalized_import_status,
                 identities,
                 &local_path,
             )
@@ -1041,22 +1067,21 @@ impl ImportService {
         // already holds the upload by the time any consumer observes the release or
         // `Complete`.
         //
-        // The release is already a finalized, playable Local release, so a failure
-        // to *start* the remote transition (sync not running, a truncated source)
-        // is NOT a reason to fail the whole import and discard the imported files —
-        // the user keeps a valid Local release whose storage row shows `Local` with
-        // a "Make Remote" action to retry. But it is a genuine failure of the
-        // requested Remote import, never a silent success: it is surfaced loudly at
-        // `error` (the requested Remote outcome was not achieved), not swallowed.
-        // The release's visible `Local` storage state plus its "Make Remote" retry
-        // action are how this surfaces to the user.
         if remote_intent {
             if let Err(e) = library_manager.coven_make_remote(&db_release.id, pin).await {
-                error!(
-                    "Remote import of {} could not start its cloud upload ({e}); the release \
-                     is imported as Local and can be made Remote manually",
+                let remote_error = format!(
+                    "Remote import of {} could not start its cloud upload: {e}",
                     db_release.id
                 );
+                if let Err(import_error) = library_manager
+                    .fail_import_and_delete_release(import_id, &db_release.id, &remote_error)
+                    .await
+                {
+                    return Err(format!(
+                        "{remote_error}; removing release and marking import failed failed: {import_error}"
+                    ));
+                }
+                return Err(remote_error);
             }
         }
 
@@ -1068,18 +1093,24 @@ impl ImportService {
                 .await;
         }
 
-        // Emit Complete after the album/release events: the release is now in the
-        // library and playable (as a local release; a remote import is
-        // uploading in the background, its outbox row already queued above).
+        let progress = if remote_intent {
+            ImportProgress::RemoteUploadQueued {
+                id: db_release.id.to_string(),
+                import_id: import_id.to_string(),
+                album_id: album_id.to_string(),
+            }
+        } else {
+            ImportProgress::Complete {
+                id: db_release.id.to_string(),
+                import_id: import_id.to_string(),
+                album_id: album_id.to_string(),
+            }
+        };
         send_event(
             &self.event_tx,
             crate::import::handle::ImportEvent::ImportProgress {
                 candidate_key: candidate_key.to_string(),
-                progress: ImportProgress::Complete {
-                    id: db_release.id.to_string(),
-                    import_id: import_id.to_string(),
-                    album_id: album_id.to_string(),
-                },
+                progress,
             },
         );
 

@@ -91,7 +91,7 @@ impl LibraryManager {
 
     /// The cover [`ImageRef`] for one release — its image id paired with the
     /// `covers` row's `_updated_at` — or `None` when the release has no cover row.
-    pub(super) async fn cover_ref(
+    pub(crate) async fn cover_ref(
         &self,
         release_id: &str,
     ) -> Result<Option<ImageRef>, LibraryError> {
@@ -105,41 +105,54 @@ impl LibraryManager {
         &self,
         release_ids: &[String],
     ) -> Result<HashMap<String, ImageRef>, LibraryError> {
-        Ok(self
-            .database
-            .cover_versions(release_ids)
-            .await?
-            .into_iter()
-            .map(|(id, version)| (id.clone(), ImageRef { id, version }))
-            .collect())
+        Ok(image_ref_map(
+            self.database.cover_versions(release_ids).await?,
+            LibraryImageType::Cover,
+        ))
+    }
+
+    pub(super) async fn artist_image_refs(
+        &self,
+        artist_ids: &[String],
+    ) -> Result<HashMap<String, ImageRef>, LibraryError> {
+        Ok(image_ref_map(
+            self.database.artist_image_versions(artist_ids).await?,
+            LibraryImageType::Artist,
+        ))
     }
 
     /// Read a host-provided library image's whole bytes through coven's
-    /// locality-aware read: coven's local store while Local, the pinned/evictable
-    /// cache or the cloud while Remote. `id` is a release id (a cover) or an artist
-    /// id (an artist image); the `covers` row is probed first (the common grid
-    /// case), then `artist_images`. `None` when no such image row exists (no cover
-    /// produced); a read error surfaces rather than being masked.
-    pub async fn read_image_blob(&self, id: &str) -> Result<Option<Vec<u8>>, LibraryError> {
-        for (namespace, image_type) in [
-            (crate::sync::COVERS_NAMESPACE, LibraryImageType::Cover),
-            (
-                crate::sync::ARTIST_IMAGES_NAMESPACE,
-                LibraryImageType::Artist,
-            ),
-        ] {
-            let Some(row) = self.database.find_library_image(id, &image_type).await? else {
-                continue;
-            };
-            let blob = Self::image_blob_ref(namespace, id, row.cloud_path.clone());
-            let bytes = self
-                .handle
-                .read_blob(&blob)
-                .await
-                .map_err(|e| LibraryError::Storage(format!("read image {id}: {e}")))?;
-            return Ok(Some(bytes));
-        }
-        Ok(None)
+    /// locality-aware read. The [`ImageRef`] carries the image kind, so the read
+    /// goes directly to the table/namespace that produced the ref.
+    pub async fn read_image_blob(&self, image: &ImageRef) -> Result<Option<Vec<u8>>, LibraryError> {
+        self.read_library_image_blob(&image.id, &image.image_type)
+            .await
+    }
+
+    pub async fn read_cover_image_blob(
+        &self,
+        release_id: &str,
+    ) -> Result<Option<Vec<u8>>, LibraryError> {
+        self.read_library_image_blob(release_id, &LibraryImageType::Cover)
+            .await
+    }
+
+    async fn read_library_image_blob(
+        &self,
+        id: &str,
+        image_type: &LibraryImageType,
+    ) -> Result<Option<Vec<u8>>, LibraryError> {
+        let namespace = image_type.namespace();
+        let Some(row) = self.database.find_library_image(id, image_type).await? else {
+            return Ok(None);
+        };
+        let blob = Self::image_blob_ref(namespace, id, row.cloud_path.clone());
+        let bytes = self
+            .handle
+            .read_blob(&blob)
+            .await
+            .map_err(|e| LibraryError::Storage(format!("read image {id}: {e}")))?;
+        Ok(Some(bytes))
     }
 
     /// Whether coven holds this release pinned on this device — true iff its
@@ -193,4 +206,23 @@ impl LibraryManager {
         self.database.write_library_image_blob(image, bytes).await?;
         Ok(())
     }
+}
+
+fn image_ref_map(
+    versions: HashMap<String, String>,
+    image_type: LibraryImageType,
+) -> HashMap<String, ImageRef> {
+    versions
+        .into_iter()
+        .map(|(id, version)| {
+            (
+                id.clone(),
+                ImageRef {
+                    id,
+                    version,
+                    image_type: image_type.clone(),
+                },
+            )
+        })
+        .collect()
 }

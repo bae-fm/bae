@@ -8,6 +8,14 @@ pub struct DiscogsArtist {
     pub id: String,
     pub name: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DiscogsRoleArtist {
+    pub id: Option<String>,
+    pub name: String,
+    pub role: String,
+    pub credited_name: Option<String>,
+}
 /// Represents a Discogs release search result
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DiscogsRelease {
@@ -19,12 +27,19 @@ pub struct DiscogsRelease {
     pub format: Vec<String>,
     pub country: Option<String>,
     pub label: Vec<String>,
-    #[serde(default, deserialize_with = "crate::discogs::empty_string_as_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     pub cover_image: Option<String>,
-    #[serde(default, deserialize_with = "crate::discogs::empty_string_as_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     pub thumb: Option<String>,
     pub catno: Option<String>,
     pub artists: Vec<DiscogsArtist>,
+    pub extraartists: Option<Vec<DiscogsRoleArtist>>,
     pub tracklist: Vec<DiscogsTrack>,
     pub master_id: Option<String>,
 }
@@ -48,6 +63,7 @@ pub struct DiscogsTrack {
     pub duration: Option<String>,
     #[serde(default)]
     pub artists: Vec<DiscogsArtist>,
+    pub extraartists: Option<Vec<DiscogsRoleArtist>>,
     /// Track type: "track", "heading", or "index"
     #[serde(default)]
     pub type_: String,
@@ -75,6 +91,7 @@ mod tests {
                 id: "discogs-artist-1".to_string(),
                 name: "Artist Name".to_string(),
             }],
+            extraartists: Some(vec![]),
             tracklist: vec![],
             master_id: None,
         }

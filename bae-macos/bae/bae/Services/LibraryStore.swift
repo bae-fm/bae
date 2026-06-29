@@ -60,6 +60,23 @@ struct AlbumPreviewPageSource: PageSource {
     }
 }
 
+struct LibraryComposerPageSource: PageSource {
+    let library: Library
+    let sort: BridgeComposerSortCriterion
+
+    func count() async throws -> Int {
+        try Int(library.getComposerCount())
+    }
+
+    func page(offset: Int, limit: Int) async throws -> [BridgeComposerSummary] {
+        try library.getComposerPage(sort, UInt64(offset), UInt64(limit))
+    }
+}
+
+extension BridgeComposerSummary: Identifiable {
+    public var id: String { artistId }
+}
+
 // MARK: - Storage page source
 
 /// Page source backed by `AppHandle` for the Storage Manager table.
@@ -102,6 +119,7 @@ extension BridgeStorageRow: Identifiable {
 /// the ingest closure interns each one as an `AlbumSummary` in the
 /// store. Views resolve slots by reading `libraryStore.albumSummaries[id]`.
 typealias AlbumList = PaginatedList<BridgeAlbum>
+typealias ComposerList = PaginatedList<BridgeComposerSummary>
 
 // MARK: - StorageList
 
@@ -135,6 +153,7 @@ extension AlbumList {
                     _ = store.internAlbumSummary(row)
                 }
             },
+            onError: { _ in },
         )
         list.preloadForPreview(ids: sorted.map(\.id))
         return list
@@ -219,6 +238,7 @@ final class LibraryStore {
     /// - `internReleaseDetail` (album-detail ingest)
     /// - `loadReleaseDetail` / `reloadReleaseDetail` (on-demand loaders)
     private(set) var releaseDetails: [String: ReleaseDetail] = [:]
+    private(set) var composerSummaries: [String: BridgeComposerSummary] = [:]
 
     /// Fires when the library's *shape* changes — anything that could
     /// alter the total row count or ordering of a library- or
@@ -256,6 +276,14 @@ final class LibraryStore {
         let summary = AlbumSummary(from: bridge)
         albumSummaries[bridge.id] = summary
         return summary
+    }
+
+    @discardableResult
+    func internComposerSummary(_ bridge: BridgeComposerSummary)
+        -> BridgeComposerSummary
+    {
+        composerSummaries[bridge.artistId] = bridge
+        return bridge
     }
 
     /// Upsert the canonical `ReleaseSummary` for this bridge payload.
@@ -423,6 +451,7 @@ final class LibraryStore {
     /// invalidating any visible lists.
     func handleAlbumRemoved(albumId: String, releaseIds: [String]) {
         albumSummaries.removeValue(forKey: albumId)
+        composerSummaries.removeAll()
         for id in releaseIds {
             releaseSummaries.removeValue(forKey: id)
             releaseDetails.removeValue(forKey: id)
@@ -438,6 +467,7 @@ final class LibraryStore {
     func handleReleaseAdded(album: BridgeAlbum, release: BridgeRelease) {
         _ = internReleaseDetail(release)
         _ = internAlbumSummary(album)
+        composerSummaries.removeAll()
     }
 
     /// Reducer target for `ReleaseUpdated`. Same slice writes as
@@ -445,6 +475,7 @@ final class LibraryStore {
     /// for the summary and replaces the detail wholesale.
     func handleReleaseUpdated(release: BridgeRelease) {
         _ = internReleaseDetail(release)
+        composerSummaries.removeAll()
     }
 
     /// Reducer target for `ReleaseRemoved`. Drops the release from both
@@ -461,6 +492,7 @@ final class LibraryStore {
     ) {
         releaseSummaries.removeValue(forKey: releaseId)
         releaseDetails.removeValue(forKey: releaseId)
+        composerSummaries.removeAll()
         if let album {
             _ = internAlbumSummary(album)
         }

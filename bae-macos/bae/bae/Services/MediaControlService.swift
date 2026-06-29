@@ -382,7 +382,9 @@ extension MediaControlService {
         let bytes: Data
         do {
             guard
-                let data = try await appHandle.fetchImageBytes(imageId: imageId)
+                let data = try await appHandle.fetchCoverImageBytes(
+                    releaseId: imageId
+                )
             else {
                 logger.debug("No Now Playing artwork for \(imageId)")
                 return

@@ -100,7 +100,7 @@ pub async fn resolve_release_identity(
 /// signals."
 ///
 /// The cover blob lives in coven's store (no path bae may compute), so its bytes
-/// come back through `read_image_blob` and are written into a temp dir whose
+/// come back through the cover's image ref and are written into a temp dir whose
 /// guard is returned alongside the paths: the caller holds it until the OCR pass
 /// finishes, then the staged file is cleaned up. `None` when the release has no
 /// cover.
@@ -118,8 +118,22 @@ pub async fn resolve_release_artwork_paths(
     // reader opens. The cover is one of several OCR artwork inputs (the in-folder
     // image files below are the others), so a read/staging failure logs and skips
     // just the cover rather than failing the whole resolve.
-    let cover_staging = match library_manager.read_image_blob(release_id).await {
-        Ok(Some(bytes)) => stage_cover_for_ocr(release_id, &bytes, &mut paths),
+    let cover_staging = match library_manager.cover_ref(release_id).await {
+        Ok(Some(image)) => {
+            match library_manager.read_image_blob(&image).await {
+                Ok(Some(bytes)) => stage_cover_for_ocr(release_id, &bytes, &mut paths),
+                Ok(None) => {
+                    debug!("artwork OCR: release {release_id} has no cover blob; skipping cover staging");
+                    None
+                }
+                Err(e) => {
+                    warn!(
+                    "artwork OCR: reading cover for release {release_id} failed: {e}; skipping cover"
+                );
+                    None
+                }
+            }
+        }
         Ok(None) => {
             debug!("artwork OCR: release {release_id} has no cover blob; skipping cover staging");
             None

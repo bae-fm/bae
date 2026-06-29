@@ -64,8 +64,21 @@ impl LibraryManager {
             .iter()
             .filter_map(|a| a.primary_release_id.clone())
             .collect();
-        let covers = self.cover_refs(&primary_ids).await?;
-        Ok(SearchResults::from_raw(raw, &covers))
+        let artist_ids: Vec<String> = raw.composers.iter().map(|c| c.artist.id.clone()).collect();
+        let work_release_ids: Vec<String> = raw
+            .works
+            .iter()
+            .filter_map(|w| w.representative_release_id.clone())
+            .collect();
+        let album_covers = self.cover_refs(&primary_ids).await?;
+        let composer_images = self.artist_image_refs(&artist_ids).await?;
+        let work_covers = self.cover_refs(&work_release_ids).await?;
+        Ok(SearchResults::from_raw(
+            raw,
+            &album_covers,
+            &composer_images,
+            &work_covers,
+        ))
     }
 
     /// Delete an album and all its associated data

@@ -104,7 +104,28 @@ impl Database {
                     })?
                     .collect::<coven::rusqlite::Result<Vec<_>>>()?;
 
-                Ok(DbLibrarySearchResults { albums, tracks })
+                let mut composer_stmt = conn.prepare(&composer_summary_query(
+                    Some("WHERE composer.name LIKE ? OR composer.sort_name LIKE ?"),
+                    Some("ORDER BY composer.name LIMIT ?"),
+                ))?;
+                let composers = composer_stmt
+                    .query_map(params![pattern, pattern, limit_i64], row_to_composer_summary)?
+                    .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+
+                let mut work_stmt = conn.prepare(&work_summary_query(
+                    Some("WHERE w.title LIKE ?"),
+                    Some("ORDER BY w.title LIMIT ?"),
+                ))?;
+                let works = work_stmt
+                    .query_map(params![pattern, limit_i64], row_to_work_summary)?
+                    .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+
+                Ok(DbLibrarySearchResults {
+                    albums,
+                    tracks,
+                    composers,
+                    works,
+                })
             })
             .await
     }

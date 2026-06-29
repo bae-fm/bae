@@ -4,8 +4,8 @@ use super::*;
 
 impl LibraryManager {
     /// Bytes of one gallery slot, dispatching the read on its [`GallerySource`]
-    /// so no caller picks the byte source itself: a `Cover` is read by image id
-    /// (`read_image_blob`), a `ReleaseFile` by file id (`load_gallery_image`).
+    /// so no caller picks the byte source itself: a `Cover` is read by its image
+    /// ref, a `ReleaseFile` by file id (`load_gallery_image`).
     /// The gallery carries a cover slot only when a cover exists, so a `Cover`
     /// with no bytes here is exceptional and surfaces rather than being masked.
     pub async fn read_gallery_bytes(
@@ -14,11 +14,9 @@ impl LibraryManager {
         source: &GallerySource,
     ) -> Result<Vec<u8>, LibraryError> {
         match source {
-            GallerySource::Cover(image) => {
-                self.read_image_blob(&image.id).await?.ok_or_else(|| {
-                    LibraryError::Storage(format!("gallery cover image {} has no bytes", image.id))
-                })
-            }
+            GallerySource::Cover(image) => self.read_image_blob(image).await?.ok_or_else(|| {
+                LibraryError::Storage(format!("gallery cover image {} has no bytes", image.id))
+            }),
             GallerySource::ReleaseFile { file_id } => {
                 self.load_gallery_image(release_id, file_id).await
             }

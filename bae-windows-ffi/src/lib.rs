@@ -1417,6 +1417,30 @@ pub unsafe extern "C" fn bae_album_count(handle: *const BaeHandle) -> i64 {
 struct FfiImageRef {
     id: String,
     version: String,
+    image_type: FfiLibraryImageType,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum FfiLibraryImageType {
+    Cover,
+    Artist,
+}
+
+impl FfiLibraryImageType {
+    fn from_core(image_type: bae_core::db::LibraryImageType) -> Self {
+        match image_type {
+            bae_core::db::LibraryImageType::Cover => Self::Cover,
+            bae_core::db::LibraryImageType::Artist => Self::Artist,
+        }
+    }
+
+    fn into_core(self) -> bae_core::db::LibraryImageType {
+        match self {
+            Self::Cover => bae_core::db::LibraryImageType::Cover,
+            Self::Artist => bae_core::db::LibraryImageType::Artist,
+        }
+    }
 }
 
 impl FfiImageRef {
@@ -1424,6 +1448,7 @@ impl FfiImageRef {
         Self {
             id: r.id,
             version: r.version,
+            image_type: FfiLibraryImageType::from_core(r.image_type),
         }
     }
 
@@ -1431,6 +1456,7 @@ impl FfiImageRef {
         bae_core::album_detail::ImageRef {
             id: self.id,
             version: self.version,
+            image_type: self.image_type.into_core(),
         }
     }
 }
@@ -3011,10 +3037,11 @@ pub unsafe extern "C" fn bae_image_bytes(
         return BaeBytes::error();
     };
     let app = &handle.0;
-    match app
-        .runtime
-        .block_on(app.services.library_manager().read_image_blob(&image_id))
-    {
+    match app.runtime.block_on(
+        app.services
+            .library_manager()
+            .read_cover_image_blob(&image_id),
+    ) {
         Ok(Some(bytes)) => BaeBytes::from_vec(bytes),
         Ok(None) => BaeBytes::absent(),
         Err(e) => {

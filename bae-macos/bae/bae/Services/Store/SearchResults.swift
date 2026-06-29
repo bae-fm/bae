@@ -4,11 +4,15 @@ struct SearchResults: Equatable {
     let query: String
     let albums: [AlbumSearchResult]
     let tracks: [TrackSearchResult]
+    let composers: [BridgeComposerSummary]
+    let works: [BridgeWorkSummary]
 
     init(bridge: BridgeSearchResults, query: String) {
         self.query = query
         albums = bridge.albums.map(AlbumSearchResult.init(bridge:))
         tracks = bridge.tracks.map(TrackSearchResult.init(bridge:))
+        composers = bridge.composers
+        works = bridge.works
     }
 }
 
@@ -46,4 +50,8 @@ struct TrackSearchResult: Equatable, Identifiable {
         albumTitle = bridge.albumTitle
         artistName = bridge.artistName
     }
+}
+
+extension BridgeWorkSummary: Identifiable {
+    public var id: String { workId }
 }

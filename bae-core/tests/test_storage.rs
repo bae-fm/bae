@@ -538,6 +538,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
         thumb: None,
         catno: None,
         artists: vec![],
+        extraartists: Some(vec![]),
         tracklist: vec![
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -545,6 +546,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
                 title: "Track One".to_string(),
                 duration: Some("3:00".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -552,6 +554,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
                 title: "Track Two".to_string(),
                 duration: Some("4:00".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -559,6 +562,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
                 title: "Track Three".to_string(),
                 duration: Some("2:30".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
         ],
         master_id: Some("test-master-storage".to_string()),

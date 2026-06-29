@@ -63,7 +63,9 @@ final class AppService: Observable {
         // no import flow, so build `MediaPaths` without it.
         mediaPaths = MediaPaths(
             filePath: { try appHandle.filePath(fileId: $0) },
-            fetchImageBytes: { try await appHandle.fetchImageBytes(imageId: $0) },
+            fetchCoverImageBytes: {
+                try await appHandle.fetchCoverImageBytes(releaseId: $0)
+            },
             fetchGalleryBytes: {
                 try await appHandle.fetchGalleryBytes(releaseId: $0, source: $1)
             }

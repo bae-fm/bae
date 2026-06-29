@@ -1,5 +1,7 @@
 import SwiftUI
+import os.log
 
+private let albumGridLogger = Logger.bae("AlbumGridView")
 private let albumCardSize: CGFloat = 180
 private let gridSpacing: CGFloat = 24
 private let loadBatchSize = 50
@@ -10,8 +12,6 @@ struct AlbumGridView<ExpansionContent: View>: View {
     @Environment(LibraryStore.self)
     private var libraryStore
     let list: AlbumList
-    @Binding
-    var selectedAlbumId: String?
     @Binding
     var sortCriteria: [BridgeSortCriterion]
     let availableFields: [BridgeSortField]
@@ -78,7 +78,8 @@ struct AlbumGridView<ExpansionContent: View>: View {
                                                         .artistNames,
                                                     year: summary.year,
                                                     cover: summary.cover,
-                                                    isSelected: selectedAlbumId
+                                                    isSelected: uiStore
+                                                        .selectedAlbumId
                                                         == summary.id,
                                                     size: cardWidth,
                                                     onPlay: {
@@ -111,18 +112,16 @@ struct AlbumGridView<ExpansionContent: View>: View {
                                                                 0.85
                                                         )
                                                     ) {
-                                                        if uiStore
-                                                            .selectedAlbumId
-                                                            == summary.id
-                                                        {
-                                                            uiStore
-                                                                .closeAlbumDetail()
-                                                        }
-                                                        else {
-                                                            uiStore.selectAlbum(
-                                                                summary.id
+                                                        uiStore
+                                                            .selectAlbumFromGrid(
+                                                                uiStore
+                                                                    .selectedAlbumId
+                                                                    == summary
+                                                                    .id
+                                                                    ? nil
+                                                                    : summary
+                                                                        .id
                                                             )
-                                                        }
                                                     }
                                                 }
                                             }
@@ -168,18 +167,13 @@ struct AlbumGridView<ExpansionContent: View>: View {
                                         limit: batchEnd - firstAlbum
                                     )
                                 }
-                                if let selectedId = selectedAlbumId,
-                                    (0..<columnCount)
-                                        .contains(where: { col in
-                                            let idx =
-                                                rowIndex * columnCount + col
-                                            return idx < list.totalCount
-                                                && list.idAt(idx) == selectedId
-                                        })
-                                {
-                                    expansionContent(selectedId)
-                                        .transition(.opacity)
-                                }
+                                AlbumExpansionSlot(
+                                    selectedId: selectedAlbumId(
+                                        rowIndex: rowIndex,
+                                        columnCount: columnCount
+                                    ),
+                                    expansionContent: expansionContent
+                                )
                             }
                         }
                         .padding(.horizontal, Self.contentPadding)
@@ -192,6 +186,9 @@ struct AlbumGridView<ExpansionContent: View>: View {
                     guard let albumIndex = list.position(of: command.albumId),
                         columnCount > 0
                     else {
+                        albumGridLogger.warning(
+                            "Dropping album navigation command for unloaded album \(command.albumId)"
+                        )
                         return
                     }
 
@@ -206,6 +203,20 @@ struct AlbumGridView<ExpansionContent: View>: View {
             }
         }
         .background(Theme.background)
+    }
+}
+
+extension AlbumGridView {
+    private func selectedAlbumId(rowIndex: Int, columnCount: Int) -> String? {
+        guard let selectedId = uiStore.selectedAlbumId else {
+            return nil
+        }
+        let rowContainsSelection = (0..<columnCount)
+            .contains { col in
+                let index = rowIndex * columnCount + col
+                return index < list.totalCount && list.idAt(index) == selectedId
+            }
+        return rowContainsSelection ? selectedId : nil
     }
 
     private var libraryHeader: some View {
@@ -321,6 +332,21 @@ private struct SortCriterionChip: View {
     }
 }
 
+private struct AlbumExpansionSlot<ExpansionContent: View>: View {
+    let selectedId: String?
+    let expansionContent: (String) -> ExpansionContent
+
+    var body: some View {
+        ZStack {
+            Color.clear.frame(height: 0)
+            selectedId.map { id in
+                expansionContent(id)
+                    .transition(.opacity)
+            }
+        }
+    }
+}
+
 // MARK: - Album Card
 
 struct AlbumCardView: View {
@@ -371,11 +397,12 @@ struct AlbumCardView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-            if let year {
-                Text(String(year))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
+            StableOptionalText(
+                text: year.map(String.init),
+                font: .caption2,
+                foreground: .tertiary,
+                lineHeight: 12
+            )
         }
         .contextMenu {
             Button("Play") { onPlay() }
@@ -472,8 +499,6 @@ private class MenuItem: NSMenuItem {
         /// `AlbumDetailView` chain's environment from one place.
         let store: LibraryStore
         @State
-        private var selectedAlbumId: String? = "a-04"
-        @State
         private var sortCriteria: [BridgeSortCriterion] = [
             BridgeSortCriterion(field: .dateAdded, direction: .descending)
         ]
@@ -486,7 +511,6 @@ private class MenuItem: NSMenuItem {
             )
             AlbumGridView(
                 list: list,
-                selectedAlbumId: $selectedAlbumId,
                 sortCriteria: $sortCriteria,
                 availableFields: BridgeSortField.allCases,
                 onPlay: { _ in },

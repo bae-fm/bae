@@ -360,6 +360,11 @@ pub enum AutomationImportProgress {
         import_id: String,
         album_id: String,
     },
+    RemoteUploadQueued {
+        id: String,
+        import_id: String,
+        album_id: String,
+    },
     Failed {
         id: String,
         error: String,
@@ -1787,6 +1792,15 @@ fn automation_import_progress(progress: ImportProgress) -> AutomationImportProgr
             import_id,
             album_id,
         } => AutomationImportProgress::Complete {
+            id,
+            import_id,
+            album_id,
+        },
+        ImportProgress::RemoteUploadQueued {
+            id,
+            import_id,
+            album_id,
+        } => AutomationImportProgress::RemoteUploadQueued {
             id,
             import_id,
             album_id,

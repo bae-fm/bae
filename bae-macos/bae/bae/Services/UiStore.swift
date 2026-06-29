@@ -15,6 +15,11 @@ struct NavigationCommand {
     let trackId: String?
 }
 
+enum LibraryNavigationTarget {
+    case composer(String)
+    case work(String)
+}
+
 // MARK: - UiStore
 
 /// Shared UI-originated state. Views read properties, call methods to mutate.
@@ -31,6 +36,11 @@ class UiStore: @unchecked Sendable {
     /// what the UI *is*; this subject carries what should *happen once*.
     @ObservationIgnored
     let navigationSubject = PassthroughSubject<NavigationCommand, Never>()
+
+    @ObservationIgnored
+    let libraryNavigationSubject = PassthroughSubject<
+        LibraryNavigationTarget, Never
+    >()
 
     // ── Shared selections ───────────────────────────────────────────────
 
@@ -84,7 +94,21 @@ class UiStore: @unchecked Sendable {
         activeSection = .importing
     }
 
+    func navigateToComposer(_ artistId: String) {
+        activeSection = .library
+        libraryNavigationSubject.send(.composer(artistId))
+    }
+
+    func navigateToWork(_ workId: String) {
+        activeSection = .library
+        libraryNavigationSubject.send(.work(workId))
+    }
+
     func selectAlbum(_ albumId: String) {
+        selectedAlbumId = albumId
+    }
+
+    func selectAlbumFromGrid(_ albumId: String?) {
         selectedAlbumId = albumId
     }
 

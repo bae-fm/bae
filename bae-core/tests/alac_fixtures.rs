@@ -59,6 +59,7 @@ fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsReleas
         thumb: None,
         catno: None,
         artists: vec![],
+        extraartists: Some(vec![]),
         tracklist: tracks
             .iter()
             .enumerate()
@@ -68,6 +69,7 @@ fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsReleas
                 title: (*title).to_string(),
                 duration: Some("0:02".to_string()),
                 artists: vec![],
+                extraartists: None,
             })
             .collect(),
         master_id: None,

@@ -197,15 +197,13 @@ extension ImageView {
     ) {
         self.init(
             content: imageRef.map {
-                .library(.cover(id: $0.id, version: $0.version))
+                .library(.image($0))
             },
             contentMode: contentMode,
             pointSize: pointSize
         )
     }
 
-    /// A now-playing/queue cover, which carries only an image id (no content
-    /// version). Cached by id alone — accepted on these single/small surfaces.
     init(
         coverImageId: String?,
         contentMode: ContentMode = .fill,

@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import bae
@@ -110,7 +111,8 @@ private func makeList(store: LibraryStore, albums: [BridgeAlbum]) -> AlbumList {
             for row in rows {
                 _ = store.internAlbumSummary(row)
             }
-        }
+        },
+        onError: { _ in },
     )
 }
 
@@ -134,7 +136,76 @@ final class CountingAlbumPageSource: PageSource, @unchecked Sendable {
         pageCallCount += 1
         let start = min(offset, albums.count)
         let end = min(start + limit, albums.count)
-        return Array(albums[start ..< end])
+        return Array(albums[start..<end])
+    }
+}
+
+private struct PaginatedListTestError: LocalizedError, Sendable {
+    let message: String
+
+    var errorDescription: String? { message }
+}
+
+private final class ThrowingAlbumPageSource: PageSource, @unchecked Sendable {
+    var albums: [BridgeAlbum]
+    var countError: PaginatedListTestError?
+    var pageError: PaginatedListTestError?
+
+    init(
+        albums: [BridgeAlbum],
+        countError: PaginatedListTestError? = nil,
+        pageError: PaginatedListTestError? = nil
+    ) {
+        self.albums = albums
+        self.countError = countError
+        self.pageError = pageError
+    }
+
+    func count() async throws -> Int {
+        if let countError {
+            throw countError
+        }
+        return albums.count
+    }
+
+    func page(offset: Int, limit: Int) async throws -> [BridgeAlbum] {
+        if let pageError {
+            throw pageError
+        }
+        let start = min(offset, albums.count)
+        let end = min(start + limit, albums.count)
+        return Array(albums[start..<end])
+    }
+}
+
+@Suite("SearchResults")
+struct SearchResultsTests {
+
+    @Test("work results carry linked release count")
+    func workResultsCarryLinkedReleaseCount() {
+        let results = SearchResults(
+            bridge: BridgeSearchResults(
+                albums: [],
+                tracks: [],
+                composers: [],
+                works: [
+                    BridgeWorkSummary(
+                        workId: "work-child-a",
+                        title: "Work Title A",
+                        disambiguation: nil,
+                        workType: "part",
+                        parentWorkId: "work-parent-a",
+                        composerNames: "Composer Name A",
+                        linkedReleaseCount: 1,
+                        representativeReleaseId: "release-a",
+                        representativeCover: nil
+                    )
+                ]
+            ),
+            query: "work"
+        )
+
+        #expect(results.works.first?.linkedReleaseCount == 1)
     }
 }
 
@@ -190,19 +261,41 @@ struct InternAlbumSummaryTests {
         let store = LibraryStore()
         let first = store.internAlbumSummary(
             makeBridgeAlbum(
-                cover: BridgeImageRef(id: "cover-1", version: "1000")))
+                cover: BridgeImageRef(
+                    id: "cover-1",
+                    version: "1000",
+                    imageType: .cover
+                )
+            )
+        )
         #expect(
             first.cover
-                == ImageRef(bridge: BridgeImageRef(id: "cover-1", version: "1000")))
+                == BridgeImageRef(
+                    id: "cover-1",
+                    version: "1000",
+                    imageType: .cover
+                )
+        )
 
         let second = store.internAlbumSummary(
             makeBridgeAlbum(
-                cover: BridgeImageRef(id: "cover-1", version: "2000")))
+                cover: BridgeImageRef(
+                    id: "cover-1",
+                    version: "2000",
+                    imageType: .cover
+                )
+            )
+        )
 
         #expect(first === second)
         #expect(
             first.cover
-                == ImageRef(bridge: BridgeImageRef(id: "cover-1", version: "2000")))
+                == BridgeImageRef(
+                    id: "cover-1",
+                    version: "2000",
+                    imageType: .cover
+                )
+        )
     }
 }
 
@@ -257,7 +350,11 @@ struct InternReleaseSummaryTests {
             pinned: true,
             fileCount: 12,
             totalSize: 5_000_000,
-            cover: BridgeImageRef(id: "release-1", version: "7")
+            cover: BridgeImageRef(
+                id: "release-1",
+                version: "7",
+                imageType: .cover
+            )
         )
 
         let summary = store.internReleaseSummary(bridge)
@@ -271,7 +368,12 @@ struct InternReleaseSummaryTests {
         #expect(summary.totalSize == 5_000_000)
         #expect(
             summary.cover
-                == ImageRef(bridge: BridgeImageRef(id: "release-1", version: "7")))
+                == BridgeImageRef(
+                    id: "release-1",
+                    version: "7",
+                    imageType: .cover
+                )
+        )
     }
 
     @MainActor
@@ -280,22 +382,42 @@ struct InternReleaseSummaryTests {
         let store = LibraryStore()
         let first = store.internReleaseSummary(
             makeBridgeReleaseSummary(
-                cover: BridgeImageRef(id: "release-1", version: "1"))
+                cover: BridgeImageRef(
+                    id: "release-1",
+                    version: "1",
+                    imageType: .cover
+                )
+            )
         )
         #expect(
             first.cover
-                == ImageRef(bridge: BridgeImageRef(id: "release-1", version: "1")))
+                == BridgeImageRef(
+                    id: "release-1",
+                    version: "1",
+                    imageType: .cover
+                )
+        )
 
         // Re-interning with a bumped cover version updates the existing
         // instance in place rather than replacing it.
         let second = store.internReleaseSummary(
             makeBridgeReleaseSummary(
-                cover: BridgeImageRef(id: "release-1", version: "2"))
+                cover: BridgeImageRef(
+                    id: "release-1",
+                    version: "2",
+                    imageType: .cover
+                )
+            )
         )
         #expect(first === second)
         #expect(
             first.cover
-                == ImageRef(bridge: BridgeImageRef(id: "release-1", version: "2")))
+                == BridgeImageRef(
+                    id: "release-1",
+                    version: "2",
+                    imageType: .cover
+                )
+        )
     }
 }
 
@@ -317,7 +439,9 @@ struct InternReleaseDetailTests {
     }
 
     @MainActor
-    @Test("detail wraps the identity-stable summary from releaseSummaries slice")
+    @Test(
+        "detail wraps the identity-stable summary from releaseSummaries slice"
+    )
     func detailWrapsCanonicalSummary() {
         let store = LibraryStore()
         let bridge = makeBridgeRelease()
@@ -402,13 +526,18 @@ struct AlbumEventTests {
     @Test("handleAlbumAdded does not mutate live lists")
     func albumAddedDoesNotMutateList() async {
         let store = LibraryStore()
-        let list = makeList(store: store, albums: [makeBridgeAlbum(id: "a1", title: "Existing")])
+        let list = makeList(
+            store: store,
+            albums: [makeBridgeAlbum(id: "a1", title: "Existing")]
+        )
         await list.loadInitial()
         await list.loadRange(offset: 0, limit: 1)
 
         let preCount = list.totalCount
 
-        store.handleAlbumAdded(album: makeBridgeAlbumDetail(albumId: "a2", title: "New"))
+        store.handleAlbumAdded(
+            album: makeBridgeAlbumDetail(albumId: "a2", title: "New")
+        )
 
         // Slice holds the new summary, but the list's segments are untouched.
         #expect(store.albumSummaries["a2"] != nil)
@@ -451,7 +580,9 @@ struct AlbumEventTests {
     }
 
     @MainActor
-    @Test("handleAlbumUpdated replaces releaseDetails and updates release summary identity")
+    @Test(
+        "handleAlbumUpdated replaces releaseDetails and updates release summary identity"
+    )
     func albumUpdatedRefreshesSlices() {
         let store = LibraryStore()
         let r1 = makeBridgeRelease(
@@ -492,9 +623,14 @@ struct AlbumEventTests {
         let store = LibraryStore()
         let r1 = makeBridgeRelease(id: "r-1", albumId: "album-1")
         let r2 = makeBridgeRelease(id: "r-2", albumId: "album-1")
-        store.handleAlbumAdded(album: makeBridgeAlbumDetail(releases: [r1, r2]))
+        store.handleAlbumAdded(
+            album: makeBridgeAlbumDetail(releases: [r1, r2])
+        )
 
-        store.handleAlbumRemoved(albumId: "album-1", releaseIds: ["r-1", "r-2"])
+        store.handleAlbumRemoved(
+            albumId: "album-1",
+            releaseIds: ["r-1", "r-2"]
+        )
 
         #expect(store.albumSummaries["album-1"] == nil)
         #expect(store.releaseSummaries["r-1"] == nil)
@@ -512,16 +648,23 @@ struct AlbumEventTests {
         let a2r1 = makeBridgeRelease(id: "a2-r1", albumId: "album-2")
         let a2r2 = makeBridgeRelease(id: "a2-r2", albumId: "album-2")
 
-        store.handleAlbumAdded(album: makeBridgeAlbumDetail(
-            albumId: "album-1",
-            releases: [a1r1, a1r2]
-        ))
-        store.handleAlbumAdded(album: makeBridgeAlbumDetail(
-            albumId: "album-2",
-            releases: [a2r1, a2r2]
-        ))
+        store.handleAlbumAdded(
+            album: makeBridgeAlbumDetail(
+                albumId: "album-1",
+                releases: [a1r1, a1r2]
+            )
+        )
+        store.handleAlbumAdded(
+            album: makeBridgeAlbumDetail(
+                albumId: "album-2",
+                releases: [a2r1, a2r2]
+            )
+        )
 
-        store.handleAlbumRemoved(albumId: "album-1", releaseIds: ["a1-r1", "a1-r2"])
+        store.handleAlbumRemoved(
+            albumId: "album-1",
+            releaseIds: ["a1-r1", "a1-r2"]
+        )
 
         // album-1 and both of its releases are gone.
         #expect(store.albumSummaries["album-1"] == nil)
@@ -542,10 +685,13 @@ struct AlbumEventTests {
     @Test("handleAlbumRemoved does not mutate live lists")
     func albumRemovedDoesNotMutateList() async {
         let store = LibraryStore()
-        let list = makeList(store: store, albums: [
-            makeBridgeAlbum(id: "a1", title: "Alpha"),
-            makeBridgeAlbum(id: "a2", title: "Beta"),
-        ])
+        let list = makeList(
+            store: store,
+            albums: [
+                makeBridgeAlbum(id: "a1", title: "Alpha"),
+                makeBridgeAlbum(id: "a2", title: "Beta"),
+            ]
+        )
         await list.loadInitial()
         await list.loadRange(offset: 0, limit: 2)
 
@@ -567,11 +713,16 @@ struct AlbumEventTests {
 struct ReleaseEventTests {
 
     @MainActor
-    @Test("handleReleaseAdded interns the release and updates parent album releaseIds from event")
+    @Test(
+        "handleReleaseAdded interns the release and updates parent album releaseIds from event"
+    )
     func releaseAddedInternsSlices() {
         let store = LibraryStore()
         store.handleAlbumAdded(album: makeBridgeAlbumDetail(albumId: "album-1"))
-        let newRelease = makeBridgeRelease(id: "release-2", displayName: "Second Release")
+        let newRelease = makeBridgeRelease(
+            id: "release-2",
+            displayName: "Second Release"
+        )
         let updatedAlbum = makeBridgeAlbum(
             id: "album-1",
             releaseIds: ["release-1", "release-2"]
@@ -580,8 +731,13 @@ struct ReleaseEventTests {
         store.handleReleaseAdded(album: updatedAlbum, release: newRelease)
 
         #expect(store.releaseSummaries["release-2"]?.id == "release-2")
-        #expect(store.releaseDetails["release-2"]?.displayName == "Second Release")
-        #expect(store.albumSummaries["album-1"]?.releaseIds.contains("release-2") == true)
+        #expect(
+            store.releaseDetails["release-2"]?.displayName == "Second Release"
+        )
+        #expect(
+            store.albumSummaries["album-1"]?.releaseIds.contains("release-2")
+                == true
+        )
     }
 
     @MainActor
@@ -607,7 +763,9 @@ struct ReleaseEventTests {
     }
 
     @MainActor
-    @Test("handleReleaseRemoved drops the release and interns the event's post-removal album")
+    @Test(
+        "handleReleaseRemoved drops the release and interns the event's post-removal album"
+    )
     func releaseRemoved() {
         let store = LibraryStore()
         store.handleAlbumAdded(
@@ -619,7 +777,9 @@ struct ReleaseEventTests {
                 ]
             )
         )
-        store.albumSummaries["album-1"]?.releaseIds = ["release-1", "release-2"]
+        store.albumSummaries["album-1"]?.releaseIds = [
+            "release-1", "release-2",
+        ]
         #expect(store.releaseSummaries["release-1"] != nil)
         #expect(store.releaseDetails["release-1"] != nil)
 
@@ -636,11 +796,16 @@ struct ReleaseEventTests {
     }
 
     @MainActor
-    @Test("handleReleaseRemoved leaves the album untouched when the event carries no summary")
+    @Test(
+        "handleReleaseRemoved leaves the album untouched when the event carries no summary"
+    )
     func releaseRemovedWithoutAlbum() {
         let store = LibraryStore()
         store.handleAlbumAdded(
-            album: makeBridgeAlbumDetail(albumId: "album-1", releases: [makeBridgeRelease()])
+            album: makeBridgeAlbumDetail(
+                albumId: "album-1",
+                releases: [makeBridgeRelease()]
+            )
         )
 
         // album: nil mirrors the cascade-delete case where AlbumRemoved already
@@ -661,11 +826,14 @@ struct PaginatedListTests {
     @Test("loadInitial sets totalCount, no positions loaded until loadRange")
     func loadInitialAllocates() async {
         let store = LibraryStore()
-        let list = makeList(store: store, albums: [
-            makeBridgeAlbum(id: "a1"),
-            makeBridgeAlbum(id: "a2"),
-            makeBridgeAlbum(id: "a3"),
-        ])
+        let list = makeList(
+            store: store,
+            albums: [
+                makeBridgeAlbum(id: "a1"),
+                makeBridgeAlbum(id: "a2"),
+                makeBridgeAlbum(id: "a3"),
+            ]
+        )
 
         await list.loadInitial()
 
@@ -678,11 +846,14 @@ struct PaginatedListTests {
     @Test("loadRange populates ids at correct positions and interns via ingest")
     func loadRangePopulatesPositions() async {
         let store = LibraryStore()
-        let list = makeList(store: store, albums: [
-            makeBridgeAlbum(id: "a1", title: "Alpha"),
-            makeBridgeAlbum(id: "a2", title: "Beta"),
-            makeBridgeAlbum(id: "a3", title: "Gamma"),
-        ])
+        let list = makeList(
+            store: store,
+            albums: [
+                makeBridgeAlbum(id: "a1", title: "Alpha"),
+                makeBridgeAlbum(id: "a2", title: "Beta"),
+                makeBridgeAlbum(id: "a3", title: "Gamma"),
+            ]
+        )
         await list.loadInitial()
 
         await list.loadRange(offset: 0, limit: 3)
@@ -703,9 +874,13 @@ struct PaginatedListTests {
             makeBridgeAlbum(id: "a1", title: "Alpha"),
             makeBridgeAlbum(id: "a2", title: "Beta"),
         ])
-        let list = AlbumList(pageSource: source, ingest: { rows in
-            for row in rows { _ = store.internAlbumSummary(row) }
-        })
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { rows in
+                for row in rows { _ = store.internAlbumSummary(row) }
+            },
+            onError: { _ in },
+        )
         await list.loadInitial()
         await list.loadRange(offset: 0, limit: 2)
         #expect(source.pageCallCount == 1)
@@ -719,9 +894,10 @@ struct PaginatedListTests {
     @Test("rowCount computes correctly")
     func rowCountComputation() async {
         let store = LibraryStore()
-        let albums = (0..<7).map {
-            makeBridgeAlbum(id: "a\($0)", title: "Album \($0)")
-        }
+        let albums = (0..<7)
+            .map {
+                makeBridgeAlbum(id: "a\($0)", title: "Album \($0)")
+            }
         let list = makeList(store: store, albums: albums)
         await list.loadInitial()
 
@@ -744,14 +920,79 @@ struct PaginatedListTests {
     }
 
     @MainActor
-    @Test("invalidate keeps old state visible, then atomically swaps in refreshed shape")
+    @Test("loadInitial reports count errors")
+    func loadInitialReportsCountErrors() async {
+        let source = ThrowingAlbumPageSource(
+            albums: [],
+            countError: PaginatedListTestError(message: "count failed")
+        )
+        var errors: [DisplayError] = []
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { _ in },
+            onError: { errors.append($0) },
+        )
+
+        await list.loadInitial()
+
+        #expect(errors == [DisplayError(line: "count failed")])
+    }
+
+    @MainActor
+    @Test("loadRange reports page errors")
+    func loadRangeReportsPageErrors() async {
+        let source = ThrowingAlbumPageSource(
+            albums: [makeBridgeAlbum(id: "a1")],
+            pageError: PaginatedListTestError(message: "page failed")
+        )
+        var errors: [DisplayError] = []
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { _ in },
+            onError: { errors.append($0) },
+        )
+
+        await list.loadInitial()
+        await list.loadRange(offset: 0, limit: 1)
+
+        #expect(errors == [DisplayError(line: "page failed")])
+    }
+
+    @MainActor
+    @Test("invalidate reports count errors")
+    func invalidateReportsCountErrors() async {
+        let source = ThrowingAlbumPageSource(albums: [
+            makeBridgeAlbum(id: "a1")
+        ])
+        var errors: [DisplayError] = []
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { _ in },
+            onError: { errors.append($0) },
+        )
+        await list.loadInitial()
+        source.countError = PaginatedListTestError(message: "reload failed")
+
+        list.invalidate()
+        await list.awaitReload()
+
+        #expect(errors == [DisplayError(line: "reload failed")])
+    }
+
+    @MainActor
+    @Test(
+        "invalidate keeps old state visible, then atomically swaps in refreshed shape"
+    )
     func invalidateRefetches() async {
         let store = LibraryStore()
-        let list = makeList(store: store, albums: [
-            makeBridgeAlbum(id: "a1", title: "Alpha"),
-            makeBridgeAlbum(id: "a2", title: "Beta"),
-            makeBridgeAlbum(id: "a3", title: "Gamma"),
-        ])
+        let list = makeList(
+            store: store,
+            albums: [
+                makeBridgeAlbum(id: "a1", title: "Alpha"),
+                makeBridgeAlbum(id: "a2", title: "Beta"),
+                makeBridgeAlbum(id: "a3", title: "Gamma"),
+            ]
+        )
         await list.loadInitial()
         await list.loadRange(offset: 0, limit: 3)
         #expect(list.idAt(0) == "a1")
@@ -776,16 +1017,22 @@ struct PaginatedListTests {
     }
 
     @MainActor
-    @Test("invalidate re-fetches previously loaded ranges and surfaces new rows")
+    @Test(
+        "invalidate re-fetches previously loaded ranges and surfaces new rows"
+    )
     func invalidateSurfacesNewRows() async {
         let store = LibraryStore()
         // Start with one album; load it.
         let source = MutablePageSource(albums: [
-            makeBridgeAlbum(id: "a1", title: "Alpha"),
+            makeBridgeAlbum(id: "a1", title: "Alpha")
         ])
-        let list = AlbumList(pageSource: source, ingest: { rows in
-            for row in rows { _ = store.internAlbumSummary(row) }
-        })
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { rows in
+                for row in rows { _ = store.internAlbumSummary(row) }
+            },
+            onError: { _ in },
+        )
         await list.loadInitial()
         await list.loadRange(offset: 0, limit: 1)
         #expect(list.idAt(0) == "a1")
@@ -826,7 +1073,7 @@ final class MutablePageSource: PageSource, @unchecked Sendable {
     func page(offset: Int, limit: Int) async throws -> [BridgeAlbum] {
         let start = min(offset, albums.count)
         let end = min(start + limit, albums.count)
-        return Array(albums[start ..< end])
+        return Array(albums[start..<end])
     }
 }
 

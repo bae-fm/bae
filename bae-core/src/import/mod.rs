@@ -30,7 +30,18 @@ pub(crate) mod service;
 mod track_to_file_mapper;
 mod types;
 
-use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbTrack, DbTrackArtist};
+use crate::db::{
+    DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
+    DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
+};
+
+#[derive(Debug, Clone)]
+pub struct ParsedWorkGraph {
+    pub works: Vec<DbWork>,
+    pub work_artists: Vec<DbWorkArtist>,
+    pub work_parts: Vec<DbWorkPart>,
+    pub track_works: Vec<DbTrackWork>,
+}
 
 /// Result of parsing a release (MusicBrainz or Discogs) into the
 /// in-memory shape that flows into commit. Carries the per-source
@@ -45,6 +56,9 @@ pub struct ParsedAlbum {
     pub artists: Vec<DbArtist>,
     pub album_artists: Vec<DbAlbumArtist>,
     pub track_artists: Vec<DbTrackArtist>,
+    pub work_graph: ParsedWorkGraph,
+    pub release_artist_roles: Vec<DbReleaseArtistRole>,
+    pub track_artist_roles: Vec<DbTrackArtistRole>,
     /// One element per source the parser resolved for this release.
     /// Empty for Unknown imports (file-tag-only).
     pub identities: Vec<crate::import::types::ReleaseIdentity>,

@@ -8,7 +8,7 @@ import uniffi.bae_bridge.BridgeSortCriterion
 
 /**
  * Narrow projection of [AppHandle] for library browse and detail reads — DB
- * queries and library-image reads. The page/detail calls touch the database and
+ * queries and cover-image reads. The page/detail calls touch the database and
  * must run off the main thread; the suspend calls cross the bridge themselves.
  * Mirrors the macOS `Library` / `MediaPaths` domain services.
  */
@@ -25,9 +25,9 @@ class Library(
 
     fun albumDetail(albumId: String): BridgeAlbumDetail = handle.getAlbumDetail(albumId)
 
-    /** Bytes of a library image (a cover or artist image) by id, read through
-     *  coven's locality-aware store, or null when no such image exists. */
-    suspend fun imageBytes(imageId: String): ByteArray? = handle.fetchImageBytes(imageId)
+    /** Bytes of a release cover by release id, read through coven's
+     *  locality-aware store, or null when no such cover exists. */
+    suspend fun imageBytes(imageId: String): ByteArray? = handle.fetchCoverImageBytes(imageId)
 
     /**
      * Search albums and tracks by free-text query. Suspends: the bridge call is

@@ -82841,6 +82841,1532 @@
           }
         }
       }
+    },
+    "Composers": {
+      "comment": "Library/search composer section and mode label",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Composers"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composers"
+          }
+        }
+      }
+    },
+    "Works": {
+      "comment": "Library/search works section and composer work count label",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Works"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Works"
+          }
+        }
+      }
+    },
+    "No composers": {
+      "comment": "Empty composer library message title",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No composers"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No composers"
+          }
+        }
+      }
+    },
+    "Releases": {
+      "comment": "Composer work detail release section header",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Releases"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Releases"
+          }
+        }
+      }
+    },
+    "Credits": {
+      "comment": "Composer sort field and unlinked credits section header",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Credits"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Credits"
+          }
+        }
+      }
+    },
+    "Recordings": {
+      "comment": "Composer work detail recording section header",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recordings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Recordings"
+          }
+        }
+      }
+    },
+    "Composer detail not found": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Composer detail not found"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Composer detail not found"
+          }
+        }
+      }
+    },
+    "Work detail not found": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Work detail not found"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Work detail not found"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

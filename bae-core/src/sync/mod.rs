@@ -95,6 +95,12 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         SyncedTable::new("release_identities"),
         SyncedTable::new("tracks"),
         SyncedTable::new("track_artists"),
+        SyncedTable::new("works").gated_by_descendants(),
+        SyncedTable::new("work_artists"),
+        SyncedTable::new("work_parts"),
+        SyncedTable::new("track_works"),
+        SyncedTable::new("release_artist_roles"),
+        SyncedTable::new("track_artist_roles"),
         // The user's own imported files: user-provided (Local = the file at the
         // user's path, an external ref coven holds), CacheLazy (fetched on first
         // read when Remote). coven reads the blob id off the PK and the readable
@@ -264,20 +270,20 @@ mod tests {
         }
     }
 
-    /// `albums` and `artists` are the FK-ancestors of the gated `releases` root,
-    /// declared `gated_by_descendants()` so a row drops out of sync once its gated
-    /// subtree empties (coven infers the keep-children from the FK graph). Any
-    /// other table carrying this marker — or one of these two losing it — would
+    /// `albums`, `artists`, and `works` are FK-ancestors of the gated `releases`
+    /// root, declared `gated_by_descendants()` so a row drops out of sync once its
+    /// gated subtree empties (coven infers the keep-children from the FK graph).
+    /// Any other table carrying this marker — or one of these losing it — would
     /// diverge from the schema's FK shape, which is what this test catches.
     #[test]
-    fn albums_and_artists_are_the_gated_by_descendants_ancestors() {
+    fn albums_artists_and_works_are_the_gated_by_descendants_ancestors() {
         let tables = synced_tables();
         let ancestors: BTreeSet<&str> = tables
             .iter()
             .filter(|t| t.is_gated_by_descendants())
             .map(|t| t.name())
             .collect();
-        assert_eq!(ancestors, BTreeSet::from(["albums", "artists"]));
+        assert_eq!(ancestors, BTreeSet::from(["albums", "artists", "works"]));
     }
 
     /// `release_files` carries the user's own blobs; `covers` and `artist_images`

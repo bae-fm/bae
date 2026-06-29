@@ -155,8 +155,7 @@ private fun rememberCoverState(
  * `(id, version)`) clipped to a rounded square, or a MusicNote placeholder when
  * there is no cover. The caller's [modifier] carries the sizing —
  * `Modifier.size(48.dp)` for list rows, `Modifier.fillMaxWidth().aspectRatio(1f)`
- * for full-width art. [loadImage] reads the bytes off the bridge (covers/artist
- * images by id).
+ * for full-width art. [loadImage] reads cover bytes off the bridge by release id.
  */
 @Composable
 fun CoverImage(

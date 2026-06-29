@@ -1,5 +1,6 @@
 //! Resolved search-result types (`SearchResults`, `AlbumSearchResult`,
-//! `TrackSearchResult`) and the pure projections that produce them.
+//! `TrackSearchResult`, composer hits, and work hits) and the pure projections
+//! that produce them.
 
 use std::collections::HashMap;
 
@@ -12,14 +13,20 @@ use crate::db::{DbLibrarySearchResults, DbTrackSearchResult};
 pub struct SearchResults {
     pub albums: Vec<AlbumSearchResult>,
     pub tracks: Vec<TrackSearchResult>,
+    pub composers: Vec<ComposerSummary>,
+    pub works: Vec<WorkSummary>,
 }
 
 impl SearchResults {
     /// Resolve the raw search-result container by mapping each inner list.
-    /// `covers` maps an album's primary release id to its cover reference.
+    /// Cover/image maps are keyed by the ids carried by the raw search rows:
+    /// album primary release ids, composer artist ids, and work representative
+    /// release ids.
     pub(crate) fn from_raw(
         raw: DbLibrarySearchResults,
-        covers: &HashMap<String, ImageRef>,
+        album_covers: &HashMap<String, ImageRef>,
+        composer_images: &HashMap<String, ImageRef>,
+        work_covers: &HashMap<String, ImageRef>,
     ) -> SearchResults {
         SearchResults {
             albums: raw
@@ -34,7 +41,7 @@ impl SearchResults {
                     let primary_release_id = raw
                         .primary_release_id
                         .expect("album has at least one release");
-                    let cover = covers.get(&primary_release_id).cloned();
+                    let cover = album_covers.get(&primary_release_id).cloned();
                     AlbumSearchResult {
                         id: raw.id,
                         title: raw.title,
@@ -48,6 +55,25 @@ impl SearchResults {
                 .tracks
                 .into_iter()
                 .map(TrackSearchResult::from)
+                .collect(),
+            composers: raw
+                .composers
+                .into_iter()
+                .map(|composer| {
+                    let image = composer_images.get(&composer.artist.id).cloned();
+                    ComposerSummary::from_raw(composer, image)
+                })
+                .collect(),
+            works: raw
+                .works
+                .into_iter()
+                .map(|work| {
+                    let cover = work
+                        .representative_release_id
+                        .as_ref()
+                        .and_then(|id| work_covers.get(id).cloned());
+                    WorkSummary::from_raw(work, cover)
+                })
                 .collect(),
         }
     }

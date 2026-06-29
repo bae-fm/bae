@@ -104,13 +104,18 @@ fn test_extract_urls_from_relations() {
             url: Some(MbUrlResource {
                 resource: Some("https://www.discogs.com/master/12345".to_string()),
             }),
+            ..Default::default()
         },
         MbRelation {
             url: Some(MbUrlResource {
                 resource: Some("https://www.discogs.com/release/67890".to_string()),
             }),
+            ..Default::default()
         },
-        MbRelation { url: None },
+        MbRelation {
+            url: None,
+            ..Default::default()
+        },
     ];
 
     let mut urls = ExternalUrls {

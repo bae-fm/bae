@@ -509,6 +509,7 @@ fn create_test_album() -> DiscogsRelease {
             name: "Test Artist".to_string(),
             id: "test-artist-1".to_string(),
         }],
+        extraartists: Some(vec![]),
         tracklist: vec![
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -516,6 +517,7 @@ fn create_test_album() -> DiscogsRelease {
                 title: "Test Track 1".to_string(),
                 duration: Some("0:10".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -523,6 +525,7 @@ fn create_test_album() -> DiscogsRelease {
                 title: "Test Track 2".to_string(),
                 duration: Some("0:10".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -530,6 +533,7 @@ fn create_test_album() -> DiscogsRelease {
                 title: "Test Track 3".to_string(),
                 duration: Some("0:10".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
         ],
         master_id: Some("test-master-123".to_string()),
@@ -625,6 +629,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
             name: "Test Artist".to_string(),
             id: "test-artist-1".to_string(),
         }],
+        extraartists: Some(vec![]),
         tracklist: vec![
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -632,6 +637,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
                 title: "Track One (Silence)".to_string(),
                 duration: Some("0:10".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -639,6 +645,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
                 title: "Track Two (White Noise)".to_string(),
                 duration: Some("0:10".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -646,6 +653,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
                 title: "Track Three (Brown Noise)".to_string(),
                 duration: Some("0:10".to_string()),
                 artists: vec![],
+                extraartists: None,
             },
         ],
         master_id: Some("test-master-cue-flac".to_string()),
@@ -2974,12 +2982,14 @@ impl HighSampleRateTestFixture {
                 name: "Test Artist".to_string(),
                 id: "test-artist-1".to_string(),
             }],
+            extraartists: Some(vec![]),
             tracklist: vec![DiscogsTrack {
                 type_: "track".to_string(),
                 position: "1".to_string(),
                 title: "96kHz Track".to_string(),
                 duration: Some("0:03".to_string()),
                 artists: vec![],
+                extraartists: None,
             }],
             master_id: Some("test-master-96khz".to_string()),
         };

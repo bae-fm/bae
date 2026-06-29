@@ -670,7 +670,7 @@ class BaeCorePlayer(
         scope.launch {
             val bytes =
                 try {
-                    appHandle.fetchImageBytes(coverImageId)
+                    appHandle.fetchCoverImageBytes(coverImageId)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {

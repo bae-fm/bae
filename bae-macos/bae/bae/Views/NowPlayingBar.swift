@@ -21,12 +21,11 @@ struct NowPlayingBarContainer: View {
         var uiStore = uiStore
         let np = playbackStore.nowPlaying
         let track = np.track
-        // The now-playing/queue cover is id-only by design: load by image id and
-        // cache by id alone. No store lookup to backfill a content version —
-        // these single/small surfaces don't need the reload-on-replace the grid
-        // covers get from their versioned refs.
         let cover: ImageContent? =
-            track?.coverImageId.map { .library(.cover(id: $0, version: nil)) }
+            track?.coverImageId
+            .map {
+                .library(.cover(id: $0, version: nil))
+            }
         NowPlayingBar(
             trackTitle: track?.trackTitle,
             secondaryLine: np.secondaryLine,

@@ -1,17 +1,19 @@
 import CoreGraphics
 import Foundation
+import os.log
 
-/// Which library image to fetch and how. A `cover` (a release cover or an
-/// artist image) is read by image id via `fetchImageBytes` and cached under its
-/// content `version`. A `gallery` slot (the lightbox's view of a release's cover
-/// or one of its image files) is read via `fetchGalleryBytes`, which takes the
-/// whole `BridgeGallerySource` and dispatches the read in core — the UI never
-/// picks the byte source. `cacheId` is the gallery item's stable list identity,
-/// the decode-cache key, not a fetch decision.
+private let logger = Logger.bae("MediaPaths")
+
+/// Which library image to fetch and how. A `cover` is a release cover addressed
+/// by release id; an `image` is a release cover or artist image with a full
+/// `BridgeImageRef`. A `gallery` slot is read via `fetchGalleryBytes`, which
+/// takes the whole
+/// `BridgeGallerySource` and dispatches the read in core — the UI never picks
+/// the byte source. `cacheId` is the gallery item's stable list identity, the
+/// decode-cache key, not a fetch decision.
 enum LibraryImageSource: Equatable, Hashable, Sendable {
-    /// `version` is nil for now-playing/queue covers, which carry only an id;
-    /// those cache by id alone, accepted on those single/small surfaces.
     case cover(id: String, version: String?)
+    case image(BridgeImageRef)
     case gallery(
         releaseId: String,
         source: BridgeGallerySource,
@@ -24,7 +26,10 @@ enum LibraryImageSource: Equatable, Hashable, Sendable {
     /// release scope keeps two releases' covers distinct in the shared cache).
     var cacheToken: String {
         switch self {
-        case .cover(let id, let version): "cover:\(id):\(version ?? "")"
+        case .cover(let id, let version):
+            "cover:\(id):\(version ?? id)"
+        case .image(let image):
+            "image:\(image.imageType):\(image.id):\(image.version)"
         case .gallery(let releaseId, _, let cacheId):
             "gallery:\(releaseId):\(cacheId)"
         }
@@ -38,11 +43,15 @@ enum LibraryImageSource: Equatable, Hashable, Sendable {
 final class MediaPaths: Sendable, Observable {
     /// Filesystem path for the user's own external file behind a library file
     /// (the DiscID re-read of a rip's LOG/CUE/audio). NOT for images — library
-    /// images are read through `fetchImageBytes` / `fetchGalleryBytes`.
+    /// images are read through `fetchImageBytes` and `fetchGalleryBytes`.
     let filePath: @Sendable (_ fileId: String) throws -> String?
+    /// Bytes of a release cover by release id, or nil when no such cover exists.
+    let fetchCoverImageBytes:
+        @Sendable (_ releaseId: String) async throws -> Data?
     /// Bytes of a host-provided library image (a cover or an artist image) by
-    /// id, or nil when no such image exists.
-    let fetchImageBytes: @Sendable (_ imageId: String) async throws -> Data?
+    /// full image ref, or nil when no such image exists.
+    let fetchImageBytes:
+        @Sendable (_ image: BridgeImageRef) async throws -> Data?
     /// Bytes of one of a release's gallery slots (its cover or an image file),
     /// dispatched in core on the `BridgeGallerySource` and downloaded from the
     /// release's cloud home (and decrypted) when it isn't on disk here.
@@ -61,9 +70,12 @@ final class MediaPaths: Sendable, Observable {
 
     init(
         filePath: @escaping @Sendable (String) throws -> String? = { _ in nil },
-        fetchImageBytes: @escaping @Sendable (String) async throws -> Data? = {
-            _ in nil
-        },
+        fetchCoverImageBytes:
+            @escaping @Sendable (String) async throws -> Data? = { _ in nil },
+        fetchImageBytes:
+            @escaping @Sendable (BridgeImageRef) async throws -> Data? = {
+                _ in nil
+            },
         fetchGalleryBytes:
             @escaping @Sendable (String, BridgeGallerySource) async throws ->
             Data = { _, _ in throw MediaPathsUnavailable() },
@@ -72,6 +84,7 @@ final class MediaPaths: Sendable, Observable {
         }
     ) {
         self.filePath = filePath
+        self.fetchCoverImageBytes = fetchCoverImageBytes
         self.fetchImageBytes = fetchImageBytes
         self.fetchGalleryBytes = fetchGalleryBytes
         self.fetchCoverBytes = fetchCoverBytes
@@ -81,8 +94,11 @@ final class MediaPaths: Sendable, Observable {
         convenience init(handle: any AppHandleProtocol) {
             self.init(
                 filePath: { try handle.filePath(fileId: $0) },
+                fetchCoverImageBytes: {
+                    try await handle.fetchCoverImageBytes(releaseId: $0)
+                },
                 fetchImageBytes: {
-                    try await handle.fetchImageBytes(imageId: $0)
+                    try await handle.fetchImageBytes(image: $0)
                 },
                 fetchGalleryBytes: {
                     try await handle.fetchGalleryBytes(
@@ -101,7 +117,7 @@ final class MediaPaths: Sendable, Observable {
     static let stub = MediaPaths()
 
     /// Decoded library image for `source` at `pointSize`, reading from the cache
-    /// when present and otherwise fetching the bytes (a cover by id, a gallery
+    /// when present and otherwise fetching the bytes (an image ref or a gallery
     /// slot via the bridge), decoding off the main thread, and caching the
     /// result. Returns nil when no
     /// such image exists (a `cover` with no bytes); a fetch/decode error
@@ -121,7 +137,16 @@ final class MediaPaths: Sendable, Observable {
         let bytes: Data
         switch source {
         case .cover(let id, _):
-            guard let data = try await fetchImageBytes(id) else {
+            guard let data = try await fetchCoverImageBytes(id) else {
+                logger.warning("Missing cover image bytes for \(id)")
+                return nil
+            }
+            bytes = data
+        case .image(let image):
+            guard let data = try await fetchImageBytes(image) else {
+                logger.warning(
+                    "Missing library image bytes for \(image.imageType) \(image.id)"
+                )
                 return nil
             }
             bytes = data

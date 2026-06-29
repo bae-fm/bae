@@ -89,6 +89,22 @@ pub async fn try_wait_for_import_complete(
     Err("Progress channel closed without completion".to_string())
 }
 
+#[allow(dead_code)]
+pub async fn read_cover_image_blob(
+    db: &bae_core::db::Database,
+    mgr: &bae_core::library::LibraryManager,
+    release_id: &str,
+) -> Option<Vec<u8>> {
+    let version = db.cover_version(release_id).await.unwrap()?;
+    mgr.read_image_blob(&bae_core::album_detail::ImageRef {
+        id: release_id.to_string(),
+        version,
+        image_type: bae_core::db::LibraryImageType::Cover,
+    })
+    .await
+    .unwrap()
+}
+
 /// Initialize tracing for tests with proper test output handling
 #[allow(dead_code)]
 pub fn tracing_init() {

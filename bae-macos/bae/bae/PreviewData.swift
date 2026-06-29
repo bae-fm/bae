@@ -68,53 +68,76 @@ enum PreviewData {
 
     // MARK: - Search
 
-    /// Search results — three album hits and two track hits — for the
-    /// SearchView "With results" preview.
+    /// Search results for the SearchView "With results" preview.
     static let searchResults = SearchResults(
         bridge: BridgeSearchResults(
             albums: [
                 BridgeAlbumSearchResult(
                     id: "a-02",
-                    title: "Pacific Standard",
+                    title: "Album Title B",
                     year: 2019,
-                    artistName: "Glass Harbor",
+                    artistName: "Artist Name A",
                     cover: nil
                 ),
                 BridgeAlbumSearchResult(
                     id: "a-14",
-                    title: "Landlocked",
+                    title: "Album Title N",
                     year: 2022,
-                    artistName: "Glass Harbor",
+                    artistName: "Artist Name A",
                     cover: nil
                 ),
                 BridgeAlbumSearchResult(
                     id: "a-03",
-                    title: "Proof by Induction",
+                    title: "Album Title C",
                     year: 2021,
-                    artistName: "Velvet Mathematics",
+                    artistName: "Artist Name B",
                     cover: nil
                 ),
             ],
             tracks: [
                 BridgeTrackSearchResult(
                     id: "t-03",
-                    title: "Tide Pool",
+                    title: "Track Title 3",
                     durationMs: 198_000,
                     albumId: "a-02",
-                    albumTitle: "Pacific Standard",
-                    artistName: "Glass Harbor"
+                    albumTitle: "Album Title B",
+                    artistName: "Artist Name A"
                 ),
                 BridgeTrackSearchResult(
                     id: "t-05",
-                    title: "Axiom",
+                    title: "Track Title 5",
                     durationMs: 187_000,
                     albumId: "a-03",
-                    albumTitle: "Proof by Induction",
-                    artistName: "Velvet Mathematics"
+                    albumTitle: "Album Title C",
+                    artistName: "Artist Name B"
                 ),
             ],
+            composers: [
+                BridgeComposerSummary(
+                    artistId: "artist-composer-a",
+                    name: "Composer Name A",
+                    sortName: "Composer Name A",
+                    workCount: 2,
+                    linkedReleaseCount: 3,
+                    unlinkedCreditCount: 0,
+                    image: nil
+                )
+            ],
+            works: [
+                BridgeWorkSummary(
+                    workId: "work-a",
+                    title: "Work Title A",
+                    disambiguation: nil,
+                    workType: "work",
+                    parentWorkId: nil,
+                    composerNames: "Composer Name A",
+                    linkedReleaseCount: 2,
+                    representativeReleaseId: "release-a",
+                    representativeCover: nil
+                )
+            ],
         ),
-        query: "glass"
+        query: "placeholder"
     )
 
     // MARK: - Cover sheet

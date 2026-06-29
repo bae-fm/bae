@@ -20,7 +20,7 @@
 //! from any tag carrying a date. Both stay `None` if not determinable
 //! rather than being defaulted.
 
-use super::ParsedAlbum;
+use super::{ParsedAlbum, ParsedWorkGraph};
 use crate::db::ReleaseMetadataSource;
 use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbTrack, DbTrackArtist};
 use crate::util::content_type::ContentType;
@@ -281,6 +281,14 @@ pub fn map_file_tags_to_db(
         artists,
         album_artists,
         track_artists,
+        work_graph: ParsedWorkGraph {
+            works: Vec::new(),
+            work_artists: Vec::new(),
+            work_parts: Vec::new(),
+            track_works: Vec::new(),
+        },
+        release_artist_roles: Vec::new(),
+        track_artist_roles: Vec::new(),
         identities: Vec::new(),
     })
 }

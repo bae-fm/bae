@@ -4,6 +4,23 @@ import SwiftUI
 import os.log
 
 private let logger = Logger.bae("BaeApp")
+private let appProcessEnvironment = ProcessInfo.processInfo.environment
+
+private enum AppRuntime {
+    static func skipsApplicationServices(environment: [String: String]) -> Bool
+    {
+        isPreview(environment: environment)
+            || isTestHost(environment: environment)
+    }
+
+    private static func isPreview(environment: [String: String]) -> Bool {
+        environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+    }
+
+    private static func isTestHost(environment: [String: String]) -> Bool {
+        environment["XCTestConfigurationFilePath"] != nil
+    }
+}
 
 enum AppScreen {
     case loading
@@ -24,12 +41,10 @@ struct BaeApp: App {
     @ObservedObject
     private var checkForUpdatesViewModel: CheckForUpdatesViewModel
 
-    private static var isPreview: Bool {
-        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-    }
-
     init() {
-        let startUpdater = !Self.isPreview
+        let startUpdater = !AppRuntime.skipsApplicationServices(
+            environment: appProcessEnvironment
+        )
         #if DEBUG
             _ = startUpdater  // suppress unused warning
             let controller = SPUStandardUpdaterController(
@@ -442,12 +457,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     @ObservationIgnored
     private var lockTask: Task<Void, Never>?
 
-    private static var isPreview: Bool {
-        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+    private var skipsApplicationServices: Bool {
+        AppRuntime.skipsApplicationServices(
+            environment: appProcessEnvironment
+        )
     }
 
     func applicationDidFinishLaunching(_: Notification) {
-        if !Self.isPreview {
+        if !skipsApplicationServices {
             BaeCrashReporting.configure()
             BaeDiagnostics.configure(source: "macos")
             logger.info("application launched")
@@ -505,14 +522,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
         // Open Library submenu reflects libraries created, renamed, or removed
         // elsewhere while we were in the background. Only meaningful once a
         // library is open — the menu that consumes the list exists only then.
-        guard !Self.isPreview, appService != nil else { return }
+        guard !skipsApplicationServices, appService != nil else {
+            return
+        }
         reloadLibraries()
     }
 
     // MARK: - Library lifecycle
 
     private func loadInitialState() {
-        if Self.isPreview {
+        if skipsApplicationServices {
             screen = .welcome
             return
         }

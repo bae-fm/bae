@@ -268,8 +268,8 @@ async fn make_remote_uploads_are_visible_in_snapshot_before_drain() {
 
 /// A cover is a host-provided blob: its bytes go to coven's local store
 /// store and coven owns the copy. While the release is Local the cover lives in
-/// coven's local store and `read_image_blob` serves its bytes through the handle —
-/// no cloud round-trip and no bae path into coven's store.
+/// coven's local store and `read_image_blob` serves its bytes through the image
+/// reference — no cloud round-trip and no bae path into coven's store.
 #[tokio::test]
 async fn test_cover_blob_stored_via_local_files_is_readable() {
     tracing_init();
@@ -279,7 +279,9 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
 
     // No cover row yet → no bytes.
     assert!(
-        mgr.read_image_blob(&release_id).await.unwrap().is_none(),
+        support::read_cover_image_blob(&db, &mgr, &release_id)
+            .await
+            .is_none(),
         "no cover before one is stored"
     );
 
@@ -305,10 +307,8 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
     .unwrap();
 
     // read_image_blob serves it from coven's local store, byte-for-byte.
-    let read = mgr
-        .read_image_blob(&release_id)
+    let read = support::read_cover_image_blob(&db, &mgr, &release_id)
         .await
-        .unwrap()
         .expect("cover resolves to bytes once stored");
     assert_eq!(read, bytes, "the stored cover reads back byte-for-byte");
 }

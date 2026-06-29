@@ -1,11 +1,12 @@
 use crate::db::models::*;
+use crate::import::MetadataSource;
 use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use coven::rusqlite::{params, Connection, OptionalExtension, Row};
 use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -29,13 +30,6 @@ fn image_table(image_type: &LibraryImageType) -> &'static str {
     match image_type {
         LibraryImageType::Cover => "covers",
         LibraryImageType::Artist => "artist_images",
-    }
-}
-
-fn image_namespace(image_type: &LibraryImageType) -> &'static str {
-    match image_type {
-        LibraryImageType::Cover => crate::sync::COVERS_NAMESPACE,
-        LibraryImageType::Artist => crate::sync::ARTIST_IMAGES_NAMESPACE,
     }
 }
 
@@ -68,6 +62,228 @@ fn clear_external_blob_on(conn: &Connection, blob_id: &str) -> Result<(), DbErro
     conn.execute("DELETE FROM local_blob_refs WHERE blob_id = ?1", [blob_id])
         .map(|_| ())
         .map_err(DbError::from)
+}
+
+fn composer_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
+    let release_unlinked = unlinked_release_composer_role_predicate("rar");
+    let track_unlinked = unlinked_track_composer_role_predicate("tar");
+    let mut query = format!(
+        "SELECT composer.id AS artist_id,
+                composer.name AS artist_name,
+                composer.sort_name AS artist_sort_name,
+                composer.discogs_artist_id AS artist_discogs_artist_id,
+                composer.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
+                composer.created_at AS artist_created_at,
+                COUNT(DISTINCT wa.work_id) AS work_count,
+                COUNT(DISTINCT linked.id) AS linked_release_count,
+                (
+                    SELECT COUNT(*) FROM release_artist_roles rar
+                    WHERE rar.artist_id = composer.id
+                      AND {release_unlinked}
+                ) + (
+                    SELECT COUNT(*) FROM track_artist_roles tar
+                    WHERE tar.artist_id = composer.id
+                      AND {track_unlinked}
+                ) AS unlinked_credit_count
+         FROM artists composer
+         LEFT JOIN work_artists wa ON wa.artist_id = composer.id
+         LEFT JOIN track_works tw ON tw.work_id = wa.work_id
+         LEFT JOIN tracks linked_track ON linked_track.id = tw.track_id
+         LEFT JOIN releases linked ON linked.id = linked_track.release_id
+         ",
+    );
+    if let Some(filter) = filter {
+        query.push_str(filter);
+    }
+    query.push_str(
+        "
+         GROUP BY composer.id, composer.name, composer.sort_name, composer.discogs_artist_id, composer.musicbrainz_artist_id, composer.created_at
+         HAVING work_count > 0 OR unlinked_credit_count > 0",
+    );
+    if let Some(tail) = tail {
+        query.push('\n');
+        query.push_str(tail);
+    }
+    query
+}
+
+fn unlinked_release_composer_role_predicate(role_alias: &str) -> String {
+    unlinked_composer_role_predicate(
+        role_alias,
+        "release",
+        "JOIN tracks t_unlinked_release ON t_unlinked_release.id = tw_unlinked_release.track_id",
+        "t_unlinked_release.release_id",
+        "release_id",
+    )
+}
+
+fn unlinked_track_composer_role_predicate(role_alias: &str) -> String {
+    unlinked_composer_role_predicate(
+        role_alias,
+        "track",
+        "",
+        "tw_unlinked_track.track_id",
+        "track_id",
+    )
+}
+
+fn unlinked_composer_role_predicate(
+    role_alias: &str,
+    scope: &str,
+    track_join: &str,
+    linked_target_column: &str,
+    role_target_column: &str,
+) -> String {
+    format!(
+        "NOT EXISTS (
+            SELECT 1 FROM work_artists wa_unlinked_{scope}
+            JOIN track_works tw_unlinked_{scope} ON tw_unlinked_{scope}.work_id = wa_unlinked_{scope}.work_id
+            {track_join}
+            WHERE wa_unlinked_{scope}.artist_id = {role_alias}.artist_id
+              AND {linked_target_column} = {role_alias}.{role_target_column}
+        )"
+    )
+}
+
+fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
+    let mut query = String::from(
+        "SELECT w.id AS work_id,
+                w.title AS work_title,
+                w.disambiguation AS work_disambiguation,
+                w.work_type AS work_type,
+                w.created_at AS work_created_at,
+                (
+                    SELECT wp.parent_work_id
+                    FROM work_parts wp
+                    WHERE wp.child_work_id = w.id
+                    ORDER BY wp.position, wp.parent_work_id
+                    LIMIT 1
+                ) AS parent_work_id,
+                (
+                    SELECT tr.release_id
+                    FROM track_works tw_cover
+                    JOIN tracks tr ON tr.id = tw_cover.track_id
+                    WHERE tw_cover.work_id = w.id
+                    ORDER BY tr.side, tr.track_number, tr.release_id
+                    LIMIT 1
+                ) AS representative_release_id,
+                (
+                    SELECT GROUP_CONCAT(composer.name, ', ')
+                    FROM work_artists wa
+                    JOIN artists composer ON composer.id = wa.artist_id
+                    WHERE wa.work_id = w.id
+                    ORDER BY wa.position
+                ) AS composer_names,
+                COUNT(DISTINCT tr.release_id) AS linked_release_count
+         FROM works w
+         LEFT JOIN track_works tw ON tw.work_id = w.id
+         LEFT JOIN tracks tr ON tr.id = tw.track_id
+         ",
+    );
+    if let Some(filter) = filter {
+        query.push_str(filter);
+    }
+    query.push_str(
+        "
+         GROUP BY w.id, w.title, w.disambiguation, w.work_type, w.created_at",
+    );
+    if let Some(tail) = tail {
+        query.push('\n');
+        query.push_str(tail);
+    }
+    query
+}
+
+fn row_to_work_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbWorkSummary> {
+    Ok(DbWorkSummary {
+        work: DbWork {
+            id: row.get("work_id")?,
+            title: row.get("work_title")?,
+            disambiguation: row.get("work_disambiguation")?,
+            work_type: row.get("work_type")?,
+            created_at: rfc3339_column(row, "work_created_at")?,
+        },
+        parent_work_id: row.get("parent_work_id")?,
+        representative_release_id: row.get("representative_release_id")?,
+        composer_names: row.get("composer_names")?,
+        linked_release_count: row.get("linked_release_count")?,
+    })
+}
+
+fn row_to_composer_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbComposerSummary> {
+    Ok(DbComposerSummary {
+        artist: row_to_aliased_artist(row, "artist")?,
+        work_count: row.get("work_count")?,
+        linked_release_count: row.get("linked_release_count")?,
+        unlinked_credit_count: row.get("unlinked_credit_count")?,
+    })
+}
+
+fn work_summary_sort_key(work: &DbWorkSummary) -> String {
+    work.work.title.to_lowercase()
+}
+
+fn row_to_track_role_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbTrackRoleSummary> {
+    Ok(DbTrackRoleSummary {
+        role: DbTrackArtistRole {
+            id: row.get("track_artist_role_id")?,
+            track_id: row.get("track_id")?,
+            artist_id: row.get("artist_id")?,
+            position: row.get("position")?,
+            source: metadata_source_column(row, "role_source")?,
+            source_credit: row.get("source_credit")?,
+            created_at: rfc3339_column(row, "created_at")?,
+        },
+        track: row_to_aliased_track(row, "track")?,
+        album: row_to_aliased_album(row, "album")?,
+        artist: row_to_aliased_artist(row, "artist")?,
+    })
+}
+
+fn work_release_rows(conn: &Connection, work_id: &str) -> Result<Vec<DbReleaseSummary>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT DISTINCT
+            r.id AS release_id,
+            r.album_id,
+            r.format AS release_format,
+            r.remote,
+            (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id,
+            COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id), 0) AS file_count,
+            COALESCE((SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = r.id), 0) AS total_size
+         FROM track_works tw
+         JOIN tracks t ON t.id = tw.track_id
+         JOIN releases r ON r.id = t.release_id
+         WHERE tw.work_id = ?
+         ORDER BY r.created_at",
+    )?;
+    let rows = stmt.query_map(params![work_id], row_to_release_summary)?;
+    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+        .map_err(DbError::from)
+}
+
+fn row_to_release_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbReleaseSummary> {
+    Ok(DbReleaseSummary {
+        id: row.get("release_id")?,
+        album_id: row.get("album_id")?,
+        format: row.get("release_format")?,
+        remote: row.get("remote")?,
+        any_file_id: row.get("any_file_id")?,
+        file_count: row.get("file_count")?,
+        total_size: row.get("total_size")?,
+    })
+}
+
+fn composer_order_by(sort: ComposerSortCriterion) -> String {
+    let field = match sort.field {
+        ComposerSortField::Name => "composer.name",
+        ComposerSortField::WorkCount => "work_count",
+        ComposerSortField::LinkedReleaseCount => "linked_release_count",
+    };
+    let direction = match sort.direction {
+        SortDirection::Ascending => "ASC",
+        SortDirection::Descending => "DESC",
+    };
+    format!("{field} {direction}, composer.name ASC")
 }
 
 #[cfg(any(test, feature = "test-utils"))]
@@ -504,6 +720,69 @@ fn rfc3339_column(row: &Row, column: &str) -> coven::rusqlite::Result<DateTime<U
         })
 }
 
+fn metadata_source_column(row: &Row, column: &str) -> coven::rusqlite::Result<MetadataSource> {
+    let raw: String = row.get(column)?;
+    raw.parse::<MetadataSource>()
+        .map_err(|e| column_conversion_error(row, column, e))
+}
+
+fn row_to_aliased_artist(row: &Row, prefix: &str) -> coven::rusqlite::Result<DbArtist> {
+    let id_column = format!("{prefix}_id");
+    let name_column = format!("{prefix}_name");
+    let sort_name_column = format!("{prefix}_sort_name");
+    let discogs_id_column = format!("{prefix}_discogs_artist_id");
+    let musicbrainz_id_column = format!("{prefix}_musicbrainz_artist_id");
+    let created_at_column = format!("{prefix}_created_at");
+    Ok(DbArtist {
+        id: row.get(id_column.as_str())?,
+        name: row.get(name_column.as_str())?,
+        sort_name: row.get(sort_name_column.as_str())?,
+        discogs_artist_id: row.get(discogs_id_column.as_str())?,
+        musicbrainz_artist_id: row.get(musicbrainz_id_column.as_str())?,
+        created_at: rfc3339_column(row, &created_at_column)?,
+    })
+}
+
+fn row_to_aliased_album(row: &Row, prefix: &str) -> coven::rusqlite::Result<DbAlbum> {
+    let id_column = format!("{prefix}_id");
+    let title_column = format!("{prefix}_title");
+    let artist_id_column = format!("{prefix}_artist_id");
+    let year_column = format!("{prefix}_year");
+    let primary_release_id_column = format!("{prefix}_primary_release_id");
+    let is_compilation_column = format!("{prefix}_is_compilation");
+    let created_at_column = format!("{prefix}_created_at");
+    Ok(DbAlbum {
+        id: row.get(id_column.as_str())?,
+        title: row.get(title_column.as_str())?,
+        artist_id: row.get(artist_id_column.as_str())?,
+        year: row.get(year_column.as_str())?,
+        primary_release_id: row.get(primary_release_id_column.as_str())?,
+        is_compilation: row.get(is_compilation_column.as_str())?,
+        created_at: rfc3339_column(row, &created_at_column)?,
+    })
+}
+
+fn row_to_aliased_track(row: &Row, prefix: &str) -> coven::rusqlite::Result<DbTrack> {
+    let id_column = format!("{prefix}_id");
+    let release_id_column = format!("{prefix}_release_id");
+    let title_column = format!("{prefix}_title");
+    let side_column = format!("{prefix}_side");
+    let track_number_column = format!("{prefix}_track_number");
+    let duration_ms_column = format!("{prefix}_duration_ms");
+    let discogs_position_column = format!("{prefix}_discogs_position");
+    let created_at_column = format!("{prefix}_created_at");
+    Ok(DbTrack {
+        id: row.get(id_column.as_str())?,
+        release_id: row.get(release_id_column.as_str())?,
+        title: row.get(title_column.as_str())?,
+        side: row.get(side_column.as_str())?,
+        track_number: row.get(track_number_column.as_str())?,
+        duration_ms: row.get(duration_ms_column.as_str())?,
+        discogs_position: row.get(discogs_position_column.as_str())?,
+        created_at: rfc3339_column(row, &created_at_column)?,
+    })
+}
+
 fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
     let metadata_source: String = row.get("metadata_source")?;
     let metadata_source = metadata_source
@@ -773,6 +1052,208 @@ fn insert_track_artist_row(
             ta.position,
             reg,
             ta.created_at.to_rfc3339()
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+fn insert_work_row(conn: &Connection, work: &DbWork, reg: &str) -> Result<(), DbError> {
+    conn.execute(
+        r#"
+        INSERT OR IGNORE INTO works (
+            id, title, disambiguation, work_type, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        "#,
+        params![
+            work.id,
+            work.title,
+            work.disambiguation,
+            work.work_type,
+            reg,
+            work.created_at.to_rfc3339()
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+fn insert_work_artist_row(
+    conn: &Connection,
+    link: &DbWorkArtist,
+    reg: &str,
+) -> Result<(), DbError> {
+    conn.execute(
+        r#"
+        INSERT OR IGNORE INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        "#,
+        params![
+            link.id,
+            link.work_id,
+            link.artist_id,
+            link.position,
+            link.source.as_str(),
+            reg,
+            link.created_at.to_rfc3339()
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+fn insert_work_part_row(conn: &Connection, part: &DbWorkPart, reg: &str) -> Result<(), DbError> {
+    conn.execute(
+        r#"
+        INSERT OR IGNORE INTO work_parts (
+            id, parent_work_id, child_work_id, position, source, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        "#,
+        params![
+            part.id,
+            part.parent_work_id,
+            part.child_work_id,
+            part.position,
+            part.source.as_str(),
+            reg,
+            part.created_at.to_rfc3339()
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+fn insert_track_work_row(conn: &Connection, link: &DbTrackWork, reg: &str) -> Result<(), DbError> {
+    conn.execute(
+        r#"
+        INSERT INTO track_works (id, track_id, work_id, position, source, _updated_at, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        "#,
+        params![
+            link.id,
+            link.track_id,
+            link.work_id,
+            link.position,
+            link.source.as_str(),
+            reg,
+            link.created_at.to_rfc3339()
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+fn insert_release_artist_role_row(
+    conn: &Connection,
+    role: &DbReleaseArtistRole,
+    reg: &str,
+) -> Result<(), DbError> {
+    insert_artist_role_row(conn, ArtistRoleInsert::Release(role), reg)
+}
+
+fn insert_track_artist_role_row(
+    conn: &Connection,
+    role: &DbTrackArtistRole,
+    reg: &str,
+) -> Result<(), DbError> {
+    insert_artist_role_row(conn, ArtistRoleInsert::Track(role), reg)
+}
+
+enum ArtistRoleInsert<'a> {
+    Release(&'a DbReleaseArtistRole),
+    Track(&'a DbTrackArtistRole),
+}
+
+impl ArtistRoleInsert<'_> {
+    fn table(&self) -> &'static str {
+        match self {
+            Self::Release(_) => "release_artist_roles",
+            Self::Track(_) => "track_artist_roles",
+        }
+    }
+
+    fn target_column(&self) -> &'static str {
+        match self {
+            Self::Release(_) => "release_id",
+            Self::Track(_) => "track_id",
+        }
+    }
+
+    fn id(&self) -> &str {
+        match self {
+            Self::Release(role) => &role.id,
+            Self::Track(role) => &role.id,
+        }
+    }
+
+    fn target_id(&self) -> &str {
+        match self {
+            Self::Release(role) => &role.release_id,
+            Self::Track(role) => &role.track_id,
+        }
+    }
+
+    fn artist_id(&self) -> &str {
+        match self {
+            Self::Release(role) => &role.artist_id,
+            Self::Track(role) => &role.artist_id,
+        }
+    }
+
+    fn position(&self) -> i32 {
+        match self {
+            Self::Release(role) => role.position,
+            Self::Track(role) => role.position,
+        }
+    }
+
+    fn source(&self) -> MetadataSource {
+        match self {
+            Self::Release(role) => role.source,
+            Self::Track(role) => role.source,
+        }
+    }
+
+    fn source_credit(&self) -> &Option<String> {
+        match self {
+            Self::Release(role) => &role.source_credit,
+            Self::Track(role) => &role.source_credit,
+        }
+    }
+
+    fn created_at(&self) -> DateTime<Utc> {
+        match self {
+            Self::Release(role) => role.created_at,
+            Self::Track(role) => role.created_at,
+        }
+    }
+}
+
+fn insert_artist_role_row(
+    conn: &Connection,
+    row: ArtistRoleInsert<'_>,
+    reg: &str,
+) -> Result<(), DbError> {
+    let sql = format!(
+        r#"
+        INSERT INTO {} (
+            id, {}, artist_id, position, source, source_credit, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        "#,
+        row.table(),
+        row.target_column()
+    );
+    conn.execute(
+        &sql,
+        params![
+            row.id(),
+            row.target_id(),
+            row.artist_id(),
+            row.position(),
+            row.source().as_str(),
+            row.source_credit(),
+            reg,
+            row.created_at().to_rfc3339()
         ],
     )
     .map(|_| ())

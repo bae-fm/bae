@@ -89,16 +89,40 @@ pub struct BridgeLibrary {
     pub is_active: bool,
 }
 
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeLibraryImageType {
+    Cover,
+    Artist,
+}
+
+impl From<bae_core::db::LibraryImageType> for BridgeLibraryImageType {
+    fn from(value: bae_core::db::LibraryImageType) -> Self {
+        match value {
+            bae_core::db::LibraryImageType::Cover => Self::Cover,
+            bae_core::db::LibraryImageType::Artist => Self::Artist,
+        }
+    }
+}
+
+impl From<BridgeLibraryImageType> for bae_core::db::LibraryImageType {
+    fn from(value: BridgeLibraryImageType) -> Self {
+        match value {
+            BridgeLibraryImageType::Cover => Self::Cover,
+            BridgeLibraryImageType::Artist => Self::Artist,
+        }
+    }
+}
+
 /// A reference to a host-provided library image (a cover or an artist image):
-/// the image id plus a content version. The UI fetches the bytes by id
-/// (`fetch_image_bytes`) and caches them under `(id, version)`, so a grid of
-/// covers renders without re-crossing the bridge on scroll yet reloads when a
-/// cover is replaced. `version` is the image row's `_updated_at`, which moves
-/// when the bytes change. Mirrors `bae_core::album_detail::ImageRef`.
+/// the image kind, subject id, and content version. The UI passes the whole ref
+/// to `fetch_image_bytes`, so core dispatches to the known image namespace.
+/// `version` is the image row's `_updated_at`, which moves when the bytes
+/// change. Mirrors `bae_core::album_detail::ImageRef`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImageRef {
     pub id: String,
     pub version: String,
+    pub image_type: BridgeLibraryImageType,
 }
 
 impl BridgeImageRef {
@@ -106,6 +130,7 @@ impl BridgeImageRef {
         Self {
             id: r.id,
             version: r.version,
+            image_type: r.image_type.into(),
         }
     }
 
@@ -113,6 +138,7 @@ impl BridgeImageRef {
         bae_core::album_detail::ImageRef {
             id: self.id,
             version: self.version,
+            image_type: self.image_type.into(),
         }
     }
 }
@@ -1968,6 +1994,8 @@ pub struct BridgeSaveSyncConfig {
 pub struct BridgeSearchResults {
     pub albums: Vec<BridgeAlbumSearchResult>,
     pub tracks: Vec<BridgeTrackSearchResult>,
+    pub composers: Vec<BridgeComposerSummary>,
+    pub works: Vec<BridgeWorkSummary>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -1989,6 +2017,98 @@ pub struct BridgeTrackSearchResult {
     pub album_id: String,
     pub album_title: String,
     pub artist_name: String,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeComposerSummary {
+    pub artist_id: String,
+    pub name: String,
+    pub sort_name: Option<String>,
+    pub work_count: i64,
+    pub linked_release_count: i64,
+    pub unlinked_credit_count: i64,
+    pub image: Option<BridgeImageRef>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeWorkSummary {
+    pub work_id: String,
+    pub title: String,
+    pub disambiguation: Option<String>,
+    pub work_type: Option<String>,
+    pub parent_work_id: Option<String>,
+    pub composer_names: Option<String>,
+    pub linked_release_count: i64,
+    pub representative_release_id: Option<String>,
+    pub representative_cover: Option<BridgeImageRef>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseRoleSummary {
+    pub release_id: String,
+    pub album_id: String,
+    pub album_title: String,
+    pub source: BridgeMetadataSource,
+    pub source_credit: Option<String>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeTrackRoleSummary {
+    pub track_id: String,
+    pub track_title: String,
+    pub release_id: String,
+    pub album_id: String,
+    pub album_title: String,
+    pub artist_id: String,
+    pub artist_name: String,
+    pub source: BridgeMetadataSource,
+    pub source_credit: Option<String>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeWorkTrackSummary {
+    pub track_id: String,
+    pub track_title: String,
+    pub release_id: String,
+    pub album_id: String,
+    pub album_title: String,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeComposerDetail {
+    pub composer: BridgeComposerSummary,
+    pub work_groups: Vec<BridgeComposerWorkGroup>,
+    pub unlinked_release_roles: Vec<BridgeReleaseRoleSummary>,
+    pub unlinked_track_roles: Vec<BridgeTrackRoleSummary>,
+    pub default_work_id: Option<String>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeComposerWorkGroup {
+    pub id: String,
+    pub parent: Option<BridgeWorkSummary>,
+    pub works: Vec<BridgeWorkSummary>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeWorkDetail {
+    pub work: BridgeWorkSummary,
+    pub child_works: Vec<BridgeWorkSummary>,
+    pub releases: Vec<BridgeReleaseSummary>,
+    pub tracks: Vec<BridgeWorkTrackSummary>,
+}
+
+#[derive(Debug, Clone, Copy, uniffi::Enum)]
+pub enum BridgeComposerSortField {
+    Name,
+    WorkCount,
+    LinkedReleaseCount,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeComposerSortCriterion {
+    pub field: BridgeComposerSortField,
+    pub direction: BridgeSortDirection,
 }
 
 /// One row on the Storage Manager: a release paired with its parent
@@ -2649,6 +2769,28 @@ pub(crate) fn bridge_storage_filter_to_core(
     }
 }
 
+pub(crate) fn bridge_composer_sort_to_core(
+    c: &BridgeComposerSortCriterion,
+) -> bae_core::db::ComposerSortCriterion {
+    bae_core::db::ComposerSortCriterion {
+        field: match c.field {
+            BridgeComposerSortField::Name => bae_core::db::ComposerSortField::Name,
+            BridgeComposerSortField::WorkCount => bae_core::db::ComposerSortField::WorkCount,
+            BridgeComposerSortField::LinkedReleaseCount => {
+                bae_core::db::ComposerSortField::LinkedReleaseCount
+            }
+        },
+        direction: bridge_sort_direction_to_core(&c.direction),
+    }
+}
+
+fn bridge_sort_direction_to_core(direction: &BridgeSortDirection) -> bae_core::db::SortDirection {
+    match direction {
+        BridgeSortDirection::Ascending => bae_core::db::SortDirection::Ascending,
+        BridgeSortDirection::Descending => bae_core::db::SortDirection::Descending,
+    }
+}
+
 pub(crate) fn bridge_sort_to_core(c: &BridgeSortCriterion) -> bae_core::db::AlbumSortCriterion {
     bae_core::db::AlbumSortCriterion {
         field: match c.field {
@@ -2657,10 +2799,7 @@ pub(crate) fn bridge_sort_to_core(c: &BridgeSortCriterion) -> bae_core::db::Albu
             BridgeSortField::Year => bae_core::db::AlbumSortField::Year,
             BridgeSortField::DateAdded => bae_core::db::AlbumSortField::DateAdded,
         },
-        direction: match c.direction {
-            BridgeSortDirection::Ascending => bae_core::db::SortDirection::Ascending,
-            BridgeSortDirection::Descending => bae_core::db::SortDirection::Descending,
-        },
+        direction: bridge_sort_direction_to_core(&c.direction),
     }
 }
 

@@ -7,10 +7,12 @@
 
 use std::collections::HashMap;
 
-use crate::db::DbImport;
-use crate::import::handle::{fetch_artist_images, remap_album_artists, remap_track_artists};
-
 use super::{apply_identity_choice, apply_user_edit_to_seed, ImportService, PreparedMetadata};
+use crate::db::DbImport;
+use crate::import::handle::{
+    fetch_artist_images, remap_album_artists, remap_artist_links, remap_track_artists,
+};
+use crate::import::ParsedWorkGraph;
 
 impl ImportService {
     /// Reconcile the prepared release against existing library state,
@@ -72,6 +74,9 @@ impl ImportService {
             mut artists,
             mut album_artists,
             mut track_artists,
+            work_graph,
+            release_artist_roles,
+            track_artist_roles,
             identities: parsed_identities,
         } = parsed;
 
@@ -168,6 +173,27 @@ impl ImportService {
         } else {
             vec![]
         };
+        let remapped_work_artists = remap_artist_links(
+            &work_graph.work_artists,
+            &artist_id_map,
+            "work artist",
+            |link| &link.artist_id,
+            |link, artist_id| link.artist_id = artist_id,
+        )?;
+        let remapped_release_artist_roles = remap_artist_links(
+            &release_artist_roles,
+            &artist_id_map,
+            "release artist role",
+            |role| &role.artist_id,
+            |role, artist_id| role.artist_id = artist_id,
+        )?;
+        let remapped_track_artist_roles = remap_artist_links(
+            &track_artist_roles,
+            &artist_id_map,
+            "track artist role",
+            |role| &role.artist_id,
+            |role, artist_id| role.artist_id = artist_id,
+        )?;
 
         let discogs_client = library_manager
             .discogs_client()
@@ -184,6 +210,14 @@ impl ImportService {
             existing_album_id,
             remapped_track_artists,
             remapped_album_artists,
+            work_graph: ParsedWorkGraph {
+                works: work_graph.works,
+                work_artists: remapped_work_artists,
+                work_parts: work_graph.work_parts,
+                track_works: work_graph.track_works,
+            },
+            remapped_release_artist_roles,
+            remapped_track_artist_roles,
             identities,
             album_title,
             artist_name,

@@ -152,7 +152,10 @@ fn mb_release_json(
                     title: Some((*t).to_string()),
                     length: None,
                     recording: Some(MbRecording {
+                        id: None,
                         title: Some((*t).to_string()),
+                        artist_credit: vec![],
+                        relations: vec![],
                     }),
                     artist_credit: vec![],
                 })

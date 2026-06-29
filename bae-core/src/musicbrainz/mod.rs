@@ -309,7 +309,7 @@ pub async fn lookup_release_by_id(
 
     info!("MusicBrainz: Looking up release ID '{}'", release_id);
     let url = format!(
-        "https://musicbrainz.org/ws/2/release/{}?inc=recordings+artist-credits+release-groups+release-group-rels+url-rels+labels+media",
+        "https://musicbrainz.org/ws/2/release/{}?inc=recordings+artist-credits+release-groups+release-group-rels+url-rels+labels+media+recording-level-rels+work-level-rels+work-rels+artist-rels",
         release_id,
     );
     debug!("MusicBrainz API request: {}", url);
@@ -690,7 +690,7 @@ pub async fn search_releases_with_params(
     info!("   Query: {}", query);
     let url = "https://musicbrainz.org/ws/2/release";
     debug!(
-        "MusicBrainz API request: {}?query={}&limit=25&inc=recordings+artist-credits+release-groups+labels+media+url-rels",
+        "MusicBrainz API request: {}?query={}&limit=25&inc=recordings+artist-credits+release-groups+labels+media+url-rels+recording-level-rels+work-level-rels+work-rels+artist-rels",
         url, query
     );
 
@@ -703,7 +703,7 @@ pub async fn search_releases_with_params(
             ("limit", "25"),
             (
                 "inc",
-                "recordings+artist-credits+release-groups+labels+media+url-rels",
+                "recordings+artist-credits+release-groups+labels+media+url-rels+recording-level-rels+work-level-rels+work-rels+artist-rels",
             ),
         ])
         .header("Accept", "application/json")

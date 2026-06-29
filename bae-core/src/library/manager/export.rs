@@ -60,7 +60,10 @@ impl LibraryManager {
         let year = meta.release.pressing.year.or(album.year);
 
         let cover_image_bytes = match album.primary_release_id.as_deref() {
-            Some(rid) => self.read_image_blob(rid).await?,
+            Some(rid) => match self.cover_ref(rid).await? {
+                Some(image) => self.read_image_blob(&image).await?,
+                None => None,
+            },
             None => None,
         };
 

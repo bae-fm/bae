@@ -122,6 +122,9 @@ struct StorageManagerView: View {
                     _ = libraryStore.internReleaseSummary(row.release)
                 }
             },
+            onError: { [uiStore] error in
+                uiStore.showError(error)
+            },
         )
         Task {
             await newList.loadInitial()

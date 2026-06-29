@@ -140,5 +140,5 @@ internal class FakeAppHandle(
 
     override fun triggerSync() {}
 
-    override suspend fun fetchImageBytes(imageId: String): ByteArray? = imageBytes[imageId]
+    override suspend fun fetchCoverImageBytes(releaseId: String): ByteArray? = imageBytes[releaseId]
 }

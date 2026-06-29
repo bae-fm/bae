@@ -113,7 +113,7 @@ mod readable_cloud_path_tests {
 
     #[test]
     fn artist_key_is_artist_id() {
-        // Keyed by the artist id alone — no DB lookup.
+        // Keyed by the artist id alone -- no DB lookup.
         let key = resolve_artist_cloud_path("artist-1", &ContentType::Png);
         assert_eq!(key, "artist-1/artist.png");
     }
@@ -261,6 +261,598 @@ mod row_mapper_error_tests {
 }
 
 #[cfg(test)]
+mod outbox_items_tests {
+    use super::super::*;
+    use coven::SystemClock;
+
+    async fn empty_db() -> (Database, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        (db, tmp)
+    }
+
+    /// `cancel` rows are coven tombstone retries and render nothing in the
+    /// processing snapshot.
+    #[tokio::test]
+    async fn outbox_items_omits_cancel_operation() {
+        let (db, _tmp) = empty_db().await;
+        db.add_cloud_outbox_delete("cloud-key").await.unwrap();
+        db.call(|conn| {
+            conn.execute(
+                "UPDATE cloud_outbox SET operation = 'cancel' WHERE cloud_key = 'cloud-key'",
+                [],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+
+        let rows = db.outbox_items().await.unwrap();
+        assert!(rows.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod composer_mode_tests {
+    use super::super::*;
+    use coven::SystemClock;
+
+    async fn seeded_db() -> (Database, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+                VALUES
+                    ('artist-album', 'Album Artist A', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('artist-composer', 'Displayed Composer A', 'Hidden Composer Sort A', NULL, 'mb-artist-composer-a', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES ('album-a', 'Album Title A', 'artist-album', 2026, 'release-a', 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, release_name, year, disc_id, metadata_source, metadata_source_release_id, format, label, catalog_number, country, barcode, remote, source_folder_name, content_hash, album_loudness_lufs, album_peak_linear, _updated_at, created_at)
+                VALUES ('release-a', 'album-a', NULL, 2026, NULL, 'musicbrainz', 'mb-release-a', 'CD', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
+                VALUES ('track-a', 'release-a', 'Track Title A', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO works (id, title, disambiguation, work_type, _updated_at, created_at)
+                VALUES
+                    ('work-parent-a', 'Parent Work A', NULL, 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-child-a', 'Displayed Work A', NULL, 'part', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
+                VALUES ('work-artist-a', 'work-child-a', 'artist-composer', 0, 'musicbrainz', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO work_parts (id, parent_work_id, child_work_id, position, source, _updated_at, created_at)
+                VALUES ('work-part-a', 'work-parent-a', 'work-child-a', 0, 'musicbrainz', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO track_works (id, track_id, work_id, position, source, _updated_at, created_at)
+                VALUES ('track-work-a', 'track-a', 'work-child-a', 0, 'musicbrainz', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+        (db, tmp)
+    }
+
+    #[tokio::test]
+    async fn finalize_import_persists_composer_work_and_role_rows() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+
+        let album_artist = DbArtist {
+            id: "artist-album".to_string(),
+            name: "Album Artist A".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: now,
+        };
+        let composer = DbArtist {
+            id: "artist-composer".to_string(),
+            name: "Composer Artist A".to_string(),
+            sort_name: Some("Composer Artist A".to_string()),
+            discogs_artist_id: None,
+            musicbrainz_artist_id: Some("mb-artist-composer-a".to_string()),
+            created_at: now,
+        };
+        db.insert_artist(&album_artist).await.unwrap();
+        db.insert_artist(&composer).await.unwrap();
+
+        let album = DbAlbum {
+            id: "album-a".to_string(),
+            title: "Album Title A".to_string(),
+            artist_id: album_artist.id.clone(),
+            year: Some(2026),
+            primary_release_id: None,
+            is_compilation: false,
+            created_at: now,
+        };
+        let release = DbRelease {
+            id: "release-a".to_string(),
+            album_id: album.id.clone(),
+            release_name: None,
+            pressing: Pressing {
+                year: Some(2026),
+                format: Some("CD".to_string()),
+                label: None,
+                catalog_number: None,
+                country: None,
+                barcode: None,
+            },
+            disc_id: None,
+            metadata_source: ReleaseMetadataSource::MusicBrainz,
+            metadata_source_release_id: Some("mb-release-a".to_string()),
+            remote: true,
+            source_folder_name: None,
+            content_hash: None,
+            album_loudness_lufs: None,
+            album_peak_linear: None,
+            created_at: now,
+        };
+        let track = DbTrack {
+            id: "track-a".to_string(),
+            release_id: release.id.clone(),
+            title: "Track Title A".to_string(),
+            side: 1,
+            track_number: Some(1),
+            duration_ms: Some(1000),
+            discogs_position: None,
+            created_at: now,
+        };
+        let track_files = vec![crate::import::TrackFile::Standalone {
+            db_track: track,
+            file_path: tmp.path().join("Track.flac"),
+        }];
+        let works = vec![DbWork::new(
+            "work-a",
+            "Work Title A",
+            None,
+            Some("work".to_string()),
+            now,
+        )];
+        let work_artists = vec![DbWorkArtist::new(
+            "work-a",
+            &composer.id,
+            0,
+            crate::import::MetadataSource::MusicBrainz,
+            "work-artist-a".to_string(),
+            now,
+        )];
+        let track_works = vec![DbTrackWork::new(
+            "track-a",
+            "work-a",
+            0,
+            crate::import::MetadataSource::MusicBrainz,
+            "track-work-a".to_string(),
+            now,
+        )];
+        let release_roles = vec![DbReleaseArtistRole::new(
+            &release.id,
+            &composer.id,
+            0,
+            crate::import::MetadataSource::Discogs,
+            Some("Conducted By".to_string()),
+            "release-role-a".to_string(),
+            now,
+        )];
+        let track_roles = vec![DbTrackArtistRole::new(
+            "track-a",
+            &composer.id,
+            0,
+            crate::import::MetadataSource::MusicBrainz,
+            Some("arranger".to_string()),
+            "track-role-a".to_string(),
+            now,
+        )];
+
+        db.finalize_import_atomic(
+            Some(&album),
+            &release,
+            &track_files,
+            &[],
+            &[],
+            &[],
+            &works,
+            &work_artists,
+            &[],
+            &track_works,
+            &release_roles,
+            &track_roles,
+            &[],
+            &[],
+            None,
+            Some((&album.id, &release.id)),
+            "import-a",
+            ImportOperationStatus::Complete,
+            &[],
+            tmp.path().to_str().unwrap(),
+            crate::config::HomeStorage::Opaque,
+        )
+        .await
+        .unwrap();
+
+        let composer_detail = db
+            .find_composer_detail(&composer.id)
+            .await
+            .unwrap()
+            .expect("composer detail");
+        assert_eq!(composer_detail.work_groups.len(), 1);
+        assert_eq!(composer_detail.work_groups[0].works[0].work.id, "work-a");
+        let release_role_count = db
+            .call(|conn| {
+                conn.query_row(
+                    "SELECT COUNT(*) FROM release_artist_roles WHERE id = 'release-role-a'",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )
+                .map_err(DbError::from)
+            })
+            .await
+            .unwrap();
+        assert_eq!(release_role_count, 1);
+
+        let work_detail = db
+            .find_work_detail("work-a")
+            .await
+            .unwrap()
+            .expect("work detail");
+        assert_eq!(work_detail.tracks.len(), 1);
+        let track_role_count = db
+            .call(|conn| {
+                conn.query_row(
+                    "SELECT COUNT(*) FROM track_artist_roles WHERE id = 'track-role-a'",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )
+                .map_err(DbError::from)
+            })
+            .await
+            .unwrap();
+        assert_eq!(track_role_count, 1);
+    }
+
+    #[tokio::test]
+    async fn fail_import_and_delete_release_removes_finalized_import_state_atomically() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+
+        db.insert_import(&DbImport::new(
+            "import-a",
+            "Album Title A",
+            "Artist Name A",
+            tmp.path().to_str().unwrap(),
+            now,
+        ))
+        .await
+        .unwrap();
+
+        let artist = DbArtist {
+            id: "artist-a".to_string(),
+            name: "Artist Name A".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: now,
+        };
+        db.insert_artist(&artist).await.unwrap();
+
+        let album = DbAlbum {
+            id: "album-a".to_string(),
+            title: "Album Title A".to_string(),
+            artist_id: artist.id.clone(),
+            year: Some(2026),
+            primary_release_id: None,
+            is_compilation: false,
+            created_at: now,
+        };
+        let release = DbRelease {
+            id: "release-a".to_string(),
+            album_id: album.id.clone(),
+            release_name: None,
+            pressing: Pressing {
+                year: Some(2026),
+                format: Some("FLAC".to_string()),
+                label: None,
+                catalog_number: None,
+                country: None,
+                barcode: None,
+            },
+            disc_id: None,
+            metadata_source: ReleaseMetadataSource::FileTags,
+            metadata_source_release_id: None,
+            remote: false,
+            source_folder_name: None,
+            content_hash: None,
+            album_loudness_lufs: None,
+            album_peak_linear: None,
+            created_at: now,
+        };
+        let track = DbTrack {
+            id: "track-a".to_string(),
+            release_id: release.id.clone(),
+            title: "Track Title A".to_string(),
+            side: 1,
+            track_number: Some(1),
+            duration_ms: Some(1000),
+            discogs_position: None,
+            created_at: now,
+        };
+        let file = DbFile::new(
+            &release.id,
+            "Track Title A.flac",
+            1024,
+            ContentType::Flac,
+            "file-a".to_string(),
+            now,
+        );
+        let track_files = vec![crate::import::TrackFile::Standalone {
+            db_track: track,
+            file_path: tmp.path().join("Track Title A.flac"),
+        }];
+
+        db.finalize_import_atomic(
+            Some(&album),
+            &release,
+            &track_files,
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[file],
+            &[],
+            None,
+            Some((&album.id, &release.id)),
+            "import-a",
+            ImportOperationStatus::Complete,
+            &[],
+            tmp.path().to_str().unwrap(),
+            crate::config::HomeStorage::Opaque,
+        )
+        .await
+        .unwrap();
+        assert!(db.external_blob("file-a").await.unwrap().is_some());
+
+        db.fail_import_and_delete_release("import-a", "release-a", "remote upload failed")
+            .await
+            .unwrap();
+
+        assert!(db.find_release_by_id("release-a").await.unwrap().is_none());
+        assert!(db.find_album_by_id("album-a").await.unwrap().is_none());
+        assert!(db.external_blob("file-a").await.unwrap().is_none());
+        let import = db
+            .find_import_by_id("import-a")
+            .await
+            .unwrap()
+            .expect("import remains visible as failed");
+        assert_eq!(import.status, ImportOperationStatus::Failed);
+        assert!(import.release_id.is_none());
+        assert_eq!(
+            import.error_message.as_deref(),
+            Some("remote upload failed")
+        );
+    }
+
+    #[tokio::test]
+    async fn complete_import_for_release_marks_active_release_import_complete() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+
+        db.insert_import(&DbImport::new(
+            "import-a",
+            "Album Title A",
+            "Artist Name A",
+            tmp.path().to_str().unwrap(),
+            now,
+        ))
+        .await
+        .unwrap();
+
+        let artist = DbArtist {
+            id: "artist-a".to_string(),
+            name: "Artist Name A".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: now,
+        };
+        db.insert_artist(&artist).await.unwrap();
+
+        let album = DbAlbum {
+            id: "album-a".to_string(),
+            title: "Album Title A".to_string(),
+            artist_id: artist.id.clone(),
+            year: Some(2026),
+            primary_release_id: None,
+            is_compilation: false,
+            created_at: now,
+        };
+        let release = DbRelease {
+            id: "release-a".to_string(),
+            album_id: album.id.clone(),
+            release_name: None,
+            pressing: Pressing {
+                year: Some(2026),
+                format: Some("FLAC".to_string()),
+                label: None,
+                catalog_number: None,
+                country: None,
+                barcode: None,
+            },
+            disc_id: None,
+            metadata_source: ReleaseMetadataSource::FileTags,
+            metadata_source_release_id: None,
+            remote: false,
+            source_folder_name: None,
+            content_hash: None,
+            album_loudness_lufs: None,
+            album_peak_linear: None,
+            created_at: now,
+        };
+        let track = DbTrack {
+            id: "track-a".to_string(),
+            release_id: release.id.clone(),
+            title: "Track Title A".to_string(),
+            side: 1,
+            track_number: Some(1),
+            duration_ms: Some(1000),
+            discogs_position: None,
+            created_at: now,
+        };
+        let file = DbFile::new(
+            &release.id,
+            "Track Title A.flac",
+            1024,
+            ContentType::Flac,
+            "file-a".to_string(),
+            now,
+        );
+        let track_files = vec![crate::import::TrackFile::Standalone {
+            db_track: track,
+            file_path: tmp.path().join("Track Title A.flac"),
+        }];
+
+        db.finalize_import_atomic(
+            Some(&album),
+            &release,
+            &track_files,
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[file],
+            &[],
+            None,
+            Some((&album.id, &release.id)),
+            "import-a",
+            ImportOperationStatus::Importing,
+            &[],
+            tmp.path().to_str().unwrap(),
+            crate::config::HomeStorage::Opaque,
+        )
+        .await
+        .unwrap();
+
+        db.complete_import_for_release("release-a").await.unwrap();
+
+        let import = db
+            .find_import_by_id("import-a")
+            .await
+            .unwrap()
+            .expect("import remains linked to release");
+        assert_eq!(import.status, ImportOperationStatus::Complete);
+        assert_eq!(import.release_id.as_deref(), Some("release-a"));
+    }
+
+    #[tokio::test]
+    async fn search_library_matches_composer_and_work_sort_names() {
+        let (db, _tmp) = seeded_db().await;
+
+        let composer_results = db.search_library("Hidden Composer", 10).await.unwrap();
+        assert_eq!(composer_results.composers.len(), 1);
+        assert_eq!(composer_results.composers[0].artist.id, "artist-composer");
+
+        let work_results = db.search_library("Displayed Work", 10).await.unwrap();
+        assert_eq!(work_results.works.len(), 1);
+        assert_eq!(work_results.works[0].work.id, "work-child-a");
+        assert_eq!(
+            work_results.works[0].parent_work_id.as_deref(),
+            Some("work-parent-a")
+        );
+        assert_eq!(
+            work_results.works[0].representative_release_id.as_deref(),
+            Some("release-a")
+        );
+    }
+
+    #[tokio::test]
+    async fn composer_detail_carries_work_parent_and_representative_release() {
+        let (db, _tmp) = seeded_db().await;
+
+        let detail = db
+            .find_composer_detail("artist-composer")
+            .await
+            .unwrap()
+            .expect("composer detail");
+
+        assert_eq!(detail.work_groups.len(), 1);
+        let group = &detail.work_groups[0];
+        assert_eq!(
+            group.parent.as_ref().map(|work| work.work.id.as_str()),
+            Some("work-parent-a")
+        );
+        assert_eq!(group.works.len(), 1);
+        assert_eq!(group.works[0].work.id, "work-child-a");
+        assert_eq!(
+            group.works[0].parent_work_id.as_deref(),
+            Some("work-parent-a")
+        );
+        assert_eq!(
+            group.works[0].representative_release_id.as_deref(),
+            Some("release-a")
+        );
+    }
+
+    #[tokio::test]
+    async fn work_detail_lists_child_works_with_their_representative_release() {
+        let (db, _tmp) = seeded_db().await;
+
+        let detail = db
+            .find_work_detail("work-parent-a")
+            .await
+            .unwrap()
+            .expect("work detail");
+
+        assert_eq!(detail.child_works.len(), 1);
+        assert_eq!(detail.child_works[0].work.id, "work-child-a");
+        assert_eq!(
+            detail.child_works[0].representative_release_id.as_deref(),
+            Some("release-a")
+        );
+    }
+}
+
+#[cfg(test)]
 mod playback_state_load_tests {
     use super::super::*;
     use coven::SystemClock;
@@ -281,7 +873,7 @@ mod playback_state_load_tests {
     async fn mismatched_source_and_cursor_discards_the_cache() {
         let (db, _tmp) = empty_db().await;
 
-        // Write a row by hand with a present source but a NULL cursor —
+        // Write a row by hand with a present source but a NULL cursor --
         // `save_playback_state` never produces this, so we insert it directly.
         db.call(|conn| {
             conn.execute(

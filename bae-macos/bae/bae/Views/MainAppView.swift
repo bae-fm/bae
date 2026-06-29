@@ -96,6 +96,8 @@ struct MainAppView: View {
                     SearchView(
                         results: uiStore.searchResults,
                         onSelectAlbum: selectAlbum,
+                        onSelectComposer: selectComposer,
+                        onSelectWork: selectWork,
                     )
                     .frame(width: 400, height: 350, alignment: .topTrailing)
                     .position(x: rect.maxX - 200, y: rect.maxY + 180)
@@ -112,11 +114,25 @@ struct MainAppView: View {
     // MARK: - Search selection
 
     private func selectAlbum(_ albumId: String) {
+        closeSearchPopover()
+        uiStore.selectAlbum(albumId)
+    }
+
+    private func selectComposer(_ artistId: String) {
+        closeSearchPopover()
+        uiStore.navigateToComposer(artistId)
+    }
+
+    private func selectWork(_ workId: String) {
+        closeSearchPopover()
+        uiStore.navigateToWork(workId)
+    }
+
+    private func closeSearchPopover() {
         uiStore.showSearchPopover = false
         searchText = ""
         NSApp.keyWindow?.makeFirstResponder(nil)
         uiStore.searchResults = nil
-        uiStore.selectAlbum(albumId)
     }
 
     // MARK: - Queue drop handling

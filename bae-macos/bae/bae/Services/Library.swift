@@ -11,6 +11,15 @@ final class Library: Sendable, Observable {
             _ sortCriteria: [BridgeSortCriterion], _ offset: UInt64,
             _ limit: UInt64
         ) throws -> [BridgeAlbum]
+    let getComposerCount: @Sendable () throws -> UInt64
+    let getComposerPage:
+        @Sendable (
+            _ sortCriterion: BridgeComposerSortCriterion, _ offset: UInt64,
+            _ limit: UInt64
+        ) throws -> [BridgeComposerSummary]
+    let getComposerDetail:
+        @Sendable (_ artistId: String) throws -> BridgeComposerDetail?
+    let getWorkDetail: @Sendable (_ workId: String) throws -> BridgeWorkDetail?
     let searchLibrary:
         @Sendable (_ query: String) async throws -> BridgeSearchResults
     let storageCount: @Sendable (_ filter: BridgeStorageFilter) throws -> UInt64
@@ -33,9 +42,27 @@ final class Library: Sendable, Observable {
         getAlbumPage:
             @escaping @Sendable ([BridgeSortCriterion], UInt64, UInt64) throws
             -> [BridgeAlbum] = { _, _, _ in [] },
+        getComposerCount: @escaping @Sendable () throws -> UInt64 = {
+            throw StubError.notImplemented
+        },
+        getComposerPage:
+            @escaping @Sendable (BridgeComposerSortCriterion, UInt64, UInt64)
+            throws
+            -> [BridgeComposerSummary] = { _, _, _ in
+                throw StubError.notImplemented
+            },
+        getComposerDetail:
+            @escaping @Sendable (String) throws -> BridgeComposerDetail? = {
+                _ in throw StubError.notImplemented
+            },
+        getWorkDetail:
+            @escaping @Sendable (String) throws -> BridgeWorkDetail? = { _ in
+                throw StubError.notImplemented
+            },
         searchLibrary:
             @escaping @Sendable (String) async throws -> BridgeSearchResults = {
-                _ in BridgeSearchResults(albums: [], tracks: [])
+                _ in
+                throw StubError.notImplemented
             },
         storageCount:
             @escaping @Sendable (BridgeStorageFilter) throws -> UInt64 = { _ in
@@ -61,6 +88,10 @@ final class Library: Sendable, Observable {
     ) {
         self.getAlbumCount = getAlbumCount
         self.getAlbumPage = getAlbumPage
+        self.getComposerCount = getComposerCount
+        self.getComposerPage = getComposerPage
+        self.getComposerDetail = getComposerDetail
+        self.getWorkDetail = getWorkDetail
         self.searchLibrary = searchLibrary
         self.storageCount = storageCount
         self.storagePage = storagePage
@@ -85,6 +116,18 @@ final class Library: Sendable, Observable {
                         limit: $2
                     )
                 },
+                getComposerCount: { try handle.getComposerCount() },
+                getComposerPage: {
+                    try handle.getComposerPage(
+                        sortCriterion: $0,
+                        offset: $1,
+                        limit: $2
+                    )
+                },
+                getComposerDetail: {
+                    try handle.getComposerDetail(artistId: $0)
+                },
+                getWorkDetail: { try handle.getWorkDetail(workId: $0) },
                 searchLibrary: { try await handle.searchLibrary(query: $0) },
                 storageCount: { try handle.storageCount(filter: $0) },
                 storagePage: {

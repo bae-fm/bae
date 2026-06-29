@@ -336,15 +336,7 @@ impl Database {
             let mut rows = stmt.query(params![limit as i64, offset as i64])?;
             let mut storage_rows = Vec::new();
             while let Some(row) = rows.next()? {
-                let release = DbReleaseSummary {
-                    id: row.get("release_id")?,
-                    album_id: row.get("album_id")?,
-                    format: row.get("release_format")?,
-                    remote: row.get("remote")?,
-                    any_file_id: row.get("any_file_id")?,
-                    file_count: row.get("file_count")?,
-                    total_size: row.get("total_size")?,
-                };
+                let release = row_to_release_summary(row)?;
 
                 let release_ids_json: String = row.get("release_ids_json")?;
                 let release_ids: Vec<String> =
@@ -452,11 +444,18 @@ impl Database {
         metadata: &[DbReleaseMetadata],
         track_artists: &[DbTrackArtist],
         album_artists: &[DbAlbumArtist],
+        works: &[DbWork],
+        work_artists: &[DbWorkArtist],
+        work_parts: &[DbWorkPart],
+        track_works: &[DbTrackWork],
+        release_artist_roles: &[DbReleaseArtistRole],
+        track_artist_roles: &[DbTrackArtistRole],
         files: &[DbFile],
         audio_formats: &[DbAudioFormat],
         library_image: Option<(&DbLibraryImage, &[u8])>,
         primary_release_id: Option<(&str, &str)>, // (album_id, release_id)
         import_id: &str,
+        import_status: ImportOperationStatus,
         identities: &[crate::import::ReleaseIdentity],
         // The in-place folder this import's files live in on this device. Every
         // import lands LOCAL, so each file is registered as a coven user-provided
@@ -477,11 +476,18 @@ impl Database {
         let metadata = metadata.to_vec();
         let track_artists = track_artists.to_vec();
         let album_artists = album_artists.to_vec();
+        let works = works.to_vec();
+        let work_artists = work_artists.to_vec();
+        let work_parts = work_parts.to_vec();
+        let track_works = track_works.to_vec();
+        let release_artist_roles = release_artist_roles.to_vec();
+        let track_artist_roles = track_artist_roles.to_vec();
         let files = files.to_vec();
         let audio_formats = audio_formats.to_vec();
         let library_image = library_image.map(|(image, bytes)| (image.clone(), bytes.to_vec()));
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let import_id = import_id.to_string();
+        let import_status = import_status.as_str().to_string();
         let identities = identities.to_vec();
         let local_path = local_path.to_string();
 
@@ -493,7 +499,7 @@ impl Database {
             .write(move |w| {
                 if let Some((image, bytes)) = &library_image {
                     w.put_blob(
-                        image_namespace(&image.image_type),
+                        image.image_type.namespace(),
                         image.id.clone(),
                         bytes.clone(),
                     );
@@ -527,24 +533,49 @@ impl Database {
                         insert_release_identity_row(tx, &release.id, identity, &reg, &now)?;
                     }
 
-                    // 3. Insert tracks. DbTracks live inside `tracks_to_files`;
+                    // 3. Insert globally identified works before their links.
+                    for work in &works {
+                        insert_work_row(tx, work, &reg)?;
+                    }
+
+                    for work_artist in &work_artists {
+                        insert_work_artist_row(tx, work_artist, &reg)?;
+                    }
+
+                    for work_part in &work_parts {
+                        insert_work_part_row(tx, work_part, &reg)?;
+                    }
+
+                    for role in &release_artist_roles {
+                        insert_release_artist_role_row(tx, role, &reg)?;
+                    }
+
+                    // 4. Insert tracks. DbTracks live inside `tracks_to_files`;
                     //    their `duration_ms` was populated by the mapper from
                     //    the CUE sheet or a standalone-file probe.
                     for track in &tracks {
                         insert_track_row(tx, track, &reg)?;
                     }
 
-                    // 4. Insert track artists
+                    // 5. Insert track artists and work/role links.
                     for ta in &track_artists {
                         insert_track_artist_row(tx, ta, &reg)?;
                     }
 
-                    // 5. Insert release metadata
+                    for track_work in &track_works {
+                        insert_track_work_row(tx, track_work, &reg)?;
+                    }
+
+                    for role in &track_artist_roles {
+                        insert_track_artist_role_row(tx, role, &reg)?;
+                    }
+
+                    // 6. Insert release metadata.
                     for meta in &metadata {
                         insert_release_metadata_row(tx, meta)?;
                     }
 
-                    // 6. Insert files, and register each as a coven
+                    // 7. Insert files, and register each as a coven
                     //    user-provided external ref (the user's own file in
                     //    place). Every import lands Local — the files ARE the
                     //    user's files at `local_path`, tracked in coven's
@@ -580,12 +611,12 @@ impl Database {
                         )?;
                     }
 
-                    // 7. Insert audio formats
+                    // 8. Insert audio formats
                     for af in &audio_formats {
                         insert_audio_format_row(tx, af, &reg)?;
                     }
 
-                    // 8. Write the cover row and its host-provided blob in one
+                    // 9. Write the cover row and its host-provided blob in one
                     //    coven write. On a browsable home its readable cloud_path
                     //    (`{album}/{release}/cover.{ext}`) is computed now,
                     //    ready when the gate flips; an opaque home leaves it
@@ -605,7 +636,7 @@ impl Database {
                         upsert_library_image_row(tx, &image, &reg)?;
                     }
 
-                    // 9. Set album primary_release_id
+                    // 10. Set album primary_release_id
                     if let Some((album_id, release_id)) = &primary_release_id {
                         tx.execute(
                             "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
@@ -613,15 +644,10 @@ impl Database {
                         )?;
                     }
 
-                    // 10. Link import to release and mark complete
+                    // 11. Link import to release and mark complete
                     tx.execute(
                         "UPDATE imports SET release_id = ?, status = ?, updated_at = ? WHERE id = ?",
-                        params![
-                            release.id,
-                            ImportOperationStatus::Complete.as_str(),
-                            now_ts,
-                            import_id,
-                        ],
+                        params![release.id, import_status, now_ts, import_id,],
                     )?;
 
                     Ok(())
@@ -650,6 +676,98 @@ impl Database {
             )?;
             tx.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
             Ok(())
+        })
+        .await
+    }
+
+    /// Mark an import failed and remove the release it finalized in the same DB
+    /// operation. Used when remote import upload setup fails after finalize: the
+    /// release was never announced to the library, and its audio files are the
+    /// user's in-place source files, so this clears coven's external refs without
+    /// queuing file deletion.
+    pub async fn fail_import_and_delete_release(
+        &self,
+        import_id: &str,
+        release_id: &str,
+        error: &str,
+    ) -> Result<(), DbError> {
+        let import_id = import_id.to_string();
+        let release_id = release_id.to_string();
+        let error = error.to_string();
+        let reg = self.register_stamp().await?;
+        let now = self.inner.clock.now().timestamp();
+        self.call(move |conn| {
+            conn.execute_batch("SAVEPOINT fail_import_and_delete_release")
+                .map_err(DbError::from)?;
+
+            let result = (|| {
+                let album_id = conn
+                    .query_row(
+                        "SELECT album_id FROM releases WHERE id = ?",
+                        params![release_id],
+                        |row| row.get::<_, String>(0),
+                    )
+                    .optional()?
+                    .ok_or_else(|| DbError(format!("release not found: {release_id}")))?;
+
+                let remaining_release_count: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM releases WHERE album_id = ? AND id != ?",
+                    params![album_id, release_id],
+                    |row| row.get(0),
+                )?;
+                let primary_release_id: Option<String> = conn.query_row(
+                    "SELECT primary_release_id FROM albums WHERE id = ?",
+                    params![album_id],
+                    |row| row.get(0),
+                )?;
+
+                conn.execute(
+                    "DELETE FROM local_blob_refs
+                     WHERE namespace = ?
+                       AND blob_id IN (SELECT id FROM release_files WHERE release_id = ?)",
+                    params![crate::sync::RELEASE_FILES_NAMESPACE, release_id],
+                )?;
+                conn.execute(
+                    "UPDATE imports SET release_id = NULL WHERE release_id = ?",
+                    params![release_id],
+                )?;
+                conn.execute(
+                    "UPDATE imports SET status = ?, error_message = ?, updated_at = ?, release_id = NULL WHERE id = ?",
+                    params![
+                        ImportOperationStatus::Failed.as_str(),
+                        error,
+                        now,
+                        import_id,
+                    ],
+                )?;
+                conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
+
+                if remaining_release_count == 0 {
+                    conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
+                } else if primary_release_id.as_deref() == Some(&release_id) {
+                    conn.execute(
+                        "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
+                        params![reg, album_id],
+                    )?;
+                }
+
+                Ok(())
+            })();
+
+            if let Err(error) = result {
+                if let Err(rollback_error) = conn.execute_batch(
+                    "ROLLBACK TO SAVEPOINT fail_import_and_delete_release;
+                     RELEASE SAVEPOINT fail_import_and_delete_release",
+                ) {
+                    return Err(DbError(format!(
+                        "{error}; rollback of fail_import_and_delete_release failed: {rollback_error}"
+                    )));
+                }
+                return Err(error);
+            }
+
+            conn.execute_batch("RELEASE SAVEPOINT fail_import_and_delete_release")
+                .map_err(DbError::from)
         })
         .await
     }
@@ -870,6 +988,26 @@ impl Database {
             conn.execute(
                 "UPDATE imports SET status = ?, updated_at = ? WHERE id = ?",
                 params![status, now, id],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+    }
+    /// Mark the active import linked to a release complete after its requested
+    /// remote transition has actually finished.
+    pub async fn complete_import_for_release(&self, release_id: &str) -> Result<(), DbError> {
+        let release_id = release_id.to_string();
+        let now = self.inner.clock.now().timestamp();
+        self.call(move |conn| {
+            conn.execute(
+                "UPDATE imports SET status = ?, updated_at = ? WHERE release_id = ? AND status = ?",
+                params![
+                    ImportOperationStatus::Complete.as_str(),
+                    now,
+                    release_id,
+                    ImportOperationStatus::Importing.as_str(),
+                ],
             )
             .map(|_| ())
             .map_err(DbError::from)

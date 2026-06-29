@@ -17,7 +17,7 @@ impl Database {
         bytes: &[u8],
     ) -> Result<(), DbError> {
         let image = image.clone();
-        let namespace = image_namespace(&image.image_type).to_string();
+        let namespace = image.image_type.namespace().to_string();
         let id = image.id.clone();
         let bytes = bytes.to_vec();
         self.inner
@@ -66,25 +66,32 @@ impl Database {
         &self,
         release_ids: &[String],
     ) -> Result<HashMap<String, String>, DbError> {
-        if release_ids.is_empty() {
+        self.image_versions(LibraryImageType::Cover, release_ids)
+            .await
+    }
+
+    /// The `_updated_at` version of each given artist's `artist_images` row, for
+    /// the ids that have one. Ids with no artist image row are absent from the
+    /// map.
+    pub async fn artist_image_versions(
+        &self,
+        artist_ids: &[String],
+    ) -> Result<HashMap<String, String>, DbError> {
+        self.image_versions(LibraryImageType::Artist, artist_ids)
+            .await
+    }
+
+    async fn image_versions(
+        &self,
+        image_type: LibraryImageType,
+        ids: &[String],
+    ) -> Result<HashMap<String, String>, DbError> {
+        if ids.is_empty() {
             return Ok(HashMap::new());
         }
-        let ids = release_ids.to_vec();
-        self.call(move |conn| {
-            let placeholders = (0..ids.len()).map(|_| "?").collect::<Vec<_>>().join(",");
-            let sql = format!("SELECT id, _updated_at FROM covers WHERE id IN ({placeholders})");
-            let mut stmt = conn.prepare(&sql)?;
-            let rows = stmt.query_map(coven::rusqlite::params_from_iter(ids.iter()), |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })?;
-            let mut map = HashMap::new();
-            for row in rows {
-                let (id, version) = row?;
-                map.insert(id, version);
-            }
-            Ok(map)
-        })
-        .await
+        let ids = ids.to_vec();
+        self.call(move |conn| image_versions(conn, image_type, &ids))
+            .await
     }
 
     /// The `_updated_at` version of one release's `covers` row, or `None` when it
@@ -401,7 +408,6 @@ impl Database {
                          LEFT JOIN release_files rf ON rf.id = co.file_id \
                          LEFT JOIN releases r ON r.id = rf.release_id \
                          LEFT JOIN albums a ON a.id = r.album_id \
-                         WHERE co.operation IN ('upload', 'delete') \
                          ORDER BY co.id",
             )?;
             let rows = stmt.query_map([], |row| {
@@ -470,4 +476,24 @@ impl Database {
         })
         .await
     }
+}
+
+fn image_versions(
+    conn: &Connection,
+    image_type: LibraryImageType,
+    ids: &[String],
+) -> Result<HashMap<String, String>, DbError> {
+    let table = image_table(&image_type);
+    let placeholders = (0..ids.len()).map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql = format!("SELECT id, _updated_at FROM {table} WHERE id IN ({placeholders})");
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(coven::rusqlite::params_from_iter(ids.iter()), |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+    let mut map = HashMap::new();
+    for row in rows {
+        let (id, version) = row?;
+        map.insert(id, version);
+    }
+    Ok(map)
 }

@@ -14,14 +14,20 @@
 //! produce only a Discogs identity row at first; the reverse cross-link
 //! is resolved via MB's URL endpoint.
 
-use super::ParsedAlbum;
-use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbTrack, DbTrackArtist};
+use super::{ParsedAlbum, ParsedWorkGraph};
+use crate::db::{
+    DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbTrack, DbTrackArtist, DbTrackArtistRole,
+    DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
+};
 use crate::import::types::ReleaseIdentity;
 use crate::import::MetadataSource;
-use crate::musicbrainz::{fetch_release_group_json, ExternalUrls, MbReleaseResponse};
+use crate::musicbrainz::{
+    fetch_release_group_json, ExternalUrls, MbArtistRef, MbRelation, MbReleaseResponse, MbWork,
+};
 use coven::Clock;
 use coven::IdProvider;
-use tracing::warn;
+use std::collections::HashSet;
+use tracing::{debug, warn};
 
 /// Extract the leading numeric Discogs release ID from a Discogs release URL.
 ///
@@ -36,6 +42,199 @@ pub(crate) fn extract_discogs_release_id(url: &str) -> Option<String> {
     let last = trimmed.rsplit('/').next()?;
     let id: String = last.chars().take_while(|c| c.is_ascii_digit()).collect();
     (!id.is_empty()).then_some(id)
+}
+
+fn mb_relation_is(relation: &MbRelation, target_type: &str, relation_type: &str) -> bool {
+    relation.target_type.as_deref() == Some(target_type)
+        && relation.relation_type.as_deref() == Some(relation_type)
+}
+
+fn mb_artist_name(artist: &MbArtistRef, credit: Option<&str>) -> Option<String> {
+    credit
+        .filter(|c| !c.trim().is_empty())
+        .map(str::to_string)
+        .or_else(|| artist.name.clone())
+}
+
+fn find_or_push_mb_artist(
+    artists: &mut Vec<DbArtist>,
+    artist_ref: &MbArtistRef,
+    credit: Option<&str>,
+    ids: &(impl IdProvider + ?Sized),
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<String> {
+    let artist_name = mb_artist_name(artist_ref, credit)?;
+    let mb_artist_id = artist_ref.id.clone();
+    if let Some(existing) =
+        artists.iter().find(
+            |artist| match (&artist.musicbrainz_artist_id, &mb_artist_id) {
+                (Some(existing_id), Some(new_id)) => existing_id == new_id,
+                (None, None) => artist.name.eq_ignore_ascii_case(&artist_name),
+                _ => false,
+            },
+        )
+    {
+        return Some(existing.id.clone());
+    }
+
+    let artist = DbArtist {
+        id: ids.new_id(),
+        name: artist_name.clone(),
+        sort_name: artist_ref.sort_name.clone(),
+        discogs_artist_id: None,
+        musicbrainz_artist_id: mb_artist_id,
+        created_at: now,
+    };
+    let id = artist.id.clone();
+    artists.push(artist);
+    Some(id)
+}
+
+fn mb_relation_is_composer(relation: &MbRelation) -> bool {
+    relation.relation_type.as_deref() == Some("composer")
+}
+
+fn push_work_graph(
+    work: &MbWork,
+    parent: Option<&str>,
+    artists: &mut Vec<DbArtist>,
+    works: &mut Vec<DbWork>,
+    work_artists: &mut Vec<DbWorkArtist>,
+    work_parts: &mut Vec<DbWorkPart>,
+    seen_works: &mut HashSet<String>,
+    expanded_works: &mut HashSet<String>,
+    ids: &(impl IdProvider + ?Sized),
+    now: chrono::DateTime<chrono::Utc>,
+) {
+    if seen_works.insert(work.id.clone()) {
+        works.push(DbWork::new(
+            &work.id,
+            &work.title,
+            work.disambiguation.clone(),
+            work.work_type.clone(),
+            now,
+        ));
+    }
+
+    if let Some(parent_work_id) = parent {
+        if !work_parts
+            .iter()
+            .any(|part| part.parent_work_id == parent_work_id && part.child_work_id == work.id)
+        {
+            work_parts.push(DbWorkPart::new(
+                parent_work_id,
+                &work.id,
+                work_parts.len() as i32,
+                MetadataSource::MusicBrainz,
+                ids.new_id(),
+                now,
+            ));
+        }
+    }
+
+    if work.relations.is_empty() || !expanded_works.insert(work.id.clone()) {
+        return;
+    }
+
+    for relation in &work.relations {
+        if relation.target_type.as_deref() == Some("artist") {
+            if mb_relation_is_composer(relation) {
+                let Some(artist_ref) = relation.artist.as_ref() else {
+                    warn!(
+                        work_id = %work.id,
+                        relation_type = ?relation.relation_type,
+                        "Skipping MusicBrainz work artist relation without artist payload"
+                    );
+                    continue;
+                };
+                let Some(artist_id) = find_or_push_mb_artist(
+                    artists,
+                    artist_ref,
+                    relation.target_credit.as_deref(),
+                    ids,
+                    now,
+                ) else {
+                    warn!(
+                        work_id = %work.id,
+                        musicbrainz_artist_id = ?artist_ref.id,
+                        "Skipping MusicBrainz work artist relation with unresolved artist"
+                    );
+                    continue;
+                };
+                if !work_artists.iter().any(|link| {
+                    link.work_id == work.id
+                        && link.artist_id == artist_id
+                        && link.source == MetadataSource::MusicBrainz
+                }) {
+                    work_artists.push(DbWorkArtist::new(
+                        &work.id,
+                        &artist_id,
+                        work_artists.len() as i32,
+                        MetadataSource::MusicBrainz,
+                        ids.new_id(),
+                        now,
+                    ));
+                }
+            } else {
+                debug!(
+                    work_id = %work.id,
+                    relation_type = ?relation.relation_type,
+                    target_type = ?relation.target_type,
+                    target_credit = ?relation.target_credit,
+                    "Skipping MusicBrainz work artist relation with non-composer relation type"
+                );
+            }
+        } else if mb_relation_is(relation, "work", "parts") {
+            let Some(child_or_parent) = relation.work.as_ref() else {
+                warn!(
+                    work_id = %work.id,
+                    relation_type = ?relation.relation_type,
+                    "Skipping MusicBrainz work parts relation without work payload"
+                );
+                continue;
+            };
+            match relation.direction.as_deref() {
+                Some("backward") => {
+                    push_work_graph(
+                        child_or_parent,
+                        None,
+                        artists,
+                        works,
+                        work_artists,
+                        work_parts,
+                        seen_works,
+                        expanded_works,
+                        ids,
+                        now,
+                    );
+                    if !work_parts.iter().any(|part| {
+                        part.parent_work_id == child_or_parent.id && part.child_work_id == work.id
+                    }) {
+                        work_parts.push(DbWorkPart::new(
+                            &child_or_parent.id,
+                            &work.id,
+                            work_parts.len() as i32,
+                            MetadataSource::MusicBrainz,
+                            ids.new_id(),
+                            now,
+                        ));
+                    }
+                }
+                _ => push_work_graph(
+                    child_or_parent,
+                    Some(&work.id),
+                    artists,
+                    works,
+                    work_artists,
+                    work_parts,
+                    seen_works,
+                    expanded_works,
+                    ids,
+                    now,
+                ),
+            }
+        }
+    }
 }
 
 /// Fetch a MusicBrainz release. Pure MB: no Discogs client, no cross-ref.
@@ -97,11 +296,6 @@ pub fn map_mb_response_to_db(
 
             let mb_artist_id = artist_obj.id.clone();
 
-            let sort_name = artist_obj
-                .sort_name
-                .clone()
-                .unwrap_or_else(|| artist_name.clone());
-
             let discogs_artist_id = discogs_release.as_ref().and_then(|dr| {
                 dr.artists
                     .iter()
@@ -112,7 +306,7 @@ pub fn map_mb_response_to_db(
             let artist = DbArtist {
                 id: ids.new_id(),
                 name: artist_name,
-                sort_name: Some(sort_name),
+                sort_name: artist_obj.sort_name.clone(),
                 discogs_artist_id,
                 musicbrainz_artist_id: mb_artist_id,
                 created_at: now,
@@ -131,7 +325,7 @@ pub fn map_mb_response_to_db(
         let artist = DbArtist {
             id: ids.new_id(),
             name: artist_name.clone(),
-            sort_name: Some(artist_name),
+            sort_name: None,
             discogs_artist_id: None,
             musicbrainz_artist_id: None,
             created_at: now,
@@ -183,6 +377,13 @@ pub fn map_mb_response_to_db(
 
     let mut tracks = Vec::new();
     let mut track_artists = Vec::new();
+    let mut works = Vec::new();
+    let mut work_artists = Vec::new();
+    let mut work_parts = Vec::new();
+    let mut track_works = Vec::new();
+    let mut track_artist_roles = Vec::new();
+    let mut seen_works = HashSet::new();
+    let mut expanded_works = HashSet::new();
 
     // Compute side base: each medium contributes 1 or 2 sides depending on format.
     let mut side_base = 0i32;
@@ -272,46 +473,27 @@ pub fn map_mb_response_to_db(
             for (credit_pos, credit) in track.artist_credit.iter().enumerate() {
                 if let Some(artist_obj) = &credit.artist {
                     let Some(artist_name) = artist_obj.name.clone() else {
+                        warn!(
+                            track_id = %db_track.id,
+                            musicbrainz_artist_id = ?artist_obj.id,
+                            "Skipping MusicBrainz track artist credit without artist name"
+                        );
                         continue;
                     };
-                    let mb_artist_id = artist_obj.id.clone();
-
-                    // Find this artist (dedup by MB artist ID, else by name),
-                    // or create and insert it — one scan, one predicate.
-                    let artist_id = if let Some(existing) = artists.iter().find(|a| {
-                        if let (Some(existing_id), Some(ref new_id)) =
-                            (&a.musicbrainz_artist_id, &mb_artist_id)
-                        {
-                            existing_id == new_id
-                        } else {
-                            a.name.eq_ignore_ascii_case(&artist_name)
-                        }
-                    }) {
-                        existing.id.clone()
-                    } else {
-                        let sort_name = artist_obj
-                            .sort_name
-                            .clone()
-                            .unwrap_or_else(|| artist_name.clone());
-
-                        let discogs_artist_id = discogs_release.as_ref().and_then(|dr| {
-                            dr.artists
-                                .iter()
-                                .find(|da| da.name.eq_ignore_ascii_case(&artist_name))
-                                .map(|da| da.id.clone())
-                        });
-
-                        let artist = DbArtist {
-                            id: ids.new_id(),
-                            name: artist_name.clone(),
-                            sort_name: Some(sort_name),
-                            discogs_artist_id,
-                            musicbrainz_artist_id: mb_artist_id.clone(),
-                            created_at: now,
-                        };
-                        let id = artist.id.clone();
-                        artists.push(artist);
-                        id
+                    let Some(artist_id) = find_or_push_mb_artist(
+                        &mut artists,
+                        artist_obj,
+                        Some(&artist_name),
+                        ids,
+                        now,
+                    ) else {
+                        warn!(
+                            track_id = %db_track.id,
+                            musicbrainz_artist_id = ?artist_obj.id,
+                            artist_name = %artist_name,
+                            "Skipping MusicBrainz track artist credit with unresolved artist"
+                        );
+                        continue;
                     };
 
                     track_artists.push(DbTrackArtist::new(
@@ -321,6 +503,83 @@ pub fn map_mb_response_to_db(
                         ids.new_id(),
                         now,
                     ));
+                }
+            }
+
+            if let Some(recording) = track.recording.as_ref() {
+                for (relation_pos, relation) in recording.relations.iter().enumerate() {
+                    if mb_relation_is(relation, "work", "performance") {
+                        let Some(work) = relation.work.as_ref() else {
+                            warn!(
+                                track_id = %db_track.id,
+                                relation_type = ?relation.relation_type,
+                                "Skipping MusicBrainz recording work relation without work payload"
+                            );
+                            continue;
+                        };
+                        push_work_graph(
+                            work,
+                            None,
+                            &mut artists,
+                            &mut works,
+                            &mut work_artists,
+                            &mut work_parts,
+                            &mut seen_works,
+                            &mut expanded_works,
+                            ids,
+                            now,
+                        );
+                        track_works.push(DbTrackWork::new(
+                            &db_track.id,
+                            &work.id,
+                            relation_pos as i32,
+                            MetadataSource::MusicBrainz,
+                            ids.new_id(),
+                            now,
+                        ));
+                    } else if relation.target_type.as_deref() == Some("artist") {
+                        if mb_relation_is_composer(relation) {
+                            let Some(artist_ref) = relation.artist.as_ref() else {
+                                warn!(
+                                    track_id = %db_track.id,
+                                    relation_type = ?relation.relation_type,
+                                    "Skipping MusicBrainz recording artist relation without artist payload"
+                                );
+                                continue;
+                            };
+                            let Some(artist_id) = find_or_push_mb_artist(
+                                &mut artists,
+                                artist_ref,
+                                relation.target_credit.as_deref(),
+                                ids,
+                                now,
+                            ) else {
+                                warn!(
+                                    track_id = %db_track.id,
+                                    musicbrainz_artist_id = ?artist_ref.id,
+                                    "Skipping MusicBrainz recording artist relation with unresolved artist"
+                                );
+                                continue;
+                            };
+                            track_artist_roles.push(DbTrackArtistRole::new(
+                                &db_track.id,
+                                &artist_id,
+                                relation_pos as i32,
+                                MetadataSource::MusicBrainz,
+                                relation.relation_type.clone(),
+                                ids.new_id(),
+                                now,
+                            ));
+                        } else {
+                            debug!(
+                                track_id = %db_track.id,
+                                relation_type = ?relation.relation_type,
+                                target_type = ?relation.target_type,
+                                target_credit = ?relation.target_credit,
+                                "Skipping MusicBrainz recording artist relation with non-composer relation type"
+                            );
+                        };
+                    }
                 }
             }
 
@@ -350,6 +609,14 @@ pub fn map_mb_response_to_db(
         artists,
         album_artists,
         track_artists,
+        work_graph: ParsedWorkGraph {
+            works,
+            work_artists,
+            work_parts,
+            track_works,
+        },
+        release_artist_roles: Vec::new(),
+        track_artist_roles,
         identities,
     })
 }
@@ -358,7 +625,7 @@ pub fn map_mb_response_to_db(
 mod tests {
     use super::*;
     use crate::musicbrainz::{
-        MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseResponse, MbTrack,
+        MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseResponse, MbTrack, MbWork,
     };
     use coven::FixedClock;
     use coven::SequentialIdProvider;
@@ -386,7 +653,10 @@ mod tests {
             title: None,
             length: None,
             recording: Some(MbRecording {
+                id: None,
                 title: Some(title.to_string()),
+                artist_credit: vec![],
+                relations: vec![],
             }),
             artist_credit: vec![],
         }
@@ -395,16 +665,16 @@ mod tests {
     fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
         MbReleaseResponse {
             id: "test-release".to_string(),
-            title: "Test Album".to_string(),
+            title: "Album Title A".to_string(),
             date: Some("2024".to_string()),
             country: None,
             barcode: None,
             artist_credit: vec![MbArtistCredit {
-                name: "Test Artist".to_string(),
+                name: "Artist Name A".to_string(),
                 artist: Some(MbArtistRef {
                     id: Some("artist-1".to_string()),
-                    name: Some("Test Artist".to_string()),
-                    sort_name: Some("Artist, Test".to_string()),
+                    name: Some("Artist Name A".to_string()),
+                    sort_name: Some("Artist Name A".to_string()),
                 }),
             }],
             release_group: Some(crate::musicbrainz::MbReleaseGroupRef {
@@ -562,7 +832,10 @@ mod tests {
                     title: None,
                     length: None,
                     recording: Some(MbRecording {
+                        id: None,
                         title: Some("Side-less Track".to_string()),
+                        artist_credit: vec![],
+                        relations: vec![],
                     }),
                     artist_credit: vec![],
                 },
@@ -645,7 +918,7 @@ mod tests {
     fn discogs_release_with_master(master_id: Option<String>) -> crate::discogs::DiscogsRelease {
         crate::discogs::DiscogsRelease {
             id: "d-rel-99".to_string(),
-            title: "Test Album".to_string(),
+            title: "Album Title A".to_string(),
             year: Some(2024),
             genre: vec![],
             style: vec![],
@@ -657,6 +930,7 @@ mod tests {
             catno: None,
             artists: vec![],
             tracklist: vec![],
+            extraartists: Some(vec![]),
             master_id,
         }
     }
@@ -730,6 +1004,167 @@ mod tests {
     }
 
     #[test]
+    fn missing_mb_sort_names_remain_absent() {
+        let mut response = make_response(vec![{
+            let mut track = make_mb_track("1", "Track 1");
+            track.recording.as_mut().unwrap().relations = vec![MbRelation {
+                target_type: Some("artist".to_string()),
+                relation_type: Some("composer".to_string()),
+                artist: Some(MbArtistRef {
+                    id: Some("composer-artist-a".to_string()),
+                    name: Some("Composer Name A".to_string()),
+                    sort_name: None,
+                }),
+                ..MbRelation::default()
+            }];
+            MbMedium {
+                format: Some("CD".to_string()),
+                tracks: vec![track],
+            }
+        }]);
+        response.artist_credit[0].artist.as_mut().unwrap().sort_name = None;
+
+        let parsed = map(&response, Some(2024), None).unwrap();
+
+        let release_artist = parsed
+            .artists
+            .iter()
+            .find(|artist| artist.musicbrainz_artist_id.as_deref() == Some("artist-1"))
+            .expect("release artist imported");
+        let composer = parsed
+            .artists
+            .iter()
+            .find(|artist| artist.musicbrainz_artist_id.as_deref() == Some("composer-artist-a"))
+            .expect("composer artist imported");
+
+        assert_eq!(release_artist.sort_name, None);
+        assert_eq!(composer.sort_name, None);
+    }
+
+    #[test]
+    fn nested_recording_work_imports_composer_work_graph() {
+        let composer_ref = MbArtistRef {
+            id: Some("composer-artist-a".to_string()),
+            name: Some("Composer Name A".to_string()),
+            sort_name: Some("Composer Name A".to_string()),
+        };
+        let lyricist_ref = MbArtistRef {
+            id: Some("lyricist-artist-a".to_string()),
+            name: Some("Lyricist Name A".to_string()),
+            sort_name: Some("Lyricist Name A".to_string()),
+        };
+        let child_work = MbWork {
+            id: "mb-work-child-a".to_string(),
+            title: "Work Part A".to_string(),
+            disambiguation: None,
+            work_type: Some("part".to_string()),
+            relations: vec![MbRelation {
+                target_type: Some("artist".to_string()),
+                relation_type: Some("composer".to_string()),
+                artist: Some(composer_ref.clone()),
+                target_credit: Some("Composer Name A".to_string()),
+                ..MbRelation::default()
+            }],
+        };
+        let parent_work = MbWork {
+            id: "mb-work-parent-a".to_string(),
+            title: "Work Title A".to_string(),
+            disambiguation: Some("work disambiguation".to_string()),
+            work_type: Some("work".to_string()),
+            relations: vec![
+                MbRelation {
+                    target_type: Some("artist".to_string()),
+                    relation_type: Some("composer".to_string()),
+                    artist: Some(composer_ref),
+                    target_credit: Some("Composer Name A".to_string()),
+                    ..MbRelation::default()
+                },
+                MbRelation {
+                    target_type: Some("artist".to_string()),
+                    relation_type: Some("lyricist".to_string()),
+                    artist: Some(lyricist_ref),
+                    target_credit: Some("Lyricist Name A".to_string()),
+                    ..MbRelation::default()
+                },
+                MbRelation {
+                    target_type: Some("work".to_string()),
+                    relation_type: Some("parts".to_string()),
+                    direction: Some("forward".to_string()),
+                    work: Some(child_work),
+                    ..MbRelation::default()
+                },
+            ],
+        };
+        let mut track_one = make_mb_track("1", "Track Title 1");
+        track_one.recording.as_mut().unwrap().relations = vec![MbRelation {
+            target_type: Some("work".to_string()),
+            relation_type: Some("performance".to_string()),
+            work: Some(parent_work.clone()),
+            ..MbRelation::default()
+        }];
+        let mut track_two = make_mb_track("2", "Track Title 2");
+        track_two.recording.as_mut().unwrap().relations = vec![MbRelation {
+            target_type: Some("work".to_string()),
+            relation_type: Some("performance".to_string()),
+            work: Some(parent_work),
+            ..MbRelation::default()
+        }];
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![track_one, track_two],
+        }]);
+
+        let parsed = map(&response, Some(2024), None).unwrap();
+
+        let work_graph = &parsed.work_graph;
+        assert_eq!(work_graph.works.len(), 2);
+        assert!(work_graph
+            .works
+            .iter()
+            .any(|work| work.id == "mb-work-parent-a"));
+        assert!(work_graph
+            .works
+            .iter()
+            .any(|work| work.id == "mb-work-child-a"));
+        assert!(work_graph.track_works.iter().any(|link| {
+            link.track_id == parsed.tracks[0].id && link.work_id == "mb-work-parent-a"
+        }));
+        assert!(work_graph.work_parts.iter().any(|part| {
+            part.parent_work_id == "mb-work-parent-a" && part.child_work_id == "mb-work-child-a"
+        }));
+
+        let composer = parsed
+            .artists
+            .iter()
+            .find(|artist| artist.musicbrainz_artist_id.as_deref() == Some("composer-artist-a"))
+            .expect("composer artist imported");
+        assert!(work_graph
+            .work_artists
+            .iter()
+            .any(|link| { link.artist_id == composer.id }));
+        assert_eq!(
+            work_graph
+                .work_artists
+                .iter()
+                .filter(|link| { link.artist_id == composer.id })
+                .count(),
+            2
+        );
+        assert!(!parsed
+            .artists
+            .iter()
+            .any(|artist| artist.musicbrainz_artist_id.as_deref() == Some("lyricist-artist-a")));
+        assert!(!parsed
+            .album_artists
+            .iter()
+            .any(|link| link.artist_id == composer.id));
+        assert!(!parsed
+            .track_artists
+            .iter()
+            .any(|link| link.artist_id == composer.id));
+    }
+
+    #[test]
     fn track_level_artist_credit_creates_and_links_a_new_artist() {
         // Track 2 credits a guest distinct from the release artist. The
         // track-artist loop must create that artist once and link it to track 2
@@ -793,5 +1228,81 @@ mod tests {
             .track_artists
             .iter()
             .any(|ta| ta.track_id == parsed.tracks[0].id && ta.artist_id == matching[0].id));
+    }
+
+    #[test]
+    fn known_mb_artist_id_does_not_merge_into_same_name_artist_without_id() {
+        let mut response = make_response(vec![{
+            let mut track = make_mb_track("1", "Track 1");
+            track.recording.as_mut().unwrap().relations = vec![MbRelation {
+                target_type: Some("artist".to_string()),
+                relation_type: Some("composer".to_string()),
+                artist: Some(MbArtistRef {
+                    id: Some("composer-artist-a".to_string()),
+                    name: Some("Artist Name A".to_string()),
+                    sort_name: None,
+                }),
+                ..MbRelation::default()
+            }];
+            MbMedium {
+                format: Some("CD".to_string()),
+                tracks: vec![track],
+            }
+        }]);
+        response.artist_credit[0].artist = None;
+
+        let parsed = map(&response, Some(2024), None).unwrap();
+
+        let release_artist = parsed
+            .artists
+            .iter()
+            .find(|artist| artist.musicbrainz_artist_id.is_none())
+            .expect("release artist without MB id exists");
+        let composer = parsed
+            .artists
+            .iter()
+            .find(|artist| artist.musicbrainz_artist_id.as_deref() == Some("composer-artist-a"))
+            .expect("known composer artist exists separately");
+
+        assert_ne!(release_artist.id, composer.id);
+        assert!(parsed
+            .track_artist_roles
+            .iter()
+            .any(|role| role.artist_id == composer.id));
+    }
+
+    #[test]
+    fn known_mb_artist_ids_keep_same_name_artists_separate() {
+        let mut track = make_mb_track("1", "Track 1");
+        track.artist_credit = vec![credit("artist-1", "Artist Name A")];
+        track.recording.as_mut().unwrap().relations = vec![MbRelation {
+            target_type: Some("artist".to_string()),
+            relation_type: Some("composer".to_string()),
+            artist: Some(MbArtistRef {
+                id: Some("artist-2".to_string()),
+                name: Some("Artist Name A".to_string()),
+                sort_name: None,
+            }),
+            ..MbRelation::default()
+        }];
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![track],
+        }]);
+
+        let parsed = map(&response, Some(2024), None).unwrap();
+
+        let matching: Vec<_> = parsed
+            .artists
+            .iter()
+            .filter(|artist| artist.name == "Artist Name A")
+            .collect();
+        assert_eq!(matching.len(), 2);
+        assert!(matching
+            .iter()
+            .any(|artist| artist.musicbrainz_artist_id.as_deref() == Some("artist-1")));
+        assert!(matching
+            .iter()
+            .any(|artist| artist.musicbrainz_artist_id.as_deref() == Some("artist-2")));
     }
 }

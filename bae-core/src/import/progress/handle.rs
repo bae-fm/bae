@@ -28,6 +28,7 @@ impl SubscriptionFilter {
                 ImportProgress::Started { id, .. } => id == release_id,
                 ImportProgress::Progress { id, .. } => id == release_id,
                 ImportProgress::Complete { id, .. } => id == release_id,
+                ImportProgress::RemoteUploadQueued { id, .. } => id == release_id,
                 ImportProgress::Failed { id, .. } => id == release_id,
             },
             SubscriptionFilter::Import { import_id } => match progress {
@@ -35,6 +36,7 @@ impl SubscriptionFilter {
                 ImportProgress::Started { import_id: iid, .. } => iid.as_ref() == Some(import_id),
                 ImportProgress::Progress { import_id: iid, .. } => iid.as_ref() == Some(import_id),
                 ImportProgress::Complete { import_id: iid, .. } => iid == import_id,
+                ImportProgress::RemoteUploadQueued { import_id: iid, .. } => iid == import_id,
                 ImportProgress::Failed { import_id: iid, .. } => iid.as_ref() == Some(import_id),
             },
             SubscriptionFilter::AllImports => match progress {
@@ -42,6 +44,7 @@ impl SubscriptionFilter {
                 ImportProgress::Started { import_id, .. } => import_id.is_some(),
                 ImportProgress::Progress { import_id, .. } => import_id.is_some(),
                 ImportProgress::Complete { .. } => true,
+                ImportProgress::RemoteUploadQueued { .. } => true,
                 ImportProgress::Failed { import_id, .. } => import_id.is_some(),
             },
         }
@@ -171,6 +174,11 @@ mod tests {
             import_id: "import-1".to_string(),
             album_id: "album-1".to_string(),
         },),);
+        assert!(filter.matches(&ImportProgress::RemoteUploadQueued {
+            id: "release-1".to_string(),
+            import_id: "import-1".to_string(),
+            album_id: "album-1".to_string(),
+        },),);
         assert!(!filter.matches(&ImportProgress::Progress {
             id: "release-2".to_string(),
             percent: 50,
@@ -228,6 +236,11 @@ mod tests {
             import_id: "import-1".to_string(),
             album_id: "album-1".to_string(),
         },),);
+        assert!(filter.matches(&ImportProgress::RemoteUploadQueued {
+            id: "release-1".to_string(),
+            import_id: "import-1".to_string(),
+            album_id: "album-1".to_string(),
+        },),);
         assert!(filter.matches(&ImportProgress::Failed {
             id: "release-1".to_string(),
             error: "error".to_string(),
@@ -272,6 +285,11 @@ mod tests {
             import_id: Some("import-2".to_string()),
         },),);
         assert!(filter.matches(&ImportProgress::Complete {
+            id: "release-1".to_string(),
+            import_id: "import-3".to_string(),
+            album_id: "album-1".to_string(),
+        },),);
+        assert!(filter.matches(&ImportProgress::RemoteUploadQueued {
             id: "release-1".to_string(),
             import_id: "import-3".to_string(),
             album_id: "album-1".to_string(),

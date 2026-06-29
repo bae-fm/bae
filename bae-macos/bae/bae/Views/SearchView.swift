@@ -3,11 +3,15 @@ import SwiftUI
 struct SearchView: View {
     let results: SearchResults?
     let onSelectAlbum: (String) -> Void
+    let onSelectComposer: (String) -> Void
+    let onSelectWork: (String) -> Void
 
     var body: some View {
         Group {
             if let results {
-                if results.albums.isEmpty, results.tracks.isEmpty {
+                if results.albums.isEmpty, results.tracks.isEmpty,
+                    results.composers.isEmpty, results.works.isEmpty
+                {
                     ContentUnavailableView.search(text: results.query)
                 }
                 else {
@@ -38,6 +42,22 @@ struct SearchView: View {
                     }
                 }
             }
+
+            Section("Composers") {
+                ForEach(results.composers, id: \.id) { composer in
+                    composerRow(composer)
+                }
+            }
+            .opacity(results.composers.isEmpty ? 0 : 1)
+            .allowsHitTesting(!results.composers.isEmpty)
+
+            Section("Works") {
+                ForEach(results.works, id: \.id) { work in
+                    workRow(work)
+                }
+            }
+            .opacity(results.works.isEmpty ? 0 : 1)
+            .allowsHitTesting(!results.works.isEmpty)
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
@@ -87,10 +107,16 @@ struct SearchView: View {
                         .font(.body)
                         .lineLimit(1)
 
-                    Text("\(track.artistName) - \(track.albumTitle)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    Text(
+                        String(
+                            format: String(localized: "%@ - %@"),
+                            track.artistName,
+                            track.albumTitle
+                        )
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
                 }
 
                 Spacer()
@@ -99,6 +125,53 @@ struct SearchView: View {
                     Text(track.durationLabel)
                         .font(.callout.monospacedDigit())
                         .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func composerRow(_ composer: BridgeComposerSummary) -> some View {
+        libraryEntityRow(
+            systemImage: "person.wave.2",
+            title: composer.name,
+            subtitle: "\(composer.workCount) \(String(localized: "Works"))",
+            action: { onSelectComposer(composer.id) }
+        )
+    }
+
+    private func workRow(_ work: BridgeWorkSummary) -> some View {
+        libraryEntityRow(
+            systemImage: "music.quarternote.3",
+            title: work.title,
+            subtitle: work.composerNames,
+            action: { onSelectWork(work.id) }
+        )
+    }
+
+    private func libraryEntityRow(
+        systemImage: String,
+        title: String,
+        subtitle: String?,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .frame(width: 32, height: 32)
+                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body)
+                        .lineLimit(1)
+                    StableOptionalText(
+                        text: subtitle,
+                        font: .caption,
+                        foreground: .secondary,
+                        lineHeight: 12,
+                        lineLimit: 1
+                    )
                 }
             }
         }
@@ -116,6 +189,8 @@ struct SearchView: View {
     SearchView(
         results: PreviewData.searchResults,
         onSelectAlbum: { _ in },
+        onSelectComposer: { _ in },
+        onSelectWork: { _ in },
     )
     .frame(width: 600, height: 500)
     .environment(MediaPaths.stub)
@@ -124,10 +199,17 @@ struct SearchView: View {
 #Preview("No results") {
     SearchView(
         results: SearchResults(
-            bridge: BridgeSearchResults(albums: [], tracks: []),
-            query: "nonexistent"
+            bridge: BridgeSearchResults(
+                albums: [],
+                tracks: [],
+                composers: [],
+                works: []
+            ),
+            query: "placeholder"
         ),
         onSelectAlbum: { _ in },
+        onSelectComposer: { _ in },
+        onSelectWork: { _ in },
     )
     .frame(width: 600, height: 400)
     .environment(MediaPaths.stub)

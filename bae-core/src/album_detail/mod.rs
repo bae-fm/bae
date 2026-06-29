@@ -10,7 +10,7 @@
 //! in `bae-bridge` is then a pure field-by-field copy to UniFFI types.
 //!
 //! The type split enforces the invariant: once a caller holds a resolved
-//! type, derivation has already happened — no consumer downstream (bridge,
+//! type, derivation has already happened -- no consumer downstream (bridge,
 //! events, UI) has to re-compute.
 //!
 //! ## Summary / detail composition
@@ -20,11 +20,11 @@
 //! render a row and that's it. Detail views are "fat": tracks, files,
 //! galleries, etc. We split each entity into two resolved types:
 //!
-//! - `AlbumSummary` / `ReleaseSummary` — slim. What a list row renders.
-//! - `AlbumDetail`  / `ReleaseDetail`  — fat. Composes the summary with
+//! - `AlbumSummary` / `ReleaseSummary` -- slim. What a list row renders.
+//! - `AlbumDetail`  / `ReleaseDetail`  -- fat. Composes the summary with
 //!   the heavy per-entity data loaded on demand.
 //!
-//! The `Detail` embeds the `Summary` rather than duplicating its fields —
+//! The `Detail` embeds the `Summary` rather than duplicating its fields --
 //! consumers that hold a detail can treat it as a superset. Reducers on the
 //! UI side can intern the summary portion into the "summaries" slice and the
 //! detail portion into the "details" slice from a single event payload.
@@ -32,7 +32,7 @@
 //! Tracks carry a structured [`TrackPosition`] instead of pre-formatted prose.
 //! A *side* is a contiguous playback unit (one CD disc, one vinyl face, one
 //! cassette face); which case applies depends on the release's physical format.
-//! The side letter (A/B/C…) and the disc-vs-side decision are domain logic and
+//! The side letter (A/B/C...) and the disc-vs-side decision are domain logic and
 //! stay here; only the words "Side"/"Disc" are the UI's, resolved from catalog
 //! keys.
 //!
@@ -44,14 +44,16 @@
 //! state, cloud-home presence) and hands them to these constructors; the
 //! derivation logic lives with the type it produces.
 
-use crate::db::DbArtist;
+use crate::db::{DbArtist, LibraryImageType};
 
 mod album;
+mod composer;
 mod release;
 mod search;
 mod storage;
 
 pub use album::*;
+pub use composer::*;
 pub use release::*;
 pub use search::*;
 pub use storage::*;
@@ -66,7 +68,7 @@ pub(crate) fn join_artist_names(artists: &[DbArtist]) -> String {
         .join(", ")
 }
 
-/// The TWO storage states a release's audio can be in — the shared
+/// The TWO storage states a release's audio can be in -- the shared
 /// `releases.remote` fact. This is ORTHOGONAL to pinned-ness: whether coven keeps
 /// a remote release's blobs local (`storage/pinned/`) vs evictable
 /// (`storage/cache/`) is a separate per-device coven-cache property, carried
@@ -75,7 +77,7 @@ pub(crate) fn join_artist_names(artists: &[DbArtist]) -> String {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseStorageState {
     /// A local file the user owns, played in place; not in the cloud. Stays
-    /// Local while uploading (the upload is a sub-state of local —
+    /// Local while uploading (the upload is a sub-state of local --
     /// `remote` only flips once every blob is in the cloud).
     Local,
     /// A cloud blob; coven's cache sits transparently in front of it. Whether a
@@ -84,7 +86,7 @@ pub enum ReleaseStorageState {
 }
 
 /// The storage state for the shared `remote` fact. Pinned-ness is NOT part of
-/// this — it is a separate coven-cache property the caller carries as a `pinned`
+/// this -- it is a separate coven-cache property the caller carries as a `pinned`
 /// bool. Pure: the no-cloud-home overlay belongs to [`available_storage_actions`].
 pub fn storage_state(remote: bool) -> ReleaseStorageState {
     if remote {
@@ -94,21 +96,21 @@ pub fn storage_state(remote: bool) -> ReleaseStorageState {
     }
 }
 
-/// A storage transition the user can trigger from the release "Storage…"
+/// A storage transition the user can trigger from the release "Storage..."
 /// sheet. The core computes which are available; the UI renders them and
 /// never re-derives availability. `MakeRemote`/`MakeLocal` move between the two storage
 /// states; `Pin`/`Unpin` toggle the orthogonal coven-cache pin on a remote
 /// release.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseStorageAction {
-    /// Local → Remote (upload to the cloud home).
+    /// Local -> Remote (upload to the cloud home).
     MakeRemote,
     /// Keep a remote release offline: fetch its blobs into coven's pinned cache.
     Pin,
     /// Stop keeping a remote release offline: drop its blobs from the pinned
     /// cache (still in the cloud).
     Unpin,
-    /// Remote → Local (move the files back out to a user folder).
+    /// Remote -> Local (move the files back out to a user folder).
     MakeLocal,
 }
 
@@ -147,7 +149,7 @@ pub fn available_storage_actions(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrackPosition {
     /// Vinyl/cassette: header "Side A", position "A1". `side_letter` is the
-    /// letter for the face (A/B/C…); `number` is the within-side track number.
+    /// letter for the face (A/B/C...); `number` is the within-side track number.
     Sided {
         side_letter: String,
         number: Option<i32>,
@@ -158,7 +160,7 @@ pub enum TrackPosition {
     Flat { number: Option<i32> },
 }
 
-/// A track group's side discriminant — what the UI renders as the "Side A" /
+/// A track group's side discriminant -- what the UI renders as the "Side A" /
 /// "Disc 2" header. `Flat` is single-disc digital: one group, no header.
 /// Separate from [`TrackPosition`] because a header carries no per-track number
 /// (every track on a side shares one `TrackSide`).
@@ -177,7 +179,7 @@ pub struct TrackDetail {
     pub side: i32,
     pub track_number: Option<i32>,
     pub duration_ms: Option<i64>,
-    /// Effective artist names for display — the track's own artists when it
+    /// Effective artist names for display -- the track's own artists when it
     /// has per-track artist rows, otherwise the album artists. Always
     /// populated so UI consumers can render a row label without joining
     /// artist data themselves.
@@ -209,7 +211,7 @@ pub struct FileDetail {
 }
 
 /// Structured audio-format descriptor. The UI composes the one-line label
-/// ("FLAC · 44.1 kHz · 16-bit · stereo") from these parts: the codec is a
+/// ("FLAC - 44.1 kHz - 16-bit - stereo") from these parts: the codec is a
 /// proper noun, the channel count maps to a localized word, and the numbers
 /// format per locale. `bits_per_sample` present means lossless (show the bit
 /// depth); absent means lossy (show `bitrate_kbps` instead).
@@ -222,32 +224,31 @@ pub struct AudioFormat {
     pub channels: i64,
 }
 
-/// A host-provided library image's reference: the image id plus a content
-/// version. The id is the subject id (a release id for a cover, an artist id for
-/// an artist image); the version is the image row's `_updated_at`, which moves
-/// when the bytes change (the upsert bumps it). The UI fetches the bytes by id
-/// (`read_image_blob`) and caches them under `(id, version)`, so a grid of covers
-/// renders without re-crossing the boundary on scroll yet still reloads when a
-/// cover is replaced.
+/// A host-provided library image's reference: the image kind, subject id, and
+/// content version. The id is a release id for a cover and an artist id for an
+/// artist image; the version is the image row's `_updated_at`, which moves when
+/// the bytes change. The UI passes the whole reference back when reading bytes,
+/// so core dispatches to the known table instead of probing image namespaces.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImageRef {
     pub id: String,
     pub version: String,
+    pub image_type: LibraryImageType,
 }
 
 /// Which byte source a gallery slot is read from. Each variant is
 /// self-contained: the release's own cover composes the [`ImageRef`] (id +
 /// version) and is read by image id, a release-file image carries its own file
-/// id and is read by it. Core dispatches the byte read on this (`read_gallery_bytes`)
-/// so the UI never picks the source itself.
+/// id and is read by it. Core dispatches the byte read on this
+/// (`read_gallery_bytes`) so the UI never picks the source itself.
 #[derive(Debug, Clone)]
 pub enum GallerySource {
     Cover(ImageRef),
     ReleaseFile { file_id: String },
 }
 
-/// One slot in a release's lightbox gallery. Every slot is read by id — there is
-/// no filesystem path — and `source` names which byte source core reads from.
+/// One slot in a release's lightbox gallery. Every slot is read by id -- there is
+/// no filesystem path -- and `source` names which byte source core reads from.
 #[derive(Debug, Clone)]
 pub struct GalleryItem {
     /// Stable list/ForEach identity only: `"cover"` for the cover slot, otherwise

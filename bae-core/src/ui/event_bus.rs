@@ -327,6 +327,13 @@ impl UiEventBus {
                                     album_id,
                                 })
                             }
+                            ImportProgress::RemoteUploadQueued { id, album_id, .. } => {
+                                Some(UiBusEvent::CandidateImportComplete {
+                                    key: candidate_key.clone(),
+                                    release_id: id,
+                                    album_id,
+                                })
+                            }
                             ImportProgress::Failed { error, .. } => {
                                 // The import pipeline flattens every failure
                                 // (scan, metadata, encryption, DB) to a string;

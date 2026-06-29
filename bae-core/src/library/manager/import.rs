@@ -25,11 +25,18 @@ impl LibraryManager {
         metadata: &[crate::db::DbReleaseMetadata],
         track_artists: &[crate::db::DbTrackArtist],
         album_artists: &[crate::db::DbAlbumArtist],
+        works: &[crate::db::DbWork],
+        work_artists: &[crate::db::DbWorkArtist],
+        work_parts: &[crate::db::DbWorkPart],
+        track_works: &[crate::db::DbTrackWork],
+        release_artist_roles: &[crate::db::DbReleaseArtistRole],
+        track_artist_roles: &[crate::db::DbTrackArtistRole],
         files: &[DbFile],
         audio_formats: &[DbAudioFormat],
         library_image: Option<(&DbLibraryImage, &[u8])>,
         primary_release_id: Option<(&str, &str)>,
         import_id: &str,
+        import_status: ImportOperationStatus,
         identities: &[crate::import::ReleaseIdentity],
         local_path: &str,
     ) -> Result<(), LibraryError> {
@@ -45,11 +52,18 @@ impl LibraryManager {
                 metadata,
                 track_artists,
                 album_artists,
+                works,
+                work_artists,
+                work_parts,
+                track_works,
+                release_artist_roles,
+                track_artist_roles,
                 files,
                 audio_formats,
                 library_image,
                 primary_release_id,
                 import_id,
+                import_status,
                 identities,
                 local_path,
                 storage,
@@ -79,6 +93,20 @@ impl LibraryManager {
     /// Record an error for an import operation
     pub async fn update_import_error(&self, id: &str, error: &str) -> Result<(), LibraryError> {
         Ok(self.database.update_import_error(id, error).await?)
+    }
+
+    /// Mark an import failed and remove its finalized release in one DB
+    /// operation.
+    pub async fn fail_import_and_delete_release(
+        &self,
+        import_id: &str,
+        release_id: &str,
+        error: &str,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .fail_import_and_delete_release(import_id, release_id, error)
+            .await?)
     }
 
     /// Get all active (non-complete, non-failed) imports

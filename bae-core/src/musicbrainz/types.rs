@@ -6,10 +6,28 @@
 
 use serde::{Deserialize, Serialize};
 
-/// A URL relation from MusicBrainz (used across release and release-group responses)
-#[derive(Debug, Clone, Deserialize, Serialize)]
+/// A relation from MusicBrainz. Release/release-group URL relations fill `url`;
+/// recording and work relations fill `artist` or `work` plus typed relation fields.
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct MbRelation {
     pub url: Option<MbUrlResource>,
+    #[serde(rename = "target-type")]
+    pub target_type: Option<String>,
+    #[serde(
+        rename = "type",
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub relation_type: Option<String>,
+    pub direction: Option<String>,
+    pub artist: Option<MbArtistRef>,
+    pub work: Option<MbWork>,
+    #[serde(
+        rename = "target-credit",
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub target_credit: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -56,10 +74,26 @@ pub struct MbReleaseGroupRef {
     pub relations: Option<Vec<MbRelation>>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MbWork {
+    pub id: String,
+    pub title: String,
+    pub disambiguation: Option<String>,
+    #[serde(rename = "type")]
+    pub work_type: Option<String>,
+    #[serde(default)]
+    pub relations: Vec<MbRelation>,
+}
+
 /// A recording within a track
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MbRecording {
+    pub id: Option<String>,
     pub title: Option<String>,
+    #[serde(rename = "artist-credit", default)]
+    pub artist_credit: Vec<MbArtistCredit>,
+    #[serde(default)]
+    pub relations: Vec<MbRelation>,
 }
 
 /// A track within a medium

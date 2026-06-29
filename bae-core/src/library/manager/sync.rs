@@ -2,7 +2,6 @@
 //! pipeline, and pause state.
 
 use super::*;
-
 impl LibraryManager {
     /// Whether a cloud provider is connected. Reads config, not manager presence:
     /// the connected provider lives in config and is known synchronously from the

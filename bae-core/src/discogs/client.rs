@@ -1,4 +1,4 @@
-use crate::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+use crate::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 use lru::LruCache;
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::{Mutex as StdMutex, OnceLock};
 use thiserror::Error;
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// Capacity for each request-kind cache. Sized for a typical session
 /// (a few imports, each touching 1-3 releases). Eviction costs one
@@ -117,9 +117,15 @@ pub struct DiscogsSearchResult {
     pub label: Option<Vec<String>>,
     pub catno: Option<String>,
     pub barcode: Option<Vec<String>>,
-    #[serde(default, deserialize_with = "crate::discogs::empty_string_as_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     pub cover_image: Option<String>,
-    #[serde(default, deserialize_with = "crate::discogs::empty_string_as_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     pub thumb: Option<String>,
     pub master_id: Option<u64>,
     #[serde(rename = "type")]
@@ -144,6 +150,22 @@ struct ArtistCredit {
     id: u64,
     name: String,
 }
+
+#[derive(Debug, Deserialize, Clone)]
+struct ExtraArtistCredit {
+    id: Option<u64>,
+    name: String,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    role: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    anv: Option<String>,
+}
 /// Detailed release response from Discogs
 #[derive(Debug, Deserialize)]
 struct ReleaseResponse {
@@ -157,6 +179,7 @@ struct ReleaseResponse {
     labels: Option<Vec<LabelResponse>>,
     images: Option<Vec<Image>>,
     artists: Option<Vec<ArtistCredit>>,
+    extraartists: Option<Vec<ExtraArtistCredit>>,
     tracklist: Option<Vec<TrackResponse>>,
     master_id: Option<u64>,
 }
@@ -178,6 +201,7 @@ struct TrackResponse {
     duration: Option<String>,
     #[serde(default)]
     artists: Vec<ArtistCredit>,
+    extraartists: Option<Vec<ExtraArtistCredit>>,
     #[serde(default)]
     type_: String,
 }
@@ -185,6 +209,23 @@ struct TrackResponse {
 struct LabelResponse {
     name: String,
     catno: Option<String>,
+}
+
+fn extra_artist_to_model(a: ExtraArtistCredit) -> Option<DiscogsRoleArtist> {
+    let Some(role) = a.role else {
+        warn!(
+            discogs_artist_id = ?a.id,
+            artist_name = %a.name,
+            "Skipping Discogs extraartist without role"
+        );
+        return None;
+    };
+    Some(DiscogsRoleArtist {
+        id: a.id.map(|id| id.to_string()),
+        name: a.name,
+        role,
+        credited_name: a.anv,
+    })
 }
 
 /// Convert raw Discogs release JSON into the public `DiscogsRelease` shape.
@@ -210,6 +251,12 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
                     name: a.name,
                 })
                 .collect(),
+            extraartists: t.extraartists.map(|extraartists| {
+                extraartists
+                    .into_iter()
+                    .filter_map(extra_artist_to_model)
+                    .collect()
+            }),
             type_: if t.type_.is_empty() {
                 "track".to_string()
             } else {
@@ -226,6 +273,12 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
             name: a.name,
         })
         .collect();
+    let extraartists = release.extraartists.map(|extraartists| {
+        extraartists
+            .into_iter()
+            .filter_map(extra_artist_to_model)
+            .collect()
+    });
     let primary_image = release.images.as_ref().and_then(|images| {
         images
             .iter()
@@ -253,6 +306,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         cover_image,
         thumb,
         artists,
+        extraartists,
         tracklist,
         master_id,
     })
