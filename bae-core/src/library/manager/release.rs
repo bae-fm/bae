@@ -780,3 +780,240 @@ impl LibraryManager {
         Ok(())
     }
 }
+
+/// Project cached MusicBrainz `release_metadata` rows back into a
+/// `ParsedAlbum`. Replays what `commit_mb_release` did at import,
+/// minus the network calls — uses whatever the importer archived in
+/// `release_metadata` (the MB release JSON, optional cross-linked
+/// Discogs release JSON).
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+async fn project_musicbrainz_from_cache(
+    database: &Database,
+    release_id: &str,
+    source_release_id: &str,
+    clock: &dyn coven::Clock,
+    ids: &dyn coven::IdProvider,
+) -> Result<crate::import::ParsedAlbum, LibraryError> {
+    let pairs = database.get_release_metadata_by_source(release_id).await?;
+    let mb_json = pairs.get("musicbrainz").ok_or_else(|| {
+        LibraryError::Import(format!(
+            "no cached MusicBrainz payload for release '{release_id}' (source release {source_release_id})"
+        ))
+    })?;
+    let response: crate::musicbrainz::MbReleaseResponse =
+        serde_json::from_str(mb_json).map_err(|e| {
+            LibraryError::Import(format!("failed to parse cached MusicBrainz JSON: {e}"))
+        })?;
+
+    // The cached payload may belong to an earlier pressing if `set_identity`
+    // redirected `metadata_source_release_id` without re-fetching. Refuse to
+    // project stale data — caller must re-fetch (e.g. via Re-identify) first.
+    if response.id != source_release_id {
+        return Err(LibraryError::Import(format!(
+            "cached MusicBrainz payload (release '{}') doesn't match current pointer '{}'; re-fetch via Re-identify first",
+            response.id, source_release_id
+        )));
+    }
+
+    let discogs_release = match pairs.get("discogs") {
+        Some(json) => Some(
+            crate::discogs::client::parse_discogs_release_json(json).map_err(|e| {
+                LibraryError::Import(format!(
+                    "failed to parse cached Discogs cross-ref JSON: {e}"
+                ))
+            })?,
+        ),
+        None => None,
+    };
+
+    crate::import::musicbrainz_mapper::map_mb_response_to_db(
+        &response,
+        None,
+        discogs_release,
+        clock,
+        ids,
+    )
+    .map_err(LibraryError::Import)
+}
+
+/// Project cached Discogs `release_metadata` rows back into a
+/// `ParsedAlbum`. Replays the import-time projection from the archived
+/// raw JSON (Discogs release + optional master + optional MB cross-ref).
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+async fn project_discogs_from_cache(
+    database: &Database,
+    release_id: &str,
+    source_release_id: &str,
+    clock: &dyn coven::Clock,
+    ids: &dyn coven::IdProvider,
+) -> Result<crate::import::ParsedAlbum, LibraryError> {
+    let pairs = database.get_release_metadata_by_source(release_id).await?;
+    let discogs_json = pairs.get("discogs").ok_or_else(|| {
+        LibraryError::Import(format!(
+            "no cached Discogs payload for release '{release_id}' (source release {source_release_id})"
+        ))
+    })?;
+    let release = crate::discogs::client::parse_discogs_release_json(discogs_json)
+        .map_err(|e| LibraryError::Import(format!("failed to parse cached Discogs JSON: {e}")))?;
+
+    // The cached payload may belong to an earlier pressing if `set_identity`
+    // redirected `metadata_source_release_id` without re-fetching. Refuse to
+    // project stale data — caller must re-fetch (e.g. via Re-identify) first.
+    if release.id != source_release_id {
+        return Err(LibraryError::Import(format!(
+            "cached Discogs payload (release '{}') doesn't match current pointer '{}'; re-fetch via Re-identify first",
+            release.id, source_release_id
+        )));
+    }
+
+    let master_year = match pairs.get("discogs_master") {
+        Some(json) => crate::discogs::client::parse_discogs_master_year(json).map_err(|e| {
+            LibraryError::Import(format!("failed to parse cached Discogs master JSON: {e}"))
+        })?,
+        None => release.year,
+    };
+
+    let mb_xref = match pairs.get("musicbrainz") {
+        Some(json) => Some(
+            serde_json::from_str::<crate::musicbrainz::MbReleaseResponse>(json).map_err(|e| {
+                LibraryError::Import(format!(
+                    "failed to parse cached MusicBrainz cross-ref JSON: {e}"
+                ))
+            })?,
+        ),
+        None => None,
+    };
+
+    crate::import::discogs_mapper::map_discogs_to_db(
+        &release,
+        master_year,
+        mb_xref.as_ref(),
+        clock,
+        ids,
+    )
+    .map_err(LibraryError::Import)
+}
+
+/// Project the embedded tags of a release's local audio files into a
+/// `ParsedAlbum`. Mirrors the Unknown import path's call to
+/// `map_file_tags_to_db`. Errors out if any audio file is unreachable on
+/// disk (cloud-only release without a local copy).
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+async fn project_file_tags(
+    database: &Database,
+    release: &DbRelease,
+    clock: ClockRef,
+    ids: IdRef,
+) -> Result<crate::import::ParsedAlbum, LibraryError> {
+    let files = database.get_files_for_release(&release.id).await?;
+    let mut audio_paths = Vec::new();
+    for file in &files {
+        if !file.content_type.is_audio() {
+            continue;
+        }
+        // The file's bytes must be the user's own file in place (a Local
+        // user-provided blob coven holds an external ref for); a Remote release
+        // has no on-disk original to re-read tags from.
+        let path = database
+            .external_blob(&file.id)
+            .await?
+            .map(|ext| ext.path)
+            .ok_or_else(|| {
+            LibraryError::Import(format!(
+                "audio file '{}' is remote — make the release local before resetting from file tags",
+                file.original_filename
+            ))
+        })?;
+        audio_paths.push(path);
+    }
+    if audio_paths.is_empty() {
+        return Err(LibraryError::Import(format!(
+            "release '{}' has no audio files to read tags from",
+            release.id
+        )));
+    }
+    // Album-title fallback when no file carries an ALBUM tag: the folder the
+    // release was originally imported from.
+    let folder_name = release.source_folder_name.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::import::file_tag_mapper::map_file_tags_to_db(
+            &audio_paths,
+            folder_name.as_deref(),
+            clock.as_ref(),
+            ids.as_ref(),
+        )
+    })
+    .await
+    .map_err(|e| LibraryError::Import(format!("file-tag mapping task failed: {e}")))?
+    .map_err(LibraryError::Import)
+}
+
+/// The cover [`ImageRef`] for one release from its `covers` row's `_updated_at`,
+/// or `None` when it has no cover row. Free function so the manager's `cover_ref`
+/// and the observer's `find_release_detail_with` share one construction.
+pub(crate) async fn cover_ref_for(
+    database: &Database,
+    release_id: &str,
+) -> Result<Option<ImageRef>, LibraryError> {
+    Ok(database
+        .cover_version(release_id)
+        .await?
+        .map(|version| ImageRef {
+            id: release_id.to_string(),
+            version,
+        }))
+}
+
+/// Free-function variant of `LibraryManager::find_release_detail`.
+///
+/// Used by the manager and by the upload observer (which holds the same
+/// `Database` and a `CovenHandle` so it can emit `ReleaseUpdated` events for a
+/// release whose `local_path` just got cleared at the end of an upload run,
+/// without owning a manager). The pin-state is answered through `handle`, the
+/// same door the manager uses. `has_cloud_home` is supplied by the caller; the
+/// observer fires inside a running sync cycle so it can pass `true`.
+pub(crate) async fn find_release_detail_with(
+    database: &Database,
+    handle: &CovenHandle,
+    has_cloud_home: bool,
+    release_id: &str,
+) -> Result<Option<ReleaseDetail>, LibraryError> {
+    let Some(raw) = database.find_release_detail(release_id).await? else {
+        return Ok(None);
+    };
+    let album_id = raw.release.album_id.clone();
+    let album_artists = database.get_artists_for_album(&album_id).await?;
+    let releases = database.get_releases_for_album(&album_id).await?;
+    let release_index = releases
+        .iter()
+        .position(|r| r.id == release_id)
+        .expect("release belongs to its album");
+    let pinned = match raw.files.first() {
+        Some(file) => release_file_pinned(handle, &file.id).await?,
+        None => false,
+    };
+    let cover = cover_ref_for(database, release_id).await?;
+    let ctx = ReleaseResolveCtx {
+        has_cloud_home,
+        pinned,
+        cover,
+    };
+    Ok(Some(ReleaseDetail::from_raw(
+        raw,
+        &album_artists,
+        release_index,
+        &ctx,
+    )))
+}
+
+impl LibraryManager {
+    /// The full cloud object key a release file's blob lives at, derived through
+    /// coven for the configured home's scheme (`Hashed` → `{ns}/{ab}/{cd}/{id}`,
+    /// `Plain` → `{ns}/{cloud_path}`). Used by the bae-side delete path, which
+    /// stays bae's responsibility (the transitions are coven's).
+    pub(super) fn release_file_cloud_key(&self, file: &DbFile) -> Result<String, LibraryError> {
+        self.handle
+            .blob_cloud_key(&Self::release_file_blob_ref(file))
+            .map_err(|e| LibraryError::Storage(format!("cloud key for file {}: {e}", file.id)))
+    }
+}

@@ -148,3 +148,64 @@ impl LibraryManager {
         Ok((audio, info))
     }
 }
+
+/// Build `PlaybackTrackInfo` given a track + release that have already been
+/// loaded. Queries the album title + artists but reuses the track/release
+/// passed in.
+pub(crate) async fn playback_info_from_track_release(
+    database: &Database,
+    track: &DbTrack,
+    release: &DbRelease,
+) -> Result<crate::playback::PlaybackTrackInfo, LibraryError> {
+    // Cover comes from the track's own release so playing a non-primary
+    // release shows that release's art, not the album-level primary.
+    let cover_image_id = Some(track.release_id.clone());
+    let album_id = release.album_id.clone();
+    let album_title = match database.find_album_by_id(&album_id).await? {
+        Some(album) => album.title,
+        None => {
+            warn!(
+                "Album not found for track {} (album_id {})",
+                track.id, album_id
+            );
+            String::new()
+        }
+    };
+
+    let track_artists = database.get_artists_for_track(&track.id).await?;
+    let (artist_id, artist_names) = if !track_artists.is_empty() {
+        let id = track_artists[0].id.clone();
+        let names = join_artist_names(&track_artists);
+        (id, names)
+    } else {
+        let album_artists = database.get_artists_for_album(&album_id).await?;
+        if album_artists.is_empty() {
+            return Err(LibraryError::TrackMapping(format!(
+                "no artist found for track {} album {}",
+                track.id, album_id
+            )));
+        }
+        let id = album_artists[0].id.clone();
+        let names = join_artist_names(&album_artists);
+        (id, names)
+    };
+
+    let side = crate::util::format::physical_side_medium(release.pressing.format.as_deref()).map(
+        |medium| crate::playback::PlaybackTrackSide {
+            medium,
+            side_letter: crate::util::format::side_letter(track.side),
+        },
+    );
+
+    Ok(crate::playback::PlaybackTrackInfo {
+        track_id: track.id.clone(),
+        track_title: track.title.clone(),
+        artist_names,
+        artist_id,
+        album_id,
+        album_title,
+        cover_image_id,
+        release_id: release.id.clone(),
+        side,
+    })
+}

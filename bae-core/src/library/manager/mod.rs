@@ -1,17 +1,22 @@
 //! Orchestrator layer: the one place where raw DB aggregates meet util
 //! formatters and filesystem paths to produce resolved types.
 //!
-//! `LibraryManager` owns `library_dir` and the database handle. The
-//! `resolve_*` helpers near the top of this file each take a `Db*` input
-//! (from `crate::db::models`) and produce its resolved counterpart (in
-//! `crate::album_detail`). Public methods return the resolved shapes —
-//! `AlbumSummary`, `ReleaseStorageSummary`, `SearchResults`, `AlbumDetail`,
-//! `ReleaseDetail` — never the raw `Db*` aggregates.
+//! `LibraryManager` owns `library_dir` and the database handle. Its surface
+//! is split into per-entity modules — `release`, `album`, `track`, `artist`,
+//! `identity`, `image`, `import`, `export`, `storage` — each holding that
+//! entity's I/O operations (reads `&Database` / `&CovenHandle` to gather the
+//! covers, pin state, and joins a resolved shape needs). The pure projection
+//! from a `Db*` aggregate to its resolved counterpart lives on the produced
+//! type as a `from_raw` constructor in `crate::album_detail`. Public methods
+//! return the resolved shapes — `AlbumSummary`, `ReleaseStorageSummary`,
+//! `SearchResults`, `AlbumDetail`, `ReleaseDetail` — never the raw `Db*`
+//! aggregates.
 //!
 //! Rule for additions: new DB-backed data flows through this layer. If you
 //! need a new resolved shape, add the raw type to `crate::db::models`, the
-//! resolved type to `crate::album_detail` (or a sibling like
-//! `crate::queue`), and a `resolve_*` helper here.
+//! resolved type to `crate::album_detail` (or a sibling like `crate::queue`)
+//! with its `from_raw` constructor, and the I/O method to the matching entity
+//! module here.
 
 use std::collections::HashMap;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -56,77 +61,22 @@ use coven::EncryptionService;
 use coven::IdRef;
 use coven::LibraryDir;
 
+mod album;
+mod artist;
 mod config;
 mod coven_blobs;
-mod domain_ops;
+mod export;
+mod identity;
+mod image;
+mod import;
 mod locality;
 mod playback_state;
-mod resolve;
+mod release;
 mod storage;
 mod sync;
+mod track;
 
-pub(crate) use resolve::find_release_detail_with;
-
-/// Build `PlaybackTrackInfo` given a track + release that have already been
-/// loaded. Queries the album title + artists but reuses the track/release
-/// passed in.
-pub(crate) async fn playback_info_from_track_release(
-    database: &Database,
-    track: &DbTrack,
-    release: &DbRelease,
-) -> Result<crate::playback::PlaybackTrackInfo, LibraryError> {
-    // Cover comes from the track's own release so playing a non-primary
-    // release shows that release's art, not the album-level primary.
-    let cover_image_id = Some(track.release_id.clone());
-    let album_id = release.album_id.clone();
-    let album_title = match database.find_album_by_id(&album_id).await? {
-        Some(album) => album.title,
-        None => {
-            warn!(
-                "Album not found for track {} (album_id {})",
-                track.id, album_id
-            );
-            String::new()
-        }
-    };
-
-    let track_artists = database.get_artists_for_track(&track.id).await?;
-    let (artist_id, artist_names) = if !track_artists.is_empty() {
-        let id = track_artists[0].id.clone();
-        let names = join_artist_names(&track_artists);
-        (id, names)
-    } else {
-        let album_artists = database.get_artists_for_album(&album_id).await?;
-        if album_artists.is_empty() {
-            return Err(LibraryError::TrackMapping(format!(
-                "no artist found for track {} album {}",
-                track.id, album_id
-            )));
-        }
-        let id = album_artists[0].id.clone();
-        let names = join_artist_names(&album_artists);
-        (id, names)
-    };
-
-    let side = crate::util::format::physical_side_medium(release.pressing.format.as_deref()).map(
-        |medium| crate::playback::PlaybackTrackSide {
-            medium,
-            side_letter: crate::util::format::side_letter(track.side),
-        },
-    );
-
-    Ok(crate::playback::PlaybackTrackInfo {
-        track_id: track.id.clone(),
-        track_title: track.title.clone(),
-        artist_names,
-        artist_id,
-        album_id,
-        album_title,
-        cover_image_id,
-        release_id: release.id.clone(),
-        side,
-    })
-}
+pub(crate) use release::find_release_detail_with;
 
 /// Outcome of `resolve_identity_target_album` — where a release should
 /// land after a `set_identity` call. `new_album` carries the album row
@@ -1204,6 +1154,116 @@ async fn release_file_pinned(handle: &CovenHandle, file_id: &str) -> Result<bool
         Err(e) => Err(LibraryError::Storage(format!(
             "pin-state for {file_id}: {e}"
         ))),
+    }
+}
+
+impl LibraryManager {
+    /// The full cloud object key a cover blob lives at (namespace `covers`),
+    /// derived through coven for the configured home's scheme. Used by the
+    /// bae-side cover delete path.
+    fn cover_cloud_key(
+        &self,
+        release_id: &str,
+        cloud_path: Option<&str>,
+    ) -> Result<String, LibraryError> {
+        self.handle
+            .blob_cloud_key(&Self::image_blob_ref(
+                crate::sync::COVERS_NAMESPACE,
+                release_id,
+                cloud_path.map(str::to_string),
+            ))
+            .map_err(|e| LibraryError::Storage(format!("cloud key for cover {release_id}: {e}")))
+    }
+
+    /// Queue files for a release for deletion (local + cloud).
+    ///
+    /// Skips local releases -- those are the user's original files. For
+    /// remote releases:
+    /// - Queues local file deletion if this device pins them
+    /// - Adds cloud outbox delete entries for each file
+    /// - Cancels any pending uploads for the same files
+    async fn queue_release_files_for_deletion(&self, release_id: &str) {
+        let release = match self.database.find_release_by_id(release_id).await {
+            Ok(Some(r)) => r,
+            _ => return,
+        };
+
+        let files = match self.get_files_for_release(release_id).await {
+            Ok(files) => files,
+            Err(e) => {
+                warn!("Failed to get files for release {}: {}", release_id, e);
+                return;
+            }
+        };
+
+        if release.remote {
+            // Remote: tombstone the cloud blobs and drop coven's cache copies.
+            self.queue_storage_deletions(&files).await;
+        } else {
+            // Local: the files are the user's own files in place — never delete
+            // them. Just clear coven's external refs so no orphan ref outlives the
+            // release row.
+            for file in &files {
+                if let Err(e) = self.database.clear_external_blob(&file.id).await {
+                    warn!(
+                        "Failed to clear external ref for {} on delete: {e}",
+                        file.id
+                    );
+                }
+            }
+        }
+    }
+
+    /// Clean up a release's cover blob when the release is deleted. The `covers`
+    /// row itself is cascade-deleted with the release (its FK to `releases`), and
+    /// that DELETE changeset replicates the removal — and on peers coven's
+    /// apply-side cache drop removes their cover copy. This handles the owner's
+    /// blob bytes: a Remote release's cover is in the cloud + cache (tombstone the
+    /// cloud blob + drop the cache copy), a Local release's cover is in coven's
+    /// local store (drop it). Best-effort: each step logs and continues so a
+    /// cleanup hiccup never aborts the delete.
+    async fn queue_release_cover_for_deletion(&self, release_id: &str, was_remote: bool) {
+        let cover = match self
+            .database
+            .find_library_image(release_id, &LibraryImageType::Cover)
+            .await
+        {
+            Ok(Some(cover)) => cover,
+            // No cover: nothing to clean up.
+            Ok(None) => return,
+            Err(e) => {
+                warn!("Failed to look up cover for release {release_id}: {e}");
+                return;
+            }
+        };
+
+        if was_remote {
+            // Remote: tombstone the cloud cover blob (its on-device cache copy is
+            // dropped below, alongside the Local case).
+            match self.cover_cloud_key(release_id, cover.cloud_path.as_deref()) {
+                Ok(cloud_key) => {
+                    if let Err(e) = self.database.add_cloud_outbox_delete(&cloud_key).await {
+                        warn!("Failed to enqueue cover blob delete for {release_id}: {e}");
+                    }
+                }
+                Err(e) => warn!("Failed to derive cover blob key for {release_id}: {e}"),
+            }
+        }
+        // Drop every on-device copy of the cover blob — a Remote release's cache
+        // copy or a Local release's local-store copy (it lived in at most one).
+        if let Err(e) = self
+            .handle
+            .evict_blob(&Self::image_blob_ref(
+                crate::sync::COVERS_NAMESPACE,
+                release_id,
+                cover.cloud_path.clone(),
+            ))
+            .await
+        {
+            warn!("Failed to drop on-device cover copies for {release_id}: {e}");
+        }
+
+        self.emit_outbox_changed().await;
     }
 }
 

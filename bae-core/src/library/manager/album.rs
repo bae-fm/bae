@@ -106,3 +106,56 @@ impl LibraryManager {
         Ok(())
     }
 }
+
+impl LibraryManager {
+    /// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`.
+    /// Joins artist names, formats labels, groups tracks by side, builds
+    /// galleries, and applies the `primary_release_id` fallback. The
+    /// fallback always succeeds: every album has at least one release
+    /// (enforced by `delete_release`).
+    pub(super) async fn resolve_album_detail(
+        &self,
+        raw: crate::db::DbAlbumDetail,
+    ) -> Result<AlbumDetail, LibraryError> {
+        let artist_names = join_artist_names(&raw.artists);
+        // The primary is the stored value when it's still present, otherwise
+        // the album's first release.
+        let primary_release_id = raw
+            .album
+            .primary_release_id
+            .clone()
+            .filter(|id| raw.releases.iter().any(|r| &r.release.id == id))
+            .or_else(|| raw.releases.first().map(|r| r.release.id.clone()))
+            .expect("album has at least one release");
+
+        let has_cloud_home = self.has_cloud_home();
+        // One cover lookup for the whole album: the album's cover is the primary
+        // release's, and each release carries its own.
+        let release_ids: Vec<String> = raw.releases.iter().map(|r| r.release.id.clone()).collect();
+        let covers = self.cover_refs(&release_ids).await?;
+        let cover = covers.get(&primary_release_id).cloned();
+        let mut releases = Vec::with_capacity(raw.releases.len());
+        for (i, r) in raw.releases.into_iter().enumerate() {
+            // Ask coven's cache whether this release is pinned — the orthogonal
+            // coven-cache property of a remote release.
+            let pinned = self
+                .release_pinned(r.files.first().map(|f| f.id.as_str()))
+                .await?;
+            let release_cover = covers.get(&r.release.id).cloned();
+            let ctx = ReleaseResolveCtx {
+                has_cloud_home,
+                pinned,
+                cover: release_cover,
+            };
+            releases.push(ReleaseDetail::from_raw(r, &raw.artists, i, &ctx));
+        }
+
+        Ok(AlbumDetail {
+            album: raw.album,
+            artist_names,
+            releases,
+            primary_release_id,
+            cover,
+        })
+    }
+}

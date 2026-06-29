@@ -250,3 +250,48 @@ impl LibraryManager {
         })
     }
 }
+
+/// Per-source agreement check: do `new_identities` fit alongside
+/// `other_release_identities` (the identity rows of every *other*
+/// release in the candidate album)?
+///
+/// Two releases can share an album as long as they don't disagree on
+/// any source they both claim. `new_id.source == other.source` requires
+/// matching `source_group_id`; differing sources are independent.
+fn identities_fit_album(
+    new_identities: &[crate::import::ReleaseIdentity],
+    other_release_identities: &[Vec<crate::import::ReleaseIdentity>],
+) -> bool {
+    for new_id in new_identities {
+        for other_release in other_release_identities {
+            for existing in other_release {
+                if existing.source == new_id.source
+                    && existing.source_group_id != new_id.source_group_id
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    true
+}
+
+/// Project `MetadataPointer` to the two `releases` columns it sets:
+/// `metadata_source` (always present) and `metadata_source_release_id`
+/// (NULL when source is `file_tags`).
+fn metadata_pointer_to_columns(
+    pointer: crate::import::MetadataPointer,
+) -> (crate::db::ReleaseMetadataSource, Option<String>) {
+    use crate::db::ReleaseMetadataSource;
+    use crate::import::{MetadataPointer, MetadataSource};
+    match pointer {
+        MetadataPointer::External { source, release_id } => {
+            let column_source = match source {
+                MetadataSource::MusicBrainz => ReleaseMetadataSource::MusicBrainz,
+                MetadataSource::Discogs => ReleaseMetadataSource::Discogs,
+            };
+            (column_source, Some(release_id))
+        }
+        MetadataPointer::FileTags => (ReleaseMetadataSource::FileTags, None),
+    }
+}
