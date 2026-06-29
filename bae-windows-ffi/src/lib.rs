@@ -3932,7 +3932,13 @@ pub unsafe extern "C" fn bae_get_members(handle: *const BaeHandle) -> *mut c_cha
         .into_iter()
         .map(|member| FfiMember {
             pubkey: member.pubkey,
-            role: member.role.as_str().to_string(),
+            // Lowercase wire role this FFI promises its caller (see `FfiMember.role`).
+            role: match member.role {
+                bae_core::sync::sync_manager::MemberRole::Owner => "owner",
+                bae_core::sync::sync_manager::MemberRole::Member => "member",
+                bae_core::sync::sync_manager::MemberRole::Follower => "follower",
+            }
+            .to_string(),
             is_self: member.is_self,
             fingerprint: member.fingerprint,
             can_remove: member.can_remove,

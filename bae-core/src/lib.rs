@@ -19,6 +19,7 @@ pub mod library_name;
 // measurements with plain arithmetic and needs no ebur128).
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
 pub mod loudness;
+pub mod migrations;
 pub mod musicbrainz;
 pub mod network;
 pub mod playback;
