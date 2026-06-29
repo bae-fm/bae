@@ -32,15 +32,13 @@ use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
 use crate::playback::audio_output::{AudioOutput, AudioStream, CompletionEvent, PositionEvent};
-use crate::playback::data_source::{
-    create_audio_reader, AudioDataReader, AudioReadConfig, LocalReader,
-};
+use crate::playback::data_source::create_audio_reader;
 use crate::playback::error::PlaybackError;
 use crate::playback::progress::emit_progress;
-use crate::playback::progress::PreviewState;
 use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
 // The `source` module is imported by path so the audio sample feed reads
 // `source::PlaybackSource` — distinct from the queue's `ContextSource`.
+use crate::playback::preview_player::PreviewPlayer;
 use crate::playback::source;
 use crate::playback::source::{TrackCrossing, TrackFmt};
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
@@ -62,7 +60,10 @@ mod state;
 #[cfg(test)]
 mod tests;
 
-fn log_streaming_decode_failure(context: &str, error: StreamingDecodeError) -> Option<String> {
+pub(crate) fn log_streaming_decode_failure(
+    context: &str,
+    error: StreamingDecodeError,
+) -> Option<String> {
     match error {
         StreamingDecodeError::InputCancelled => {
             debug!("{context} stopped after input cancellation");
@@ -270,7 +271,10 @@ pub enum PlaybackState {
 /// Send a command to the playback service. Logs at warn-level if the service
 /// has shut down (receiver dropped). Calls are otherwise fire-and-forget; the
 /// service processes commands serially on its own thread.
-fn dispatch_command(tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>, cmd: PlaybackCommand) {
+pub(crate) fn dispatch_command(
+    tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    cmd: PlaybackCommand,
+) {
     if let Err(err) = tx.send(cmd) {
         warn!("playback command channel closed; dropped {:?}", err.0);
     }
@@ -644,33 +648,12 @@ pub struct PlaybackService {
     pre_mute_volume: f32,
     /// Cached track info for the currently playing track.
     current_track_info: Option<PlaybackTrackInfo>,
-    // -- Preview playback state --
-    /// Separate audio output for preview (lazily created)
-    preview_audio_output: Option<Box<dyn AudioOutput>>,
-    /// Stream for preview playback
-    preview_stream: Option<Box<dyn AudioStream>>,
-    /// Streaming source for preview (to cancel on stop). Wrapped in a
-    /// single-track `PlaybackSource` (preview never chains) to share the audio
-    /// output's stream interface.
-    preview_playback_source: Option<Arc<Mutex<source::PlaybackSource>>>,
-    /// Path of the file currently being previewed
-    preview_path: Option<String>,
+    /// The preview player — a self-contained second player for auditioning a
+    /// local file. The service only coordinates pause/resume of the main player
+    /// around it; the preview's own state lives entirely in `PreviewPlayer`.
+    preview: PreviewPlayer,
     /// Whether the main player was playing before preview started (to resume on stop)
     main_was_playing_before_preview: bool,
-    /// Last known duration for the preview file
-    preview_duration: std::time::Duration,
-    /// Last known position for the preview file
-    preview_position: std::time::Duration,
-    /// Abort handles for preview position listener tasks
-    preview_listener_handles: Vec<tokio::task::JoinHandle<()>>,
-    /// Sparse buffer for the current preview (retained across seeks)
-    preview_buffer: Option<SharedSparseBuffer>,
-    /// JoinHandle for the preview decoder thread (needed for seek cancellation)
-    preview_decoder_handle: Option<std::thread::JoinHandle<()>>,
-    /// Seek offset for the current preview (added to decoder-relative position)
-    preview_seek_offset: std::time::Duration,
-    preview_sample_rate: u32,
-    preview_channels: u32,
     /// How often (ms) the audio callback sends position updates to the UI.
     position_update_interval_ms: u32,
     /// Cached full-file buffer for frame-dependent codecs (APE).
@@ -719,26 +702,26 @@ fn side_pause_prompt_between(
 /// dedicated thread so the sink owns any thread-bound device handle it opens
 /// there (cpal builds lazily per stream; AAudio binds its writer thread).
 #[cfg(not(target_os = "android"))]
-fn default_audio_output() -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError>
-{
+pub(crate) fn default_audio_output(
+) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
     Ok(Box::new(
         crate::playback::cpal_output::CpalAudioOutput::new()?,
     ))
 }
 
 #[cfg(target_os = "android")]
-fn default_audio_output() -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError>
-{
+pub(crate) fn default_audio_output(
+) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
     Ok(Box::new(
         crate::playback::aaudio_output::AAudioOutput::new()?
     ))
 }
 
-struct StreamSetup {
-    stream: Box<dyn AudioStream>,
-    bridge_handles: Vec<tokio::task::JoinHandle<()>>,
-    position_rx: tokio_mpsc::UnboundedReceiver<PositionEvent>,
-    completion_rx: tokio_mpsc::UnboundedReceiver<CompletionEvent>,
+pub(crate) struct StreamSetup {
+    pub(crate) stream: Box<dyn AudioStream>,
+    pub(crate) bridge_handles: Vec<tokio::task::JoinHandle<()>>,
+    pub(crate) position_rx: tokio_mpsc::UnboundedReceiver<PositionEvent>,
+    pub(crate) completion_rx: tokio_mpsc::UnboundedReceiver<CompletionEvent>,
 }
 
 /// Spawn a task that forwards events from the audio callback's sync `mpsc`
@@ -770,7 +753,7 @@ fn spawn_sync_to_async_bridge<T: Send + 'static>(
     })
 }
 
-async fn setup_audio_stream(
+pub(crate) async fn setup_audio_stream(
     audio_output: &mut dyn AudioOutput,
     source: Arc<Mutex<source::PlaybackSource>>,
     position_update_interval_ms: u32,
@@ -810,6 +793,59 @@ async fn setup_audio_stream(
         position_rx: position_rx_async,
         completion_rx: completion_rx_async,
     })
+}
+
+/// Tear down the decoded-audio pipeline for a seek.
+///
+/// Cancels reads to unblock the old decoder, but the data reader keeps
+/// filling the buffer. After this, the buffer is ready for a new decoder
+/// to read from position 0. Shared by the main player's seek and the
+/// preview player's seek.
+pub(crate) async fn teardown_decoder_for_seek(
+    source: &mut Option<Arc<Mutex<source::PlaybackSource>>>,
+    buffer: &SharedSparseBuffer,
+    cancel_token: &Arc<std::sync::atomic::AtomicBool>,
+    decoder_handle: &mut Option<std::thread::JoinHandle<()>>,
+    buffer_shared: bool,
+) {
+    // Cancel streaming source (cpal callback outputs silence)
+    if let Some(src) = source.take() {
+        if let Ok(guard) = src.lock() {
+            guard.cancel();
+        }
+    }
+
+    // Cancel this decoder's AVIO reads via its token.
+    cancel_token.store(true, std::sync::atomic::Ordering::Release);
+
+    // For non-shared buffers, also cancel buffer reads to unblock the reader.
+    // For shared buffers, only the cancel_token is used — other decoders
+    // (e.g. preloaded next track) must not be disturbed.
+    if !buffer_shared {
+        buffer.cancel_reads();
+    }
+    // Wake up any readers blocked on the condvar so they can check the cancel token
+    buffer.wake_readers();
+
+    // Wait for decoder thread to exit. Surface a thread panic as an error
+    // (decoder bug, real signal); tokio join failures (panic in the
+    // spawn_blocking wrapper itself, runtime shutdown) get a warn.
+    if let Some(handle) = decoder_handle.take() {
+        match tokio::task::spawn_blocking(move || handle.join()).await {
+            Ok(Ok(())) => {}
+            Ok(Err(panic)) => {
+                error!("Decoder thread panicked during seek teardown: {:?}", panic);
+            }
+            Err(e) => {
+                warn!("spawn_blocking failed while joining decoder thread: {e}");
+            }
+        }
+    }
+
+    // Uncancel buffer reads for new decoders (only needed for non-shared)
+    if !buffer_shared {
+        buffer.uncancel();
+    }
 }
 
 /// The sample-space decoder window for one stream: `target_sample` is where
@@ -943,6 +979,11 @@ impl PlaybackService {
                     },
                 };
                 let queue_ids = library_manager.ids().clone();
+                let preview = PreviewPlayer::new(
+                    progress_tx.clone(),
+                    command_tx.clone(),
+                    position_update_interval_ms,
+                );
                 let mut service = PlaybackService {
                     library_manager,
                     command_tx: command_tx.clone(),
@@ -960,19 +1001,8 @@ impl PlaybackService {
                     next_track_stream: None,
                     next_decoder_handle: None,
                     current_track_info: None,
-                    preview_audio_output: None,
-                    preview_stream: None,
-                    preview_playback_source: None,
-                    preview_path: None,
+                    preview,
                     main_was_playing_before_preview: false,
-                    preview_duration: std::time::Duration::ZERO,
-                    preview_position: std::time::Duration::ZERO,
-                    preview_listener_handles: Vec::new(),
-                    preview_buffer: None,
-                    preview_decoder_handle: None,
-                    preview_seek_offset: std::time::Duration::ZERO,
-                    preview_sample_rate: 44100,
-                    preview_channels: 2,
                     is_muted: false,
                     pre_mute_volume: 1.0,
                     position_update_interval_ms,
@@ -1011,7 +1041,7 @@ impl PlaybackService {
                 Some(command) = self.command_rx.recv() => {
             match command {
                 PlaybackCommand::Play(track_id) => {
-                    self.stop_preview_without_resume();
+                    self.preview.stop();
                     self.main_was_playing_before_preview = false;
                     if let Some(stream) = self.stream.take() {
                         drop(stream);
@@ -1054,7 +1084,7 @@ impl PlaybackService {
                         continue;
                     }
 
-                    self.stop_preview_without_resume();
+                    self.preview.stop();
                     self.main_was_playing_before_preview = false;
                     let start = if shuffle {
                         // The shuffle seed is read once here, at the command
@@ -1100,7 +1130,7 @@ impl PlaybackService {
                         warn!("PlayLibraryShuffled: the library has no tracks; nothing to play");
                         continue;
                     }
-                    self.stop_preview_without_resume();
+                    self.preview.stop();
                     self.main_was_playing_before_preview = false;
                     // A fresh seed minted at the command boundary so the shuffled
                     // order is reproducible and `Context` repeat can re-derive it.
@@ -1459,22 +1489,19 @@ impl PlaybackService {
                     }
                 }
                 PlaybackCommand::PreviewPlay(path) => {
-                    self.handle_preview_play(path).await;
+                    self.preview_play(path).await;
                 }
                 PlaybackCommand::PreviewStop => {
-                    self.stop_preview();
+                    self.preview_stop();
                 }
                 PlaybackCommand::PreviewTogglePause => {
-                    self.handle_preview_toggle_pause().await;
+                    self.preview_toggle_pause().await;
                 }
                 PlaybackCommand::PreviewSeekByRatio(ratio) => {
-                    let duration_ms = self.preview_duration.as_millis() as u64;
-                    let position_ms = (ratio.clamp(0.0, 1.0) * duration_ms as f64) as u64;
-                    self.handle_preview_seek(std::time::Duration::from_millis(position_ms))
-                        .await;
+                    self.preview.seek_by_ratio(ratio).await;
                 }
                 PlaybackCommand::PreviewCompleted => {
-                    self.handle_preview_completed();
+                    self.preview_completed();
                 }
                 PlaybackCommand::TogglePlayPause => {
                     use crate::playback::audio_output::AudioState;

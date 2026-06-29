@@ -1,58 +1,6 @@
 use super::*;
 
 impl PlaybackService {
-    /// Tear down the decoded-audio pipeline for a seek.
-    ///
-    /// Cancels reads to unblock the old decoder, but the data reader keeps
-    /// filling the buffer. After this, the buffer is ready for a new decoder
-    /// to read from position 0.
-    pub(super) async fn teardown_decoder_for_seek(
-        source: &mut Option<Arc<Mutex<source::PlaybackSource>>>,
-        buffer: &SharedSparseBuffer,
-        cancel_token: &Arc<std::sync::atomic::AtomicBool>,
-        decoder_handle: &mut Option<std::thread::JoinHandle<()>>,
-        buffer_shared: bool,
-    ) {
-        // Cancel streaming source (cpal callback outputs silence)
-        if let Some(src) = source.take() {
-            if let Ok(guard) = src.lock() {
-                guard.cancel();
-            }
-        }
-
-        // Cancel this decoder's AVIO reads via its token.
-        cancel_token.store(true, std::sync::atomic::Ordering::Release);
-
-        // For non-shared buffers, also cancel buffer reads to unblock the reader.
-        // For shared buffers, only the cancel_token is used — other decoders
-        // (e.g. preloaded next track) must not be disturbed.
-        if !buffer_shared {
-            buffer.cancel_reads();
-        }
-        // Wake up any readers blocked on the condvar so they can check the cancel token
-        buffer.wake_readers();
-
-        // Wait for decoder thread to exit. Surface a thread panic as an error
-        // (decoder bug, real signal); tokio join failures (panic in the
-        // spawn_blocking wrapper itself, runtime shutdown) get a warn.
-        if let Some(handle) = decoder_handle.take() {
-            match tokio::task::spawn_blocking(move || handle.join()).await {
-                Ok(Ok(())) => {}
-                Ok(Err(panic)) => {
-                    error!("Decoder thread panicked during seek teardown: {:?}", panic);
-                }
-                Err(e) => {
-                    warn!("spawn_blocking failed while joining decoder thread: {e}");
-                }
-            }
-        }
-
-        // Uncancel buffer reads for new decoders (only needed for non-shared)
-        if !buffer_shared {
-            buffer.uncancel();
-        }
-    }
-
     pub(super) async fn seek(&mut self, position: std::time::Duration) {
         // Verify streaming state is available
         if self.current_playback_source.is_none() {
@@ -120,7 +68,7 @@ impl PlaybackService {
             .current_prepared
             .as_ref()
             .is_some_and(|p| p.buffer_shared);
-        Self::teardown_decoder_for_seek(
+        teardown_decoder_for_seek(
             &mut self.current_playback_source,
             &buffer,
             &cancel_token,
