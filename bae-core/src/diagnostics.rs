@@ -889,11 +889,11 @@ mod tests {
             ("operation".to_string(), "scan".to_string()),
             (
                 "path".to_string(),
-                "/Users/person/Music/file.flac".to_string(),
+                "/tmp/import_source/file.flac".to_string(),
             ),
             (
                 "status".to_string(),
-                "stored at /Users/person/Music/file.flac".to_string(),
+                "stored at /tmp/import_source/file.flac".to_string(),
             ),
             (
                 "error_code".to_string(),
@@ -1022,7 +1022,7 @@ mod tests {
                 tracing::warn!(
                     target: "scan",
                     operation = "import",
-                    path = "/Users/person/Music/file.flac",
+                    path = "/tmp/import_source/file.flac",
                     "release {} failed",
                     "123e4567-e89b-12d3-a456-426614174000"
                 );

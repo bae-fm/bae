@@ -223,7 +223,7 @@ fn content_hash_is_location_independent_and_size_sensitive() {
     // The same relative structure under two different parent folders hashes
     // identically — the fingerprint follows the rip, not where it sits.
     let a = make("/Volumes/Music/Release", 2000);
-    let b = make("/Users/sam/Downloads/Release", 2000);
+    let b = make("/tmp/import_source/Release", 2000);
     assert_eq!(a.content_hash(), b.content_hash());
 
     // A single differing file size flips the hash.

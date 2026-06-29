@@ -190,7 +190,7 @@ mod tests {
             .add(&library_dir, "/Volumes/Music/New Rips".to_string())
             .unwrap());
         assert!(registry
-            .add(&library_dir, "/Users/sam/Downloads/Bandcamp".to_string())
+            .add(&library_dir, "/music/library/incoming".to_string())
             .unwrap());
         // A duplicate add is a no-op.
         assert!(!registry
@@ -208,8 +208,8 @@ mod tests {
                     name: "New Rips".to_string(),
                 },
                 WatchedFolder {
-                    path: "/Users/sam/Downloads/Bandcamp".to_string(),
-                    name: "Bandcamp".to_string(),
+                    path: "/music/library/incoming".to_string(),
+                    name: "incoming".to_string(),
                 },
             ]
         );
