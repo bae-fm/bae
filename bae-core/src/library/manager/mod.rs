@@ -69,6 +69,7 @@ mod export;
 mod identity;
 mod image;
 mod import;
+mod lifecycle;
 mod locality;
 mod playback_state;
 mod release;
