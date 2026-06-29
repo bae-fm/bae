@@ -583,6 +583,42 @@ internal static class NativeBae
     internal static string? SetPauseBetweenSides(IntPtr handle, bool enabled) =>
         ResultMessage(SetPauseBetweenSidesPtr(handle, enabled));
 
+    [DllImport(Dll, EntryPoint = "bae_set_mcp_server_config", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SetMcpServerConfigPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.I1)] bool enabled,
+        ushort port);
+
+    /// <summary>Set local MCP server config; null on success, else the error.</summary>
+    internal static string? SetMcpServerConfig(IntPtr handle, bool enabled, ushort port) =>
+        ResultMessage(SetMcpServerConfigPtr(handle, enabled, port));
+
+    [DllImport(Dll, EntryPoint = "bae_mcp_server_status", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr McpServerStatusPtr(IntPtr handle);
+
+    internal static string? McpServerStatusJson(IntPtr handle) =>
+        CopyAndFree(McpServerStatusPtr(handle));
+
+    [DllImport(Dll, EntryPoint = "bae_mcp_token", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr McpTokenPtr(IntPtr handle);
+
+    internal static string? GetMcpToken(IntPtr handle) =>
+        CopyAndFree(McpTokenPtr(handle));
+
+    [DllImport(Dll, EntryPoint = "bae_generate_mcp_token", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr GenerateMcpTokenPtr();
+
+    internal static string? GenerateMcpToken() =>
+        CopyAndFree(GenerateMcpTokenPtr());
+
+    [DllImport(Dll, EntryPoint = "bae_set_mcp_token", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SetMcpTokenPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string token);
+
+    internal static string? SetMcpToken(IntPtr handle, string token) =>
+        ResultMessage(SetMcpTokenPtr(handle, token));
+
     [DllImport(Dll, EntryPoint = "bae_save_discogs_token", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr SaveDiscogsTokenPtr(
         IntPtr handle,

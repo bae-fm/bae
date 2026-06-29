@@ -212,4 +212,21 @@
   <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
   <data name="download.state.downloading" xml:space="preserve"><value>downloading {percent}%</value></data>
   <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>自動化</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>啟用 MCP 伺服器</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>連接埠</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>重新整理狀態</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>複製權杖</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>輪替權杖</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>MCP 伺服器：{url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP 伺服器已停用</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>MCP 伺服器設定無效</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP 權杖無法使用</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>無法啟動 MCP 伺服器</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP 伺服器已停止</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>請輸入 1 到 65535 之間的連接埠</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCP 狀態無法使用</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP 權杖無法使用</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>權杖已複製</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>權杖已輪替並複製</value></data>
 </root>

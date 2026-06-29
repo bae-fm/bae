@@ -24,6 +24,17 @@ impl LibraryManager {
             .update(|c| c.pause_between_sides = enabled)
     }
 
+    /// Set the local MCP server config. Port 0 means "ask the OS for any port",
+    /// which would make the configured endpoint false, so reject it before
+    /// persisting.
+    pub fn set_mcp_config(
+        &self,
+        config: crate::config::McpConfig,
+    ) -> Result<(), crate::config::ConfigError> {
+        config.validate()?;
+        self.config_handle.update(|c| c.mcp = config)
+    }
+
     // =========================================================================
     // Discogs token management
     // =========================================================================
@@ -42,6 +53,31 @@ impl LibraryManager {
 
     pub fn delete_discogs_key(&self) -> Result<(), String> {
         self.discogs.delete_discogs_key()
+    }
+
+    // =========================================================================
+    // MCP token management
+    // =========================================================================
+
+    pub fn get_mcp_token(&self) -> Result<Option<String>, String> {
+        self.key_service.get_mcp_token().map_err(|e| e.to_string())
+    }
+
+    pub fn ensure_mcp_token(&self) -> Result<String, String> {
+        match self.get_mcp_token()? {
+            Some(token) => Ok(token),
+            None => {
+                let token = super::generate_mcp_token();
+                self.set_mcp_token(token.clone())?;
+                Ok(token)
+            }
+        }
+    }
+
+    pub fn set_mcp_token(&self, token: String) -> Result<(), String> {
+        self.key_service
+            .set_mcp_token(&token)
+            .map_err(|e| e.to_string())
     }
 
     /// Record a stored key with its validation state — the single write for the

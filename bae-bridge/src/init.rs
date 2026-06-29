@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use bae_core::app::{bootstrap, BootstrapError, RunningApp};
+use bae_core::app::BootstrapError;
+#[cfg(not(feature = "desktop"))]
+use bae_core::app::{bootstrap, RunningApp};
 use bae_core::diagnostics::{
     AppDiagnosticMetadata, DatadogDiagnosticsConfig, DiagnosticLevel, Diagnostics,
     DiagnosticsConfig, DiagnosticsError,
@@ -61,15 +63,24 @@ pub fn init_app(
 ) -> Result<Arc<AppHandle>, BridgeError> {
     configure_logging(Diagnostics::noop())?;
 
+    #[cfg(feature = "desktop")]
+    {
+        let app = bae_desktop::bootstrap(library_id, position_update_interval_ms)
+            .map_err(bootstrap_error_to_bridge)?;
+        return Ok(Arc::new(AppHandle { app }));
+    }
+
+    #[cfg(not(feature = "desktop"))]
     let RunningApp {
         runtime,
         services,
         ui_event_bus,
     } = bootstrap(library_id, position_update_interval_ms).map_err(bootstrap_error_to_bridge)?;
 
+    #[cfg(not(feature = "desktop"))]
     Ok(Arc::new(AppHandle {
         runtime,
-        app_services: services,
+        services,
         ui_event_bus,
     }))
 }

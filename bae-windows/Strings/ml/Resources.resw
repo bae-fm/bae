@@ -212,4 +212,21 @@
   <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
   <data name="download.state.downloading" xml:space="preserve"><value>downloading {percent}%</value></data>
   <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>ഓട്ടോമേഷൻ</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCP സർവർ പ്രവർത്തനക്ഷമമാക്കുക</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>പോർട്ട്</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>സ്ഥിതി പുതുക്കുക</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>ടോക്കൺ പകർത്തുക</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>ടോക്കൺ മാറ്റുക</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>MCP സർവർ: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP സർവർ പ്രവർത്തനരഹിതമാണ്</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>MCP സർവർ ക്രമീകരണം അസാധുവാണ്</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP ടോക്കൺ ലഭ്യമല്ല</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP സർവർ ആരംഭിക്കാൻ കഴിഞ്ഞില്ല</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP സർവർ നിർത്തി</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>1 മുതൽ 65535 വരെ ഒരു പോർട്ട് നൽകുക</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCP നില ലഭ്യമല്ല</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP ടോക്കൺ ലഭ്യമല്ല</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>ടോക്കൺ പകർത്തി</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>ടോക്കൺ മാറ്റി പകർത്തി</value></data>
 </root>

@@ -51,8 +51,8 @@ case ",$BAE_BRIDGE_FEATURES," in
     *) ENTITLEMENTS_OVERRIDE="CODE_SIGN_ENTITLEMENTS = bae/bae-baeium.entitlements" ;;
 esac
 
-# Use sccache if available
-if command -v sccache &> /dev/null; then
+# Use sccache if available, unless the caller already selected a wrapper.
+if [ -z "${RUSTC_WRAPPER+x}" ] && command -v sccache &> /dev/null; then
     export RUSTC_WRAPPER=sccache
 fi
 

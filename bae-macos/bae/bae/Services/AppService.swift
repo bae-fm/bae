@@ -70,6 +70,7 @@ final class AppService: @unchecked Sendable, Observable {
     let sync: Sync
     let downloads: Downloads
     let discogs: Discogs
+    let automation: Automation
     let export: Export
 
     /// Build an `AppService` around an already-open, already-unlocked
@@ -118,6 +119,7 @@ final class AppService: @unchecked Sendable, Observable {
         sync = Sync(handle: appHandle)
         downloads = Downloads(handle: appHandle)
         discogs = Discogs(handle: appHandle)
+        automation = Automation(handle: appHandle)
         export = Export(handle: appHandle)
     }
 

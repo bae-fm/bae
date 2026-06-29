@@ -212,4 +212,21 @@
   <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
   <data name="download.state.downloading" xml:space="preserve"><value>downloading {percent}%</value></data>
   <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>ਆਟੋਮੇਸ਼ਨ</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCP ਸਰਵਰ ਚਾਲੂ ਕਰੋ</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>ਪੋਰਟ</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>ਸਥਿਤੀ ਤਾਜ਼ਾ ਕਰੋ</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>ਟੋਕਨ ਕਾਪੀ ਕਰੋ</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>ਟੋਕਨ ਬਦਲੋ</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>MCP ਸਰਵਰ: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP ਸਰਵਰ ਬੰਦ ਹੈ</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>MCP ਸਰਵਰ ਕਨਫਿਗਰੇਸ਼ਨ ਅਵੈਧ ਹੈ</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP ਟੋਕਨ ਉਪਲਬਧ ਨਹੀਂ ਹੈ</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP ਸਰਵਰ ਸ਼ੁਰੂ ਨਹੀਂ ਹੋ ਸਕਿਆ</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP ਸਰਵਰ ਰੁਕ ਗਿਆ</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>1 ਤੋਂ 65535 ਤੱਕ ਦਾ ਪੋਰਟ ਦਰਜ ਕਰੋ</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCP ਸਥਿਤੀ ਉਪਲਬਧ ਨਹੀਂ ਹੈ</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP ਟੋਕਨ ਉਪਲਬਧ ਨਹੀਂ ਹੈ</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>ਟੋਕਨ ਕਾਪੀ ਹੋ ਗਿਆ</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>ਟੋਕਨ ਬਦਲਿਆ ਤੇ ਕਾਪੀ ਹੋਇਆ</value></data>
 </root>

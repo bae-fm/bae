@@ -1,0 +1,20 @@
+[package]
+name = "bae-cli"
+version = "0.1.0"
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+
+[[bin]]
+name = "bae"
+path = "src/main.rs"
+
+[dependencies]
+bae-automation = { path = "../bae-automation" }
+bae-core = { path = "../bae-core" }
+bae-mcp = { path = "../bae-mcp" }
+clap = { version = "4.6.1", features = ["derive"] }
+coven = { workspace = true }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

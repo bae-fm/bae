@@ -28,6 +28,10 @@ jobs:
     name: Linux
     uses: ./.github/workflows/linux.yml
 
+  cli:
+    name: CLI
+    uses: ./.github/workflows/cli.yml
+
   android:
     name: Android
     # Build both editions so a feature-gate or source-set edit can't break the

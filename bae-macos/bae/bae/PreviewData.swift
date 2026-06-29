@@ -703,6 +703,7 @@ enum PreviewData {
                 encryptionKeyStored: false,
                 encryptionKeyFingerprint: nil,
                 pauseBetweenSides: false,
+                mcp: BridgeMcpConfig(enabled: false, port: 47777),
                 discogsTokenStatus: .notConfigured,
                 discogsUsable: false,
                 sync: nil

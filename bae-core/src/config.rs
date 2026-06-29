@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use tokio::sync::watch;
 use tracing::{debug, info, warn};
 
+pub const MCP_DEFAULT_PORT: u16 = 47777;
+
 /// Initialize the keyring credential store.
 ///
 /// On macOS, uses the protected data store with iCloud cloud-sync enabled,
@@ -223,6 +225,30 @@ pub enum DiscogsTokenStatus {
     Rejected,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct McpConfig {
+    pub enabled: bool,
+    pub port: u16,
+}
+
+impl McpConfig {
+    pub fn disabled_default() -> Self {
+        Self {
+            enabled: false,
+            port: MCP_DEFAULT_PORT,
+        }
+    }
+
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        if self.port == 0 {
+            return Err(ConfigError::Config(
+                "MCP port must be between 1 and 65535".to_string(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 impl DiscogsTokenStatus {
     /// Whether Discogs can be used as a metadata source. A stored key is usable
     /// optimistically unless Discogs has rejected it. The single source of truth
@@ -284,6 +310,7 @@ impl Config {
             c.library_name.clone(),
         );
         cfg.inner = c;
+        cfg.mcp = McpConfig::disabled_default();
         cfg
     }
 }
@@ -328,6 +355,9 @@ pub struct ConfigYaml {
     /// Whether playback pauses between vinyl/cassette sides.
     #[serde(default)]
     pub pause_between_sides: bool,
+    /// Local automation server configuration. Required so missing/stale config
+    /// files fail to load instead of silently taking an implicit value.
+    pub mcp: McpConfig,
     /// Cloud home provider + per-provider settings. Flattened so the on-disk
     /// keys sit at the top level. bae uses coven's type — same fields, extracted
     /// from bae — instead of a parallel copy it would map back and forth.
@@ -352,6 +382,7 @@ impl ConfigYaml {
             discogs: self.discogs,
             replay_gain_mode: self.replay_gain_mode,
             pause_between_sides: self.pause_between_sides,
+            mcp: self.mcp,
         }
     }
 }
@@ -367,6 +398,7 @@ impl From<&Config> for ConfigYaml {
             encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
             replay_gain_mode: config.replay_gain_mode,
             pause_between_sides: config.pause_between_sides,
+            mcp: config.mcp,
             cloud_home: config.cloud_home.clone(),
         }
     }
@@ -400,6 +432,8 @@ pub struct Config {
     pub replay_gain_mode: ReplayGainMode,
     /// Whether playback pauses between vinyl/cassette sides.
     pub pause_between_sides: bool,
+    /// Local automation server configuration. The bearer token is keyring-only.
+    pub mcp: McpConfig,
 }
 
 impl std::ops::Deref for Config {
@@ -434,6 +468,22 @@ impl Config {
             info!("Production mode - loading from config.yaml");
             Self::from_config_file(ids)
         }
+    }
+
+    pub fn load_registered_library(
+        library_id: &str,
+        ids: &dyn coven::IdProvider,
+    ) -> Result<Self, ConfigError> {
+        let bae_dir = bae_dir()?;
+        let library_dir = LibraryDir::new(bae_dir.join("libraries").join(library_id));
+        Self::load_from_registered_library_dir(library_dir, library_id, ids)
+    }
+
+    pub fn load_from_library_path(
+        library_path: PathBuf,
+        ids: &dyn coven::IdProvider,
+    ) -> Result<Self, ConfigError> {
+        Self::load_from_library_dir(LibraryDir::new(library_path), ids)
     }
 
     fn from_env(ids: &dyn coven::IdProvider) -> Self {
@@ -540,37 +590,60 @@ impl Config {
             )
         });
 
-        // Read library-specific config — must exist with library_id (first-run flow creates it)
-        let config_path = library_dir.config_path();
-        let yaml_config: ConfigYaml =
-            serde_yaml::from_str(&std::fs::read_to_string(&config_path).unwrap_or_else(|e| {
-                panic!(
-                    "No config.yaml at {}. Library may be corrupted. ({})",
-                    config_path.display(),
-                    e
-                )
-            }))
-            .unwrap_or_else(|e| panic!("Failed to parse {}: {}", config_path.display(), e));
+        Self::load_from_library_dir(library_dir, ids)
+            .unwrap_or_else(|e| panic!("Failed to load library config: {e}"))
+    }
 
-        // Auto-generate device_id if missing (first startup after upgrade)
+    fn load_from_library_dir(
+        library_dir: LibraryDir,
+        ids: &dyn coven::IdProvider,
+    ) -> Result<Self, ConfigError> {
+        let config_path = library_dir.config_path();
+        let yaml_config = Self::load_config_yaml(&config_path)?;
+        Self::config_from_yaml(yaml_config, library_dir, &config_path, ids)
+    }
+
+    fn load_from_registered_library_dir(
+        library_dir: LibraryDir,
+        expected_library_id: &str,
+        ids: &dyn coven::IdProvider,
+    ) -> Result<Self, ConfigError> {
+        let config_path = library_dir.config_path();
+        let yaml_config = Self::load_config_yaml(&config_path)?;
+        if yaml_config.library_id != expected_library_id {
+            return Err(ConfigError::Config(format!(
+                "registered library directory {} contains library_id {}",
+                library_dir.display(),
+                yaml_config.library_id
+            )));
+        }
+        Self::config_from_yaml(yaml_config, library_dir, &config_path, ids)
+    }
+
+    fn load_config_yaml(config_path: &std::path::Path) -> Result<ConfigYaml, ConfigError> {
+        let content = std::fs::read_to_string(config_path)?;
+        serde_yaml::from_str(&content).map_err(|e| ConfigError::Serialization(e.to_string()))
+    }
+
+    fn config_from_yaml(
+        mut yaml_config: ConfigYaml,
+        library_dir: LibraryDir,
+        config_path: &std::path::Path,
+        ids: &dyn coven::IdProvider,
+    ) -> Result<Self, ConfigError> {
         let device_id = match yaml_config.device_id.clone() {
             Some(id) => id,
             None => {
                 let id = ids.new_id();
-
                 info!("No device_id in config.yaml, generated: {}", id);
-                let mut yaml_to_save = yaml_config.clone();
-                yaml_to_save.device_id = Some(id.clone());
-                if let Err(e) =
-                    std::fs::write(&config_path, serde_yaml::to_string(&yaml_to_save).unwrap())
-                {
-                    warn!("Failed to save device_id to config.yaml: {e}");
-                }
+                yaml_config.device_id = Some(id.clone());
+                let serialized = serde_yaml::to_string(&yaml_config)
+                    .map_err(|e| ConfigError::Serialization(e.to_string()))?;
+                std::fs::write(config_path, serialized)?;
                 id
             }
         };
-
-        yaml_config.into_config(device_id, library_dir)
+        Ok(yaml_config.into_config(device_id, library_dir))
     }
 
     pub fn is_dev_mode() -> bool {
@@ -609,6 +682,7 @@ impl Config {
             discogs: None,
             replay_gain_mode: default_replay_gain_mode(),
             pause_between_sides: false,
+            mcp: McpConfig::disabled_default(),
         }
     }
 
@@ -852,9 +926,16 @@ mod tests {
 
     #[test]
     fn config_yaml_requires_library_id() {
-        let yaml = "library_name: Test\n";
+        let yaml = "library_name: Test\nmcp:\n  enabled: false\n  port: 47777\n";
         let result: Result<ConfigYaml, _> = serde_yaml::from_str(yaml);
         assert!(result.is_err(), "ConfigYaml should fail without library_id");
+    }
+
+    #[test]
+    fn config_yaml_requires_mcp() {
+        let yaml = "library_id: abc-123\nlibrary_name: Test\n";
+        let result: Result<ConfigYaml, _> = serde_yaml::from_str(yaml);
+        assert!(result.is_err(), "ConfigYaml should fail without mcp");
     }
 
     /// `is_usable` is the single source of truth for whether Discogs can be a
@@ -913,10 +994,12 @@ mod tests {
 
     #[test]
     fn config_yaml_parses_with_library_id() {
-        let yaml = "library_id: abc-123\nlibrary_name: Test\n";
+        let yaml =
+            "library_id: abc-123\nlibrary_name: Test\nmcp:\n  enabled: false\n  port: 47777\n";
         let config: ConfigYaml = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(config.library_id, "abc-123");
         assert_eq!(config.library_name, "Test");
+        assert_eq!(config.mcp, McpConfig::disabled_default());
     }
 
     #[test]
@@ -932,6 +1015,42 @@ mod tests {
         )
         .unwrap();
         assert_eq!(yaml.library_id, "my-library-id");
+        assert_eq!(yaml.mcp, McpConfig::disabled_default());
+    }
+
+    #[test]
+    fn load_from_library_path_reads_exact_directory() {
+        let tmp = TempDir::new().unwrap();
+        let library_path = tmp.path().join("external-library");
+        make_test_config("external-lib-id", library_path.clone())
+            .save_to_config_yaml()
+            .unwrap();
+
+        let loaded = Config::load_from_library_path(
+            library_path.clone(),
+            &coven::SequentialIdProvider::new("device"),
+        )
+        .unwrap();
+
+        assert_eq!(loaded.library_id, "external-lib-id");
+        assert_eq!(&*loaded.library_dir, library_path.as_path());
+    }
+
+    #[test]
+    fn load_from_registered_library_dir_rejects_mismatched_config_id() {
+        let tmp = TempDir::new().unwrap();
+        let library_path = tmp.path().join("libraries").join("expected-lib-id");
+        make_test_config("wrong-lib-id", library_path.clone())
+            .save_to_config_yaml()
+            .unwrap();
+
+        let result = Config::load_from_registered_library_dir(
+            LibraryDir::new(library_path),
+            "expected-lib-id",
+            &coven::SequentialIdProvider::new("device"),
+        );
+
+        assert!(matches!(result, Err(ConfigError::Config(_))));
     }
 
     #[test]
@@ -1168,37 +1287,30 @@ mod tests {
     }
 
     #[test]
-    fn create_library_preserves_library_id() {
+    fn from_coven_preserves_library_id_and_persists_bae_yaml() {
         let tmp = TempDir::new().unwrap();
-        let bae_dir = tmp.path();
+        let library_path = tmp.path().join("libraries").join("restored-lib-abc-123");
         let library_id = "restored-lib-abc-123";
 
-        let config = LibraryDir::create(
-            bae_dir,
+        let coven_config = coven::Config::with_defaults(
             library_id.to_string(),
+            "restored-device".to_string(),
+            LibraryDir::new(library_path.clone()),
             "Test Library".to_string(),
-            &coven::SequentialIdProvider::new("device"),
-        )
-        .unwrap();
+        );
+        let config = Config::from_coven(coven_config);
 
-        // The returned config must use the provided library_id, not a new UUID.
         assert_eq!(config.library_id, library_id);
         assert_eq!(config.library_name, "Test Library");
+        assert_eq!(config.mcp, McpConfig::disabled_default());
 
-        // Device ID should be a new UUID (different from library_id).
-        assert_ne!(config.device_id, library_id);
-        assert!(!config.device_id.is_empty());
+        config.save_to_config_yaml().unwrap();
 
-        // Directory should be created under bae_dir/libraries/<library_id>.
-        let expected_dir = bae_dir.join("libraries").join(library_id);
-        assert_eq!(&*config.library_dir, expected_dir.as_path());
-        assert!(expected_dir.exists());
-
-        // config.yaml should be persisted with the correct library_id.
         let yaml: ConfigYaml = serde_yaml::from_str(
-            &std::fs::read_to_string(expected_dir.join("config.yaml")).unwrap(),
+            &std::fs::read_to_string(library_path.join("config.yaml")).unwrap(),
         )
         .unwrap();
         assert_eq!(yaml.library_id, library_id);
+        assert_eq!(yaml.mcp, McpConfig::disabled_default());
     }
 }

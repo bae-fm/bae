@@ -1,12 +1,21 @@
 [workspace]
-members = ["bae-bridge", "bae-core", "bae-loc", "bae-windows-ffi"]
+members = [
+    "bae-automation",
+    "bae-bridge",
+    "bae-cli",
+    "bae-core",
+    "bae-desktop",
+    "bae-loc",
+    "bae-mcp",
+    "bae-windows-ffi",
+]
 resolver = "2"
 
 [workspace.dependencies]
 # coven: bae's data layer (local-first store + cloud sync). Pinned by rev here so
 # every crate that touches it (bae-core, and bae-bridge's CloudKit adapter, which
 # implements coven's CloudKitOps) resolves the same instance.
-coven = { git = "https://github.com/bae-fm/coven", rev = "bb80516e28acc575d5b8b44c0d1cb4f047fc28f3" }
+coven = { git = "https://github.com/bae-fm/coven", rev = "01ed7c7518ca26bf13d3f64de470c3607da9e3ed" }
 # HTTP
 reqwest = { version = "0.13", default-features = false }
 # Logging
@@ -58,4 +67,3 @@ uniffi_macros = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swi
 uniffi_meta = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
 uniffi_pipeline = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
 uniffi_udl = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
-

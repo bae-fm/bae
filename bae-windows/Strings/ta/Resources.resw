@@ -212,4 +212,21 @@
   <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
   <data name="download.state.downloading" xml:space="preserve"><value>downloading {percent}%</value></data>
   <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>தானியக்கம்</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCP சேவையகத்தை இயக்கு</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>போர்ட்</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>நிலையை புதுப்பி</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>டோக்கனை நகலெடு</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>டோக்கனை மாற்று</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>MCP சேவையகம்: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP சேவையகம் முடக்கப்பட்டது</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>MCP சேவையக அமைப்பு செல்லுபடியாகாது</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP டோக்கன் கிடைக்கவில்லை</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP சேவையகத்தை தொடங்க முடியவில்லை</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP சேவையகம் நிறுத்தப்பட்டது</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>1 முதல் 65535 வரை ஒரு போர்டை உள்ளிடவும்</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCP நிலை கிடைக்கவில்லை</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP டோக்கன் கிடைக்கவில்லை</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>டோக்கன் நகலெடுக்கப்பட்டது</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>டோக்கன் மாற்றப்பட்டு நகலெடுக்கப்பட்டது</value></data>
 </root>

@@ -1,4 +1,6 @@
-use crate::types::{BridgeConfig, BridgeDiscogsTokenStatus, BridgeSyncConfig, BridgeSyncProvider};
+use crate::types::{
+    BridgeConfig, BridgeDiscogsTokenStatus, BridgeMcpConfig, BridgeSyncConfig, BridgeSyncProvider,
+};
 
 /// Convert a core `Config` to `BridgeConfig` for the UI. Pure translation —
 /// `cloud_account_display` is a core method; this just reads it. `sync` is
@@ -14,6 +16,10 @@ pub(crate) fn build_bridge_config(config: &bae_core::config::Config) -> BridgeCo
         encryption_key_stored: config.encryption_key_stored,
         encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
         pause_between_sides: config.pause_between_sides,
+        mcp: BridgeMcpConfig {
+            enabled: config.mcp.enabled,
+            port: config.mcp.port,
+        },
         discogs_usable: discogs_status.is_usable(),
         discogs_token_status: match discogs_status {
             bae_core::config::DiscogsTokenStatus::NotConfigured => {

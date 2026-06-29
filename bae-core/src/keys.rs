@@ -5,9 +5,10 @@
 //! reads secrets only from the keyring, so bae's Discogs API key is layered back
 //! onto coven's `KeyService` as another keyring-backed credential via an
 //! extension trait, composing coven's `read_keyring` / `keyring_service` /
-//! `library_id`. In dev mode bae's `BAE_DISCOGS_API_KEY` env value is bridged
-//! into this account by `config::seed_dev_keyring`, the same way coven's own
-//! encryption-key/credentials env vars are.
+//! `library_id`. MCP's local bearer token uses the same account scheme. In dev
+//! mode bae's `BAE_DISCOGS_API_KEY` env value is bridged into this account by
+//! `config::seed_dev_keyring`, the same way coven's own encryption-key /
+//! credentials env vars are.
 use tracing::{info, warn};
 
 pub use coven::{CloudHomeCredentials, KeyError, KeyService};
@@ -21,8 +22,20 @@ fn account(ks: &KeyService, base: &str) -> String {
     format!("{}:{}", base, ks.library_id())
 }
 
-/// bae-domain credentials layered on coven's `KeyService`: the Discogs API key.
-/// Bring this trait into scope to call these on a `KeyService`.
+fn set_keyring_credential(
+    ks: &KeyService,
+    account_base: &str,
+    value: &str,
+    saved_message: &'static str,
+) -> Result<(), KeyError> {
+    keyring_core::Entry::new(keyring_service(), &account(ks, account_base))?.set_password(value)?;
+    info!("{saved_message}");
+    Ok(())
+}
+
+/// bae-domain credentials layered on coven's `KeyService`: the Discogs API key
+/// and the local MCP bearer token. Bring this trait into scope to call these on
+/// a `KeyService`.
 ///
 /// Read getters return `Result<Option<T>, KeyError>` for the same reason as
 /// coven's own getters: `Ok(None)` is "not configured," `Err` is a real
@@ -32,6 +45,8 @@ pub trait BaeKeyServiceExt {
     fn get_discogs_key(&self) -> Result<Option<String>, KeyError>;
     fn set_discogs_key(&self, value: &str) -> Result<(), KeyError>;
     fn delete_discogs_key(&self) -> Result<(), KeyError>;
+    fn get_mcp_token(&self) -> Result<Option<String>, KeyError>;
+    fn set_mcp_token(&self, value: &str) -> Result<(), KeyError>;
     /// Remove the active library's encryption key from the keyring. The
     /// running sync_manager still holds the key in memory, so this
     /// session keeps working — the lock only takes effect on next
@@ -46,10 +61,12 @@ impl BaeKeyServiceExt for KeyService {
     }
 
     fn set_discogs_key(&self, value: &str) -> Result<(), KeyError> {
-        keyring_core::Entry::new(keyring_service(), &account(self, "discogs_api_key"))?
-            .set_password(value)?;
-        info!("Discogs API key saved to keyring");
-        Ok(())
+        set_keyring_credential(
+            self,
+            "discogs_api_key",
+            value,
+            "Discogs API key saved to keyring",
+        )
     }
 
     fn delete_discogs_key(&self) -> Result<(), KeyError> {
@@ -66,6 +83,19 @@ impl BaeKeyServiceExt for KeyService {
             }
             Err(e) => Err(KeyError::Keyring(e)),
         }
+    }
+
+    fn get_mcp_token(&self) -> Result<Option<String>, KeyError> {
+        read_keyring(&account(self, "mcp_bearer_token"))
+    }
+
+    fn set_mcp_token(&self, value: &str) -> Result<(), KeyError> {
+        set_keyring_credential(
+            self,
+            "mcp_bearer_token",
+            value,
+            "MCP bearer token saved to keyring",
+        )
     }
 
     fn forget_encryption_key(&self) -> Result<(), KeyError> {

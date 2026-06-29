@@ -1,0 +1,133 @@
+name: CLI
+
+on:
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  FFMPEG_VERSION: v8.0.1-bae8
+
+jobs:
+  macos:
+    name: macOS
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup macOS environment
+        uses: ./.github/actions/setup-macos
+
+      - name: Setup Rust environment
+        uses: ./.github/actions/setup-rust
+
+      - name: Build bae CLI
+        run: cargo build --release -p bae-cli
+
+      - name: Stage artifact
+        run: cp target/release/bae bae-cli-macos-arm64
+
+      - name: Upload bae CLI
+        uses: actions/upload-artifact@v7
+        with:
+          name: bae-cli-macos-arm64
+          path: bae-cli-macos-arm64
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup Linux environment
+        uses: ./.github/actions/setup-linux
+
+      - name: Setup Rust environment
+        uses: ./.github/actions/setup-rust
+
+      - name: Build bae CLI
+        run: cargo build --release -p bae-cli
+
+      - name: Stage artifact
+        run: cp target/release/bae bae-cli-linux-x64
+
+      - name: Upload bae CLI
+        uses: actions/upload-artifact@v7
+        with:
+          name: bae-cli-linux-x64
+          path: bae-cli-linux-x64
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install Rust (pinned toolchain)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Enable sccache for Rust builds
+        shell: pwsh
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "RUSTC_WRAPPER=sccache" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Set LIBCLANG_PATH (LLVM pre-installed on windows-latest)
+        shell: pwsh
+        run: |
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Fetch libdiscid (MusicBrainz Windows binary)
+        shell: pwsh
+        run: |
+          $url = "https://github.com/metabrainz/libdiscid/releases/download/v0.6.5/libdiscid-0.6.5-win.zip"
+          curl.exe -L $url -o libdiscid.zip
+          Expand-Archive -Path libdiscid.zip -DestinationPath "$PWD\libdiscid" -Force
+          $x64 = "$PWD\libdiscid\libdiscid-0.6.5-win\x64"
+          echo "LIB=$x64;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "$x64" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Fetch bae-ffmpeg (Windows x86_64)
+        shell: pwsh
+        run: |
+          $dist = "$PWD\bae-ffmpeg\dist"
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          $url = "https://github.com/bae-fm/bae-ffmpeg/releases/download/$env:FFMPEG_VERSION/ffmpeg-windows-x86_64.zip"
+          curl.exe -L $url -o ffmpeg.zip
+          Expand-Archive -Path ffmpeg.zip -DestinationPath $dist -Force
+          New-Item -ItemType Directory -Force -Path "$dist\lib" | Out-Null
+          Copy-Item "$dist\bin\*.lib" "$dist\lib\" -Force
+          echo "FFMPEG_DIR=$dist" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I$dist\include" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "$dist\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Provision ffmpeg's mingw runtime deps (msys2)
+        shell: pwsh
+        run: |
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
+          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Build bae CLI
+        run: cargo build --release -p bae-cli --target x86_64-pc-windows-msvc
+
+      - name: Stage artifact
+        shell: pwsh
+        run: Copy-Item target\x86_64-pc-windows-msvc\release\bae.exe bae-cli-windows-x64.exe -Force
+
+      - name: Upload bae CLI
+        uses: actions/upload-artifact@v7
+        with:
+          name: bae-cli-windows-x64.exe
+          path: bae-cli-windows-x64.exe

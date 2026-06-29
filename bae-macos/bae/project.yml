@@ -27,6 +27,7 @@ targets:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig
     sources:
+      - path: bae/bae_bridge.swift
       - bae
     info:
       path: bae/Info.plist
@@ -67,7 +68,7 @@ targets:
           if [ ! -f "$MARKER" ] || [ ! -f "$BINDINGS_SOURCE" ]; then
             NEEDS_BUILD=1
           else
-            for src in bae-bridge/src/*.rs bae-core/src/**/*.rs; do
+            for src in bae-bridge/src/*.rs bae-core/src/**/*.rs bae-automation/src/**/*.rs bae-mcp/src/**/*.rs; do
               if [ "$src" -nt "$MARKER" ]; then
                 NEEDS_BUILD=1
                 break

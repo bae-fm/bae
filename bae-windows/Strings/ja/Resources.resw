@@ -212,4 +212,21 @@
   <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
   <data name="download.state.downloading" xml:space="preserve"><value>downloading {percent}%</value></data>
   <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>自動化</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCPサーバーを有効にする</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>ポート</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>状態を更新</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>トークンをコピー</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>トークンを更新</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>MCPサーバー: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCPサーバーは無効です</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>MCPサーバーの設定が無効です</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCPトークンを利用できません</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCPサーバーを起動できませんでした</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCPサーバーが停止しました</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>1から65535までのポートを入力してください</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCPの状態を利用できません</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCPトークンを利用できません</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>トークンをコピーしました</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>トークンを更新してコピーしました</value></data>
 </root>

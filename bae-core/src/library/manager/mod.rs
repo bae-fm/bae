@@ -529,6 +529,14 @@ pub struct LibraryManager {
     test_overrides: TestOverrides,
 }
 
+pub fn generate_mcp_token() -> String {
+    use rand::RngCore;
+
+    let mut bytes = [0u8; 32];
+    rand::rng().fill_bytes(&mut bytes);
+    hex::encode(bytes)
+}
+
 /// Test-only overrides for state that production reads from a live
 /// `SyncManager`. The cloud read/write paths run against a real manager a test
 /// connects via [`LibraryManager::connect_test_cloud_home`], so this holds only

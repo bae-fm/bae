@@ -212,4 +212,21 @@
   <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
   <data name="download.state.downloading" xml:space="preserve"><value>downloading {percent}%</value></data>
   <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>Автоматизація</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>Увімкнути сервер MCP</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>Порт</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>оновити стан</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>скопіювати токен</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>змінити токен</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>Сервер MCP: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>Сервер MCP вимкнено</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>Неправильна конфігурація сервера MCP</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>Токен MCP недоступний</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>Не вдалося запустити сервер MCP</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>Сервер MCP зупинився</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>введіть порт від 1 до 65535</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>Стан MCP недоступний</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>Токен MCP недоступний</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>токен скопійовано</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>токен змінено й скопійовано</value></data>
 </root>

@@ -5,6 +5,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeGalleryItem
+import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeTrackGroup
@@ -75,6 +76,7 @@ object BridgeFixtures {
             encryptionKeyStored = false,
             encryptionKeyFingerprint = null,
             pauseBetweenSides = false,
+            mcp = BridgeMcpConfig(enabled = false, port = 47777u),
             discogsTokenStatus = BridgeDiscogsTokenStatus.NOT_CONFIGURED,
             discogsUsable = false,
             sync = null,

@@ -6,6 +6,7 @@
 //! the import/identify/extraction services, and wires the UI event bus — no
 //! per-frontend duplicate to drift.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use tracing::info;
@@ -52,6 +53,26 @@ pub fn bootstrap(
     library_id: String,
     position_update_interval_ms: u32,
 ) -> Result<RunningApp, BootstrapError> {
+    bootstrap_on_thread(
+        BootstrapTarget::RegisteredId(library_id),
+        position_update_interval_ms,
+    )
+}
+
+pub fn bootstrap_library_path(
+    library_path: PathBuf,
+    position_update_interval_ms: u32,
+) -> Result<RunningApp, BootstrapError> {
+    bootstrap_on_thread(
+        BootstrapTarget::LibraryPath(library_path),
+        position_update_interval_ms,
+    )
+}
+
+fn bootstrap_on_thread(
+    target: BootstrapTarget,
+    position_update_interval_ms: u32,
+) -> Result<RunningApp, BootstrapError> {
     // Building the sync manager (loading keys, opening the synced DB) and
     // `block_on`-ing the async setup uses a deep stack — especially in debug
     // builds, where async state machines aren't collapsed. Callers may invoke us
@@ -62,31 +83,21 @@ pub fn bootstrap(
     std::thread::Builder::new()
         .name("bae-bootstrap".to_string())
         .stack_size(32 * 1024 * 1024)
-        .spawn(move || bootstrap_inner(library_id, position_update_interval_ms))
+        .spawn(move || bootstrap_inner(target, position_update_interval_ms))
         .expect("spawn bae-bootstrap thread")
         .join()
         .expect("bae-bootstrap thread panicked")
 }
 
+enum BootstrapTarget {
+    RegisteredId(String),
+    LibraryPath(PathBuf),
+}
+
 fn bootstrap_inner(
-    library_id: String,
+    target: BootstrapTarget,
     position_update_interval_ms: u32,
 ) -> Result<RunningApp, BootstrapError> {
-    let libraries = Config::discover_libraries();
-    let lib_info = libraries
-        .into_iter()
-        .find(|lib| lib.id == library_id)
-        .ok_or(BootstrapError::LibraryNotFound(library_id.clone()))?;
-
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| BootstrapError::Config("Failed to get home directory".to_string()))?;
-    let bae_dir = home_dir.join(".bae");
-    std::fs::create_dir_all(&bae_dir)
-        .map_err(|e| BootstrapError::Config(format!("Failed to create .bae directory: {e}")))?;
-    std::fs::write(bae_dir.join("active-library"), &lib_info.id).map_err(|e| {
-        BootstrapError::Config(format!("Failed to write active-library pointer: {e}"))
-    })?;
-
     // Composition root for the injected wall clock + id source. Production wires
     // the real implementations; both are passed down to the data layer. Built
     // before `Config::load` so the device-id auto-gen reads from the injected
@@ -94,7 +105,18 @@ fn bootstrap_inner(
     let clock: ClockRef = Arc::new(SystemClock);
     let ids: IdRef = Arc::new(UuidProvider);
 
-    let config = Config::load(ids.as_ref());
+    let (config, active_library_id) = load_bootstrap_config(target, ids.as_ref())?;
+    if let Some(active_library_id) = active_library_id {
+        let home_dir = dirs::home_dir()
+            .ok_or_else(|| BootstrapError::Config("Failed to get home directory".to_string()))?;
+        let bae_dir = home_dir.join(".bae");
+        std::fs::create_dir_all(&bae_dir)
+            .map_err(|e| BootstrapError::Config(format!("Failed to create .bae directory: {e}")))?;
+        std::fs::write(bae_dir.join("active-library"), &active_library_id).map_err(|e| {
+            BootstrapError::Config(format!("Failed to write active-library pointer: {e}"))
+        })?;
+    }
+    let library_id = config.library_id.clone();
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -251,4 +273,25 @@ fn bootstrap_inner(
         services: app_services,
         ui_event_bus,
     })
+}
+
+fn load_bootstrap_config(
+    target: BootstrapTarget,
+    ids: &dyn coven::IdProvider,
+) -> Result<(Config, Option<String>), BootstrapError> {
+    match target {
+        BootstrapTarget::RegisteredId(library_id) => {
+            let config =
+                Config::load_registered_library(&library_id, ids).map_err(|e| match e {
+                    coven::ConfigError::Config(_) => {
+                        BootstrapError::LibraryNotFound(library_id.clone())
+                    }
+                    other => BootstrapError::Config(other.to_string()),
+                })?;
+            Ok((config, Some(library_id)))
+        }
+        BootstrapTarget::LibraryPath(path) => Config::load_from_library_path(path, ids)
+            .map(|config| (config, None))
+            .map_err(|e| BootstrapError::Config(e.to_string())),
+    }
 }

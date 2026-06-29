@@ -14,7 +14,6 @@ use std::{
 };
 
 use bae_core::album_detail::ReleaseStorageState;
-use bae_core::app::{bootstrap, RunningApp};
 use bae_core::db::{AlbumSortCriterion, AlbumSortField, SortDirection};
 use bae_core::diagnostics::{
     AppDiagnosticMetadata, DatadogDiagnosticsConfig, DiagnosticLevel, Diagnostics,
@@ -205,7 +204,7 @@ pub unsafe extern "C" fn bae_transfer_action_key(action: *const c_char) -> *mut 
 
 /// Opaque app handle. Created by [`bae_init`], passed back to every call, freed
 /// with [`bae_handle_free`].
-pub struct BaeHandle(RunningApp);
+pub struct BaeHandle(bae_desktop::DesktopApp);
 
 /// Read a borrowed C string into an owned `String`, or `None` if null/not UTF-8.
 ///
@@ -265,7 +264,7 @@ pub unsafe extern "C" fn bae_init(
         tracing::error!("bae_init: null or non-UTF-8 library_id");
         return std::ptr::null_mut();
     };
-    match bootstrap(library_id, position_update_interval_ms) {
+    match bae_desktop::bootstrap(library_id, position_update_interval_ms) {
         Ok(app) => Box::into_raw(Box::new(BaeHandle(app))),
         Err(e) => {
             tracing::error!("bae_init failed: {e}");
@@ -3553,6 +3552,12 @@ struct FfiSettings {
     sync_ready: bool,
     /// Whether playback pauses between vinyl/cassette sides.
     pause_between_sides: bool,
+    /// Whether the local MCP server is enabled in persisted config.
+    mcp_enabled: bool,
+    /// The configured local MCP server port.
+    mcp_port: u16,
+    /// Runtime MCP server status.
+    mcp_status: bae_desktop::McpServerStatus,
 }
 
 /// Current settings as JSON, or null on error. Free with [`bae_string_free`].
@@ -3588,6 +3593,9 @@ pub unsafe extern "C" fn bae_settings(handle: *const BaeHandle) -> *mut c_char {
         sync_account: config.cloud_account_display(),
         sync_ready: manager.is_sync_ready(),
         pause_between_sides: config.pause_between_sides,
+        mcp_enabled: config.mcp.enabled,
+        mcp_port: config.mcp.port,
+        mcp_status: handle.0.mcp_server_status(),
     };
     json_cstring(&out)
 }
@@ -3614,6 +3622,92 @@ pub unsafe extern "C" fn bae_set_pause_between_sides(
     {
         Ok(()) => std::ptr::null_mut(),
         Err(error) => error_cstring(&error.to_string()),
+    }
+}
+
+/// Set the local MCP server config. Returns null on success, or an error-message
+/// C string (free with [`bae_string_free`]).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_set_mcp_server_config(
+    handle: *const BaeHandle,
+    enabled: bool,
+    port: u16,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        return error_cstring("no app handle");
+    };
+    match handle
+        .0
+        .set_mcp_config(bae_core::config::McpConfig { enabled, port })
+    {
+        Ok(()) => std::ptr::null_mut(),
+        Err(error) => error_cstring(&error.to_string()),
+    }
+}
+
+/// Current MCP server runtime status as JSON, or null on error. Free with
+/// [`bae_string_free`].
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_mcp_server_status(handle: *const BaeHandle) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_mcp_server_status: null handle");
+        return std::ptr::null_mut();
+    };
+    json_cstring(&handle.0.mcp_server_status())
+}
+
+/// Read or create the MCP bearer token. Free with [`bae_string_free`].
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_mcp_token(handle: *const BaeHandle) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_mcp_token: null handle");
+        return std::ptr::null_mut();
+    };
+    match handle.0.services.library_manager().ensure_mcp_token() {
+        Ok(token) => error_cstring(&token),
+        Err(error) => {
+            tracing::error!("bae_mcp_token failed: {error}");
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// Generate an MCP bearer token candidate. Free with [`bae_string_free`].
+#[no_mangle]
+pub extern "C" fn bae_generate_mcp_token() -> *mut c_char {
+    error_cstring(&bae_core::library::generate_mcp_token())
+}
+
+/// Persist the MCP bearer token. Returns null on success, or an error-message
+/// C string (free with [`bae_string_free`]).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+/// `token` must be a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_set_mcp_token(
+    handle: *const BaeHandle,
+    token: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        return error_cstring("no app handle");
+    };
+    let token = match required_cstr(token, "token") {
+        Ok(token) => token,
+        Err(error) => return error_cstring(&error),
+    };
+    match handle.0.services.library_manager().set_mcp_token(token) {
+        Ok(()) => std::ptr::null_mut(),
+        Err(error) => error_cstring(&error),
     }
 }
 
@@ -4703,6 +4797,7 @@ pub unsafe extern "C" fn bae_shutdown(handle: *const BaeHandle) {
         return;
     };
     let app = &handle.0;
+    app.shutdown_mcp();
     app.runtime.block_on(app.services.playback().shutdown());
 }
 

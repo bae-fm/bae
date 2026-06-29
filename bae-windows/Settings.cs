@@ -22,6 +22,9 @@ public sealed class Settings
     public string? SyncAccount { get; set; }
     public bool SyncReady { get; set; }
     public bool PauseBetweenSides { get; set; }
+    public bool McpEnabled { get; set; }
+    public ushort McpPort { get; set; }
+    public McpServerStatus McpStatus { get; set; } = new();
     public bool HasCloudHome => SyncProvider is not null;
 
     /// <summary>
@@ -105,4 +108,41 @@ public sealed class Settings
         "unvalidated" => Loc.Chrome("settings.discogs.unvalidated"),
         _ => string.Empty,
     };
+
+    [JsonIgnore]
+    public string McpStatusText => McpStatus.Status switch
+    {
+        "running" when !string.IsNullOrEmpty(McpStatus.Url) => Loc.Chrome(
+            "settings.automation.status.running",
+            "url",
+            McpStatus.Url),
+        "error" when McpStatus.Error is not null => McpStatus.Error.DisplayText,
+        _ => Loc.Chrome("settings.automation.status.disabled"),
+    };
+}
+
+public sealed class McpServerStatus
+{
+    public string Status { get; set; } = "disabled";
+    public string? Url { get; set; }
+    public McpServerStatusError? Error { get; set; }
+}
+
+public sealed class McpServerStatusError
+{
+    public string Kind { get; set; } = string.Empty;
+    public string Detail { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    public string Summary => Kind switch
+    {
+        "invalid_config" => Loc.Chrome("settings.automation.status.invalid_config"),
+        "token_unavailable" => Loc.Chrome("settings.automation.status.token_unavailable"),
+        "bind_failed" => Loc.Chrome("settings.automation.status.bind_failed"),
+        "server_failed" => Loc.Chrome("settings.automation.status.server_failed"),
+        _ => Loc.Chrome("settings.automation.status_unavailable"),
+    };
+
+    [JsonIgnore]
+    public string DisplayText => string.IsNullOrEmpty(Detail) ? Summary : $"{Summary}: {Detail}";
 }

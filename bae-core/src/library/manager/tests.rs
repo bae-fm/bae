@@ -59,6 +59,45 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
     (manager, temp_dir)
 }
 
+#[tokio::test]
+async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let invalid = crate::config::McpConfig {
+        enabled: true,
+        port: 0,
+    };
+    assert!(manager.set_mcp_config(invalid).is_err());
+    assert_eq!(
+        manager.get_config().mcp,
+        crate::config::McpConfig::disabled_default()
+    );
+
+    let valid = crate::config::McpConfig {
+        enabled: true,
+        port: crate::config::MCP_DEFAULT_PORT + 1,
+    };
+    manager.set_mcp_config(valid).unwrap();
+    assert_eq!(manager.get_config().mcp, valid);
+}
+
+#[tokio::test]
+async fn mcp_token_is_keyring_backed_and_sets_target() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    assert!(manager.get_mcp_token().unwrap().is_none());
+
+    let token = manager.ensure_mcp_token().unwrap();
+    assert_eq!(token.len(), 64);
+    assert!(token.chars().all(|ch| ch.is_ascii_hexdigit()));
+    assert_eq!(manager.ensure_mcp_token().unwrap(), token);
+
+    let replacement = "a".repeat(64);
+    manager.set_mcp_token(replacement.clone()).unwrap();
+    assert_eq!(
+        manager.get_mcp_token().unwrap().as_deref(),
+        Some(replacement.as_str())
+    );
+}
+
 fn create_test_album() -> DbAlbum {
     DbAlbum {
         id: Uuid::new_v4().to_string(),

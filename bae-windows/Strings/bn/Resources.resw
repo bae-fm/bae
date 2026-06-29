@@ -212,4 +212,21 @@
   <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
   <data name="download.state.downloading" xml:space="preserve"><value>downloading {percent}%</value></data>
   <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>অটোমেশন</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCP সার্ভার চালু করুন</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>পোর্ট</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>অবস্থা রিফ্রেশ করুন</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>টোকেন কপি করুন</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>টোকেন ঘোরান</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>MCP সার্ভার: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP সার্ভার বন্ধ</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>MCP সার্ভারের কনফিগারেশন বৈধ নয়</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP টোকেন উপলভ্য নয়</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP সার্ভার শুরু করা যায়নি</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP সার্ভার থেমে গেছে</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>1 থেকে 65535 পর্যন্ত একটি পোর্ট লিখুন</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCP অবস্থা পাওয়া যায়নি</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP টোকেন পাওয়া যায়নি</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>টোকেন কপি হয়েছে</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>টোকেন ঘোরানো হয়েছে এবং কপি হয়েছে</value></data>
 </root>

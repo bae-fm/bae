@@ -19,6 +19,7 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [dependencies]
+bae-desktop = { path = "../bae-desktop", optional = true }
 bae-core = { path = "../bae-core" }
 # The CloudKit adapter implements coven's CloudKitOps, so it names coven types
 # directly (same pinned instance bae-core uses, via the workspace dep).
@@ -51,7 +52,7 @@ default = []
 # build turns it on.
 oauth-providers = ["bae-core/oauth-providers", "coven/oauth-providers"]
 cloudkit = []
-desktop = []
+desktop = ["dep:bae-desktop"]
 
 [lints.clippy]
 large_enum_variant = "allow"

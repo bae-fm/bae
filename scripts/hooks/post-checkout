@@ -67,12 +67,12 @@ if [ -f "$main_checkout/$resolved" ]; then
     cp "$main_checkout/$resolved" "$resolved"
     echo "Seeded Package.resolved from $main_checkout"
 fi
-# Match the pre-commit hook's xcodebuild flags (notably -derivedDataPath): if the
-# primed SPM packages land in a different DerivedData location, that hook's
-# xcodebuild can't find the Sparkle checkout and fails.
+# Match the pre-commit hook's xcodebuild flags. Callers may move DerivedData
+# outside the worktree by setting BAE_MACOS_DERIVED_DATA_PATH.
+macos_derived_data_path="${BAE_MACOS_DERIVED_DATA_PATH:-.build/derivedData}"
 (cd bae-macos/bae && xcodebuild -project bae.xcodeproj -scheme bae \
     -configuration Debug CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-    -derivedDataPath .build/derivedData \
+    -derivedDataPath "$macos_derived_data_path" \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution build)
 

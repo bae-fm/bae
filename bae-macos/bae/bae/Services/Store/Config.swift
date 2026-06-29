@@ -40,6 +40,7 @@ struct Config: Equatable {
     /// persisted-config mirror.
     let sync: BridgeSyncConfig?
     let pauseBetweenSides: Bool
+    let mcp: BridgeMcpConfig
 
     var hasCloudHome: Bool { sync != nil }
 
@@ -53,6 +54,7 @@ struct Config: Equatable {
         discogsUsable = bridge.discogsUsable
         sync = bridge.sync
         pauseBetweenSides = bridge.pauseBetweenSides
+        mcp = bridge.mcp
     }
 
     /// The storage state to import into. `Managed` only when a cloud home

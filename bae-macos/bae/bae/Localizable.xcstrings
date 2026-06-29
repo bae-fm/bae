@@ -79594,6 +79594,3253 @@
           }
         }
       }
+    },
+    "Automation": {
+      "comment": "Settings tab title for automation and MCP server controls",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automation"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Automation"
+          }
+        }
+      }
+    },
+    "Enable MCP server": {
+      "comment": "Automation settings: toggle label",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable MCP server"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enable MCP server"
+          }
+        }
+      }
+    },
+    "Port": {
+      "comment": "Automation settings: MCP server port field label",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Port"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Port"
+          }
+        }
+      }
+    },
+    "Status": {
+      "comment": "Automation settings: MCP server status row label",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Status"
+          }
+        }
+      }
+    },
+    "Disabled": {
+      "comment": "Automation settings: MCP server is disabled",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disabled"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disabled"
+          }
+        }
+      }
+    },
+    "Copy token": {
+      "comment": "Automation settings: copy MCP bearer token button",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy token"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copy token"
+          }
+        }
+      }
+    },
+    "Rotate token": {
+      "comment": "Automation settings: rotate MCP bearer token button",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rotate token"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Rotate token"
+          }
+        }
+      }
+    },
+    "Token copied": {
+      "comment": "Automation settings: bearer token copied to clipboard",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token copied"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token copied"
+          }
+        }
+      }
+    },
+    "Token rotated and copied": {
+      "comment": "Automation settings: new bearer token copied to clipboard",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token rotated and copied"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Token rotated and copied"
+          }
+        }
+      }
+    },
+    "Enter a port from 1 to 65535.": {
+      "comment": "Automation settings: invalid MCP port validation error",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Enter a port from 1 to 65535."
+          }
+        }
+      }
+    },
+    "Couldn't update MCP settings: %@": {
+      "comment": "Automation settings: MCP config save error; %@ is the system error",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't update MCP settings: %@"
+          }
+        }
+      }
+    },
+    "Couldn't copy MCP token: %@": {
+      "comment": "Automation settings: token copy error; %@ is the system error",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't copy MCP token: %@"
+          }
+        }
+      }
+    },
+    "Couldn't rotate MCP token: %@": {
+      "comment": "Automation settings: token rotation error; %@ is the system error",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Couldn't rotate MCP token: %@"
+          }
+        }
+      }
+    },
+    "Invalid MCP server configuration": {
+      "comment": "Automation settings: MCP server status for invalid saved configuration",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Invalid MCP server configuration"
+          }
+        }
+      }
+    },
+    "MCP token unavailable": {
+      "comment": "Automation settings: MCP server status when the bearer token cannot be read",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP token unavailable"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP token unavailable"
+          }
+        }
+      }
+    },
+    "MCP server could not start": {
+      "comment": "Automation settings: MCP server status when the local HTTP listener cannot bind",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP server could not start"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server could not start"
+          }
+        }
+      }
+    },
+    "MCP server stopped": {
+      "comment": "Automation settings: MCP server status when the running local server stops with an error",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP server stopped"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MCP server stopped"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

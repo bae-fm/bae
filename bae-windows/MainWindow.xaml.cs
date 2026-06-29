@@ -4737,9 +4737,137 @@ public sealed partial class MainWindow : Window
 
         pauseBetweenSides.Checked += async (_, _) => await SetPauseBetweenSides(true);
         pauseBetweenSides.Unchecked += async (_, _) => await SetPauseBetweenSides(false);
+
+        var automationLabel = new TextBlock
+        {
+            Text = Loc.Chrome("settings.automation.label"),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        };
+        var mcpEnabled = new CheckBox
+        {
+            Content = Loc.Chrome("settings.automation.enable_mcp"),
+            IsChecked = s.McpEnabled,
+        };
+        var mcpPort = new TextBox
+        {
+            Header = Loc.Chrome("settings.automation.port"),
+            Text = s.McpPort.ToString(CultureInfo.InvariantCulture),
+        };
+        var mcpStatus = new TextBlock
+        {
+            Text = s.McpStatusText,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        };
+        var saveMcp = new Button { Content = Loc.Chrome("action.save") };
+        var refreshMcp = new Button { Content = Loc.Chrome("settings.automation.refresh") };
+        var copyMcpToken = new Button { Content = Loc.Chrome("settings.automation.copy_token") };
+        var rotateMcpToken = new Button { Content = Loc.Chrome("settings.automation.rotate_token") };
+        var mcpButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        mcpButtons.Children.Add(saveMcp);
+        mcpButtons.Children.Add(refreshMcp);
+        mcpButtons.Children.Add(copyMcpToken);
+        mcpButtons.Children.Add(rotateMcpToken);
+
+        void RenderMcp(Settings settings)
+        {
+            if (refreshingSettings)
+            {
+                return;
+            }
+
+            refreshingSettings = true;
+            mcpEnabled.IsChecked = settings.McpEnabled;
+            mcpPort.Text = settings.McpPort.ToString(CultureInfo.InvariantCulture);
+            mcpStatus.Text = settings.McpStatusText;
+            refreshingSettings = false;
+        }
+
+        async System.Threading.Tasks.Task SetMcpConfig(bool enabled)
+        {
+            if (refreshingSettings)
+            {
+                return;
+            }
+
+            if (!ushort.TryParse(mcpPort.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var port) || port == 0)
+            {
+                ShowSettingsError(Loc.Chrome("settings.automation.invalid_port"));
+                return;
+            }
+
+            ClearSettingsError();
+            var error = await System.Threading.Tasks.Task.Run(
+                () => NativeBae.SetMcpServerConfig(_handle, enabled, port));
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+                refreshingSettings = true;
+                mcpEnabled.IsChecked = !enabled;
+                refreshingSettings = false;
+                return;
+            }
+            _refreshSettings?.Invoke();
+        }
+
+        async System.Threading.Tasks.Task RefreshMcpStatus()
+        {
+            var json = await System.Threading.Tasks.Task.Run(() => NativeBae.McpServerStatusJson(_handle));
+            var parsed = json is null ? null : JsonSerializer.Deserialize<McpServerStatus>(json, JsonOptions);
+            if (parsed is null)
+            {
+                ShowSettingsError(Loc.Chrome("settings.automation.status_unavailable"));
+                return;
+            }
+            mcpStatus.Text = new Settings { McpStatus = parsed }.McpStatusText;
+        }
+
+        async System.Threading.Tasks.Task CopyMcpToken(Func<string?> readToken, string successKey)
+        {
+            ClearSettingsError();
+            var token = await System.Threading.Tasks.Task.Run(readToken);
+            if (token is null)
+            {
+                ShowSettingsError(Loc.Chrome("settings.automation.token_unavailable"));
+                return;
+            }
+            CopyToClipboard(token);
+            mcpStatus.Text = Loc.Chrome(successKey);
+        }
+
+        mcpEnabled.Checked += async (_, _) => await SetMcpConfig(true);
+        mcpEnabled.Unchecked += async (_, _) => await SetMcpConfig(false);
+        saveMcp.Click += async (_, _) => await SetMcpConfig(mcpEnabled.IsChecked == true);
+        refreshMcp.Click += async (_, _) => await RefreshMcpStatus();
+        copyMcpToken.Click += async (_, _) =>
+            await CopyMcpToken(() => NativeBae.GetMcpToken(_handle), "settings.automation.token_copied");
+        rotateMcpToken.Click += async (_, _) =>
+        {
+            ClearSettingsError();
+            var token = await System.Threading.Tasks.Task.Run(NativeBae.GenerateMcpToken);
+            if (token is null)
+            {
+                ShowSettingsError(Loc.Chrome("settings.automation.token_unavailable"));
+                return;
+            }
+            var error = await System.Threading.Tasks.Task.Run(() => NativeBae.SetMcpToken(_handle, token));
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+                return;
+            }
+            CopyToClipboard(token);
+            mcpStatus.Text = Loc.Chrome("settings.automation.token_rotated");
+        };
+
         var discogsLabel = new TextBlock { Text = Loc.Chrome("settings.discogs.label") };
         content.Children.Add(libraryLabel);
         content.Children.Add(pauseBetweenSides);
+        content.Children.Add(automationLabel);
+        content.Children.Add(mcpEnabled);
+        content.Children.Add(mcpPort);
+        content.Children.Add(mcpButtons);
+        content.Children.Add(mcpStatus);
         content.Children.Add(discogsLabel);
         content.Children.Add(tokenBox);
         content.Children.Add(buttons);
@@ -4889,6 +5017,7 @@ public sealed partial class MainWindow : Window
             refreshingSettings = true;
             pauseBetweenSides.IsChecked = fresh.PauseBetweenSides;
             refreshingSettings = false;
+            RenderMcp(fresh);
             RenderDiscogs(fresh);
         };
 

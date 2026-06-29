@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum SettingsTab: Hashable {
-    case library, members, playback, discogs, about
+    case library, members, playback, automation, discogs, about
 }
 
 struct SettingsView: View {
@@ -21,6 +21,9 @@ struct SettingsView: View {
             PlaybackSettingsTab()
                 .tag(SettingsTab.playback)
                 .tabItem { Label("Playback", systemImage: "play.circle") }
+            AutomationSettingsTab()
+                .tag(SettingsTab.automation)
+                .tabItem { Label("Automation", systemImage: "terminal") }
             DiscogsSettingsTab()
                 .tag(SettingsTab.discogs)
                 .tabItem { Label("Discogs", systemImage: "network") }

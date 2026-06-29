@@ -15,6 +15,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 bae-core = { path = "../bae-core" }
+bae-desktop = { path = "../bae-desktop" }
 # The C-ABI surface names coven types directly (UuidProvider, SystemClock, the
 # OAuth DTOs) — same pinned instance bae-core uses, via the workspace dep.
 coven = { workspace = true }

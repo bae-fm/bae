@@ -1892,6 +1892,7 @@ pub struct BridgeConfig {
     pub encryption_key_stored: bool,
     pub encryption_key_fingerprint: Option<String>,
     pub pause_between_sides: bool,
+    pub mcp: BridgeMcpConfig,
     pub discogs_token_status: BridgeDiscogsTokenStatus,
     /// Whether Discogs can be used as a metadata source (a stored key that
     /// isn't rejected). Core decides the policy via `DiscogsTokenStatus::
@@ -1903,6 +1904,27 @@ pub struct BridgeConfig {
     /// broken. Does not imply sync is working: that's runtime status carried
     /// by `BridgeUiEvent::ConfigChanged.sync_ready`, not config.
     pub sync: Option<BridgeSyncConfig>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMcpConfig {
+    pub enabled: bool,
+    pub port: u16,
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeMcpServerStatus {
+    Disabled,
+    Running { url: String },
+    Error { error: BridgeMcpServerError },
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeMcpServerError {
+    InvalidConfig { detail: String },
+    TokenUnavailable { detail: String },
+    BindFailed { detail: String },
+    ServerFailed { detail: String },
 }
 
 /// Cloud sync settings for a connected provider. `provider` carries the

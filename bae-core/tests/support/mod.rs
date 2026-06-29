@@ -282,10 +282,10 @@ use bae_core::sync::sync_manager::S3ConfigData;
 // MockCloudHome
 // ---------------------------------------------------------------------------
 
-/// In-memory `CloudHome` for transfer/storage tests. Stores whatever bytes
-/// `write` receives keyed by cloud key; `read` returns them. `fail_writes`
-/// makes every `write` error (to drive "upload fails" paths). Methods the
-/// tests don't exercise panic loudly so a wrong call site is obvious.
+/// In-memory `CloudHome` for transfer/storage tests. Stores uploaded bytes
+/// keyed by cloud key; `read` returns them. `fail_writes` makes uploads error
+/// (to drive "upload fails" paths). Methods the tests don't exercise panic
+/// loudly so a wrong call site is obvious.
 #[allow(dead_code)]
 pub struct MockCloudHome {
     blobs: std::sync::Mutex<std::collections::HashMap<String, Vec<u8>>>,
@@ -355,21 +355,26 @@ impl MockCloudHome {
 
 #[async_trait::async_trait]
 impl coven::CloudHome for MockCloudHome {
-    async fn write(
-        &self,
-        key: &str,
-        data: Vec<u8>,
-        progress: &coven::UploadProgress<'_>,
-    ) -> Result<(), coven::CloudHomeError> {
+    async fn put_object(&self, key: &str, data: Vec<u8>) -> Result<(), coven::CloudHomeError> {
         if self.fail_writes.load(std::sync::atomic::Ordering::SeqCst) {
             return Err(coven::CloudHomeError::Storage(
                 "mock write failure".to_string(),
             ));
         }
-        let total = data.len() as u64;
         self.blobs.lock().unwrap().insert(key.to_string(), data);
-        progress(total);
         Ok(())
+    }
+
+    async fn open_multipart<'a>(
+        &'a self,
+        _key: &str,
+        _total_len: u64,
+    ) -> Result<coven::BoxPartSink<'a>, coven::CloudHomeError> {
+        unimplemented!("multipart uploads not used by storage transition tests")
+    }
+
+    fn multipart_threshold(&self) -> u64 {
+        u64::MAX
     }
 
     async fn read(&self, key: &str) -> Result<Vec<u8>, coven::CloudHomeError> {

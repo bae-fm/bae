@@ -151,14 +151,15 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge"; then
         echo "⚠️  xcodegen not installed, skipping macOS build check"
     else
         cd bae-macos/bae
+        MACOS_DERIVED_DATA_PATH="${BAE_MACOS_DERIVED_DATA_PATH:-.build/derivedData}"
         run_check "xcodegen (bae-macos)" xcodegen || {
             echo "xcodegen failed"
             exit 1
         }
-        # -derivedDataPath: predictable path so periphery can find the index store with --skip-build
+        # Keep xcodebuild and periphery pointed at the same index store.
         run_check "xcodebuild (bae-macos)" xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-            -derivedDataPath .build/derivedData \
+            -derivedDataPath "$MACOS_DERIVED_DATA_PATH" \
             -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
             -disableAutomaticPackageResolution build || {
             echo "macOS app build failed"
@@ -167,7 +168,8 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge"; then
 
         if command -v periphery &> /dev/null; then
             run_check "periphery (bae-macos)" periphery scan --strict \
-                --skip-build --index-store-path .build/derivedData/Index.noindex/DataStore || {
+                --skip-build --skip-schemes-validation \
+                --index-store-path "$MACOS_DERIVED_DATA_PATH/Index.noindex/DataStore" || {
                 echo "Dead code detected. Remove unused declarations and try again."
                 exit 1
             }
