@@ -141,7 +141,7 @@ impl Database {
 
         self.call(move |conn| {
             let mut stmt = conn.prepare(&query)?;
-            let rows = stmt.query_map([], |row| Ok(Self::row_to_album(row)))?;
+            let rows = stmt.query_map([], row_to_album)?;
             rows.collect::<coven::rusqlite::Result<Vec<_>>>()
                 .map_err(DbError::from)
         })
@@ -223,7 +223,7 @@ impl Database {
                     WHERE id = ?
                     "#,
                 params![album_id],
-                |row| Ok(Self::row_to_album(row)),
+                row_to_album,
             )
             .optional()
             .map_err(DbError::from)
@@ -246,7 +246,7 @@ impl Database {
                     WHERE id = ?
                     "#,
                 params![album_id],
-                |row| Ok(Self::row_to_album(row)),
+                row_to_album,
             )
             .map_err(DbError::from)
         })

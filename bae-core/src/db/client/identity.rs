@@ -119,7 +119,7 @@ impl Database {
             conn.query_row(
                 &sql,
                 coven::rusqlite::params_from_iter(binds.iter()),
-                |row| Ok(Self::row_to_album(row)),
+                row_to_album,
             )
             .optional()
             .map_err(DbError::from)
@@ -512,7 +512,7 @@ impl Database {
                             LIMIT 1
                             "#,
                         params![source, release_id],
-                        |row| Ok(Self::row_to_album(row)),
+                        row_to_album,
                     )
                     .optional()?;
 
@@ -537,7 +537,7 @@ impl Database {
                                 LIMIT 1
                                 "#,
                             params![source, group_id],
-                            |row| Ok(Self::row_to_album(row)),
+                            row_to_album,
                         )
                         .optional()?;
 

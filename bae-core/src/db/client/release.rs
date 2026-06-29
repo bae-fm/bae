@@ -211,32 +211,13 @@ impl Database {
         )
     }
 
-    /// Map one row of [`release_storage_summary_query`] to a
-    /// `DbReleaseStorageSummary`.
-    fn row_to_release_storage_summary(
-        row: &Row,
-    ) -> coven::rusqlite::Result<DbReleaseStorageSummary> {
-        Ok(DbReleaseStorageSummary {
-            release_id: row.get("release_id")?,
-            album_id: row.get("album_id")?,
-            album_title: row.get("album_title")?,
-            artist_names: row.get("artist_names")?,
-            format: row.get("format")?,
-            primary_release_id: row.get("primary_release_id")?,
-            remote: row.get("remote")?,
-            any_file_id: row.get("any_file_id")?,
-            file_count: row.get("file_count")?,
-            total_size: row.get("total_size")?,
-        })
-    }
-
     pub async fn get_release_storage_summaries(
         &self,
     ) -> Result<Vec<DbReleaseStorageSummary>, DbError> {
         let query = Self::release_storage_summary_query("ORDER BY a.title, r.created_at");
         self.call(move |conn| {
             let mut stmt = conn.prepare(&query)?;
-            let rows = stmt.query_map([], Self::row_to_release_storage_summary)?;
+            let rows = stmt.query_map([], row_to_release_storage_summary)?;
             rows.collect::<coven::rusqlite::Result<Vec<_>>>()
                 .map_err(DbError::from)
         })
@@ -254,7 +235,7 @@ impl Database {
         let release_id = release_id.to_string();
         let query = Self::release_storage_summary_query("WHERE r.id = ?1");
         self.call(move |conn| {
-            conn.query_row(&query, [release_id], Self::row_to_release_storage_summary)
+            conn.query_row(&query, [release_id], row_to_release_storage_summary)
                 .optional()
                 .map_err(DbError::from)
         })
@@ -394,7 +375,7 @@ impl Database {
             conn.query_row(
                 "SELECT * FROM releases WHERE id = ?",
                 params![release_id],
-                |row| Ok(Self::row_to_release(row)),
+                row_to_release,
             )
             .map_err(DbError::from)
         })
@@ -419,7 +400,7 @@ impl Database {
         self.call(move |conn| {
             let mut stmt =
                 conn.prepare("SELECT * FROM releases WHERE album_id = ? ORDER BY created_at")?;
-            let rows = stmt.query_map(params![album_id], |row| Ok(Self::row_to_release(row)))?;
+            let rows = stmt.query_map(params![album_id], row_to_release)?;
             rows.collect::<coven::rusqlite::Result<Vec<_>>>()
                 .map_err(DbError::from)
         })
@@ -438,7 +419,7 @@ impl Database {
         let release_id = release_id.to_string();
         self.call(move |conn| {
             let mut stmt = conn.prepare("SELECT * FROM release_files WHERE release_id = ?")?;
-            let rows = stmt.query_map(params![release_id], |row| Ok(Self::row_to_file(row)))?;
+            let rows = stmt.query_map(params![release_id], row_to_file)?;
             rows.collect::<coven::rusqlite::Result<Vec<_>>>()
                 .map_err(DbError::from)
         })
@@ -451,7 +432,7 @@ impl Database {
             conn.query_row(
                 "SELECT * FROM release_files WHERE id = ?",
                 params![file_id],
-                |row| Ok(Self::row_to_file(row)),
+                row_to_file,
             )
             .optional()
             .map_err(DbError::from)
@@ -715,7 +696,7 @@ impl Database {
             conn.query_row(
                 "SELECT * FROM releases WHERE id = ?",
                 params![release_id],
-                |row| Ok(Self::row_to_release(row)),
+                row_to_release,
             )
             .optional()
             .map_err(DbError::from)
@@ -774,7 +755,7 @@ impl Database {
                      JOIN release_files rf ON rf.release_id = r.id \
                      WHERE rf.id = ?",
                 params![file_id],
-                |row| Ok(Self::row_to_release(row)),
+                row_to_release,
             )
             .optional()
             .map_err(DbError::from)

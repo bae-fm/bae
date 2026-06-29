@@ -49,7 +49,7 @@ impl Database {
         let sql = format!("SELECT * FROM {table} WHERE id = ?");
         self.call(move |conn| {
             conn.query_row(&sql, params![id], |row| {
-                Ok(row_to_library_image(row, image_type.clone()))
+                row_to_library_image(row, image_type.clone())
             })
             .optional()
             .map_err(DbError::from)
