@@ -402,10 +402,17 @@ impl Database {
                                 .into(),
                         )
                     })?;
+                let operation_raw = row.get::<_, String>("operation")?;
+                let operation = OutboxOpKind::parse(&operation_raw).ok_or_else(|| {
+                    column_conversion_error(
+                        row,
+                        "operation",
+                        format!("invalid cloud_outbox.operation: {operation_raw:?}"),
+                    )
+                })?;
                 Ok(DbOutboxRow {
                     id: row.get("id")?,
-                    operation: OutboxOpKind::parse(&row.get::<_, String>("operation")?)
-                        .expect("invalid outbox operation in DB"),
+                    operation,
                     file_id: row.get("file_id")?,
                     cloud_key: row.get("cloud_key")?,
                     created_at,
