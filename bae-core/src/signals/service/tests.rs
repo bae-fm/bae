@@ -1,6 +1,7 @@
 use super::*;
 use crate::identify::analyzer::ArtworkAnalyzer;
 use crate::identify::ArtworkAnalysis;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
