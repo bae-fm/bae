@@ -29,6 +29,7 @@ use tempfile::TempDir;
 struct ImportFixture {
     db: Database,
     handle: bae_core::import::ImportServiceHandle,
+    library_manager: LibraryManager,
     _temp: TempDir,
 }
 
@@ -58,13 +59,14 @@ impl ImportFixture {
 
         let handle = ImportService::start(
             tokio::runtime::Handle::current(),
-            library_manager,
+            library_manager.clone(),
             bae_core::import::cover_art::CoverArtArchiveClient::new(),
         );
 
         Self {
             db,
             handle,
+            library_manager,
             _temp: temp,
         }
     }
@@ -377,7 +379,7 @@ async fn local_folder_import() {
     let f = ImportFixture::new().await;
 
     // Subscribe to library events BEFORE import
-    let mut event_rx = f.handle.library_manager.subscribe_events();
+    let mut event_rx = f.library_manager.subscribe_events();
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -415,7 +417,6 @@ async fn local_folder_import() {
     assert!(!release.remote);
     let files = f.db.get_files_for_release(&release_id).await.unwrap();
     let local_path = f
-        .handle
         .library_manager
         .file_local_path(&files[0].id)
         .await
@@ -768,13 +769,11 @@ async fn loudness_measured_at_import_drives_playback_gain() {
 
     // ── Playback gain reflects each track's own loudness (mode = Track) ──
     let quiet_audio = f
-        .handle
         .library_manager
         .resolve_track_audio(&quiet.id)
         .await
         .unwrap();
     let loud_audio = f
-        .handle
         .library_manager
         .resolve_track_audio(&loud.id)
         .await
@@ -936,7 +935,6 @@ async fn import_with_cover_art() {
 
     // Cover bytes readable through the handle (coven's local store while Local).
     let cover_bytes = f
-        .handle
         .library_manager
         .read_image_blob(&release_id)
         .await
@@ -963,8 +961,7 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
     let release_id_key = seed_discogs_test_release(release);
     let f = ImportFixture::new().await;
     // Make the home browsable BEFORE importing, so finalize computes readable keys.
-    f.handle
-        .library_manager
+    f.library_manager
         .set_home_storage(bae_core::config::HomeStorage::Browsable);
 
     let album_dir = f.temp_path().join("album");
@@ -1734,7 +1731,6 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
     );
 
     let bytes = f
-        .handle
         .library_manager
         .read_image_blob(&release_id)
         .await

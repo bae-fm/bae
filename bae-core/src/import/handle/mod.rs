@@ -153,12 +153,13 @@ fn validation_from_validate_result(
 /// `MetadataRef`s, and forwards them to the worker.
 #[derive(Clone)]
 pub struct ImportServiceHandle {
-    pub requests_tx: mpsc::UnboundedSender<ImportCommand>,
-    pub progress_handle: ImportProgressHandle,
-    pub library_manager: LibraryManager,
-    pub runtime_handle: tokio::runtime::Handle,
+    requests_tx: mpsc::UnboundedSender<ImportCommand>,
+    progress_handle: ImportProgressHandle,
+    library_manager: LibraryManager,
     /// Unified event channel — all import service events go here.
-    pub event_tx: broadcast::Sender<ImportEvent>,
+    /// `pub(crate)` because `app.rs` clones it to seed the identify and signals
+    /// services at startup.
+    pub(crate) event_tx: broadcast::Sender<ImportEvent>,
     /// The watched-folders / scan-driving surface: the watched-folder list, the
     /// folder-watcher command channel, and the shared handles those methods
     /// need. The public watched-folder methods delegate here.
@@ -219,14 +220,13 @@ impl ImportServiceHandle {
             folder_registry,
             watcher_tx,
             event_tx.clone(),
-            runtime_handle.clone(),
+            runtime_handle,
             library_manager.library_dir().clone(),
         );
         Self {
             requests_tx,
             progress_handle,
             library_manager,
-            runtime_handle,
             event_tx,
             watched_folders,
             cover_art_archive,
