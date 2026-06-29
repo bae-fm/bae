@@ -261,6 +261,51 @@ mod row_mapper_error_tests {
 }
 
 #[cfg(test)]
+mod outbox_items_tests {
+    use super::super::*;
+    use coven::SystemClock;
+
+    async fn empty_db() -> (Database, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        (db, tmp)
+    }
+
+    /// An outbox row whose `operation` is not a kind `OutboxOpKind::parse`
+    /// knows (here `'cancel'`, which the schema's CHECK allows but the snapshot
+    /// mapper does not model) must surface as an error rather than panicking
+    /// inside the query closure. The valid `created_at` stamp from
+    /// `add_cloud_outbox_delete` keeps the failure pinned to the operation read.
+    #[tokio::test]
+    async fn outbox_items_rejects_unknown_operation() {
+        let (db, _tmp) = empty_db().await;
+        db.add_cloud_outbox_delete("cloud-key").await.unwrap();
+        db.call(|conn| {
+            conn.execute(
+                "UPDATE cloud_outbox SET operation = 'cancel' WHERE cloud_key = 'cloud-key'",
+                [],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+
+        // The fix surfaces a column-conversion error naming the operation
+        // column; before it, the closure panics and the caller only sees
+        // coven's generic "reply dropped" error, so this message check fails.
+        let err = db.outbox_items().await.unwrap_err();
+        assert!(
+            err.to_string().contains("cloud_outbox.operation"),
+            "expected a column-conversion error naming the operation, got: {err}"
+        );
+    }
+}
+
+#[cfg(test)]
 mod playback_state_load_tests {
     use super::super::*;
     use coven::SystemClock;
