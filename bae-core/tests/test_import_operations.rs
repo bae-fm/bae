@@ -49,9 +49,9 @@ async fn test_insert_and_get_import() {
 
     let import = DbImport::new(
         "test-import-1",
-        "Neon Dreams",
-        "The Wanderers",
-        "/music/wanderers/neon-dreams",
+        "Album Title",
+        "Artist Name",
+        "/music/library/album-title",
         chrono::Utc::now(),
     );
 
@@ -62,9 +62,9 @@ async fn test_insert_and_get_import() {
 
     let retrieved = retrieved.unwrap();
     assert_eq!(retrieved.id, "test-import-1");
-    assert_eq!(retrieved.album_title, "Neon Dreams");
-    assert_eq!(retrieved.artist_name, "The Wanderers");
-    assert_eq!(retrieved.folder_path, "/music/wanderers/neon-dreams");
+    assert_eq!(retrieved.album_title, "Album Title");
+    assert_eq!(retrieved.artist_name, "Artist Name");
+    assert_eq!(retrieved.folder_path, "/music/library/album-title");
     assert_eq!(retrieved.status, ImportOperationStatus::Importing);
     assert!(retrieved.release_id.is_none());
     assert!(retrieved.error_message.is_none());
@@ -80,9 +80,9 @@ async fn test_import_lifecycle_success() {
     // Create import record (starts at Importing since all validation already passed)
     let import = DbImport::new(
         "lifecycle-import",
-        "Midnight Echo",
-        "Solar Flare",
-        "/music/solar-flare/midnight-echo",
+        "Album Title",
+        "Artist Name",
+        "/music/library/album-title",
         chrono::Utc::now(),
     );
     db.insert_import(&import).await.unwrap();
@@ -232,9 +232,9 @@ async fn test_no_import_record_when_validation_fails() {
     // Successful import: validation passed, so insert_import is called
     let successful_import = DbImport::new(
         "success-import",
-        "Midnight Echo",
-        "Solar Flare",
-        "/music/solar-flare/midnight-echo",
+        "Album Title",
+        "Artist Name",
+        "/music/library/album-title",
         chrono::Utc::now(),
     );
     db.insert_import(&successful_import).await.unwrap();
