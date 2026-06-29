@@ -129,7 +129,7 @@ impl LibraryManager {
             let pinned = self
                 .release_pinned(raw.release.any_file_id.as_deref())
                 .await?;
-            rows.push(resolve_storage_row(raw, has_cloud_home, pinned, |rid| {
+            rows.push(StorageRow::from_raw(raw, has_cloud_home, pinned, |rid| {
                 covers.get(rid).cloned()
             }));
         }

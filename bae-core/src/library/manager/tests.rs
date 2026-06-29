@@ -393,7 +393,7 @@ async fn release_removed_carries_none_when_album_no_longer_exists() {
     assert_eq!(release_id, "gone-release-id");
     assert!(
         summary.is_none(),
-        "a removed album yields no summary, not a panic in resolve_album_summary"
+        "a removed album yields no summary, not a panic in AlbumSummary::from_raw"
     );
 }
 

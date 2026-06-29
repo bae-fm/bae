@@ -35,8 +35,36 @@
 //! The side letter (A/B/C…) and the disc-vs-side decision are domain logic and
 //! stay here; only the words "Side"/"Disc" are the UI's, resolved from catalog
 //! keys.
+//!
+//! ## Projection constructors
+//!
+//! Each resolved type owns the pure projection from its raw `Db*` aggregate as a
+//! `from_raw` constructor (a genuine `From` where there's no extra context). The
+//! `LibraryManager` reads the DB / coven cache to gather the inputs (covers, pin
+//! state, cloud-home presence) and hands them to these constructors; the
+//! derivation logic lives with the type it produces.
 
-use crate::db::DbAlbum;
+use crate::db::DbArtist;
+
+mod album;
+mod release;
+mod search;
+mod storage;
+
+pub use album::*;
+pub use release::*;
+pub use search::*;
+pub use storage::*;
+
+/// Comma-join artist names for display. Shared by the `from_raw` projections
+/// (track/album/release artist lists) and by the export path.
+pub(crate) fn join_artist_names(artists: &[DbArtist]) -> String {
+    artists
+        .iter()
+        .map(|a| a.name.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
 
 /// The TWO storage states a release's audio can be in — the shared
 /// `releases.remote` fact. This is ORTHOGONAL to pinned-ness: whether coven keeps
@@ -194,84 +222,6 @@ pub struct AudioFormat {
     pub channels: i64,
 }
 
-/// Resolved release summary: the slim projection that list views (storage
-/// manager, release pickers, etc.) render one row per entity. Every field
-/// is pre-computed; no downstream consumer needs to derive anything.
-///
-/// Composed into [`ReleaseDetail`] for detail views. Interned into the
-/// UI-side "releases" slice — see notes on summary/detail composition at
-/// the top of this file.
-///
-/// Invariant: `album_id` refers to an album that exists. Every release
-/// belongs to an album (enforced by the `releases.album_id` FK and by
-/// `delete_release`, which removes the album when its last release goes).
-#[derive(Debug, Clone)]
-pub struct ReleaseSummary {
-    pub id: String,
-    pub album_id: String,
-    /// Audio format (e.g. "FLAC", "MP3"). `None` if unknown.
-    pub format: Option<String>,
-    /// The release's storage state — Local (local) or Remote (cloud) —
-    /// derived from the shared `releases.remote` fact. Orthogonal to `pinned`.
-    pub storage_state: ReleaseStorageState,
-    /// Whether coven keeps this release's blobs pinned (kept offline) on this
-    /// device — the orthogonal coven-cache property, asked of coven's cache.
-    /// Meaningful only when `storage_state` is `Remote` (always `false` for an
-    /// Local release, which is already a local file). Kept SEPARATE from
-    /// `storage_state` so the two concepts are never confused.
-    pub pinned: bool,
-    /// Storage transitions available for this release right now, computed by
-    /// the core from `storage_state`, `pinned`, and whether a cloud home exists.
-    /// The UI renders these (the album-detail "Storage…" sheet and the Storage
-    /// Manager row context menu); it never re-derives availability. Empty with
-    /// no cloud home. The in-flight-uploads gate lives in the UI: it consults
-    /// the outbox snapshot's `per_release` map before showing these actions.
-    pub storage_actions: Vec<ReleaseStorageAction>,
-    pub file_count: i64,
-    pub total_size: i64,
-    /// Reference to this release's own cover (image id + version), or `None` when
-    /// the release has no cover row. Keyed on the release id — covers are stored
-    /// per release — so two releases of one album resolve to their own art rather
-    /// than the album's primary cover.
-    pub cover: Option<ImageRef>,
-}
-
-/// Resolved release detail: the fat projection for the album detail view.
-/// Composes a [`ReleaseSummary`] (slim fields) with the per-release data
-/// that only the detail view needs (tracks, files, gallery). Split this
-/// way so a list consumer can display a row without loading tracks.
-///
-/// `display_name` is pre-computed: the release's own `release_name`, or a
-/// "`year format`" derivation, or "Release $N" using the release's
-/// position within its album. The resolver picks the position; consumers
-/// never need the index.
-///
-#[derive(Debug, Clone)]
-pub struct ReleaseDetail {
-    pub summary: ReleaseSummary,
-    /// Human-readable name for picker UI: the stored `release_name`, or
-    /// "$year $format", or "Release $N" fallback.
-    pub display_name: String,
-    /// Raw `release_name` from the release row, preserved for wire
-    /// compatibility with `BridgeRelease.release_name`. Consumers should
-    /// prefer `display_name` for display.
-    pub release_name: Option<String>,
-    pub year: Option<i32>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
-    pub country: Option<String>,
-    /// Total duration across all tracks, in milliseconds. The UI formats it.
-    pub total_duration_ms: i64,
-    pub tracks: Vec<TrackDetail>,
-    pub track_groups: Vec<TrackGroup>,
-    pub files: Vec<FileDetail>,
-    pub image_files: Vec<FileDetail>,
-    /// Cover (if on disk) followed by every image file the release has —
-    /// including cloud-only ones not yet downloaded (those carry no local path;
-    /// the lightbox fetches them on demand).
-    pub gallery_items: Vec<GalleryItem>,
-}
-
 /// A host-provided library image's reference: the image id plus a content
 /// version. The id is the subject id (a release id for a cover, an artist id for
 /// an artist image); the version is the image row's `_updated_at`, which moves
@@ -307,173 +257,6 @@ pub struct GalleryItem {
     pub label: String,
     /// Which byte source to read this slot from.
     pub source: GallerySource,
-}
-
-/// Full album detail: album + releases (with tracks, files, gallery).
-#[derive(Debug, Clone)]
-pub struct AlbumDetail {
-    pub album: DbAlbum,
-    /// Comma-joined artist names for display.
-    pub artist_names: String,
-    pub releases: Vec<ReleaseDetail>,
-    /// User-chosen primary release, falling back to first. Always set:
-    /// every album has at least one release (enforced by `delete_release`
-    /// which removes the album row when its last release is deleted).
-    pub primary_release_id: String,
-    /// Reference to the album's cover — the primary release's cover (image id +
-    /// version) — or `None` when it has no cover row. The version moves when the
-    /// cover bytes do, so the `AlbumUpdated` payload carries a changed field and
-    /// the UI re-renders the cover.
-    pub cover: Option<ImageRef>,
-}
-
-/// Resolved album summary: the slim projection list views render. Produced
-/// by `LibraryManager` from `DbAlbumSummary`; carries the
-/// `primary_release_id` fallback applied.
-///
-/// Composed into [`AlbumDetail`] for detail views. Interned into the
-/// UI-side "summaries" slice alongside the summary/detail pattern
-/// described at the top of this file.
-#[derive(Debug, Clone)]
-pub struct AlbumSummary {
-    pub id: String,
-    pub title: String,
-    pub year: Option<i32>,
-    pub is_compilation: bool,
-    pub artist_names: String,
-    pub release_ids: Vec<String>,
-    /// User-chosen primary release, or the first release if unset. Always
-    /// set: every album has at least one release (enforced by
-    /// `delete_release` which removes the album row when its last release
-    /// is deleted).
-    pub primary_release_id: String,
-    /// Reference to the album's cover — the primary release's cover (image id +
-    /// version) — or `None` when it has no cover row. Carried on the summary so a
-    /// cover change produces a changed field on the `AlbumUpdated` event: the
-    /// version moves when the bytes do, so the UI's per-field re-render fires and
-    /// the cover reloads.
-    pub cover: Option<ImageRef>,
-}
-
-/// Resolved per-release storage summary for the Storage Manager view.
-/// Produced by `LibraryManager` from `DbReleaseStorageSummary`: derives
-/// `storage_state` from `releases.remote` and this device's
-/// `release_local_copy` row. The UI formats `total_size` for the locale.
-#[derive(Debug, Clone)]
-pub struct ReleaseStorageSummary {
-    pub release_id: String,
-    pub album_id: String,
-    pub album_title: String,
-    pub artist_names: String,
-    pub format: Option<String>,
-    /// The album's primary release (for "am I the primary release"
-    /// comparisons and cover art lookup). Always set: every album has at
-    /// least one release.
-    pub primary_release_id: String,
-    /// The release's storage state — Local (local) or Remote (cloud) —
-    /// derived from the shared `releases.remote` fact. Orthogonal to `pinned`.
-    pub storage_state: ReleaseStorageState,
-    /// Whether coven keeps this release's blobs pinned (kept offline) on this
-    /// device — the orthogonal coven-cache property. Meaningful only when
-    /// `storage_state` is `Remote`. Kept SEPARATE from `storage_state`.
-    pub pinned: bool,
-    /// The storage transitions this release allows now, gated on cloud-home
-    /// only. The in-flight-uploads gate lives in the UI: it suppresses these
-    /// actions when `OutboxSnapshot.per_release[release_id]` is non-empty.
-    pub storage_actions: Vec<ReleaseStorageAction>,
-    pub file_count: i64,
-    pub total_size: i64,
-}
-
-/// One row on the Storage Manager view: a release paired with its parent
-/// album. The UI normalizes the shape into two slices (releases +
-/// summaries) at ingest — rendering joins from the release to the album
-/// at render time.
-#[derive(Debug, Clone)]
-pub struct StorageRow {
-    pub release: ReleaseSummary,
-    pub album: AlbumSummary,
-}
-
-/// One page of storage rows with the total count so paginated list
-/// machinery knows where the end is. `total_count` reflects the filtered
-/// subset, not the full library.
-#[derive(Debug, Clone)]
-pub struct StoragePage {
-    pub rows: Vec<StorageRow>,
-    pub total_count: u64,
-}
-
-/// Field the Storage Manager can sort on. Mirrors the columns
-/// `StorageManagerView` renders today.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageSortField {
-    AlbumTitle,
-    ArtistNames,
-    Format,
-    FileCount,
-    TotalSize,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageSortDirection {
-    Ascending,
-    Descending,
-}
-
-/// A single sort criterion for `get_storage_page`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct StorageSort {
-    pub field: StorageSortField,
-    pub direction: StorageSortDirection,
-}
-
-/// Filter applied to the Storage Manager list. Mirrors the four
-/// mutually-exclusive filter chips the UI shows today.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageFilter {
-    All,
-    /// Only local releases (files live outside the library directory).
-    Local,
-    /// Only remote releases (files stored by the library).
-    Remote,
-    /// Only releases with at least one file pending cloud upload.
-    Uploading,
-}
-
-/// Resolved search-result container produced by `LibraryManager` from
-/// `DbLibrarySearchResults`.
-#[derive(Debug, Clone)]
-pub struct SearchResults {
-    pub albums: Vec<AlbumSearchResult>,
-    pub tracks: Vec<TrackSearchResult>,
-}
-
-/// Resolved album search result. Field-by-field copy of
-/// `DbAlbumSearchResult` — no transformation, just the "public" name.
-#[derive(Debug, Clone)]
-pub struct AlbumSearchResult {
-    pub id: String,
-    pub title: String,
-    pub year: Option<i32>,
-    pub artist_name: String,
-    /// Reference to the album's cover — the primary release's cover (image id +
-    /// version) — or `None` when it has no cover row. The search UI fetches its
-    /// bytes by image id and caches under `(id, version)`. Resolved from the
-    /// album's primary release; the primary id itself isn't surfaced (the search
-    /// UI navigates by album id).
-    pub cover: Option<ImageRef>,
-}
-
-/// Resolved track search result, produced from `DbTrackSearchResult`.
-#[derive(Debug, Clone)]
-pub struct TrackSearchResult {
-    pub id: String,
-    pub title: String,
-    pub duration_ms: Option<i64>,
-    pub album_id: String,
-    pub album_title: String,
-    pub artist_name: String,
 }
 
 #[cfg(test)]
