@@ -100,21 +100,24 @@ fn row_to_outbox_entry(row: &Row<'_>) -> coven::rusqlite::Result<coven::OutboxEn
 
 /// Build a `DbLibraryImage` from a `covers`/`artist_images` row. The table is the
 /// type, so `image_type` is supplied by the caller rather than read from a column.
-fn row_to_library_image(row: &Row, image_type: LibraryImageType) -> DbLibraryImage {
-    DbLibraryImage {
-        id: row.get("id").unwrap(),
+fn row_to_library_image(
+    row: &Row,
+    image_type: LibraryImageType,
+) -> coven::rusqlite::Result<DbLibraryImage> {
+    Ok(DbLibraryImage {
+        id: row.get("id")?,
         image_type,
-        content_type: ContentType::from_mime(&row.get::<_, String>("content_type").unwrap()),
-        file_size: row.get("file_size").unwrap(),
-        width: row.get("width").unwrap(),
-        height: row.get("height").unwrap(),
-        source: row.get("source").unwrap(),
-        source_url: row.get("source_url").unwrap(),
-        cloud_path: row.get("cloud_path").unwrap(),
-        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at").unwrap())
+        content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
+        file_size: row.get("file_size")?,
+        width: row.get("width")?,
+        height: row.get("height")?,
+        source: row.get("source")?,
+        source_url: row.get("source_url")?,
+        cloud_path: row.get("cloud_path")?,
+        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
             .unwrap()
             .with_timezone(&Utc),
-    }
+    })
 }
 
 /// Build an ORDER BY clause from sort criteria.
@@ -435,79 +438,6 @@ impl Database {
         .await
     }
 
-    fn row_to_release(row: &Row) -> DbRelease {
-        let metadata_source: String = row.get("metadata_source").unwrap();
-        let metadata_source = metadata_source.parse::<ReleaseMetadataSource>().expect(
-            "releases.metadata_source must be one of 'musicbrainz' | 'discogs' | 'file_tags'",
-        );
-        DbRelease {
-            id: row.get("id").unwrap(),
-            album_id: row.get("album_id").unwrap(),
-            release_name: row.get("release_name").unwrap(),
-            pressing: Pressing {
-                year: row.get("year").unwrap(),
-                format: row.get("format").unwrap(),
-                label: row.get("label").unwrap(),
-                catalog_number: row.get("catalog_number").unwrap(),
-                country: row.get("country").unwrap(),
-                barcode: row.get("barcode").unwrap(),
-            },
-            disc_id: row.get("disc_id").unwrap(),
-            metadata_source,
-            metadata_source_release_id: row.get("metadata_source_release_id").unwrap(),
-            remote: row.get("remote").unwrap(),
-            source_folder_name: row.get("source_folder_name").unwrap(),
-            content_hash: row.get("content_hash").unwrap(),
-            album_loudness_lufs: row.get("album_loudness_lufs").unwrap(),
-            album_peak_linear: row.get("album_peak_linear").unwrap(),
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at").unwrap())
-                .unwrap()
-                .with_timezone(&Utc),
-        }
-    }
-
-    fn row_to_file(row: &Row) -> DbFile {
-        DbFile {
-            id: row.get("id").unwrap(),
-            release_id: row.get("release_id").unwrap(),
-            original_filename: row.get("original_filename").unwrap(),
-            file_size: row.get("file_size").unwrap(),
-            content_type: ContentType::from_mime(&row.get::<_, String>("content_type").unwrap()),
-            cloud_path: row.get("cloud_path").unwrap(),
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at").unwrap())
-                .unwrap()
-                .with_timezone(&Utc),
-        }
-    }
-
-    fn row_to_artist(row: &Row) -> DbArtist {
-        DbArtist {
-            id: row.get("id").unwrap(),
-            name: row.get("name").unwrap(),
-            sort_name: row.get("sort_name").unwrap(),
-            discogs_artist_id: row.get("discogs_artist_id").unwrap(),
-            musicbrainz_artist_id: row.get("musicbrainz_artist_id").unwrap(),
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at").unwrap())
-                .unwrap()
-                .with_timezone(&Utc),
-        }
-    }
-
-    /// Parse a DbAlbum from a SQL row.
-    fn row_to_album(row: &Row) -> DbAlbum {
-        DbAlbum {
-            id: row.get("id").unwrap(),
-            title: row.get("title").unwrap(),
-            artist_id: row.get("artist_id").unwrap(),
-            year: row.get("year").unwrap(),
-            primary_release_id: row.get("primary_release_id").unwrap(),
-            is_compilation: row.get("is_compilation").unwrap(),
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at").unwrap())
-                .unwrap()
-                .with_timezone(&Utc),
-        }
-    }
-
     /// Shared SQL assembly for `find_album_detail` / `find_release_detail`.
     /// Returns the raw per-release aggregate.
     async fn build_release_detail(&self, release: DbRelease) -> Result<DbReleaseDetail, DbError> {
@@ -533,6 +463,79 @@ impl Database {
 }
 
 // ─── Row-map helpers (free functions; take `&Row`) ──────────────────────────
+
+fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
+    let metadata_source: String = row.get("metadata_source")?;
+    let metadata_source = metadata_source
+        .parse::<ReleaseMetadataSource>()
+        .expect("releases.metadata_source must be one of 'musicbrainz' | 'discogs' | 'file_tags'");
+    Ok(DbRelease {
+        id: row.get("id")?,
+        album_id: row.get("album_id")?,
+        release_name: row.get("release_name")?,
+        pressing: Pressing {
+            year: row.get("year")?,
+            format: row.get("format")?,
+            label: row.get("label")?,
+            catalog_number: row.get("catalog_number")?,
+            country: row.get("country")?,
+            barcode: row.get("barcode")?,
+        },
+        disc_id: row.get("disc_id")?,
+        metadata_source,
+        metadata_source_release_id: row.get("metadata_source_release_id")?,
+        remote: row.get("remote")?,
+        source_folder_name: row.get("source_folder_name")?,
+        content_hash: row.get("content_hash")?,
+        album_loudness_lufs: row.get("album_loudness_lufs")?,
+        album_peak_linear: row.get("album_peak_linear")?,
+        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
+            .unwrap()
+            .with_timezone(&Utc),
+    })
+}
+
+fn row_to_file(row: &Row) -> coven::rusqlite::Result<DbFile> {
+    Ok(DbFile {
+        id: row.get("id")?,
+        release_id: row.get("release_id")?,
+        original_filename: row.get("original_filename")?,
+        file_size: row.get("file_size")?,
+        content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
+        cloud_path: row.get("cloud_path")?,
+        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
+            .unwrap()
+            .with_timezone(&Utc),
+    })
+}
+
+fn row_to_artist(row: &Row) -> coven::rusqlite::Result<DbArtist> {
+    Ok(DbArtist {
+        id: row.get("id")?,
+        name: row.get("name")?,
+        sort_name: row.get("sort_name")?,
+        discogs_artist_id: row.get("discogs_artist_id")?,
+        musicbrainz_artist_id: row.get("musicbrainz_artist_id")?,
+        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
+            .unwrap()
+            .with_timezone(&Utc),
+    })
+}
+
+/// Parse a DbAlbum from a SQL row.
+fn row_to_album(row: &Row) -> coven::rusqlite::Result<DbAlbum> {
+    Ok(DbAlbum {
+        id: row.get("id")?,
+        title: row.get("title")?,
+        artist_id: row.get("artist_id")?,
+        year: row.get("year")?,
+        primary_release_id: row.get("primary_release_id")?,
+        is_compilation: row.get("is_compilation")?,
+        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
+            .unwrap()
+            .with_timezone(&Utc),
+    })
+}
 
 fn row_to_track(row: &Row) -> coven::rusqlite::Result<DbTrack> {
     Ok(DbTrack {
@@ -588,6 +591,22 @@ fn row_to_import(row: &Row) -> coven::rusqlite::Result<DbImport> {
         created_at: row.get("created_at")?,
         updated_at: row.get("updated_at")?,
         error_message: row.get("error_message")?,
+    })
+}
+
+/// Map one row of the release-storage-summary query to a `DbReleaseStorageSummary`.
+fn row_to_release_storage_summary(row: &Row) -> coven::rusqlite::Result<DbReleaseStorageSummary> {
+    Ok(DbReleaseStorageSummary {
+        release_id: row.get("release_id")?,
+        album_id: row.get("album_id")?,
+        album_title: row.get("album_title")?,
+        artist_names: row.get("artist_names")?,
+        format: row.get("format")?,
+        primary_release_id: row.get("primary_release_id")?,
+        remote: row.get("remote")?,
+        any_file_id: row.get("any_file_id")?,
+        file_count: row.get("file_count")?,
+        total_size: row.get("total_size")?,
     })
 }
 

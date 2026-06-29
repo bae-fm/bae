@@ -38,7 +38,7 @@ impl Database {
         value: String,
     ) -> Result<Option<DbArtist>, DbError> {
         self.call(move |conn| {
-            conn.query_row(sql, params![value], |row| Ok(Self::row_to_artist(row)))
+            conn.query_row(sql, params![value], row_to_artist)
                 .optional()
                 .map_err(DbError::from)
         })
@@ -141,9 +141,7 @@ impl Database {
                         ORDER BY sort_key
                         "#,
             )?;
-            let rows = stmt.query_map(params![album_id, album_id], |row| {
-                Ok(Self::row_to_artist(row))
-            })?;
+            let rows = stmt.query_map(params![album_id, album_id], row_to_artist)?;
             rows.collect::<coven::rusqlite::Result<Vec<_>>>()
                 .map_err(DbError::from)
         })
@@ -161,7 +159,7 @@ impl Database {
                         ORDER BY ta.position
                         "#,
             )?;
-            let rows = stmt.query_map(params![track_id], |row| Ok(Self::row_to_artist(row)))?;
+            let rows = stmt.query_map(params![track_id], row_to_artist)?;
             rows.collect::<coven::rusqlite::Result<Vec<_>>>()
                 .map_err(DbError::from)
         })
