@@ -1604,7 +1604,8 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     // In flight now: the in-memory map flips it to active, starting at zero
     // bytes done.
     manager
-        .outbox_in_flight
+        .sync
+        .outbox_in_flight()
         .lock()
         .unwrap()
         .insert(file.id.clone(), 0);
@@ -1618,7 +1619,8 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     // per-release and aggregate bytes_done climb without the file
     // completing.
     manager
-        .outbox_in_flight
+        .sync
+        .outbox_in_flight()
         .lock()
         .unwrap()
         .insert(file.id.clone(), 400);
@@ -1633,7 +1635,12 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
         snap.per_release.get(&release.id).map(|p| p.bytes_done),
         Some(400)
     );
-    manager.outbox_in_flight.lock().unwrap().remove(&file.id);
+    manager
+        .sync
+        .outbox_in_flight()
+        .lock()
+        .unwrap()
+        .remove(&file.id);
 
     // A recorded failure: failed with the stored error + attempt.
     manager
@@ -1697,9 +1704,9 @@ async fn observer_progress_advances_snapshot_bytes_done() {
     // The observer shares the manager's in-flight map and throughput tracker,
     // exactly as production wires it in `build_sync_manager`.
     let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
-        manager.outbox_in_flight.clone(),
-        manager.upload_throughput.clone(),
-        manager.sync_paused.clone(),
+        manager.sync.outbox_in_flight(),
+        manager.sync.upload_throughput(),
+        manager.sync.sync_paused(),
         manager.event_tx.clone(),
     );
     observer.set_database(Arc::new(manager.database.clone()));
@@ -1724,7 +1731,7 @@ async fn observer_progress_advances_snapshot_bytes_done() {
     );
     // The rolling-window tracker saw the 600-byte delta, so the rate is
     // non-zero before the file even finishes.
-    assert!(manager.upload_throughput.bytes_per_sec() > 0);
+    assert!(manager.sync.upload_throughput().bytes_per_sec() > 0);
 
     // Completion clears the in-flight entry; the row's still queued in the
     // DB (this test drives only the observer, not coven's removal), so it

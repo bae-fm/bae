@@ -5,6 +5,7 @@ pub mod download_snapshot;
 pub mod export;
 pub mod manager;
 pub mod outbox_snapshot;
+pub(crate) mod sync_controller;
 pub mod sync_events;
 pub mod upload_throughput;
 pub use app_services::*;
