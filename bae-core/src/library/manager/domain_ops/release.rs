@@ -587,7 +587,7 @@ impl LibraryManager {
         let mut out = Vec::with_capacity(raws.len());
         for raw in raws {
             let pinned = self.release_pinned(raw.any_file_id.as_deref()).await?;
-            out.push(resolve_release_storage_summary(raw, has_cloud_home, pinned));
+            out.push(ReleaseStorageSummary::from_raw(raw, has_cloud_home, pinned));
         }
         Ok(out)
     }
@@ -608,7 +608,7 @@ impl LibraryManager {
         };
         let has_cloud_home = self.has_cloud_home();
         let pinned = self.release_pinned(raw.any_file_id.as_deref()).await?;
-        Ok(Some(resolve_release_storage_summary(
+        Ok(Some(ReleaseStorageSummary::from_raw(
             raw,
             has_cloud_home,
             pinned,
@@ -639,13 +639,16 @@ impl LibraryManager {
             .release_pinned(raw.files.first().map(|f| f.id.as_str()))
             .await?;
         let cover = self.cover_ref(release_id).await?;
-        Ok(Some(resolve_release(
-            raw,
-            &album_artists,
-            release_index,
+        let ctx = ReleaseResolveCtx {
             has_cloud_home,
             pinned,
             cover,
+        };
+        Ok(Some(ReleaseDetail::from_raw(
+            raw,
+            &album_artists,
+            release_index,
+            &ctx,
         )))
     }
 

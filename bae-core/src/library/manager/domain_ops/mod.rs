@@ -1,6 +1,5 @@
 //! Database domain operations for [`LibraryManager`].
 
-use super::resolve::*;
 use super::*;
 
 /// Translate a UI-facing `StorageSort` to the DB-layer sort criterion.

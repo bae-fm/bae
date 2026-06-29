@@ -28,7 +28,7 @@ impl LibraryManager {
         let covers = self.cover_refs(&release_ids).await?;
         Ok(raws
             .into_iter()
-            .map(|raw| resolve_album_summary(raw, |rid| covers.get(rid).cloned()))
+            .map(|raw| AlbumSummary::from_raw(raw, |rid| covers.get(rid).cloned()))
             .collect())
     }
 
@@ -65,7 +65,7 @@ impl LibraryManager {
             .filter_map(|a| a.primary_release_id.clone())
             .collect();
         let covers = self.cover_refs(&primary_ids).await?;
-        Ok(resolve_search_results(raw, &covers))
+        Ok(SearchResults::from_raw(raw, &covers))
     }
 
     /// Delete an album and all its associated data

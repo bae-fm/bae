@@ -24,21 +24,18 @@ use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
 
 use crate::album_detail::{
-    AlbumDetail, AlbumSearchResult, AlbumSummary, FileDetail, GalleryItem, GallerySource, ImageRef,
-    ReleaseDetail, ReleaseStorageAction, ReleaseStorageSummary, ReleaseSummary, SearchResults,
-    StorageFilter, StoragePage, StorageRow, StorageSort, StorageSortDirection, StorageSortField,
-    TrackDetail, TrackGroup, TrackSearchResult,
+    join_artist_names, AlbumDetail, AlbumSummary, GallerySource, ImageRef, ReleaseDetail,
+    ReleaseResolveCtx, ReleaseStorageAction, ReleaseStorageSummary, SearchResults, StorageFilter,
+    StoragePage, StorageRow, StorageSort, StorageSortDirection, StorageSortField,
 };
 #[cfg(feature = "oauth-providers")]
 use crate::config::CloudProvider;
 use crate::config::ConfigHandle;
 use crate::db::{
-    Database, DbAlbum, DbAlbumArtist, DbAlbumSearchResult, DbAlbumSummary, DbArtist, DbAudioFormat,
-    DbFile, DbImport, DbLibraryImage, DbLibrarySearchResults, DbRelease, DbReleaseStorageSummary,
-    DbReleaseSummary, DbStorageRow, DbTrack, DbTrackArtist, DbTrackSearchResult,
-    ImportOperationStatus, LibraryImageType, Pressing, SortDirection as DbSortDirection,
-    StorageFilter as DbStorageFilter, StorageSortCriterion as DbStorageSortCriterion,
-    StorageSortField as DbStorageSortField,
+    Database, DbAlbum, DbAlbumArtist, DbArtist, DbAudioFormat, DbFile, DbImport, DbLibraryImage,
+    DbRelease, DbTrack, DbTrackArtist, ImportOperationStatus, LibraryImageType, Pressing,
+    SortDirection as DbSortDirection, StorageFilter as DbStorageFilter,
+    StorageSortCriterion as DbStorageSortCriterion, StorageSortField as DbStorageSortField,
 };
 use crate::keys::BaeKeyServiceExt;
 use crate::keys::KeyService;
@@ -68,16 +65,6 @@ mod storage;
 mod sync;
 
 pub(crate) use resolve::find_release_detail_with;
-use resolve::resolve_album_summary;
-
-/// Comma-join artist names for display.
-pub(crate) fn join_artist_names(artists: &[DbArtist]) -> String {
-    artists
-        .iter()
-        .map(|a| a.name.as_str())
-        .collect::<Vec<_>>()
-        .join(", ")
-}
 
 /// Build `PlaybackTrackInfo` given a track + release that have already been
 /// loaded. Queries the album title + artists but reuses the track/release
@@ -1069,7 +1056,7 @@ impl LibraryManager {
                 );
                 HashMap::new()
             });
-        let album = resolve_album_summary(raw_album, |rid| covers.get(rid).cloned());
+        let album = AlbumSummary::from_raw(raw_album, |rid| covers.get(rid).cloned());
         self.emit(LibraryEvent::ReleaseAdded { album, release });
     }
 
@@ -1106,7 +1093,7 @@ impl LibraryManager {
                     );
                     HashMap::new()
                 });
-                Some(resolve_album_summary(raw, |rid| covers.get(rid).cloned()))
+                Some(AlbumSummary::from_raw(raw, |rid| covers.get(rid).cloned()))
             }
             Ok(None) => None,
             Err(e) => {
