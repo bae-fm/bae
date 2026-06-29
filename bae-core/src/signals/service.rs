@@ -20,6 +20,7 @@
 //! Every snapshot carries the whole `Signals`; the reducer and the UI overwrite
 //! wholesale.
 
+use super::cancellation::CancellationRegistry;
 use super::dump::dump_scan;
 use super::fast_pass::{gather_non_ocr_sources, FastPass};
 use super::pool::Pool;
@@ -31,9 +32,7 @@ use crate::library::LibraryManager;
 use crate::signals::{
     BarcodeSignal, DiscIdSignal, SignalOrigin, Signals, SourcedValue, TextSignal,
 };
-use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
@@ -60,15 +59,10 @@ struct ExtractionServiceInner {
     analyzer: Mutex<Arc<dyn ArtworkAnalyzer>>,
     /// Resolves a release's library files for the `Release` re-identify path.
     library_manager: LibraryManager,
-    /// Map keyed by candidate key. Each entry carries the task's generation
-    /// plus its cancellation token. Tasks only remove their entry if the
-    /// stored generation still matches — avoids a race where an already-
-    /// cancelled task races its successor on the way out and clears the
-    /// wrong entry.
-    cancel_tokens: Mutex<HashMap<String, (u64, CancellationToken)>>,
-    /// Monotonic counter for generating task generations. Atomic so `start`
-    /// can allocate a fresh id without holding the tokens lock.
-    next_generation: AtomicU64,
+    /// Per-candidate cancellation registry. `start` registers a new entry
+    /// (cancelling any prior one for the key); tasks release their own entry
+    /// on the way out only when its generation still matches.
+    cancellation: CancellationRegistry,
 }
 
 /// Builder / entry point for constructing the service.
@@ -88,8 +82,7 @@ impl ExtractionService {
                 clock,
                 analyzer: Mutex::new(Arc::new(NoopAnalyzer) as Arc<dyn ArtworkAnalyzer>),
                 library_manager,
-                cancel_tokens: Mutex::new(HashMap::new()),
-                next_generation: AtomicU64::new(0),
+                cancellation: CancellationRegistry::default(),
             }),
         }
     }
@@ -107,21 +100,7 @@ impl ExtractionServiceHandle {
     /// CUE, text files); a release re-identify resolves its files from the
     /// library. Cancels any prior in-flight extraction for the same key.
     pub fn start(&self, key: String, source: ExtractionSource) {
-        let token = CancellationToken::new();
-        let generation = self.inner.next_generation.fetch_add(1, Ordering::Relaxed);
-
-        // Swap in the new entry atomically, cancelling any prior one — this
-        // keeps start() consistent with cancel() even when a previous task
-        // is mid-teardown.
-        let prior = self
-            .inner
-            .cancel_tokens
-            .lock()
-            .unwrap()
-            .insert(key.clone(), (generation, token.clone()));
-        if let Some((_, prior_token)) = prior {
-            prior_token.cancel();
-        }
+        let (token, generation) = self.inner.cancellation.register(key.clone());
 
         let inner = self.inner.clone();
         self.inner.runtime_handle.spawn(async move {
@@ -130,10 +109,7 @@ impl ExtractionServiceHandle {
     }
 
     pub fn cancel(&self, key: &str) {
-        let entry = self.inner.cancel_tokens.lock().unwrap().remove(key);
-        if let Some((_, token)) = entry {
-            token.cancel();
-        }
+        self.inner.cancellation.cancel(key);
     }
 }
 
@@ -147,7 +123,7 @@ async fn run_extraction(
     generation: u64,
 ) {
     if token.is_cancelled() {
-        remove_own_entry(&inner, &key, generation);
+        inner.cancellation.release_if_current(&key, generation);
         return;
     }
 
@@ -204,7 +180,7 @@ async fn run_extraction(
                 },
             };
             if token.is_cancelled() {
-                remove_own_entry(&inner, &key, generation);
+                inner.cancellation.release_if_current(&key, generation);
                 return;
             }
             // `_cover_staging` holds the temp dir the cover blob was staged into;
@@ -223,7 +199,7 @@ async fn run_extraction(
                 Ok(staged) => staged,
                 Err(e) => {
                     error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
-                    remove_own_entry(&inner, &key, generation);
+                    inner.cancellation.release_if_current(&key, generation);
                     return;
                 }
             };
@@ -262,7 +238,7 @@ async fn stream_extraction(
     let has_artwork = !artwork_paths.is_empty();
 
     if token.is_cancelled() {
-        remove_own_entry(&inner, &key, generation);
+        inner.cancellation.release_if_current(&key, generation);
         return;
     }
 
@@ -279,7 +255,7 @@ async fn stream_extraction(
     // One OCR request at a time (Vision on the ANE is effectively serial).
     for path in artwork_paths {
         if token.is_cancelled() {
-            remove_own_entry(&inner, &key, generation);
+            inner.cancellation.release_if_current(&key, generation);
             return;
         }
 
@@ -295,7 +271,7 @@ async fn stream_extraction(
             };
 
         if token.is_cancelled() {
-            remove_own_entry(&inner, &key, generation);
+            inner.cancellation.release_if_current(&key, generation);
             return;
         }
 
@@ -326,7 +302,7 @@ async fn stream_extraction(
         // Re-check cancellation before emitting; a successor's `start()` can
         // flip the token during the synchronous push/classify window.
         if token.is_cancelled() {
-            remove_own_entry(&inner, &key, generation);
+            inner.cancellation.release_if_current(&key, generation);
             return;
         }
 
@@ -339,7 +315,7 @@ async fn stream_extraction(
     }
 
     if token.is_cancelled() {
-        remove_own_entry(&inner, &key, generation);
+        inner.cancellation.release_if_current(&key, generation);
         return;
     }
 
@@ -365,7 +341,7 @@ async fn stream_extraction(
         },
     );
 
-    remove_own_entry(&inner, &key, generation);
+    inner.cancellation.release_if_current(&key, generation);
 
     // Diagnostic dump runs after the final emit — the UI already has its
     // final state, so a slow filesystem write doesn't delay completion.
@@ -420,18 +396,6 @@ fn emit_signals(inner: &ExtractionServiceInner, key: &str, signals: Signals) {
         candidate_key: key.to_string(),
         signals,
     });
-}
-
-/// Remove the token entry for `key` only if it still refers to this task's
-/// `generation`. Prevents a teardown from an older task erasing the entry
-/// for a newer task that already overwrote it.
-fn remove_own_entry(inner: &ExtractionServiceInner, key: &str, generation: u64) {
-    let mut tokens = inner.cancel_tokens.lock().unwrap();
-    if let Some((current_generation, _)) = tokens.get(key) {
-        if *current_generation == generation {
-            tokens.remove(key);
-        }
-    }
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────────
