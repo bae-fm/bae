@@ -172,7 +172,10 @@ struct LibraryView: View {
                 for row in rows {
                     _ = libraryStore.internAlbumSummary(row)
                 }
-            }
+            },
+            onError: { error in
+                configStore.showError(error)
+            },
         )
         list = albumList
         await albumList.loadInitial()
