@@ -211,12 +211,13 @@ pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError
 /// Run the future built by `make_fut` on a worker of a shared onboarding
 /// runtime, blocking the calling thread until it completes.
 ///
-/// The onboarding exports (restore, OAuth) run before any `AppHandle`, so
-/// they can't borrow `AppHandle::spawn_on_runtime` (see `handle`); they share
-/// this process-wide runtime instead. Its workers have 16 MB stacks (like
-/// `init`'s) — deep enough for the AWS-SDK S3 / coven pull descents. `spawn`
-/// moves that deep work onto a worker; the foreign caller only `block_on`s the
-/// shallow `JoinHandle`, so nothing deep is ever polled on its ~0.5 MB stack.
+/// The onboarding exports (restore, OAuth) run before any `AppHandle` (and its
+/// tokio runtime) exists, so they share this process-wide runtime instead. Its
+/// workers have 16 MB stacks (like `init`'s) — deep enough for coven's pull
+/// descents. `spawn` moves that work onto a worker; the foreign caller only
+/// `block_on`s the shallow `JoinHandle`, so nothing deep is ever polled on its
+/// ~0.5 MB stack. (The AWS-SDK S3 endpoint descent runs on coven's own
+/// big-stack S3 runtime regardless of who awaits it.)
 ///
 /// This requires the futures to be `Send` + `'static`. They are: coven's pull
 /// path carries the database handle as a `Send`-able `SendDbPtr`, so no

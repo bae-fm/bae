@@ -1,4 +1,3 @@
-use std::future::Future;
 #[cfg(feature = "desktop")]
 use std::ops::Deref;
 
@@ -57,45 +56,6 @@ impl Deref for AppHandle {
     }
 }
 
-impl AppHandle {
-    /// Run `fut` on a worker thread of the bridge runtime and resolve to its
-    /// output, aborting the work if this call is cancelled.
-    ///
-    /// Why this exists — the stack: uniffi exports an `async fn` by polling its
-    /// future *inline on whatever foreign thread drives it*. Swift runs a
-    /// `nonisolated async` call on its cooperative pool, whose threads have
-    /// ~0.5 MB stacks. The AWS-SDK S3 future chain these cloud/membership ops
-    /// reach descends far deeper than that *synchronously* in one poll — endpoint
-    /// and auth-scheme resolution, uncollapsed in debug builds — so polling it on
-    /// the foreign thread overflows — the "Thread stack size exceeded" SIGBUS we
-    /// hit at startup once sync was configured. `Runtime::block_on` has the same
-    /// flaw: it drives the root future on the *caller*, not a worker. `spawn`
-    /// moves the future onto a runtime worker instead — those have 16 MB stacks
-    /// (sized in `init` for exactly these deep futures) — and the foreign thread
-    /// only polls the shallow `JoinHandle`. The deep descent never touches the
-    /// Swift stack.
-    ///
-    /// Why this exists — cancellation: our uniffi fork drops the inflight Rust
-    /// future when the Swift `Task` is cancelled. A dropped `JoinHandle` merely
-    /// *detaches* its task (tokio runs it to completion), which would leak the
-    /// work and skip its teardown, so the guard aborts the task on drop. `coven`'s
-    /// own drop guards (AbortOnDrop, connection release) then fire on the worker.
-    async fn spawn_on_runtime<T: Send + 'static>(
-        &self,
-        fut: impl Future<Output = T> + Send + 'static,
-    ) -> T {
-        let handle = self.runtime.spawn(fut);
-        struct AbortOnDrop(tokio::task::AbortHandle);
-        impl Drop for AbortOnDrop {
-            fn drop(&mut self) {
-                self.0.abort();
-            }
-        }
-        let _abort_on_drop = AbortOnDrop(handle.abort_handle());
-        handle.await.expect("bridge runtime task panicked")
-    }
-}
-
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
     // =========================================================================
@@ -109,11 +69,9 @@ impl AppHandle {
         limit: u64,
     ) -> Result<Vec<BridgeAlbum>, BridgeError> {
         // Local SQLite read — shallow and instant, so it polls inline on the
-        // caller via block_on. Only the deep, network-bound cloud/membership
-        // calls need spawn_on_runtime; these reads can't descend deep enough to
-        // overflow the caller stack. Staying synchronous also keeps them usable
-        // from the synchronous SwiftUI render path (e.g. image/file-path lookups
-        // feeding `NSImage(contentsOfFile:)`), which has no `await` point.
+        // caller via block_on. Staying synchronous keeps it usable from the
+        // synchronous SwiftUI render path (e.g. image/file-path lookups feeding
+        // `NSImage(contentsOfFile:)`), which has no `await` point.
         self.runtime.block_on(async {
             let sort: Vec<bae_core::db::AlbumSortCriterion> =
                 sort_criteria.iter().map(bridge_sort_to_core).collect();
@@ -525,19 +483,12 @@ impl AppHandle {
     // Storage
     // =========================================================================
 
-    // These descend into the AWS S3 future chain (cloud reads/writes), so they
-    // run on a runtime worker via `spawn_on_runtime` rather than `block_on`
-    // (which would drive the deep future on the shallow Swift stack — see
-    // `spawn_on_runtime`'s doc). Pinning is the exception: it routes through the
-    // in-memory download queue (`queue_pin_releases`), which enqueues quickly
-    // and downloads on the queue worker.
     pub async fn unpin_release(&self, release_id: String) -> Result<(), BridgeError> {
-        let services = self.services.clone();
-        self.spawn_on_runtime(
-            async move { services.library_manager().unpin_release(&release_id).await },
-        )
-        .await
-        .map_err(BridgeError::internal)
+        self.services
+            .library_manager()
+            .unpin_release(&release_id)
+            .await
+            .map_err(BridgeError::internal)
     }
 
     pub async fn make_release_remote(
@@ -545,15 +496,11 @@ impl AppHandle {
         release_id: String,
         pin: bool,
     ) -> Result<(), BridgeError> {
-        let services = self.services.clone();
-        self.spawn_on_runtime(async move {
-            services
-                .library_manager()
-                .make_release_remote(&release_id, pin)
-                .await
-        })
-        .await
-        .map_err(BridgeError::internal)
+        self.services
+            .library_manager()
+            .make_release_remote(&release_id, pin)
+            .await
+            .map_err(BridgeError::internal)
     }
 
     pub async fn make_release_local(
@@ -561,15 +508,11 @@ impl AppHandle {
         release_id: String,
         new_path: String,
     ) -> Result<(), BridgeError> {
-        let services = self.services.clone();
-        self.spawn_on_runtime(async move {
-            services
-                .library_manager()
-                .make_release_local(&release_id, &new_path)
-                .await
-        })
-        .await
-        .map_err(BridgeError::internal)
+        self.services
+            .library_manager()
+            .make_release_local(&release_id, &new_path)
+            .await
+            .map_err(BridgeError::internal)
     }
 
     pub fn delete_release(&self, release_id: String) {
@@ -598,24 +541,19 @@ impl AppHandle {
         config_data: BridgeSaveSyncConfig,
     ) -> Result<(), BridgeError> {
         use bae_core::sync::sync_manager::S3ConfigData;
-        // Probes the bucket (HeadBucket) then starts sync — deep; on a worker.
-        let services = self.services.clone();
-        self.spawn_on_runtime(async move {
-            services
-                .library_manager()
-                .save_s3_config(S3ConfigData {
-                    bucket: config_data.bucket,
-                    region: config_data.region,
-                    endpoint: config_data.endpoint,
-                    key_prefix: config_data.key_prefix,
-                    access_key: config_data.access_key,
-                    secret_key: config_data.secret_key,
-                    storage: bridge_home_storage_to_core(config_data.storage),
-                })
-                .await
-        })
-        .await
-        .map_err(BridgeError::config)
+        self.services
+            .library_manager()
+            .save_s3_config(S3ConfigData {
+                bucket: config_data.bucket,
+                region: config_data.region,
+                endpoint: config_data.endpoint,
+                key_prefix: config_data.key_prefix,
+                access_key: config_data.access_key,
+                secret_key: config_data.secret_key,
+                storage: bridge_home_storage_to_core(config_data.storage),
+            })
+            .await
+            .map_err(BridgeError::config)
     }
 
     pub fn disconnect_cloud_provider(&self) -> Result<(), BridgeError> {
@@ -644,11 +582,12 @@ impl AppHandle {
 
     /// The library's membership (devices, with this device flagged, and whether
     /// the running device is an owner). Reads the membership chain from cloud
-    /// storage, so it runs on a runtime worker.
+    /// storage.
     pub async fn get_members(&self) -> Result<crate::types::BridgeMembership, BridgeError> {
-        let services = self.services.clone();
         let membership = self
-            .spawn_on_runtime(async move { services.library_manager().get_members().await })
+            .services
+            .library_manager()
+            .get_members()
             .await
             .map_err(BridgeError::internal)?;
         Ok(crate::types::bridge_membership(membership))
@@ -657,28 +596,20 @@ impl AppHandle {
     /// Approve a joining device by its public key (from its join-request code),
     /// returning the invite code to hand back to that device.
     pub async fn invite_member(&self, public_key_hex: String) -> Result<String, BridgeError> {
-        let services = self.services.clone();
-        self.spawn_on_runtime(async move {
-            services
-                .library_manager()
-                .invite_member(&public_key_hex)
-                .await
-        })
-        .await
-        .map_err(BridgeError::internal)
+        self.services
+            .library_manager()
+            .invite_member(&public_key_hex)
+            .await
+            .map_err(BridgeError::internal)
     }
 
     /// Remove a device from the library and rotate the library key.
     pub async fn remove_member(&self, public_key_hex: String) -> Result<(), BridgeError> {
-        let services = self.services.clone();
-        self.spawn_on_runtime(async move {
-            services
-                .library_manager()
-                .remove_member(&public_key_hex)
-                .await
-        })
-        .await
-        .map_err(BridgeError::internal)
+        self.services
+            .library_manager()
+            .remove_member(&public_key_hex)
+            .await
+            .map_err(BridgeError::internal)
     }
 
     /// Forget the active local library on this device: delete its key, clear the
@@ -863,10 +794,10 @@ impl AppHandle {
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
     pub async fn use_cloudkit(&self, storage: BridgeHomeStorage) -> Result<(), BridgeError> {
-        // Starts sync against CloudKit — deep; on a worker.
-        let services = self.services.clone();
         let storage = bridge_home_storage_to_core(storage);
-        self.spawn_on_runtime(async move { services.library_manager().use_cloudkit(storage).await })
+        self.services
+            .library_manager()
+            .use_cloudkit(storage)
             .await
             .map_err(BridgeError::config)
     }
@@ -884,19 +815,16 @@ impl AppHandle {
         provider: BridgeCloudProvider,
         storage: BridgeHomeStorage,
     ) -> Result<(), BridgeError> {
-        // OAuth + cloud-folder setup then starts sync — network; on a worker.
-        // Cancellation tears down the OAuth listener via coven's own drop guard.
-        let services = self.services.clone();
+        // OAuth + cloud-folder setup then starts sync. Cancellation (the Swift
+        // Task dropping this future) tears down the OAuth listener via coven's
+        // own drop guard.
         let core_provider = bridge_cloud_provider_to_core(provider);
         let storage = bridge_home_storage_to_core(storage);
-        self.spawn_on_runtime(async move {
-            services
-                .library_manager()
-                .sign_in_cloud_provider(core_provider, storage)
-                .await
-        })
-        .await
-        .map_err(BridgeError::config)
+        self.services
+            .library_manager()
+            .sign_in_cloud_provider(core_provider, storage)
+            .await
+            .map_err(BridgeError::config)
     }
 }
 
