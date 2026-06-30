@@ -51,7 +51,7 @@ jobs:
       id: ffmpeg-cache
       uses: actions/cache@v5
       with:
-        path: third_party/ffmpeg-ios
+        path: bae-ffmpeg/ios
         # Keyed on the build recipe: rebuild only when the FFmpeg cross-build
         # script changes (mirrors the Android FFmpeg cache).
         key: ffmpeg-ios-${{ hashFiles('scripts/build-ffmpeg-ios.sh') }}
@@ -70,7 +70,7 @@ jobs:
       # BAE_BRIDGE_FEATURES.
       run: |
         rustup target add aarch64-apple-ios 2>/dev/null || true
-        FFMPEG_PREFIX="$(pwd)/third_party/ffmpeg-ios/aarch64-apple-ios"
+        FFMPEG_PREFIX="$(pwd)/bae-ffmpeg/ios/aarch64-apple-ios"
         DEVICE_SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
         FEATURES_ARG=""
         [ -n "$BAE_BRIDGE_FEATURES" ] && FEATURES_ARG="--features $BAE_BRIDGE_FEATURES"

@@ -119,7 +119,7 @@ jobs:
       id: ffmpeg-cache
       uses: actions/cache@v5
       with:
-        path: third_party/ffmpeg-android
+        path: bae-ffmpeg/android
         # Keyed on the build script + NDK version: rebuild only when the recipe
         # or the toolchain that produced the libs changes.
         key: ffmpeg-android-${{ env.NDK_VERSION }}-${{ hashFiles('scripts/build-ffmpeg-android.sh') }}
@@ -138,7 +138,7 @@ jobs:
         NDK_HOME="${ANDROID_NDK_HOME}"
         # ubuntu-latest is x86_64, so the NDK's prebuilt host toolchain is linux-x86_64.
         TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
-        FFMPEG_PREFIX="$(pwd)/third_party/ffmpeg-android"
+        FFMPEG_PREFIX="$(pwd)/bae-ffmpeg/android"
         rustup target add aarch64-linux-android 2>/dev/null || true
         CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TOOLCHAIN/bin/aarch64-linux-android35-clang" \
         CC_aarch64_linux_android="$TOOLCHAIN/bin/aarch64-linux-android35-clang" \

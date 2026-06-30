@@ -55,8 +55,8 @@ if [[ ! -d "$ANDROID_NDK_HOME" ]]; then
   exit 1
 fi
 
-if [[ ! -d "third_party/ffmpeg-ios" ]]; then
-  echo "third_party/ffmpeg-ios is absent; run scripts/build-ffmpeg-ios.sh" >&2
+if [[ ! -d "bae-ffmpeg/ios" ]]; then
+  echo "bae-ffmpeg/ios is absent; run scripts/build-ffmpeg-ios.sh" >&2
   exit 1
 fi
 
@@ -119,7 +119,7 @@ _swift_format_lint() {
 }
 
 _ios_clippy() {
-  local ffmpeg_prefix="$ROOT/third_party/ffmpeg-ios/aarch64-apple-ios"
+  local ffmpeg_prefix="$ROOT/bae-ffmpeg/ios/aarch64-apple-ios"
   local device_sdk
   device_sdk="$(xcrun --sdk iphoneos --show-sdk-path)"
   IPHONEOS_DEPLOYMENT_TARGET=16.0 \
@@ -132,7 +132,7 @@ _ios_clippy() {
 _android_clippy() {
   local ndk_home="${ANDROID_NDK_HOME}"
   local toolchain="$ndk_home/toolchains/llvm/prebuilt/darwin-x86_64"
-  local ffmpeg_prefix="$ROOT/third_party/ffmpeg-android"
+  local ffmpeg_prefix="$ROOT/bae-ffmpeg/android"
   CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$toolchain/bin/aarch64-linux-android35-clang" \
   CC_aarch64_linux_android="$toolchain/bin/aarch64-linux-android35-clang" \
   AR_aarch64_linux_android="$toolchain/bin/llvm-ar" \

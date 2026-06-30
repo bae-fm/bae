@@ -83,7 +83,7 @@ export AR_x86_64_linux_android="$TOOLCHAIN/bin/llvm-ar"
 # NOT forward --target/--sysroot to bindgen, so without these per-triple clang
 # args bindgen emits HOST-ABI structs that compile but corrupt every FFmpeg
 # struct layout at runtime. Build the libs first: scripts/build-ffmpeg-android.sh
-FFMPEG_PREFIX="$(pwd)/third_party/ffmpeg-android"
+FFMPEG_PREFIX="$(pwd)/bae-ffmpeg/android"
 export BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--target=aarch64-linux-android35 --sysroot=$TOOLCHAIN/sysroot -I$FFMPEG_PREFIX/aarch64/include"
 export BINDGEN_EXTRA_CLANG_ARGS_x86_64_linux_android="--target=x86_64-linux-android35 --sysroot=$TOOLCHAIN/sysroot -I$FFMPEG_PREFIX/x86_64/include"
 

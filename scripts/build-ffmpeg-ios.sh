@@ -12,7 +12,7 @@
 # the xcframework. Device and simulator are distinct platforms in the
 # xcframework and are never lipo'd together.
 #
-# Output: third_party/ffmpeg-ios/<arch>/{lib,include}
+# Output: bae-ffmpeg/ios/<arch>/{lib,include}
 #   aarch64-apple-ios       (device,    fork label ios-arm64)
 #   aarch64-apple-ios-sim   (simulator, fork label ios-sim-arm64)
 set -euo pipefail
@@ -20,7 +20,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="v8.1.2-bae2"
 BASE_URL="https://github.com/bae-fm/bae-ffmpeg/releases/download/$VERSION"
-OUT="$REPO_ROOT/third_party/ffmpeg-ios"
+OUT="$REPO_ROOT/bae-ffmpeg/ios"
 
 # fork release tarball label -> bae per-target dir.
 download() {

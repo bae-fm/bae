@@ -12,13 +12,13 @@
 # bae-bridge/build-android.sh ships them as jniLibs sidecars next to
 # libbae_bridge.so. LGPL-clean: no gpl/version3/nonfree, shared (replaceable).
 #
-# Output: third_party/ffmpeg-android/<arch>/{lib,include} for aarch64, x86_64.
+# Output: bae-ffmpeg/android/<arch>/{lib,include} for aarch64, x86_64.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="v8.1.2-bae2"
 BASE_URL="https://github.com/bae-fm/bae-ffmpeg/releases/download/$VERSION"
-OUT="$REPO_ROOT/third_party/ffmpeg-android"
+OUT="$REPO_ROOT/bae-ffmpeg/android"
 
 download() {
   local arch="$1"

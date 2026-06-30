@@ -73,8 +73,8 @@ export IPHONEOS_DEPLOYMENT_TARGET=16.0
 # to bindgen, so without these per-arch clang args bindgen emits HOST-ABI structs
 # that compile but corrupt every FFmpeg struct layout at runtime. The libs are
 # STATIC .a's built by scripts/build-ffmpeg-ios.sh.
-FFMPEG_DEVICE="$(pwd)/third_party/ffmpeg-ios/aarch64-apple-ios"
-FFMPEG_SIM="$(pwd)/third_party/ffmpeg-ios/aarch64-apple-ios-sim"
+FFMPEG_DEVICE="$(pwd)/bae-ffmpeg/ios/aarch64-apple-ios"
+FFMPEG_SIM="$(pwd)/bae-ffmpeg/ios/aarch64-apple-ios-sim"
 if [ ! -f "$FFMPEG_DEVICE/lib/libavcodec.a" ]; then
     echo "FFmpeg for iOS not built. Run: ./scripts/build-ffmpeg-ios.sh" >&2
     exit 1
