@@ -7,7 +7,8 @@ Native macOS app for bae, built with SwiftUI.
 - macOS 14.0+
 - Xcode 26+
 - Rust toolchain with `aarch64-apple-darwin` target
-- FFmpeg (`brew install ffmpeg`)
+- FFmpeg from the bae-ffmpeg fork (`./scripts/setup-ffmpeg.sh` from the repo
+  root) -- bae links these prebuilt libs, not a system/Homebrew ffmpeg
 - xcodegen (`brew install xcodegen`)
 
 Install the Rust target if you haven't:

@@ -69,7 +69,9 @@ brew install cmake pkg-config libdiscid
 git clone <repository-url>
 cd bae
 
-# Setup bae-ffmpeg (downloads prebuilt binaries)
+# Setup bae-ffmpeg (downloads the prebuilt fork binaries). bae links FFmpeg only
+# from here, never from a system/Homebrew install -- so local dev, CI, and
+# release all link the same artifacts. Required setup.
 ./scripts/setup-ffmpeg.sh
 
 # Add to your shell profile (~/.zshrc):
@@ -77,6 +79,7 @@ export FFMPEG_DIR="$PWD/bae-ffmpeg/dist"
 export PKG_CONFIG_PATH="$FFMPEG_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
 export LIBRARY_PATH="$FFMPEG_DIR/lib:$LIBRARY_PATH"
 export DYLD_LIBRARY_PATH="$FFMPEG_DIR/lib:$DYLD_LIBRARY_PATH"
+export BINDGEN_EXTRA_CLANG_ARGS="-I$FFMPEG_DIR/include ${BINDGEN_EXTRA_CLANG_ARGS:-}"
 
 ./scripts/install-hooks.sh
 

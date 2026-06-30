@@ -51,8 +51,10 @@ resolve_rpath() {
         fi
     fi
 
-    # Try common library locations (Homebrew and bae-ffmpeg)
-    for base in "/opt/homebrew/lib" "/usr/local/lib" "${FFMPEG_DIR:-}/lib" "/opt/bae-ffmpeg/lib"; do
+    # Try common library locations. The bae-ffmpeg fork dirs come first so the
+    # bundled libav* dylibs are the fork's, never a Homebrew ffmpeg (Homebrew is
+    # only here for genuinely-separate deps like libdiscid).
+    for base in "${FFMPEG_DIR:-}/lib" "/opt/bae-ffmpeg/lib" "/opt/homebrew/lib" "/usr/local/lib"; do
         local candidate="$base/$lib_name"
         if [[ -f "$candidate" ]]; then
             echo "$candidate"

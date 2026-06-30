@@ -113,9 +113,17 @@ targets:
         # by the generated Features.xcconfig (baeium), not here — a setting in this
         # block lands in the pbxproj and would override the xcconfig layer the
         # feature set drives.
+        # FFmpeg is linked from the bae-ffmpeg fork's prebuilt dist, never a
+        # system/Homebrew install. The fork dirs are listed first so their
+        # libav* dylibs win over any Homebrew ffmpeg that happens to be in
+        # /opt/homebrew/lib (kept only for libdiscid, -ldiscid below). The local
+        # path is scripts/setup-ffmpeg.sh's bae-ffmpeg/dist; /opt/bae-ffmpeg is
+        # where the setup-macos CI action unpacks the same release. Non-existent
+        # search paths are harmless to the linker.
         LIBRARY_SEARCH_PATHS:
+          - $(SRCROOT)/../../bae-ffmpeg/dist/lib
+          - /opt/bae-ffmpeg/lib
           - /opt/homebrew/lib
-          - /opt/homebrew/opt/ffmpeg/lib
         OTHER_LDFLAGS:
           - -lavcodec
           - -lavformat

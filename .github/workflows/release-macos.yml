@@ -175,7 +175,7 @@ jobs:
           PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
           PRODUCT_NAME="$PRODUCT_NAME" \
           DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
-          LIBRARY_SEARCH_PATHS="/opt/homebrew/lib /opt/bae-ffmpeg/lib ${FFMPEG_DIR}/lib" \
+          LIBRARY_SEARCH_PATHS="${FFMPEG_DIR}/lib /opt/bae-ffmpeg/lib /opt/homebrew/lib" \
           build
         echo "APP_PATH=build/Build/Products/Release/${PRODUCT_NAME}.app" >> "$GITHUB_ENV"
 

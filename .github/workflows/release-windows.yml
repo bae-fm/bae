@@ -57,7 +57,7 @@ jobs:
     runs-on: windows-latest
     needs: calculate-version
     env:
-      FFMPEG_VERSION: v8.0.1-bae8
+      FFMPEG_VERSION: v8.1.2-bae2
       BAE_ENVIRONMENT: production
       BAE_DATADOG_SITE: ${{ secrets.BAE_DATADOG_SITE }}
       BAE_DATADOG_CLIENT_TOKEN: ${{ secrets.BAE_DATADOG_CLIENT_TOKEN }}

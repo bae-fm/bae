@@ -102,8 +102,8 @@ cpal = "0.15"
 # see scripts/build-ffmpeg-{android,ios}.sh and the FFMPEG_DIR/BINDGEN_EXTRA_CLANG_ARGS
 # exports in bae-bridge/build-{android,ios}.sh.
 [target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "android", target_os = "ios"))'.dependencies]
-ffmpeg-next = { version = "8.0", default-features = false, features = ["codec", "format", "software-resampling"] }
-ffmpeg-sys-next = { version = "8.0", default-features = false, features = ["avcodec", "avformat", "swresample"] }
+ffmpeg-next = { version = "8.1", default-features = false, features = ["codec", "format", "software-resampling"] }
+ffmpeg-sys-next = { version = "8.1", default-features = false, features = ["avcodec", "avformat", "swresample"] }
 
 [dev-dependencies]
 tokio = { version = "1.0", features = ["test-util"] }

@@ -7,7 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 FFMPEG_DIR="$PROJECT_ROOT/bae-ffmpeg/dist"
-VERSION="v8.0.1-bae8"
+VERSION="v8.1.2-bae2"
 
 ARCH=$(uname -m)
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -41,10 +41,12 @@ fi
 echo ""
 echo "bae-ffmpeg installed to: $FFMPEG_DIR"
 echo ""
-echo "Add to your shell profile (.zshrc or .bashrc):"
+echo "This is required local setup: bae links FFmpeg exclusively from here, never"
+echo "from a system/Homebrew install. Add to your shell profile (.zshrc or .bashrc):"
 echo ""
 echo "  export FFMPEG_DIR=\"$FFMPEG_DIR\""
 echo "  export PKG_CONFIG_PATH=\"$FFMPEG_DIR/lib/pkgconfig:\$PKG_CONFIG_PATH\""
 echo "  export LIBRARY_PATH=\"$FFMPEG_DIR/lib:\$LIBRARY_PATH\""
 echo "  export DYLD_LIBRARY_PATH=\"$FFMPEG_DIR/lib:\$DYLD_LIBRARY_PATH\""
+echo "  export BINDGEN_EXTRA_CLANG_ARGS=\"-I$FFMPEG_DIR/include \${BINDGEN_EXTRA_CLANG_ARGS:-}\""
 echo ""
