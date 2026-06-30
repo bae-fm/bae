@@ -44,24 +44,32 @@ pub fn seed_discogs_test_release(release: bae_core::discogs::DiscogsRelease) -> 
     id
 }
 
-/// Wait for an import to complete, returning (release_id, album_id).
+fn import_terminal_ids(progress: &bae_core::import::ImportProgress) -> Option<(String, String)> {
+    match progress {
+        bae_core::import::ImportProgress::Complete { id, album_id, .. }
+        | bae_core::import::ImportProgress::RemoteUploadQueued { id, album_id, .. } => {
+            Some((id.clone(), album_id.clone()))
+        }
+        _ => None,
+    }
+}
+
+/// Wait for the import worker to finish, returning (release_id, album_id).
 ///
-/// Listens on a progress receiver (from subscribe_import) and waits for
-/// the release-level Complete event (release_id: None means the id IS the release).
+/// Local imports emit `Complete`. Remote imports emit `RemoteUploadQueued`: the
+/// import worker is finished, while remote completion waits for coven upload
+/// confirmation.
 /// Panics on failure.
 #[allow(dead_code)]
 pub async fn wait_for_import_complete(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
 ) -> (String, String) {
     while let Some(progress) = progress_rx.recv().await {
-        match &progress {
-            bae_core::import::ImportProgress::Complete { id, album_id, .. } => {
-                return (id.clone(), album_id.clone());
-            }
-            bae_core::import::ImportProgress::Failed { error, .. } => {
-                panic!("Import failed: {}", error);
-            }
-            _ => {}
+        if let Some(ids) = import_terminal_ids(&progress) {
+            return ids;
+        }
+        if let bae_core::import::ImportProgress::Failed { error, .. } = &progress {
+            panic!("Import failed: {}", error);
         }
     }
     panic!("Progress channel closed without completion");
@@ -76,14 +84,11 @@ pub async fn try_wait_for_import_complete(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
 ) -> Result<(String, String), String> {
     while let Some(progress) = progress_rx.recv().await {
-        match &progress {
-            bae_core::import::ImportProgress::Complete { id, album_id, .. } => {
-                return Ok((id.clone(), album_id.clone()));
-            }
-            bae_core::import::ImportProgress::Failed { error, .. } => {
-                return Err(error.clone());
-            }
-            _ => {}
+        if let Some(ids) = import_terminal_ids(&progress) {
+            return Ok(ids);
+        }
+        if let bae_core::import::ImportProgress::Failed { error, .. } = &progress {
+            return Err(error.clone());
         }
     }
     Err("Progress channel closed without completion".to_string())
