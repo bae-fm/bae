@@ -24,7 +24,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
-use tokio::time::timeout;
+use tokio::time::{sleep, timeout};
 use tracing::info;
 
 fn start_test_import(
@@ -1598,13 +1598,37 @@ async fn wait_for_multi_disc_cue_ape_import_ready(
         StorageMode::Local => wait_for_import_complete(progress_rx).await,
         StorageMode::Remote => {
             let (release_id, album_id) = wait_for_remote_upload_queued(progress_rx).await;
-            let uploaded = library_manager
-                .drain_uploads_for_test()
+            timeout(Duration::from_secs(10), async {
+                loop {
+                    library_manager
+                        .drain_uploads_for_test()
+                        .await
+                        .expect("drain queued remote import uploads");
+                    let release = library_manager
+                        .get_release_by_id(&release_id)
+                        .await
+                        .expect("find imported release")
+                        .expect("imported release exists");
+                    let pending = library_manager
+                        .count_pending_uploads_for_release(&release_id)
+                        .await
+                        .expect("count pending release uploads");
+                    if release.remote && pending == 0 {
+                        break;
+                    }
+                    sleep(Duration::from_millis(10)).await;
+                }
+            })
+            .await
+            .expect("remote multi-disc CUE/APE import uploads all files");
+            let files = library_manager
+                .get_files_for_release(&release_id)
                 .await
-                .expect("drain queued remote import uploads");
+                .expect("get release files");
             assert_eq!(
-                uploaded, 4,
-                "remote multi-disc CUE/APE import uploads 4 files"
+                files.len(),
+                4,
+                "remote multi-disc CUE/APE import keeps both audio files and both CUE sheets"
             );
             (release_id, album_id)
         }
