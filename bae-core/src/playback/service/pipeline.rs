@@ -297,6 +297,7 @@ impl PlaybackService {
             track_id,
             &mut self.shared_file_buffer,
             self.progress_tx.clone(),
+            self.fetch_arbiter.clone(),
         )
         .await;
         let prepared = match prepared {
@@ -356,6 +357,9 @@ impl PlaybackService {
         // Store prepared track state so the shared tail reads this load's buffer
         // and cancel token.
         self.current_prepared = Some(prepared);
+        // This track is now the one the user is waiting to hear: its reader
+        // fetches with priority, the next-track preload below yields to it.
+        self.mark_current_foreground();
         if !self
             .start_decoder_and_watch(decode, fmt, sample_rate, channels, track_id.to_string())
             .await

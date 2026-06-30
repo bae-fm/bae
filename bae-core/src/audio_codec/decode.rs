@@ -13,6 +13,7 @@ use std::cell::Cell;
 use std::os::raw::{c_int, c_void};
 use std::ptr;
 use std::sync::Arc;
+use std::time::Instant;
 use tracing::{debug, info, warn};
 
 // Thread-local FFmpeg error counter for per-decode error tracking
@@ -561,6 +562,11 @@ unsafe fn decode_audio_streaming_impl(
 ) -> Result<(), StreamingDecodeError> {
     use ffmpeg_sys_next::*;
 
+    // Wall-clock origin for the first-sample latency log below: spans the probe
+    // (open_input + find_stream_info), the seek, and the decode up to the first
+    // audio sample -- the whole "how long before playback starts" window.
+    let decode_start = Instant::now();
+
     // Create streaming AVIO context. The reader's read-ahead ceiling is set
     // after the seek below, once it sits at the track's start -- so the fill
     // buffers the rest of the current track, not from byte 0 during probe.
@@ -804,6 +810,7 @@ unsafe fn decode_audio_streaming_impl(
     let mut samples_output: u64 = 0;
     let mut reached_stop = false;
     let mut tracked_sample_pos: i64 = -1;
+    let mut first_sample_logged = false;
 
     // Read and decode packets
     while av_read_frame(fmt_ctx, packet) >= 0 {
@@ -903,8 +910,19 @@ unsafe fn decode_audio_streaming_impl(
 
             samples_output += samples_to_output.len() as u64;
 
-            if !samples_to_output.is_empty() && !push_samples_to_sink(sink, samples_to_output) {
-                break;
+            if !samples_to_output.is_empty() {
+                if !first_sample_logged {
+                    first_sample_logged = true;
+                    info!(
+                        "first audio sample: buffer={} fetched {}B from coven in {}ms",
+                        buffer.id(),
+                        buffer.bytes_fetched(),
+                        decode_start.elapsed().as_millis(),
+                    );
+                }
+                if !push_samples_to_sink(sink, samples_to_output) {
+                    break;
+                }
             }
         }
     }

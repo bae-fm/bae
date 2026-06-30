@@ -32,7 +32,7 @@ use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
 use crate::playback::audio_output::{AudioOutput, AudioStream, CompletionEvent, PositionEvent};
-use crate::playback::data_source::create_audio_reader;
+use crate::playback::data_source::{create_audio_reader, FetchArbiter};
 use crate::playback::error::PlaybackError;
 use crate::playback::progress::emit_progress;
 use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
@@ -565,6 +565,7 @@ async fn prepare_track_for_playback(
     track_id: &str,
     shared_file_buffer: &mut Option<(String, SharedSparseBuffer)>,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
+    fetch_arbiter: Arc<FetchArbiter>,
 ) -> Result<PlaybackPreparedTrack, PlaybackError> {
     let (resolved, track_info) = library_manager
         .resolve_track_audio_and_info(track_id)
@@ -595,6 +596,7 @@ async fn prepare_track_for_playback(
             &resolved.file_id,
             resolved.cloud_path.as_deref(),
             source_size,
+            fetch_arbiter,
         );
         reader.start_reading(buffer.clone(), progress_tx);
         *shared_file_buffer = Some((cache_key, buffer.clone()));
@@ -667,6 +669,22 @@ pub struct PlaybackService {
     /// Bridged to `TrackCrossed`.
     boundary_tx: tokio_mpsc::UnboundedSender<TrackCrossing>,
     pending_side_pause: Option<SidePauseDecision>,
+    /// Prioritizes byte fetches across tracks: the current track's reader fetches
+    /// immediately, a next-track preload's reader yields to it. Shared into every
+    /// reader; the current track is designated foreground via
+    /// `mark_current_foreground` whenever it becomes current.
+    fetch_arbiter: Arc<FetchArbiter>,
+}
+
+impl PlaybackService {
+    /// Designate the current track's buffer as the foreground for fetch
+    /// priority, so its reader fetches immediately and a next-track preload's
+    /// reader yields to it. Called wherever a track becomes the current one.
+    fn mark_current_foreground(&self) {
+        if let Some(prepared) = &self.current_prepared {
+            self.fetch_arbiter.set_foreground(prepared.buffer.id());
+        }
+    }
 }
 
 fn side_pause_prompt_between(
@@ -1007,6 +1025,7 @@ impl PlaybackService {
                     last_position_display,
                     boundary_tx,
                     pending_side_pause: None,
+                    fetch_arbiter: FetchArbiter::new(),
                 };
                 match service.library_manager.load_playback_state().await {
                     Ok(Some(state)) => match PersistedPlayback::from_row(state) {

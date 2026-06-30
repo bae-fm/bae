@@ -14,6 +14,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use tokio::sync::Notify;
 
+/// Hands each buffer a small process-unique id so the fill's per-window fetch
+/// logs and the decoder's first-sample log can be tied to one track's stream.
+static NEXT_BUFFER_ID: AtomicU64 = AtomicU64::new(0);
+
 /// A contiguous range of buffered data.
 #[derive(Debug, Clone)]
 struct BufferedRange {
@@ -109,6 +113,14 @@ pub struct SparseStreamingBuffer {
     /// Hands out a unique id per reader so each reader's demand has its own slot
     /// in `SparseInner::demands`.
     next_reader_id: AtomicU64,
+    /// Process-unique id for this buffer, for log correlation (the fill's
+    /// per-window fetch logs and the decoder's first-sample log carry it) and as
+    /// the [`crate::playback::data_source::FetchArbiter`] foreground designation.
+    id: u64,
+    /// Total bytes appended into this buffer (every fill window that landed,
+    /// including a window re-fetched after a backward seek). Lets the decoder
+    /// report how much was fetched from coven to reach the first audio sample.
+    bytes_fetched: AtomicU64,
     /// Every byte offset a reader was positioned at when `read()` served bytes,
     /// in call order. Lets a test see the demuxer's actual read pattern -- e.g.
     /// whether a seek jumped near the target (seektable) or read the file's end
@@ -131,9 +143,24 @@ impl SparseStreamingBuffer {
             data_available: Condvar::new(),
             fill_wake: Arc::new(Notify::new()),
             next_reader_id: AtomicU64::new(0),
+            id: NEXT_BUFFER_ID.fetch_add(1, Ordering::Relaxed),
+            bytes_fetched: AtomicU64::new(0),
             #[cfg(test)]
             read_log: Mutex::new(Vec::new()),
         }
+    }
+
+    /// This buffer's process-unique id, used to correlate fetch/first-sample
+    /// logs for one track and to designate the foreground track in the
+    /// [`crate::playback::data_source::FetchArbiter`].
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+
+    /// Total bytes appended into this buffer so far. Read by the decoder to
+    /// report how much was fetched from coven before the first audio sample.
+    pub fn bytes_fetched(&self) -> u64 {
+        self.bytes_fetched.load(Ordering::Relaxed)
     }
 
     /// Test-only: the byte offsets `read()` served, in call order.
@@ -180,6 +207,9 @@ impl SparseStreamingBuffer {
         if bytes.is_empty() {
             return;
         }
+
+        self.bytes_fetched
+            .fetch_add(bytes.len() as u64, Ordering::Relaxed);
 
         let mut inner = self.inner.lock().unwrap();
         let new_end = offset + bytes.len() as u64;
