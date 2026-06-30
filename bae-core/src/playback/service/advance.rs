@@ -54,6 +54,7 @@ impl PlaybackService {
             track_id,
             &mut self.shared_file_buffer,
             self.progress_tx.clone(),
+            self.fetch_arbiter.clone(),
         )
         .await;
         let prepared = match prepared {
@@ -372,6 +373,9 @@ impl PlaybackService {
         }
 
         self.current_prepared = Some(next_prepared);
+        // The crossed-into track is now playing: hand its reader fetch priority
+        // over the track preloaded below.
+        self.mark_current_foreground();
 
         // Advance the queue position to the now-playing track.
         self.advance_to_preloaded();
@@ -483,6 +487,9 @@ impl PlaybackService {
         // decoder was cancelled above via the source.
         self.current_decoder_handle = self.next_decoder_handle.take();
         self.current_prepared = Some(next_prepared);
+        // The preloaded track is now the playing one: hand its reader fetch
+        // priority over whatever gets preloaded next.
+        self.mark_current_foreground();
 
         // Natural transition: start at position 0 (INDEX 00, pregap plays).
         let fmt = self

@@ -6,10 +6,75 @@
 
 use crate::playback::progress::{emit_progress, PlaybackProgress};
 use crate::playback::sparse_buffer::{ReaderDemand, SharedSparseBuffer, SparseStreamingBuffer};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
+use std::time::Instant;
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::sync::Notify;
 use tracing::{debug, error, info};
+
+/// Prioritizes audio byte fetches so the track the user is waiting to hear gets
+/// the bandwidth. One foreground track is designated at a time -- the playing
+/// track -- and its fetches run immediately. A next-track preload's fetches wait
+/// while the foreground track has a fetch in flight, so preloading the next
+/// track can't take bandwidth from the current track's start. One arbiter is
+/// shared by every reader through the playback service; the service designates
+/// the foreground via [`FetchArbiter::set_foreground`] whenever a track becomes
+/// current.
+pub struct FetchArbiter {
+    /// The [`SparseStreamingBuffer::id`] of the foreground (playing) track, or
+    /// `u64::MAX` for none.
+    foreground_buffer: AtomicU64,
+    /// Count of foreground fetches currently awaiting bytes. A preload fetch
+    /// waits while this is non-zero.
+    foreground_inflight: AtomicU64,
+    /// Wakes waiting preload fetches when the foreground goes idle or changes.
+    idle: Notify,
+}
+
+impl FetchArbiter {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            foreground_buffer: AtomicU64::new(u64::MAX),
+            foreground_inflight: AtomicU64::new(0),
+            idle: Notify::new(),
+        })
+    }
+
+    /// Designate `buffer_id` as the foreground (playing) track. Wakes any
+    /// waiting preload in case the previous foreground is gone.
+    pub fn set_foreground(&self, buffer_id: u64) {
+        self.foreground_buffer.store(buffer_id, Ordering::Release);
+        self.idle.notify_waiters();
+    }
+
+    fn is_foreground(&self, buffer_id: u64) -> bool {
+        self.foreground_buffer.load(Ordering::Acquire) == buffer_id
+    }
+
+    fn begin_foreground_fetch(&self) {
+        self.foreground_inflight.fetch_add(1, Ordering::AcqRel);
+    }
+
+    fn end_foreground_fetch(&self) {
+        if self.foreground_inflight.fetch_sub(1, Ordering::AcqRel) == 1 {
+            self.idle.notify_waiters();
+        }
+    }
+
+    /// Wait until no foreground fetch is in flight. Arms the wake before reading
+    /// the count so a foreground fetch finishing between the check and the await
+    /// isn't missed.
+    async fn await_foreground_idle(&self) {
+        loop {
+            let waited = self.idle.notified();
+            if self.foreground_inflight.load(Ordering::Acquire) == 0 {
+                return;
+            }
+            waited.await;
+        }
+    }
+}
 
 /// Reads audio data into a sparse buffer for streaming playback.
 ///
@@ -168,6 +233,7 @@ pub fn create_audio_reader(
     file_id: &str,
     cloud_path: Option<&str>,
     source_size: u64,
+    arbiter: Arc<FetchArbiter>,
 ) -> Box<dyn AudioDataReader> {
     let blob = coven::BlobRef {
         namespace: crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
@@ -181,6 +247,7 @@ pub fn create_audio_reader(
         handle: library_manager.handle().clone(),
         blob,
         source_size,
+        arbiter,
     })
 }
 
@@ -192,6 +259,7 @@ pub struct CovenBlobReader {
     handle: coven::CovenHandle,
     blob: coven::BlobRef,
     source_size: u64,
+    arbiter: Arc<FetchArbiter>,
 }
 
 impl AudioDataReader for CovenBlobReader {
@@ -204,14 +272,47 @@ impl AudioDataReader for CovenBlobReader {
             handle,
             blob,
             source_size,
+            arbiter,
         } = *self;
+        let buffer_id = buffer.id();
         let (wake, buffer) = prepare_fill(buffer);
 
         tokio::spawn(async move {
-            info!("CovenBlobReader: source_size={source_size}");
+            info!("CovenBlobReader: buffer={buffer_id} source_size={source_size}");
+            // This reader's running fetch total and the wall-clock origin, so
+            // each window's log shows how many bytes have been pulled from coven
+            // and how long into the stream -- the visibility into start-up
+            // bandwidth and into a preload competing with the playing track.
+            let fetched = AtomicU64::new(0);
+            let started = Instant::now();
             let result = fill_buffer_on_demand(buffer.clone(), wake, |src_off, len| {
                 let fut = handle.open_blob_stream(&blob, source_size, src_off, len);
-                async move { fut.await.map_err(|e| e.to_string()) }
+                let arbiter = &arbiter;
+                let fetched = &fetched;
+                async move {
+                    // The playing track fetches immediately; a preload waits
+                    // while the playing track has a fetch in flight so it can't
+                    // slow the current track's start.
+                    let foreground = arbiter.is_foreground(buffer_id);
+                    let data = if foreground {
+                        arbiter.begin_foreground_fetch();
+                        let r = fut.await;
+                        arbiter.end_foreground_fetch();
+                        r
+                    } else {
+                        arbiter.await_foreground_idle().await;
+                        fut.await
+                    };
+                    let data = data.map_err(|e| e.to_string())?;
+                    let total =
+                        fetched.fetch_add(data.len() as u64, Ordering::Relaxed) + data.len() as u64;
+                    info!(
+                        "fetch buffer={buffer_id} {} off={src_off} len={len} total={total}B {}ms",
+                        if foreground { "playing" } else { "preload" },
+                        started.elapsed().as_millis(),
+                    );
+                    Ok(data)
+                }
             })
             .await;
 
@@ -464,6 +565,42 @@ mod tests {
     }
 
     const WINDOW: u64 = CLOUD_STREAM_READ_SIZE;
+
+    /// A preload reader's fetch waits while the playing track has a fetch in
+    /// flight, and proceeds once the playing track goes idle. This is the gate
+    /// that keeps preloading the next track from taking bandwidth from the track
+    /// the user just started. Sabotage — make `await_foreground_idle` return
+    /// immediately — and the waiter finishes while the playing track is still
+    /// fetching, failing the `!is_finished` assertion.
+    #[tokio::test]
+    async fn preload_fetch_yields_while_the_playing_track_is_fetching() {
+        let arbiter = FetchArbiter::new();
+        let playing = 1u64;
+        let preload = 2u64;
+
+        arbiter.set_foreground(playing);
+        assert!(arbiter.is_foreground(playing));
+        assert!(!arbiter.is_foreground(preload));
+
+        // The playing track has a fetch in flight.
+        arbiter.begin_foreground_fetch();
+
+        // A preload waiting for the foreground to idle must not proceed yet.
+        let waiting = arbiter.clone();
+        let waiter = tokio::spawn(async move { waiting.await_foreground_idle().await });
+        tokio::task::yield_now().await;
+        assert!(
+            !waiter.is_finished(),
+            "a preload must wait while the playing track is fetching"
+        );
+
+        // Once the playing track's fetch finishes, the preload proceeds.
+        arbiter.end_foreground_fetch();
+        timeout(Duration::from_secs(5), waiter)
+            .await
+            .expect("a preload must unblock once the playing track goes idle")
+            .expect("waiter task");
+    }
 
     /// Spawn the production `fill_buffer_on_demand` loop over an in-memory
     /// `blob`, filling `buffer`. The fetch serves `blob[start..end]` directly —
