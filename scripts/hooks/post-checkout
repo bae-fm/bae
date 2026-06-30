@@ -46,6 +46,18 @@ if [ "$main_checkout" != "$worktree_root" ] \
     echo "Linked third_party -> $main_checkout/third_party"
 fi
 
+# Per-developer local xcconfigs (gitignored): the signing team and the feature
+# set. xcodegen reads them while generating the project, and run.sh signs with
+# the team, so a worktree without them generates an unsigned project that fails
+# the CloudKit entitlement check. Symlink the main checkout's copies; the paths
+# are gitignored, so the links stay out of `git status`.
+for cfg in Signing.local.xcconfig Features.xcconfig; do
+    if [ -f "$main_checkout/bae-macos/bae/$cfg" ] && [ ! -e "bae-macos/bae/$cfg" ]; then
+        ln -s "$main_checkout/bae-macos/bae/$cfg" "bae-macos/bae/$cfg"
+        echo "Linked bae-macos/bae/$cfg -> $main_checkout"
+    fi
+done
+
 # Build the Rust bridge before generating and building the Xcode project, in the
 # same order the pre-commit hook uses. build-macos.sh produces both
 # BaeBridgeFFI.xcframework and the generated Swift bindings, and both must exist
