@@ -172,8 +172,8 @@ async fn test_insert_or_ignore_idempotency() {
 
 /// The UI snapshot query reads only upload/delete rows. coven's upload drain
 /// queues `cancel` rows for tombstone removal; `outbox_items` must skip them, not
-/// choke on an operation kind it doesn't render. A cancel row left in the result
-/// makes `OutboxOpKind::parse` fail and the query panic.
+/// render an operation the snapshot doesn't display. The `WHERE IN
+/// ('upload','delete')` filter keeps cancel rows out of the result.
 #[tokio::test]
 async fn test_outbox_items_skips_tombstone_cancels() {
     let (db, _tmp) = setup_db().await;

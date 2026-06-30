@@ -426,14 +426,31 @@ impl Database {
                         )
                     })?;
                 let operation_raw = row.get::<_, String>("operation")?;
-                let operation = OutboxOpKind::parse(&operation_raw).ok_or_else(|| {
-                    column_conversion_error(
-                        row,
-                        "operation",
-                        format!("invalid cloud_outbox.operation: {operation_raw:?}"),
-                    )
-                })?;
-                Ok(DbOutboxRow {
+                // Parse to the full domain, then keep only the displayed subset.
+                // A non-domain string is genuine corruption (column-conversion
+                // error, as before). A `cancel` (coven's tombstone retry) is kept
+                // out of the snapshot by the WHERE filter; reaching it here means
+                // that filter drifted, so warn with the row's key and drop it.
+                let operation = match OutboxOpKind::parse(&operation_raw) {
+                    Some(OutboxOpKind::Upload) => DisplayedOutboxOp::Upload,
+                    Some(OutboxOpKind::Delete) => DisplayedOutboxOp::Delete,
+                    Some(OutboxOpKind::Cancel) => {
+                        let cloud_key = row.get::<_, String>("cloud_key")?;
+                        tracing::warn!(
+                            cloud_key,
+                            "cancel row reached the outbox snapshot; the WHERE filter drifted — ignoring"
+                        );
+                        return Ok(None);
+                    }
+                    None => {
+                        return Err(column_conversion_error(
+                            row,
+                            "operation",
+                            format!("invalid cloud_outbox.operation: {operation_raw:?}"),
+                        ));
+                    }
+                };
+                Ok(Some(DbOutboxRow {
                     id: row.get("id")?,
                     operation,
                     file_id: row.get("file_id")?,
@@ -445,9 +462,10 @@ impl Database {
                     title: row.get("title")?,
                     file_name: row.get("file_name")?,
                     file_size: row.get("file_size")?,
-                })
+                }))
             })?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+            rows.collect::<coven::rusqlite::Result<Vec<Option<DbOutboxRow>>>>()
+                .map(|rows| rows.into_iter().flatten().collect())
                 .map_err(DbError::from)
         })
         .await
