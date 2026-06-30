@@ -1137,26 +1137,39 @@ pub enum StorageFilter {
     Uploading,
 }
 
-/// Which kind of cloud-outbox operation a joined row is. The snapshot builder
-/// reads the flat `file_id`/`cloud_key`/`file_size` columns off `DbOutboxRow`
-/// directly, so it needs only the operation *kind* — not coven's
-/// `OutboxOperation` with its drain-only `scope` payload (which the snapshot
-/// join doesn't select).
+/// The full `cloud_outbox.operation` domain (matches the schema CHECK): the
+/// three values coven can write to the queue. `Cancel` is a coven-internal
+/// tombstone-retry row (a delete coven re-issues after an upload races it); it
+/// renders nothing in the UI and is excluded from the snapshot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutboxOpKind {
     Upload,
     Delete,
+    Cancel,
 }
 
 impl OutboxOpKind {
-    /// Parse the `cloud_outbox.operation` text column ('upload' | 'delete').
+    /// Parse the `cloud_outbox.operation` text column. Total over the real
+    /// domain — a value outside it is genuine corruption (`None`), not a kind we
+    /// declined to model.
     pub fn parse(s: &str) -> Option<Self> {
         match s {
             "upload" => Some(Self::Upload),
             "delete" => Some(Self::Delete),
+            "cancel" => Some(Self::Cancel),
             _ => None,
         }
     }
+}
+
+/// The outbox operations the UI snapshot displays — the `Cancel`-free subset of
+/// `OutboxOpKind`. `outbox_items` maps each row into this, dropping coven's
+/// internal `cancel` rows, so the snapshot builder can't represent (or forget to
+/// handle) a `Cancel`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DisplayedOutboxOp {
+    Upload,
+    Delete,
 }
 
 /// One row from the `cloud_outbox` join: the queue entry's own columns plus
@@ -1171,7 +1184,7 @@ impl OutboxOpKind {
 #[derive(Debug, Clone)]
 pub struct DbOutboxRow {
     pub id: i64,
-    pub operation: OutboxOpKind,
+    pub operation: DisplayedOutboxOp,
     pub file_id: Option<String>,
     pub cloud_key: String,
     /// Enqueue time as Unix epoch milliseconds, parsed from the queue row's
@@ -1183,4 +1196,18 @@ pub struct DbOutboxRow {
     pub title: Option<String>,
     pub file_name: Option<String>,
     pub file_size: Option<i64>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::OutboxOpKind;
+
+    #[test]
+    fn outbox_op_kind_parse_is_total_over_the_domain() {
+        assert_eq!(OutboxOpKind::parse("upload"), Some(OutboxOpKind::Upload));
+        assert_eq!(OutboxOpKind::parse("delete"), Some(OutboxOpKind::Delete));
+        assert_eq!(OutboxOpKind::parse("cancel"), Some(OutboxOpKind::Cancel));
+        // A value outside the domain is genuine corruption, not an unmodeled kind.
+        assert_eq!(OutboxOpKind::parse("bogus"), None);
+    }
 }
