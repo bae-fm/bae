@@ -513,3 +513,87 @@ fn test_seek_to_stereo_96000_16bit() {
     init();
     check_seek_to_produces_correct_samples(96000, 2, 16);
 }
+
+/// A FLAC seek must use the file's seektable, not FFmpeg's generic binary search.
+///
+/// Without `AVFMT_FLAG_FAST_SEEK`, FFmpeg ignores the FLAC seektable and seeks by
+/// binary search: it reads the file's *end* to find the last timestamp, then
+/// bisects frame by frame. Over a cloud home every one of those reads is a
+/// separate ranged fetch (~15 of them), so a single CUE/FLAC track start or
+/// in-track seek stalls for seconds. With the flag set, a seektable-bearing FLAC
+/// jumps straight to the seekpoint at or before the target.
+///
+/// We prove the seektable path is taken by recording every byte offset the
+/// demuxer reads while seeking to the middle of the file, and asserting none lands
+/// in the file's tail. Reading the tail on a mid-file seek is the binary search's
+/// signature; the seektable path never does it. Remove the flag and this fails.
+#[test]
+fn flac_seek_uses_seektable_not_binary_search() {
+    use crate::playback::create_track_stream_pair_with_capacity;
+    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use std::thread;
+
+    init();
+
+    // 30s synthetic stereo CUE/FLAC fixture (silence / white noise / brown noise)
+    // carrying a 6-point seektable.
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/cue_flac/Test Album.flac"
+    );
+    let flac = std::fs::read(path).expect("read fixture");
+    let file_len = flac.len() as u64;
+
+    let buffer = create_sparse_buffer(file_len);
+    buffer.append_at(0, &flac);
+
+    // Seek to the middle of the file (~15s of 30s), far from both ends, and stop
+    // ~1s later. Bounding the decode keeps the output inside the sink's capacity
+    // so the decoder finishes instead of blocking on a full sink (which would
+    // deadlock the join below), and keeps the forward decode clear of the tail.
+    let seek_sample: u64 = 15 * 44100;
+    let stop_sample: u64 = 16 * 44100;
+    let (mut sink, mut source, _ready) = create_track_stream_pair_with_capacity(44100, 2, 500_000);
+    let decode_buffer = buffer.clone();
+    let handle = thread::spawn(move || {
+        let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        decode_audio_streaming(
+            decode_buffer,
+            &mut sink,
+            Some(seek_sample),
+            None,
+            Some(stop_sample),
+            None,
+            token,
+        )
+    });
+    assert!(handle.join().unwrap().is_ok(), "seek decode failed");
+
+    // Drain the decoded audio so we can confirm the seek produced output.
+    let mut pulled = 0usize;
+    let mut buf = [0.0f32; 1024];
+    loop {
+        let n = source.pull_samples(&mut buf);
+        if n == 0 && source.is_finished() {
+            break;
+        }
+        pulled += n;
+    }
+    assert!(pulled > 0, "no samples decoded after seek");
+
+    // The binary search reads the file's end; the seektable path never does.
+    let reads = buffer.read_log();
+    assert!(!reads.is_empty(), "no reads recorded");
+    let tail_start = file_len * 9 / 10;
+    let tail_reads: Vec<u64> = reads.iter().copied().filter(|&o| o >= tail_start).collect();
+    assert!(
+        tail_reads.is_empty(),
+        "seek read the file tail (offsets {tail_reads:?} >= {tail_start} of {file_len}) -- \
+         FFmpeg binary-searched instead of using the seektable (AVFMT_FLAG_FAST_SEEK missing?)"
+    );
+    // Sanity: the seek moved past the header into the file, not decode-from-start.
+    assert!(
+        reads.iter().any(|&o| o >= file_len / 8),
+        "no read past the header; the seek did not advance into the file: {reads:?}"
+    );
+}

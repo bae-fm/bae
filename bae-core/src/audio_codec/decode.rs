@@ -614,6 +614,15 @@ unsafe fn decode_audio_streaming_impl(
         ));
     }
     (*fmt_ctx).pb = avio;
+    // Make the demuxer load its seek index from the file's own seektable. FLAC
+    // (and MP3) only populate that index when this flag is set; without it,
+    // avformat_seek_file ignores the seektable and binary-searches the file --
+    // reading the end, then bisecting frame by frame. Over a cloud home each of
+    // those reads is a separate ranged fetch (~15 of them, ~1s each), so a single
+    // track start or in-track seek stalls for ~10s. With the flag, a
+    // seektable-bearing FLAC seeks in one fetch. No-op for APE/MP4/WAV, which are
+    // already indexed (see notes/ffmpeg-seek-behavior.md).
+    (*fmt_ctx).flags |= AVFMT_FLAG_FAST_SEEK as c_int;
 
     // Open input
     let ret = avformat_open_input(&mut fmt_ctx, ptr::null(), ptr::null_mut(), ptr::null_mut());
@@ -738,13 +747,20 @@ unsafe fn decode_audio_streaming_impl(
         )));
     }
 
-    // Seek to target sample position if requested
+    // Seek to the target sample if requested. A seektable-bearing FLAC (and APE,
+    // MP4) seeks in one jump now that AVFMT_FLAG_FAST_SEEK is set. A FLAC with no
+    // seektable can't: over a streaming buffer the binary-search fallback would
+    // have to read the file's end before it's fetched, so the seek fails. Decoding
+    // from the start (then trimming to the target) is the only way to play such a
+    // file -- correct here, but wasteful over a cloud home, which is why every
+    // CUE/FLAC should carry a seektable (issue #226). Keep the bail-out logged.
     if let Some(sample_pos) = seek_to_sample {
         let target_ts = sample_pos as i64;
         let ret = avformat_seek_file(fmt_ctx, stream_index, i64::MIN, target_ts, target_ts, 0);
         if ret < 0 {
             warn!(
-                "avformat_seek_file failed ({}), decoding from start",
+                "avformat_seek_file to sample {sample_pos} failed ({}); \
+                 decoding from the start (file has no usable seektable?)",
                 av_err_str(ret)
             );
         } else {

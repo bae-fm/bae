@@ -109,6 +109,12 @@ pub struct SparseStreamingBuffer {
     /// Hands out a unique id per reader so each reader's demand has its own slot
     /// in `SparseInner::demands`.
     next_reader_id: AtomicU64,
+    /// Every byte offset a reader was positioned at when `read()` served bytes,
+    /// in call order. Lets a test see the demuxer's actual read pattern -- e.g.
+    /// whether a seek jumped near the target (seektable) or read the file's end
+    /// and bisected (binary search).
+    #[cfg(test)]
+    read_log: Mutex<Vec<u64>>,
 }
 
 impl SparseStreamingBuffer {
@@ -125,7 +131,15 @@ impl SparseStreamingBuffer {
             data_available: Condvar::new(),
             fill_wake: Arc::new(Notify::new()),
             next_reader_id: AtomicU64::new(0),
+            #[cfg(test)]
+            read_log: Mutex::new(Vec::new()),
         }
+    }
+
+    /// Test-only: the byte offsets `read()` served, in call order.
+    #[cfg(test)]
+    pub fn read_log(&self) -> Vec<u64> {
+        self.read_log.lock().unwrap().clone()
     }
 
     /// Create a reader with an independent read position over this buffer.
@@ -522,6 +536,8 @@ impl BufferReader {
 
                     buf[..to_read]
                         .copy_from_slice(&range.data[offset_in_range..offset_in_range + to_read]);
+                    #[cfg(test)]
+                    self.buffer.read_log.lock().unwrap().push(read_pos);
                     self.read_pos += to_read as u64;
                     // Advance the demand to where the next read will land so the
                     // loop keeps reading ahead of the playhead, not at it, and
