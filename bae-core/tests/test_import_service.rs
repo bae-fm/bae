@@ -2087,7 +2087,8 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
 async fn verify_decode_on_import_gates_a_broken_track() {
     support::tracing_init();
 
-    // Flag off: today's behavior -- the broken album still imports.
+    // Flag off: the import does not assert on decode integrity, so the broken
+    // album still imports.
     let off = import_truncated_album(false).await;
     assert!(
         off.is_ok(),

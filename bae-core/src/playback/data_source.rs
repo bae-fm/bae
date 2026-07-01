@@ -74,6 +74,24 @@ impl FetchArbiter {
             waited.await;
         }
     }
+
+    /// Run one fetch `fut` under the gate. A foreground (playing) fetch runs
+    /// immediately, tracked so preloads yield to it; a preload fetch waits until
+    /// no foreground fetch is in flight, then runs. `foreground` is the caller's
+    /// `is_foreground(buffer_id)`, taken once so the caller can reuse it (a log
+    /// label). Keeping the begin/end accounting here means it can't drift between
+    /// the fill and the prefetch.
+    async fn run_gated<F: std::future::Future>(&self, foreground: bool, fut: F) -> F::Output {
+        if foreground {
+            self.begin_foreground_fetch();
+            let out = fut.await;
+            self.end_foreground_fetch();
+            out
+        } else {
+            self.await_foreground_idle().await;
+            fut.await
+        }
+    }
 }
 
 /// Reads audio data into a sparse buffer for streaming playback.
@@ -349,15 +367,7 @@ impl AudioDataReader for CovenBlobReader {
                     // while the playing track has a fetch in flight so it can't
                     // slow the current track's start.
                     let foreground = arbiter.is_foreground(buffer_id);
-                    let data = if foreground {
-                        arbiter.begin_foreground_fetch();
-                        let r = fut.await;
-                        arbiter.end_foreground_fetch();
-                        r
-                    } else {
-                        arbiter.await_foreground_idle().await;
-                        fut.await
-                    };
+                    let data = arbiter.run_gated(foreground, fut).await;
                     let data = data.map_err(|e| e.to_string())?;
                     let total =
                         fetched.fetch_add(data.len() as u64, Ordering::Relaxed) + data.len() as u64;
@@ -430,19 +440,12 @@ fn spawn_window_prefetch(
     let started = Instant::now();
     tokio::spawn(async move {
         let foreground = arbiter.is_foreground(buffer_id);
-        let result = if foreground {
-            arbiter.begin_foreground_fetch();
-            let r = handle
-                .open_blob_stream(&blob, source_size, off, window)
-                .await;
-            arbiter.end_foreground_fetch();
-            r
-        } else {
-            arbiter.await_foreground_idle().await;
-            handle
-                .open_blob_stream(&blob, source_size, off, window)
-                .await
-        };
+        let result = arbiter
+            .run_gated(
+                foreground,
+                handle.open_blob_stream(&blob, source_size, off, window),
+            )
+            .await;
         match result {
             Ok(data) => {
                 if let Some(buf) = weak.upgrade() {
