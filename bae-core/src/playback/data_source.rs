@@ -306,7 +306,7 @@ impl AudioDataReader for CovenBlobReader {
                     let data = data.map_err(|e| e.to_string())?;
                     let total =
                         fetched.fetch_add(data.len() as u64, Ordering::Relaxed) + data.len() as u64;
-                    info!(
+                    debug!(
                         "fetch buffer={buffer_id} {} off={src_off} len={len} total={total}B {}ms",
                         if foreground { "playing" } else { "preload" },
                         started.elapsed().as_millis(),
