@@ -215,6 +215,14 @@ fn default_replay_gain_mode() -> ReplayGainMode {
     ReplayGainMode::Off
 }
 
+/// The serde default for `ConfigYaml.verify_decode_on_import`: on. Import fully
+/// decodes every track for loudness anyway, so the verify rides that pass for
+/// free; defaulting on means a truncated/corrupt track is caught at import
+/// instead of failing at play time.
+fn default_verify_decode_on_import() -> bool {
+    true
+}
+
 /// Whether a usable Discogs API key is configured. Folds the no-key case and
 /// the validation state into the four states a UI shows, so each binding
 /// doesn't re-derive the precedence.
@@ -355,6 +363,11 @@ pub struct ConfigYaml {
     /// Whether playback pauses between vinyl/cassette sides.
     #[serde(default)]
     pub pause_between_sides: bool,
+    /// Whether import fully decodes each track to verify it (fatal-error / frame
+    /// shortfall), failing the import for a broken track rather than importing it
+    /// and failing at play time. Rides the loudness decode, so it adds no work.
+    #[serde(default = "default_verify_decode_on_import")]
+    pub verify_decode_on_import: bool,
     /// Local automation server configuration. Required so missing/stale config
     /// files fail to load instead of silently taking an implicit value.
     pub mcp: McpConfig,
@@ -382,6 +395,7 @@ impl ConfigYaml {
             discogs: self.discogs,
             replay_gain_mode: self.replay_gain_mode,
             pause_between_sides: self.pause_between_sides,
+            verify_decode_on_import: self.verify_decode_on_import,
             mcp: self.mcp,
         }
     }
@@ -398,6 +412,7 @@ impl From<&Config> for ConfigYaml {
             encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
             replay_gain_mode: config.replay_gain_mode,
             pause_between_sides: config.pause_between_sides,
+            verify_decode_on_import: config.verify_decode_on_import,
             mcp: config.mcp,
             cloud_home: config.cloud_home.clone(),
         }
@@ -432,6 +447,9 @@ pub struct Config {
     pub replay_gain_mode: ReplayGainMode,
     /// Whether playback pauses between vinyl/cassette sides.
     pub pause_between_sides: bool,
+    /// Whether import verifies each track by fully decoding it, failing the import
+    /// for a broken (truncated/corrupt) track. Defaults to `true`.
+    pub verify_decode_on_import: bool,
     /// Local automation server configuration. The bearer token is keyring-only.
     pub mcp: McpConfig,
 }
@@ -682,6 +700,7 @@ impl Config {
             discogs: None,
             replay_gain_mode: default_replay_gain_mode(),
             pause_between_sides: false,
+            verify_decode_on_import: default_verify_decode_on_import(),
             mcp: McpConfig::disabled_default(),
         }
     }

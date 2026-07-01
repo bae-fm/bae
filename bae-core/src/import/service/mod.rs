@@ -965,15 +965,28 @@ impl ImportService {
                 ImportPhase::MeasuringLoudness,
                 import_id,
             );
-            let (album_loudness, album_peak) = crate::import::loudness::measure_loudness(
+            let loudness = crate::import::loudness::measure_loudness(
                 &self.event_tx,
                 &mut audio_formats,
                 tracks_to_files,
                 candidate_key,
             )
             .await;
-            db_release.album_loudness_lufs = album_loudness;
-            db_release.album_peak_linear = album_peak;
+            db_release.album_loudness_lufs = loudness.album_loudness_lufs;
+            db_release.album_peak_linear = loudness.album_peak_linear;
+
+            // A track that failed to decode fully (fatal errors / truncated body)
+            // would import fine but fail at play time. When verify is on, fail the
+            // import now instead — before finalize commits anything to the library.
+            if self.library_manager.get_config().verify_decode_on_import
+                && !loudness.broken.is_empty()
+            {
+                return Err(format!(
+                    "decode verification failed for {} track(s): {}",
+                    loudness.broken.len(),
+                    loudness.broken.join("; ")
+                ));
+            }
         }
 
         let local_cover_image = if !remote_cover_set {
