@@ -248,6 +248,13 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     start_sample INTEGER NOT NULL,
     end_sample INTEGER,
     end_byte INTEGER,
+    -- Byte this track's audio begins at within its backing file: the seektable
+    -- checkpoint the playback seek lands on (computed at import by seeking to
+    -- start_sample). NULL for a track starting at byte 0 (album's first track /
+    -- whole-file track) — nothing to prefetch, the header read covers it.
+    -- Playback fetches this window in parallel with the header probe so the
+    -- track-start seek lands on buffered bytes instead of a second round-trip.
+    start_byte INTEGER,
     -- Per-track loudness measured at import (EBU R128 integrated loudness over
     -- this track's sample window), in LUFS. NULL = not measured (decode/measure
     -- failure, or a near-silent track that has no usable loudness). Playback

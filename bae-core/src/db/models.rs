@@ -499,6 +499,13 @@ pub struct DbAudioFormat {
     /// Playback buffers the rest of the current track up to here, ahead of the
     /// playhead, rather than a fixed window.
     pub end_byte: Option<i64>,
+    /// Byte this track's audio begins at within its backing file: the seektable
+    /// checkpoint the playback seek lands on, computed at import by seeking to
+    /// `start_sample` (see `seek_landing_bytes`). `None` for a track starting at
+    /// byte 0 (the album's first track, or a whole-file track). Playback fetches
+    /// this window in parallel with the header probe so the track-start seek lands
+    /// on buffered bytes rather than paying a second serial round-trip.
+    pub start_byte: Option<i64>,
     /// Per-track integrated loudness (EBU R128) in LUFS, measured at import over
     /// this track's sample window. `None` = not measured (decode/measure failure
     /// or a near-silent track with no usable loudness). Playback derives a gain
@@ -962,6 +969,7 @@ impl DbAudioFormat {
             start_sample,
             end_sample,
             end_byte: None,
+            start_byte: None,
             track_loudness_lufs: None,
             track_peak_linear: None,
             created_at: now,
@@ -979,6 +987,16 @@ impl DbAudioFormat {
     /// track sets its own end byte, computed at import.
     pub fn with_end_byte(mut self, end_byte: Option<i64>) -> Self {
         self.end_byte = end_byte;
+        self
+    }
+
+    /// Set the track's start byte within its backing file (the seektable
+    /// checkpoint the playback seek lands on). The default `None` is byte 0 —
+    /// correct for the album's first track and a whole-file per-track source; a
+    /// deep track of a single-file album sets its own start byte, computed at
+    /// import.
+    pub fn with_start_byte(mut self, start_byte: Option<i64>) -> Self {
+        self.start_byte = start_byte;
         self
     }
 

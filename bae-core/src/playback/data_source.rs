@@ -234,6 +234,8 @@ pub fn create_audio_reader(
     cloud_path: Option<&str>,
     source_size: u64,
     arbiter: Arc<FetchArbiter>,
+    prefetch_byte: Option<u64>,
+    prefetch_file_end: bool,
 ) -> Box<dyn AudioDataReader> {
     let blob = coven::BlobRef {
         namespace: crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
@@ -248,6 +250,8 @@ pub fn create_audio_reader(
         blob,
         source_size,
         arbiter,
+        prefetch_byte,
+        prefetch_file_end,
     })
 }
 
@@ -260,6 +264,17 @@ pub struct CovenBlobReader {
     blob: coven::BlobRef,
     source_size: u64,
     arbiter: Arc<FetchArbiter>,
+    /// The byte the playing track's audio starts at, when it's past the header
+    /// (a track that seeks into the file). The reader fetches this window up
+    /// front, in parallel with the demuxer's header probe, so the decoder's seek
+    /// finds the bytes already buffered instead of paying a second serial
+    /// round-trip. `None` for a track that starts at byte 0.
+    prefetch_byte: Option<u64>,
+    /// Whether to also prefetch the file's end window. `true` for APE, whose
+    /// demuxer reads the tail (its mandatory index lives there) when it opens, so
+    /// the open would otherwise stall on a serial ranged fetch. The shared album
+    /// buffer keeps the window, so it's pulled once per image.
+    prefetch_file_end: bool,
 }
 
 impl AudioDataReader for CovenBlobReader {
@@ -273,8 +288,48 @@ impl AudioDataReader for CovenBlobReader {
             blob,
             source_size,
             arbiter,
+            prefetch_byte,
+            prefetch_file_end,
         } = *self;
         let buffer_id = buffer.id();
+
+        // Prefetch the track's start window in parallel with the demuxer's header
+        // probe. The decoder reads the header at byte 0, then seeks to the track;
+        // that seek is a second serial round-trip over a cloud home. Since the
+        // stored `start_byte` is the exact seektable landing (the playback seek
+        // lands there — a by-byte FLAC seek jumps straight to it, and APE
+        // sample-seeks its index to it), pull that window now, concurrent with the
+        // probe, so the seek lands on buffered bytes.
+        if let Some(start) = prefetch_byte {
+            if start < source_size {
+                spawn_window_prefetch(
+                    handle.clone(),
+                    blob.clone(),
+                    arbiter.clone(),
+                    &buffer,
+                    source_size,
+                    start,
+                    "track-start",
+                );
+            }
+        }
+
+        // APE reads the file's end when its demuxer opens (its index lives in the
+        // tail), so prefetch that window too — otherwise the open stalls on a
+        // serial ranged fetch of the end. Skipped when the file is a single window
+        // (the fill covers it).
+        if prefetch_file_end && source_size > CLOUD_STREAM_READ_SIZE {
+            spawn_window_prefetch(
+                handle.clone(),
+                blob.clone(),
+                arbiter.clone(),
+                &buffer,
+                source_size,
+                source_size - CLOUD_STREAM_READ_SIZE,
+                "file-end",
+            );
+        }
+
         let (wake, buffer) = prepare_fill(buffer);
 
         tokio::spawn(async move {
@@ -351,6 +406,57 @@ const MIN_READAHEAD: u64 = CLOUD_STREAM_READ_SIZE;
 /// evicted. A margin for the decoder's brief backward reads; everything older is
 /// dropped so memory stays bounded to a window around the playhead.
 const KEEP_BEHIND: u64 = CLOUD_STREAM_READ_SIZE;
+
+/// Fetch one window starting at `off` up front, in parallel with the demuxer's
+/// header probe, and append it to `buffer` so a later read finds it buffered
+/// instead of paying a serial round-trip over a cloud home. Arbiter-gated exactly
+/// like the fill: the playing track fetches immediately; a preload yields while
+/// the playing track has a fetch in flight, so preloading the next track can't
+/// steal the current track's startup bandwidth. Best-effort — a failed prefetch
+/// just leaves the fill to fetch the window on demand. `what` labels the window
+/// (track-start / file-end) in the log.
+fn spawn_window_prefetch(
+    handle: coven::CovenHandle,
+    blob: coven::BlobRef,
+    arbiter: Arc<FetchArbiter>,
+    buffer: &SharedSparseBuffer,
+    source_size: u64,
+    off: u64,
+    what: &'static str,
+) {
+    let buffer_id = buffer.id();
+    let weak = Arc::downgrade(buffer);
+    let window = CLOUD_STREAM_READ_SIZE.min(source_size - off);
+    let started = Instant::now();
+    tokio::spawn(async move {
+        let foreground = arbiter.is_foreground(buffer_id);
+        let result = if foreground {
+            arbiter.begin_foreground_fetch();
+            let r = handle
+                .open_blob_stream(&blob, source_size, off, window)
+                .await;
+            arbiter.end_foreground_fetch();
+            r
+        } else {
+            arbiter.await_foreground_idle().await;
+            handle
+                .open_blob_stream(&blob, source_size, off, window)
+                .await
+        };
+        match result {
+            Ok(data) => {
+                if let Some(buf) = weak.upgrade() {
+                    debug!(
+                        "prefetch buffer={buffer_id} {what} off={off} len={window} {}ms",
+                        started.elapsed().as_millis()
+                    );
+                    buf.append_at(off, &data);
+                }
+            }
+            Err(e) => debug!("prefetch buffer={buffer_id} {what} off={off} failed: {e}"),
+        }
+    });
+}
 
 /// The next region to fetch, given each live reader's demand ascending by
 /// position: serve the lowest-position reader first so the playing track stays
@@ -694,6 +800,68 @@ mod tests {
             WINDOW,
             6 * WINDOW,
             log,
+        );
+    }
+
+    /// The parallel prefetch removes the serial fetch at the track's start byte:
+    /// with the landing window already buffered (the prefetch completed), the fill
+    /// serves the seek target without fetching it; with a cold buffer the fill must
+    /// fetch that window. This is the whole point of pulling the start byte in
+    /// parallel with the header probe -- the decoder's seek lands on buffered bytes
+    /// instead of a second round-trip.
+    #[tokio::test]
+    async fn prefetched_start_window_removes_the_seek_target_fetch() {
+        let source_size = 8 * WINDOW;
+        let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+        let start_byte = 3 * WINDOW; // a deep track's landing
+
+        // Read one byte at `start_byte` and return the fill's fetch log.
+        async fn seek_and_log(
+            buffer: SharedSparseBuffer,
+            blob: Vec<u8>,
+            start_byte: u64,
+        ) -> Vec<(u64, u64)> {
+            let mut reader = buffer.new_reader();
+            assert!(reader.seek(start_byte));
+            let read_log = start_recording_fill(blob, None, &buffer);
+            let served = tokio::task::spawn_blocking(move || {
+                let mut b = [0u8; 1];
+                let n = reader.read(&mut b);
+                drop(reader);
+                n
+            })
+            .await
+            .expect("seek read task");
+            assert_eq!(served, Some(1), "the seek target byte must be served");
+            // Let the fill settle so its read-ahead fetches are recorded.
+            for _ in 0..100 {
+                tokio::task::yield_now().await;
+            }
+            buffer.cancel();
+            let log = read_log.lock().unwrap().clone();
+            log
+        }
+
+        // With the landing window already buffered (the prefetch completed), the
+        // fill must not fetch it.
+        let prefetched = create_sparse_buffer(source_size);
+        prefetched.append_at(
+            start_byte,
+            &blob[start_byte as usize..(start_byte + WINDOW) as usize],
+        );
+        let with = seek_and_log(prefetched, blob.clone(), start_byte).await;
+        assert!(
+            !with.iter().any(|&(start, _)| start == start_byte),
+            "prefetched: the fill must not re-fetch the already-buffered start \
+             window; log: {with:?}"
+        );
+
+        // Cold buffer: the fill must fetch the start window to serve the seek.
+        let cold = create_sparse_buffer(source_size);
+        let without = seek_and_log(cold, blob, start_byte).await;
+        assert!(
+            without.iter().any(|&(start, _)| start == start_byte),
+            "cold: the fill must fetch the start window; log: {without:?}"
         );
     }
 
