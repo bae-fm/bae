@@ -164,46 +164,19 @@ fn cue_analysis_format(cue_pair: &CueFlacAnalysis) -> CueAnalysisFormat {
     }
 }
 
-/// Byte offset of each CUE track's end within the shared file, found by seeking
-/// (no decode) -- computed once per file. `ends[i]` is track `i`'s end byte; the
-/// last track has no entry and runs to EOF. The boundary is each track's
-/// `end_sample` -- the same sample `cue_backed_audio_format` trims to -- so the
-/// read-ahead ceiling and the decode window can't drift. `None` when the offsets
-/// can't be read (non-UTF-8 path, a non-last track missing its end sample, or a
-/// failed seek), distinct from a real empty result; the caller then spans the
-/// whole file.
-fn cue_track_byte_ends(file_path: &Path, cue_pair: &CueFlacAnalysis) -> Option<Vec<u64>> {
-    let sample_rate = cue_analysis_format(cue_pair).sample_rate;
-    let tracks = &cue_pair.cue_sheet.tracks;
-    // Seek to each non-last track's end sample (the last track runs to EOF, so it
-    // has no end sample); every other track must have one.
-    let end_samples = match tracks
-        .iter()
-        .take(tracks.len().saturating_sub(1))
-        .map(|t| t.end_sample(sample_rate))
-        .collect::<Option<Vec<u64>>>()
-    {
-        Some(samples) => samples,
-        None => {
-            warn!("cue_track_byte_ends: a non-last track has no end sample in {file_path:?}");
-            return None;
-        }
-    };
-    let Some(path) = file_path.to_str() else {
-        warn!("cue_track_byte_ends: non-UTF-8 path, cannot seek byte offsets: {file_path:?}");
-        return None;
-    };
-    crate::audio_codec::frame_byte_offsets(path, &end_samples)
-}
-
-/// Byte each CUE track's audio *starts* on within the shared file: the seektable
-/// checkpoint the playback seek lands on when seeking to that track's
-/// `start_sample`, found via `seek_landing_bytes` (one open per file, no decode).
-/// `starts[i]` is track `i`'s start byte, index-aligned to the CUE tracks. The
-/// first track starts at byte 0 (nothing to prefetch), so the caller stores
-/// `None` for it. `None` here means the offsets couldn't be read (non-UTF-8 path
-/// or a failed seek), distinct from a real result; the caller then stores no
-/// start byte for that file's tracks.
+/// Byte each CUE track's audio *starts* on within the shared file: the byte the
+/// demuxer lands on when seeking to that track's `start_sample`, found via
+/// `seek_landing_bytes` (one open per file, no decode). `starts[i]` is track
+/// `i`'s start byte, index-aligned to the CUE tracks.
+///
+/// This one list gives both boundaries of every track, because a CUE track's
+/// byte range is `[start[i], start[i + 1])`: track `i` ends exactly where track
+/// `i + 1`'s audio begins, so its read-ahead ceiling is the next track's start
+/// byte. The last track has no next start and runs to EOF. The first track starts
+/// at byte 0 (nothing to prefetch), so the caller stores `None` for it. `None`
+/// here means the offsets couldn't be read (non-UTF-8 path or a failed seek),
+/// distinct from a real result; the caller then stores no start or end byte for
+/// that file's tracks and they keep the whole-file read-ahead span.
 fn cue_track_start_bytes(file_path: &Path, cue_pair: &CueFlacAnalysis) -> Option<Vec<u64>> {
     let sample_rate = cue_analysis_format(cue_pair).sample_rate;
     let start_samples: Vec<u64> = cue_pair
@@ -230,13 +203,10 @@ impl ImportService {
     ) -> Result<Vec<crate::db::DbAudioFormat>, String> {
         let now = clock.now();
         let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
-        // Track end byte offsets per shared CUE file, computed once and reused
-        // across that file's tracks (one ffmpeg open per file, not per track).
-        // `None` means the offsets couldn't be read for that file.
-        let mut cue_ends_by_file: HashMap<PathBuf, Option<Vec<u64>>> = HashMap::new();
-        // Track start byte offsets per shared CUE file, same caching as the ends:
-        // the seektable landing for each track's `start_sample`, computed once per
-        // file. `None` means the offsets couldn't be read for that file.
+        // Seektable landing byte for each track's `start_sample` per shared CUE
+        // file, computed once per file (one ffmpeg open, not per track) and reused
+        // for both boundaries: a track starts at its own landing and ends at the
+        // next track's. `None` means the offsets couldn't be read for that file.
         let mut cue_starts_by_file: HashMap<PathBuf, Option<Vec<u64>>> = HashMap::new();
 
         for track_file in tracks_to_files {
@@ -265,38 +235,24 @@ impl ImportService {
                         ids.new_id(),
                         now,
                     )?;
-                    // The last track (no entry) runs to EOF, as does any track
-                    // whose offsets couldn't be read -- both keep the default
-                    // whole-file span.
-                    let ends = cue_ends_by_file.entry(file_path.clone()).or_insert_with(|| {
-                        let computed = cue_track_byte_ends(file_path, cue_pair);
+                    // One seek pass per file gives every track's start byte; the
+                    // range of track N is [start[N], start[N+1]). When the offsets
+                    // can't be read, all this file's tracks keep the default
+                    // whole-file span and lose the parallel prefetch.
+                    let starts = cue_starts_by_file.entry(file_path.clone()).or_insert_with(|| {
+                        let computed = cue_track_start_bytes(file_path, cue_pair);
                         if computed.is_none() {
                             warn!(
-                                "track byte offsets unavailable for {:?}; its tracks keep the whole-file read-ahead span",
+                                "track start offsets unavailable for {:?}; its tracks keep the whole-file read-ahead span and lose the parallel prefetch",
                                 file_path
                             );
                         }
                         computed
                     });
-                    let end_byte = ends
-                        .as_ref()
-                        .and_then(|e| e.get(*cue_index))
-                        .map(|&b| b as i64);
                     // The first track (start_sample 0) begins at byte 0 — nothing
                     // to prefetch, so it keeps the default `None` start byte. A
                     // deep track records the seektable landing for its start.
                     let start_byte = if af.start_sample > 0 {
-                        let starts =
-                            cue_starts_by_file.entry(file_path.clone()).or_insert_with(|| {
-                                let computed = cue_track_start_bytes(file_path, cue_pair);
-                                if computed.is_none() {
-                                    warn!(
-                                        "track start offsets unavailable for {:?}; its tracks lose the parallel prefetch",
-                                        file_path
-                                    );
-                                }
-                                computed
-                            });
                         starts
                             .as_ref()
                             .and_then(|s| s.get(*cue_index))
@@ -304,6 +260,13 @@ impl ImportService {
                     } else {
                         None
                     };
+                    // The read-ahead ceiling is where the next track's audio
+                    // starts. The last track has no next start, so it stays `None`
+                    // and runs to EOF.
+                    let end_byte = starts
+                        .as_ref()
+                        .and_then(|s| s.get(*cue_index + 1))
+                        .map(|&b| b as i64);
                     af.with_end_byte(end_byte).with_start_byte(start_byte)
                 }
                 TrackFile::Standalone {

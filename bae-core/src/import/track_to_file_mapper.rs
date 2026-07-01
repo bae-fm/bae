@@ -192,7 +192,7 @@ fn extract_duration_from_file(file_path: &std::path::Path) -> Option<i64> {
 /// info, ALAC is probed via FFmpeg. Bytes are read once (for APE / FLAC) or
 /// opened by path (for ALAC, whose probe already streams through FFmpeg) and
 /// dropped on return.
-fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<CueAudioAnalysis, String> {
+pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<CueAudioAnalysis, String> {
     let ext = audio_path
         .extension()
         .and_then(|e| e.to_str())

@@ -1,6 +1,6 @@
 //! Probing and format detection: open a file by path, inspect its best audio
-//! stream, and report container/codec properties (`ProbeResult`) or per-sample
-//! frame byte offsets (`frame_byte_offsets`).
+//! stream, and report container/codec properties (`ProbeResult`) or the byte the
+//! demuxer lands on when seeking to each of a set of samples (`seek_landing_bytes`).
 
 use crate::util::content_type::ContentType;
 use std::os::raw::c_int;
@@ -211,93 +211,12 @@ fn sample_to_timestamp(
     }
 }
 
-/// The byte offset in the file of the frame containing each of `samples`, found
-/// by seeking -- not decoding. For each sample the demuxer is seeked to it and
-/// the next frame's byte position is read back: the frame at or before the
-/// sample, since FLAC and APE frames are independently seekable. Frame-granular
-/// (the offset is at or just before the exact sample), which is all the read-ahead
-/// ceiling needs. Used at import to record where each track of a single-file
-/// album begins in the file. `samples` should be ascending. Returns `None` if the
-/// file can't be opened, has no audio stream, or any sample's frame position
-/// can't be read -- the caller then treats the whole file as one span.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub fn frame_byte_offsets(path: &str, samples: &[u64]) -> Option<Vec<u64>> {
-    unsafe {
-        use ffmpeg_sys_next::*;
-
-        let (mut fmt_ctx, stream_index) = open_best_audio_stream(path, "frame_byte_offsets")?;
-        let stream = *(*fmt_ctx).streams.add(stream_index as usize);
-        let time_base = (*stream).time_base;
-        let sample_rate = (*(*stream).codecpar).sample_rate as i64;
-
-        let packet = av_packet_alloc();
-        if packet.is_null() {
-            warn!("frame_byte_offsets: failed to allocate packet for {path}");
-            avformat_close_input(&mut fmt_ctx);
-            return None;
-        }
-
-        // Compute every offset, or bail out (returning None) if any sample's
-        // frame position can't be read -- a half-faked boundary list is worse
-        // than falling back to the whole file.
-        let mut offsets = Vec::with_capacity(samples.len());
-        let mut failed: Option<String> = None;
-        for &sample in samples {
-            let Some(target_ts) = sample_to_timestamp(sample, time_base, sample_rate) else {
-                failed = Some(format!("invalid time base for sample {sample}"));
-                break;
-            };
-            if av_seek_frame(
-                fmt_ctx,
-                stream_index,
-                target_ts,
-                AVSEEK_FLAG_BACKWARD as c_int,
-            ) < 0
-            {
-                failed = Some(format!("seek to sample {sample} failed"));
-                break;
-            }
-
-            // The next packet for our stream carries its byte position in `pos`.
-            let mut pos = None;
-            while av_read_frame(fmt_ctx, packet) >= 0 {
-                let is_audio = (*packet).stream_index == stream_index;
-                let p = (*packet).pos;
-                av_packet_unref(packet);
-                if is_audio {
-                    if p >= 0 {
-                        pos = Some(p as u64);
-                    }
-                    break;
-                }
-            }
-            match pos {
-                Some(p) => offsets.push(p),
-                None => {
-                    failed = Some(format!("no frame position at sample {sample}"));
-                    break;
-                }
-            }
-        }
-
-        av_packet_free(&mut (packet as *mut _));
-        avformat_close_input(&mut fmt_ctx);
-        match failed {
-            Some(reason) => {
-                warn!("frame_byte_offsets: {reason} in {path}");
-                None
-            }
-            None => Some(offsets),
-        }
-    }
-}
-
 /// The byte the demuxer reads from after seeking to each of `samples` -- read
 /// from the AVIO position (`avio_tell`) right after the seek, the way the demuxer
 /// itself positions. Recorded at import as each track's start byte.
 ///
-/// Two reasons this lands where `frame_byte_offsets` (which reads the packet
-/// `pos`) returns `None` or a wrong value:
+/// Two reasons this reads a byte where reading the demuxer packet's `pos` returns
+/// `None` or a wrong value:
 /// - The AVIO position is defined for every format. APE packets carry no byte
 ///   position; a FLAC with placeholder seektable points returns none either.
 /// - It does *not* set `AVFMT_FLAG_FAST_SEEK` (`open_best_audio_stream` leaves it

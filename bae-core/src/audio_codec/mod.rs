@@ -19,7 +19,7 @@ use avio::{avio_write_callback, avio_write_seek_callback, WriteAvioContext};
 
 pub use decode::{decode_audio, decode_audio_streaming, decode_audio_to_sink};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use probe::{frame_byte_offsets, seek_landing_bytes};
+pub use probe::seek_landing_bytes;
 pub use probe::{probe_audio_from_path, ProbeResult};
 
 /// Buffer size for FFmpeg custom-IO (`avio`) contexts. The standard 32 KiB

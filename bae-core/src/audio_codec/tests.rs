@@ -3,11 +3,11 @@ use super::*;
 use crate::util::content_type::ContentType;
 use std::sync::Arc;
 
-/// `frame_byte_offsets` actually opens the file, seeks (no decode), and
+/// `seek_landing_bytes` actually opens the file, seeks (no decode), and
 /// reports ascending byte positions within the file that follow the sample
 /// positions -- what the import-time byte boundary computation relies on.
 #[test]
-fn frame_byte_offsets_track_sample_positions() {
+fn seek_landing_bytes_track_sample_positions() {
     init();
     let sample_rate = 44100u32;
     let seconds = 4usize;
@@ -28,7 +28,7 @@ fn frame_byte_offsets_track_sample_positions() {
     let probes: Vec<u64> = (0..seconds as u64)
         .map(|s| s * sample_rate as u64)
         .collect();
-    let offsets = frame_byte_offsets(path, &probes).expect("frame_byte_offsets");
+    let offsets = seek_landing_bytes(path, &probes).expect("seek_landing_bytes");
     assert_eq!(offsets.len(), probes.len());
 
     // Non-decreasing and within the file.
@@ -52,7 +52,7 @@ fn frame_byte_offsets_track_sample_positions() {
     );
 }
 
-/// `frame_byte_offsets` against the real single-file CUE/FLAC fixture:
+/// `seek_landing_bytes` against the real single-file CUE/FLAC fixture:
 /// silence -> white noise -> brown noise, so the bitrate swings widely from
 /// track to track. The seek offsets follow the *content*, not time -- the
 /// silence track compresses to almost nothing, so the 10s track-2 boundary
@@ -60,7 +60,7 @@ fn frame_byte_offsets_track_sample_positions() {
 /// estimate puts it. That gap is why the offsets are computed at import by
 /// seeking rather than estimated from time at playback.
 #[test]
-fn frame_byte_offsets_follow_content_not_time_when_bitrate_swings() {
+fn seek_landing_bytes_follow_content_not_time_when_bitrate_swings() {
     init();
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -73,7 +73,7 @@ fn frame_byte_offsets_follow_content_not_time_when_bitrate_swings() {
 
     // Track starts from the CUE: 0s (silence), 10s (white noise), 20s (brown).
     let starts = [0u64, 10 * sr, 20 * sr];
-    let exact = frame_byte_offsets(path, &starts).expect("offsets");
+    let exact = seek_landing_bytes(path, &starts).expect("offsets");
 
     // Time-proportional estimate -- what we'd get without seeking.
     let proportional: Vec<u64> = starts
@@ -97,6 +97,14 @@ fn frame_byte_offsets_follow_content_not_time_when_bitrate_swings() {
     );
     // Ascending and within the file.
     assert!(exact[0] <= exact[1] && exact[1] <= exact[2] && exact[2] < file_size);
+    // The brown-noise track (20s start) lands deep in the file -- it compresses
+    // far worse than the silence, so most of the file is its bytes. Confirms the
+    // landings track content in both directions, not just the silent-track dip.
+    assert!(
+        exact[2] as f64 > file_size as f64 * 0.4,
+        "brown-noise track start lands deep in the file: {} of {file_size}",
+        exact[2]
+    );
 }
 
 #[test]
@@ -606,52 +614,6 @@ fn flac_seek_uses_seektable_not_binary_search() {
     assert!(
         reads.iter().any(|&o| o >= file_len / 8),
         "no read past the header; the seek did not advance into the file: {reads:?}"
-    );
-}
-
-/// `seek_landing_bytes` returns, for each deep track start of the real CUE/FLAC
-/// fixture, a byte within the file at or before the exact frame byte
-/// `frame_byte_offsets` reports for the same sample -- the landing recorded per
-/// track at import and byte-seeked to at playback. Both open without
-/// `AVFMT_FLAG_FAST_SEEK`, so they binary-search the frames and land together.
-#[test]
-fn seek_landing_bytes_lands_in_file_at_or_before_the_frame() {
-    init();
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/cue_flac/Test Album.flac"
-    );
-    let sr = probe_audio_from_path(path)
-        .expect("probe fixture")
-        .sample_rate as u64;
-    let file_size = std::fs::metadata(path).unwrap().len();
-
-    // Deep track starts from the CUE (10s white noise, 20s brown noise).
-    let starts = [10 * sr, 20 * sr];
-    let landings = seek_landing_bytes(path, &starts).expect("seek_landing_bytes");
-    let frames = frame_byte_offsets(path, &starts).expect("frame_byte_offsets");
-    assert_eq!(landings.len(), starts.len());
-
-    for i in 0..starts.len() {
-        assert!(
-            landings[i] > 0,
-            "a deep track start lands past byte 0: {landings:?}"
-        );
-        assert!(
-            landings[i] < file_size,
-            "landing stays within the file: {} of {file_size}",
-            landings[i]
-        );
-        assert!(
-            landings[i] <= frames[i],
-            "landing sits at or before the exact frame byte: {} vs {}",
-            landings[i],
-            frames[i]
-        );
-    }
-    assert!(
-        landings[1] > landings[0],
-        "a later track lands later in the file: {landings:?}"
     );
 }
 
