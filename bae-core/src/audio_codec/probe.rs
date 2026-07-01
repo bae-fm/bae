@@ -188,6 +188,29 @@ pub fn probe_audio_from_path(path: &str) -> Option<ProbeResult> {
     }
 }
 
+/// Convert a sample number to a timestamp in the stream's time base. For
+/// FLAC/APE the time base is `1/sample_rate`, so the timestamp is the sample
+/// number; otherwise scale by the time base. `None` when the time base is
+/// unusable (non-positive numerator, or a zero sample rate) -- the caller then
+/// bails out of the seek loop.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn sample_to_timestamp(
+    sample: u64,
+    time_base: ffmpeg_sys_next::AVRational,
+    sample_rate: i64,
+) -> Option<i64> {
+    if time_base.num == 1 && time_base.den as i64 == sample_rate {
+        Some(sample as i64)
+    } else if sample_rate > 0 && time_base.num > 0 {
+        Some(
+            (sample as i128 * time_base.den as i128 / (time_base.num as i128 * sample_rate as i128))
+                as i64,
+        )
+    } else {
+        None
+    }
+}
+
 /// The byte offset in the file of the frame containing each of `samples`, found
 /// by seeking -- not decoding. For each sample the demuxer is seeked to it and
 /// the next frame's byte position is read back: the frame at or before the
@@ -220,14 +243,7 @@ pub fn frame_byte_offsets(path: &str, samples: &[u64]) -> Option<Vec<u64>> {
         let mut offsets = Vec::with_capacity(samples.len());
         let mut failed: Option<String> = None;
         for &sample in samples {
-            // Sample number -> timestamp in the stream's time base (1/sample_rate
-            // for FLAC/APE, so the timestamp is the sample number).
-            let target_ts = if time_base.num == 1 && time_base.den as i64 == sample_rate {
-                sample as i64
-            } else if sample_rate > 0 && time_base.num > 0 {
-                (sample as i128 * time_base.den as i128
-                    / (time_base.num as i128 * sample_rate as i128)) as i64
-            } else {
+            let Some(target_ts) = sample_to_timestamp(sample, time_base, sample_rate) else {
                 failed = Some(format!("invalid time base for sample {sample}"));
                 break;
             };
@@ -280,14 +296,15 @@ pub fn frame_byte_offsets(path: &str, samples: &[u64]) -> Option<Vec<u64>> {
 /// from the AVIO position (`avio_tell`) right after the seek, the way the demuxer
 /// itself positions. Recorded at import as each track's start byte.
 ///
-/// Two reasons this is robust where `frame_byte_offsets` (which reads the packet
+/// Two reasons this lands where `frame_byte_offsets` (which reads the packet
 /// `pos`) returns `None` or a wrong value:
 /// - The AVIO position is defined for every format. APE packets carry no byte
 ///   position; a FLAC with placeholder seektable points returns none either.
-/// - It does *not* set `AVFMT_FLAG_FAST_SEEK`, so a FLAC seek binary-searches the
-///   real frames instead of trusting the file's seektable -- which lands
-///   accurately even when that seektable is coarse or full of placeholder points.
-///   (APE ignores the flag and uses its mandatory index either way.)
+/// - It does *not* set `AVFMT_FLAG_FAST_SEEK` (`open_best_audio_stream` leaves it
+///   unset), so a FLAC seek binary-searches the real frames instead of trusting
+///   the file's seektable -- landing accurately even when that seektable is coarse
+///   or full of placeholder points. (APE ignores the flag and uses its mandatory
+///   index either way.)
 ///
 /// Binary-searching a FLAC reads the file's end here, once at import. Playback
 /// never does: it byte-seeks straight to the recorded byte (FLAC) or sample-seeks
@@ -298,39 +315,9 @@ pub fn seek_landing_bytes(path: &str, samples: &[u64]) -> Option<Vec<u64>> {
     unsafe {
         use ffmpeg_sys_next::*;
 
-        let c_path = std::ffi::CString::new(path).ok()?;
-        let mut fmt_ctx = avformat_alloc_context();
-        if fmt_ctx.is_null() {
-            return None;
-        }
-        if avformat_open_input(
-            &mut fmt_ctx,
-            c_path.as_ptr(),
-            ptr::null_mut(),
-            ptr::null_mut(),
-        ) < 0
-        {
-            warn!("seek_landing_bytes: failed to open input {path}");
-            return None;
-        }
-        if avformat_find_stream_info(fmt_ctx, ptr::null_mut()) < 0 {
-            warn!("seek_landing_bytes: failed to read stream info for {path}");
-            avformat_close_input(&mut fmt_ctx);
-            return None;
-        }
-        let stream_index = av_find_best_stream(
-            fmt_ctx,
-            AVMediaType::AVMEDIA_TYPE_AUDIO,
-            -1,
-            -1,
-            ptr::null_mut(),
-            0,
-        );
-        if stream_index < 0 {
-            warn!("seek_landing_bytes: no audio stream in {path}");
-            avformat_close_input(&mut fmt_ctx);
-            return None;
-        }
+        // Opens without AVFMT_FLAG_FAST_SEEK, so a FLAC seek binary-searches the
+        // real frames (see the doc comment) rather than trusting the seektable.
+        let (mut fmt_ctx, stream_index) = open_best_audio_stream(path, "seek_landing_bytes")?;
         let stream = *(*fmt_ctx).streams.add(stream_index as usize);
         let time_base = (*stream).time_base;
         let sample_rate = (*(*stream).codecpar).sample_rate as i64;
@@ -338,12 +325,7 @@ pub fn seek_landing_bytes(path: &str, samples: &[u64]) -> Option<Vec<u64>> {
         let mut offsets = Vec::with_capacity(samples.len());
         let mut failed: Option<String> = None;
         for &sample in samples {
-            let target_ts = if time_base.num == 1 && time_base.den as i64 == sample_rate {
-                sample as i64
-            } else if sample_rate > 0 && time_base.num > 0 {
-                (sample as i128 * time_base.den as i128
-                    / (time_base.num as i128 * sample_rate as i128)) as i64
-            } else {
+            let Some(target_ts) = sample_to_timestamp(sample, time_base, sample_rate) else {
                 failed = Some(format!("invalid time base for sample {sample}"));
                 break;
             };
