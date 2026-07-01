@@ -336,12 +336,16 @@ impl AudioDataReader for CovenBlobReader {
 // readahead and per-track memory modest while cutting the call rate.
 const CLOUD_STREAM_READ_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
 
-/// The minimum the fill keeps buffered ahead of a reader, regardless of its
-/// track ceiling. A few windows so the decoder's ring can't underrun: it's the
-/// backstop when a reader's track ceiling isn't set yet (during probe). The
-/// reader's track ceiling normally reaches much further (the rest of the current
-/// track).
-const MIN_READAHEAD: u64 = CLOUD_STREAM_READ_SIZE * 4;
+/// The minimum the fill keeps buffered ahead of a reader whose track ceiling
+/// isn't set yet -- the brief probe phase before the decoder reads the header
+/// and seeks to the track's start. One window: the demuxer reads only the front
+/// metadata (header + seektable, ~100 KB for a FLAC) before it seeks, so keeping
+/// more than a window ahead of byte 0 just speculatively fetches front bytes the
+/// decoder abandons the instant it seeks away -- a wasted ranged fetch (~1 s over
+/// a cloud home) on every track that doesn't start at byte 0. Once the decoder
+/// seeks and sets its real ceiling (the track's end byte), read-ahead is bounded
+/// by that instead and reaches the rest of the track.
+const MIN_READAHEAD: u64 = CLOUD_STREAM_READ_SIZE;
 
 /// How far behind a reader's position buffered bytes are retained before being
 /// evicted. A margin for the decoder's brief backward reads; everything older is
