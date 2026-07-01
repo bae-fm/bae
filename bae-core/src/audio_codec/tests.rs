@@ -658,8 +658,16 @@ fn seek_landing_bytes_lands_in_file_at_or_before_the_frame() {
 /// The load-bearing accuracy guarantee: a by-byte seek to the recorded landing,
 /// trimmed to the track's start sample, produces output whose *first* sample is
 /// exactly the start sample. The by-byte jump lands on the frame boundary at or
-/// before the target; `start_at_sample` trims the sub-frame remainder. A window
-/// one frame earlier correlates worse, so the trim really landed on the target.
+/// before the target; `start_at_sample` trims the sub-frame remainder.
+///
+/// Two assertions prove the byte drives the landing, not the trim alone (over a
+/// full in-memory buffer the trim would reach the target from a decode-from-zero
+/// too, so accuracy on its own proves nothing):
+/// - The correct landing byte yields the exact target sample, and a window one
+///   frame earlier correlates worse.
+/// - A *wrong* landing byte (a later track's, past the target) yields output that
+///   is NOT the target sample -- so the byte-seek target, not the trim, decides
+///   where output begins.
 #[test]
 fn byte_seek_to_landing_is_sample_exact() {
     use crate::playback::create_track_stream_pair_with_capacity;
@@ -675,49 +683,56 @@ fn byte_seek_to_landing_is_sample_exact() {
     let sample_rate = 44100u64;
     let channels = 2u32;
     // Track 2 start (white noise) -- random content correlates precisely, unlike
-    // the silent track 1.
+    // the silent track 1. Track 3's landing (20s) is the deliberately wrong byte,
+    // well past track 2's target.
     let start = 10 * sample_rate;
-    let landing = seek_landing_bytes(path, &[start]).expect("landing")[0];
+    let landings = seek_landing_bytes(path, &[start, 20 * sample_rate]).expect("landings");
+    let landing = landings[0];
+    let wrong_landing = landings[1];
 
     let ground = decode_audio(&flac, None, None).expect("ground-truth decode");
     let scale = i16::MAX as f32; // 16-bit fixture
 
-    let buffer = create_sparse_buffer(flac.len() as u64);
-    buffer.append_at(0, &flac);
-    let (mut sink, mut source, _ready) =
-        create_track_stream_pair_with_capacity(sample_rate as u32, channels, 500_000);
-    let decode_buffer = buffer.clone();
-    let handle = thread::spawn(move || {
-        let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        decode_audio_streaming(
-            decode_buffer,
-            &mut sink,
-            Some(landing),                  // by-byte seek to the landing
-            None,                           // no sample seek
-            Some(start),                    // trim lead-in to the start sample
-            Some(start + sample_rate / 10), // stop ~0.1s later
-            None,
-            token,
-        )
-    });
-    assert!(handle.join().unwrap().is_ok(), "byte-seek decode failed");
-
-    let mut seeked = Vec::new();
-    let mut buf = [0.0f32; 1024];
-    loop {
-        let n = source.pull_samples(&mut buf);
-        if n == 0 && source.is_finished() {
-            break;
+    // Decode track 2 with a given by-byte seek target, trimming to `start` and
+    // stopping ~0.1s later; return the interleaved output samples.
+    let decode_from = |seek_to_byte: Option<u64>| -> Vec<f32> {
+        let buffer = create_sparse_buffer(flac.len() as u64);
+        buffer.append_at(0, &flac);
+        let (mut sink, mut source, _ready) =
+            create_track_stream_pair_with_capacity(sample_rate as u32, channels, 500_000);
+        let decode_buffer = buffer.clone();
+        let handle = thread::spawn(move || {
+            let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
+            decode_audio_streaming(
+                decode_buffer,
+                &mut sink,
+                seek_to_byte,
+                None,                           // no sample seek
+                Some(start),                    // trim lead-in to the start sample
+                Some(start + sample_rate / 10), // stop ~0.1s later
+                None,
+                token,
+            )
+        });
+        assert!(handle.join().unwrap().is_ok(), "byte-seek decode failed");
+        let mut out = Vec::new();
+        let mut buf = [0.0f32; 1024];
+        loop {
+            let n = source.pull_samples(&mut buf);
+            if n == 0 && source.is_finished() {
+                break;
+            }
+            out.extend_from_slice(&buf[..n]);
         }
-        seeked.extend_from_slice(&buf[..n]);
-    }
-    assert!(seeked.len() > 200, "not enough samples: {}", seeked.len());
+        out
+    };
 
-    // Mean squared error of the first `window` output samples against the ground
+    let target = start as usize * channels as usize;
+    // Mean squared error of the first `window` samples of `out` against the ground
     // truth starting at interleaved offset `off`.
-    let window = 256usize.min(seeked.len());
-    let mse_at = |off: usize| -> f64 {
-        let e: f64 = seeked[..window]
+    let mse = |out: &[f32], off: usize| -> f64 {
+        let window = 256usize.min(out.len());
+        let e: f64 = out[..window]
             .iter()
             .zip(&ground.samples[off..off + window])
             .map(|(&s, &t)| {
@@ -727,20 +742,42 @@ fn byte_seek_to_landing_is_sample_exact() {
             .sum();
         e / window as f64
     };
+    // The output's first sample is the target sample: enough samples, and the
+    // first window matches the ground truth at exactly `target`.
+    let is_sample_exact = |out: &[f32]| out.len() > 200 && mse(out, target) < 1e-4;
 
-    let target = start as usize * channels as usize;
-    let mse_target = mse_at(target);
+    // Correct landing -> exact target sample.
+    let seeked = decode_from(Some(landing));
     assert!(
-        mse_target < 1e-4,
-        "first output sample is not the target sample (mse {mse_target:.6}); \
-         byte-seek + trim did not land on start_sample",
+        is_sample_exact(&seeked),
+        "the correct landing byte must land on start_sample (len {}, mse {:.6})",
+        seeked.len(),
+        mse(&seeked, target),
     );
-    // One frame earlier must correlate worse -- proves the trim landed on the
-    // target, not a frame short of it. (A wrong/None seek byte fails this too.)
+    // One frame earlier correlates worse -- the trim landed on the target, not a
+    // frame short of it.
     let earlier = target.saturating_sub(4096 * channels as usize);
     assert!(
-        mse_at(earlier) > mse_target,
+        mse(&seeked, earlier) > mse(&seeked, target),
         "output aligns at least as well one frame before the target -- the trim \
          did not land exactly on start_sample",
+    );
+
+    // Wrong landing (track 3's, past the target) -> NOT the target sample. This
+    // isolates the byte-seek as the mechanism: with the trim alone the output
+    // would be identical regardless of the byte. The seek is a valid in-file
+    // offset (so it doesn't fail and fall back to decode-from-zero); it just lands
+    // past the stop window, yielding empty/misaligned output.
+    let sabotaged = decode_from(Some(wrong_landing));
+    assert!(
+        !is_sample_exact(&sabotaged),
+        "a wrong landing byte still produced the target sample (len {}, mse {:.6}) -- \
+         the byte-seek target is not driving where output begins",
+        sabotaged.len(),
+        if sabotaged.len() >= 256 {
+            mse(&sabotaged, target)
+        } else {
+            f64::NAN
+        },
     );
 }
