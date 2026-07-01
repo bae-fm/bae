@@ -38,6 +38,22 @@ done
 
 cd "$(dirname "$0")/.."
 
+# FFmpeg comes from the bae-ffmpeg fork's prebuilt dist (populated by
+# scripts/setup-ffmpeg.sh). The shipped .pc files carry a CI-baked prefix
+# (/Users/runner/...), so point ffmpeg-sys-next at the dist directly via
+# FFMPEG_DIR: it reads headers from $FFMPEG_DIR/include and emits the link search
+# for $FFMPEG_DIR/lib, bypassing pkg-config's dead prefix. Only FFMPEG_DIR is set
+# here -- .cargo/config.toml already supplies the Homebrew LIBRARY_PATH and clang
+# include args for libdiscid (force=false), and setting those here would clobber
+# them and break the discid link.
+FFMPEG_DIR="$PWD/bae-ffmpeg/dist"
+export FFMPEG_DIR
+
+if [[ ! -f "$FFMPEG_DIR/include/libavutil/avutil.h" ]]; then
+    echo "bae-ffmpeg dist missing at $FFMPEG_DIR — run scripts/setup-ffmpeg.sh first" >&2
+    exit 1
+fi
+
 case "$EDITION" in
     bae)
         BAE_BRIDGE_FEATURES_VALUE="oauth-providers,cloudkit,desktop"

@@ -131,6 +131,18 @@ targets:
           - -lswresample
           - -ldiscid
           - -lc++
+        # Runtime counterpart to LIBRARY_SEARCH_PATHS. The fork's libav* dylibs
+        # carry @rpath install names (@rpath/libavcodec.*.dylib), so point @rpath
+        # at the same fork dirs a local Debug build launches without bundling.
+        # Release rewrites these refs to @executable_path via bundle_dylibs.sh, so
+        # a dev-only path here is harmless there, and dyld ignores runpaths that
+        # don't exist.
+        LD_RUNPATH_SEARCH_PATHS:
+          - $(inherited)
+          - "@executable_path/../Frameworks"
+          - "@loader_path/../Frameworks"
+          - $(SRCROOT)/../../bae-ffmpeg/dist/lib
+          - /opt/bae-ffmpeg/lib
   baeTests:
     type: bundle.unit-test
     platform: macOS
