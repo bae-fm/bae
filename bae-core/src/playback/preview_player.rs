@@ -364,6 +364,7 @@ impl PreviewPlayer {
             if let Err(e) = crate::audio_codec::decode_audio_streaming(
                 decoder_buffer,
                 &mut sink,
+                None,
                 seek_to_sample,
                 None,
                 None,

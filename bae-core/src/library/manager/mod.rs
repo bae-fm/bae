@@ -188,10 +188,20 @@ pub struct ResolvedTrackAudio {
     /// whole-file track, `end_sample` is `None` when the track runs to EOF.
     pub start_sample: u64,
     pub end_sample: Option<u64>,
+    /// This track's audio codec, as stored at import. Playback dispatches the
+    /// track-start seek on it: FLAC/lossless byte-seek to `start_byte`; APE
+    /// sample-seeks its mandatory index and also prefetches the file's end (its
+    /// demuxer reads the tail on open).
+    pub content_type: crate::util::content_type::ContentType,
     /// One past this track's last byte in its backing file (frame-granular, from
     /// import; `None` when the track runs to EOF / a whole-file track). Playback
     /// buffers the rest of the current track up to here instead of a fixed window.
     pub end_byte: Option<u64>,
+    /// The byte this track's audio begins at within its backing file: the
+    /// seektable landing recorded at import (`audio_format.start_byte`). `None`
+    /// for a track starting at byte 0. Lets playback prefetch the track's audio
+    /// in parallel with the header probe.
+    pub start_byte: Option<u64>,
     /// Raw loudness/peak measurements (LUFS + linear peak) for this track and its
     /// album, as stored at import. `None` = not measured. Playback derives the
     /// replay gain from these against a constant target; nothing here is a gain.
@@ -219,7 +229,9 @@ impl ResolvedTrackAudio {
             channels: meta.audio_format.channels as u32,
             start_sample: meta.audio_format.start_sample as u64,
             end_sample: meta.audio_format.end_sample.map(|s| s as u64),
+            content_type: meta.audio_format.content_type.clone(),
             end_byte: meta.audio_format.end_byte.map(|b| b as u64),
+            start_byte: meta.audio_format.start_byte.map(|b| b as u64),
             track_loudness_lufs: meta.audio_format.track_loudness_lufs,
             track_peak_linear: meta.audio_format.track_peak_linear,
             album_loudness_lufs: meta.release.album_loudness_lufs,

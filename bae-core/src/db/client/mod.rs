@@ -874,6 +874,7 @@ fn row_to_audio_format(row: &Row) -> coven::rusqlite::Result<DbAudioFormat> {
         start_sample: row.get("start_sample")?,
         end_sample: row.get("end_sample")?,
         end_byte: row.get("end_byte")?,
+        start_byte: row.get("start_byte")?,
         track_loudness_lufs: row.get("track_loudness_lufs")?,
         track_peak_linear: row.get("track_peak_linear")?,
         created_at: rfc3339_column(row, "created_at")?,
@@ -1290,8 +1291,8 @@ fn insert_audio_format_row(
     conn.execute(
         r#"
         INSERT INTO audio_formats (
-            id, track_id, content_type, pregap_ms, sample_rate, bits_per_sample, channels, file_id, start_sample, end_sample, end_byte, track_loudness_lufs, track_peak_linear, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, track_id, content_type, pregap_ms, sample_rate, bits_per_sample, channels, file_id, start_sample, end_sample, end_byte, start_byte, track_loudness_lufs, track_peak_linear, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             af.id,
@@ -1305,6 +1306,7 @@ fn insert_audio_format_row(
             af.start_sample,
             af.end_sample,
             af.end_byte,
+            af.start_byte,
             af.track_loudness_lufs,
             af.track_peak_linear,
             reg,

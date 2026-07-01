@@ -196,6 +196,29 @@ fn cue_track_byte_ends(file_path: &Path, cue_pair: &CueFlacAnalysis) -> Option<V
     crate::audio_codec::frame_byte_offsets(path, &end_samples)
 }
 
+/// Byte each CUE track's audio *starts* on within the shared file: the seektable
+/// checkpoint the playback seek lands on when seeking to that track's
+/// `start_sample`, found via `seek_landing_bytes` (one open per file, no decode).
+/// `starts[i]` is track `i`'s start byte, index-aligned to the CUE tracks. The
+/// first track starts at byte 0 (nothing to prefetch), so the caller stores
+/// `None` for it. `None` here means the offsets couldn't be read (non-UTF-8 path
+/// or a failed seek), distinct from a real result; the caller then stores no
+/// start byte for that file's tracks.
+fn cue_track_start_bytes(file_path: &Path, cue_pair: &CueFlacAnalysis) -> Option<Vec<u64>> {
+    let sample_rate = cue_analysis_format(cue_pair).sample_rate;
+    let start_samples: Vec<u64> = cue_pair
+        .cue_sheet
+        .tracks
+        .iter()
+        .map(|t| t.audio_start_sample(sample_rate))
+        .collect();
+    let Some(path) = file_path.to_str() else {
+        warn!("cue_track_start_bytes: non-UTF-8 path, cannot seek byte offsets: {file_path:?}");
+        return None;
+    };
+    crate::audio_codec::seek_landing_bytes(path, &start_samples)
+}
+
 impl ImportService {
     /// Build audio format records for all tracks. CUE-backed tracks already hold
     /// their shared analysis + index; standalone tracks are probed here.
@@ -211,6 +234,10 @@ impl ImportService {
         // across that file's tracks (one ffmpeg open per file, not per track).
         // `None` means the offsets couldn't be read for that file.
         let mut cue_ends_by_file: HashMap<PathBuf, Option<Vec<u64>>> = HashMap::new();
+        // Track start byte offsets per shared CUE file, same caching as the ends:
+        // the seektable landing for each track's `start_sample`, computed once per
+        // file. `None` means the offsets couldn't be read for that file.
+        let mut cue_starts_by_file: HashMap<PathBuf, Option<Vec<u64>>> = HashMap::new();
 
         for track_file in tracks_to_files {
             // Each track carries the absolute path to its source file; that path
@@ -255,7 +282,29 @@ impl ImportService {
                         .as_ref()
                         .and_then(|e| e.get(*cue_index))
                         .map(|&b| b as i64);
-                    af.with_end_byte(end_byte)
+                    // The first track (start_sample 0) begins at byte 0 — nothing
+                    // to prefetch, so it keeps the default `None` start byte. A
+                    // deep track records the seektable landing for its start.
+                    let start_byte = if af.start_sample > 0 {
+                        let starts =
+                            cue_starts_by_file.entry(file_path.clone()).or_insert_with(|| {
+                                let computed = cue_track_start_bytes(file_path, cue_pair);
+                                if computed.is_none() {
+                                    warn!(
+                                        "track start offsets unavailable for {:?}; its tracks lose the parallel prefetch",
+                                        file_path
+                                    );
+                                }
+                                computed
+                            });
+                        starts
+                            .as_ref()
+                            .and_then(|s| s.get(*cue_index))
+                            .map(|&b| b as i64)
+                    } else {
+                        None
+                    };
+                    af.with_end_byte(end_byte).with_start_byte(start_byte)
                 }
                 TrackFile::Standalone {
                     db_track,

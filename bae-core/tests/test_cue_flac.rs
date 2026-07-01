@@ -71,6 +71,23 @@ async fn test_cue_flac_records_track_positions() {
                 audio_format.start_sample, 0,
                 "the first CUE/FLAC track starts at sample 0",
             );
+            assert_eq!(
+                audio_format.start_byte, None,
+                "the first CUE/FLAC track starts at byte 0 (no prefetch, header covers it)",
+            );
+        } else {
+            // A deep track records the seektable landing for its start_sample --
+            // the byte playback byte-seeks to. Contiguous tracks share a boundary,
+            // so it equals the prior track's end byte (both are the same seek
+            // landing computed by a binary search over the frames).
+            let start_byte = audio_format.start_byte.unwrap_or_else(|| {
+                panic!("deep CUE/FLAC track {} should record a start byte", i + 1)
+            });
+            assert!(
+                start_byte > 0,
+                "track {} start byte should be a real file offset, got {start_byte}",
+                i + 1,
+            );
         }
         // Every track but the last carries an end sample; the last runs to EOF.
         if i < tracks.len() - 1 {
@@ -124,6 +141,17 @@ async fn test_cue_flac_records_track_positions() {
                     i,
                 );
             }
+            // Tracks of one file are back-to-back byte ranges: this track's start
+            // sample is the prior track's end sample, and both the start-byte seek
+            // and the end-byte seek binary-search to that same frame. So the stored
+            // start byte equals the prior track's end byte.
+            assert_eq!(
+                audio_format.start_byte,
+                prev_format.end_byte,
+                "track {} start byte should equal track {} end byte (contiguous seek landing)",
+                i + 1,
+                i,
+            );
         }
         info!(
             "Track {} '{}': samples {}..{:?}",

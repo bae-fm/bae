@@ -281,7 +281,16 @@ fn test_streaming_decode() {
     let decoder_buffer = buffer.clone();
     let decoder_handle = thread::spawn(move || {
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        decode_audio_streaming(decoder_buffer, &mut sink, None, None, None, None, token)
+        decode_audio_streaming(
+            decoder_buffer,
+            &mut sink,
+            None,
+            None,
+            None,
+            None,
+            None,
+            token,
+        )
     });
 
     // Feed data to buffer (simulating download)
@@ -324,7 +333,7 @@ fn test_streaming_decode_treats_cancelled_input_as_normal_stop() {
     let (mut sink, source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 4096);
     let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-    let result = decode_audio_streaming(buffer, &mut sink, None, None, None, None, token);
+    let result = decode_audio_streaming(buffer, &mut sink, None, None, None, None, None, token);
 
     assert_eq!(result, Err(StreamingDecodeError::InputCancelled));
     assert!(!source.producer_finished());
@@ -379,6 +388,7 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
         decode_audio_streaming(
             buffer,
             &mut sink,
+            None,
             Some(seek_sample),
             None,
             None,
@@ -560,6 +570,7 @@ fn flac_seek_uses_seektable_not_binary_search() {
         decode_audio_streaming(
             decode_buffer,
             &mut sink,
+            None,
             Some(seek_sample),
             None,
             Some(stop_sample),
@@ -595,5 +606,141 @@ fn flac_seek_uses_seektable_not_binary_search() {
     assert!(
         reads.iter().any(|&o| o >= file_len / 8),
         "no read past the header; the seek did not advance into the file: {reads:?}"
+    );
+}
+
+/// `seek_landing_bytes` returns, for each deep track start of the real CUE/FLAC
+/// fixture, a byte within the file at or before the exact frame byte
+/// `frame_byte_offsets` reports for the same sample -- the landing recorded per
+/// track at import and byte-seeked to at playback. Both open without
+/// `AVFMT_FLAG_FAST_SEEK`, so they binary-search the frames and land together.
+#[test]
+fn seek_landing_bytes_lands_in_file_at_or_before_the_frame() {
+    init();
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/cue_flac/Test Album.flac"
+    );
+    let sr = probe_audio_from_path(path)
+        .expect("probe fixture")
+        .sample_rate as u64;
+    let file_size = std::fs::metadata(path).unwrap().len();
+
+    // Deep track starts from the CUE (10s white noise, 20s brown noise).
+    let starts = [10 * sr, 20 * sr];
+    let landings = seek_landing_bytes(path, &starts).expect("seek_landing_bytes");
+    let frames = frame_byte_offsets(path, &starts).expect("frame_byte_offsets");
+    assert_eq!(landings.len(), starts.len());
+
+    for i in 0..starts.len() {
+        assert!(
+            landings[i] > 0,
+            "a deep track start lands past byte 0: {landings:?}"
+        );
+        assert!(
+            landings[i] < file_size,
+            "landing stays within the file: {} of {file_size}",
+            landings[i]
+        );
+        assert!(
+            landings[i] <= frames[i],
+            "landing sits at or before the exact frame byte: {} vs {}",
+            landings[i],
+            frames[i]
+        );
+    }
+    assert!(
+        landings[1] > landings[0],
+        "a later track lands later in the file: {landings:?}"
+    );
+}
+
+/// The load-bearing accuracy guarantee: a by-byte seek to the recorded landing,
+/// trimmed to the track's start sample, produces output whose *first* sample is
+/// exactly the start sample. The by-byte jump lands on the frame boundary at or
+/// before the target; `start_at_sample` trims the sub-frame remainder. A window
+/// one frame earlier correlates worse, so the trim really landed on the target.
+#[test]
+fn byte_seek_to_landing_is_sample_exact() {
+    use crate::playback::create_track_stream_pair_with_capacity;
+    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use std::thread;
+
+    init();
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/cue_flac/Test Album.flac"
+    );
+    let flac = std::fs::read(path).expect("read fixture");
+    let sample_rate = 44100u64;
+    let channels = 2u32;
+    // Track 2 start (white noise) -- random content correlates precisely, unlike
+    // the silent track 1.
+    let start = 10 * sample_rate;
+    let landing = seek_landing_bytes(path, &[start]).expect("landing")[0];
+
+    let ground = decode_audio(&flac, None, None).expect("ground-truth decode");
+    let scale = i16::MAX as f32; // 16-bit fixture
+
+    let buffer = create_sparse_buffer(flac.len() as u64);
+    buffer.append_at(0, &flac);
+    let (mut sink, mut source, _ready) =
+        create_track_stream_pair_with_capacity(sample_rate as u32, channels, 500_000);
+    let decode_buffer = buffer.clone();
+    let handle = thread::spawn(move || {
+        let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        decode_audio_streaming(
+            decode_buffer,
+            &mut sink,
+            Some(landing),                  // by-byte seek to the landing
+            None,                           // no sample seek
+            Some(start),                    // trim lead-in to the start sample
+            Some(start + sample_rate / 10), // stop ~0.1s later
+            None,
+            token,
+        )
+    });
+    assert!(handle.join().unwrap().is_ok(), "byte-seek decode failed");
+
+    let mut seeked = Vec::new();
+    let mut buf = [0.0f32; 1024];
+    loop {
+        let n = source.pull_samples(&mut buf);
+        if n == 0 && source.is_finished() {
+            break;
+        }
+        seeked.extend_from_slice(&buf[..n]);
+    }
+    assert!(seeked.len() > 200, "not enough samples: {}", seeked.len());
+
+    // Mean squared error of the first `window` output samples against the ground
+    // truth starting at interleaved offset `off`.
+    let window = 256usize.min(seeked.len());
+    let mse_at = |off: usize| -> f64 {
+        let e: f64 = seeked[..window]
+            .iter()
+            .zip(&ground.samples[off..off + window])
+            .map(|(&s, &t)| {
+                let d = s as f64 - t as f64 / scale as f64;
+                d * d
+            })
+            .sum();
+        e / window as f64
+    };
+
+    let target = start as usize * channels as usize;
+    let mse_target = mse_at(target);
+    assert!(
+        mse_target < 1e-4,
+        "first output sample is not the target sample (mse {mse_target:.6}); \
+         byte-seek + trim did not land on start_sample",
+    );
+    // One frame earlier must correlate worse -- proves the trim landed on the
+    // target, not a frame short of it. (A wrong/None seek byte fails this too.)
+    let earlier = target.saturating_sub(4096 * channels as usize);
+    assert!(
+        mse_at(earlier) > mse_target,
+        "output aligns at least as well one frame before the target -- the trim \
+         did not land exactly on start_sample",
     );
 }

@@ -528,6 +528,7 @@ unsafe fn read_sample(
 pub fn decode_audio_streaming(
     buffer: SharedSparseBuffer,
     sink: &mut TrackSink,
+    seek_to_byte: Option<u64>,
     seek_to_sample: Option<u64>,
     start_at_sample: Option<u64>,
     stop_at_sample: Option<u64>,
@@ -541,6 +542,7 @@ pub fn decode_audio_streaming(
         decode_audio_streaming_impl(
             buffer,
             sink,
+            seek_to_byte,
             seek_to_sample,
             start_at_sample,
             stop_at_sample,
@@ -554,6 +556,7 @@ pub fn decode_audio_streaming(
 unsafe fn decode_audio_streaming_impl(
     buffer: SharedSparseBuffer,
     sink: &mut TrackSink,
+    seek_to_byte: Option<u64>,
     seek_to_sample: Option<u64>,
     start_at_sample: Option<u64>,
     stop_at_sample: Option<u64>,
@@ -760,7 +763,29 @@ unsafe fn decode_audio_streaming_impl(
     // from the start (then trimming to the target) is the only way to play such a
     // file -- correct here, but wasteful over a cloud home, which is why every
     // CUE/FLAC should carry a seektable (issue #226). Keep the bail-out logged.
-    if let Some(sample_pos) = seek_to_sample {
+    //
+    // A by-byte seek (AVSEEK_FLAG_BYTE) jumps straight to a known frame offset --
+    // no seektable consulted, no binary search reading the file's end -- and the
+    // landed frame's sample is read from its header, so the `start_at_sample`
+    // trim below still reaches the exact sample. Used for FLAC, where the frame
+    // byte is recorded at import; APE has no per-frame byte positions, so it
+    // sample-seeks via its mandatory index instead.
+    if let Some(byte_pos) = seek_to_byte {
+        let ret = av_seek_frame(
+            fmt_ctx,
+            stream_index,
+            byte_pos as i64,
+            AVSEEK_FLAG_BYTE as c_int,
+        );
+        if ret < 0 {
+            warn!(
+                "byte seek to {byte_pos} failed ({}); decoding from the start",
+                av_err_str(ret)
+            );
+        } else {
+            avcodec_flush_buffers(codec_ctx);
+        }
+    } else if let Some(sample_pos) = seek_to_sample {
         let target_ts = sample_pos as i64;
         let ret = avformat_seek_file(fmt_ctx, stream_index, i64::MIN, target_ts, target_ts, 0);
         if ret < 0 {

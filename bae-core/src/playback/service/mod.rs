@@ -483,7 +483,20 @@ impl PlaybackPreparedTrack {
     /// advance, the pregap skip or a seek position otherwise. Shared by the
     /// play/preload/seek paths so they can't drift on the seek/trim mapping.
     fn decode_params(&self, offset: u64) -> StreamDecodeParams {
+        use crate::util::content_type::ContentType;
+        // Byte-seek only at the natural track start (offset 0): the stored
+        // `start_byte` is the seektable landing for `start_sample`, not for an
+        // arbitrary in-track seek. A mid-track seek (offset > 0) has no recorded
+        // byte, so it sample-seeks. APE carries no per-frame byte position, so it
+        // always sample-seeks its mandatory index. Everything else (FLAC/lossless)
+        // byte-seeks straight to the landing, avoiding the seektable round-trip.
+        let seek_to_byte = if offset == 0 && self.content_type != ContentType::Ape {
+            self.start_byte
+        } else {
+            None
+        };
         StreamDecodeParams {
+            seek_to_byte,
             target_sample: self.start_sample + offset,
             stop_at_sample: self.end_sample,
             end_byte: self.end_byte,
@@ -513,6 +526,13 @@ struct PlaybackPreparedTrack {
     /// This track's sample window in its backing file (start 0 / end None = whole file).
     start_sample: u64,
     end_sample: Option<u64>,
+    /// This track's audio codec. Selects the track-start seek: FLAC/lossless
+    /// byte-seek to `start_byte`; APE sample-seeks its index.
+    content_type: crate::util::content_type::ContentType,
+    /// The byte this track's audio begins at within its backing file (the
+    /// seektable landing recorded at import). `None` = starts at byte 0. Used as
+    /// the by-byte seek target for a lossless track's natural start.
+    start_byte: Option<u64>,
     /// This track's byte span in its backing file (frame-granular; end None =
     /// whole file). The decoder hands `end_byte` to its reader as the read-ahead
     /// ceiling so the fill buffers the rest of the current track.
@@ -555,6 +575,8 @@ fn finalize_playback_track(
         duration,
         start_sample: resolved.start_sample,
         end_sample: resolved.end_sample,
+        content_type: resolved.content_type,
+        start_byte: resolved.start_byte,
         end_byte: resolved.end_byte,
         replay_gain_linear,
     }
@@ -597,6 +619,8 @@ async fn prepare_track_for_playback(
             resolved.cloud_path.as_deref(),
             source_size,
             fetch_arbiter,
+            resolved.start_byte,
+            resolved.content_type == crate::util::content_type::ContentType::Ape,
         );
         reader.start_reading(buffer.clone(), progress_tx);
         *shared_file_buffer = Some((cache_key, buffer.clone()));
@@ -864,10 +888,17 @@ pub(crate) async fn teardown_decoder_for_seek(
     }
 }
 
-/// The sample-space decoder window for one stream: `target_sample` is where
-/// FFmpeg seeks and trims lead-in (the track's start plus any pregap/seek
-/// offset); `stop_at_sample` ends output at the track's end (`None` = to EOF).
+/// The decoder window for one stream. `target_sample` is where FFmpeg trims
+/// lead-in (the track's start plus any pregap/seek offset). The seek to it is
+/// either a by-byte jump (`seek_to_byte`, a lossless track's natural start) or a
+/// sample seek (APE, or a mid-track seek); the `target_sample` trim makes the
+/// first output sample exact either way. `stop_at_sample` ends output at the
+/// track's end (`None` = to EOF).
 struct StreamDecodeParams {
+    /// When set, byte-seek straight to this offset (a lossless track's natural
+    /// start, the recorded seektable landing). `None` sample-seeks to
+    /// `target_sample` instead (APE's index, or a mid-track seek).
+    seek_to_byte: Option<u64>,
     target_sample: u64,
     stop_at_sample: Option<u64>,
     /// The track's end byte offset -- the read-ahead ceiling. `None` = whole file.
@@ -875,19 +906,29 @@ struct StreamDecodeParams {
 }
 
 impl StreamDecodeParams {
-    /// Run the streaming decoder for this window: FFmpeg seeks and trims at
-    /// `target_sample` and stops at `stop_at_sample`. Shared by the play/seek and
-    /// preload paths so they can't drift on the seek/trim mapping.
+    /// Run the streaming decoder for this window: FFmpeg seeks (by byte or by
+    /// sample), trims lead-in at `target_sample`, and stops at `stop_at_sample`.
+    /// Shared by the play/seek and preload paths so they can't drift on the
+    /// seek/trim mapping.
     fn run_decoder(
         &self,
         buffer: SharedSparseBuffer,
         sink: &mut crate::playback::track_stream::TrackSink,
         cancel: Arc<std::sync::atomic::AtomicBool>,
     ) -> Result<(), StreamingDecodeError> {
+        // Byte seek and sample seek are mutually exclusive: with a byte landing we
+        // jump to it, else we sample-seek. `start_at_sample` trims lead-in either
+        // way so the first output sample is exactly `target_sample`.
+        let seek_to_sample = if self.seek_to_byte.is_some() {
+            None
+        } else {
+            Some(self.target_sample)
+        };
         crate::audio_codec::decode_audio_streaming(
             buffer,
             sink,
-            Some(self.target_sample),
+            self.seek_to_byte,
+            seek_to_sample,
             Some(self.target_sample),
             self.stop_at_sample,
             self.end_byte,
