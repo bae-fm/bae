@@ -15,6 +15,24 @@ use tracing::{debug, warn};
 use crate::import::handle::send_event;
 use crate::import::types::TrackFile;
 
+/// The album loudness/peak plus the tracks whose decode looked broken (import
+/// decode-verify). `broken` carries a human-readable line per broken track (its
+/// path, track number, and reason); the caller fails the import on it when
+/// `verify_decode_on_import` is on.
+pub(super) struct LoudnessResult {
+    pub album_loudness_lufs: Option<f64>,
+    pub album_peak_linear: Option<f64>,
+    pub broken: Vec<String>,
+}
+
+/// One track's decode outcome from the blocking measure task: the measurement
+/// (absent when unmeasured/silent/failed) and the broken-decode reason (absent
+/// when the decode produced the full window cleanly).
+struct TrackOutcome {
+    measured: Option<(ebur128::EbuR128, f64, f64)>,
+    broken: Option<String>,
+}
+
 /// The meter and the format-derived constants it needs, set together once the
 /// decode probes the format. Held as one `Option` so "no format yet" is a single
 /// absence, not several fields each separately nullable.
@@ -41,6 +59,10 @@ struct LoudnessProgressSink {
     /// only advances at the post-track tick.
     total_frames: Option<u64>,
     done_frames: u64,
+    /// Fatal FFmpeg errors reported by the decoder after the stream ends (0 for a
+    /// clean decode). Set once via `set_decode_error_count`; a non-zero count
+    /// flags the track as broken for import decode-verify.
+    decode_error_count: u32,
     frames_since_emit: u64,
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     candidate_key: String,
@@ -70,6 +92,31 @@ impl LoudnessProgressSink {
         );
     }
 
+    /// Why this track's decode looks broken, if it does: a fatal FFmpeg error, or
+    /// output frames far short of the expected window (a valid header over a
+    /// truncated body — the decode stops early). `None` = the decode produced the
+    /// full window cleanly. The caller asserts on this only when
+    /// `verify_decode_on_import` is on; otherwise it's advisory (logged).
+    fn broken_reason(&self) -> Option<String> {
+        if self.decode_error_count > 0 {
+            return Some(format!("{} fatal decode error(s)", self.decode_error_count));
+        }
+        // A duration-derived `total_frames` (a whole-file / last track with no
+        // end_sample) is approximate, so require a gross shortfall: a truncated
+        // body decodes a fraction of the window, far past this 5% slack, while
+        // boundary rounding on the expected count stays well under it.
+        if let Some(total) = self.total_frames {
+            let complete_floor = total - total / 20;
+            if total > 0 && self.done_frames < complete_floor {
+                return Some(format!(
+                    "decoded {} of {} expected frames (truncated body)",
+                    self.done_frames, total
+                ));
+            }
+        }
+        None
+    }
+
     /// Finish the meter, surfacing any stored decode/measure failure.
     fn into_result(
         self,
@@ -97,6 +144,10 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
             }
             Err(e) => self.error = Some(e),
         }
+    }
+
+    fn set_decode_error_count(&mut self, count: u32) {
+        self.decode_error_count = count;
     }
 
     fn on_samples(&mut self, samples: &[i32]) {
@@ -140,12 +191,17 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
 ///
 /// Per-track progress ticks (and the sub-track ticks from the sink) are
 /// published on `event_tx`, the import event channel the service owns.
+///
+/// The full decode also verifies each track: a fatal decode error or output
+/// frames far short of the expected window (a truncated body under a valid
+/// header) marks the track broken. Broken tracks are always logged and returned;
+/// the caller decides whether to fail the import (per `verify_decode_on_import`).
 pub(super) async fn measure_loudness(
     event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
     audio_formats: &mut [crate::db::DbAudioFormat],
     tracks_to_files: &[TrackFile],
     candidate_key: &str,
-) -> (Option<f64>, Option<f64>) {
+) -> LoudnessResult {
     use ebur128::EbuR128;
 
     // Source bytes per file, read once and shared across that file's tracks
@@ -185,6 +241,9 @@ pub(super) async fn measure_loudness(
     // formats are built from the same tracks), so `idx` keys both.
     let mut meters: Vec<EbuR128> = Vec::new();
     let mut track_peaks: Vec<f64> = Vec::new();
+    // Tracks whose decode looked broken (fatal errors / truncated body). Always
+    // collected; the caller fails the import on these when verify is on.
+    let mut broken_tracks: Vec<String> = Vec::new();
     for (idx, tf) in tracks_to_files.iter().enumerate() {
         let path = tf.file_path().to_path_buf();
         let Some(bytes) = file_bytes.get(&path).and_then(|b| b.clone()) else {
@@ -219,50 +278,70 @@ pub(super) async fn measure_loudness(
         // `idx`/`tracks_total` place this track's scan in the bar.
         let task_event_tx = event_tx.clone();
         let key = candidate_key.to_string();
-        let measured = tokio::task::spawn_blocking(move || {
+        let task_path = path.clone();
+        let outcome = tokio::task::spawn_blocking(move || {
             let mut sink = LoudnessProgressSink {
                 source_bits,
                 state: None,
                 error: None,
                 total_frames,
                 done_frames: 0,
+                decode_error_count: 0,
                 frames_since_emit: 0,
                 event_tx: task_event_tx,
                 candidate_key: key,
                 idx: idx as u32,
                 tracks_total,
             };
+            // A decode that fails outright is broken; one that returns Ok can still
+            // be broken (fatal errors / a truncated body) — `broken_reason` reads
+            // the error count and frame shortfall the sink captured.
             if let Err(e) = crate::audio_codec::decode_audio_to_sink(
                 &bytes,
                 Some(start_sample),
                 end_sample,
                 &mut sink,
             ) {
-                warn!("loudness: decode failed for {path:?}: {e}; track stays unmeasured");
-                return None;
+                warn!("loudness: decode failed for {task_path:?}: {e}; track stays unmeasured");
+                return TrackOutcome {
+                    measured: None,
+                    broken: Some(format!("decode failed: {e}")),
+                };
             }
-            match sink.into_result() {
+            let broken = sink.broken_reason();
+            let measured = match sink.into_result() {
                 Ok((meter, Some(m))) => Some((meter, m.loudness_lufs, m.peak_linear)),
                 Ok((_, None)) => {
-                    debug!("loudness: {path:?} has no usable loudness (silent); unmeasured");
+                    debug!("loudness: {task_path:?} has no usable loudness (silent); unmeasured");
                     None
                 }
                 Err(e) => {
-                    warn!("loudness: measure failed for {path:?}: {e}; track stays unmeasured");
+                    warn!(
+                        "loudness: measure failed for {task_path:?}: {e}; track stays unmeasured"
+                    );
                     None
                 }
-            }
+            };
+            TrackOutcome { measured, broken }
         })
         .await;
 
-        match measured {
-            Ok(Some((meter, loudness_lufs, peak_linear))) => {
-                audio_formats[idx].track_loudness_lufs = Some(loudness_lufs);
-                audio_formats[idx].track_peak_linear = Some(peak_linear);
-                meters.push(meter);
-                track_peaks.push(peak_linear);
+        match outcome {
+            Ok(TrackOutcome { measured, broken }) => {
+                if let Some((meter, loudness_lufs, peak_linear)) = measured {
+                    audio_formats[idx].track_loudness_lufs = Some(loudness_lufs);
+                    audio_formats[idx].track_peak_linear = Some(peak_linear);
+                    meters.push(meter);
+                    track_peaks.push(peak_linear);
+                }
+                if let Some(reason) = broken {
+                    warn!(
+                        "import verify: {path:?} (track {}) looks broken: {reason}",
+                        idx + 1
+                    );
+                    broken_tracks.push(format!("{} (track {}): {reason}", path.display(), idx + 1));
+                }
             }
-            Ok(None) => {}
             Err(e) => warn!("loudness: measurement task panicked: {e}; track stays unmeasured"),
         }
         tracks_done += 1;
@@ -272,7 +351,11 @@ pub(super) async fn measure_loudness(
 
     let album_loudness = crate::loudness::album_loudness(&meters);
     let album_peak = crate::loudness::album_peak(&track_peaks);
-    (album_loudness, album_peak)
+    LoudnessResult {
+        album_loudness_lufs: album_loudness,
+        album_peak_linear: album_peak,
+        broken: broken_tracks,
+    }
 }
 
 /// Emit a loudness-measurement tick for the candidate's confirm pane. Routed
@@ -295,4 +378,95 @@ fn emit_loudness_progress(
             fraction,
         },
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sink_with(total: Option<u64>, done: u64, errors: u32) -> LoudnessProgressSink {
+        let (event_tx, _rx) = broadcast::channel(16);
+        LoudnessProgressSink {
+            source_bits: Some(16),
+            state: None,
+            error: None,
+            total_frames: total,
+            done_frames: done,
+            decode_error_count: errors,
+            frames_since_emit: 0,
+            event_tx,
+            candidate_key: "test".to_string(),
+            idx: 0,
+            tracks_total: 1,
+        }
+    }
+
+    /// The broken signature: a gross frame shortfall (a truncated body under a
+    /// valid header) or any fatal decode error. A full-window decode and small
+    /// boundary rounding on a duration-derived expected count are not broken.
+    #[test]
+    fn broken_reason_flags_shortfall_and_errors_not_clean() {
+        assert!(
+            sink_with(Some(1000), 1000, 0).broken_reason().is_none(),
+            "a full-window decode is clean"
+        );
+        assert!(
+            sink_with(Some(1000), 970, 0).broken_reason().is_none(),
+            "a 3% shortfall is boundary rounding, within slack"
+        );
+        assert!(
+            sink_with(Some(1000), 100, 0).broken_reason().is_some(),
+            "a 90% shortfall is a truncated body"
+        );
+        assert!(
+            sink_with(Some(1000), 1000, 1).broken_reason().is_some(),
+            "a fatal decode error is broken even with the full window"
+        );
+        assert!(
+            sink_with(None, 0, 0).broken_reason().is_none(),
+            "with no expected count, a shortfall can't be asserted"
+        );
+    }
+
+    /// End-to-end over the real decoder: a window that falls in a truncated
+    /// FLAC's missing tail is flagged broken (the decode errors out or produces
+    /// far too few frames), while the same window of the intact fixture decodes
+    /// clean. Rides the same `set_decode_error_count` + frame count the import
+    /// verify uses.
+    #[test]
+    fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
+        crate::audio_codec::init();
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/cue_flac/Test Album.flac"
+        );
+        let clean = std::fs::read(path).expect("read fixture");
+        let sr = 44100u64;
+        // A one-second window deep in the file (25s, brown noise near the end).
+        let start = 25 * sr;
+        let end = 26 * sr;
+        let total = end - start;
+
+        let mut sink = sink_with(Some(total), 0, 0);
+        let ok =
+            crate::audio_codec::decode_audio_to_sink(&clean, Some(start), Some(end), &mut sink);
+        assert!(ok.is_ok(), "intact decode should succeed: {ok:?}");
+        assert!(
+            sink.broken_reason().is_none(),
+            "intact fixture window is not broken (decoded {} of {total})",
+            sink.done_frames
+        );
+
+        // Truncated to 60% of its bytes: the 25s window is past the surviving
+        // audio, so the decode errors out or yields far too few frames.
+        let truncated = &clean[..clean.len() * 6 / 10];
+        let mut sink = sink_with(Some(total), 0, 0);
+        let res =
+            crate::audio_codec::decode_audio_to_sink(truncated, Some(start), Some(end), &mut sink);
+        assert!(
+            res.is_err() || sink.broken_reason().is_some(),
+            "truncated fixture window must be flagged broken (decode {res:?}, decoded {} of {total})",
+            sink.done_frames,
+        );
+    }
 }

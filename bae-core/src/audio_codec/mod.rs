@@ -96,6 +96,10 @@ pub trait DecodedSink {
     /// One interleaved-i32 chunk, already trimmed to the requested
     /// `[start_sample, end_sample)` window.
     fn on_samples(&mut self, samples: &[i32]);
+    /// The count of fatal FFmpeg errors during the decode, reported once after the
+    /// stream ends. Default: ignore it. A verifying sink captures it to flag a
+    /// track whose bytes failed to decode. `0` for a clean decode.
+    fn set_decode_error_count(&mut self, _count: u32) {}
 }
 
 /// Initialize FFmpeg (call once at startup)

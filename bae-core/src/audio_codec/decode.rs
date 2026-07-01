@@ -146,6 +146,14 @@ unsafe fn decode_audio_avio(
 ) -> Result<(), String> {
     use ffmpeg_sys_next::*;
 
+    // Count fatal FFmpeg errors for this decode, so the sink can flag a track
+    // whose audio bytes fail to decode (import decode-verify rides this pass).
+    // The counter is reset after `find_stream_info` below, not here: probing an
+    // attached-picture stream (an embedded cover) emits its own fatal-level logs
+    // that say nothing about the audio, so only errors from the audio decode loop
+    // should count.
+    install_ffmpeg_log_callback();
+
     // Create our context for callbacks
     let mut avio_ctx = Box::new(AvioContext {
         data: data.as_ptr(),
@@ -196,6 +204,10 @@ unsafe fn decode_audio_avio(
         avformat_close_input(&mut fmt_ctx);
         return Err(format!("Failed to find stream info: {}", av_err_str(ret)));
     }
+
+    // Only count fatal errors from the audio decode below -- probing an embedded
+    // cover during `find_stream_info` above may have logged its own.
+    reset_ffmpeg_errors();
 
     // Find best audio stream
     let stream_index = av_find_best_stream(
@@ -402,6 +414,9 @@ unsafe fn decode_audio_avio(
 
     // Keep avio_ctx alive until here (prevent drop during FFmpeg operations)
     drop(avio_ctx);
+
+    // Report the fatal-error count so a verifying sink can flag a broken decode.
+    sink.set_decode_error_count(get_ffmpeg_errors());
 
     Ok(())
 }
