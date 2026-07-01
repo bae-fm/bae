@@ -1990,3 +1990,115 @@ async fn unknown_import_with_no_tags_seeds_title_from_folder_name() {
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 2, "both untagged files import as tracks");
 }
+
+/// Truncate a FLAC's body on disk while keeping its header and tags: a valid
+/// STREAMINFO (declaring the full sample count) over a short audio body. Kept
+/// size stays above the scanner's gross-size floor (10% of the raw PCM size, ~44
+/// KB for the 5s mono fixture) so the file passes scan and reaches the loudness
+/// loop, but far too little audio to decode the declared samples -- the
+/// decode-verify shortfall signature.
+fn truncate_flac_body(path: &Path) {
+    let bytes = fs::read(path).expect("read flac to truncate");
+    // The 5s/44.1k/mono/16-bit fixture declares 220_500 samples => 441_000 raw
+    // bytes; the scan rejects below 44_100. 46_000 clears that while cutting the
+    // bulk of the ~68 KB audio body.
+    let keep = 46_000usize.min(bytes.len());
+    assert!(
+        bytes.len() > keep,
+        "fixture is smaller than the truncation target ({} bytes)",
+        bytes.len(),
+    );
+    fs::write(path, &bytes[..keep]).expect("write truncated flac");
+}
+
+/// Import a one-track album whose FLAC is truncated (valid header, short body),
+/// with `verify_decode_on_import` set to `verify`. Returns the import outcome.
+async fn import_truncated_album(verify: bool) -> Result<(String, String), String> {
+    let temp = TempDir::new().unwrap();
+    let db_dir = temp.path().join("db");
+    fs::create_dir_all(&db_dir).unwrap();
+    let db = Database::new_test(
+        db_dir.join("test.db").to_str().unwrap(),
+        std::sync::Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
+    let library_dir = LibraryDir::new(db_dir.clone());
+    let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
+    config_handle
+        .update(|c| c.verify_decode_on_import = verify)
+        .expect("set verify_decode_on_import");
+    let library_manager = LibraryManager::new(
+        db.clone(),
+        library_dir,
+        config_handle,
+        key_service,
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+        tokio::runtime::Handle::current(),
+    );
+    let handle = ImportService::start(
+        tokio::runtime::Handle::current(),
+        library_manager,
+        bae_core::import::cover_art::CoverArtArchiveClient::new(),
+    );
+
+    let album_dir = temp.path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_tagged_album_files(
+        &album_dir,
+        "Broken Album",
+        "Broken Artist",
+        None,
+        &[TaggedTrack {
+            filename: "01.flac",
+            title: "Broken Track",
+            track_number: 1,
+        }],
+    );
+    truncate_flac_body(&album_dir.join("01.flac"));
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    handle
+        .send_command(ImportCommand::Folder {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: IdentityChoice::Unknown,
+            user_edit: None,
+        })
+        .unwrap();
+    let mut progress_rx = handle.subscribe_import(import_id);
+    let result = support::try_wait_for_import_complete(&mut progress_rx).await;
+    // Keep the temp dir (and its files) alive until the import has finished.
+    drop(temp);
+    result
+}
+
+/// `verify_decode_on_import` gates a broken track end to end: a truncated FLAC
+/// (valid header, short body) that decodes short imports fine with the flag off,
+/// and fails at the decode-verify gate -- before finalize commits anything -- with
+/// the flag on. Proves the flag drives the outcome, not the fixture.
+#[tokio::test]
+#[serial]
+async fn verify_decode_on_import_gates_a_broken_track() {
+    support::tracing_init();
+
+    // Flag off: today's behavior -- the broken album still imports.
+    let off = import_truncated_album(false).await;
+    assert!(
+        off.is_ok(),
+        "with verify_decode_on_import off, a broken album must still import, got: {off:?}",
+    );
+
+    // Flag on (the default): the same album fails at the decode-verify gate.
+    let on = import_truncated_album(true).await;
+    let err = on.expect_err("with verify_decode_on_import on, a broken album must fail the import");
+    assert!(
+        err.contains("decode verification failed"),
+        "the failure must come from decode-verify, got: {err}",
+    );
+}
