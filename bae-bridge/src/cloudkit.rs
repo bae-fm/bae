@@ -51,28 +51,6 @@ impl coven::CloudKitOps for CloudKitDriverAdapter {
             .record_exists(key.to_string())
             .map_err(cloudkit_err_to_cloud_home_err)
     }
-
-    // coven's `CloudKitOps` trait declares the CKShare grant/revoke/accept
-    // methods. bae uses a personal library on its own iCloud account, so all
-    // three are unavailable; the Swift driver implements only the
-    // private-database storage methods.
-    fn grant_access(&self, _email: &str) -> Result<String, coven::CloudHomeError> {
-        Err(sharing_unsupported())
-    }
-
-    fn revoke_access(&self, _user_record_id: &str) -> Result<(), coven::CloudHomeError> {
-        Err(sharing_unsupported())
-    }
-
-    fn accept_share(&self, _share_url: &str) -> Result<(), coven::CloudHomeError> {
-        Err(sharing_unsupported())
-    }
-}
-
-/// The error coven's `CloudKitOps` sharing methods return on a personal library:
-/// bae has no library sharing, so grant/revoke/accept are unavailable.
-fn sharing_unsupported() -> coven::CloudHomeError {
-    coven::CloudHomeError::Storage("CloudKit library sharing is not supported".to_string())
 }
 
 fn cloudkit_err_to_cloud_home_err(e: CloudKitError) -> coven::CloudHomeError {
