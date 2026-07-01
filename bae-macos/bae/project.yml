@@ -67,13 +67,8 @@ targets:
           NEEDS_BUILD=0
           if [ ! -f "$MARKER" ] || [ ! -f "$BINDINGS_SOURCE" ]; then
             NEEDS_BUILD=1
-          else
-            for src in bae-bridge/src/*.rs bae-core/src/**/*.rs bae-automation/src/**/*.rs bae-mcp/src/**/*.rs; do
-              if [ "$src" -nt "$MARKER" ]; then
-                NEEDS_BUILD=1
-                break
-              fi
-            done
+          elif [ -n "$(find bae-bridge/src bae-core/src bae-automation/src bae-mcp/src -name '*.rs' -newer "$MARKER" 2>/dev/null | head -1)" ]; then
+            NEEDS_BUILD=1
           fi
           if [ "$NEEDS_BUILD" -eq 1 ]; then
             echo "Bridge sources changed, rebuilding..."
