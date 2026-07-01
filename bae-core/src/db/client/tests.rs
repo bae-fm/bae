@@ -850,6 +850,27 @@ mod composer_mode_tests {
             Some("release-a")
         );
     }
+
+    #[tokio::test]
+    async fn work_detail_release_rows_carry_album_release_display_fields() {
+        let (db, _tmp) = seeded_db().await;
+
+        let detail = db
+            .find_work_detail("work-child-a")
+            .await
+            .unwrap()
+            .expect("work detail");
+
+        assert_eq!(detail.releases.len(), 1);
+        let release = &detail.releases[0];
+        assert_eq!(release.release_id, "release-a");
+        assert_eq!(release.album_id, "album-a");
+        assert_eq!(release.album_title, "Album Title A");
+        assert_eq!(release.release_name, None);
+        assert_eq!(release.year, Some(2026));
+        assert_eq!(release.format.as_deref(), Some("CD"));
+        assert_eq!(release.release_index, 1);
+    }
 }
 
 #[cfg(test)]

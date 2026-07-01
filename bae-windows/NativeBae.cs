@@ -418,6 +418,20 @@ internal static class NativeBae
     internal static string? AlbumPageJson(IntPtr handle, ulong offset, ulong limit, string sortField, bool ascending) =>
         CopyAndFree(AlbumPage(handle, offset, limit, sortField, ascending));
 
+    [DllImport(Dll, EntryPoint = "bae_composer_count", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern long ComposerCount(IntPtr handle);
+
+    [DllImport(Dll, EntryPoint = "bae_composer_page", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ComposerPagePtr(
+        IntPtr handle,
+        ulong offset,
+        ulong limit,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string sortField,
+        [MarshalAs(UnmanagedType.I1)] bool ascending);
+
+    internal static string? ComposerPageJson(IntPtr handle, ulong offset, ulong limit, string sortField, bool ascending) =>
+        CopyAndFree(ComposerPagePtr(handle, offset, limit, sortField, ascending));
+
     /// <summary>
     /// A release's gallery images as JSON, or <see cref="IntPtr.Zero"/> on error.
     /// Prefer <see cref="GalleryJson"/>.
@@ -566,6 +580,22 @@ internal static class NativeBae
     /// </summary>
     internal static string? AlbumDetailJson(IntPtr handle, string albumId) =>
         CopyAndFree(AlbumDetailPtr(handle, albumId));
+
+    [DllImport(Dll, EntryPoint = "bae_composer_detail", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ComposerDetailPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string artistId);
+
+    internal static string? ComposerDetailJson(IntPtr handle, string artistId) =>
+        CopyAndFree(ComposerDetailPtr(handle, artistId));
+
+    [DllImport(Dll, EntryPoint = "bae_work_detail", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr WorkDetailPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string workId);
+
+    internal static string? WorkDetailJson(IntPtr handle, string workId) =>
+        CopyAndFree(WorkDetailPtr(handle, workId));
 
     /// <summary>Current settings as JSON, or null on error. Copies and frees.</summary>
     [DllImport(Dll, EntryPoint = "bae_settings", CallingConvention = CallingConvention.Cdecl)]

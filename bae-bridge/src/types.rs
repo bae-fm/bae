@@ -2145,6 +2145,16 @@ pub struct BridgeWorkTrackSummary {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeWorkReleaseSummary {
+    pub release_id: String,
+    pub album_id: String,
+    pub album_title: String,
+    pub display_name: String,
+    pub format: Option<String>,
+    pub cover: Option<BridgeImageRef>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeComposerDetail {
     pub composer: BridgeComposerSummary,
     pub work_groups: Vec<BridgeComposerWorkGroup>,
@@ -2164,7 +2174,7 @@ pub struct BridgeComposerWorkGroup {
 pub struct BridgeWorkDetail {
     pub work: BridgeWorkSummary,
     pub child_works: Vec<BridgeWorkSummary>,
-    pub releases: Vec<BridgeReleaseSummary>,
+    pub releases: Vec<BridgeWorkReleaseSummary>,
     pub tracks: Vec<BridgeWorkTrackSummary>,
 }
 

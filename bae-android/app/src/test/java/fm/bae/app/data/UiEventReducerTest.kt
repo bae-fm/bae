@@ -68,12 +68,35 @@ class UiEventReducerTest {
         val (library, config) = stores()
         val detail = BridgeFixtures.albumDetail(BridgeFixtures.album(id = "alb-1"))
         val generationBefore = library.generation.value
+        val composerGenerationBefore = library.composerGeneration.value
 
         UiEventReducer.reduce(BridgeUiEvent.AlbumAdded(detail), library, config, noopPlayer, noopErrors)
 
         assertNotNull("album should be interned", library.albumDetail("alb-1"))
         assertEquals(detail, library.albumDetail("alb-1"))
         assertEquals(generationBefore + 1, library.generation.value)
+        assertEquals(composerGenerationBefore + 1, library.composerGeneration.value)
+    }
+
+    @Test
+    fun releaseChangesRefreshComposerPagesWithoutRebuildingAlbumPages() {
+        val (library, config) = stores()
+        val album = BridgeFixtures.album(id = "alb-1", releaseIds = listOf("rel-1", "rel-2"))
+        val detail = BridgeFixtures.albumDetail(album, releases = listOf(BridgeFixtures.release(id = "rel-1", albumId = "alb-1")))
+        UiEventReducer.reduce(BridgeUiEvent.AlbumAdded(detail), library, config, noopPlayer, noopErrors)
+        val albumGeneration = library.generation.value
+        val composerGeneration = library.composerGeneration.value
+
+        UiEventReducer.reduce(
+            BridgeUiEvent.ReleaseAdded(album = album, release = BridgeFixtures.release(id = "rel-2", albumId = "alb-1")),
+            library,
+            config,
+            noopPlayer,
+            noopErrors,
+        )
+
+        assertEquals(albumGeneration, library.generation.value)
+        assertEquals(composerGeneration + 1, library.composerGeneration.value)
     }
 
     @Test

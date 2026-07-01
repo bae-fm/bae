@@ -355,7 +355,11 @@ extension LibraryView {
                                     )
                                 }
                             },
-                            openAlbum: { albumId in
+                            openAlbum: { albumId, releaseId in
+                                uiStore.selectRelease(
+                                    releaseId,
+                                    inAlbum: albumId
+                                )
                                 uiStore.selectAlbum(albumId)
                                 mode = .albums
                             }
@@ -369,7 +373,8 @@ extension LibraryView {
                             detailSelection = .work(workId: workId)
                             composerPaneDetail = .empty
                         },
-                        openAlbum: { albumId in
+                        openAlbum: { albumId, releaseId in
+                            uiStore.selectRelease(releaseId, inAlbum: albumId)
                             uiStore.selectAlbum(albumId)
                             mode = .albums
                         }
@@ -778,7 +783,7 @@ private struct CreditRow: View {
 private struct WorkDetailView: View {
     let detail: BridgeWorkDetail
     let openWork: (String) -> Void
-    let openAlbum: (String) -> Void
+    let openAlbum: (String, String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -796,20 +801,24 @@ private struct WorkDetailView: View {
             }
             if !detail.releases.isEmpty {
                 SectionHeader(title: String(localized: "Releases"))
-                ForEach(detail.releases, id: \.id) { release in
-                    Button(action: { openAlbum(release.albumId) }) {
+                ForEach(detail.releases, id: \.releaseId) { release in
+                    Button(action: {
+                        openAlbum(release.albumId, release.releaseId)
+                    }) {
                         HStack(spacing: 12) {
                             ImageView(imageRef: release.cover, pointSize: 42)
                                 .frame(width: 42, height: 42)
                                 .clipShape(RoundedRectangle(cornerRadius: 6))
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(release.id)
+                                Text(release.albumTitle)
                                     .font(.body)
                                     .lineLimit(1)
-                                OptionalLineText(
-                                    text: release.format,
+                                StableOptionalText(
+                                    text: workReleaseMetadata(release),
                                     font: .caption,
-                                    foreground: .secondary
+                                    foreground: .secondary,
+                                    lineHeight: 12,
+                                    lineLimit: 1
                                 )
                             }
                             Spacer()
@@ -833,5 +842,14 @@ private struct WorkDetailView: View {
                 }
             }
         }
+    }
+
+    private func workReleaseMetadata(
+        _ release: BridgeWorkReleaseSummary
+    ) -> String {
+        [release.displayName, release.format]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: " \u{00B7} ")
     }
 }

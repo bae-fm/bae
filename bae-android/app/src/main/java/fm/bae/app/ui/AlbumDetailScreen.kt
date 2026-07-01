@@ -91,13 +91,14 @@ private data class AlbumDetailCallbacks(
 fun AlbumDetailScreen(
     session: OpenLibrary,
     albumId: String,
+    initialReleaseId: String? = null,
     onBack: () -> Unit,
 ) {
     val details by session.libraryStore.albumDetails.collectAsState()
     val detail = details[albumId]
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
-    var selectedReleaseId by remember { mutableStateOf<String?>(null) }
+    var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
     var retryToken by remember(albumId) { mutableStateOf(0) }
     var loadError by remember(albumId) { mutableStateOf<String?>(null) }
     val appContext = LocalContext.current

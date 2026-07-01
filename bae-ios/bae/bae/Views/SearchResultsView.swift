@@ -1,20 +1,24 @@
 import SwiftUI
 
-/// Library search results: two sections — Albums then Tracks. Both row types
-/// open the album's detail; a track navigates to its album rather than playing.
+/// Library search results. Album and track rows open album detail; composer and
+/// work rows navigate to their bridge ids.
 /// Iterates and renders only — the search call and the bridge→model mapping
 /// live in the data layer (`Library.searchLibrary` / `SearchResults`).
 struct SearchResultsView: View {
     let results: SearchResults?
     let error: String?
-    let onSelect: (String) -> Void
+    let onSelectAlbum: (String) -> Void
+    let onSelectComposer: (String) -> Void
+    let onSelectWork: (String) -> Void
 
     var body: some View {
         if let error {
             centered(Text(error).foregroundStyle(.red))
         }
         else if let results {
-            if results.albums.isEmpty, results.tracks.isEmpty {
+            if results.albums.isEmpty, results.tracks.isEmpty,
+                results.composers.isEmpty, results.works.isEmpty
+            {
                 centered(
                     Text("No results for \u{201C}\(results.query)\u{201D}")
                         .foregroundStyle(.secondary)
@@ -26,7 +30,7 @@ struct SearchResultsView: View {
                         Section("Albums") {
                             ForEach(results.albums) { album in
                                 Button {
-                                    onSelect(album.id)
+                                    onSelectAlbum(album.id)
                                 } label: {
                                     AlbumResultRow(album: album)
                                 }
@@ -38,9 +42,34 @@ struct SearchResultsView: View {
                         Section("Tracks") {
                             ForEach(results.tracks) { track in
                                 Button {
-                                    onSelect(track.albumId)
+                                    onSelectAlbum(track.albumId)
                                 } label: {
                                     TrackResultRow(track: track)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    if !results.composers.isEmpty {
+                        Section("Composers") {
+                            ForEach(results.composers, id: \.artistId) {
+                                composer in
+                                Button {
+                                    onSelectComposer(composer.artistId)
+                                } label: {
+                                    ComposerResultRow(composer: composer)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    if !results.works.isEmpty {
+                        Section("Works") {
+                            ForEach(results.works, id: \.workId) { work in
+                                Button {
+                                    onSelectWork(work.workId)
+                                } label: {
+                                    WorkResultRow(work: work)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -105,6 +134,52 @@ private struct TrackResultRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+}
+
+private struct ComposerResultRow: View {
+    let composer: BridgeComposerSummary
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ImageView(imageRef: composer.image, pointSize: 48)
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(composer.name)
+                    .font(.body)
+                    .lineLimit(1)
+                Text("\(composer.workCount) \(String(localized: "Works"))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+        }
+    }
+}
+
+private struct WorkResultRow: View {
+    let work: BridgeWorkSummary
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ImageView(imageRef: work.representativeCover, pointSize: 48)
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(work.title)
+                    .font(.body)
+                    .lineLimit(1)
+                if let composers = work.composerNames {
+                    Text(composers)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer()
         }
     }
 }

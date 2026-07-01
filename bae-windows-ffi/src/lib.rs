@@ -14,7 +14,9 @@ use std::{
 };
 
 use bae_core::album_detail::ReleaseStorageState;
-use bae_core::db::{AlbumSortCriterion, AlbumSortField, SortDirection};
+use bae_core::db::{
+    AlbumSortCriterion, AlbumSortField, ComposerSortCriterion, ComposerSortField, SortDirection,
+};
 use bae_core::diagnostics::{
     AppDiagnosticMetadata, DatadogDiagnosticsConfig, DiagnosticLevel, Diagnostics,
     DiagnosticsConfig,
@@ -1472,6 +1474,76 @@ struct FfiAlbum {
     cover: Option<FfiImageRef>,
 }
 
+#[derive(Serialize)]
+struct FfiTrackSearchResult {
+    id: String,
+    title: String,
+    duration_ms: Option<i64>,
+    album_id: String,
+    album_title: String,
+    artist_name: String,
+}
+
+#[derive(Serialize)]
+struct FfiComposerSummary {
+    artist_id: String,
+    name: String,
+    sort_name: Option<String>,
+    work_count: i64,
+    linked_release_count: i64,
+    unlinked_credit_count: i64,
+    image: Option<FfiImageRef>,
+}
+
+#[derive(Serialize)]
+struct FfiWorkSummary {
+    work_id: String,
+    title: String,
+    disambiguation: Option<String>,
+    work_type: Option<String>,
+    parent_work_id: Option<String>,
+    composer_names: Option<String>,
+    linked_release_count: i64,
+    representative_release_id: Option<String>,
+    representative_cover: Option<FfiImageRef>,
+}
+
+#[derive(Serialize)]
+struct FfiSearchResults {
+    albums: Vec<FfiAlbum>,
+    tracks: Vec<FfiTrackSearchResult>,
+    composers: Vec<FfiComposerSummary>,
+    works: Vec<FfiWorkSummary>,
+}
+
+fn composer_summary_to_ffi(
+    composer: bae_core::album_detail::ComposerSummary,
+) -> FfiComposerSummary {
+    FfiComposerSummary {
+        artist_id: composer.raw.artist.id,
+        name: composer.raw.artist.name,
+        sort_name: composer.raw.artist.sort_name,
+        work_count: composer.raw.work_count,
+        linked_release_count: composer.raw.linked_release_count,
+        unlinked_credit_count: composer.raw.unlinked_credit_count,
+        image: composer.image.map(FfiImageRef::from_core),
+    }
+}
+
+fn work_summary_to_ffi(work: bae_core::album_detail::WorkSummary) -> FfiWorkSummary {
+    FfiWorkSummary {
+        work_id: work.raw.work.id,
+        title: work.raw.work.title,
+        disambiguation: work.raw.work.disambiguation,
+        work_type: work.raw.work.work_type,
+        parent_work_id: work.raw.parent_work_id,
+        composer_names: work.raw.composer_names,
+        linked_release_count: work.raw.linked_release_count,
+        representative_release_id: work.raw.representative_release_id,
+        representative_cover: work.representative_cover.map(FfiImageRef::from_core),
+    }
+}
+
 /// Serialize `value` to a JSON C string the caller frees with [`bae_string_free`],
 /// or null on failure (logged).
 fn json_cstring<T: Serialize>(value: &T) -> *mut c_char {
@@ -1561,8 +1633,93 @@ pub unsafe extern "C" fn bae_album_page(
     json_cstring(&page)
 }
 
-/// Album results for `query` as the same JSON shape as [`bae_album_page`]
-/// (`{id, title, artist, cover}`), so the grid renders them directly.
+#[no_mangle]
+/// Returns the number of composer rows available to the library browser.
+///
+/// # Safety
+///
+/// `handle` must be a valid pointer returned by this library and must remain
+/// valid for the duration of the call.
+pub unsafe extern "C" fn bae_composer_count(handle: *const BaeHandle) -> i64 {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_composer_count: null handle");
+        return -1;
+    };
+    let app = &handle.0;
+    match app
+        .runtime
+        .block_on(app.services.library_manager().get_composer_count())
+    {
+        Ok(count) => count as i64,
+        Err(e) => {
+            tracing::error!("bae_composer_count failed: {e}");
+            -1
+        }
+    }
+}
+
+fn composer_sort_field_from_str(field: &str) -> Option<ComposerSortField> {
+    match field {
+        "name" => Some(ComposerSortField::Name),
+        "work_count" => Some(ComposerSortField::WorkCount),
+        "linked_release_count" => Some(ComposerSortField::LinkedReleaseCount),
+        _ => None,
+    }
+}
+
+#[no_mangle]
+/// Returns a JSON array of composer summaries for the requested page.
+///
+/// # Safety
+///
+/// `handle` must be a valid pointer returned by this library and must remain
+/// valid for the duration of the call. `sort_field` must be a valid
+/// NUL-terminated UTF-8 string: `name`, `work_count`, or
+/// `linked_release_count`.
+pub unsafe extern "C" fn bae_composer_page(
+    handle: *const BaeHandle,
+    offset: u64,
+    limit: u64,
+    sort_field: *const c_char,
+    ascending: bool,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_composer_page: null handle");
+        return std::ptr::null_mut();
+    };
+    let Some(sort_field) = cstr(sort_field) else {
+        tracing::error!("bae_composer_page: null or non-UTF-8 sort_field");
+        return std::ptr::null_mut();
+    };
+    let Some(field) = composer_sort_field_from_str(&sort_field) else {
+        tracing::error!("bae_composer_page: unknown sort field {sort_field}");
+        return std::ptr::null_mut();
+    };
+    let direction = if ascending {
+        SortDirection::Ascending
+    } else {
+        SortDirection::Descending
+    };
+    let app = &handle.0;
+    let sort = ComposerSortCriterion { field, direction };
+    let page = match app.runtime.block_on(
+        app.services
+            .library_manager()
+            .get_composer_page(sort, offset, limit),
+    ) {
+        Ok(composers) => composers
+            .into_iter()
+            .map(composer_summary_to_ffi)
+            .collect::<Vec<_>>(),
+        Err(e) => {
+            tracing::error!("bae_composer_page failed: {e}");
+            return std::ptr::null_mut();
+        }
+    };
+    json_cstring(&page)
+}
+
+/// Sectioned library results for `query`: albums, tracks, composers, and works.
 /// Returns null on error. Free the result with [`bae_string_free`].
 ///
 /// # Safety
@@ -1587,17 +1744,37 @@ pub unsafe extern "C" fn bae_search(handle: *const BaeHandle, query: *const c_ch
             return std::ptr::null_mut();
         }
     };
-    let albums: Vec<FfiAlbum> = results
-        .albums
-        .into_iter()
-        .map(|album| FfiAlbum {
-            id: album.id,
-            title: album.title,
-            artist: album.artist_name,
-            cover: album.cover.map(FfiImageRef::from_core),
-        })
-        .collect();
-    json_cstring(&albums)
+    let out = FfiSearchResults {
+        albums: results
+            .albums
+            .into_iter()
+            .map(|album| FfiAlbum {
+                id: album.id,
+                title: album.title,
+                artist: album.artist_name,
+                cover: album.cover.map(FfiImageRef::from_core),
+            })
+            .collect(),
+        tracks: results
+            .tracks
+            .into_iter()
+            .map(|track| FfiTrackSearchResult {
+                id: track.id,
+                title: track.title,
+                duration_ms: track.duration_ms,
+                album_id: track.album_id,
+                album_title: track.album_title,
+                artist_name: track.artist_name,
+            })
+            .collect(),
+        composers: results
+            .composers
+            .into_iter()
+            .map(composer_summary_to_ffi)
+            .collect(),
+        works: results.works.into_iter().map(work_summary_to_ffi).collect(),
+    };
+    json_cstring(&out)
 }
 
 /// Which byte source a gallery slot is read from, as a `kind`-tagged JSON object:
@@ -2261,6 +2438,69 @@ struct FfiAlbumDetail {
     releases: Vec<FfiRelease>,
 }
 
+#[derive(Serialize)]
+struct FfiReleaseRoleSummary {
+    release_id: String,
+    album_id: String,
+    album_title: String,
+    source_credit: Option<String>,
+}
+
+#[derive(Serialize)]
+struct FfiTrackRoleSummary {
+    track_id: String,
+    track_title: String,
+    release_id: String,
+    album_id: String,
+    album_title: String,
+    artist_id: String,
+    artist_name: String,
+    source_credit: Option<String>,
+}
+
+#[derive(Serialize)]
+struct FfiComposerWorkGroup {
+    id: String,
+    parent: Option<FfiWorkSummary>,
+    works: Vec<FfiWorkSummary>,
+}
+
+#[derive(Serialize)]
+struct FfiComposerDetail {
+    composer: FfiComposerSummary,
+    work_groups: Vec<FfiComposerWorkGroup>,
+    unlinked_release_roles: Vec<FfiReleaseRoleSummary>,
+    unlinked_track_roles: Vec<FfiTrackRoleSummary>,
+    default_work_id: Option<String>,
+}
+
+#[derive(Serialize)]
+struct FfiWorkReleaseSummary {
+    release_id: String,
+    album_id: String,
+    album_title: String,
+    display_name: String,
+    format: Option<String>,
+    cover: Option<FfiImageRef>,
+}
+
+#[derive(Serialize)]
+struct FfiWorkTrackSummary {
+    track_id: String,
+    track_title: String,
+    release_id: String,
+    album_id: String,
+    album_title: String,
+}
+
+#[derive(Serialize)]
+struct FfiWorkDetail {
+    work: FfiWorkSummary,
+    child_works: Vec<FfiWorkSummary>,
+    releases: Vec<FfiWorkReleaseSummary>,
+    tracks: Vec<FfiWorkTrackSummary>,
+}
+
 /// Full detail for one album as JSON, or null on error / not found. Free the
 /// result with [`bae_string_free`].
 ///
@@ -2334,6 +2574,145 @@ pub unsafe extern "C" fn bae_album_detail(
         primary_release_id: detail.primary_release_id,
         cover: detail.cover.map(FfiImageRef::from_core),
         releases,
+    };
+    json_cstring(&out)
+}
+
+#[no_mangle]
+/// Returns composer detail JSON for `artist_id`, or null when it is absent.
+///
+/// # Safety
+///
+/// `handle` must be a valid pointer returned by this library and must remain
+/// valid for the duration of the call. `artist_id` must be a valid
+/// NUL-terminated UTF-8 string.
+pub unsafe extern "C" fn bae_composer_detail(
+    handle: *const BaeHandle,
+    artist_id: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_composer_detail: null handle");
+        return std::ptr::null_mut();
+    };
+    let Some(artist_id) = cstr(artist_id) else {
+        tracing::error!("bae_composer_detail: null or non-UTF-8 artist_id");
+        return std::ptr::null_mut();
+    };
+    let app = &handle.0;
+    let detail = match app.runtime.block_on(
+        app.services
+            .library_manager()
+            .get_composer_detail(&artist_id),
+    ) {
+        Ok(Some(detail)) => detail,
+        Ok(None) => return std::ptr::null_mut(),
+        Err(e) => {
+            tracing::error!("bae_composer_detail failed: {e}");
+            return std::ptr::null_mut();
+        }
+    };
+    let out = FfiComposerDetail {
+        composer: composer_summary_to_ffi(detail.composer),
+        work_groups: detail
+            .work_groups
+            .into_iter()
+            .map(|group| FfiComposerWorkGroup {
+                id: group.id,
+                parent: group.parent.map(work_summary_to_ffi),
+                works: group.works.into_iter().map(work_summary_to_ffi).collect(),
+            })
+            .collect(),
+        unlinked_release_roles: detail
+            .unlinked_release_roles
+            .into_iter()
+            .map(|role| FfiReleaseRoleSummary {
+                release_id: role.role.release_id,
+                album_id: role.album.id,
+                album_title: role.album.title,
+                source_credit: role.role.source_credit,
+            })
+            .collect(),
+        unlinked_track_roles: detail
+            .unlinked_track_roles
+            .into_iter()
+            .map(|role| FfiTrackRoleSummary {
+                track_id: role.track.id,
+                track_title: role.track.title,
+                release_id: role.track.release_id,
+                album_id: role.album.id,
+                album_title: role.album.title,
+                artist_id: role.artist.id,
+                artist_name: role.artist.name,
+                source_credit: role.role.source_credit,
+            })
+            .collect(),
+        default_work_id: detail.default_work_id,
+    };
+    json_cstring(&out)
+}
+
+#[no_mangle]
+/// Returns work detail JSON for `work_id`, or null when it is absent.
+///
+/// # Safety
+///
+/// `handle` must be a valid pointer returned by this library and must remain
+/// valid for the duration of the call. `work_id` must be a valid
+/// NUL-terminated UTF-8 string.
+pub unsafe extern "C" fn bae_work_detail(
+    handle: *const BaeHandle,
+    work_id: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_work_detail: null handle");
+        return std::ptr::null_mut();
+    };
+    let Some(work_id) = cstr(work_id) else {
+        tracing::error!("bae_work_detail: null or non-UTF-8 work_id");
+        return std::ptr::null_mut();
+    };
+    let app = &handle.0;
+    let detail = match app
+        .runtime
+        .block_on(app.services.library_manager().get_work_detail(&work_id))
+    {
+        Ok(Some(detail)) => detail,
+        Ok(None) => return std::ptr::null_mut(),
+        Err(e) => {
+            tracing::error!("bae_work_detail failed: {e}");
+            return std::ptr::null_mut();
+        }
+    };
+    let out = FfiWorkDetail {
+        work: work_summary_to_ffi(detail.work),
+        child_works: detail
+            .child_works
+            .into_iter()
+            .map(work_summary_to_ffi)
+            .collect(),
+        releases: detail
+            .releases
+            .into_iter()
+            .map(|release| FfiWorkReleaseSummary {
+                release_id: release.release_id,
+                album_id: release.album_id,
+                album_title: release.album_title,
+                display_name: release.display_name,
+                format: release.format,
+                cover: release.cover.map(FfiImageRef::from_core),
+            })
+            .collect(),
+        tracks: detail
+            .tracks
+            .into_iter()
+            .map(|track| FfiWorkTrackSummary {
+                track_id: track.track.id,
+                track_title: track.track.title,
+                release_id: track.track.release_id,
+                album_id: track.album.id,
+                album_title: track.album.title,
+            })
+            .collect(),
     };
     json_cstring(&out)
 }
@@ -5027,5 +5406,86 @@ mod tests {
         assert_eq!(config.client_token, "token");
         assert_eq!(config.source, "windows");
         assert_eq!(config.app.environment, "dev");
+    }
+
+    #[test]
+    fn windows_library_search_json_preserves_section_and_work_release_fields() {
+        let search = FfiSearchResults {
+            albums: vec![FfiAlbum {
+                id: "album-a".to_string(),
+                title: "Album Title A".to_string(),
+                artist: "Artist Name A".to_string(),
+                cover: None,
+            }],
+            tracks: vec![FfiTrackSearchResult {
+                id: "track-a".to_string(),
+                title: "Track Title A".to_string(),
+                duration_ms: Some(1000),
+                album_id: "album-a".to_string(),
+                album_title: "Album Title A".to_string(),
+                artist_name: "Artist Name A".to_string(),
+            }],
+            composers: vec![FfiComposerSummary {
+                artist_id: "artist-a".to_string(),
+                name: "Composer Name A".to_string(),
+                sort_name: None,
+                work_count: 1,
+                linked_release_count: 1,
+                unlinked_credit_count: 0,
+                image: None,
+            }],
+            works: vec![FfiWorkSummary {
+                work_id: "work-a".to_string(),
+                title: "Work Title A".to_string(),
+                disambiguation: None,
+                work_type: Some("work".to_string()),
+                parent_work_id: None,
+                composer_names: Some("Composer Name A".to_string()),
+                linked_release_count: 1,
+                representative_release_id: Some("release-a".to_string()),
+                representative_cover: None,
+            }],
+        };
+        let work_release = FfiWorkReleaseSummary {
+            release_id: "release-a".to_string(),
+            album_id: "album-a".to_string(),
+            album_title: "Album Title A".to_string(),
+            display_name: "2026 CD".to_string(),
+            format: Some("CD".to_string()),
+            cover: None,
+        };
+
+        let search_json = serde_json::to_value(search).expect("search json");
+        assert!(search_json.get("albums").is_some());
+        assert!(search_json.get("tracks").is_some());
+        assert!(search_json.get("composers").is_some());
+        assert!(search_json.get("works").is_some());
+        assert_eq!(search_json["tracks"][0]["album_id"], "album-a");
+        assert_eq!(search_json["composers"][0]["artist_id"], "artist-a");
+        assert_eq!(search_json["works"][0]["work_id"], "work-a");
+
+        let release_json = serde_json::to_value(work_release).expect("work release json");
+        assert_eq!(release_json["release_id"], "release-a");
+        assert_eq!(release_json["album_id"], "album-a");
+        assert_eq!(release_json["album_title"], "Album Title A");
+        assert_eq!(release_json["display_name"], "2026 CD");
+    }
+
+    #[test]
+    fn windows_composer_sort_tags_use_public_wire_names() {
+        assert!(matches!(
+            super::composer_sort_field_from_str("name"),
+            Some(ComposerSortField::Name)
+        ));
+        assert!(matches!(
+            super::composer_sort_field_from_str("work_count"),
+            Some(ComposerSortField::WorkCount)
+        ));
+        assert!(matches!(
+            super::composer_sort_field_from_str("linked_release_count"),
+            Some(ComposerSortField::LinkedReleaseCount)
+        ));
+        assert!(super::composer_sort_field_from_str("works").is_none());
+        assert!(super::composer_sort_field_from_str("releases").is_none());
     }
 }

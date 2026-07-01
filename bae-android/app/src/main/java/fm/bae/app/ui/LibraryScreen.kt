@@ -74,19 +74,31 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeAlbum
+import uniffi.bae_bridge.BridgeComposerSortCriterion
+import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
 
 private const val TAG = "bae.LibraryScreen"
 private val logger = BaeLogger(TAG)
-private const val PAGE_SIZE = 60
+internal const val PAGE_SIZE = 60
 private const val GRID_PREFETCH_AHEAD = 12
 private const val PULL_REFRESH_SETTLE_MS = 900L
 
-private class PageError(
+internal class PageError(
     val message: String,
     val onRetry: () -> Unit,
+)
+
+internal enum class LibraryBrowserMode {
+    ALBUMS,
+    COMPOSERS,
+}
+
+private data class AlbumTarget(
+    val albumId: String,
+    val initialReleaseId: String? = null,
 )
 
 /**
@@ -96,7 +108,7 @@ private class PageError(
  * in composition recompose on change. (Each album carries its own cover
  * reference; the grid cards fetch the bytes by id.)
  */
-private class LibraryPage(
+internal class LibraryPage(
     private val session: OpenLibrary,
     private val sortCriterion: BridgeSortCriterion,
     private val appContext: Context,
@@ -162,7 +174,7 @@ private class LibraryPage(
 }
 
 @Composable
-private fun rememberLibraryPage(
+internal fun rememberLibraryPage(
     session: OpenLibrary,
     generation: Long,
     sortCriterion: BridgeSortCriterion,
@@ -195,13 +207,43 @@ fun LibraryScreen(
     session: OpenLibrary,
     onLeaveLibrary: () -> Unit,
 ) {
-    var selectedAlbumId by remember { mutableStateOf<String?>(null) }
+    var selectedAlbum by remember { mutableStateOf<AlbumTarget?>(null) }
+    var selectedComposerId by remember { mutableStateOf<String?>(null) }
+    var selectedWorkId by remember { mutableStateOf<String?>(null) }
     var showSettings by remember { mutableStateOf(false) }
     var showMembers by remember { mutableStateOf(false) }
-    val selected = selectedAlbumId
+    val selected = selectedAlbum
     when {
         selected != null -> {
-            AlbumDetailScreen(session = session, albumId = selected, onBack = { selectedAlbumId = null })
+            AlbumDetailScreen(
+                session = session,
+                albumId = selected.albumId,
+                initialReleaseId = selected.initialReleaseId,
+                onBack = { selectedAlbum = null },
+            )
+        }
+
+        selectedWorkId != null -> {
+            val workId = selectedWorkId ?: return
+            WorkDetailScreen(
+                session = session,
+                workId = workId,
+                onBack = { selectedWorkId = null },
+                onSelectWork = { selectedWorkId = it },
+                onSelectAlbum = { albumId, releaseId ->
+                    selectedAlbum = AlbumTarget(albumId, releaseId)
+                },
+            )
+        }
+
+        selectedComposerId != null -> {
+            ComposerDetailScreen(
+                session = session,
+                artistId = selectedComposerId,
+                onBack = { selectedComposerId = null },
+                onSelectWork = { selectedWorkId = it },
+                onSelectAlbum = { selectedAlbum = AlbumTarget(it) },
+            )
         }
 
         showMembers -> {
@@ -220,7 +262,9 @@ fun LibraryScreen(
         else -> {
             LibraryBrowser(
                 session = session,
-                onSelectAlbum = { selectedAlbumId = it },
+                onSelectAlbum = { selectedAlbum = AlbumTarget(it) },
+                onSelectComposer = { selectedComposerId = it },
+                onSelectWork = { selectedWorkId = it },
                 onSettings = { showSettings = true },
             )
         }
@@ -229,74 +273,7 @@ fun LibraryScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LibraryBrowser(
-    session: OpenLibrary,
-    onSelectAlbum: (String) -> Unit,
-    onSettings: () -> Unit,
-) {
-    var searchQuery by remember { mutableStateOf("") }
-    var searchOpen by remember { mutableStateOf(false) }
-    var sortCriterion by
-        remember { mutableStateOf(BridgeSortCriterion(BridgeSortField.DATE_ADDED, BridgeSortDirection.DESCENDING)) }
-    val generation by session.libraryStore.generation.collectAsState()
-    val syncing by session.configStore.syncing.collectAsState()
-    val syncError by session.configStore.syncError.collectAsState()
-    val appError by session.configStore.error.collectAsState()
-    val gridState = rememberLazyGridState()
-    val page = rememberLibraryPage(session, generation, sortCriterion, LocalContext.current, gridState)
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (searchOpen) {
-            LibrarySearchBar(
-                query = searchQuery,
-                onQueryChange = { searchQuery = it },
-                onClose = {
-                    searchOpen = false
-                    searchQuery = ""
-                },
-            )
-        } else {
-            LibraryTopBar(
-                onOpenSearch = { searchOpen = true },
-                onShuffleLibrary = {
-                    try {
-                        session.appHandle.playLibraryShuffled()
-                    } catch (e: Exception) {
-                        logger.error("playLibraryShuffled failed", e)
-                    }
-                },
-                sortCriterion = sortCriterion,
-                onSortChange = { sortCriterion = it },
-                onSettings = onSettings,
-            )
-        }
-        if (syncing) {
-            LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surface,
-            )
-        }
-        LibraryErrorBanner(page = page, appError = appError, syncError = syncError, session = session)
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (searchQuery.isNotBlank()) {
-                SearchResultsScreen(session = session, query = searchQuery, onSelectAlbum = onSelectAlbum)
-            } else {
-                LibraryGridContent(
-                    session = session,
-                    page = page,
-                    gridState = gridState,
-                    onSelectAlbum = onSelectAlbum,
-                )
-            }
-        }
-        NowPlayingBar(session = session)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LibraryGridContent(
+internal fun LibraryGridContent(
     session: OpenLibrary,
     page: LibraryPage,
     gridState: LazyGridState,
@@ -361,7 +338,7 @@ private fun LibraryGridContent(
 }
 
 @Composable
-private fun LibraryErrorBanner(
+internal fun LibraryErrorBanner(
     page: LibraryPage,
     appError: String?,
     syncError: String?,
@@ -381,11 +358,14 @@ private fun LibraryErrorBanner(
 }
 
 @Composable
-private fun LibraryTopBar(
+internal fun LibraryTopBar(
     onOpenSearch: () -> Unit,
     onShuffleLibrary: () -> Unit,
+    mode: LibraryBrowserMode,
     sortCriterion: BridgeSortCriterion,
     onSortChange: (BridgeSortCriterion) -> Unit,
+    composerSortCriterion: BridgeComposerSortCriterion,
+    onComposerSortChange: (BridgeComposerSortCriterion) -> Unit,
     onSettings: () -> Unit,
 ) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
@@ -404,7 +384,18 @@ private fun LibraryTopBar(
                     contentDescription = stringResource(R.string.shuffle_library),
                 )
             }
-            SortMenu(criterion = sortCriterion, onChange = onSortChange)
+            when (mode) {
+                LibraryBrowserMode.ALBUMS -> {
+                    SortMenu(criterion = sortCriterion, onChange = onSortChange)
+                }
+
+                LibraryBrowserMode.COMPOSERS -> {
+                    ComposerSortMenu(
+                        criterion = composerSortCriterion,
+                        onChange = onComposerSortChange,
+                    )
+                }
+            }
             IconButton(onClick = onSettings) {
                 Icon(imageVector = Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
             }
@@ -413,7 +404,31 @@ private fun LibraryTopBar(
 }
 
 @Composable
-private fun LibrarySearchBar(
+internal fun LibraryModeBar(
+    mode: LibraryBrowserMode,
+    onModeChange: (LibraryBrowserMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        TextButton(onClick = { onModeChange(LibraryBrowserMode.ALBUMS) }) {
+            Text(
+                text = stringResource(R.string.library_mode_albums),
+                fontWeight = if (mode == LibraryBrowserMode.ALBUMS) FontWeight.Bold else FontWeight.Normal,
+            )
+        }
+        TextButton(onClick = { onModeChange(LibraryBrowserMode.COMPOSERS) }) {
+            Text(
+                text = stringResource(R.string.library_mode_composers),
+                fontWeight = if (mode == LibraryBrowserMode.COMPOSERS) FontWeight.Bold else FontWeight.Normal,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun LibrarySearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onClose: () -> Unit,

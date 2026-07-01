@@ -85,8 +85,7 @@ impl LibraryManager {
         let Some(raw) = self.database.find_work_detail(work_id).await? else {
             return Ok(None);
         };
-        let has_cloud_home = self.has_cloud_home();
-        let release_ids: Vec<String> = raw.releases.iter().map(|r| r.id.clone()).collect();
+        let release_ids: Vec<String> = raw.releases.iter().map(|r| r.release_id.clone()).collect();
         let covers = self.cover_refs(&release_ids).await?;
         let work_cover = raw
             .work
@@ -99,17 +98,6 @@ impl LibraryManager {
             .filter_map(|work| work.representative_release_id.clone())
             .collect();
         let child_covers = self.cover_refs(&child_release_ids).await?;
-        let mut releases = Vec::with_capacity(raw.releases.len());
-        for release in raw.releases {
-            let pinned = self.release_pinned(release.any_file_id.as_deref()).await?;
-            let cover = covers.get(&release.id).cloned();
-            let ctx = ReleaseResolveCtx {
-                has_cloud_home,
-                pinned,
-                cover,
-            };
-            releases.push(ReleaseSummary::from_raw(release, &ctx));
-        }
         Ok(Some(WorkDetail {
             work: WorkSummary::from_raw(raw.work, work_cover),
             child_works: raw
@@ -117,7 +105,14 @@ impl LibraryManager {
                 .into_iter()
                 .map(|work| work_summary_with_cover(work, &child_covers))
                 .collect(),
-            releases,
+            releases: raw
+                .releases
+                .into_iter()
+                .map(|release| {
+                    let cover = covers.get(&release.release_id).cloned();
+                    WorkReleaseSummary::from_raw(release, cover)
+                })
+                .collect(),
             tracks: raw.tracks,
         }))
     }

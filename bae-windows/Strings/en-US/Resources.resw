@@ -180,7 +180,7 @@
   <data name="s3.field.key_prefix" xml:space="preserve"><value>key prefix (optional)</value></data>
   <data name="s3.field.region" xml:space="preserve"><value>region</value></data>
   <data name="s3.field.secret_key" xml:space="preserve"><value>secret key</value></data>
-  <data name="search.failed" xml:space="preserve"><value>search failed</value></data>
+  <data name="search.failed" xml:space="preserve"><value>Search failed</value></data>
   <data name="search.field.album" xml:space="preserve"><value>album</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>artist</value></data>
   <data name="search.field.source" xml:space="preserve"><value>source</value></data>
@@ -216,6 +216,7 @@
   <data name="signal.kind.catalog" xml:space="preserve"><value>Catalog</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
+  <data name="sort.name" xml:space="preserve"><value>name</value></data>
   <data name="sort.newest" xml:space="preserve"><value>newest</value></data>
   <data name="sort.title" xml:space="preserve"><value>title</value></data>
   <data name="sort.year" xml:space="preserve"><value>year</value></data>
@@ -270,4 +271,17 @@
   <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP token unavailable</value></data>
   <data name="settings.automation.token_copied" xml:space="preserve"><value>token copied</value></data>
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>token rotated and copied</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>Albums</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>Composers</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>No composers</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>Albums</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>Tracks</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>Composers</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>Works</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>Releases</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>Credits</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>Recordings</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
 </root>

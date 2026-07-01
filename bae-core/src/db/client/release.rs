@@ -8,6 +8,31 @@ impl Database {
         self.call(move |conn| insert_release_row(conn, &release, &reg))
             .await
     }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn insert_composition_fixture_rows(
+        &self,
+        works: &[DbWork],
+        track_works: &[DbTrackWork],
+        images: &[DbLibraryImage],
+    ) -> Result<(), DbError> {
+        let (works, track_works, images) = (works.to_vec(), track_works.to_vec(), images.to_vec());
+        let reg = self.register_stamp().await?;
+        self.call(move |conn| {
+            for work in &works {
+                insert_work_row(conn, work, &reg)?;
+            }
+            for track_work in &track_works {
+                insert_track_work_row(conn, track_work, &reg)?;
+            }
+            for image in &images {
+                upsert_library_image_row(conn, image, &reg)?;
+            }
+            Ok(())
+        })
+        .await
+    }
+
     /// Insert album, release, and tracks in a single transaction
     /// Note: Artists and artist relationships should be inserted separately before calling this
     pub async fn insert_album_with_release_and_tracks(

@@ -31,9 +31,9 @@ use tracing::{debug, error, info, warn};
 use crate::album_detail::{
     join_artist_names, AlbumDetail, AlbumSummary, ComposerDetail, ComposerSummary,
     ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail, ReleaseResolveCtx,
-    ReleaseStorageAction, ReleaseStorageSummary, ReleaseSummary, SearchResults, StorageFilter,
-    StoragePage, StorageRow, StorageSort, StorageSortDirection, StorageSortField, WorkDetail,
-    WorkSummary,
+    ReleaseStorageAction, ReleaseStorageSummary, SearchResults, StorageFilter, StoragePage,
+    StorageRow, StorageSort, StorageSortDirection, StorageSortField, WorkDetail,
+    WorkReleaseSummary, WorkSummary,
 };
 #[cfg(feature = "oauth-providers")]
 use crate::config::CloudProvider;

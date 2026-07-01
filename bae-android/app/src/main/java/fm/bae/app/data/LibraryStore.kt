@@ -36,6 +36,9 @@ class LibraryStore {
     private val _generation = MutableStateFlow(0L)
     val generation: StateFlow<Long> = _generation.asStateFlow()
 
+    private val _composerGeneration = MutableStateFlow(0L)
+    val composerGeneration: StateFlow<Long> = _composerGeneration.asStateFlow()
+
     fun albumDetail(albumId: String): BridgeAlbumDetail? = _albumDetails.value[albumId]
 
     /**
@@ -58,21 +61,28 @@ class LibraryStore {
         _generation.update { it + 1 }
     }
 
+    private fun bumpComposerGeneration() {
+        _composerGeneration.update { it + 1 }
+    }
+
     // ── Album event handlers ──────────────────────────────────────────────
 
     fun handleAlbumAdded(album: BridgeAlbumDetail) {
         _albumDetails.update { it + (album.album.id to album) }
         bumpGeneration()
+        bumpComposerGeneration()
     }
 
     fun handleAlbumUpdated(album: BridgeAlbumDetail) {
         _albumDetails.update { it + (album.album.id to album) }
         bumpGeneration()
+        bumpComposerGeneration()
     }
 
     fun handleAlbumRemoved(albumId: String) {
         _albumDetails.update { it - albumId }
         bumpGeneration()
+        bumpComposerGeneration()
     }
 
     // ── Release event handlers ────────────────────────────────────────────
@@ -93,6 +103,7 @@ class LibraryStore {
             val releases = (existing?.releases.orEmpty().filter { it.id != release.id }) + release
             details + (album.id to BridgeAlbumDetail(album = album, releases = releases))
         }
+        bumpComposerGeneration()
     }
 
     fun handleReleaseUpdated(
@@ -108,6 +119,7 @@ class LibraryStore {
             val releases = existing.releases.map { if (it.id == release.id) release else it }
             details + (albumId to existing.copy(releases = releases))
         }
+        bumpComposerGeneration()
     }
 
     fun handleReleaseRemoved(
@@ -129,5 +141,6 @@ class LibraryStore {
             // authoritative DB-ordered list, not the stale interned one.
             details + (albumId to BridgeAlbumDetail(album = album, releases = releases))
         }
+        bumpComposerGeneration()
     }
 }

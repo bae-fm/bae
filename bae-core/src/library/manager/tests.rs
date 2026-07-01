@@ -1,8 +1,10 @@
 use super::*;
 use crate::config::Config;
-use crate::db::{DbAlbum, DbRelease};
+use crate::db::{DbAlbum, DbLibraryImage, DbRelease, DbTrackWork, DbWork, LibraryImageType};
+use crate::import::MetadataSource;
 #[cfg(feature = "test-utils")]
 use crate::sync::CloudCipher;
+use crate::util::content_type::ContentType;
 use chrono::Utc;
 #[cfg(feature = "test-utils")]
 use coven::InMemoryCloudHome;
@@ -133,6 +135,64 @@ fn create_test_release(album_id: &str) -> DbRelease {
         album_peak_linear: None,
         created_at: Utc::now(),
     }
+}
+
+#[tokio::test]
+async fn work_detail_release_rows_are_display_ready() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let mut release = create_test_release(&album.id);
+    release.pressing.format = Some("CD".to_string());
+    let track = crate::db::DbTrack::new_test(&release.id, "track-a", "Track Title", Some(1));
+    let now = Utc::now();
+    let work = DbWork::new("work-a", "Work Title", None, Some("work".to_string()), now);
+    let track_work = DbTrackWork::new(
+        &track.id,
+        &work.id,
+        0,
+        MetadataSource::MusicBrainz,
+        "track-work-a".to_string(),
+        now,
+    );
+    let cover = DbLibraryImage {
+        id: release.id.clone(),
+        image_type: LibraryImageType::Cover,
+        content_type: ContentType::Jpeg,
+        file_size: 100,
+        width: None,
+        height: None,
+        source: "local".to_string(),
+        source_url: None,
+        cloud_path: None,
+        created_at: now,
+    };
+
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    manager.database.insert_track(&track).await.unwrap();
+    manager
+        .database
+        .insert_composition_fixture_rows(std::slice::from_ref(&work), &[track_work], &[cover])
+        .await
+        .unwrap();
+
+    let detail = manager
+        .get_work_detail(&work.id)
+        .await
+        .unwrap()
+        .expect("work detail");
+
+    assert_eq!(detail.releases.len(), 1);
+    let row = &detail.releases[0];
+    assert_eq!(row.release_id, release.id);
+    assert_eq!(row.album_id, album.id);
+    assert_eq!(row.album_title, album.title);
+    assert_eq!(row.display_name, "2024 CD");
+    assert_eq!(row.format.as_deref(), Some("CD"));
+    let cover = row.cover.as_ref().expect("work release cover");
+    assert_eq!(cover.id, release.id);
+    assert!(!cover.version.is_empty());
+    assert_eq!(cover.image_type, crate::db::LibraryImageType::Cover);
 }
 
 #[tokio::test]

@@ -24,7 +24,7 @@
     <string name="settings">Settings</string>
     <string name="close_search">Close search</string>
     <string name="clear_search">Clear search</string>
-    <string name="search_placeholder">Search albums and tracks</string>
+    <string name="search_placeholder">Search albums, tracks, composers, and works</string>
     <string name="sort">Sort</string>
     <string name="sort_title">Title</string>
     <string name="sort_artist">Artist</string>
@@ -76,6 +76,20 @@
     <string name="search_no_results">No results for “%1$s”</string>
     <string name="search_section_albums">Albums</string>
     <string name="search_section_tracks">Tracks</string>
+    <string name="work_count">%1$d Works</string>
+    <string name="work_detail_load_failed">Couldn\'t load this work.</string>
+    <string name="work_detail_not_found">Work detail not found</string>
+    <string name="composer_detail_load_failed">Couldn\'t load this composer.</string>
+    <string name="composer_detail_not_found">Composer detail not found</string>
+    <string name="search_section_recordings">Recordings</string>
+    <string name="search_section_credits">Credits</string>
+    <string name="search_section_releases">Releases</string>
+    <string name="search_section_works">Works</string>
+    <string name="search_section_composers">Composers</string>
+    <string name="library_empty_composers">No composers</string>
+    <string name="library_mode_composers">Composers</string>
+    <string name="library_mode_albums">Albums</string>
+    <string name="sort_name">Name</string>
 
     <!-- Gallery -->
     <string name="gallery_load_failed">Couldn\'t load image</string>

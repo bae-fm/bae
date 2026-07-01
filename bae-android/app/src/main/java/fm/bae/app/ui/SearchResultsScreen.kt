@@ -27,16 +27,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.formatDurationMs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import uniffi.bae_bridge.BridgeAlbumSearchResult
+import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackSearchResult
+import uniffi.bae_bridge.BridgeWorkSummary
 
 private const val DEBOUNCE_MS = 300L
+private const val TAG = "bae.SearchResultsScreen"
+private val logger = BaeLogger(TAG)
+
+internal fun BridgeSearchResults.hasNoResults(): Boolean =
+    albums.isEmpty() &&
+        tracks.isEmpty() &&
+        composers.isEmpty() &&
+        works.isEmpty()
 
 private suspend fun fetchSearchResults(
     session: OpenLibrary,
@@ -59,6 +70,8 @@ fun SearchResultsScreen(
     session: OpenLibrary,
     query: String,
     onSelectAlbum: (String) -> Unit,
+    onSelectComposer: (String) -> Unit,
+    onSelectWork: (String) -> Unit,
 ) {
     var results by remember { mutableStateOf<BridgeSearchResults?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -77,7 +90,8 @@ fun SearchResultsScreen(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            error = e.message ?: appContext.getString(R.string.search_failed)
+            logger.error("Search failed", e)
+            error = appContext.getString(R.string.search_failed)
         } finally {
             loading = false
         }
@@ -99,7 +113,8 @@ fun SearchResultsScreen(
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
 
-            current != null && current.albums.isEmpty() && current.tracks.isEmpty() -> {
+            current != null &&
+                current.hasNoResults() -> {
                 Text(
                     text = stringResource(R.string.search_no_results, query),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -112,6 +127,8 @@ fun SearchResultsScreen(
                     results = current,
                     loadImage = session.library::imageBytes,
                     onSelectAlbum = onSelectAlbum,
+                    onSelectComposer = onSelectComposer,
+                    onSelectWork = onSelectWork,
                 )
             }
         }
@@ -123,6 +140,8 @@ private fun SearchResultsList(
     results: BridgeSearchResults,
     loadImage: suspend (imageId: String) -> ByteArray?,
     onSelectAlbum: (String) -> Unit,
+    onSelectComposer: (String) -> Unit,
+    onSelectWork: (String) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         if (results.albums.isNotEmpty()) {
@@ -141,6 +160,26 @@ private fun SearchResultsList(
                 TrackResultRow(
                     track = track,
                     onClick = { onSelectAlbum(track.albumId) },
+                )
+            }
+        }
+        if (results.composers.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.search_section_composers)) }
+            items(results.composers, key = { "composer:${it.artistId}" }) { composer ->
+                ComposerResultRow(
+                    composer = composer,
+                    loadImage = loadImage,
+                    onClick = { onSelectComposer(composer.artistId) },
+                )
+            }
+        }
+        if (results.works.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.search_section_works)) }
+            items(results.works, key = { "work:${it.workId}" }) { work ->
+                WorkResultRow(
+                    work = work,
+                    loadImage = loadImage,
+                    onClick = { onSelectWork(work.workId) },
                 )
             }
         }
@@ -233,6 +272,90 @@ private fun TrackResultRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+@Composable
+private fun ComposerResultRow(
+    composer: BridgeComposerSummary,
+    loadImage: suspend (imageId: String) -> ByteArray?,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CoverImage(
+            coverId = composer.image?.id,
+            coverVersion = composer.image?.version,
+            loadImage = loadImage,
+            cornerRadius = 4.dp,
+            iconPadding = 12.dp,
+            modifier = Modifier.size(48.dp),
+            contentDescription = composer.name,
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = composer.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+            )
+            Text(
+                text = stringResource(R.string.work_count, composer.workCount.toLong()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WorkResultRow(
+    work: BridgeWorkSummary,
+    loadImage: suspend (imageId: String) -> ByteArray?,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CoverImage(
+            coverId = work.representativeCover?.id,
+            coverVersion = work.representativeCover?.version,
+            loadImage = loadImage,
+            cornerRadius = 4.dp,
+            iconPadding = 12.dp,
+            modifier = Modifier.size(48.dp),
+            contentDescription = work.title,
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = work.title,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+            )
+            val composerNames = work.composerNames
+            if (!composerNames.isNullOrBlank()) {
+                Text(
+                    text = composerNames,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

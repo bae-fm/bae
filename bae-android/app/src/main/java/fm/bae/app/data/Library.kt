@@ -3,8 +3,12 @@ package fm.bae.app.data
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeComposerDetail
+import uniffi.bae_bridge.BridgeComposerSortCriterion
+import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
+import uniffi.bae_bridge.BridgeWorkDetail
 
 /**
  * Narrow projection of [AppHandle] for library browse and detail reads — DB
@@ -24,6 +28,18 @@ class Library(
     ): List<BridgeAlbum> = handle.getAlbumPage(sortCriteria, offset, limit)
 
     fun albumDetail(albumId: String): BridgeAlbumDetail = handle.getAlbumDetail(albumId)
+
+    fun composerCount(): ULong = handle.getComposerCount()
+
+    fun composerPage(
+        sortCriterion: BridgeComposerSortCriterion,
+        offset: ULong,
+        limit: ULong,
+    ): List<BridgeComposerSummary> = handle.getComposerPage(sortCriterion, offset, limit)
+
+    fun composerDetail(artistId: String): BridgeComposerDetail? = handle.getComposerDetail(artistId)
+
+    fun workDetail(workId: String): BridgeWorkDetail? = handle.getWorkDetail(workId)
 
     /** Bytes of a release cover by release id, read through coven's
      *  locality-aware store, or null when no such cover exists. */

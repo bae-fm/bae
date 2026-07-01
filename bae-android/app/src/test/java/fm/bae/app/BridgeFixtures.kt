@@ -2,6 +2,10 @@ package fm.bae.app
 
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumSearchResult
+import uniffi.bae_bridge.BridgeComposerDetail
+import uniffi.bae_bridge.BridgeComposerSummary
+import uniffi.bae_bridge.BridgeComposerWorkGroup
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeExportLocation
@@ -9,7 +13,13 @@ import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseStorageState
+import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackGroup
+import uniffi.bae_bridge.BridgeTrackSearchResult
+import uniffi.bae_bridge.BridgeWorkDetail
+import uniffi.bae_bridge.BridgeWorkReleaseSummary
+import uniffi.bae_bridge.BridgeWorkSummary
+import uniffi.bae_bridge.BridgeWorkTrackSummary
 
 /**
  * Plain `Bridge*` data-class constructors for the JVM unit tests. These build
@@ -68,6 +78,135 @@ object BridgeFixtures {
         album: BridgeAlbum,
         releases: List<BridgeRelease> = listOf(release(id = album.primaryReleaseId, albumId = album.id)),
     ): BridgeAlbumDetail = BridgeAlbumDetail(album = album, releases = releases)
+
+    fun albumSearchResult(
+        id: String = "alb-1",
+        title: String = "Album Title",
+    ): BridgeAlbumSearchResult =
+        BridgeAlbumSearchResult(
+            id = id,
+            title = title,
+            year = null,
+            artistName = "Artist Name",
+            cover = null,
+        )
+
+    fun trackSearchResult(
+        id: String = "trk-1",
+        albumId: String = "alb-1",
+    ): BridgeTrackSearchResult =
+        BridgeTrackSearchResult(
+            id = id,
+            title = "Track Title",
+            durationMs = null,
+            albumId = albumId,
+            albumTitle = "Album Title",
+            artistName = "Artist Name",
+        )
+
+    fun composerSummary(
+        artistId: String = "artist-1",
+        name: String = "Composer Name",
+    ): BridgeComposerSummary =
+        BridgeComposerSummary(
+            artistId = artistId,
+            name = name,
+            sortName = null,
+            workCount = 1L,
+            linkedReleaseCount = 1L,
+            unlinkedCreditCount = 0L,
+            image = null,
+        )
+
+    fun workSummary(
+        workId: String = "work-1",
+        title: String = "Work Title",
+    ): BridgeWorkSummary =
+        BridgeWorkSummary(
+            workId = workId,
+            title = title,
+            disambiguation = null,
+            workType = null,
+            parentWorkId = null,
+            composerNames = "Composer Name",
+            linkedReleaseCount = 1L,
+            representativeReleaseId = "rel-1",
+            representativeCover = null,
+        )
+
+    fun composerWorkGroup(
+        id: String = "group-1",
+        parent: BridgeWorkSummary? = null,
+        works: List<BridgeWorkSummary> = listOf(workSummary()),
+    ): BridgeComposerWorkGroup =
+        BridgeComposerWorkGroup(
+            id = id,
+            parent = parent,
+            works = works,
+        )
+
+    fun composerDetail(
+        composer: BridgeComposerSummary = composerSummary(),
+        workGroups: List<BridgeComposerWorkGroup> = listOf(composerWorkGroup()),
+    ): BridgeComposerDetail =
+        BridgeComposerDetail(
+            composer = composer,
+            workGroups = workGroups,
+            unlinkedReleaseRoles = emptyList(),
+            unlinkedTrackRoles = emptyList(),
+            defaultWorkId = null,
+        )
+
+    fun workReleaseSummary(
+        releaseId: String = "rel-1",
+        albumId: String = "alb-1",
+    ): BridgeWorkReleaseSummary =
+        BridgeWorkReleaseSummary(
+            releaseId = releaseId,
+            albumId = albumId,
+            albumTitle = "Album Title",
+            displayName = "Release",
+            format = "Format",
+            cover = null,
+        )
+
+    fun workTrackSummary(
+        trackId: String = "trk-1",
+        releaseId: String = "rel-1",
+        albumId: String = "alb-1",
+    ): BridgeWorkTrackSummary =
+        BridgeWorkTrackSummary(
+            trackId = trackId,
+            trackTitle = "Track Title",
+            releaseId = releaseId,
+            albumId = albumId,
+            albumTitle = "Album Title",
+        )
+
+    fun workDetail(
+        work: BridgeWorkSummary = workSummary(),
+        releases: List<BridgeWorkReleaseSummary> = listOf(workReleaseSummary()),
+        tracks: List<BridgeWorkTrackSummary> = listOf(workTrackSummary()),
+    ): BridgeWorkDetail =
+        BridgeWorkDetail(
+            work = work,
+            childWorks = emptyList(),
+            releases = releases,
+            tracks = tracks,
+        )
+
+    fun searchResults(
+        albums: List<BridgeAlbumSearchResult> = emptyList(),
+        tracks: List<BridgeTrackSearchResult> = emptyList(),
+        composers: List<BridgeComposerSummary> = emptyList(),
+        works: List<BridgeWorkSummary> = emptyList(),
+    ): BridgeSearchResults =
+        BridgeSearchResults(
+            albums = albums,
+            tracks = tracks,
+            composers = composers,
+            works = works,
+        )
 
     fun config(libraryId: String = "lib-1"): BridgeConfig =
         BridgeConfig(

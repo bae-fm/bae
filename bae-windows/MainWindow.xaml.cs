@@ -36,16 +36,30 @@ public sealed partial class MainWindow : Window
     // time; Field is the locale-free sort identifier the FFI expects (never
     // localized).
     private sealed record SortOption(string LabelKey, string Field, bool Ascending);
+    private enum BrowserMode
+    {
+        Albums,
+        Composers,
+    }
 
-    private static readonly SortOption[] SortOptions =
+    private static readonly SortOption[] AlbumSortOptions =
     {
         new("sort.newest", "date_added", false),
         new("sort.title", "title", true),
         new("sort.artist", "artist", true),
         new("sort.year", "year", true),
     };
+    private static readonly SortOption[] ComposerSortOptions =
+    {
+        new("sort.name", "name", true),
+        new("search.section.works", "work_count", false),
+        new("search.section.releases", "linked_release_count", false),
+    };
 
-    private SortOption _sort = SortOptions[0];
+    private SortOption _albumSort = AlbumSortOptions[0];
+    private SortOption _composerSort = ComposerSortOptions[0];
+    private BrowserMode _browserMode = BrowserMode.Albums;
+    private bool _populatingSortBox;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -135,6 +149,7 @@ public sealed partial class MainWindow : Window
     private string? _nowPlayingTrackId;
 
     public ObservableCollection<Album> Albums { get; } = new();
+    public ObservableCollection<ComposerSummary> Composers { get; } = new();
 
     public MainWindow()
     {
@@ -149,11 +164,10 @@ public sealed partial class MainWindow : Window
             ? FlowDirection.RightToLeft
             : FlowDirection.LeftToRight;
 
-        foreach (var option in SortOptions)
-        {
-            SortBox.Items.Add(Loc.Chrome(option.LabelKey));
-        }
-        SortBox.SelectedIndex = 0;
+        BrowserModeBox.Items.Add(Loc.Chrome("library.mode.albums"));
+        BrowserModeBox.Items.Add(Loc.Chrome("library.mode.composers"));
+        PopulateSortBox();
+        BrowserModeBox.SelectedIndex = 0;
 
         // Seek on release, not on every drag tick. The Slider handles pointer
         // events internally, so register with handledEventsToo.
@@ -174,18 +188,103 @@ public sealed partial class MainWindow : Window
 
     private void OnSortChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_populatingSortBox)
+        {
+            return;
+        }
         if (SortBox.SelectedIndex < 0)
         {
             return;
         }
 
-        _sort = SortOptions[SortBox.SelectedIndex];
+        SetActiveSort(ActiveSortOptions[SortBox.SelectedIndex]);
 
         // Sort drives the full-library view; search results keep their relevance
         // order. Reload only when no search is active and the library is open.
         if (_handle != IntPtr.Zero && string.IsNullOrEmpty(SearchBox.Text))
         {
-            SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), Loc.Chrome("library.empty"));
+            LoadCurrentBrowserMode();
+        }
+    }
+
+    private void OnBrowserModeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        _browserMode = BrowserModeBox.SelectedIndex == 1 ? BrowserMode.Composers : BrowserMode.Albums;
+        PopulateSortBox();
+        if (_handle != IntPtr.Zero && string.IsNullOrEmpty(SearchBox.Text))
+        {
+            LoadCurrentBrowserMode();
+        }
+    }
+
+    private SortOption[] ActiveSortOptions =>
+        _browserMode == BrowserMode.Composers ? ComposerSortOptions : AlbumSortOptions;
+
+    private SortOption ActiveSort =>
+        _browserMode == BrowserMode.Composers ? _composerSort : _albumSort;
+
+    private void SetActiveSort(SortOption sort)
+    {
+        if (_browserMode == BrowserMode.Composers)
+        {
+            _composerSort = sort;
+        }
+        else
+        {
+            _albumSort = sort;
+        }
+    }
+
+    private void PopulateSortBox()
+    {
+        _populatingSortBox = true;
+        SortBox.Items.Clear();
+        foreach (var option in ActiveSortOptions)
+        {
+            SortBox.Items.Add(Loc.Chrome(option.LabelKey));
+        }
+        SortBox.SelectedIndex = Math.Max(0, Array.IndexOf(ActiveSortOptions, ActiveSort));
+        _populatingSortBox = false;
+    }
+
+    private void ShowAlbumBrowser()
+    {
+        AlbumGrid.Visibility = Visibility.Visible;
+        ComposerBrowser.Visibility = Visibility.Collapsed;
+        SearchResultsScroll.Visibility = Visibility.Collapsed;
+    }
+
+    private void ShowComposerBrowser()
+    {
+        AlbumGrid.Visibility = Visibility.Collapsed;
+        ComposerBrowser.Visibility = Visibility.Visible;
+        SearchResultsScroll.Visibility = Visibility.Collapsed;
+    }
+
+    private void ShowSearchBrowser()
+    {
+        AlbumGrid.Visibility = Visibility.Collapsed;
+        ComposerBrowser.Visibility = Visibility.Collapsed;
+        SearchResultsScroll.Visibility = Visibility.Visible;
+    }
+
+    private void LoadCurrentBrowserMode()
+    {
+        switch (_browserMode)
+        {
+            case BrowserMode.Albums:
+                SetAlbums(
+                    NativeBae.AlbumPageJson(
+                        _handle,
+                        0,
+                        FirstPageSize,
+                        _albumSort.Field,
+                        _albumSort.Ascending),
+                    Loc.Chrome("library.empty"));
+                break;
+            case BrowserMode.Composers:
+                LoadComposers();
+                break;
         }
     }
 
@@ -252,7 +351,7 @@ public sealed partial class MainWindow : Window
         // above leaves the welcome in place rather than stranding the user.
         DismissWelcome();
 
-        SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), Loc.Chrome("library.empty"));
+        LoadCurrentBrowserMode();
 
         _suppressVolume = true;
         NpVolume.Value = NativeBae.GetVolume(_handle);
@@ -1507,7 +1606,7 @@ public sealed partial class MainWindow : Window
             case "LibraryChanged":
                 if (string.IsNullOrEmpty(SearchBox.Text))
                 {
-                    SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), Loc.Chrome("library.empty"));
+                    LoadCurrentBrowserMode();
                 }
                 _refreshStorageRows?.Invoke();
                 break;
@@ -2947,17 +3046,119 @@ public sealed partial class MainWindow : Window
         var query = args.QueryText?.Trim() ?? string.Empty;
         if (query.Length == 0)
         {
-            SetAlbums(NativeBae.AlbumPageJson(_handle, 0, FirstPageSize, _sort.Field, _sort.Ascending), Loc.Chrome("library.empty"));
+            LoadCurrentBrowserMode();
         }
         else
         {
-            SetAlbums(NativeBae.SearchJson(_handle, query), Loc.Chrome("search.no_matches"));
+            SetSearchResults(NativeBae.SearchJson(_handle, query), query);
         }
+    }
+
+    private void SetSearchResults(string? json, string query)
+    {
+        ShowSearchBrowser();
+        SearchResultsPanel.Children.Clear();
+        if (json is null)
+        {
+            StatusText.Text = Loc.Chrome("search.failed");
+            return;
+        }
+
+        LibrarySearchResults? results;
+        try
+        {
+            results = JsonSerializer.Deserialize<LibrarySearchResults>(json, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            StatusText.Text = Loc.Chrome("search.failed");
+            return;
+        }
+        if (results is null)
+        {
+            StatusText.Text = Loc.Chrome("search.failed");
+            return;
+        }
+        foreach (var album in results.Albums)
+        {
+            album.Handle = _handle;
+        }
+        foreach (var composer in results.Composers)
+        {
+            composer.Handle = _handle;
+        }
+        foreach (var work in results.Works)
+        {
+            work.Handle = _handle;
+        }
+
+        if (results.Albums.Count == 0 && results.Tracks.Count == 0
+            && results.Composers.Count == 0 && results.Works.Count == 0)
+        {
+            StatusText.Text = Loc.Chrome("search.no_matches");
+            return;
+        }
+
+        StatusText.Text = string.Empty;
+        AddSearchSection(Loc.Chrome("search.section.albums"), results.Albums, album =>
+            SearchButton(album.Title, album.Artist, async () => await ShowAlbumDetail(album.Id)));
+        AddSearchSection(Loc.Chrome("search.section.tracks"), results.Tracks, track =>
+            SearchButton(track.Title, $"{track.ArtistName} — {track.AlbumTitle}", async () => await ShowAlbumDetail(track.AlbumId)));
+        AddSearchSection(Loc.Chrome("search.section.composers"), results.Composers, composer =>
+            SearchButton(composer.Name, composer.WorkCountText, async () => await ShowComposerDetail(composer.ArtistId)));
+        AddSearchSection(Loc.Chrome("search.section.works"), results.Works, work =>
+            SearchButton(work.Title, work.ComposerNames ?? string.Empty, async () => await ShowWorkDetail(work.WorkId)));
+    }
+
+    private void AddSearchSection<T>(
+        string title,
+        IReadOnlyList<T> rows,
+        Func<T, Button> button)
+    {
+        if (rows.Count == 0)
+        {
+            return;
+        }
+
+        SearchResultsPanel.Children.Add(new TextBlock
+        {
+            Text = title,
+            Style = (Style)Resources["SubtitleTextBlockStyle"],
+        });
+        foreach (var row in rows)
+        {
+            SearchResultsPanel.Children.Add(button(row));
+        }
+    }
+
+    private static Button SearchButton(string title, string subtitle, Func<System.Threading.Tasks.Task> action)
+    {
+        var panel = new StackPanel { Spacing = 2 };
+        panel.Children.Add(new TextBlock { Text = title, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis });
+        if (!string.IsNullOrWhiteSpace(subtitle))
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = subtitle,
+                MaxLines = 1,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            });
+        }
+        var button = new Button
+        {
+            Content = panel,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+        };
+        button.Click += async (_, _) => await action();
+        return button;
     }
 
     /// <summary>Replace the grid's albums from an FFI JSON array (or show a status).</summary>
     private void SetAlbums(string? json, string emptyMessage)
     {
+        ShowAlbumBrowser();
         Albums.Clear();
         if (json is null)
         {
@@ -2978,6 +3179,227 @@ public sealed partial class MainWindow : Window
         StatusText.Text = albums.Count == 0 ? emptyMessage : string.Empty;
     }
 
+    private void LoadComposers()
+    {
+        ShowComposerBrowser();
+        Composers.Clear();
+        ComposerDetailPane.Children.Clear();
+        var json = NativeBae.ComposerPageJson(
+            _handle,
+            0,
+            FirstPageSize,
+            _composerSort.Field,
+            _composerSort.Ascending);
+        if (json is null)
+        {
+            StatusText.Text = Loc.Chrome("library.load_failed");
+            return;
+        }
+
+        List<ComposerSummary>? composers;
+        try
+        {
+            composers = JsonSerializer.Deserialize<List<ComposerSummary>>(json, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            StatusText.Text = Loc.Chrome("library.load_failed");
+            return;
+        }
+        if (composers is null)
+        {
+            StatusText.Text = Loc.Chrome("library.load_failed");
+            return;
+        }
+        foreach (var composer in composers)
+        {
+            composer.Handle = _handle;
+            Composers.Add(composer);
+        }
+        StatusText.Text = composers.Count == 0 ? Loc.Chrome("library.no_composers") : string.Empty;
+    }
+
+    private async void OnComposerClick(object sender, ItemClickEventArgs e)
+    {
+        if (_handle == IntPtr.Zero || e.ClickedItem is not ComposerSummary composer)
+        {
+            return;
+        }
+
+        await ShowComposerDetail(composer.ArtistId);
+    }
+
+    private async System.Threading.Tasks.Task ShowComposerDetail(string artistId)
+    {
+        var json = NativeBae.ComposerDetailJson(_handle, artistId);
+        if (json is null)
+        {
+            StatusText.Text = Loc.Chrome("composer.open_failed");
+            return;
+        }
+
+        var detail = JsonSerializer.Deserialize<ComposerDetail>(json, JsonOptions);
+        if (detail is null)
+        {
+            StatusText.Text = Loc.Chrome("composer.open_failed");
+            return;
+        }
+        detail.Composer.Handle = _handle;
+        foreach (var group in detail.WorkGroups)
+        {
+            if (group.Parent is not null)
+            {
+                group.Parent.Handle = _handle;
+            }
+            foreach (var work in group.Works)
+            {
+                work.Handle = _handle;
+            }
+        }
+
+        ShowComposerBrowser();
+        ComposerDetailPane.Children.Clear();
+        ComposerDetailPane.Children.Add(new TextBlock
+        {
+            Text = detail.Composer.Name,
+            Style = (Style)Resources["TitleTextBlockStyle"],
+        });
+        if (detail.WorkGroups.Count > 0)
+        {
+            AddPaneHeader(Loc.Chrome("search.section.works"));
+            foreach (var group in detail.WorkGroups)
+            {
+                if (group.Parent is not null)
+                {
+                    ComposerDetailPane.Children.Add(WorkButton(group.Parent));
+                }
+                foreach (var work in group.Works)
+                {
+                    ComposerDetailPane.Children.Add(WorkButton(work));
+                }
+            }
+        }
+        if (detail.UnlinkedReleaseRoles.Count > 0)
+        {
+            AddPaneHeader(Loc.Chrome("search.section.credits"));
+            foreach (var role in detail.UnlinkedReleaseRoles)
+            {
+                ComposerDetailPane.Children.Add(PaneButton(role.AlbumTitle, role.SourceCredit ?? string.Empty, async () =>
+                    await ShowAlbumDetail(role.AlbumId)));
+            }
+        }
+        if (detail.UnlinkedTrackRoles.Count > 0)
+        {
+            AddPaneHeader(Loc.Chrome("search.section.recordings"));
+            foreach (var role in detail.UnlinkedTrackRoles)
+            {
+                ComposerDetailPane.Children.Add(PaneButton(role.TrackTitle, role.AlbumTitle, async () => await ShowAlbumDetail(role.AlbumId)));
+            }
+        }
+        if (detail.DefaultWorkId is not null)
+        {
+            await ShowWorkDetail(detail.DefaultWorkId, replacePane: false);
+        }
+    }
+
+    private Button WorkButton(WorkSummary work) =>
+        PaneButton(work.Title, work.ComposerNames ?? string.Empty, async () => await ShowWorkDetail(work.WorkId));
+
+    private void AddPaneHeader(string title)
+    {
+        ComposerDetailPane.Children.Add(new TextBlock
+        {
+            Text = title,
+            Style = (Style)Resources["SubtitleTextBlockStyle"],
+        });
+    }
+
+    private static Button PaneButton(string title, string subtitle, Func<System.Threading.Tasks.Task> action)
+    {
+        var panel = new StackPanel { Spacing = 2 };
+        panel.Children.Add(new TextBlock { Text = title, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis });
+        if (!string.IsNullOrWhiteSpace(subtitle))
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = subtitle,
+                MaxLines = 1,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            });
+        }
+        var button = new Button
+        {
+            Content = panel,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+        };
+        button.Click += async (_, _) => await action();
+        return button;
+    }
+
+    private async System.Threading.Tasks.Task ShowWorkDetail(string workId, bool replacePane = true)
+    {
+        var json = NativeBae.WorkDetailJson(_handle, workId);
+        if (json is null)
+        {
+            StatusText.Text = Loc.Chrome("work.open_failed");
+            return;
+        }
+
+        var detail = JsonSerializer.Deserialize<WorkDetail>(json, JsonOptions);
+        if (detail is null)
+        {
+            StatusText.Text = Loc.Chrome("work.open_failed");
+            return;
+        }
+        detail.Work.Handle = _handle;
+        foreach (var work in detail.ChildWorks)
+        {
+            work.Handle = _handle;
+        }
+        foreach (var release in detail.Releases)
+        {
+            release.Handle = _handle;
+        }
+
+        ShowComposerBrowser();
+        if (replacePane)
+        {
+            ComposerDetailPane.Children.Clear();
+        }
+        ComposerDetailPane.Children.Add(new TextBlock
+        {
+            Text = detail.Work.Title,
+            Style = (Style)Resources["TitleTextBlockStyle"],
+        });
+        if (detail.ChildWorks.Count > 0)
+        {
+            AddPaneHeader(Loc.Chrome("search.section.works"));
+            foreach (var work in detail.ChildWorks)
+            {
+                ComposerDetailPane.Children.Add(WorkButton(work));
+            }
+        }
+        if (detail.Releases.Count > 0)
+        {
+            AddPaneHeader(Loc.Chrome("search.section.releases"));
+            foreach (var release in detail.Releases)
+            {
+                ComposerDetailPane.Children.Add(PaneButton(release.AlbumTitle, release.DisplaySubtitle, async () =>
+                    await ShowAlbumDetail(release.AlbumId, initialReleaseId: release.ReleaseId)));
+            }
+        }
+        if (detail.Tracks.Count > 0)
+        {
+            AddPaneHeader(Loc.Chrome("search.section.recordings"));
+            foreach (var track in detail.Tracks)
+            {
+                ComposerDetailPane.Children.Add(PaneButton(track.TrackTitle, track.AlbumTitle, async () => await ShowAlbumDetail(track.AlbumId)));
+            }
+        }
+    }
+
     private async void OnAlbumClick(object sender, ItemClickEventArgs e)
     {
         if (_handle == IntPtr.Zero || e.ClickedItem is not Album album)
@@ -2995,7 +3417,10 @@ public sealed partial class MainWindow : Window
     /// change cover / delete). Reused by the album grid (<see cref="OnAlbumClick"/>)
     /// and the import confirmation's "view in library" banner.
     /// </summary>
-    private async System.Threading.Tasks.Task ShowAlbumDetail(string albumId, string? scrollToTrackId = null)
+    private async System.Threading.Tasks.Task ShowAlbumDetail(
+        string albumId,
+        string? scrollToTrackId = null,
+        string? initialReleaseId = null)
     {
         var json = NativeBae.AlbumDetailJson(_handle, albumId);
         if (json is null)
@@ -3027,6 +3452,7 @@ public sealed partial class MainWindow : Window
             ? null
             : detail.Releases.FirstOrDefault(r => r.Tracks.Any(t => t.TrackId == scrollToTrackId));
         Release selectedRelease = trackRelease
+            ?? detail.Releases.FirstOrDefault(r => r.ReleaseId == initialReleaseId)
             ?? detail.Releases.FirstOrDefault(r => r.ReleaseId == detail.PrimaryReleaseId)
             ?? detail.Releases[0];
 

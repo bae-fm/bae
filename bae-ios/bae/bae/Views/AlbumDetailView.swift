@@ -7,6 +7,7 @@ import SwiftUI
 /// on demand. The store stays live, so sync updates re-render in place.
 struct AlbumDetailView: View {
     let albumId: String
+    private let context: AlbumDetailContext?
 
     @Environment(LibraryStore.self)
     private var libraryStore
@@ -24,18 +25,44 @@ struct AlbumDetailView: View {
     @State
     private var showGallery = false
 
+    init(
+        albumId: String,
+        initialReleaseId: String? = nil,
+        context: AlbumDetailContext? = nil
+    ) {
+        self.albumId = albumId
+        self.context = context
+        _selectedReleaseId = State(initialValue: initialReleaseId)
+    }
+
     var body: some View {
         Group {
             if let summary = libraryStore.albumSummaries[albumId] {
                 let releaseId = activeReleaseId(summary: summary)
                 let detail = releaseId.flatMap { libraryStore.releaseDetails[$0] }
                 if let releaseId, let detail {
-                    content(summary: summary, releaseId: releaseId, detail: detail)
+                    content(
+                        display: AlbumDetailDisplay(summary: summary),
+                        releasePickerSummary: summary,
+                        releaseId: releaseId,
+                        detail: detail
+                    )
                 }
                 else {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+            }
+            else if let releaseId = selectedReleaseId,
+                let detail = libraryStore.releaseDetails[releaseId],
+                let context
+            {
+                content(
+                    display: AlbumDetailDisplay(context: context),
+                    releasePickerSummary: nil,
+                    releaseId: releaseId,
+                    detail: detail
+                )
             }
             else {
                 ProgressView()
@@ -53,6 +80,12 @@ struct AlbumDetailView: View {
             // and switching releases doesn't flash a spinner. N is typically
             // 1-3. Bail on cancellation (the user navigated away).
             guard let summary = libraryStore.albumSummaries[albumId] else {
+                if let releaseId = selectedReleaseId {
+                    await libraryStore.loadReleaseDetail(
+                        releaseId: releaseId,
+                        library: library
+                    )
+                }
                 return
             }
             for releaseId in summary.releaseIds {
@@ -68,19 +101,27 @@ struct AlbumDetailView: View {
     }
 
     private func content(
-        summary: AlbumSummary,
+        display: AlbumDetailDisplay,
+        releasePickerSummary: AlbumSummary?,
         releaseId: String,
         detail: ReleaseDetail
     ) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                header(summary: summary, releaseId: releaseId, detail: detail)
-                if summary.releaseIds.count > 1 {
+                AlbumDetailHeader(
+                    display: display,
+                    releaseId: releaseId,
+                    detail: detail,
+                    showGallery: $showGallery
+                )
+                if let summary = releasePickerSummary,
+                    summary.releaseIds.count > 1
+                {
                     releasePicker(summary: summary)
                 }
                 TrackList(
                     detail: detail,
-                    isCompilation: summary.isCompilation,
+                    artistDisplay: display.trackArtistDisplay,
                     onPlayTrackAt: { index in
                         playback.playRelease(releaseId, UInt32(index), false)
                     },
@@ -103,81 +144,6 @@ struct AlbumDetailView: View {
                 }
             )
         }
-    }
-
-    private func header(
-        summary: AlbumSummary,
-        releaseId: String,
-        detail: ReleaseDetail
-    ) -> some View {
-        HStack(alignment: .top, spacing: 16) {
-            ImageView(imageRef: detail.summary.cover, pointSize: 140)
-                .frame(width: 140, height: 140)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if !detail.galleryItems.isEmpty { showGallery = true }
-                }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(summary.title)
-                    .font(.title2.bold())
-                Text(summary.artistNames)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                if let year = summary.year {
-                    Text(String(year))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if !detail.compactMetadata.isEmpty {
-                    Text(detail.compactMetadata)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 4)
-                }
-                playButtons(releaseId: releaseId)
-                    .padding(.top, 8)
-                queueButtons(releaseId: releaseId)
-                    .padding(.top, 4)
-            }
-            Spacer(minLength: 0)
-        }
-    }
-
-    private func playButtons(releaseId: String) -> some View {
-        HStack(spacing: 8) {
-            Button {
-                playback.playRelease(releaseId, nil, false)
-            } label: {
-                Label("Play", systemImage: "play.fill")
-            }
-            .buttonStyle(.borderedProminent)
-            Button {
-                playback.playRelease(releaseId, nil, true)
-            } label: {
-                Label("Shuffle", systemImage: "shuffle")
-            }
-            .buttonStyle(.bordered)
-        }
-    }
-
-    private func queueButtons(releaseId: String) -> some View {
-        HStack(spacing: 8) {
-            Button {
-                queue.addReleaseNext(releaseId)
-            } label: {
-                Label("Play Next", systemImage: "text.insert")
-                    .font(.caption)
-            }
-            Button {
-                queue.addReleaseToQueue(releaseId)
-            } label: {
-                Label("Add to Queue", systemImage: "text.append")
-                    .font(.caption)
-            }
-        }
-        .buttonStyle(.bordered)
-        .tint(Theme.accent)
     }
 
     private func releasePicker(summary: AlbumSummary) -> some View {
@@ -228,11 +194,169 @@ struct AlbumDetailView: View {
     }
 }
 
+private enum AlbumDetailDisplay {
+    case album(AlbumSummary)
+    case workRelease(AlbumDetailContext)
+
+    init(summary: AlbumSummary) {
+        self = .album(summary)
+    }
+
+    init(context: AlbumDetailContext) {
+        self = .workRelease(context)
+    }
+
+    var title: String {
+        switch self {
+        case .album(let summary):
+            summary.title
+        case .workRelease(let context):
+            context.title
+        }
+    }
+
+    var albumMetadata: AlbumDetailAlbumMetadata? {
+        switch self {
+        case .album(let summary):
+            AlbumDetailAlbumMetadata(
+                artistNames: summary.artistNames,
+                year: summary.year
+            )
+        case .workRelease:
+            nil
+        }
+    }
+
+    var trackArtistDisplay: TrackArtistDisplay {
+        switch self {
+        case .album(let summary):
+            .album(isCompilation: summary.isCompilation)
+        case .workRelease:
+            .workRelease
+        }
+    }
+}
+
+struct AlbumDetailContext: Hashable {
+    let title: String
+
+    init(workRelease: BridgeWorkReleaseSummary) {
+        title = workRelease.albumTitle
+    }
+}
+
+private struct AlbumDetailAlbumMetadata {
+    let artistNames: String
+    let year: Int32?
+}
+
+private enum TrackArtistDisplay {
+    case album(isCompilation: Bool)
+    case workRelease
+
+    var showsArtist: Bool {
+        switch self {
+        case .album(let isCompilation):
+            isCompilation
+        case .workRelease:
+            true
+        }
+    }
+}
+
+private struct AlbumDetailHeader: View {
+    let display: AlbumDetailDisplay
+    let releaseId: String
+    let detail: ReleaseDetail
+    @Binding
+    var showGallery: Bool
+
+    @Environment(Playback.self)
+    private var playback
+    @Environment(Queue.self)
+    private var queue
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            ImageView(imageRef: detail.summary.cover, pointSize: 140)
+                .frame(width: 140, height: 140)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if !detail.galleryItems.isEmpty { showGallery = true }
+                }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(display.title)
+                    .font(.title2.bold())
+                if let metadata = display.albumMetadata,
+                    !metadata.artistNames.isEmpty
+                {
+                    Text(metadata.artistNames)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                if let year = display.albumMetadata?.year {
+                    Text(String(year))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if !detail.compactMetadata.isEmpty {
+                    Text(detail.compactMetadata)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 4)
+                }
+                playButtons
+                    .padding(.top, 8)
+                queueButtons
+                    .padding(.top, 4)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var playButtons: some View {
+        HStack(spacing: 8) {
+            Button {
+                playback.playRelease(releaseId, nil, false)
+            } label: {
+                Label("Play", systemImage: "play.fill")
+            }
+            .buttonStyle(.borderedProminent)
+            Button {
+                playback.playRelease(releaseId, nil, true)
+            } label: {
+                Label("Shuffle", systemImage: "shuffle")
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private var queueButtons: some View {
+        HStack(spacing: 8) {
+            Button {
+                queue.addReleaseNext(releaseId)
+            } label: {
+                Label("Play Next", systemImage: "text.insert")
+                    .font(.caption)
+            }
+            Button {
+                queue.addReleaseToQueue(releaseId)
+            } label: {
+                Label("Add to Queue", systemImage: "text.append")
+                    .font(.caption)
+            }
+        }
+        .buttonStyle(.bordered)
+        .tint(Theme.accent)
+    }
+}
+
 /// Side-grouped track list. Flattens groups to a release-wide index so a tap
 /// maps to the ordered list the player builds from the same flattening.
 private struct TrackList: View {
     let detail: ReleaseDetail
-    let isCompilation: Bool
+    let artistDisplay: TrackArtistDisplay
     let onPlayTrackAt: (Int) -> Void
     let onPlayNext: (String) -> Void
     let onAddToQueue: (String) -> Void
@@ -263,7 +387,7 @@ private struct TrackList: View {
                     track in
                     TrackRow(
                         track: track,
-                        showArtist: isCompilation,
+                        showArtist: artistDisplay.showsArtist,
                         onPlay: { onPlayTrackAt(groupOffset + localIndex) },
                         onPlayNext: { onPlayNext(track.id) },
                         onAddToQueue: { onAddToQueue(track.id) }

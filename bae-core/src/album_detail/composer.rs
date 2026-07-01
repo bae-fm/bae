@@ -2,7 +2,8 @@
 
 use super::*;
 use crate::db::{
-    DbComposerSummary, DbReleaseRoleSummary, DbTrackRoleSummary, DbWorkSummary, DbWorkTrackSummary,
+    DbComposerSummary, DbReleaseRoleSummary, DbTrackRoleSummary, DbWorkReleaseSummary,
+    DbWorkSummary, DbWorkTrackSummary,
 };
 
 #[derive(Debug, Clone)]
@@ -52,8 +53,48 @@ pub struct ComposerWorkGroup {
 pub struct WorkDetail {
     pub work: WorkSummary,
     pub child_works: Vec<WorkSummary>,
-    pub releases: Vec<ReleaseSummary>,
+    pub releases: Vec<WorkReleaseSummary>,
     pub tracks: Vec<WorkTrackSummary>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WorkReleaseSummary {
+    pub release_id: String,
+    pub album_id: String,
+    pub album_title: String,
+    pub display_name: String,
+    pub format: Option<String>,
+    pub cover: Option<ImageRef>,
+}
+
+impl WorkReleaseSummary {
+    pub(crate) fn from_raw(raw: DbWorkReleaseSummary, cover: Option<ImageRef>) -> Self {
+        let display_name = match raw.release_name.as_deref() {
+            Some(name) => name.to_string(),
+            None => {
+                let mut parts = Vec::new();
+                if let Some(year) = raw.year {
+                    parts.push(year.to_string());
+                }
+                if let Some(format) = raw.format.as_deref() {
+                    parts.push(format.to_string());
+                }
+                if parts.is_empty() {
+                    format!("Release {}", raw.release_index)
+                } else {
+                    parts.join(" ")
+                }
+            }
+        };
+        Self {
+            release_id: raw.release_id,
+            album_id: raw.album_id,
+            album_title: raw.album_title,
+            display_name,
+            format: raw.format,
+            cover,
+        }
+    }
 }
 
 pub type ReleaseRoleSummary = DbReleaseRoleSummary;

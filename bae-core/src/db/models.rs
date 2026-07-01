@@ -1239,8 +1239,19 @@ pub struct DbComposerWorkGroup {
 pub struct DbWorkDetail {
     pub work: DbWorkSummary,
     pub child_works: Vec<DbWorkSummary>,
-    pub releases: Vec<DbReleaseSummary>,
+    pub releases: Vec<DbWorkReleaseSummary>,
     pub tracks: Vec<DbWorkTrackSummary>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbWorkReleaseSummary {
+    pub release_id: String,
+    pub album_id: String,
+    pub album_title: String,
+    pub release_name: Option<String>,
+    pub year: Option<i32>,
+    pub format: Option<String>,
+    pub release_index: i64,
 }
 
 #[derive(Debug, Clone)]

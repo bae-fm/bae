@@ -28,8 +28,8 @@ use crate::types::{
     BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode,
     BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter,
     BridgeStoragePage, BridgeStorageRow, BridgeStorageSort, BridgeTrack, BridgeTrackGroup,
-    BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkSummary,
-    BridgeWorkTrackSummary,
+    BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary,
+    BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{bridge_storage_mode_to_core, BridgeMcpServerStatus, BridgeStorageMode};
@@ -2143,6 +2143,19 @@ fn convert_work_track_summary(
     }
 }
 
+fn convert_work_release_summary(
+    s: bae_core::album_detail::WorkReleaseSummary,
+) -> BridgeWorkReleaseSummary {
+    BridgeWorkReleaseSummary {
+        release_id: s.release_id,
+        album_id: s.album_id,
+        album_title: s.album_title,
+        display_name: s.display_name,
+        format: s.format,
+        cover: s.cover.map(crate::types::BridgeImageRef::from_core),
+    }
+}
+
 fn convert_composer_detail(d: bae_core::album_detail::ComposerDetail) -> BridgeComposerDetail {
     BridgeComposerDetail {
         composer: convert_composer_summary(d.composer),
@@ -2180,7 +2193,7 @@ fn convert_work_detail(d: bae_core::album_detail::WorkDetail) -> BridgeWorkDetai
         releases: d
             .releases
             .into_iter()
-            .map(convert_release_summary)
+            .map(convert_work_release_summary)
             .collect(),
         tracks: d
             .tracks
@@ -2303,7 +2316,10 @@ pub fn raw_release_edit_from_user_edit(
 
 #[cfg(test)]
 mod tests {
-    use bae_core::album_detail::{ComposerDetail, ComposerSummary, ComposerWorkGroup, WorkSummary};
+    use bae_core::album_detail::{
+        ComposerDetail, ComposerSummary, ComposerWorkGroup, WorkDetail, WorkReleaseSummary,
+        WorkSummary,
+    };
     use bae_core::db::{DbArtist, DbComposerSummary, DbWork, DbWorkSummary};
     use std::sync::{Arc, Mutex};
 
@@ -2433,5 +2449,49 @@ mod tests {
             group.works[0].representative_release_id.as_deref(),
             Some("release-a")
         );
+    }
+
+    #[test]
+    fn work_detail_conversion_preserves_work_release_rows() {
+        let created_at = "2026-01-01T00:00:00Z".parse().unwrap();
+        let work = WorkSummary {
+            raw: DbWorkSummary {
+                work: DbWork {
+                    id: "work-a".to_string(),
+                    title: "Work Title A".to_string(),
+                    disambiguation: None,
+                    work_type: Some("work".to_string()),
+                    created_at,
+                },
+                parent_work_id: None,
+                composer_names: Some("Composer Name A".to_string()),
+                linked_release_count: 1,
+                representative_release_id: Some("release-a".to_string()),
+            },
+            representative_cover: None,
+        };
+        let detail = WorkDetail {
+            work,
+            child_works: Vec::new(),
+            releases: vec![WorkReleaseSummary {
+                release_id: "release-a".to_string(),
+                album_id: "album-a".to_string(),
+                album_title: "Album Title A".to_string(),
+                display_name: "2026 CD".to_string(),
+                format: Some("CD".to_string()),
+                cover: None,
+            }],
+            tracks: Vec::new(),
+        };
+
+        let bridge = super::convert_work_detail(detail);
+
+        assert_eq!(bridge.releases.len(), 1);
+        let release = &bridge.releases[0];
+        assert_eq!(release.release_id, "release-a");
+        assert_eq!(release.album_id, "album-a");
+        assert_eq!(release.album_title, "Album Title A");
+        assert_eq!(release.display_name, "2026 CD");
+        assert_eq!(release.format.as_deref(), Some("CD"));
     }
 }

@@ -51,6 +51,18 @@ final class AppService: Observable {
                     limit: $2
                 )
             },
+            getComposerCount: { try appHandle.getComposerCount() },
+            getComposerPage: {
+                try appHandle.getComposerPage(
+                    sortCriterion: $0,
+                    offset: $1,
+                    limit: $2
+                )
+            },
+            getComposerDetail: {
+                try appHandle.getComposerDetail(artistId: $0)
+            },
+            getWorkDetail: { try appHandle.getWorkDetail(workId: $0) },
             searchLibrary: { try await appHandle.searchLibrary(query: $0) },
             findReleaseDetail: { try appHandle.findReleaseDetail(releaseId: $0) },
             resolveToTrackIds: { try appHandle.resolveToTrackIds(ids: $0) }

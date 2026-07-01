@@ -240,25 +240,52 @@ fn row_to_track_role_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbTrackRo
     })
 }
 
-fn work_release_rows(conn: &Connection, work_id: &str) -> Result<Vec<DbReleaseSummary>, DbError> {
+fn work_release_rows(
+    conn: &Connection,
+    work_id: &str,
+) -> Result<Vec<DbWorkReleaseSummary>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT DISTINCT
             r.id AS release_id,
             r.album_id,
+            a.title AS album_title,
+            r.release_name,
+            r.year AS release_year,
             r.format AS release_format,
-            r.remote,
-            (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id,
-            COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id), 0) AS file_count,
-            COALESCE((SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = r.id), 0) AS total_size
+            (
+                SELECT COUNT(*)
+                FROM releases indexed_release
+                WHERE indexed_release.album_id = r.album_id
+                  AND (
+                      indexed_release.created_at < r.created_at
+                      OR (
+                          indexed_release.created_at = r.created_at
+                          AND indexed_release.id <= r.id
+                      )
+                  )
+            ) AS release_index
          FROM track_works tw
          JOIN tracks t ON t.id = tw.track_id
          JOIN releases r ON r.id = t.release_id
+         JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?
-         ORDER BY r.created_at",
+         ORDER BY a.title, r.created_at, r.id",
     )?;
-    let rows = stmt.query_map(params![work_id], row_to_release_summary)?;
+    let rows = stmt.query_map(params![work_id], row_to_work_release_summary)?;
     rows.collect::<coven::rusqlite::Result<Vec<_>>>()
         .map_err(DbError::from)
+}
+
+fn row_to_work_release_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbWorkReleaseSummary> {
+    Ok(DbWorkReleaseSummary {
+        release_id: row.get("release_id")?,
+        album_id: row.get("album_id")?,
+        album_title: row.get("album_title")?,
+        release_name: row.get("release_name")?,
+        year: row.get("release_year")?,
+        format: row.get("release_format")?,
+        release_index: row.get("release_index")?,
+    })
 }
 
 fn row_to_release_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbReleaseSummary> {
