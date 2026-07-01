@@ -21,6 +21,7 @@
 //! rather than being defaulted.
 
 use super::{ParsedAlbum, ParsedWorkGraph};
+use crate::cue_flac::CueSheet;
 use crate::db::ReleaseMetadataSource;
 use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbTrack, DbTrackArtist};
 use crate::util::content_type::ContentType;
@@ -76,8 +77,6 @@ pub fn map_file_tags_to_db(
         return Err("file-tag seeding requires at least one audio file".to_string());
     }
 
-    let now = clock.now();
-
     let extracted: Vec<FileTags> = audio_files
         .iter()
         .map(|p| read_tags(p))
@@ -114,11 +113,107 @@ pub fn map_file_tags_to_db(
     // file's codec, which the user can correct in the editable form.
     let format = format_from_file_type(extracted[0].file_type);
 
+    // ── Track seeds: assign side from DISCNUMBER, track_number from
+    // TRACKNUMBER. Positional fallback (index within side by file order) is
+    // used only on a side where NO file is tagged — backfilling a position
+    // onto an untagged file that shares a side with tagged files would collide
+    // with the real tag values (e.g. an untagged file getting position 1 next
+    // to a TRACKNUMBER=1 file). On a partially-tagged side the untagged files
+    // stay `None` for the user to assign in the editor.
+    let side_of = |t: &FileTags| t.disc_number.map(|d| d.max(1) as i32).unwrap_or(1);
+    let mut side_has_tagged_track: std::collections::HashMap<i32, bool> =
+        std::collections::HashMap::new();
+    for t in extracted.iter() {
+        let entry = side_has_tagged_track.entry(side_of(t)).or_insert(false);
+        *entry = *entry || t.track_number.is_some();
+    }
+
+    let mut per_side_count: std::collections::HashMap<i32, i32> = std::collections::HashMap::new();
+    let tracks: Vec<TrackSeed> = extracted
+        .iter()
+        .map(|t| {
+            // The folder scanner only admits files with a recognised audio
+            // extension, so every path here has both an extension and a stem.
+            // `file_stem` returning None would mean the scanner's invariant
+            // broke upstream — surface it rather than fabricate a "Track N"
+            // placeholder. The filename stem is the last-resort title when a
+            // file carries no TITLE tag.
+            let title = t.title.clone().unwrap_or_else(|| {
+                t.path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .expect("audio file path has a stem")
+            });
+
+            let side = side_of(t);
+            let count = per_side_count.entry(side).or_insert(0);
+            *count += 1;
+            let side_partially_tagged = side_has_tagged_track.get(&side).copied().unwrap_or(false);
+            let track_number = match t.track_number {
+                Some(n) => Some(n as i32),
+                // Untagged file on a side that has tagged siblings — leave it
+                // for the user rather than backfill a colliding position.
+                None if side_partially_tagged => None,
+                // Fully-untagged side — positional by file order.
+                None => Some(*count),
+            };
+
+            TrackSeed {
+                title,
+                artist: t.track_artist.clone(),
+                side,
+                track_number,
+            }
+        })
+        .collect();
+
+    Ok(assemble_parsed_album(
+        AlbumSeed {
+            album_title,
+            album_artist_name,
+            year,
+            format,
+            tracks,
+        },
+        clock,
+        ids,
+    ))
+}
+
+/// One track's source-agnostic seed. Produced from embedded file tags
+/// (per-track rips, [`map_file_tags_to_db`]) or a CUE sheet (single-image
+/// rips, [`map_cue_sheets_to_db`]); both feed [`assemble_parsed_album`].
+struct TrackSeed {
+    title: String,
+    /// Track ARTIST/PERFORMER when the source carries one, else `None`. A
+    /// `Some` emits a track-artists junction row, deduped against the album
+    /// artist by name.
+    artist: Option<String>,
+    side: i32,
+    track_number: Option<i32>,
+}
+
+/// Album-level seed plus per-track seeds, source-agnostic.
+struct AlbumSeed {
+    album_title: String,
+    album_artist_name: String,
+    year: Option<i32>,
+    format: Option<String>,
+    tracks: Vec<TrackSeed>,
+}
+
+/// Assemble a [`ParsedAlbum`] from source-agnostic seeds — the single place
+/// the Unknown path builds album / artist / release / track rows, shared by
+/// the file-tag and CUE-sheet seeders. `identities` is always empty (Unknown
+/// makes no identity claim) and `metadata_source` is `FileTags`.
+fn assemble_parsed_album(seed: AlbumSeed, clock: &dyn Clock, ids: &dyn IdProvider) -> ParsedAlbum {
+    let now = clock.now();
+
     // ── Album / artists / album-artist junction ────────────────────────
     let primary_artist = DbArtist {
         id: ids.new_id(),
-        name: album_artist_name.clone(),
-        sort_name: Some(album_artist_name.clone()),
+        name: seed.album_artist_name.clone(),
+        sort_name: Some(seed.album_artist_name.clone()),
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
         created_at: now,
@@ -128,9 +223,9 @@ pub fn map_file_tags_to_db(
 
     let album = DbAlbum {
         id: ids.new_id(),
-        title: album_title,
+        title: seed.album_title,
         artist_id: artists[0].id.clone(),
-        year,
+        year: seed.year,
         primary_release_id: None,
         is_compilation: false,
         created_at: now,
@@ -141,8 +236,8 @@ pub fn map_file_tags_to_db(
         album_id: album.id.clone(),
         release_name: None,
         pressing: crate::db::Pressing {
-            year,
-            format,
+            year: seed.year,
+            format: seed.format,
             label: None,
             catalog_number: None,
             country: None,
@@ -163,70 +258,28 @@ pub fn map_file_tags_to_db(
         created_at: now,
     };
 
-    // ── Tracks: assign side from DISCNUMBER, track_number from TRACKNUMBER.
-    // Positional fallback (index within side by file order) is used only on
-    // a side where NO file is tagged — backfilling a position onto an
-    // untagged file that shares a side with tagged files would collide with
-    // the real tag values (e.g. an untagged file getting position 1 next to
-    // a TRACKNUMBER=1 file). On a partially-tagged side the untagged files
-    // stay `None` for the user to assign in the editor.
-    let mut tracks: Vec<DbTrack> = Vec::with_capacity(extracted.len());
+    let mut tracks: Vec<DbTrack> = Vec::with_capacity(seed.tracks.len());
     let mut track_artists: Vec<DbTrackArtist> = Vec::new();
 
-    let side_of = |t: &FileTags| t.disc_number.map(|d| d.max(1) as i32).unwrap_or(1);
-    let mut side_has_tagged_track: std::collections::HashMap<i32, bool> =
-        std::collections::HashMap::new();
-    for t in extracted.iter() {
-        let entry = side_has_tagged_track.entry(side_of(t)).or_insert(false);
-        *entry = *entry || t.track_number.is_some();
-    }
-
-    let mut per_side_count: std::collections::HashMap<i32, i32> = std::collections::HashMap::new();
-
-    for t in extracted.iter() {
-        // The folder scanner only admits files with a recognised audio
-        // extension, so every path here has both an extension and a
-        // stem. `file_stem` returning None would mean the scanner's
-        // invariant broke upstream — surface it rather than fabricate
-        // a "Track N" placeholder.
-        let title = t.title.clone().unwrap_or_else(|| {
-            t.path
-                .file_stem()
-                .map(|s| s.to_string_lossy().into_owned())
-                .expect("audio file path has a stem")
-        });
-
-        let side = side_of(t);
-        let count = per_side_count.entry(side).or_insert(0);
-        *count += 1;
-        let side_partially_tagged = side_has_tagged_track.get(&side).copied().unwrap_or(false);
-        let track_number = match t.track_number {
-            Some(n) => Some(n as i32),
-            // Untagged file on a side that has tagged siblings — leave it for
-            // the user rather than backfill a colliding position.
-            None if side_partially_tagged => None,
-            // Fully-untagged side — positional by file order.
-            None => Some(*count),
-        };
-
+    for seed_track in seed.tracks {
         let db_track = DbTrack {
             id: ids.new_id(),
             release_id: release.id.clone(),
-            title,
-            side,
-            track_number,
+            title: seed_track.title,
+            side: seed_track.side,
+            track_number: seed_track.track_number,
             duration_ms: None,
             discogs_position: None,
             created_at: now,
         };
 
-        // Per-track artist: emit a track_artists junction row whenever
-        // the file carries an ARTIST tag, regardless of whether it
-        // matches the album artist. Mirrors map_mb_response_to_db /
-        // map_discogs_to_db, which emit a row for every track-artist
-        // credit unconditionally — the junction is the source of truth
-        // for per-track credits, not a divergence-only annotation.
-        if let Some(track_artist_name) = t.track_artist.as_ref() {
+        // Per-track artist: emit a track_artists junction row whenever the
+        // source carries an ARTIST/PERFORMER, regardless of whether it matches
+        // the album artist. Mirrors map_mb_response_to_db / map_discogs_to_db,
+        // which emit a row for every track-artist credit unconditionally — the
+        // junction is the source of truth for per-track credits, not a
+        // divergence-only annotation.
+        if let Some(track_artist_name) = seed_track.artist.as_ref() {
             let already_exists = artists
                 .iter()
                 .any(|a| a.name.eq_ignore_ascii_case(track_artist_name));
@@ -262,9 +315,8 @@ pub fn map_file_tags_to_db(
     }
 
     // Additional artists (beyond the primary) go in the album-artists
-    // junction. File tags don't carry positional album artists the way MB
-    // does; the junction stays empty unless future track-artist work
-    // upgrades a per-track artist into an album-level credit.
+    // junction. Seeds don't carry positional album artists the way MB does;
+    // the junction stays empty unless a per-track artist introduced one.
     let album_artists: Vec<DbAlbumArtist> = artists
         .iter()
         .enumerate()
@@ -274,7 +326,7 @@ pub fn map_file_tags_to_db(
         })
         .collect();
 
-    Ok(ParsedAlbum {
+    ParsedAlbum {
         album,
         release,
         tracks,
@@ -290,7 +342,110 @@ pub fn map_file_tags_to_db(
         release_artist_roles: Vec::new(),
         track_artist_roles: Vec::new(),
         identities: Vec::new(),
-    })
+    }
+}
+
+/// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the Unknown
+/// path. A single CUE image holds many tracks in one audio file, so — unlike
+/// [`map_file_tags_to_db`], which seeds one track per file — the track
+/// structure comes from the CUE's `TRACK` entries: title from each `TITLE`,
+/// per-track artist from each `PERFORMER`. Album-level fields come from the
+/// sheet header (`TITLE` / `PERFORMER` / `REM DATE`), the album title falling
+/// back to the folder name. `sheets` and `audio_files` are one-per-pair in
+/// disc order — the same order `track_to_file_mapper` slices pairs — so side
+/// is the 1-based disc index and track numbers run per sheet.
+pub fn map_cue_sheets_to_db(
+    sheets: &[&CueSheet],
+    audio_files: &[&Path],
+    folder_name: Option<&str>,
+    clock: &dyn Clock,
+    ids: &dyn IdProvider,
+) -> Result<ParsedAlbum, String> {
+    if sheets.is_empty() {
+        return Err("CUE seeding requires at least one sheet".to_string());
+    }
+
+    // Album title: a sheet TITLE if any carries one, else the rip's folder
+    // name, else empty (the editable Unknown form gates save on it).
+    let album_title = sheets
+        .iter()
+        .find_map(|s| non_empty(s.title.clone()))
+        .or_else(|| folder_name.map(str::to_string))
+        .unwrap_or_default();
+
+    // Album artist: the sheet PERFORMER header, else empty.
+    let album_artist_name = sheets
+        .iter()
+        .find_map(|s| non_empty(s.performer.clone()))
+        .unwrap_or_default();
+
+    let year = sheets
+        .iter()
+        .find_map(|s| year_from_cue_date(s.date.as_deref()));
+
+    // Format reflects the actual codec, from the first audio file. Absent if
+    // the container can't be probed; the user can correct it in the form.
+    let format = audio_files
+        .first()
+        .and_then(|p| probe_file_type(p))
+        .and_then(format_from_file_type);
+
+    let mut tracks: Vec<TrackSeed> = Vec::new();
+    for (disc_index, sheet) in sheets.iter().enumerate() {
+        let side = disc_index as i32 + 1;
+        for (position, track) in sheet.tracks.iter().enumerate() {
+            // A CUE track without a TITLE is rare; seed a blank for the user
+            // rather than fabricate a placeholder.
+            let title = non_empty(track.title.clone()).unwrap_or_default();
+            tracks.push(TrackSeed {
+                title,
+                artist: non_empty(track.performer.clone()),
+                side,
+                track_number: Some(position as i32 + 1),
+            });
+        }
+    }
+
+    Ok(assemble_parsed_album(
+        AlbumSeed {
+            album_title,
+            album_artist_name,
+            year,
+            format,
+            tracks,
+        },
+        clock,
+        ids,
+    ))
+}
+
+/// Parse a year from a CUE `REM DATE` value. Rippers write a bare year
+/// ("1970"), a range ("2000 / 2004"), or a full date; take the first 4-digit
+/// run.
+fn year_from_cue_date(date: Option<&str>) -> Option<i32> {
+    let date = date?;
+    let bytes = date.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i].is_ascii_digit() {
+            let start = i;
+            while i < bytes.len() && bytes[i].is_ascii_digit() {
+                i += 1;
+            }
+            if i - start >= 4 {
+                return date[start..start + 4].parse::<i32>().ok();
+            }
+        } else {
+            i += 1;
+        }
+    }
+    None
+}
+
+/// Probe a file's container/codec without reading its full tag set. Used to
+/// derive the format label for a CUE image (whose codec isn't otherwise read).
+fn probe_file_type(path: &Path) -> Option<FileType> {
+    Probe::open(path).ok()?.read().ok().map(|t| t.file_type())
 }
 
 /// Read the embedded front-cover picture from the first audio file that
@@ -500,6 +655,58 @@ mod tests {
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("fixtures")
+    }
+
+    #[test]
+    fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
+        use crate::cue_flac::{CueSheet, CueTrack};
+        let mk = |number: u32, title: &str| CueTrack {
+            number,
+            title: Some(title.to_string()),
+            performer: Some("Artist Name".to_string()),
+            isrc: None,
+            file_reference: "image.flac".to_string(),
+            start_cue_frames: 0,
+            pregap_cue_frames: None,
+            end_cue_frames: None,
+        };
+        let sheet = CueSheet {
+            title: Some("Album Title".to_string()),
+            performer: Some("Artist Name".to_string()),
+            catalog: None,
+            date: Some("1970".to_string()),
+            tracks: vec![mk(1, "Track One"), mk(2, "Track Two"), mk(3, "Track Three")],
+        };
+        let clock = FixedClock(
+            chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&chrono::Utc),
+        );
+        let ids = SequentialIdProvider::new("cue");
+        // Nonexistent audio path: the codec probe yields None (fine — the
+        // seed still carries every CUE track); the point is track count.
+        let audio = Path::new("/nonexistent/image.flac");
+        let parsed =
+            map_cue_sheets_to_db(&[&sheet], &[audio], Some("Folder Name"), &clock, &ids).unwrap();
+
+        // The single-file image is NOT collapsed to one track: one DbTrack per
+        // CUE TRACK entry, in order, carrying the CUE's own titles.
+        assert_eq!(parsed.tracks.len(), 3);
+        assert_eq!(parsed.tracks[0].title, "Track One");
+        assert_eq!(parsed.tracks[1].title, "Track Two");
+        assert_eq!(parsed.tracks[2].title, "Track Three");
+        assert!(parsed.tracks.iter().all(|t| t.side == 1));
+        assert_eq!(
+            parsed
+                .tracks
+                .iter()
+                .map(|t| t.track_number)
+                .collect::<Vec<_>>(),
+            vec![Some(1), Some(2), Some(3)]
+        );
+        assert_eq!(parsed.album.title, "Album Title");
+        assert_eq!(parsed.album.year, Some(1970));
+        assert_eq!(parsed.artists[0].name, "Artist Name");
     }
 
     /// Copy a fixture into `dest_dir/{name}` and stamp it with the given

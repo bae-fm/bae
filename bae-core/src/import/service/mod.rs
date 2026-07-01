@@ -500,23 +500,65 @@ impl ImportService {
                 (release.parsed, release.metadata_pairs)
             }
             crate::import::IdentityChoice::Unknown => {
-                let audio_paths = crate::import::handle::categorized_audio_paths(&categorized);
                 let folder_name = folder
                     .file_name()
                     .and_then(|n| n.to_str())
                     .map(|s| s.to_string());
                 let clock = library_manager.clock().clone();
                 let ids = library_manager.ids().clone();
-                let parsed = tokio::task::spawn_blocking(move || {
-                    crate::import::file_tag_mapper::map_file_tags_to_db(
-                        &audio_paths,
-                        folder_name.as_deref(),
-                        clock.as_ref(),
-                        ids.as_ref(),
-                    )
-                })
-                .await
-                .map_err(|e| format!("file-tag mapping task failed: {e}"))??;
+                // Track structure for a CUE image comes from the CUE, not the
+                // single audio file: one DbTrack per CUE TRACK, titles from the
+                // sheet. Per-track rips seed one DbTrack per file. Both feed the
+                // same assembly in file_tag_mapper.
+                let parsed = match &categorized.audio {
+                    crate::import::folder_scanner::AudioContent::CueFlacPairs { pairs, .. } => {
+                        // Sort pairs the same way `map_tracks_to_files` slices
+                        // them so seed order lines up, then hand the parsed
+                        // sheets + audio paths to the blocking task.
+                        let mut sorted: Vec<&crate::import::folder_scanner::ScannedCueFlacPair> =
+                            pairs.iter().collect();
+                        sorted.sort_by(|a, b| {
+                            natord::compare(&a.cue_file.relative_path, &b.cue_file.relative_path)
+                        });
+                        let mut owned: Vec<(crate::cue_flac::CueSheet, PathBuf)> =
+                            Vec::with_capacity(sorted.len());
+                        for p in sorted {
+                            let sheet = p.cue_sheet.clone().ok_or_else(|| {
+                                format!("CUE sheet not parsed for pair {:?}", p.cue_file.path)
+                            })?;
+                            owned.push((sheet, p.audio_file.path.clone()));
+                        }
+                        tokio::task::spawn_blocking(move || {
+                            let sheets: Vec<&crate::cue_flac::CueSheet> =
+                                owned.iter().map(|(s, _)| s).collect();
+                            let audio: Vec<&Path> =
+                                owned.iter().map(|(_, p)| p.as_path()).collect();
+                            crate::import::file_tag_mapper::map_cue_sheets_to_db(
+                                &sheets,
+                                &audio,
+                                folder_name.as_deref(),
+                                clock.as_ref(),
+                                ids.as_ref(),
+                            )
+                        })
+                        .await
+                        .map_err(|e| format!("cue-seed mapping task failed: {e}"))??
+                    }
+                    crate::import::folder_scanner::AudioContent::TrackFiles { .. } => {
+                        let audio_paths =
+                            crate::import::handle::categorized_audio_paths(&categorized);
+                        tokio::task::spawn_blocking(move || {
+                            crate::import::file_tag_mapper::map_file_tags_to_db(
+                                &audio_paths,
+                                folder_name.as_deref(),
+                                clock.as_ref(),
+                                ids.as_ref(),
+                            )
+                        })
+                        .await
+                        .map_err(|e| format!("file-tag mapping task failed: {e}"))??
+                    }
+                };
                 (parsed, Vec::new())
             }
         };
@@ -1075,10 +1117,11 @@ impl ImportService {
         // A Remote import transitions to the cloud in the background — the same
         // flow the "Make Remote" action runs: coven uploads each file from its
         // external (in-place) source, and on the last flips `remote` true, drops
-        // the external refs, deletes the source files, and re-emits the subtree
-        // (the cover rides along). This runs BEFORE the events below so the outbox
-        // already holds the upload by the time any consumer observes the release or
-        // `Complete`.
+        // the external refs, and re-emits the subtree (the cover rides along). The
+        // user's original files are referenced in place and left untouched — coven
+        // never deletes a user-provided source. This runs BEFORE the events below so
+        // the outbox already holds the upload by the time any consumer observes the
+        // release or `Complete`.
         //
         if remote_intent {
             if let Err(e) = library_manager.coven_make_remote(&db_release.id, pin).await {
