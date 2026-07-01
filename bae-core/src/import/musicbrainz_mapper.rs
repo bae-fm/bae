@@ -506,6 +506,10 @@ pub fn map_mb_response_to_db(
                 }
             }
 
+            // A recording can carry more than one performance relation to the
+            // same work; track_works is uniquely keyed on (track_id, work_id),
+            // so link each work to this track at most once.
+            let mut track_work_ids = HashSet::new();
             if let Some(recording) = track.recording.as_ref() {
                 for (relation_pos, relation) in recording.relations.iter().enumerate() {
                     if mb_relation_is(relation, "work", "performance") {
@@ -529,6 +533,14 @@ pub fn map_mb_response_to_db(
                             ids,
                             now,
                         );
+                        if !track_work_ids.insert(work.id.clone()) {
+                            debug!(
+                                track_id = %db_track.id,
+                                work_id = %work.id,
+                                "Skipping duplicate MusicBrainz recording performance relation to the same work"
+                            );
+                            continue;
+                        }
                         track_works.push(DbTrackWork::new(
                             &db_track.id,
                             &work.id,
@@ -1162,6 +1174,56 @@ mod tests {
             .track_artists
             .iter()
             .any(|link| link.artist_id == composer.id));
+    }
+
+    #[test]
+    fn recording_linking_the_same_work_twice_produces_one_track_work_link() {
+        // A MusicBrainz recording can carry more than one performance relation to
+        // the same work (e.g. a full and a partial performance of one work). Each
+        // relation would push a track_work link, and two links for the same
+        // (track_id, work_id) violate track_works' UNIQUE(track_id, work_id) at
+        // finalize. The mapper must emit that pair only once.
+        let work = MbWork {
+            id: "mb-work-a".to_string(),
+            title: "Work Title A".to_string(),
+            disambiguation: None,
+            work_type: Some("work".to_string()),
+            relations: vec![],
+        };
+        let mut track = make_mb_track("1", "Track Title 1");
+        track.recording.as_mut().unwrap().relations = vec![
+            MbRelation {
+                target_type: Some("work".to_string()),
+                relation_type: Some("performance".to_string()),
+                work: Some(work.clone()),
+                ..MbRelation::default()
+            },
+            MbRelation {
+                target_type: Some("work".to_string()),
+                relation_type: Some("performance".to_string()),
+                work: Some(work),
+                ..MbRelation::default()
+            },
+        ];
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![track],
+        }]);
+
+        let parsed = map(&response, Some(2024), None).unwrap();
+
+        let track_id = &parsed.tracks[0].id;
+        let links: Vec<_> = parsed
+            .work_graph
+            .track_works
+            .iter()
+            .filter(|link| &link.track_id == track_id && link.work_id == "mb-work-a")
+            .collect();
+        assert_eq!(
+            links.len(),
+            1,
+            "duplicate (track_id, work_id) links violate track_works' UNIQUE constraint"
+        );
     }
 
     #[test]
