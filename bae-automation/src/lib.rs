@@ -1445,10 +1445,17 @@ fn to_value<T: Serialize>(value: T) -> Result<Value, AutomationError> {
 
 fn schema_object<T: JsonSchema>() -> Map<String, Value> {
     let value = serde_json::to_value(schemars::schema_for!(T)).expect("serialize JSON schema");
-    match value {
+    let mut map = match value {
         Value::Object(map) => map,
         _ => unreachable!("JSON schema is an object"),
-    }
+    };
+    // MCP requires the root inputSchema to declare `type: "object"`. Struct
+    // schemas already do; internally-tagged enum schemas emit a root `oneOf`
+    // with no root type. Every automation tool input is an object in all
+    // variants, so assert it at the root.
+    map.entry("type".to_string())
+        .or_insert_with(|| Value::String("object".to_string()));
+    map
 }
 
 fn empty_input_schema() -> Map<String, Value> {
@@ -2001,5 +2008,23 @@ fn automation_library_search_results(results: SearchResults) -> AutomationLibrar
                 artist_name: track.artist_name,
             })
             .collect(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_tool_input_schema_has_root_object_type() {
+        for tool in AutomationTool::all() {
+            let schema = tool.input_schema();
+            assert_eq!(
+                schema.get("type").and_then(Value::as_str),
+                Some("object"),
+                "tool {} inputSchema must have root type object",
+                tool.name(),
+            );
+        }
     }
 }
