@@ -179,6 +179,12 @@ enum ReleaseCommand {
     Detail {
         release_id: String,
     },
+    Export {
+        #[arg(long)]
+        release_id: String,
+        #[arg(long)]
+        target_dir: PathBuf,
+    },
     Reidentify {
         release_id: String,
         #[arg(long)]
@@ -394,6 +400,16 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
             ReleaseCommand::Detail { release_id } => Ok((
                 AutomationTool::ReleaseDetailGet,
                 json!({ "release_id": release_id }),
+            )),
+            ReleaseCommand::Export {
+                release_id,
+                target_dir,
+            } => Ok((
+                AutomationTool::ReleaseExport,
+                json!({
+                    "release_id": release_id,
+                    "target_dir": target_dir.to_string_lossy(),
+                }),
             )),
             ReleaseCommand::Reidentify {
                 release_id,

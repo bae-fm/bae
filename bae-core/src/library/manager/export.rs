@@ -3,6 +3,50 @@
 use super::*;
 
 impl LibraryManager {
+    /// Reconstruct a release's original source folder on disk, byte-for-byte.
+    /// Every release file (audio, CUE, LOG, cover scans, …) is written verbatim
+    /// from its coven blob to `<target_dir>/<folder>/<file.original_filename>`,
+    /// where `<folder>` is the release's source folder name and
+    /// `original_filename` is the file's path within that folder (e.g.
+    /// `CD1/CDImage.ape`). A Remote release fetches each blob from the cloud/cache.
+    /// Returns the created `<target_dir>/<folder>` path.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn export_release_files(
+        &self,
+        release_id: &str,
+        target_dir: &Path,
+    ) -> Result<PathBuf, LibraryError> {
+        let release = self
+            .get_release_by_id(release_id)
+            .await?
+            .ok_or_else(|| LibraryError::Import(format!("release not found: {release_id}")))?;
+        let folder = release.source_folder_name.ok_or_else(|| {
+            LibraryError::Import(format!(
+                "release {release_id} has no source folder name; cannot reconstruct its folder"
+            ))
+        })?;
+
+        let release_dir = target_dir.join(&folder);
+        let files = self.database.get_files_for_release(release_id).await?;
+        info!(
+            release_id,
+            folder = folder.as_str(),
+            file_count = files.len(),
+            "Exporting release files verbatim"
+        );
+
+        for file in &files {
+            let bytes = self.read_release_blob(file).await?;
+            let file_path = release_dir.join(&file.original_filename);
+            if let Some(parent) = file_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(&file_path, &bytes)?;
+        }
+
+        Ok(release_dir)
+    }
+
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn export_release(
         &self,

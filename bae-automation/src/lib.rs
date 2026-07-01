@@ -549,6 +549,17 @@ pub struct ReleaseIdInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ReleaseExportInput {
+    pub release_id: String,
+    pub target_dir: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationReleaseExport {
+    pub exported_path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReleaseReidentifyInput {
     pub release_id: String,
     pub choice: AutomationIdentityChoice,
@@ -1067,6 +1078,21 @@ impl Automation {
             .ok_or_else(|| AutomationError::not_found(format!("release '{release_id}' not found")))
     }
 
+    pub async fn export_release(
+        &self,
+        release_id: String,
+        target_dir: String,
+    ) -> Result<AutomationReleaseExport, AutomationError> {
+        let exported_path = self
+            .services
+            .library_manager()
+            .export_release_files(&release_id, &PathBuf::from(target_dir))
+            .await?;
+        Ok(AutomationReleaseExport {
+            exported_path: exported_path.to_string_lossy().to_string(),
+        })
+    }
+
     pub async fn reidentify_release(
         &self,
         release_id: String,
@@ -1127,15 +1153,15 @@ impl Automation {
             }
             AutomationTool::WatchedFoldersList => {
                 expect_no_args(args, tool.name())?;
-                to_value(self.watched_folders())
+                to_list_value("watched_folders", self.watched_folders())
             }
             AutomationTool::WatchedFolderAdd => {
                 let input: PathInput = from_value(args)?;
-                to_value(self.add_watched_folder(input.path)?)
+                to_list_value("watched_folders", self.add_watched_folder(input.path)?)
             }
             AutomationTool::WatchedFolderRemove => {
                 let input: PathInput = from_value(args)?;
-                to_value(self.remove_watched_folder(input.path)?)
+                to_list_value("watched_folders", self.remove_watched_folder(input.path)?)
             }
             AutomationTool::WatchedFoldersScan => {
                 let wait: ScanWait = from_value(args)?;
@@ -1143,7 +1169,7 @@ impl Automation {
             }
             AutomationTool::ImportCandidatesList => {
                 expect_no_args(args, tool.name())?;
-                to_value(self.list_candidates()?)
+                to_list_value("candidates", self.list_candidates()?)
             }
             AutomationTool::ImportCandidateGet => {
                 let input: CandidateKeyInput = from_value(args)?;
@@ -1180,6 +1206,13 @@ impl Automation {
             AutomationTool::ReleaseDetailGet => {
                 let input: ReleaseIdInput = from_value(args)?;
                 to_value(self.release_detail(input.release_id).await?)
+            }
+            AutomationTool::ReleaseExport => {
+                let input: ReleaseExportInput = from_value(args)?;
+                to_value(
+                    self.export_release(input.release_id, input.target_dir)
+                        .await?,
+                )
             }
             AutomationTool::ReleaseReidentify => {
                 let input: ReleaseReidentifyInput = from_value(args)?;
@@ -1221,6 +1254,7 @@ pub enum AutomationTool {
     ImportReleaseEditShape,
     ImportStart,
     ReleaseDetailGet,
+    ReleaseExport,
     ReleaseReidentify,
     ReleaseMetadataReset,
     ReleaseMetadataUpdate,
@@ -1228,7 +1262,7 @@ pub enum AutomationTool {
 }
 
 impl AutomationTool {
-    const DESCRIPTORS: [AutomationToolDescriptor; 18] = [
+    const DESCRIPTORS: [AutomationToolDescriptor; 19] = [
         AutomationToolDescriptor {
             tool: AutomationTool::ConfigGet,
             name: "config_get",
@@ -1314,6 +1348,12 @@ impl AutomationTool {
             input: AutomationToolInput::ReleaseId,
         },
         AutomationToolDescriptor {
+            tool: AutomationTool::ReleaseExport,
+            name: "release_export",
+            description: "Byte-accurately export a release's files to a directory",
+            input: AutomationToolInput::ReleaseExport,
+        },
+        AutomationToolDescriptor {
             tool: AutomationTool::ReleaseReidentify,
             name: "release_reidentify",
             description: "Set release identity",
@@ -1395,6 +1435,7 @@ enum AutomationToolInput {
     ShapeReleaseEdit,
     StartImport,
     ReleaseId,
+    ReleaseExport,
     ReleaseReidentify,
     ReleaseMetadataUpdate,
     LibrarySearch,
@@ -1414,6 +1455,7 @@ impl AutomationToolInput {
             Self::ShapeReleaseEdit => schema_object::<ShapeReleaseEditInput>(),
             Self::StartImport => schema_object::<AutomationStartImport>(),
             Self::ReleaseId => schema_object::<ReleaseIdInput>(),
+            Self::ReleaseExport => schema_object::<ReleaseExportInput>(),
             Self::ReleaseReidentify => schema_object::<ReleaseReidentifyInput>(),
             Self::ReleaseMetadataUpdate => schema_object::<ReleaseMetadataUpdateInput>(),
             Self::LibrarySearch => schema_object::<LibrarySearchInput>(),
@@ -1441,6 +1483,14 @@ fn from_value<T: for<'de> Deserialize<'de>>(value: Value) -> Result<T, Automatio
 
 fn to_value<T: Serialize>(value: T) -> Result<Value, AutomationError> {
     serde_json::to_value(value).map_err(|e| AutomationError::internal(e.to_string()))
+}
+
+/// Wrap a list result under a named key. MCP `structuredContent` must be a JSON
+/// object, so a tool returning a bare `Vec` has to nest it under a field.
+fn to_list_value<T: Serialize>(key: &str, values: Vec<T>) -> Result<Value, AutomationError> {
+    let mut map = Map::new();
+    map.insert(key.to_string(), to_value(values)?);
+    Ok(Value::Object(map))
 }
 
 fn schema_object<T: JsonSchema>() -> Map<String, Value> {
