@@ -22,13 +22,20 @@ fn account(ks: &KeyService, base: &str) -> String {
     format!("{}:{}", base, ks.library_id())
 }
 
+fn map_keyring_error(e: keyring_core::Error) -> KeyError {
+    KeyError::Persistence(e.to_string())
+}
+
 fn set_keyring_credential(
     ks: &KeyService,
     account_base: &str,
     value: &str,
     saved_message: &'static str,
 ) -> Result<(), KeyError> {
-    keyring_core::Entry::new(keyring_service(), &account(ks, account_base))?.set_password(value)?;
+    keyring_core::Entry::new(keyring_service(), &account(ks, account_base))
+        .map_err(map_keyring_error)?
+        .set_password(value)
+        .map_err(map_keyring_error)?;
     info!("{saved_message}");
     Ok(())
 }
@@ -70,7 +77,8 @@ impl BaeKeyServiceExt for KeyService {
     }
 
     fn delete_discogs_key(&self) -> Result<(), KeyError> {
-        match keyring_core::Entry::new(keyring_service(), &account(self, "discogs_api_key"))?
+        match keyring_core::Entry::new(keyring_service(), &account(self, "discogs_api_key"))
+            .map_err(map_keyring_error)?
             .delete_credential()
         {
             Ok(()) => {
@@ -81,7 +89,7 @@ impl BaeKeyServiceExt for KeyService {
                 warn!("Tried to delete Discogs key but none was stored");
                 Ok(())
             }
-            Err(e) => Err(KeyError::Keyring(e)),
+            Err(e) => Err(map_keyring_error(e)),
         }
     }
 
@@ -99,7 +107,8 @@ impl BaeKeyServiceExt for KeyService {
     }
 
     fn forget_encryption_key(&self) -> Result<(), KeyError> {
-        match keyring_core::Entry::new(keyring_service(), &account(self, "encryption_master_key"))?
+        match keyring_core::Entry::new(keyring_service(), &account(self, "encryption_master_key"))
+            .map_err(map_keyring_error)?
             .delete_credential()
         {
             Ok(()) => {
@@ -107,7 +116,7 @@ impl BaeKeyServiceExt for KeyService {
                 Ok(())
             }
             Err(keyring_core::Error::NoEntry) => Ok(()),
-            Err(e) => Err(KeyError::Keyring(e)),
+            Err(e) => Err(map_keyring_error(e)),
         }
     }
 }

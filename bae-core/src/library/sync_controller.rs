@@ -238,7 +238,7 @@ impl SyncController {
         tokio::sync::watch::Receiver<bool>,
         tokio::task::JoinHandle<()>,
     ) {
-        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(cancel.is_cancelled());
         let token = cancel.clone();
         let handle = tokio::spawn(async move {
             token.cancelled().await;
