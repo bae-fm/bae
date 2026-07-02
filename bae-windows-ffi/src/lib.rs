@@ -1053,6 +1053,73 @@ pub unsafe extern "C" fn bae_oauth_authorize(provider: *const c_char) -> *mut c_
     json_cstring(&out)
 }
 
+/// The account email fetched for an OAuth provider, or the reason it failed.
+#[cfg(feature = "oauth-providers")]
+#[derive(Serialize)]
+struct FfiAccountEmailResult {
+    email: Option<String>,
+    error: Option<String>,
+}
+
+/// The email of the OAuth account `oauth_token_json` authenticated, so the joiner
+/// can bake it into its join-request via [`bae_generate_join_request`]. The
+/// caller runs [`bae_oauth_authorize`] first and passes the resulting token JSON.
+/// Returns `{email, error}` as JSON. No handle — runs before [`bae_init`]. Free
+/// with [`bae_string_free`].
+///
+/// # Safety
+/// `provider` and `oauth_token_json` must be valid NUL-terminated UTF-8 C strings.
+#[cfg(feature = "oauth-providers")]
+#[no_mangle]
+pub unsafe extern "C" fn bae_fetch_account_email(
+    provider: *const c_char,
+    oauth_token_json: *const c_char,
+) -> *mut c_char {
+    let Some(provider) = cstr(provider).and_then(|p| oauth_provider_from_str(&p)) else {
+        return json_cstring(&FfiAccountEmailResult {
+            email: None,
+            error: Some("unknown or unsupported provider".to_string()),
+        });
+    };
+    let tokens = match cstr(oauth_token_json)
+        .ok_or_else(|| "oauth token json is null or not valid UTF-8".to_string())
+        .and_then(|json| {
+            serde_json::from_str::<coven::OAuthTokens>(&json)
+                .map_err(|e| format!("invalid oauth token json: {e}"))
+        }) {
+        Ok(tokens) => tokens,
+        Err(e) => {
+            return json_cstring(&FfiAccountEmailResult {
+                email: None,
+                error: Some(e),
+            })
+        }
+    };
+    let runtime = match tokio::runtime::Runtime::new() {
+        Ok(runtime) => runtime,
+        Err(e) => {
+            tracing::error!("bae_fetch_account_email: runtime: {e}");
+            return json_cstring(&FfiAccountEmailResult {
+                email: None,
+                error: Some("couldn't start the sign-in runtime".to_string()),
+            });
+        }
+    };
+    let out = match runtime.block_on(bae_core::sync::sync_manager::fetch_account_email(
+        provider, &tokens,
+    )) {
+        Ok(email) => FfiAccountEmailResult {
+            email: Some(email),
+            error: None,
+        },
+        Err(e) => FfiAccountEmailResult {
+            email: None,
+            error: Some(e.to_string()),
+        },
+    };
+    json_cstring(&out)
+}
+
 /// Restore a library from a restore code. For OAuth providers (Google Drive,
 /// Dropbox, OneDrive) the caller first runs `bae_oauth_authorize` and passes
 /// the resulting token JSON as `oauth_token_json`; for credential providers it
@@ -1120,9 +1187,16 @@ pub unsafe extern "C" fn bae_restore_from_code(
 /// string, or null on error (logged). The joining device has no library yet, so
 /// this needs no handle; it only requires the keyring initialized
 /// ([`bae_startup`]). Free with [`bae_string_free`].
+///
+/// `email` is the OAuth account address the joiner authenticated as (from
+/// [`bae_fetch_account_email`]), baked into the code so the approver can share
+/// the OAuth folder to it; pass null/empty for S3, which shares no folder.
+///
+/// # Safety
+/// `email`, if non-null, must be a valid NUL-terminated UTF-8 C string.
 #[no_mangle]
-pub extern "C" fn bae_generate_join_request() -> *mut c_char {
-    match bae_core::sync::sync_manager::generate_join_request() {
+pub unsafe extern "C" fn bae_generate_join_request(email: *const c_char) -> *mut c_char {
+    match bae_core::sync::sync_manager::generate_join_request(opt_cstr(email)) {
         Ok(request) => json_cstring(&FfiJoinRequest {
             code: request.code,
             fingerprint: request.fingerprint,
@@ -4077,13 +4151,18 @@ pub unsafe extern "C" fn bae_get_members(handle: *const BaeHandle) -> *mut c_cha
 /// bae adds every device as a member; the founding device is the owner. Blocks
 /// on the cloud write — call off the UI thread. Free with [`bae_string_free`].
 ///
+/// `invitee_email` is the joiner's OAuth account address decoded from its
+/// join-request, which coven shares the OAuth folder to; pass null/empty for S3.
+///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
-/// `public_key_hex` must be a valid NUL-terminated UTF-8 C string.
+/// `public_key_hex` must be a valid NUL-terminated UTF-8 C string; `invitee_email`,
+/// if non-null, must be a valid NUL-terminated UTF-8 C string.
 #[no_mangle]
 pub unsafe extern "C" fn bae_invite_member(
     handle: *const BaeHandle,
     public_key_hex: *const c_char,
+    invitee_email: *const c_char,
 ) -> *mut c_char {
     let Some(handle) = handle.as_ref() else {
         tracing::error!("bae_invite_member: null handle");
@@ -4093,11 +4172,12 @@ pub unsafe extern "C" fn bae_invite_member(
         tracing::error!("bae_invite_member: null or non-UTF-8 public_key_hex");
         return std::ptr::null_mut();
     };
+    let invitee_email = opt_cstr(invitee_email);
     let app = &handle.0;
     match app.runtime.block_on(
         app.services
             .library_manager()
-            .invite_member(&public_key_hex),
+            .invite_member(&public_key_hex, invitee_email.as_deref()),
     ) {
         Ok(code) => error_cstring(&code),
         Err(e) => {
