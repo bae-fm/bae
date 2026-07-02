@@ -14,15 +14,13 @@ struct AlbumGridView<ExpansionContent: View>: View {
     @Environment(Library.self)
     private var library
     let list: AlbumList
-    @Binding
-    var sortCriteria: [BridgeSortCriterion]
-    let availableFields: [BridgeSortField]
+    /// The active sort, owned by `LibraryView`. Read-only here: the grid needs
+    /// it to resolve an album's index for `revealAlbum`; the sort *controls*
+    /// live in `LibraryView`'s pinned header.
+    let sortCriteria: [BridgeSortCriterion]
     let onPlay: (String) -> Void
     let onAddToQueue: (String) -> Void
     let onAddNext: (String) -> Void
-    /// Shuffle the whole library into a fresh playback session.
-    let onShuffleLibrary: () -> Void
-    let headerTitle: String
     @ViewBuilder
     let expansionContent: (_ albumId: String) -> ExpansionContent
 
@@ -55,122 +53,116 @@ struct AlbumGridView<ExpansionContent: View>: View {
 
             ScrollViewReader { scrollProxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        libraryHeader
-                            .padding(.horizontal, Self.contentPadding)
-                            .padding(.top, 40)
-                            .padding(.bottom, 20)
-                        LazyVStack(alignment: .leading, spacing: 28) {
-                            ForEach(0..<rowCount, id: \.self) { rowIndex in
-                                HStack(spacing: gridSpacing) {
-                                    ForEach(0..<columnCount, id: \.self) {
-                                        col in
-                                        let albumIndex =
-                                            rowIndex * columnCount + col
-                                        if albumIndex < list.totalCount {
-                                            if let id = list.idAt(albumIndex),
-                                                let summary =
-                                                    libraryStore.albumSummaries[
-                                                        id
-                                                    ]
-                                            {
-                                                AlbumCardView(
-                                                    title: summary.title,
-                                                    artistNames: summary
-                                                        .artistNames,
-                                                    year: summary.year,
-                                                    cover: summary.cover,
-                                                    isSelected: uiStore
-                                                        .selectedAlbumId
-                                                        == summary.id,
-                                                    size: cardWidth,
-                                                    onPlay: {
-                                                        onPlay(
-                                                            summary
-                                                                .primaryReleaseId
-                                                        )
-                                                    },
-                                                    onAddToQueue: {
-                                                        onAddToQueue(
-                                                            summary
-                                                                .primaryReleaseId
-                                                        )
-                                                    },
-                                                    onAddNext: {
-                                                        onAddNext(
-                                                            summary
-                                                                .primaryReleaseId
-                                                        )
-                                                    },
-                                                )
-                                                .id(summary.id)
-                                                .frame(width: cardWidth)
-                                                .draggable(summary.id)
-                                                .onTapGesture {
-                                                    withAnimation(
-                                                        .spring(
-                                                            response: 0.3,
-                                                            dampingFraction:
-                                                                0.85
-                                                        )
-                                                    ) {
-                                                        uiStore
-                                                            .selectAlbumFromGrid(
-                                                                uiStore
-                                                                    .selectedAlbumId
-                                                                    == summary
+                    LazyVStack(alignment: .leading, spacing: 28) {
+                        ForEach(0..<rowCount, id: \.self) { rowIndex in
+                            HStack(spacing: gridSpacing) {
+                                ForEach(0..<columnCount, id: \.self) {
+                                    col in
+                                    let albumIndex =
+                                        rowIndex * columnCount + col
+                                    if albumIndex < list.totalCount {
+                                        if let id = list.idAt(albumIndex),
+                                            let summary =
+                                                libraryStore.albumSummaries[
+                                                    id
+                                                ]
+                                        {
+                                            AlbumCardView(
+                                                title: summary.title,
+                                                artistNames: summary
+                                                    .artistNames,
+                                                year: summary.year,
+                                                cover: summary.cover,
+                                                isSelected: uiStore
+                                                    .selectedAlbumId
+                                                    == summary.id,
+                                                size: cardWidth,
+                                                onPlay: {
+                                                    onPlay(
+                                                        summary
+                                                            .primaryReleaseId
+                                                    )
+                                                },
+                                                onAddToQueue: {
+                                                    onAddToQueue(
+                                                        summary
+                                                            .primaryReleaseId
+                                                    )
+                                                },
+                                                onAddNext: {
+                                                    onAddNext(
+                                                        summary
+                                                            .primaryReleaseId
+                                                    )
+                                                },
+                                            )
+                                            .id(summary.id)
+                                            .frame(width: cardWidth)
+                                            .draggable(summary.id)
+                                            .onTapGesture {
+                                                withAnimation(
+                                                    .spring(
+                                                        response: 0.3,
+                                                        dampingFraction:
+                                                            0.85
+                                                    )
+                                                ) {
+                                                    uiStore
+                                                        .selectAlbumFromGrid(
+                                                            uiStore
+                                                                .selectedAlbumId
+                                                                == summary
+                                                                .id
+                                                                ? nil
+                                                                : summary
                                                                     .id
-                                                                    ? nil
-                                                                    : summary
-                                                                        .id
-                                                            )
-                                                    }
+                                                        )
                                                 }
                                             }
-                                            else {
-                                                Color.clear
-                                                    .aspectRatio(
-                                                        1,
-                                                        contentMode: .fit
-                                                    )
-                                                    .frame(width: cardWidth)
-                                            }
                                         }
-                                    }
-                                    if list.totalCount > 0 {
-                                        let albumsInRow = min(
-                                            columnCount,
-                                            list.totalCount - rowIndex
-                                                * columnCount
-                                        )
-                                        if albumsInRow < columnCount {
-                                            Spacer()
+                                        else {
+                                            Color.clear
+                                                .aspectRatio(
+                                                    1,
+                                                    contentMode: .fit
+                                                )
+                                                .frame(width: cardWidth)
                                         }
                                     }
                                 }
-                                .id(rowIndex)
-                                .task(
-                                    id: RowLoadID(
-                                        epoch: list.loadEpoch,
-                                        index: rowIndex
+                                if list.totalCount > 0 {
+                                    let albumsInRow = min(
+                                        columnCount,
+                                        list.totalCount - rowIndex
+                                            * columnCount
                                     )
-                                ) {
-                                    await loadBatch(
-                                        around: rowIndex * columnCount
-                                    )
+                                    if albumsInRow < columnCount {
+                                        Spacer()
+                                    }
                                 }
-                                AlbumExpansionSlot(
-                                    selectedId: selectedAlbumId(
-                                        rowIndex: rowIndex,
-                                        columnCount: columnCount
-                                    ),
-                                    expansionContent: expansionContent
+                            }
+                            .id(rowIndex)
+                            .task(
+                                id: RowLoadID(
+                                    epoch: list.loadEpoch,
+                                    index: rowIndex
+                                )
+                            ) {
+                                await loadBatch(
+                                    around: rowIndex * columnCount
                                 )
                             }
+                            AlbumExpansionSlot(
+                                selectedId: selectedAlbumId(
+                                    rowIndex: rowIndex,
+                                    columnCount: columnCount
+                                ),
+                                expansionContent: expansionContent
+                            )
                         }
-                        .padding(.horizontal, Self.contentPadding)
-                        .padding(.bottom)
                     }
+                    .padding(.horizontal, Self.contentPadding)
+                    .padding(.bottom)
                     .frame(maxWidth: Self.maxContentWidth)
                     .frame(maxWidth: .infinity)
                 }
@@ -257,119 +249,6 @@ extension AlbumGridView {
                 return index < list.totalCount && list.idAt(index) == selectedId
             }
         return rowContainsSelection ? selectedId : nil
-    }
-
-    private var libraryHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(headerTitle)
-                .font(.system(size: 36, weight: .bold))
-            Spacer()
-            LibraryModeMenu()
-            Button(action: onShuffleLibrary) {
-                Label("Shuffle Library", systemImage: "shuffle")
-            }
-            .buttonStyle(.borderless)
-            .help("Shuffle Library")
-            sortControls
-        }
-    }
-
-    private var usedFields: Set<BridgeSortField> {
-        Set(sortCriteria.map(\.field))
-    }
-
-    private var sortControls: some View {
-        HStack(spacing: 4) {
-            ForEach(sortCriteria.indices, id: \.self) { index in
-                SortCriterionChip(
-                    criterion: $sortCriteria[index],
-                    choosableFields: availableFields.filter {
-                        $0 == sortCriteria[index].field
-                            || !usedFields.contains($0)
-                    },
-                    canRemove: sortCriteria.count > 1,
-                    onRemove: { sortCriteria.remove(at: index) },
-                )
-            }
-            let unused = availableFields.filter { !usedFields.contains($0) }
-            if !unused.isEmpty {
-                Menu {
-                    ForEach(unused, id: \.self) { field in
-                        Button(field.displayName) {
-                            sortCriteria.append(
-                                BridgeSortCriterion(
-                                    field: field,
-                                    direction: .ascending
-                                )
-                            )
-                        }
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .help("Add sort criterion")
-            }
-        }
-    }
-}
-
-// MARK: - Sort Criterion Chip
-
-private struct SortCriterionChip: View {
-    @Binding
-    var criterion: BridgeSortCriterion
-    let choosableFields: [BridgeSortField]
-    let canRemove: Bool
-    let onRemove: () -> Void
-
-    var body: some View {
-        Menu {
-            Button {
-                criterion.direction =
-                    criterion.direction == .ascending ? .descending : .ascending
-            } label: {
-                Label(
-                    criterion.direction == .ascending
-                        ? "Sort Descending" : "Sort Ascending",
-                    systemImage: criterion.direction == .ascending
-                        ? "arrow.down" : "arrow.up",
-                )
-            }
-            if canRemove {
-                Button(role: .destructive, action: onRemove) {
-                    Label("Remove", systemImage: "xmark.circle")
-                }
-            }
-            Divider()
-            ForEach(choosableFields, id: \.self) { field in
-                Button {
-                    criterion.field = field
-                } label: {
-                    HStack {
-                        Text(field.displayName)
-                        if criterion.field == field {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 2) {
-                Text(criterion.field.displayName)
-                Image(
-                    systemName: criterion.direction == .ascending
-                        ? "arrow.up" : "arrow.down"
-                )
-            }
-            .font(.callout)
-            .foregroundStyle(.secondary)
-        }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
     }
 }
 
@@ -539,8 +418,7 @@ private class MenuItem: NSMenuItem {
         /// `albumDetailPreviewEnvironment` so the audit resolves the
         /// `AlbumDetailView` chain's environment from one place.
         let store: LibraryStore
-        @State
-        private var sortCriteria: [BridgeSortCriterion] = [
+        private let sortCriteria: [BridgeSortCriterion] = [
             BridgeSortCriterion(field: .dateAdded, direction: .descending)
         ]
 
@@ -552,13 +430,10 @@ private class MenuItem: NSMenuItem {
             )
             AlbumGridView(
                 list: list,
-                sortCriteria: $sortCriteria,
-                availableFields: BridgeSortField.allCases,
+                sortCriteria: sortCriteria,
                 onPlay: { _ in },
                 onAddToQueue: { _ in },
                 onAddNext: { _ in },
-                onShuffleLibrary: {},
-                headerTitle: "Library",
             ) { albumId in
                 AlbumDetailView(albumId: albumId)
             }

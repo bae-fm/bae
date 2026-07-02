@@ -59,12 +59,15 @@ struct LibraryView: View {
     private var detailSelection: ComposerPaneSelection = .none
 
     var body: some View {
-        Group {
-            switch uiStore.libraryBrowserMode {
-            case .albums:
-                albumContent
-            case .composers:
-                composerContent
+        VStack(spacing: 0) {
+            libraryHeader
+            Group {
+                switch uiStore.libraryBrowserMode {
+                case .albums:
+                    albumContent
+                case .composers:
+                    composerContent
+                }
             }
         }
         .background(Theme.background)
@@ -111,6 +114,75 @@ struct LibraryView: View {
 }
 
 extension LibraryView {
+    /// Pinned above the content, fixed across mode switches. The heading *is*
+    /// the mode switcher; the trailing controls are mode-specific.
+    private var libraryHeader: some View {
+        HStack(alignment: .firstTextBaseline) {
+            LibraryModeHeading()
+            Spacer()
+            switch uiStore.libraryBrowserMode {
+            case .albums:
+                Button {
+                    playback.playLibraryShuffled()
+                } label: {
+                    Label("Shuffle Library", systemImage: "shuffle")
+                }
+                .buttonStyle(.borderless)
+                .help("Shuffle Library")
+                albumSortControls
+            case .composers:
+                composerSortControls
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 40)
+        .padding(.bottom, 20)
+    }
+
+    private var usedFields: Set<BridgeSortField> {
+        Set(sortCriteria.map(\.field))
+    }
+
+    private var albumSortControls: some View {
+        HStack(spacing: 4) {
+            ForEach(sortCriteria.indices, id: \.self) { index in
+                SortCriterionChip(
+                    criterion: $sortCriteria[index],
+                    choosableFields: BridgeSortField.allCases.filter {
+                        $0 == sortCriteria[index].field
+                            || !usedFields.contains($0)
+                    },
+                    canRemove: sortCriteria.count > 1,
+                    onRemove: { sortCriteria.remove(at: index) },
+                )
+            }
+            let unused = BridgeSortField.allCases.filter {
+                !usedFields.contains($0)
+            }
+            if !unused.isEmpty {
+                Menu {
+                    ForEach(unused, id: \.self) { field in
+                        Button(field.displayName) {
+                            sortCriteria.append(
+                                BridgeSortCriterion(
+                                    field: field,
+                                    direction: .ascending
+                                )
+                            )
+                        }
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Add sort criterion")
+            }
+        }
+    }
+
     private var albumContent: some View {
         Group {
             if let albumList {
@@ -124,8 +196,7 @@ extension LibraryView {
                 else {
                     AlbumGridView(
                         list: albumList,
-                        sortCriteria: $sortCriteria,
-                        availableFields: BridgeSortField.allCases,
+                        sortCriteria: sortCriteria,
                         onPlay: { releaseId in
                             playback.playRelease(releaseId, nil, false)
                         },
@@ -135,8 +206,6 @@ extension LibraryView {
                         onAddNext: { releaseId in
                             queue.addReleaseNext(releaseId)
                         },
-                        onShuffleLibrary: { playback.playLibraryShuffled() },
-                        headerTitle: String(localized: "Library"),
                     ) { albumId in
                         AlbumDetailView(albumId: albumId)
                     }
@@ -174,47 +243,32 @@ extension LibraryView {
     }
 
     private func composerListView(_ list: ComposerList) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            composerHeader
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            List {
-                ForEach(0..<list.totalCount, id: \.self) { index in
-                    composerRow(at: index, list: list)
-                        .task(
-                            id: RowLoadID(
-                                epoch: list.loadEpoch,
-                                index: index
-                            )
-                        ) {
-                            let first = max(
-                                0,
-                                index - composerLoadBatchSize / 2
-                            )
-                            let end = min(
-                                first + composerLoadBatchSize,
-                                list.totalCount
-                            )
-                            await list.loadRange(
-                                offset: first,
-                                limit: end - first
-                            )
-                        }
-                }
+        List {
+            ForEach(0..<list.totalCount, id: \.self) { index in
+                composerRow(at: index, list: list)
+                    .task(
+                        id: RowLoadID(
+                            epoch: list.loadEpoch,
+                            index: index
+                        )
+                    ) {
+                        let first = max(
+                            0,
+                            index - composerLoadBatchSize / 2
+                        )
+                        let end = min(
+                            first + composerLoadBatchSize,
+                            list.totalCount
+                        )
+                        await list.loadRange(
+                            offset: first,
+                            limit: end - first
+                        )
+                    }
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.background)
         }
-    }
-
-    private var composerHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Composers")
-                .font(.title.bold())
-            Spacer()
-            LibraryModeMenu()
-            composerSortControls
-        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
     }
 
     private var composerSortControls: some View {
