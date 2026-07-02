@@ -7,6 +7,7 @@ import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeExportLocation
+import uniffi.bae_bridge.BridgeExportMetadata
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeRelease
