@@ -67,6 +67,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v6
 
+    - name: Free disk space
+      # The NDK, the cross-built FFmpeg, and the Gradle build together overrun
+      # the ~14 GB ubuntu-latest disk and the job dies with "No space left on
+      # device" mid-run. Drop preinstalled toolchains this job never touches to
+      # reclaim ~25 GB of headroom.
+      run: |
+        df -h /
+        sudo rm -rf \
+          /usr/share/dotnet \
+          /opt/ghc /usr/local/.ghcup \
+          /usr/local/share/powershell \
+          /usr/share/swift \
+          /opt/hostedtoolcache/CodeQL
+        sudo docker image prune --all --force 2>/dev/null || true
+        df -h /
+
     - name: Setup Linux environment
       # Host ffmpeg for the uniffi-bindgen host build.
       uses: ./.github/actions/setup-linux
