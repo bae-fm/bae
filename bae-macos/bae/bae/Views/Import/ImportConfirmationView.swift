@@ -651,16 +651,8 @@ struct CoverPickerView: View {
                     encryptionKeyFingerprint: nil,
                     pauseBetweenSides: false,
                     exportLocation: .askEachTime,
-                    exportFilenameTemplate: "{track_number} - {title}",
-                    exportMetadata: BridgeExportMetadata(
-                        title: true,
-                        artist: true,
-                        album: true,
-                        year: true,
-                        trackNumber: true,
-                        discNumber: true,
-                        coverArt: true
-                    ),
+                    exportFilenameTemplate: PreviewData.exportFilenameTemplate,
+                    exportMetadata: .allEnabled,
                     mcp: BridgeMcpConfig(enabled: false, port: 47777),
                     discogsTokenStatus: .notConfigured,
                     discogsUsable: false,

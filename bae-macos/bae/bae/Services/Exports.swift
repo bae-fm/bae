@@ -25,6 +25,13 @@ final class Exports: Sendable, Observable {
     /// a `configChanged` event into `ConfigStore`.
     let setExportLocation:
         @Sendable (_ location: BridgeExportLocation) throws -> Void
+    /// Set the template for a single-track export's suggested filename. The
+    /// change round-trips back through a `configChanged` event.
+    let setExportFilenameTemplate: @Sendable (_ template: String) throws -> Void
+    /// Set which metadata tags a single-track export embeds. The change
+    /// round-trips back through a `configChanged` event.
+    let setExportMetadata:
+        @Sendable (_ metadata: BridgeExportMetadata) throws -> Void
 
     init(
         enqueueExport: @escaping @Sendable (String, String) -> Void = { _, _ in
@@ -33,13 +40,20 @@ final class Exports: Sendable, Observable {
         cancelExport: @escaping @Sendable (String) -> Void = { _ in },
         retryExports: @escaping @Sendable () -> Void = {},
         setExportLocation:
-            @escaping @Sendable (BridgeExportLocation) throws -> Void = { _ in }
+            @escaping @Sendable (BridgeExportLocation) throws -> Void = { _ in
+            },
+        setExportFilenameTemplate:
+            @escaping @Sendable (String) throws -> Void = { _ in },
+        setExportMetadata:
+            @escaping @Sendable (BridgeExportMetadata) throws -> Void = { _ in }
     ) {
         self.enqueueExport = enqueueExport
         self.setExportsPaused = setExportsPaused
         self.cancelExport = cancelExport
         self.retryExports = retryExports
         self.setExportLocation = setExportLocation
+        self.setExportFilenameTemplate = setExportFilenameTemplate
+        self.setExportMetadata = setExportMetadata
     }
 
     convenience init(handle: any AppHandleProtocol) {
@@ -50,7 +64,11 @@ final class Exports: Sendable, Observable {
             setExportsPaused: { handle.setExportsPaused(paused: $0) },
             cancelExport: { handle.cancelExport(releaseId: $0) },
             retryExports: { handle.retryExports() },
-            setExportLocation: { try handle.setExportLocation(location: $0) }
+            setExportLocation: { try handle.setExportLocation(location: $0) },
+            setExportFilenameTemplate: {
+                try handle.setExportFilenameTemplate(template: $0)
+            },
+            setExportMetadata: { try handle.setExportMetadata(metadata: $0) }
         )
     }
 

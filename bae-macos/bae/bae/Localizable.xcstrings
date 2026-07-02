@@ -1,6 +1,1337 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}": {
+      "comment": "Export settings footer listing filename-template tokens; keep the {…} tokens untranslated.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
+          }
+        }
+      }
+    },
+    "Cover art": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cover art"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cover art"
+          }
+        }
+      }
+    },
+    "Disc number": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disc number"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Disc number"
+          }
+        }
+      }
+    },
+    "Filename format": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filename format"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Filename format"
+          }
+        }
+      }
+    },
+    "Release exports": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Release exports"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Release exports"
+          }
+        }
+      }
+    },
+    "Track exports": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Track exports"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track exports"
+          }
+        }
+      }
+    },
+    "Track number": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Track number"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Track number"
+          }
+        }
+      }
+    },
     "Ask Each Time": {
       "comment": "Settings: switch export location back to prompting each time",
       "localizations": {
@@ -72414,197 +73745,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "Track not found for export": {
-      "comment": "Album detail: error when the track to export can't be found",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se encontró la pista para exportar"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Piste introuvable pour l'exportation"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Titel für den Export nicht gefunden"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Faixa não encontrada para exportação"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "書き出すトラックが見つかりません"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未找到要导出的曲目"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لم يُعثَر على المقطوعة للتصدير"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "הרצועה לייצוא לא נמצאה"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Трек для експорту не знайдено"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Песента за изнасяне не е намерена"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nie znaleziono utworu do eksportu"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Skladba k exportu nebyla nalezena"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Skladba za izvoz nije pronađena"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "내보낼 트랙을 찾을 수 없음"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track not found for export"
           }
         }
       }

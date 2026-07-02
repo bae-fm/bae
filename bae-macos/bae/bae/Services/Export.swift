@@ -8,13 +8,20 @@ final class Export: Sendable, Observable {
             _ trackId: String, _ outputPath: String,
             _ format: BridgeExportFormat
         ) async throws -> Void
+    /// The default filename stem (no extension) the save panel pre-fills for a
+    /// track, rendered by core from the configured template. Cheap — reads only
+    /// the database, no audio or cover.
+    let suggestedName: @Sendable (_ trackId: String) async throws -> String
 
     init(
         exportTrack:
             @escaping @Sendable (String, String, BridgeExportFormat)
-            async throws -> Void = { _, _, _ in }
+            async throws -> Void = { _, _, _ in },
+        suggestedName:
+            @escaping @Sendable (String) async throws -> String = { _ in "" }
     ) {
         self.exportTrack = exportTrack
+        self.suggestedName = suggestedName
     }
 
     convenience init(handle: any AppHandleProtocol) {
@@ -25,6 +32,9 @@ final class Export: Sendable, Observable {
                     outputPath: $1,
                     format: $2
                 )
+            },
+            suggestedName: {
+                try await handle.exportTrackSuggestedName(trackId: $0)
             }
         )
     }

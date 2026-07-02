@@ -148,10 +148,7 @@ struct AlbumDetailView: View {
                             showingDeleteConfirmation = true
                         },
                         onExportTrack: { trackId in
-                            exportTrack(
-                                trackId: trackId,
-                                tracks: selectedDetail.tracks
-                            )
+                            exportTrack(trackId: trackId)
                         },
                     )
                 }
@@ -558,29 +555,36 @@ extension AlbumDetailView {
         }
     }
 
-    private func exportTrack(trackId: String, tracks: [Track]) {
-        guard let track = tracks.first(where: { $0.id == trackId }) else {
-            uiStore.showError(String(localized: "Track not found for export"))
-            return
-        }
-        let panel = makeExportSavePanel(trackTitle: track.title)
-        let formatPopup = panel.formatPopup
-
-        let response = panel.savePanel.runModal()
-        _ = panel.formatDelegate  // prevent deallocation during modal
-
-        guard response == .OK, let url = panel.savePanel.url else {
-            return
-        }
-
-        let formatIndex = formatPopup.indexOfSelectedItem
-        UserDefaults.standard.set(formatIndex, forKey: "exportFormat")
-        let format: BridgeExportFormat = formatIndex == 0 ? .flac : .mp3
-
-        let export = export
-        let outputPath = url.path(percentEncoded: false)
+    private func exportTrack(trackId: String) {
         exportTask?.cancel()
         exportTask = Task {
+            // Core renders the suggested filename stem from the configured
+            // template; a failure surfaces rather than falling back to a raw
+            // title, which would hide the error.
+            let stem: String
+            do {
+                stem = try await export.suggestedName(trackId)
+            }
+            catch is CancellationError {
+                return
+            }
+            catch {
+                exportError = error.localizedDescription
+                return
+            }
+
+            let panel = makeExportSavePanel(stem: stem)
+            let formatPopup = panel.formatPopup
+            let response = panel.savePanel.runModal()
+            _ = panel.formatDelegate  // prevent deallocation during modal
+            guard response == .OK, let url = panel.savePanel.url else {
+                return
+            }
+
+            let formatIndex = formatPopup.indexOfSelectedItem
+            UserDefaults.standard.set(formatIndex, forKey: "exportFormat")
+            let format: BridgeExportFormat = formatIndex == 0 ? .flac : .mp3
+            let outputPath = url.path(percentEncoded: false)
             do {
                 try await export.exportTrack(trackId, outputPath, format)
             }
@@ -598,21 +602,15 @@ extension AlbumDetailView {
     /// caller runs the panel and reads `formatPopup` for the chosen format; the
     /// delegate must be retained for the modal's lifetime.
     private func makeExportSavePanel(
-        trackTitle: String
+        stem: String
     ) -> ExportSavePanel {
-        let sanitizedTitle =
-            trackTitle
-            .replacingOccurrences(of: "/", with: "-")
-            .replacingOccurrences(of: "\\", with: "-")
-            .replacingOccurrences(of: ":", with: "-")
-
         let lastFormatIndex = UserDefaults.standard.integer(
             forKey: "exportFormat"
         )
         let defaultExt = lastFormatIndex == 1 ? "mp3" : "flac"
 
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "\(sanitizedTitle).\(defaultExt)"
+        panel.nameFieldStringValue = "\(stem).\(defaultExt)"
         panel.canCreateDirectories = true
 
         // Format picker accessory view with target-action to update extension

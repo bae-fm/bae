@@ -42,6 +42,11 @@ struct Config: Equatable {
     let pauseBetweenSides: Bool
     /// Where release exports write: prompt each time, or a fixed folder.
     let exportLocation: BridgeExportLocation
+    /// Template for the default filename a single-track export suggests. Core
+    /// renders the tokens; the UI edits the raw string.
+    let exportFilenameTemplate: String
+    /// Which metadata tags a single-track export embeds.
+    let exportMetadata: BridgeExportMetadata
     let mcp: BridgeMcpConfig
 
     var hasCloudHome: Bool { sync != nil }
@@ -57,6 +62,8 @@ struct Config: Equatable {
         sync = bridge.sync
         pauseBetweenSides = bridge.pauseBetweenSides
         exportLocation = bridge.exportLocation
+        exportFilenameTemplate = bridge.exportFilenameTemplate
+        exportMetadata = bridge.exportMetadata
         mcp = bridge.mcp
     }
 

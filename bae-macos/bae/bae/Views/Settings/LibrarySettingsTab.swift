@@ -6,8 +6,6 @@ private let logger = Logger.bae("LibrarySettings")
 struct LibrarySettingsTab: View {
     @Environment(Sync.self)
     var sync
-    @Environment(Exports.self)
-    var exports
     @Environment(ConfigStore.self)
     var configStore
     @Environment(UiStore.self)
@@ -49,14 +47,6 @@ struct LibrarySettingsTab: View {
                         .help("Reveal in Finder")
                     }
                 }
-            }
-
-            Section("Export") {
-                ExportLocationPicker(
-                    configStore: configStore,
-                    setLocation: exports.setExportLocation,
-                    showError: { @MainActor error in uiStore.showError(error) }
-                )
             }
 
             Section("Sync") {

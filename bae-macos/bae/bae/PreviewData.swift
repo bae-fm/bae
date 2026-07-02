@@ -714,6 +714,10 @@ enum PreviewData {
         name: "Downloads"
     )
 
+    /// Default single-track export filename template, for seeding preview
+    /// configs (mirrors bae-core's `default_export_filename_template`).
+    static let exportFilenameTemplate = "{track_number} - {title}"
+
     /// Shared preview ConfigStore. ConfigStore is a non-Sendable `@Observable`,
     /// so it needs `@MainActor` isolation to hold as a static.
     @MainActor
@@ -727,16 +731,8 @@ enum PreviewData {
                 encryptionKeyFingerprint: nil,
                 pauseBetweenSides: false,
                 exportLocation: .askEachTime,
-                exportFilenameTemplate: "{track_number} - {title}",
-                exportMetadata: BridgeExportMetadata(
-                    title: true,
-                    artist: true,
-                    album: true,
-                    year: true,
-                    trackNumber: true,
-                    discNumber: true,
-                    coverArt: true
-                ),
+                exportFilenameTemplate: exportFilenameTemplate,
+                exportMetadata: .allEnabled,
                 mcp: BridgeMcpConfig(enabled: false, port: 47777),
                 discogsTokenStatus: .notConfigured,
                 discogsUsable: false,
@@ -1358,5 +1354,19 @@ enum PreviewData {
                 excluded: false
             ),
         ]),
+    )
+}
+
+extension BridgeExportMetadata {
+    /// Every metadata field enabled — the default selection, for seeding
+    /// preview configs.
+    static let allEnabled = BridgeExportMetadata(
+        title: true,
+        artist: true,
+        album: true,
+        year: true,
+        trackNumber: true,
+        discNumber: true,
+        coverArt: true
     )
 }
