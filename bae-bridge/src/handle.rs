@@ -1472,7 +1472,7 @@ impl AppHandle {
 
     /// The default filename stem (no extension) a single-track "Save As…" export
     /// suggests for `track_id`, rendered from the configured template. Reads only
-    /// the database, so it's cheap to call while seeding a save panel.
+    /// the database — no audio or cover — while seeding a save panel.
     pub async fn export_track_suggested_name(
         &self,
         track_id: String,

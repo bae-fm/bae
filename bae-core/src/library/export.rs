@@ -47,6 +47,9 @@ pub fn render_export_filename(
     resolved: &crate::library::manager::ResolvedExportTags,
 ) -> String {
     let tags = &resolved.tags;
+    // Absent optional values (year, disc, track number) render as an empty token
+    // — a legitimate domain state for a filename template, not an error; the
+    // sanitize step below collapses any separator gap they leave.
     let substitute = |token: &str| -> Option<String> {
         Some(match token {
             "title" => tags.title.clone(),
@@ -657,8 +660,10 @@ mod tests {
 
         let dir = tempfile::TempDir::new().unwrap();
 
-        // Artist + cover off: the plan withholds the cover bytes (None), and the
-        // artist guard suppresses the artist tag.
+        // Artist off suppresses the artist tag via the selection guard. Cover is
+        // presence-driven in write_tags: passing None writes no picture — the
+        // cover_art selection that withholds those bytes lives upstream in
+        // get_export_track_plan, not here.
         let selection_off = ExportMetadata {
             title: true,
             artist: false,
@@ -684,9 +689,8 @@ mod tests {
 
         let tagged = lofty::read_from_path(&off_path).unwrap();
         let tag = tagged
-            .primary_tag()
-            .or_else(|| tagged.first_tag())
-            .expect("tag present");
+            .tag(TagType::VorbisComments)
+            .expect("VorbisComments tag present");
         assert_eq!(tag.title().as_deref(), Some("Track Title"));
         assert!(tag.artist().is_none(), "artist tag suppressed when off");
         assert!(tag.pictures().is_empty(), "no cover when off");
@@ -717,9 +721,8 @@ mod tests {
 
         let tagged = lofty::read_from_path(&on_path).unwrap();
         let tag = tagged
-            .primary_tag()
-            .or_else(|| tagged.first_tag())
-            .expect("tag present");
+            .tag(TagType::VorbisComments)
+            .expect("VorbisComments tag present");
         assert_eq!(tag.title().as_deref(), Some("Track Title"));
         assert_eq!(tag.artist().as_deref(), Some("Artist Name"));
         assert_eq!(tag.album().as_deref(), Some("Album Title"));

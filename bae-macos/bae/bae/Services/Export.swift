@@ -9,8 +9,8 @@ final class Export: Sendable, Observable {
             _ format: BridgeExportFormat
         ) async throws -> Void
     /// The default filename stem (no extension) the save panel pre-fills for a
-    /// track, rendered by core from the configured template. Cheap — reads only
-    /// the database, no audio or cover.
+    /// track, rendered by core from the configured template. Reads only the
+    /// database — no audio or cover.
     let suggestedName: @Sendable (_ trackId: String) async throws -> String
 
     init(

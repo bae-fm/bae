@@ -386,8 +386,8 @@ impl LibraryManager {
 
     /// The default filename (stem, no extension) a single-track "Save As…" export
     /// suggests for `track_id`, rendered from the configured template and the
-    /// track's tag data. Reads no audio and no cover — only the database — so it
-    /// stays cheap to call while seeding a save panel.
+    /// track's tag data. Reads no audio and no cover — only the database — so
+    /// seeding a save panel never touches a whole file or the cloud.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn export_track_suggested_name(
         &self,

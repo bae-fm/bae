@@ -1,4 +1,5 @@
 import AppKit
+import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -577,7 +578,14 @@ extension AlbumDetailView {
             let formatPopup = panel.formatPopup
             let response = panel.savePanel.runModal()
             _ = panel.formatDelegate  // prevent deallocation during modal
-            guard response == .OK, let url = panel.savePanel.url else {
+            guard response == .OK else {
+                return  // user cancelled the save panel
+            }
+            guard let url = panel.savePanel.url else {
+                Logger.bae("export")
+                    .warning(
+                        "save panel returned .OK with no URL; skipping export"
+                    )
                 return
             }
 
