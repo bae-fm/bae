@@ -98,9 +98,10 @@ class UiStore: @unchecked Sendable {
         releaseId: String? = nil
     ) {
         activeSection = .library
+        libraryBrowserMode = .albums
         selectedAlbumId = albumId
         if let releaseId {
-            selectedReleaseIdByAlbum[albumId] = releaseId
+            selectRelease(releaseId, inAlbum: albumId)
         }
         navigationSubject.send(
             NavigationCommand(albumId: albumId, trackId: trackId)

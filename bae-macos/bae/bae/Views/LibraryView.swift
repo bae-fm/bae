@@ -333,12 +333,10 @@ extension LibraryView {
                                 }
                             },
                             openAlbum: { albumId, releaseId in
-                                uiStore.selectRelease(
-                                    releaseId,
-                                    inAlbum: albumId
+                                uiStore.navigateToAlbum(
+                                    albumId,
+                                    releaseId: releaseId
                                 )
-                                uiStore.selectAlbum(albumId)
-                                uiStore.setLibraryBrowserMode(.albums)
                             }
                         )
                     }
@@ -351,9 +349,10 @@ extension LibraryView {
                             composerPaneDetail = .empty
                         },
                         openAlbum: { albumId, releaseId in
-                            uiStore.selectRelease(releaseId, inAlbum: albumId)
-                            uiStore.selectAlbum(albumId)
-                            uiStore.setLibraryBrowserMode(.albums)
+                            uiStore.navigateToAlbum(
+                                albumId,
+                                releaseId: releaseId
+                            )
                         }
                     )
                 }

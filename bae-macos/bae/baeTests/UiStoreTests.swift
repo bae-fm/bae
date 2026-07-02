@@ -43,4 +43,21 @@ struct UiStoreLibraryBrowserModeTests {
         #expect(store.libraryBrowserMode == .composers)
         #expect(store.activeSection == .library)
     }
+
+    @Test("navigateToAlbum switches to albums mode and library section")
+    func navigateToAlbumSwitchesToAlbumsMode() {
+        let store = UiStore()
+        store.setLibraryBrowserMode(.composers)
+        store.navigateToAlbum("album-1")
+        #expect(store.libraryBrowserMode == .albums)
+        #expect(store.activeSection == .library)
+        #expect(store.selectedAlbumId == "album-1")
+    }
+
+    @Test("navigateToAlbum records the release override")
+    func navigateToAlbumRecordsReleaseOverride() {
+        let store = UiStore()
+        store.navigateToAlbum("album-1", releaseId: "release-9")
+        #expect(store.selectedReleaseIdByAlbum["album-1"] == "release-9")
+    }
 }
