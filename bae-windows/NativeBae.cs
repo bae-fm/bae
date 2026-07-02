@@ -376,6 +376,19 @@ internal static class NativeBae
     internal static string? ExportTrack(IntPtr handle, string trackId, string outputPath, string format) =>
         ResultMessage(ExportTrackPtr(handle, trackId, outputPath, format));
 
+    [DllImport(Dll, EntryPoint = "bae_export_track_suggested_name", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ExportTrackSuggestedNamePtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string trackId);
+
+    /// <summary>
+    /// The default filename stem (no extension) a single-track export suggests for
+    /// <paramref name="trackId"/>, rendered from the configured template, or null on
+    /// error (the cause is logged in the core). Copies and frees.
+    /// </summary>
+    internal static string? ExportTrackSuggestedName(IntPtr handle, string trackId) =>
+        CopyAndFree(ExportTrackSuggestedNamePtr(handle, trackId));
+
     [DllImport(Dll, EntryPoint = "bae_get_release_images", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr GetReleaseImagesPtr(
         IntPtr handle,
@@ -630,6 +643,30 @@ internal static class NativeBae
     /// <summary>Set physical-side playback pauses; null on success, else the error.</summary>
     internal static string? SetPauseBetweenSides(IntPtr handle, bool enabled) =>
         ResultMessage(SetPauseBetweenSidesPtr(handle, enabled));
+
+    [DllImport(Dll, EntryPoint = "bae_set_export_filename_template", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SetExportFilenameTemplatePtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string template);
+
+    /// <summary>Set the single-track export filename template; null on success, else the error.</summary>
+    internal static string? SetExportFilenameTemplate(IntPtr handle, string template) =>
+        ResultMessage(SetExportFilenameTemplatePtr(handle, template));
+
+    [DllImport(Dll, EntryPoint = "bae_set_export_metadata", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SetExportMetadataPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string metadataJson);
+
+    /// <summary>
+    /// Set which metadata tags a single-track export embeds. <paramref name="metadataJson"/>
+    /// is a JSON object of the seven booleans with snake_case keys (<c>title</c>,
+    /// <c>artist</c>, <c>album</c>, <c>year</c>, <c>track_number</c>,
+    /// <c>disc_number</c>, <c>cover_art</c>) — the whole set, not one field. Null on
+    /// success, else the error.
+    /// </summary>
+    internal static string? SetExportMetadata(IntPtr handle, string metadataJson) =>
+        ResultMessage(SetExportMetadataPtr(handle, metadataJson));
 
     [DllImport(Dll, EntryPoint = "bae_set_mcp_server_config", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr SetMcpServerConfigPtr(

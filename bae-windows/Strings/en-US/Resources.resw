@@ -237,6 +237,7 @@
   <data name="sync.syncing" xml:space="preserve"><value>syncing…</value></data>
   <data name="track.export.flac" xml:space="preserve"><value>FLAC (lossless)</value></data>
   <data name="track.export.mp3" xml:space="preserve"><value>MP3 (320 kbps)</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>Couldn't prepare the export.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>choose a library</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>join a library</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>create library</value></data>
@@ -284,4 +285,14 @@
   <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
+  <data name="settings.export.label" xml:space="preserve"><value>Export</value></data>
+  <data name="settings.export.filename_format" xml:space="preserve"><value>Filename format</value></data>
+  <data name="settings.export.tokens_help" xml:space="preserve"><value>Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.metadata.title" xml:space="preserve"><value>Title</value></data>
+  <data name="settings.export.metadata.artist" xml:space="preserve"><value>Artist</value></data>
+  <data name="settings.export.metadata.album" xml:space="preserve"><value>Album</value></data>
+  <data name="settings.export.metadata.year" xml:space="preserve"><value>Year</value></data>
+  <data name="settings.export.metadata.track_number" xml:space="preserve"><value>Track number</value></data>
+  <data name="settings.export.metadata.disc_number" xml:space="preserve"><value>Disc number</value></data>
+  <data name="settings.export.metadata.cover_art" xml:space="preserve"><value>Cover art</value></data>
 </root>

@@ -3592,9 +3592,30 @@ public sealed partial class MainWindow : Window
                 // round-trips back to the format string the FFI expects.
                 picker.FileTypeChoices.Add(Loc.Chrome("track.export.flac"), new List<string> { ".flac" });
                 picker.FileTypeChoices.Add(Loc.Chrome("track.export.mp3"), new List<string> { ".mp3" });
-                var invalid = System.IO.Path.GetInvalidFileNameChars();
-                var suggested = new string(track.Title.Select(c => invalid.Contains(c) ? '-' : c).ToArray());
-                picker.SuggestedFileName = string.IsNullOrWhiteSpace(suggested) ? "track" : suggested;
+                // Seed the suggested name from the configured filename template,
+                // which the core renders and sanitizes from this track's metadata
+                // (falling back to the title, then a fixed stem, on its own). A
+                // null return — or a throw — means that render failed (the core
+                // logged the cause); surface it and abort rather than exporting
+                // under a guessed name.
+                string? stem;
+                try
+                {
+                    stem = await System.Threading.Tasks.Task.Run(
+                        () => NativeBae.ExportTrackSuggestedName(_handle, track.TrackId));
+                }
+                catch (Exception ex)
+                {
+                    BaeDiagnostics.Logger.Error("export suggested-name lookup threw", ex);
+                    stem = null;
+                }
+                if (stem is null)
+                {
+                    exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
+                    exportStatus.Visibility = Visibility.Visible;
+                    return;
+                }
+                picker.SuggestedFileName = stem;
                 var file = await picker.PickSaveFileAsync();
                 if (file is null)
                 {
@@ -5164,6 +5185,128 @@ public sealed partial class MainWindow : Window
         pauseBetweenSides.Checked += async (_, _) => await SetPauseBetweenSides(true);
         pauseBetweenSides.Unchecked += async (_, _) => await SetPauseBetweenSides(false);
 
+        // Export: the single-track "Save As…" suggested-filename template and the
+        // metadata tags an export embeds. Windows has no release export, so this is
+        // the per-track section only. Writes round-trip through ConfigChanged into
+        // the settings re-read (RenderExport); the checkboxes send the whole seven-
+        // bool set (set-state), never one mutated field.
+        var exportLabel = new TextBlock
+        {
+            Text = Loc.Chrome("settings.export.label"),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        };
+        var exportTemplate = new TextBox
+        {
+            Header = Loc.Chrome("settings.export.filename_format"),
+            Text = s.ExportFilenameTemplate,
+        };
+        var exportTokensHelp = new TextBlock
+        {
+            Text = Loc.Chrome("settings.export.tokens_help"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        };
+        var exportTitle = new CheckBox { Content = Loc.Chrome("settings.export.metadata.title"), IsChecked = s.ExportMetadata.Title };
+        var exportArtist = new CheckBox { Content = Loc.Chrome("settings.export.metadata.artist"), IsChecked = s.ExportMetadata.Artist };
+        var exportAlbum = new CheckBox { Content = Loc.Chrome("settings.export.metadata.album"), IsChecked = s.ExportMetadata.Album };
+        var exportYear = new CheckBox { Content = Loc.Chrome("settings.export.metadata.year"), IsChecked = s.ExportMetadata.Year };
+        var exportTrackNumber = new CheckBox { Content = Loc.Chrome("settings.export.metadata.track_number"), IsChecked = s.ExportMetadata.TrackNumber };
+        var exportDiscNumber = new CheckBox { Content = Loc.Chrome("settings.export.metadata.disc_number"), IsChecked = s.ExportMetadata.DiscNumber };
+        var exportCoverArt = new CheckBox { Content = Loc.Chrome("settings.export.metadata.cover_art"), IsChecked = s.ExportMetadata.CoverArt };
+
+        void RenderExport(Settings settings)
+        {
+            if (refreshingSettings)
+            {
+                return;
+            }
+
+            refreshingSettings = true;
+            exportTemplate.Text = settings.ExportFilenameTemplate;
+            exportTitle.IsChecked = settings.ExportMetadata.Title;
+            exportArtist.IsChecked = settings.ExportMetadata.Artist;
+            exportAlbum.IsChecked = settings.ExportMetadata.Album;
+            exportYear.IsChecked = settings.ExportMetadata.Year;
+            exportTrackNumber.IsChecked = settings.ExportMetadata.TrackNumber;
+            exportDiscNumber.IsChecked = settings.ExportMetadata.DiscNumber;
+            exportCoverArt.IsChecked = settings.ExportMetadata.CoverArt;
+            refreshingSettings = false;
+        }
+
+        async System.Threading.Tasks.Task SaveExportTemplate()
+        {
+            if (refreshingSettings)
+            {
+                return;
+            }
+
+            ClearSettingsError();
+            var template = exportTemplate.Text ?? string.Empty;
+            var error = await System.Threading.Tasks.Task.Run(
+                () => NativeBae.SetExportFilenameTemplate(_handle, template));
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+            }
+            // On success a ConfigChanged re-read settles the field via RenderExport.
+        }
+
+        async System.Threading.Tasks.Task SaveExportMetadata()
+        {
+            if (refreshingSettings)
+            {
+                return;
+            }
+
+            ClearSettingsError();
+            // Send the whole set (set-state), not the one field that toggled.
+            var metadata = new ExportMetadata
+            {
+                Title = exportTitle.IsChecked == true,
+                Artist = exportArtist.IsChecked == true,
+                Album = exportAlbum.IsChecked == true,
+                Year = exportYear.IsChecked == true,
+                TrackNumber = exportTrackNumber.IsChecked == true,
+                DiscNumber = exportDiscNumber.IsChecked == true,
+                CoverArt = exportCoverArt.IsChecked == true,
+            };
+            var json = JsonSerializer.Serialize(metadata, JsonOptions);
+            var error = await System.Threading.Tasks.Task.Run(
+                () => NativeBae.SetExportMetadata(_handle, json));
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+                // Nothing persisted — restore every checkbox from the stored state
+                // so the UI matches config.
+                _refreshSettings?.Invoke();
+            }
+            // On success a ConfigChanged re-read settles the checkboxes via RenderExport.
+        }
+
+        exportTemplate.LostFocus += async (_, _) => await SaveExportTemplate();
+        exportTemplate.KeyDown += async (_, args) =>
+        {
+            if (args.Key == VirtualKey.Enter)
+            {
+                args.Handled = true;
+                await SaveExportTemplate();
+            }
+        };
+        exportTitle.Checked += async (_, _) => await SaveExportMetadata();
+        exportTitle.Unchecked += async (_, _) => await SaveExportMetadata();
+        exportArtist.Checked += async (_, _) => await SaveExportMetadata();
+        exportArtist.Unchecked += async (_, _) => await SaveExportMetadata();
+        exportAlbum.Checked += async (_, _) => await SaveExportMetadata();
+        exportAlbum.Unchecked += async (_, _) => await SaveExportMetadata();
+        exportYear.Checked += async (_, _) => await SaveExportMetadata();
+        exportYear.Unchecked += async (_, _) => await SaveExportMetadata();
+        exportTrackNumber.Checked += async (_, _) => await SaveExportMetadata();
+        exportTrackNumber.Unchecked += async (_, _) => await SaveExportMetadata();
+        exportDiscNumber.Checked += async (_, _) => await SaveExportMetadata();
+        exportDiscNumber.Unchecked += async (_, _) => await SaveExportMetadata();
+        exportCoverArt.Checked += async (_, _) => await SaveExportMetadata();
+        exportCoverArt.Unchecked += async (_, _) => await SaveExportMetadata();
+
         var automationLabel = new TextBlock
         {
             Text = Loc.Chrome("settings.automation.label"),
@@ -5289,6 +5432,16 @@ public sealed partial class MainWindow : Window
         var discogsLabel = new TextBlock { Text = Loc.Chrome("settings.discogs.label") };
         content.Children.Add(libraryLabel);
         content.Children.Add(pauseBetweenSides);
+        content.Children.Add(exportLabel);
+        content.Children.Add(exportTemplate);
+        content.Children.Add(exportTokensHelp);
+        content.Children.Add(exportTitle);
+        content.Children.Add(exportArtist);
+        content.Children.Add(exportAlbum);
+        content.Children.Add(exportYear);
+        content.Children.Add(exportTrackNumber);
+        content.Children.Add(exportDiscNumber);
+        content.Children.Add(exportCoverArt);
         content.Children.Add(automationLabel);
         content.Children.Add(mcpEnabled);
         content.Children.Add(mcpPort);
@@ -5443,6 +5596,7 @@ public sealed partial class MainWindow : Window
             refreshingSettings = true;
             pauseBetweenSides.IsChecked = fresh.PauseBetweenSides;
             refreshingSettings = false;
+            RenderExport(fresh);
             RenderMcp(fresh);
             RenderDiscogs(fresh);
         };

@@ -716,6 +716,40 @@ pub unsafe extern "C" fn bae_export_track(
     }
 }
 
+/// The default filename stem (no extension) a single-track export suggests for
+/// `track_id`, rendered from the configured template. Returns the stem as a C
+/// string (free with [`bae_string_free`]), or null on error (logged).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
+/// `track_id` must be a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_export_track_suggested_name(
+    handle: *const BaeHandle,
+    track_id: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_export_track_suggested_name: null handle");
+        return std::ptr::null_mut();
+    };
+    let Some(track_id) = cstr(track_id) else {
+        tracing::error!("bae_export_track_suggested_name: null or non-UTF-8 track_id");
+        return std::ptr::null_mut();
+    };
+    let app = &handle.0;
+    match app.runtime.block_on(
+        app.services
+            .library_manager()
+            .export_track_suggested_name(&track_id),
+    ) {
+        Ok(stem) => error_cstring(&stem),
+        Err(e) => {
+            tracing::error!("bae_export_track_suggested_name failed: {e}");
+            std::ptr::null_mut()
+        }
+    }
+}
+
 /// One of a release's image files, offered as a cover-art choice. The UI loads
 /// the thumbnail with [`bae_gallery_bytes`] of the release id and a `ReleaseFile`
 /// source carrying this `id`.
@@ -4032,6 +4066,11 @@ struct FfiSettings {
     sync_ready: bool,
     /// Whether playback pauses between vinyl/cassette sides.
     pause_between_sides: bool,
+    /// Template rendering a single-track export's suggested filename.
+    export_filename_template: String,
+    /// Which metadata tags a single-track export embeds — the seven booleans
+    /// serialized straight from core's `ExportMetadata`.
+    export_metadata: bae_core::config::ExportMetadata,
     /// Whether the local MCP server is enabled in persisted config.
     mcp_enabled: bool,
     /// The configured local MCP server port.
@@ -4073,6 +4112,8 @@ pub unsafe extern "C" fn bae_settings(handle: *const BaeHandle) -> *mut c_char {
         sync_account: config.cloud_account_display(),
         sync_ready: manager.is_sync_ready(),
         pause_between_sides: config.pause_between_sides,
+        export_filename_template: config.export_filename_template.clone(),
+        export_metadata: config.export_metadata,
         mcp_enabled: config.mcp.enabled,
         mcp_port: config.mcp.port,
         mcp_status: handle.0.mcp_server_status(),
@@ -4099,6 +4140,68 @@ pub unsafe extern "C" fn bae_set_pause_between_sides(
         .services
         .library_manager()
         .set_pause_between_sides(enabled)
+    {
+        Ok(()) => std::ptr::null_mut(),
+        Err(error) => error_cstring(&error.to_string()),
+    }
+}
+
+/// Set the single-track export filename template. Returns null on success, or an
+/// error-message C string (free with [`bae_string_free`]).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
+/// `template` must be a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_set_export_filename_template(
+    handle: *const BaeHandle,
+    template: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        return error_cstring("no app handle");
+    };
+    let Some(template) = cstr(template) else {
+        return error_cstring("invalid export filename template");
+    };
+    match handle
+        .0
+        .services
+        .library_manager()
+        .set_export_filename_template(template)
+    {
+        Ok(()) => std::ptr::null_mut(),
+        Err(error) => error_cstring(&error.to_string()),
+    }
+}
+
+/// Set which metadata tags a single-track export embeds. `metadata_json` is a
+/// JSON object of the seven booleans (`title`, `artist`, `album`, `year`,
+/// `track_number`, `disc_number`, `cover_art`). Returns null on success, or an
+/// error-message C string (free with [`bae_string_free`]).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
+/// `metadata_json` must be a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_set_export_metadata(
+    handle: *const BaeHandle,
+    metadata_json: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        return error_cstring("no app handle");
+    };
+    let Some(metadata_json) = cstr(metadata_json) else {
+        return error_cstring("invalid export metadata JSON");
+    };
+    let metadata: bae_core::config::ExportMetadata = match serde_json::from_str(&metadata_json) {
+        Ok(metadata) => metadata,
+        Err(e) => return error_cstring(&format!("invalid export metadata JSON: {e}")),
+    };
+    match handle
+        .0
+        .services
+        .library_manager()
+        .set_export_metadata(metadata)
     {
         Ok(()) => std::ptr::null_mut(),
         Err(error) => error_cstring(&error.to_string()),
