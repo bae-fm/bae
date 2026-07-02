@@ -12,9 +12,14 @@ struct StorageManagerView: View {
     private var sync
     @Environment(Downloads.self)
     private var downloads
-    // OutboxSection / DownloadsSection read their stores and services at the
-    // leaf; uiStore is read here to surface outbox action errors in this window
-    // (it's a separate scene from MainAppView, which owns the other error alert).
+    @Environment(Exports.self)
+    private var exports
+    @Environment(ConfigStore.self)
+    private var configStore
+    // OutboxSection / DownloadsSection / ExportingSection read their stores and
+    // services at the leaf; uiStore is read here to surface outbox action errors
+    // in this window (it's a separate scene from MainAppView, which owns the
+    // other error alert).
     @Environment(UiStore.self)
     private var uiStore
 
@@ -64,6 +69,7 @@ struct StorageManagerView: View {
             }
 
             DownloadsSection()
+            ExportingSection()
             OutboxSection()
         }
         .frame(minWidth: 700, minHeight: 400)
@@ -73,6 +79,8 @@ struct StorageManagerView: View {
                     releaseEditor: releaseEditor,
                     sync: sync,
                     downloads: downloads,
+                    exports: exports,
+                    configStore: configStore,
                     uiStore: uiStore,
                 )
             }
@@ -289,6 +297,134 @@ private struct DownloadRow: View {
             Label(
                 "Downloading \(Int(op.percent))%",
                 systemImage: "arrow.down.circle.fill"
+            )
+            .foregroundStyle(.orange)
+        case .failed:
+            Label("Failed", systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+        }
+    }
+}
+
+// MARK: - Exporting queue
+
+/// Pane showing the in-memory export queue: a header with the summary and
+/// pause/retry controls, and a per-release row list. Hidden when the queue is
+/// idle. Reads `ExportStore` at the leaf; the reducer is the sole writer, so
+/// actions don't optimistically mutate — the follow-up `exportQueueChanged`
+/// event refreshes the section. Mirrors `DownloadsSection`.
+private struct ExportingSection: View {
+    @Environment(ExportStore.self)
+    private var exportStore
+    @Environment(Exports.self)
+    private var exports
+
+    var body: some View {
+        let snapshot = exportStore.snapshot
+        if !snapshot.exports.isEmpty {
+            Divider()
+            VStack(spacing: 0) {
+                header(snapshot)
+                Divider()
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(snapshot.exports, id: \.releaseId) { op in
+                            ExportRow(op: op) {
+                                exports.cancelExport(op.releaseId)
+                            }
+                            Divider()
+                        }
+                    }
+                }
+                .frame(maxHeight: 180)
+            }
+        }
+    }
+
+    private func header(_ snapshot: BridgeExportSnapshot) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "square.and.arrow.up")
+                .foregroundStyle(.secondary)
+            Text("Exporting").font(.callout.weight(.medium))
+            if snapshot.paused {
+                Label("Paused", systemImage: "pause.circle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
+            else if !snapshot.summaryText.isEmpty {
+                Text(snapshot.summaryText)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(snapshot.paused ? "Resume" : "Pause") {
+                exports.setExportsPaused(!snapshot.paused)
+            }
+            Button("Retry now") {
+                exports.retryExports()
+            }
+            .disabled(snapshot.total.failed == 0)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+}
+
+/// One export-queue row: album title, file count, size, a state badge (Queued /
+/// Exporting at a percent / Failed with the reason in a tooltip), and a cancel
+/// button. Mirrors `DownloadRow`.
+private struct ExportRow: View {
+    let op: BridgeExportOp
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "square.and.arrow.up")
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+
+            Text(op.title)
+                .lineLimit(1)
+
+            Text("\(op.fileCount) files · \(op.totalSizeText)")
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            stateBadge
+                .font(.caption)
+                .frame(width: 130, alignment: .leading)
+
+            Text(queuedRelativeLabel(op.createdAt))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 90, alignment: .trailing)
+
+            Button(action: onCancel) {
+                Image(systemName: "xmark.circle")
+            }
+            .buttonStyle(.plain)
+            .help("Cancel this export")
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 6)
+        // Always attached; nil/empty when there's no error, so the row's
+        // structure doesn't change as its state flips.
+        .help(op.error ?? "")
+    }
+
+    @ViewBuilder
+    private var stateBadge: some View {
+        switch op.state {
+        case .queued:
+            Label("Queued", systemImage: "clock")
+                .foregroundStyle(.secondary)
+        case .active:
+            Label(
+                "Exporting \(Int(op.percent))%",
+                systemImage: "square.and.arrow.up.fill"
             )
             .foregroundStyle(.orange)
         case .failed:

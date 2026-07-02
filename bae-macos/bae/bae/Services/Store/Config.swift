@@ -40,6 +40,8 @@ struct Config: Equatable {
     /// persisted-config mirror.
     let sync: BridgeSyncConfig?
     let pauseBetweenSides: Bool
+    /// Where release exports write: prompt each time, or a fixed folder.
+    let exportLocation: BridgeExportLocation
     let mcp: BridgeMcpConfig
 
     var hasCloudHome: Bool { sync != nil }
@@ -54,6 +56,7 @@ struct Config: Equatable {
         discogsUsable = bridge.discogsUsable
         sync = bridge.sync
         pauseBetweenSides = bridge.pauseBetweenSides
+        exportLocation = bridge.exportLocation
         mcp = bridge.mcp
     }
 

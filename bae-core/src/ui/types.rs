@@ -338,6 +338,11 @@ pub enum UiBusEvent {
     DownloadQueueChanged {
         snapshot: crate::library::DownloadSnapshot,
     },
+    /// The in-memory export queue changed — the Storage Manager re-renders its
+    /// Exporting pane from this.
+    ExportQueueChanged {
+        snapshot: crate::library::ExportSnapshot,
+    },
 
     // ── Errors ─────────────────────────────────────────────────────
     Error {

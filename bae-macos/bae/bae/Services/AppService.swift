@@ -54,6 +54,10 @@ final class AppService: @unchecked Sendable, Observable {
     /// Reducer is the sole writer; the Storage Manager's Downloads pane reads it.
     let downloadStore: DownloadStore
 
+    /// In-memory export queue mirror — per-release state and summary. Reducer is
+    /// the sole writer; the Storage Manager's Exporting pane reads it.
+    let exportStore: ExportStore
+
     // MARK: - Domain services
     //
     // Narrow, per-domain projections of `AppHandle` that views read via
@@ -69,6 +73,7 @@ final class AppService: @unchecked Sendable, Observable {
     let importer: Importer
     let sync: Sync
     let downloads: Downloads
+    let exports: Exports
     let discogs: Discogs
     let automation: Automation
     let export: Export
@@ -109,6 +114,9 @@ final class AppService: @unchecked Sendable, Observable {
         // infallible — `getDownloadSnapshot` never throws — so unlike the outbox
         // above there's no fallback branch.
         downloadStore = DownloadStore(snapshot: appHandle.getDownloadSnapshot())
+        // Seed the Exporting pane from the in-memory export queue. Like the
+        // download read above, `getExportSnapshot` is infallible — no fallback.
+        exportStore = ExportStore(snapshot: appHandle.getExportSnapshot())
         mediaPaths = MediaPaths(handle: appHandle)
         playback = Playback(handle: appHandle)
         queue = Queue(handle: appHandle)
@@ -118,6 +126,7 @@ final class AppService: @unchecked Sendable, Observable {
         importer = Importer(handle: appHandle)
         sync = Sync(handle: appHandle)
         downloads = Downloads(handle: appHandle)
+        exports = Exports(handle: appHandle)
         discogs = Discogs(handle: appHandle)
         automation = Automation(handle: appHandle)
         export = Export(handle: appHandle)
@@ -137,7 +146,8 @@ final class AppService: @unchecked Sendable, Observable {
                 appService: self,
                 uiStore: uiStore,
                 outboxStore: outboxStore,
-                downloadStore: downloadStore
+                downloadStore: downloadStore,
+                exportStore: exportStore
             )
         )
         appHandle.registerArtworkAnalyzer(analyzer: VisionArtworkAnalyzer())

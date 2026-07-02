@@ -470,6 +470,17 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
+    /// Set where release exports write: prompt each time, or a fixed folder.
+    pub fn set_export_location(
+        &self,
+        location: crate::types::BridgeExportLocation,
+    ) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_export_location(crate::bridge_utils::core_export_location(location))
+            .map_err(BridgeError::config)
+    }
+
     /// Whether the encryption key is loaded — `init` successfully read it from
     /// the keyring and built the sync manager. Reflects the cached init-time
     /// result, not a fresh keyring read. `false` here for an
@@ -786,6 +797,50 @@ impl AppHandle {
     /// worker).
     pub fn retry_downloads(&self) {
         self.services.library_manager().retry_downloads();
+    }
+
+    // ── Export queue ─────────────────────────────────────────────────
+
+    /// The current export-queue snapshot. Seeds the Exporting pane before the
+    /// first `ExportQueueChanged` event arrives.
+    pub fn get_export_snapshot(&self) -> crate::types::BridgeExportSnapshot {
+        convert_export_snapshot(self.services.library_manager().export_snapshot())
+    }
+
+    /// Enqueue a release to export its files verbatim to `target_dir`. It joins
+    /// the in-memory serial export queue; the worker drains it one release at a
+    /// time. The storage-summary lookup (resolving the pane row's title/size) is
+    /// shallow, so this polls inline via block_on — the deep cloud read + copy
+    /// runs on the queue worker, not here.
+    pub fn enqueue_export(&self, release_id: String, target_dir: String) {
+        // `target_dir` crosses uniffi as a String, so it is always valid UTF-8 and
+        // the core's UTF-8 validation cannot fail here — assert that rather than
+        // route an impossible error back through the (non-throwing) Swift binding.
+        self.runtime
+            .block_on(
+                self.services
+                    .library_manager()
+                    .enqueue_export(&release_id, std::path::PathBuf::from(target_dir)),
+            )
+            .expect("bridge export target_dir is valid UTF-8");
+    }
+
+    /// Pause or resume the export queue. The in-flight export finishes; the queue
+    /// stops starting new ones until resumed.
+    pub fn set_exports_paused(&self, paused: bool) {
+        self.services.library_manager().set_exports_paused(paused);
+    }
+
+    /// Cancel a release's export — drops a queued/failed entry or aborts the
+    /// in-flight one (a partial copy never lands its destination file).
+    pub fn cancel_export(&self, release_id: String) {
+        self.services.library_manager().cancel_export(&release_id);
+    }
+
+    /// Retry every failed export now (flips them back to queued and wakes the
+    /// worker).
+    pub fn retry_exports(&self) {
+        self.services.library_manager().retry_exports();
     }
 }
 
@@ -1537,6 +1592,52 @@ fn convert_download_progress(
     }
 }
 
+fn convert_export_snapshot(
+    snapshot: bae_core::library::ExportSnapshot,
+) -> crate::types::BridgeExportSnapshot {
+    use crate::types::{BridgeExportOp, BridgeExportSnapshot, BridgeExportState};
+    use bae_core::library::ExportState;
+
+    let exports = snapshot
+        .exports
+        .into_iter()
+        .map(|op| {
+            let (state, percent, error) = match op.state {
+                ExportState::Queued => (BridgeExportState::Queued, 0, None),
+                ExportState::Active { percent } => (BridgeExportState::Active, percent, None),
+                ExportState::Failed { error } => (BridgeExportState::Failed, 0, Some(error)),
+            };
+            BridgeExportOp {
+                release_id: op.release_id,
+                target_dir: op.target_dir.to_string_lossy().to_string(),
+                title: op.title,
+                file_count: op.file_count,
+                total_size: op.total_size,
+                created_at: op.created_at,
+                state,
+                percent,
+                error,
+            }
+        })
+        .collect();
+
+    BridgeExportSnapshot {
+        exports,
+        total: convert_export_progress(snapshot.total),
+        paused: snapshot.paused,
+    }
+}
+
+fn convert_export_progress(
+    p: bae_core::library::ExportProgress,
+) -> crate::types::BridgeExportProgress {
+    crate::types::BridgeExportProgress {
+        queued: p.queued,
+        active: p.active,
+        failed: p.failed,
+    }
+}
+
 /// Convert a core UiBusEvent to a bridge BridgeUiEvent.
 /// Returns None for events we don't need to forward (or can't convert yet).
 fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::BridgeUiEvent> {
@@ -1820,6 +1921,9 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
                 snapshot: convert_download_snapshot(snapshot),
             })
         }
+        UiBusEvent::ExportQueueChanged { snapshot } => Some(BridgeUiEvent::ExportQueueChanged {
+            snapshot: convert_export_snapshot(snapshot),
+        }),
 
         // ── Errors ─────────────────────────────────────────────────
         UiBusEvent::Error { error } => Some(BridgeUiEvent::Error {

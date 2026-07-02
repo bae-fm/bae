@@ -185,6 +185,7 @@ enum ReleaseCommand {
         #[arg(long)]
         target_dir: PathBuf,
     },
+    ExportStatus,
     Reidentify {
         release_id: String,
         #[arg(long)]
@@ -404,13 +405,25 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
             ReleaseCommand::Export {
                 release_id,
                 target_dir,
-            } => Ok((
-                AutomationTool::ReleaseExport,
-                json!({
-                    "release_id": release_id,
-                    "target_dir": target_dir.to_string_lossy(),
-                }),
-            )),
+            } => {
+                // clap hands us the raw OS path, which on Unix may not be UTF-8. The
+                // export target must round-trip as a string, so reject a non-UTF-8
+                // path loudly instead of lossily rewriting it to a different dir.
+                let target_dir = target_dir.to_str().ok_or_else(|| {
+                    CliError::Validation(format!(
+                        "target directory is not valid UTF-8: {}",
+                        target_dir.display()
+                    ))
+                })?;
+                Ok((
+                    AutomationTool::ReleaseExport,
+                    json!({
+                        "release_id": release_id,
+                        "target_dir": target_dir,
+                    }),
+                ))
+            }
+            ReleaseCommand::ExportStatus => Ok((AutomationTool::ExportStatus, json!({}))),
             ReleaseCommand::Reidentify {
                 release_id,
                 choice_json,

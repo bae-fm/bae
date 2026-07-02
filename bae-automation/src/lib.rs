@@ -554,9 +554,52 @@ pub struct ReleaseExportInput {
     pub target_dir: String,
 }
 
+/// Acknowledges that an export was enqueued. The copy runs on the background
+/// export queue; poll `export_status` for progress.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationReleaseExport {
-    pub exported_path: String,
+    pub release_id: String,
+}
+
+/// A queued export's state, mirroring bae-core's `ExportState`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationExportState {
+    Queued,
+    Active,
+    Failed,
+}
+
+/// One queued export in the `export_status` snapshot.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationExportOp {
+    pub release_id: String,
+    pub target_dir: String,
+    pub title: String,
+    pub file_count: i64,
+    pub total_size: i64,
+    pub created_at: i64,
+    pub state: AutomationExportState,
+    /// Overall release percent while `state` is `active`; 0 otherwise.
+    pub percent: u8,
+    /// The failure reason, present only while `state` is `failed`.
+    pub error: Option<String>,
+}
+
+/// Per-state counts for the export queue.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct AutomationExportProgress {
+    pub queued: u32,
+    pub active: u32,
+    pub failed: u32,
+}
+
+/// The in-memory export queue snapshot returned by `export_status`.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationExportSnapshot {
+    pub exports: Vec<AutomationExportOp>,
+    pub total: AutomationExportProgress,
+    pub paused: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -1078,19 +1121,23 @@ impl Automation {
             .ok_or_else(|| AutomationError::not_found(format!("release '{release_id}' not found")))
     }
 
+    /// Enqueue a release to export its files verbatim to `target_dir`. Returns
+    /// immediately once queued; the copy runs on the background export queue.
     pub async fn export_release(
         &self,
         release_id: String,
         target_dir: String,
     ) -> Result<AutomationReleaseExport, AutomationError> {
-        let exported_path = self
-            .services
+        self.services
             .library_manager()
-            .export_release_files(&release_id, &PathBuf::from(target_dir))
+            .enqueue_export(&release_id, PathBuf::from(target_dir))
             .await?;
-        Ok(AutomationReleaseExport {
-            exported_path: exported_path.to_string_lossy().to_string(),
-        })
+        Ok(AutomationReleaseExport { release_id })
+    }
+
+    /// The current export-queue snapshot: per-release state and rolled-up counts.
+    pub fn export_status(&self) -> AutomationExportSnapshot {
+        automation_export_snapshot(self.services.library_manager().export_snapshot())
     }
 
     pub async fn reidentify_release(
@@ -1214,6 +1261,10 @@ impl Automation {
                         .await?,
                 )
             }
+            AutomationTool::ExportStatus => {
+                expect_no_args(args, tool.name())?;
+                to_value(self.export_status())
+            }
             AutomationTool::ReleaseReidentify => {
                 let input: ReleaseReidentifyInput = from_value(args)?;
                 self.reidentify_release(input.release_id, input.choice)
@@ -1255,6 +1306,7 @@ pub enum AutomationTool {
     ImportStart,
     ReleaseDetailGet,
     ReleaseExport,
+    ExportStatus,
     ReleaseReidentify,
     ReleaseMetadataReset,
     ReleaseMetadataUpdate,
@@ -1262,7 +1314,7 @@ pub enum AutomationTool {
 }
 
 impl AutomationTool {
-    const DESCRIPTORS: [AutomationToolDescriptor; 19] = [
+    const DESCRIPTORS: [AutomationToolDescriptor; 20] = [
         AutomationToolDescriptor {
             tool: AutomationTool::ConfigGet,
             name: "config_get",
@@ -1350,8 +1402,14 @@ impl AutomationTool {
         AutomationToolDescriptor {
             tool: AutomationTool::ReleaseExport,
             name: "release_export",
-            description: "Byte-accurately export a release's files to a directory",
+            description: "Enqueue a byte-accurate export of a release's files to a directory",
             input: AutomationToolInput::ReleaseExport,
+        },
+        AutomationToolDescriptor {
+            tool: AutomationTool::ExportStatus,
+            name: "export_status",
+            description: "Get the export queue snapshot (per-release progress)",
+            input: AutomationToolInput::Empty,
         },
         AutomationToolDescriptor {
             tool: AutomationTool::ReleaseReidentify,
@@ -1513,6 +1571,43 @@ fn empty_input_schema() -> Map<String, Value> {
     schema.insert("type".to_string(), Value::String("object".to_string()));
     schema.insert("properties".to_string(), Value::Object(Map::new()));
     schema
+}
+
+fn automation_export_snapshot(
+    snapshot: bae_core::library::ExportSnapshot,
+) -> AutomationExportSnapshot {
+    use bae_core::library::ExportState;
+    let exports = snapshot
+        .exports
+        .into_iter()
+        .map(|op| {
+            let (state, percent, error) = match op.state {
+                ExportState::Queued => (AutomationExportState::Queued, 0, None),
+                ExportState::Active { percent } => (AutomationExportState::Active, percent, None),
+                ExportState::Failed { error } => (AutomationExportState::Failed, 0, Some(error)),
+            };
+            AutomationExportOp {
+                release_id: op.release_id,
+                target_dir: op.target_dir.to_string_lossy().to_string(),
+                title: op.title,
+                file_count: op.file_count,
+                total_size: op.total_size,
+                created_at: op.created_at,
+                state,
+                percent,
+                error,
+            }
+        })
+        .collect();
+    AutomationExportSnapshot {
+        exports,
+        total: AutomationExportProgress {
+            queued: snapshot.total.queued,
+            active: snapshot.total.active,
+            failed: snapshot.total.failed,
+        },
+        paused: snapshot.paused,
+    }
 }
 
 fn automation_candidate_from_folder(candidate: FolderCandidate) -> AutomationCandidate {

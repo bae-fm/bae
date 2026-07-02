@@ -15,6 +15,7 @@ struct ReducerContext {
     let uiStore: UiStore
     let outboxStore: OutboxStore
     let downloadStore: DownloadStore
+    let exportStore: ExportStore
 }
 
 /// The fields carried by the `playbackPlaying` and `playbackPaused` events,
@@ -141,7 +142,7 @@ enum UiEventReducer {
             reduceLibrary(event, into: context)
 
         case .configChanged, .syncError, .syncTimeChanged, .syncingChanged,
-            .outboxChanged, .downloadQueueChanged:
+            .outboxChanged, .downloadQueueChanged, .exportQueueChanged:
             reduceSyncAndConfig(event, into: context)
 
         case .error, .errorCleared:
@@ -668,6 +669,9 @@ extension UiEventReducer {
 
         case .downloadQueueChanged(let snapshot):
             context.downloadStore.snapshot = snapshot
+
+        case .exportQueueChanged(let snapshot):
+            context.exportStore.snapshot = snapshot
 
         default:
             break

@@ -35,6 +35,10 @@ struct AlbumDetailView: View {
     var sync
     @Environment(Downloads.self)
     var downloads
+    @Environment(Exports.self)
+    var exports
+    @Environment(ConfigStore.self)
+    var configStore
     @Environment(Export.self)
     var export
     @Environment(LibraryStore.self)
@@ -133,6 +137,9 @@ struct AlbumDetailView: View {
                             presentReIdentifySheet(release: selectedDetail)
                         },
                         onManage: { presentManageReleaseSheet(selectedDetail) },
+                        onExportRelease: {
+                            exportRelease(releaseId: selectedReleaseId)
+                        },
                         onSetPrimaryRelease: {
                             setPrimaryRelease(releaseId: selectedReleaseId)
                         },
@@ -370,6 +377,7 @@ extension AlbumDetailView {
                 onAction: { action in
                     performStorageAction(action, releaseId: detail.id)
                 },
+                onExport: { exportRelease(releaseId: detail.id) },
                 onDone: { uiStore.dismissModal() },
             )
             .frame(width: 640, height: 600)
@@ -391,6 +399,22 @@ extension AlbumDetailView {
         case .makeLocal:
             unmanageRelease(releaseId: releaseId)
         }
+    }
+
+    /// Export a release's files verbatim to a folder — a pure copy-out that
+    /// changes no state, so it's offered regardless of the release's locality.
+    /// The destination comes from the export-location setting (a fixed folder, or
+    /// an `NSOpenPanel` when set to ask each time); the copy runs on the export
+    /// queue and surfaces in the Storage Manager's Exporting pane.
+    private func exportRelease(releaseId: String) {
+        guard
+            let targetDir = ExportTarget.resolve(
+                configStore.config.exportLocation
+            )
+        else {
+            return
+        }
+        exports.enqueueExport(releaseId, targetDir)
     }
 
     private func presentManageConfirmSheet(releaseId: String) {
@@ -656,6 +680,7 @@ struct AlbumExpansionContent: View {
     let onEditMetadata: () -> Void
     let onReIdentify: () -> Void
     let onManage: () -> Void
+    let onExportRelease: () -> Void
     let onSetPrimaryRelease: () -> Void
     let onDeleteRelease: () -> Void
     let onExportTrack: (String) -> Void
@@ -771,6 +796,7 @@ struct AlbumExpansionContent: View {
             Button("Edit metadata...") { onEditMetadata() }
             Button("Re-identify...") { onReIdentify() }
             Button("Storage...") { onManage() }
+            Button("Export...") { onExportRelease() }
             if releaseCursor.canCycle, canSetAsPrimaryRelease {
                 Divider()
                 Button("Set as Primary Release") { onSetPrimaryRelease() }
@@ -1053,6 +1079,7 @@ private struct TrackRowView: View {
 struct ManageReleaseSheet: View {
     let release: ReleaseDetail
     let onAction: (BridgeReleaseStorageAction) -> Void
+    let onExport: () -> Void
     let onDone: () -> Void
 
     /// Column the file table sorts by. Defaults to filename; the user clicks a
@@ -1075,7 +1102,11 @@ struct ManageReleaseSheet: View {
             }
             .padding()
             Divider()
-            StorageStatusBand(release: release, onAction: onAction)
+            StorageStatusBand(
+                release: release,
+                onAction: onAction,
+                onExport: onExport
+            )
             Divider()
             filesSection
         }
@@ -1130,6 +1161,7 @@ struct ManageReleaseSheet: View {
 private struct StorageStatusBand: View {
     let release: ReleaseDetail
     let onAction: (BridgeReleaseStorageAction) -> Void
+    let onExport: () -> Void
     @Environment(OutboxStore.self)
     private var outboxStore
 
@@ -1204,9 +1236,17 @@ private struct StorageStatusBand: View {
     }
 
     private var transferActions: some View {
-        ForEach(release.storageActions, id: \.self) { action in
-            Button(action: { onAction(action) }) {
-                Label(action.label, systemImage: action.systemImage)
+        Group {
+            ForEach(release.storageActions, id: \.self) { action in
+                Button(action: { onAction(action) }) {
+                    Label(action.label, systemImage: action.systemImage)
+                }
+            }
+            // Export is a pure copy-out (no state change), so it's offered for
+            // every release regardless of locality — not one of the
+            // core-computed `storageActions`.
+            Button(action: { onExport() }) {
+                Label("Export…", systemImage: "square.and.arrow.up")
             }
         }
     }

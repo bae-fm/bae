@@ -24,6 +24,19 @@ impl LibraryManager {
             .update(|c| c.pause_between_sides = enabled)
     }
 
+    /// Where release exports write: prompt each time, or a fixed default folder.
+    pub fn export_location(&self) -> crate::config::ExportLocation {
+        self.config_handle.config().export_location.clone()
+    }
+
+    /// Set where release exports write. Persisted in the config file.
+    pub fn set_export_location(
+        &self,
+        location: crate::config::ExportLocation,
+    ) -> Result<(), crate::config::ConfigError> {
+        self.config_handle.update(|c| c.export_location = location)
+    }
+
     /// Set the local MCP server config. Port 0 means "ask the OS for any port",
     /// which would make the configured endpoint false, so reject it before
     /// persisting.

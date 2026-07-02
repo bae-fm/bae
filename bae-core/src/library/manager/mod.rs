@@ -495,6 +495,11 @@ pub enum LibraryEvent {
     DownloadQueueChanged {
         snapshot: crate::library::DownloadSnapshot,
     },
+    /// The in-memory export queue changed — carries the full snapshot so the
+    /// Storage Manager re-renders its Exporting pane.
+    ExportQueueChanged {
+        snapshot: crate::library::ExportSnapshot,
+    },
 }
 /// The main library manager for database operations and entity persistence
 ///
@@ -537,6 +542,11 @@ pub struct LibraryManager {
     /// one release at a time. Shared across manager clones; transient (empty
     /// after a restart — a release that wasn't fully pinned stays cloud-only).
     download_queue: Arc<crate::library::DownloadQueue>,
+    /// In-memory queue for "Export…" (copy a release's files out to a folder). A
+    /// single serial worker drains it one release at a time. Shared across
+    /// manager clones; transient (empty after a restart). Export changes no
+    /// release state — it only reads and writes to a user directory.
+    export_queue: Arc<crate::library::ExportQueue>,
     /// Test-only injection points for the cloud read/write paths, so tests
     /// resolve the cloud home and the sync-ready gate without standing up a live
     /// `SyncManager`.
@@ -589,6 +599,7 @@ impl Clone for LibraryManager {
             discogs: self.discogs.clone(),
             transfer_cancels: self.transfer_cancels.clone(),
             download_queue: self.download_queue.clone(),
+            export_queue: self.export_queue.clone(),
             #[cfg(any(test, feature = "test-utils"))]
             test_overrides: self.test_overrides.clone(),
         }
@@ -661,6 +672,7 @@ impl LibraryManager {
             discogs,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
+            export_queue: Arc::new(crate::library::ExportQueue::new()),
             #[cfg(any(test, feature = "test-utils"))]
             test_overrides: TestOverrides::default(),
         })
@@ -710,6 +722,7 @@ impl LibraryManager {
             discogs,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
+            export_queue: Arc::new(crate::library::ExportQueue::new()),
             #[cfg(any(test, feature = "test-utils"))]
             test_overrides: TestOverrides::default(),
         }
@@ -918,6 +931,26 @@ impl LibraryManager {
         crate::library::download_snapshot::build_download_snapshot(
             &self.download_queue.ops(),
             self.download_queue.is_paused(),
+        )
+    }
+
+    /// Build the current export-queue snapshot and emit it as
+    /// `ExportQueueChanged`. Called at every queue mutation (enqueue, worker
+    /// pick-up, per-file progress, success, failure, cancel, retry,
+    /// pause/resume) so the Storage Manager's Exporting pane stays current.
+    pub(crate) fn emit_export_queue_changed(&self) {
+        self.emit(LibraryEvent::ExportQueueChanged {
+            snapshot: self.export_snapshot(),
+        });
+    }
+
+    /// The current export-queue snapshot — per-release state built from the
+    /// in-memory queue. Seeds the Exporting pane before the first
+    /// `ExportQueueChanged` event arrives.
+    pub fn export_snapshot(&self) -> crate::library::ExportSnapshot {
+        crate::library::export_snapshot::build_export_snapshot(
+            &self.export_queue.ops(),
+            self.export_queue.is_paused(),
         )
     }
 

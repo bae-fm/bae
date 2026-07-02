@@ -768,6 +768,17 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
                 )
             )
         }
+        // Export is available for every release regardless of locality — it's a
+        // pure copy-out that changes no state — so it isn't one of the
+        // core-computed `storageActions`; offer it on its own for any
+        // non-transitioning target.
+        addMenuItem(
+            to: menu,
+            title: String(localized: "Export…"),
+            action: #selector(runExportAction(_:)),
+            symbol: "square.and.arrow.up",
+            representedObject: targets
+        )
     }
 
     /// Build a context-menu item targeting this coordinator and add it to the
@@ -827,6 +838,15 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
             return
         }
         runner.cancelTransitions(releaseIds: releaseIds)
+    }
+
+    @objc
+    private func runExportAction(_ sender: NSMenuItem) {
+        guard let releaseIds = sender.representedObject as? [String] else {
+            logger.error("Export menu item carried no release ids")
+            return
+        }
+        runner.export(releaseIds: releaseIds)
     }
 
     /// Storage actions every targeted release allows, preserving the order the

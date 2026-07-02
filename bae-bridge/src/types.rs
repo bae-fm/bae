@@ -1610,6 +1610,11 @@ pub enum BridgeUiEvent {
     DownloadQueueChanged {
         snapshot: BridgeDownloadSnapshot,
     },
+    /// The in-memory export queue changed — the Storage Manager re-renders its
+    /// Exporting pane from this.
+    ExportQueueChanged {
+        snapshot: BridgeExportSnapshot,
+    },
 
     // ── Errors ─────────────────────────────────────────────────────
     Error {
@@ -1702,6 +1707,69 @@ pub struct BridgeDownloadSnapshot {
     /// True when the user paused the download queue. Drives the pause/resume
     /// toggle in the Downloads pane.
     pub paused: bool,
+}
+
+/// A queued export's state. `Active` carries the overall release percent in the
+/// op's `percent`; `Failed` carries the reason in the op's `error`. Mirror of
+/// bae-core's `ExportState`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeExportState {
+    Queued,
+    Active,
+    Failed,
+}
+
+/// One queued export — a whole release being copied out verbatim to a folder.
+/// Mirror of bae-core's `ExportOp`; carries raw fields the UI renders directly.
+/// `percent` is the overall release progress while `state` is `Active` (0
+/// otherwise); `error` is the reason while `state` is `Failed`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeExportOp {
+    pub release_id: String,
+    /// The chosen destination directory; the release's source folder is
+    /// reconstructed under it.
+    pub target_dir: String,
+    /// Album title for display.
+    pub title: String,
+    pub file_count: i64,
+    /// Total size in bytes across the release's files. The UI formats it.
+    pub total_size: i64,
+    /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
+    pub created_at: i64,
+    pub state: BridgeExportState,
+    /// Overall release percent while `state` is `Active`; 0 otherwise.
+    pub percent: u8,
+    /// The failure reason, present only when `state` is `Failed`.
+    pub error: Option<String>,
+}
+
+/// Per-state counts for the export queue, driving the pane header. No bytes:
+/// exports track an overall percent per release, not aggregate bytes.
+#[derive(Debug, Clone, Default, uniffi::Record)]
+pub struct BridgeExportProgress {
+    pub queued: u32,
+    pub active: u32,
+    pub failed: u32,
+}
+
+/// The in-memory export queue snapshot the Storage Manager's Exporting pane
+/// renders. Mirror of bae-core's `ExportSnapshot`; the UI renders it verbatim.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeExportSnapshot {
+    pub exports: Vec<BridgeExportOp>,
+    pub total: BridgeExportProgress,
+    /// True when the user paused the export queue. Drives the pause/resume
+    /// toggle in the Exporting pane.
+    pub paused: bool,
+}
+
+/// Where release exports write — the browser download-folder model. Mirror of
+/// bae-core's `ExportLocation`. `Fixed` carries the configured directory as a
+/// path string.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeExportLocation {
+    AskEachTime,
+    Fixed { dir: String },
 }
 
 /// A release's pending uploads, grouped for the queue pane's per-release rows.
@@ -1918,6 +1986,8 @@ pub struct BridgeConfig {
     pub encryption_key_stored: bool,
     pub encryption_key_fingerprint: Option<String>,
     pub pause_between_sides: bool,
+    /// Where release exports write: prompt each time, or a fixed folder.
+    pub export_location: BridgeExportLocation,
     pub mcp: BridgeMcpConfig,
     pub discogs_token_status: BridgeDiscogsTokenStatus,
     /// Whether Discogs can be used as a metadata source (a stored key that
@@ -3411,6 +3481,7 @@ mod loc_key_coverage {
         // Storage queue summary (UI composes counts).
         "core.queue.uploading",
         "core.queue.downloading",
+        "core.queue.exporting",
         "core.queue.failed",
         "core.queue.queued",
         "core.outbox.pending_deletes",

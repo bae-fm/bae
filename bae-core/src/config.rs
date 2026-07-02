@@ -215,6 +215,27 @@ fn default_replay_gain_mode() -> ReplayGainMode {
     ReplayGainMode::Off
 }
 
+/// Where a release export writes its files — the browser download-folder model.
+///
+/// - `AskEachTime` — prompt for a destination directory on every export.
+/// - `Fixed(dir)` — a configured default directory; exports go straight there
+///   without a prompt.
+///
+/// Export reconstructs the release's source folder under the chosen directory
+/// (`<dir>/<source_folder_name>/`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExportLocation {
+    AskEachTime,
+    Fixed(PathBuf),
+}
+
+/// The serde default for `ConfigYaml.export_location`. Enums carry no
+/// `#[derive(Default)]` in this project, so the default is named explicitly:
+/// prompt for a destination each time until the user sets a fixed folder.
+fn default_export_location() -> ExportLocation {
+    ExportLocation::AskEachTime
+}
+
 /// The serde default for `ConfigYaml.verify_decode_on_import`: on. Import fully
 /// decodes every track for loudness anyway, so the verify rides that pass for
 /// free; defaulting on means a truncated/corrupt track is caught at import
@@ -360,6 +381,9 @@ pub struct ConfigYaml {
     /// How loudness normalization is applied at playback. Defaults to `Off`.
     #[serde(default = "default_replay_gain_mode")]
     pub replay_gain_mode: ReplayGainMode,
+    /// Where release exports write. Defaults to prompting each time.
+    #[serde(default = "default_export_location")]
+    pub export_location: ExportLocation,
     /// Whether playback pauses between vinyl/cassette sides.
     #[serde(default)]
     pub pause_between_sides: bool,
@@ -394,6 +418,7 @@ impl ConfigYaml {
             },
             discogs: self.discogs,
             replay_gain_mode: self.replay_gain_mode,
+            export_location: self.export_location,
             pause_between_sides: self.pause_between_sides,
             verify_decode_on_import: self.verify_decode_on_import,
             mcp: self.mcp,
@@ -411,6 +436,7 @@ impl From<&Config> for ConfigYaml {
             encryption_key_stored: config.encryption_key_stored,
             encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
             replay_gain_mode: config.replay_gain_mode,
+            export_location: config.export_location.clone(),
             pause_between_sides: config.pause_between_sides,
             verify_decode_on_import: config.verify_decode_on_import,
             mcp: config.mcp,
@@ -445,6 +471,8 @@ pub struct Config {
     pub discogs: Option<DiscogsValidation>,
     /// How loudness normalization is applied at playback. Defaults to `Off`.
     pub replay_gain_mode: ReplayGainMode,
+    /// Where release exports write. Defaults to prompting each time.
+    pub export_location: ExportLocation,
     /// Whether playback pauses between vinyl/cassette sides.
     pub pause_between_sides: bool,
     /// Whether import verifies each track by fully decoding it, failing the import
@@ -699,6 +727,7 @@ impl Config {
             inner: coven::Config::with_defaults(library_id, device_id, library_dir, library_name),
             discogs: None,
             replay_gain_mode: default_replay_gain_mode(),
+            export_location: default_export_location(),
             pause_between_sides: false,
             verify_decode_on_import: default_verify_decode_on_import(),
             mcp: McpConfig::disabled_default(),
@@ -941,6 +970,32 @@ mod tests {
             LibraryDir::new(library_path),
             "Test Library".to_string(),
         )
+    }
+
+    #[test]
+    fn export_location_defaults_to_ask_each_time() {
+        let tmp = TempDir::new().unwrap();
+        let config = make_test_config("lib", tmp.path().to_path_buf());
+        assert_eq!(config.export_location, ExportLocation::AskEachTime);
+    }
+
+    #[test]
+    fn export_location_roundtrips_both_variants() {
+        for location in [
+            ExportLocation::AskEachTime,
+            ExportLocation::Fixed(PathBuf::from("/exports/music")),
+        ] {
+            let tmp = TempDir::new().unwrap();
+            let mut config = make_test_config("lib", tmp.path().to_path_buf());
+            config.export_location = location.clone();
+            config.save_to_config_yaml().unwrap();
+
+            let yaml: ConfigYaml = serde_yaml::from_str(
+                &std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(yaml.export_location, location);
+        }
     }
 
     #[test]

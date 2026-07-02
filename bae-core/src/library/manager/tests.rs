@@ -1915,6 +1915,305 @@ async fn download_queue_failed_pin_retries() {
     assert!(cleared, "cancel removes the entry");
 }
 
+// ── Export queue ─────────────────────────────────────────────────
+
+/// Create a Remote, pinned, exportable release: a Local release with
+/// known-byte source files on disk (coven external refs) and a
+/// `source_folder_name`, made Remote with pin so its blobs stay readable from
+/// the offline cache. Returns its id. The manager must already be connected via
+/// [`connect_test_cloud`].
+#[cfg(feature = "test-utils")]
+async fn make_exportable_release(
+    manager: &LibraryManager,
+    source_dir: &std::path::Path,
+    folder_name: &str,
+    files: &[(&str, &[u8])],
+) -> String {
+    let album = create_test_album();
+    let mut release = create_test_release(&album.id);
+    release.remote = false;
+    release.source_folder_name = Some(folder_name.to_string());
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    std::fs::create_dir_all(source_dir).unwrap();
+    for (name, bytes) in files {
+        let path = source_dir.join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, bytes).unwrap();
+        let file = DbFile::new(
+            &release.id,
+            name,
+            bytes.len() as i64,
+            crate::util::content_type::ContentType::Flac,
+            Uuid::new_v4().to_string(),
+            Utc::now(),
+        );
+        manager.add_file(&file).await.unwrap();
+    }
+    manager
+        .database
+        .register_release_external_refs_for_test(&release.id, &source_dir.to_string_lossy())
+        .await
+        .unwrap();
+    manager.coven_make_remote(&release.id, true).await.unwrap();
+    let n = manager.drain_uploads_for_test().await.unwrap();
+    assert_eq!(n as usize, files.len(), "each release blob uploaded");
+    release.id
+}
+
+/// Pausing before the first enqueue parks the worker, so the queue's in-memory
+/// state (enqueue, dedup, target_dir, cancel) is observable deterministically
+/// without the export path racing the assertions.
+#[tokio::test]
+async fn export_queue_enqueue_dedups_and_cancels_while_paused() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let release_id = insert_pinnable_release(&manager).await;
+
+    manager.set_exports_paused(true);
+
+    let target = temp_dir.path().join("export-out");
+    manager
+        .enqueue_export(&release_id, target.clone())
+        .await
+        .unwrap();
+    let snap = manager.export_snapshot();
+    assert_eq!(snap.total.queued, 1);
+    assert_eq!(snap.exports.len(), 1);
+    assert_eq!(snap.exports[0].title, "Test Album");
+    assert_eq!(snap.exports[0].file_count, 1);
+    assert_eq!(snap.exports[0].target_dir, target);
+    assert_eq!(snap.exports[0].state, crate::library::ExportState::Queued);
+    assert!(snap.paused);
+
+    // Re-enqueuing the same release is a no-op: still one entry.
+    manager
+        .enqueue_export(&release_id, target.clone())
+        .await
+        .unwrap();
+    assert_eq!(manager.export_snapshot().exports.len(), 1);
+
+    // Cancel drops the entry.
+    manager.cancel_export(&release_id);
+    assert!(manager.export_snapshot().exports.is_empty());
+}
+
+/// The verbatim copy-out: exported bytes equal the source bytes, laid out at
+/// `<target>/<source_folder_name>/<original_filename>` (including nested
+/// subfolders), and the export changes no release state — it stays Remote with
+/// no new cloud-outbox rows.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+
+    let source_dir = temp_dir.path().join("source");
+    let files: &[(&str, &[u8])] = &[
+        ("cover.jpg", b"cover-bytes-abc"),
+        ("CD1/track.flac", b"flac-bytes-0123456789"),
+    ];
+    let release_id =
+        make_exportable_release(&manager, &source_dir, "Album Title (2020)", files).await;
+
+    // Precondition: Remote, no pending uploads after the drain.
+    let before = manager
+        .get_release_by_id(&release_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(before.remote);
+    assert!(!manager
+        .database
+        .has_pending_uploads_for_release(&release_id)
+        .await
+        .unwrap());
+
+    let target = temp_dir.path().join("export-out");
+    manager
+        .enqueue_export(&release_id, target.clone())
+        .await
+        .unwrap();
+
+    // Success removes the entry from the queue.
+    let done = wait_for(|| manager.export_snapshot().exports.is_empty()).await;
+    assert!(done, "the export should complete and clear the queue");
+
+    // Byte-accuracy + folder layout.
+    for (name, bytes) in files {
+        let written = target.join("Album Title (2020)").join(name);
+        let got = std::fs::read(&written).unwrap_or_else(|e| panic!("read exported {name}: {e}"));
+        assert_eq!(&got, bytes, "exported bytes for {name} match the source");
+    }
+
+    // The staging directory was renamed into place, leaving nothing behind it.
+    let leftover = std::fs::read_dir(&target)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        leftover,
+        vec!["Album Title (2020)".to_string()],
+        "only the final export folder remains under the target; no staging dir"
+    );
+
+    // Export changed no release state: still Remote, no new outbox rows.
+    let after = manager
+        .get_release_by_id(&release_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(after.remote, "export leaves the release Remote");
+    assert!(
+        !manager
+            .database
+            .has_pending_uploads_for_release(&release_id)
+            .await
+            .unwrap(),
+        "export enqueues no cloud uploads"
+    );
+}
+
+/// A write error (an unwritable target) marks the export `Failed` with a message
+/// and keeps it in the queue; `retry_exports` flips it back to `Queued`.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn export_write_error_marks_failed_and_retries() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+
+    let source_dir = temp_dir.path().join("source");
+    let release_id = make_exportable_release(
+        &manager,
+        &source_dir,
+        "Album Title",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+
+    // Target a path that is actually a file, so creating the release subfolder
+    // under it fails with an I/O error (the read succeeds; the write doesn't).
+    let blocker = temp_dir.path().join("blocker");
+    std::fs::write(&blocker, b"a file, not a directory").unwrap();
+
+    manager
+        .enqueue_export(&release_id, blocker.clone())
+        .await
+        .unwrap();
+
+    let failed = wait_for(|| {
+        matches!(
+            manager
+                .export_snapshot()
+                .exports
+                .first()
+                .map(|op| &op.state),
+            Some(crate::library::ExportState::Failed { .. })
+        )
+    })
+    .await;
+    assert!(failed, "an unwritable target marks the export Failed");
+    assert_eq!(manager.export_snapshot().total.failed, 1);
+
+    // Retry flips it back to Queued (it'll fail again, but stays tracked).
+    manager.retry_exports();
+    assert!(manager
+        .export_snapshot()
+        .exports
+        .first()
+        .is_some_and(|op| matches!(
+            op.state,
+            crate::library::ExportState::Queued
+                | crate::library::ExportState::Active { .. }
+                | crate::library::ExportState::Failed { .. }
+        )));
+
+    manager.cancel_export(&release_id);
+    let cleared = wait_for(|| manager.export_snapshot().exports.is_empty()).await;
+    assert!(cleared, "cancel removes the entry");
+}
+
+/// A failure partway through the export (a read error on a later file, after an
+/// earlier file has already been written to staging) leaves NO output at the
+/// final `<target>/<source_folder_name>/` path — the staging directory is
+/// removed, so the export is all-or-nothing.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
+    let (manager, temp_dir) = setup_test_manager().await;
+
+    // A Local release whose two source files live on disk as coven external refs
+    // (UserProvided reads straight from the user's own file). Keeping it Local —
+    // never made Remote — means the export reads these files directly, so removing
+    // one forces a read error on a later file mid-export.
+    let source_dir = temp_dir.path().join("source");
+    std::fs::create_dir_all(&source_dir).unwrap();
+    let album = create_test_album();
+    let mut release = create_test_release(&album.id);
+    release.remote = false;
+    release.source_folder_name = Some("Album Title".to_string());
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    let files: &[(&str, &[u8])] = &[("01.flac", b"first-ok"), ("02.flac", b"second-fails")];
+    for (name, bytes) in files {
+        std::fs::write(source_dir.join(name), bytes).unwrap();
+        let file = DbFile::new(
+            &release.id,
+            name,
+            bytes.len() as i64,
+            crate::util::content_type::ContentType::Flac,
+            Uuid::new_v4().to_string(),
+            Utc::now(),
+        );
+        manager.add_file(&file).await.unwrap();
+    }
+    manager
+        .database
+        .register_release_external_refs_for_test(&release.id, &source_dir.to_string_lossy())
+        .await
+        .unwrap();
+
+    // Pause so the source file can be deleted before the worker runs, making the
+    // later read fail deterministically rather than racing the copy.
+    manager.set_exports_paused(true);
+    let target = temp_dir.path().join("export-out");
+    std::fs::create_dir_all(&target).unwrap();
+    manager
+        .enqueue_export(&release.id, target.clone())
+        .await
+        .unwrap();
+    std::fs::remove_file(source_dir.join("02.flac")).unwrap();
+    manager.set_exports_paused(false);
+
+    let failed = wait_for(|| {
+        matches!(
+            manager
+                .export_snapshot()
+                .exports
+                .first()
+                .map(|op| &op.state),
+            Some(crate::library::ExportState::Failed { .. })
+        )
+    })
+    .await;
+    assert!(
+        failed,
+        "a read error on a later file marks the export Failed"
+    );
+
+    // The all-or-nothing guarantee: nothing at the final path, and the staging
+    // directory was removed — the target holds no export output at all.
+    assert!(
+        !target.join("Album Title").exists(),
+        "no partial output at the final export path"
+    );
+    assert_eq!(
+        std::fs::read_dir(&target).unwrap().count(),
+        0,
+        "staging directory cleaned up; target left empty"
+    );
+}
+
 /// Poll `predicate` up to ~2s (40 × 50ms), returning whether it became true.
 /// Used by the async download-worker tests instead of a fixed sleep.
 async fn wait_for(predicate: impl Fn() -> bool) -> bool {

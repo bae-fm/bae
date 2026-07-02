@@ -12,6 +12,7 @@ target/
 target-macos/
 target-ios/
 target-android/
+target-iso/
 **/*.rs.bk
 
 # IDE specific files

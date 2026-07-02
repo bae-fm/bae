@@ -4,6 +4,8 @@ pub mod download_queue;
 pub mod download_snapshot;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod export;
+pub mod export_queue;
+pub mod export_snapshot;
 pub mod manager;
 pub mod outbox_snapshot;
 pub(crate) mod sync_controller;
@@ -14,6 +16,8 @@ pub use download_queue::DownloadQueue;
 pub use download_snapshot::{DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use export::{ExportFormat, MP3_EXPORT_BITRATE};
+pub use export_queue::ExportQueue;
+pub use export_snapshot::{ExportOp, ExportProgress, ExportSnapshot, ExportState};
 pub use manager::*;
 pub use outbox_snapshot::{
     DeleteOp, OutboxSnapshot, UploadActivity, UploadOp, UploadProgress, UploadReleaseGroup,

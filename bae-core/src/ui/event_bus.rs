@@ -480,6 +480,9 @@ impl UiEventBus {
                     Ok(LibraryEvent::DownloadQueueChanged { snapshot }) => {
                         bus.emit(UiBusEvent::DownloadQueueChanged { snapshot });
                     }
+                    Ok(LibraryEvent::ExportQueueChanged { snapshot }) => {
+                        bus.emit(UiBusEvent::ExportQueueChanged { snapshot });
+                    }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!("Library event bus lagged by {n} events");
                     }

@@ -650,6 +650,7 @@ struct CoverPickerView: View {
                     encryptionKeyStored: false,
                     encryptionKeyFingerprint: nil,
                     pauseBetweenSides: false,
+                    exportLocation: .askEachTime,
                     mcp: BridgeMcpConfig(enabled: false, port: 47777),
                     discogsTokenStatus: .notConfigured,
                     discogsUsable: false,

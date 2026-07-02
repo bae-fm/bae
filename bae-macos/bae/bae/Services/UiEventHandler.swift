@@ -18,6 +18,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
     private let uiStore: UiStore
     private let outboxStore: OutboxStore
     private let downloadStore: DownloadStore
+    private let exportStore: ExportStore
 
     init(
         playbackStore: PlaybackStore,
@@ -27,7 +28,8 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         appService: AppService,
         uiStore: UiStore,
         outboxStore: OutboxStore,
-        downloadStore: DownloadStore
+        downloadStore: DownloadStore,
+        exportStore: ExportStore
     ) {
         self.playbackStore = playbackStore
         self.configStore = configStore
@@ -37,6 +39,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         self.uiStore = uiStore
         self.outboxStore = outboxStore
         self.downloadStore = downloadStore
+        self.exportStore = exportStore
     }
 
     func onEvent(event: BridgeUiEvent) {
@@ -50,6 +53,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         let uiStore = uiStore
         let outboxStore = outboxStore
         let downloadStore = downloadStore
+        let exportStore = exportStore
         Task { @MainActor in
             let context = ReducerContext(
                 playbackStore: playbackStore,
@@ -59,7 +63,8 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
                 appService: appService,
                 uiStore: uiStore,
                 outboxStore: outboxStore,
-                downloadStore: downloadStore
+                downloadStore: downloadStore,
+                exportStore: exportStore
             )
             UiEventReducer.reduce(event, into: context)
         }

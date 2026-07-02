@@ -22,6 +22,8 @@ final class StorageActionRunner {
     private let releaseEditor: ReleaseEditor
     private let sync: Sync
     private let downloads: Downloads
+    private let exports: Exports
+    private let configStore: ConfigStore
     private let uiStore: UiStore
 
     /// Releases awaiting the "Move into library" confirm sheet. Non-nil while
@@ -32,12 +34,35 @@ final class StorageActionRunner {
         releaseEditor: ReleaseEditor,
         sync: Sync,
         downloads: Downloads,
+        exports: Exports,
+        configStore: ConfigStore,
         uiStore: UiStore
     ) {
         self.releaseEditor = releaseEditor
         self.sync = sync
         self.downloads = downloads
+        self.exports = exports
+        self.configStore = configStore
         self.uiStore = uiStore
+    }
+
+    /// Export each release's files verbatim to a folder. The destination comes
+    /// from the export-location setting: a fixed folder enqueues straight away;
+    /// "ask each time" opens one `NSOpenPanel` and exports the whole batch into
+    /// the chosen folder. No folder chosen → nothing enqueued. Each enqueue joins
+    /// the in-memory export queue, which serializes the batch and reports progress
+    /// via the Exporting pane.
+    func export(releaseIds: [String]) {
+        guard
+            let targetDir = ExportTarget.resolve(
+                configStore.config.exportLocation
+            )
+        else {
+            return
+        }
+        for releaseId in releaseIds {
+            exports.enqueueExport(releaseId, targetDir)
+        }
     }
 
     /// Run `action` against every release in `releaseIds`. `manage` defers to

@@ -1,0 +1,59 @@
+import Foundation
+
+/// Controls for the in-memory export queue: enqueue a release to copy its files
+/// out to a folder, pause/resume the queue, cancel a release's export, and retry
+/// failed ones. Mirrors `Downloads`, wrapping the corresponding `handle.*`
+/// methods. The queue itself lives in bae-core; the Exporting pane reads its
+/// state from `ExportStore` (the reducer is the sole writer).
+final class Exports: Sendable, Observable {
+    /// Enqueue a release to export its files verbatim to `targetDir`. It joins
+    /// the serial export queue; the worker drains it one release at a time.
+    /// Fire-and-forget — progress and queue state arrive via `exportQueueChanged`
+    /// events.
+    let enqueueExport:
+        @Sendable (_ releaseId: String, _ targetDir: String) -> Void
+    /// Pause or resume the export queue. The in-flight export finishes; the
+    /// queue stops starting new ones until resumed.
+    let setExportsPaused: @Sendable (_ paused: Bool) -> Void
+    /// Cancel a release's export — drops a queued/failed entry or aborts the
+    /// in-flight one (a partial copy never lands its destination file).
+    let cancelExport: @Sendable (_ releaseId: String) -> Void
+    /// Retry every failed export now (flips them back to queued).
+    let retryExports: @Sendable () -> Void
+    /// Set where release exports write: prompt each time, or a fixed folder.
+    /// The Preferences control drives this; the change round-trips back through
+    /// a `configChanged` event into `ConfigStore`.
+    let setExportLocation:
+        @Sendable (_ location: BridgeExportLocation) throws -> Void
+
+    init(
+        enqueueExport: @escaping @Sendable (String, String) -> Void = { _, _ in
+        },
+        setExportsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
+        cancelExport: @escaping @Sendable (String) -> Void = { _ in },
+        retryExports: @escaping @Sendable () -> Void = {},
+        setExportLocation:
+            @escaping @Sendable (BridgeExportLocation) throws -> Void = { _ in }
+    ) {
+        self.enqueueExport = enqueueExport
+        self.setExportsPaused = setExportsPaused
+        self.cancelExport = cancelExport
+        self.retryExports = retryExports
+        self.setExportLocation = setExportLocation
+    }
+
+    convenience init(handle: any AppHandleProtocol) {
+        self.init(
+            enqueueExport: {
+                handle.enqueueExport(releaseId: $0, targetDir: $1)
+            },
+            setExportsPaused: { handle.setExportsPaused(paused: $0) },
+            cancelExport: { handle.cancelExport(releaseId: $0) },
+            retryExports: { handle.retryExports() },
+            setExportLocation: { try handle.setExportLocation(location: $0) }
+        )
+    }
+
+    // periphery:ignore
+    static let stub = Exports()
+}

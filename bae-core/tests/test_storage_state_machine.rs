@@ -335,8 +335,9 @@ async fn test_manage_refused_when_sync_not_running() {
 }
 
 // ---------------------------------------------------------------------------
-// make-Remote (cloud-only): upload from the originals; coven deletes them once
-// the last upload lands. The drained blob is NOT pinned.
+// make-Remote (cloud-only): upload from the originals. coven preserves the
+// user-provided source files on disk; the release flips Remote (NOT pinned) and
+// drops its external reference, but the user's own files stay put.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -374,16 +375,16 @@ async fn test_manage_cloud_only_uploads_from_source_then_completes() {
     let count = mgr.drain_uploads_for_test().await.unwrap();
     assert_eq!(count, files.len());
 
-    // coven flipped it Remote (cloud-only, NOT pinned) and deleted the originals
-    // once the last upload landed.
+    // coven flipped it Remote (cloud-only, NOT pinned) and dropped the external
+    // reference, but the user-provided source files remain on disk untouched.
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
     for (name, _) in &files {
         assert!(
-            !source_dir.join(name).exists(),
-            "source {name} deleted after the last upload landed"
+            source_dir.join(name).exists(),
+            "user-provided source {name} must survive after the upload completes"
         );
     }
 }

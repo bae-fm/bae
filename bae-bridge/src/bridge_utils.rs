@@ -1,6 +1,32 @@
 use crate::types::{
-    BridgeConfig, BridgeDiscogsTokenStatus, BridgeMcpConfig, BridgeSyncConfig, BridgeSyncProvider,
+    BridgeConfig, BridgeDiscogsTokenStatus, BridgeExportLocation, BridgeMcpConfig,
+    BridgeSyncConfig, BridgeSyncProvider,
 };
+
+/// Convert a core `ExportLocation` to the bridge enum. A fixed folder's path
+/// crosses as a string.
+pub(crate) fn bridge_export_location(
+    location: &bae_core::config::ExportLocation,
+) -> BridgeExportLocation {
+    match location {
+        bae_core::config::ExportLocation::AskEachTime => BridgeExportLocation::AskEachTime,
+        bae_core::config::ExportLocation::Fixed(dir) => BridgeExportLocation::Fixed {
+            dir: dir.to_string_lossy().to_string(),
+        },
+    }
+}
+
+/// Convert the bridge enum back to a core `ExportLocation` for persisting.
+pub(crate) fn core_export_location(
+    location: BridgeExportLocation,
+) -> bae_core::config::ExportLocation {
+    match location {
+        BridgeExportLocation::AskEachTime => bae_core::config::ExportLocation::AskEachTime,
+        BridgeExportLocation::Fixed { dir } => {
+            bae_core::config::ExportLocation::Fixed(std::path::PathBuf::from(dir))
+        }
+    }
+}
 
 /// Convert a core `Config` to `BridgeConfig` for the UI. Pure translation —
 /// `cloud_account_display` is a core method; this just reads it. `sync` is
@@ -16,6 +42,7 @@ pub(crate) fn build_bridge_config(config: &bae_core::config::Config) -> BridgeCo
         encryption_key_stored: config.encryption_key_stored,
         encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
         pause_between_sides: config.pause_between_sides,
+        export_location: bridge_export_location(&config.export_location),
         mcp: BridgeMcpConfig {
             enabled: config.mcp.enabled,
             port: config.mcp.port,

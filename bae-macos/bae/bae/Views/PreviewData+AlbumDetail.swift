@@ -76,6 +76,7 @@
                 onEditMetadata: {},
                 onReIdentify: {},
                 onManage: {},
+                onExportRelease: {},
                 onSetPrimaryRelease: {},
                 onDeleteRelease: {},
                 onExportTrack: { _ in },
@@ -87,7 +88,7 @@
         /// Injects every service the `AlbumDetailView` tree reads from the
         /// environment so its real body — and the modal sheets it can present
         /// (cover, edit-metadata, re-identify, storage) — render without a
-        /// missing-environment trap. Eight `.stub` domain services plus the
+        /// missing-environment trap. Nine `.stub` domain services plus the
         /// four the modals reach (`Importer`, `ImportStore`, `OutboxStore`,
         /// `ConfigStore`), fresh `PlaybackStore`/`UiStore`, and the passed-in
         /// seeded `LibraryStore`. Nothing about the view is reconstructed.
@@ -102,6 +103,7 @@
                 .environment(Sync.stub)
                 .environment(Downloads.stub)
                 .environment(Export.stub)
+                .environment(Exports.stub)
                 .environment(Importer.stub)
                 .environment(store)
                 .environment(PlaybackStore())

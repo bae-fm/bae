@@ -1,6 +1,2107 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Ask Each Time": {
+      "comment": "Settings: switch export location back to prompting each time",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask Each Time"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask Each Time"
+          }
+        }
+      }
+    },
+    "Ask each time": {
+      "comment": "Settings: export-location value meaning prompt each time",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask each time"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Ask each time"
+          }
+        }
+      }
+    },
+    "Cancel this export": {
+      "comment": "Export row: tooltip for the cancel button",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel this export"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Cancel this export"
+          }
+        }
+      }
+    },
+    "Choose": {
+      "comment": "Folder picker prompt: confirm the chosen export folder",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose"
+          }
+        }
+      }
+    },
+    "Choose Folder...": {
+      "comment": "Settings: pick a fixed export folder",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Folder..."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Choose Folder..."
+          }
+        }
+      }
+    },
+    "Export": {
+      "comment": "Settings: export section header",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export"
+          }
+        }
+      }
+    },
+    "Export Here": {
+      "comment": "Folder picker prompt: choose the export destination",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export Here"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export Here"
+          }
+        }
+      }
+    },
+    "Export location": {
+      "comment": "Settings: label for the export-destination control",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export location"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export location"
+          }
+        }
+      }
+    },
+    "Export…": {
+      "comment": "Release context menu: export the release's files to a folder",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Export…"
+          }
+        }
+      }
+    },
+    "Exporting": {
+      "comment": "Storage Manager: export queue header",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporting"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting"
+          }
+        }
+      }
+    },
+    "Exporting %lld%%": {
+      "comment": "Export row: badge showing the export percent",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exporting %lld%%"
+          }
+        }
+      }
+    },
     "%@ - %@": {
       "comment": "Search results track row: artist and album; first %@ is artist, second %@ is album title",
       "localizations": {

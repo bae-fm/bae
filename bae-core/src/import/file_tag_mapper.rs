@@ -445,7 +445,16 @@ fn year_from_cue_date(date: Option<&str>) -> Option<i32> {
 /// Probe a file's container/codec without reading its full tag set. Used to
 /// derive the format label for a CUE image (whose codec isn't otherwise read).
 fn probe_file_type(path: &Path) -> Option<FileType> {
-    Probe::open(path).ok()?.read().ok().map(|t| t.file_type())
+    match Probe::open(path).and_then(|probe| probe.read()) {
+        Ok(tagged) => Some(tagged.file_type()),
+        // The scanner already admitted this file as audio, so a probe failure is
+        // exceptional. The format label stays optional (the user can set it in
+        // the editor), but don't drop the error silently.
+        Err(e) => {
+            tracing::warn!("failed to probe audio format of {}: {e}", path.display());
+            None
+        }
+    }
 }
 
 /// Read the embedded front-cover picture from the first audio file that

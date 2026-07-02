@@ -1695,6 +1695,43 @@ ml = "{count} downloading"
 pa = "{count} downloading"
 th = "{count} downloading"
 
+[messages."core.queue.exporting"]
+comment = "Storage queue: count currently exporting."
+args = { count = "Int" }
+value = "{count} exporting"
+
+[messages."core.queue.exporting".translations]
+es = "{count} exportándose"
+fr = "{count} en cours d'exportation"
+de = "{count} werden exportiert"
+pt-BR = "{count} exportando"
+ja = "{count}件エクスポート中"
+ko = "{count}개 내보내는 중"
+zh-Hans = "{count} 个正在导出"
+ar = "{count} قيد التصدير"
+he = "{count} מייצא"
+uk = "{count} експортується"
+bg = "{count} се експортират"
+pl = "{count} eksportowanych"
+cs = "{count} se exportuje"
+hr = "{count} se izvozi"
+zh-Hant = "{count} exporting"
+it = "{count} exporting"
+tr = "{count} exporting"
+vi = "{count} exporting"
+nl = "{count} exporting"
+hi = "{count} exporting"
+bn = "{count} exporting"
+ta = "{count} exporting"
+te = "{count} exporting"
+mr = "{count} exporting"
+ur = "{count} exporting"
+gu = "{count} exporting"
+kn = "{count} exporting"
+ml = "{count} exporting"
+pa = "{count} exporting"
+th = "{count} exporting"
+
 [messages."core.queue.failed"]
 comment = "Storage queue: count that failed."
 args = { count = "Int" }
