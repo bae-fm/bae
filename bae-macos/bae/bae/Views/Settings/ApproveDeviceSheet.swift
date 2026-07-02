@@ -8,10 +8,13 @@ private let logger = Logger.bae("ApproveDevice")
 /// show the invite code to carry back to that device.
 ///
 /// `invite` is `Sync.inviteMember`: it takes the joining device's public key and
-/// returns the invite code. The sheet drives a small step machine so each stage
-/// renders only what that stage needs.
+/// the account email decoded from its join-request, and returns the invite code.
+/// The sheet drives a small step machine so each stage renders only what that
+/// stage needs.
 struct ApproveDeviceSheet: View {
-    let invite: @Sendable (_ publicKeyHex: String) async throws -> String
+    let invite:
+        @Sendable (_ publicKeyHex: String, _ inviteeEmail: String?) async throws
+            -> String
     let onDismiss: () -> Void
     /// Called once a device has been approved, so the caller can refresh its
     /// member list.
@@ -212,12 +215,14 @@ struct ApproveDeviceSheet: View {
 
     private func approve(_ info: BridgeJoinRequestInfo) {
         let pubkey = info.pubkey
+        // Share the OAuth folder to the email the joiner baked into its code.
+        let email = info.email
         error = nil
         step = .inviting(info)
         inviteTask?.cancel()
         inviteTask = Task { @MainActor in
             do {
-                let code = try await invite(pubkey)
+                let code = try await invite(pubkey, email)
                 step = .invited(code: code)
                 onApproved()
             }
