@@ -414,7 +414,7 @@ impl RestoreFromCodeOperation {
 /// the keyring initialized.
 #[uniffi::export]
 pub fn generate_join_request() -> Result<BridgeJoinRequest, BridgeError> {
-    let request = bae_core::sync::sync_manager::generate_join_request()
+    let request = bae_core::sync::sync_manager::generate_join_request(None)
         .map_err(|e| BridgeError::config(format!("Failed to generate join request: {e}")))?;
     Ok(BridgeJoinRequest {
         code: request.code,
