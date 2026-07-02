@@ -37,6 +37,34 @@ impl LibraryManager {
         self.config_handle.update(|c| c.export_location = location)
     }
 
+    /// The template rendering a single-track export's suggested filename.
+    pub fn export_filename_template(&self) -> String {
+        self.config_handle.config().export_filename_template.clone()
+    }
+
+    /// Set the single-track export filename template. Persisted in the config file.
+    pub fn set_export_filename_template(
+        &self,
+        template: String,
+    ) -> Result<(), crate::config::ConfigError> {
+        self.config_handle
+            .update(|c| c.export_filename_template = template)
+    }
+
+    /// Which metadata tags a single-track export embeds.
+    pub fn export_metadata(&self) -> crate::config::ExportMetadata {
+        self.config_handle.config().export_metadata
+    }
+
+    /// Set which metadata tags a single-track export embeds. Persisted in the
+    /// config file.
+    pub fn set_export_metadata(
+        &self,
+        metadata: crate::config::ExportMetadata,
+    ) -> Result<(), crate::config::ConfigError> {
+        self.config_handle.update(|c| c.export_metadata = metadata)
+    }
+
     /// Set the local MCP server config. Port 0 means "ask the OS for any port",
     /// which would make the configured endpoint false, so reject it before
     /// persisting.

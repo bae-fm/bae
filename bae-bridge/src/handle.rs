@@ -501,6 +501,25 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
+    /// Set the template rendering a single-track export's suggested filename.
+    pub fn set_export_filename_template(&self, template: String) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_export_filename_template(template)
+            .map_err(BridgeError::config)
+    }
+
+    /// Set which metadata tags a single-track export embeds.
+    pub fn set_export_metadata(
+        &self,
+        metadata: crate::types::BridgeExportMetadata,
+    ) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_export_metadata(crate::bridge_utils::core_export_metadata(metadata))
+            .map_err(BridgeError::config)
+    }
+
     /// Whether the encryption key is loaded — `init` successfully read it from
     /// the keyring and built the sync manager. Reflects the cached init-time
     /// result, not a fresh keyring read. `false` here for an
@@ -1447,6 +1466,20 @@ impl AppHandle {
         self.services
             .library_manager()
             .export_track(&track_id, std::path::Path::new(&output_path), core_format)
+            .await
+            .map_err(|e| BridgeError::export(format!("{e}")))
+    }
+
+    /// The default filename stem (no extension) a single-track "Save As…" export
+    /// suggests for `track_id`, rendered from the configured template. Reads only
+    /// the database, so it's cheap to call while seeding a save panel.
+    pub async fn export_track_suggested_name(
+        &self,
+        track_id: String,
+    ) -> Result<String, BridgeError> {
+        self.services
+            .library_manager()
+            .export_track_suggested_name(&track_id)
             .await
             .map_err(|e| BridgeError::export(format!("{e}")))
     }

@@ -34,6 +34,117 @@ fn synthesize_folder_name(album: &DbAlbum, release: &DbRelease, artist_name: &st
     name
 }
 
+/// Render a single-track export's suggested filename stem (no extension) from a
+/// template and the track's tag data. Supported tokens:
+/// `{title} {artist} {album} {year} {track_number} {disc_number} {track_total}`.
+/// Unknown `{...}` sequences are left literal. Absent values (e.g. no year)
+/// substitute empty. The result is sanitized (path separators and characters
+/// illegal on macOS/Windows → '-'), whitespace-collapsed, and trimmed of
+/// leading/trailing spaces and dashes. If it renders empty, fall back to the
+/// sanitized title, else "track".
+pub fn render_export_filename(
+    template: &str,
+    resolved: &crate::library::manager::ResolvedExportTags,
+) -> String {
+    let tags = &resolved.tags;
+    let substitute = |token: &str| -> Option<String> {
+        Some(match token {
+            "title" => tags.title.clone(),
+            "artist" => tags.artist.clone(),
+            "album" => tags.album.clone(),
+            "year" => tags.year.map(|y| y.to_string()).unwrap_or_default(),
+            // Zero-padded to two digits so tracks sort lexically; empty when the
+            // track carries no number.
+            "track_number" => resolved
+                .track_number
+                .map(|n| format!("{n:02}"))
+                .unwrap_or_default(),
+            "disc_number" => tags.disc.map(|d| d.to_string()).unwrap_or_default(),
+            "track_total" => resolved.total_tracks.to_string(),
+            _ => return None,
+        })
+    };
+
+    // Single left-to-right scan: substituted values are appended to `rendered`
+    // and never re-scanned, so a tag value that itself contains `{title}` is
+    // emitted literally rather than substituted again.
+    let mut rendered = String::new();
+    let mut chars = template.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch != '{' {
+            rendered.push(ch);
+            continue;
+        }
+        let mut token = String::new();
+        let mut closed = false;
+        while let Some(&c) = chars.peek() {
+            chars.next();
+            if c == '}' {
+                closed = true;
+                break;
+            }
+            token.push(c);
+        }
+        match (closed, substitute(&token)) {
+            (true, Some(value)) => rendered.push_str(&value),
+            // Unknown token or an unterminated `{` — emit verbatim.
+            (true, None) => {
+                rendered.push('{');
+                rendered.push_str(&token);
+                rendered.push('}');
+            }
+            (false, _) => {
+                rendered.push('{');
+                rendered.push_str(&token);
+            }
+        }
+    }
+
+    let stem = sanitize_filename_stem(&rendered);
+    if !stem.is_empty() {
+        return stem;
+    }
+    // The template rendered to nothing usable (e.g. every referenced value was
+    // empty). Log the skip rather than silently produce a name, then fall back
+    // to the track title, and finally a fixed stem.
+    let title_stem = sanitize_filename_stem(&tags.title);
+    if !title_stem.is_empty() {
+        debug!(
+            track_title = %tags.title,
+            "export filename template rendered empty; using track title"
+        );
+        return title_stem;
+    }
+    debug!(
+        track_title = %tags.title,
+        "export filename template and track title both empty; using \"track\""
+    );
+    "track".to_string()
+}
+
+/// Sanitize a rendered filename stem: replace the macOS+Windows-illegal
+/// characters and control characters with '-', collapse whitespace runs to one
+/// space, trim leading/trailing spaces and dashes, then strip a leading '.' so
+/// the file isn't hidden. Replacing the separators is also what makes a `../`
+/// escape impossible.
+fn sanitize_filename_stem(input: &str) -> String {
+    let replaced: String = input
+        .chars()
+        .map(|c| {
+            if c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') {
+                '-'
+            } else {
+                c
+            }
+        })
+        .collect();
+    let collapsed = replaced.split_whitespace().collect::<Vec<_>>().join(" ");
+    collapsed
+        .trim_matches(|c: char| c == ' ' || c == '-')
+        .trim_start_matches('.')
+        .to_string()
+}
+
 /// Export service for exporting files and tracks
 pub struct ExportService;
 
@@ -235,6 +346,7 @@ impl ExportService {
                 plan.total_tracks as u32,
                 plan.is_digital,
                 cover_data,
+                &plan.metadata,
             )?;
 
             if cancel_for_blocking.load(Ordering::Relaxed) {
@@ -258,7 +370,10 @@ impl ExportService {
 /// Maximum dimension for embedded cover art.
 const COVER_MAX_SIZE: u32 = 600;
 
-/// Write metadata tags to an encoded audio file.
+/// Write metadata tags to an encoded audio file. Each tag is written only when
+/// the user's `metadata` selection includes it; cover art is governed by
+/// `cover_data` being `Some` (the plan omits the bytes when it's deselected),
+/// so presence *is* the selection and there is no separate cover guard here.
 fn write_tags(
     path: &Path,
     tag_type: lofty::tag::TagType,
@@ -267,6 +382,7 @@ fn write_tags(
     total_tracks: u32,
     is_digital: bool,
     cover_data: Option<&[u8]>,
+    metadata: &crate::config::ExportMetadata,
 ) -> Result<(), String> {
     use lofty::config::WriteOptions;
     use lofty::picture::{Picture, PictureType};
@@ -277,28 +393,39 @@ fn write_tags(
         .map_err(|e| format!("Failed to read file for tagging: {}", e))?;
 
     let mut tag = Tag::new(tag_type);
-    tag.set_title(tags.title.clone());
-    tag.set_artist(tags.artist.clone());
-    tag.set_album(tags.album.clone());
+    if metadata.title {
+        tag.set_title(tags.title.clone());
+    }
+    if metadata.artist {
+        tag.set_artist(tags.artist.clone());
+    }
+    if metadata.album {
+        tag.set_album(tags.album.clone());
+    }
 
-    if let Some(year) = tags.year {
-        tag.set_date(Timestamp {
-            year: year as u16,
-            month: None,
-            day: None,
-            hour: None,
-            minute: None,
-            second: None,
-        });
+    if metadata.year {
+        if let Some(year) = tags.year {
+            tag.set_date(Timestamp {
+                year: year as u16,
+                month: None,
+                day: None,
+                hour: None,
+                minute: None,
+                second: None,
+            });
+        }
     }
-    if let Some(n) = track_number {
-        tag.set_track(n);
+    if metadata.track_number {
+        if let Some(n) = track_number {
+            tag.set_track(n);
+        }
+        tag.set_track_total(total_tracks);
     }
-    tag.set_track_total(total_tracks);
 
     // Skip the disc tag on vinyl / cassette: ID3 "disc number" doesn't
-    // describe a physical side, and writing it mislabels side B as disc 2.
-    if is_digital {
+    // describe a physical side, and writing it mislabels side B as disc 2. The
+    // digital gate stays an AND with the user's disc-number selection.
+    if metadata.disc_number && is_digital {
         if let Some(disc) = tags.disc {
             tag.set_disk(disc as u32);
         }
@@ -402,4 +529,200 @@ async fn load_track_audio(plan: &ExportTrackPlan) -> Result<Arc<DecodedPcm>, Pla
         decoded.channels,
         decoded.bits_per_sample,
     )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::ExportMetadata;
+    use crate::library::manager::{ExportTags, ResolvedExportTags};
+
+    fn resolved(
+        title: &str,
+        track_number: Option<i32>,
+        total_tracks: usize,
+        disc: Option<i32>,
+        year: Option<i32>,
+    ) -> ResolvedExportTags {
+        ResolvedExportTags {
+            tags: ExportTags {
+                title: title.to_string(),
+                artist: "Artist Name".to_string(),
+                album: "Album Title".to_string(),
+                year,
+                disc,
+            },
+            track_number,
+            total_tracks,
+            is_digital: true,
+            primary_release_id: None,
+        }
+    }
+
+    #[test]
+    fn default_template_all_present_pads_track_number() {
+        let r = resolved("Track Title", Some(3), 10, None, Some(2001));
+        assert_eq!(
+            render_export_filename("{track_number} - {title}", &r),
+            "03 - Track Title"
+        );
+    }
+
+    #[test]
+    fn absent_track_number_trims_leading_separator() {
+        let r = resolved("Track Title", None, 10, None, Some(2001));
+        assert_eq!(
+            render_export_filename("{track_number} - {title}", &r),
+            "Track Title"
+        );
+    }
+
+    #[test]
+    fn full_template_substitutes_every_token() {
+        let r = resolved("Track Title", Some(3), 10, Some(2), Some(2001));
+        assert_eq!(
+            render_export_filename("{artist} - {album} - {track_number} - {title}", &r),
+            "Artist Name - Album Title - 03 - Track Title"
+        );
+    }
+
+    #[test]
+    fn slash_and_colon_become_dashes() {
+        let r = resolved("Some/Weird:Title", None, 1, None, None);
+        assert_eq!(render_export_filename("{title}", &r), "Some-Weird-Title");
+    }
+
+    #[test]
+    fn path_escape_leaves_no_separator() {
+        let r = resolved("../secret", None, 1, None, None);
+        let name = render_export_filename("{title}", &r);
+        assert!(!name.contains('/'), "no forward slash in {name}");
+        assert!(!name.contains('\\'), "no backslash in {name}");
+    }
+
+    #[test]
+    fn unknown_token_is_left_literal() {
+        let r = resolved("Track Title", None, 1, None, None);
+        assert_eq!(render_export_filename("{foo}", &r), "{foo}");
+    }
+
+    #[test]
+    fn tag_value_containing_a_token_is_not_re_substituted() {
+        // The title itself is the string "{title}"; a single left-to-right scan
+        // emits it verbatim rather than treating it as another token.
+        let r = resolved("{title}", None, 1, None, None);
+        assert_eq!(render_export_filename("{title}", &r), "{title}");
+    }
+
+    #[test]
+    fn empty_render_falls_back_to_title() {
+        let r = resolved("Fallback Title", None, 1, None, None);
+        assert_eq!(
+            render_export_filename("{track_number}", &r),
+            "Fallback Title"
+        );
+    }
+
+    /// Exercises the real `write_tags` against an encoded FLAC: a selection that
+    /// turns off artist and cover art must leave those absent, while everything
+    /// on embeds them all.
+    #[test]
+    fn write_tags_honors_the_metadata_selection() {
+        use lofty::prelude::*;
+        use lofty::tag::TagType;
+
+        crate::audio_codec::init();
+        let cancel = std::sync::atomic::AtomicBool::new(false);
+        let samples: Vec<i32> = (0..4410)
+            .map(|i| ((i as f64 * 0.02).sin() * 8000.0) as i32)
+            .collect();
+        let flac = crate::audio_codec::encode_to_flac(&samples, 44100, 1, 16, &cancel).unwrap();
+
+        let cover_bytes = {
+            let img = image::RgbImage::from_pixel(8, 8, image::Rgb([120, 40, 200]));
+            let mut buf = std::io::Cursor::new(Vec::new());
+            image::DynamicImage::ImageRgb8(img)
+                .write_to(&mut buf, image::ImageFormat::Png)
+                .unwrap();
+            buf.into_inner()
+        };
+
+        let tags = ExportTags {
+            title: "Track Title".to_string(),
+            artist: "Artist Name".to_string(),
+            album: "Album Title".to_string(),
+            year: Some(2001),
+            disc: Some(1),
+        };
+
+        let dir = tempfile::TempDir::new().unwrap();
+
+        // Artist + cover off: the plan withholds the cover bytes (None), and the
+        // artist guard suppresses the artist tag.
+        let selection_off = ExportMetadata {
+            title: true,
+            artist: false,
+            album: true,
+            year: true,
+            track_number: true,
+            disc_number: true,
+            cover_art: false,
+        };
+        let off_path = dir.path().join("off.flac");
+        std::fs::write(&off_path, &flac).unwrap();
+        write_tags(
+            &off_path,
+            TagType::VorbisComments,
+            &tags,
+            Some(3),
+            10,
+            true,
+            None,
+            &selection_off,
+        )
+        .unwrap();
+
+        let tagged = lofty::read_from_path(&off_path).unwrap();
+        let tag = tagged
+            .primary_tag()
+            .or_else(|| tagged.first_tag())
+            .expect("tag present");
+        assert_eq!(tag.title().as_deref(), Some("Track Title"));
+        assert!(tag.artist().is_none(), "artist tag suppressed when off");
+        assert!(tag.pictures().is_empty(), "no cover when off");
+
+        // Everything on: title, artist, album, and an embedded cover.
+        let selection_on = ExportMetadata {
+            title: true,
+            artist: true,
+            album: true,
+            year: true,
+            track_number: true,
+            disc_number: true,
+            cover_art: true,
+        };
+        let on_path = dir.path().join("on.flac");
+        std::fs::write(&on_path, &flac).unwrap();
+        write_tags(
+            &on_path,
+            TagType::VorbisComments,
+            &tags,
+            Some(3),
+            10,
+            true,
+            Some(&cover_bytes),
+            &selection_on,
+        )
+        .unwrap();
+
+        let tagged = lofty::read_from_path(&on_path).unwrap();
+        let tag = tagged
+            .primary_tag()
+            .or_else(|| tagged.first_tag())
+            .expect("tag present");
+        assert_eq!(tag.title().as_deref(), Some("Track Title"));
+        assert_eq!(tag.artist().as_deref(), Some("Artist Name"));
+        assert_eq!(tag.album().as_deref(), Some("Album Title"));
+        assert!(!tag.pictures().is_empty(), "cover embedded when on");
+    }
 }

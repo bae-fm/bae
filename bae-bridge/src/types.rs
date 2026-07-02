@@ -1772,6 +1772,20 @@ pub enum BridgeExportLocation {
     Fixed { dir: String },
 }
 
+/// Which metadata tags a single-track export embeds. Mirror of bae-core's
+/// `ExportMetadata` — the FFI boundary requires a `uniffi::Record`, so the
+/// fields are restated here rather than reusing the core type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeExportMetadata {
+    pub title: bool,
+    pub artist: bool,
+    pub album: bool,
+    pub year: bool,
+    pub track_number: bool,
+    pub disc_number: bool,
+    pub cover_art: bool,
+}
+
 /// A release's pending uploads, grouped for the queue pane's per-release rows.
 /// Mirror of bae-core's `UploadReleaseGroup`. `release_id` is `None` for the
 /// orphaned-files bucket; `display_title` is the row's label, resolved by core.
@@ -1988,6 +2002,10 @@ pub struct BridgeConfig {
     pub pause_between_sides: bool,
     /// Where release exports write: prompt each time, or a fixed folder.
     pub export_location: BridgeExportLocation,
+    /// Template rendering a single-track export's suggested filename.
+    pub export_filename_template: String,
+    /// Which metadata tags a single-track export embeds.
+    pub export_metadata: BridgeExportMetadata,
     pub mcp: BridgeMcpConfig,
     pub discogs_token_status: BridgeDiscogsTokenStatus,
     /// Whether Discogs can be used as a metadata source (a stored key that

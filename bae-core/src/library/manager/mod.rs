@@ -305,6 +305,22 @@ pub struct ExportTags {
     pub disc: Option<i32>,
 }
 
+/// Tag data resolved for one track — everything a filename template or the
+/// tag writer needs, before applying the user's metadata selection. Resolved
+/// from the database alone: no audio or cover read, so the filename-suggestion
+/// path can build it without touching a whole file or the cloud.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub struct ResolvedExportTags {
+    pub tags: ExportTags,
+    pub track_number: Option<i32>,
+    pub total_tracks: usize,
+    pub is_digital: bool,
+    /// The album's primary release id, if any — the release whose cover art a
+    /// track export embeds. Carried here so `get_export_track_plan` reaches the
+    /// cover without re-loading the album `resolve_export_tags` already read.
+    pub primary_release_id: Option<String>,
+}
+
 /// Pre-assembled data for exporting a single track. Everything
 /// `ExportService::export_track` needs comes out of a single
 /// `LibraryManager::get_export_track_plan` call; the export service
@@ -329,6 +345,10 @@ pub struct ExportTrackPlan {
     /// media like vinyl or cassette. Gates writing an ID3 disc-number tag:
     /// disc numbers don't map to vinyl / cassette sides.
     pub is_digital: bool,
+    /// Which of the resolved tags to actually embed, from config. `write_tags`
+    /// applies it per field; cover art is already reflected in
+    /// `cover_image_bytes` being `None` when deselected.
+    pub metadata: crate::config::ExportMetadata,
     /// Raw audio-format aggregate. Held internally so `ExportService::export_track`
     /// can decode CUE-split byte ranges / APE sample bounds without re-resolving.
     pub(crate) audio_meta: TrackAudioMeta,

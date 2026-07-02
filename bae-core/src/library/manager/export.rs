@@ -272,27 +272,15 @@ impl LibraryManager {
             .map_err(LibraryError::Import)
     }
 
-    /// Assemble everything `ExportService::export_track` needs for a
-    /// track in one pass: source audio bytes, tag fields, cover image path,
-    /// neighbour counts, and the raw audio-format aggregate for decoding.
-    /// Cloud-only tracks download + decrypt here — export never requires a
-    /// local copy.
+    /// Resolve one track's tag data from the database alone — the tag fields, its
+    /// track number, the release's track total, and whether the media is digital.
+    /// Reads no audio and no cover, so both the filename-suggestion path (which
+    /// must not download a whole file) and the full export plan share it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn get_export_track_plan(
+    async fn resolve_export_tags(
         &self,
-        track_id: &str,
-    ) -> Result<ExportTrackPlan, LibraryError> {
-        let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-
-        let audio_bytes =
-            crate::storage::local::transfer::read_release_file_bytes(&meta.audio_file, self)
-                .await
-                .map_err(|e| {
-                    LibraryError::TrackMapping(format!(
-                        "Couldn't read audio for track {track_id}: {e}"
-                    ))
-                })?;
-
+        meta: &TrackAudioMeta,
+    ) -> Result<ResolvedExportTags, LibraryError> {
         let album = self.database.get_album_for_release(&meta.release).await?;
 
         let album_artists = self.database.get_artists_for_album(&album.id).await?;
@@ -316,15 +304,6 @@ impl LibraryManager {
         };
 
         let year = meta.release.pressing.year.or(album.year);
-
-        let cover_image_bytes = match album.primary_release_id.as_deref() {
-            Some(rid) => match self.cover_ref(rid).await? {
-                Some(image) => self.read_image_blob(&image).await?,
-                None => None,
-            },
-            None => None,
-        };
-
         let is_digital =
             crate::util::format::is_digital_format(meta.release.pressing.format.as_deref());
 
@@ -336,7 +315,62 @@ impl LibraryManager {
             disc,
         };
 
-        let track_number = meta.track.track_number;
+        Ok(ResolvedExportTags {
+            tags,
+            track_number: meta.track.track_number,
+            total_tracks,
+            is_digital,
+            primary_release_id: album.primary_release_id,
+        })
+    }
+
+    /// Assemble everything `ExportService::export_track` needs for a
+    /// track in one pass: source audio bytes, tag fields, cover image bytes,
+    /// neighbour counts, the metadata selection, and the raw audio-format
+    /// aggregate for decoding. Cloud-only tracks download + decrypt here —
+    /// export never requires a local copy.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn get_export_track_plan(
+        &self,
+        track_id: &str,
+    ) -> Result<ExportTrackPlan, LibraryError> {
+        let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
+        let resolved = self.resolve_export_tags(&meta).await?;
+
+        let audio_bytes =
+            crate::storage::local::transfer::read_release_file_bytes(&meta.audio_file, self)
+                .await
+                .map_err(|e| {
+                    LibraryError::TrackMapping(format!(
+                        "Couldn't read audio for track {track_id}: {e}"
+                    ))
+                })?;
+
+        let selection = self.export_metadata();
+
+        // Read the cover only when the user selected it: the album's primary
+        // release carries it, reached through the id `resolve_export_tags`
+        // already carried out. Skipping this when cover art is off
+        // short-circuits the cloud image fetch + resize entirely.
+        let cover_image_bytes = if selection.cover_art {
+            match resolved.primary_release_id.as_deref() {
+                Some(rid) => match self.cover_ref(rid).await? {
+                    Some(image) => self.read_image_blob(&image).await?,
+                    None => None,
+                },
+                None => None,
+            }
+        } else {
+            None
+        };
+
+        let ResolvedExportTags {
+            tags,
+            track_number,
+            total_tracks,
+            is_digital,
+            primary_release_id: _,
+        } = resolved;
 
         Ok(ExportTrackPlan {
             audio_bytes,
@@ -345,8 +379,26 @@ impl LibraryManager {
             track_number,
             total_tracks,
             is_digital,
+            metadata: selection,
             audio_meta: meta,
         })
+    }
+
+    /// The default filename (stem, no extension) a single-track "Save As…" export
+    /// suggests for `track_id`, rendered from the configured template and the
+    /// track's tag data. Reads no audio and no cover — only the database — so it
+    /// stays cheap to call while seeding a save panel.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn export_track_suggested_name(
+        &self,
+        track_id: &str,
+    ) -> Result<String, LibraryError> {
+        let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
+        let resolved = self.resolve_export_tags(&meta).await?;
+        Ok(crate::library::export::render_export_filename(
+            &self.export_filename_template(),
+            &resolved,
+        ))
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

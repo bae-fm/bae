@@ -236,6 +236,42 @@ fn default_export_location() -> ExportLocation {
     ExportLocation::AskEachTime
 }
 
+/// Template for the default filename a single-track export suggests. Tokens are
+/// substituted from the track's metadata; see `render_export_filename`. The
+/// extension is added by the exporter from the chosen format, not the template.
+fn default_export_filename_template() -> String {
+    "{track_number} - {title}".to_string()
+}
+
+/// Which metadata tags a single-track export embeds. All default on. Track
+/// total rides `track_number`; the disc tag is additionally gated on digital
+/// media inside `write_tags`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExportMetadata {
+    pub title: bool,
+    pub artist: bool,
+    pub album: bool,
+    pub year: bool,
+    pub track_number: bool,
+    pub disc_number: bool,
+    pub cover_art: bool,
+}
+
+/// The serde default for `ConfigYaml.export_metadata`: every tag on. Structs
+/// carry no `#[derive(Default)]` in this project, so the default is named
+/// explicitly.
+fn default_export_metadata() -> ExportMetadata {
+    ExportMetadata {
+        title: true,
+        artist: true,
+        album: true,
+        year: true,
+        track_number: true,
+        disc_number: true,
+        cover_art: true,
+    }
+}
+
 /// The serde default for `ConfigYaml.verify_decode_on_import`: on. Import fully
 /// decodes every track for loudness anyway, so the verify rides that pass for
 /// free; defaulting on means a truncated/corrupt track is caught at import
@@ -384,6 +420,12 @@ pub struct ConfigYaml {
     /// Where release exports write. Defaults to prompting each time.
     #[serde(default = "default_export_location")]
     pub export_location: ExportLocation,
+    /// Template for the default filename a single-track export suggests.
+    #[serde(default = "default_export_filename_template")]
+    pub export_filename_template: String,
+    /// Which metadata tags a single-track export embeds. All default on.
+    #[serde(default = "default_export_metadata")]
+    pub export_metadata: ExportMetadata,
     /// Whether playback pauses between vinyl/cassette sides.
     #[serde(default)]
     pub pause_between_sides: bool,
@@ -419,6 +461,8 @@ impl ConfigYaml {
             discogs: self.discogs,
             replay_gain_mode: self.replay_gain_mode,
             export_location: self.export_location,
+            export_filename_template: self.export_filename_template,
+            export_metadata: self.export_metadata,
             pause_between_sides: self.pause_between_sides,
             verify_decode_on_import: self.verify_decode_on_import,
             mcp: self.mcp,
@@ -437,6 +481,8 @@ impl From<&Config> for ConfigYaml {
             encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
             replay_gain_mode: config.replay_gain_mode,
             export_location: config.export_location.clone(),
+            export_filename_template: config.export_filename_template.clone(),
+            export_metadata: config.export_metadata,
             pause_between_sides: config.pause_between_sides,
             verify_decode_on_import: config.verify_decode_on_import,
             mcp: config.mcp,
@@ -473,6 +519,10 @@ pub struct Config {
     pub replay_gain_mode: ReplayGainMode,
     /// Where release exports write. Defaults to prompting each time.
     pub export_location: ExportLocation,
+    /// Template for the default filename a single-track export suggests.
+    pub export_filename_template: String,
+    /// Which metadata tags a single-track export embeds. All default on.
+    pub export_metadata: ExportMetadata,
     /// Whether playback pauses between vinyl/cassette sides.
     pub pause_between_sides: bool,
     /// Whether import verifies each track by fully decoding it, failing the import
@@ -728,6 +778,8 @@ impl Config {
             discogs: None,
             replay_gain_mode: default_replay_gain_mode(),
             export_location: default_export_location(),
+            export_filename_template: default_export_filename_template(),
+            export_metadata: default_export_metadata(),
             pause_between_sides: false,
             verify_decode_on_import: default_verify_decode_on_import(),
             mcp: McpConfig::disabled_default(),
@@ -996,6 +1048,43 @@ mod tests {
             .unwrap();
             assert_eq!(yaml.export_location, location);
         }
+    }
+
+    #[test]
+    fn export_settings_survive_yaml_roundtrip() {
+        let tmp = TempDir::new().unwrap();
+        let mut config = make_test_config("lib", tmp.path().to_path_buf());
+        config.export_filename_template = "{artist} - {title}".to_string();
+        config.export_metadata = ExportMetadata {
+            title: true,
+            artist: false,
+            album: true,
+            year: false,
+            track_number: true,
+            disc_number: false,
+            cover_art: false,
+        };
+        config.save_to_config_yaml().unwrap();
+
+        let yaml: ConfigYaml =
+            serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
+                .unwrap();
+        assert_eq!(yaml.export_filename_template, "{artist} - {title}");
+        assert_eq!(yaml.export_metadata, config.export_metadata);
+    }
+
+    #[test]
+    fn export_settings_default_when_absent_from_yaml() {
+        // A config.yaml with neither export field loads the named defaults
+        // rather than failing — the greenfield defaults ride serde.
+        let yaml =
+            "library_id: abc-123\nlibrary_name: Test\nmcp:\n  enabled: false\n  port: 47777\n";
+        let config: ConfigYaml = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(
+            config.export_filename_template,
+            default_export_filename_template()
+        );
+        assert_eq!(config.export_metadata, default_export_metadata());
     }
 
     #[test]
