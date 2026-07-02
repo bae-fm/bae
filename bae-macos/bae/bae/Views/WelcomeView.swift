@@ -59,13 +59,28 @@ struct WelcomeView: View {
     private var showManualForm = false
 
     // Join-a-library flow
+    /// The cloud provider the joiner picked for the library they're adding this
+    /// device to. `nil` until picked — while `nil` the join flow shows the
+    /// provider picker and no code is generated yet. Picking an OAuth provider
+    /// authenticates up front so the account email lands in the join-request;
+    /// picking S3/iCloud generates the code with no email.
+    @State
+    private var joinProvider: BridgeCloudProvider?
     /// This device's join-request code and a short fingerprint of its public
-    /// key, generated on appear and shown for an existing member to scan or
-    /// paste. `nil` while generating; `.failure` if generation fails.
+    /// key, generated once a provider is picked (and, for OAuth, authenticated)
+    /// and shown for an existing member to scan or paste. `nil` while generating;
+    /// `.failure` if generation fails.
     @State
     private var joinRequest: Result<BridgeJoinRequest, Error>?
-    /// The in-flight (re)generation of this device's join code, owned so a retry
-    /// supersedes the previous attempt and the view's disappear cancels it.
+    /// The account email fetched from the picked OAuth provider, baked into the
+    /// join-request so the approver shares the OAuth folder to it. `nil` for
+    /// S3/iCloud, which share no folder. Held so a code retry reuses it without
+    /// re-authenticating.
+    @State
+    private var joinEmail: String?
+    /// The in-flight provider-prepare / (re)generation of this device's join
+    /// code, owned so a retry supersedes the previous attempt and the view's
+    /// disappear cancels it.
     @State
     private var genTask: Task<Void, Never>?
     @State
@@ -889,6 +904,108 @@ extension WelcomeView {
             .foregroundStyle(.secondary)
             .padding(.bottom, 16)
 
+            if joinProvider == nil {
+                joinProviderPicker
+            }
+            else {
+                joinCodeExchange
+            }
+        }
+        .padding(.horizontal)
+        // Entering the join flow fresh: clear any provider/token connected in
+        // another mode (or a prior join attempt) so nothing leaks across flows.
+        // The code is generated only once the joiner picks a provider.
+        .task {
+            joinProvider = nil
+            oauthTokenJson = nil
+            joinRequest = nil
+            error = nil
+        }
+        .onDisappear {
+            genTask?.cancel()
+            joinTask?.cancel()
+        }
+        .sheet(isPresented: $showInviteScanner) {
+            InviteScannerSheet(
+                onScan: { code in
+                    inviteCodeInput = code
+                    showInviteScanner = false
+                },
+                onDismiss: { showInviteScanner = false },
+            )
+        }
+    }
+
+    /// Step one of the join flow: pick the cloud provider the target library
+    /// uses. For an OAuth provider this authenticates up front so the account
+    /// email is baked into the join-request; for S3/iCloud it generates the code
+    /// with no email. The picker offers the providers this build supports.
+    private var joinProviderPicker: some View {
+        VStack(spacing: 0) {
+            Text(
+                "Choose the cloud provider the library you're joining uses."
+            )
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .padding(.bottom, 16)
+
+            if isAuthorizing {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Signing in...")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Button("Cancel") {
+                        #if BAE_OAUTH_PROVIDERS
+                            oauthCancel()
+                        #endif
+                        genTask?.cancel()
+                        isAuthorizing = false
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.callout)
+                }
+                .padding(.bottom, 12)
+            }
+            else {
+                VStack(spacing: 8) {
+                    ForEach(availableCloudProviders(), id: \.self) { provider in
+                        Button(provider.displayName) {
+                            selectJoinProvider(provider)
+                        }
+                        .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.bottom, 8)
+            }
+
+            if let error {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.callout)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+            }
+
+            Button("Back") {
+                mode = .choose
+                error = nil
+            }
+            .buttonStyle(.bordered)
+            .disabled(isAuthorizing)
+            .padding(.bottom, 24)
+        }
+    }
+
+    /// Step two of the join flow: show this device's code and take the invite
+    /// code the approving device hands back. Reached only after a provider is
+    /// picked, so the code is already generated (with the account email for an
+    /// OAuth provider).
+    private var joinCodeExchange: some View {
+        VStack(spacing: 0) {
             Form {
                 Section("This device's code") {
                     joinRequestRow
@@ -919,7 +1036,13 @@ extension WelcomeView {
             }
             HStack(spacing: 12) {
                 Button("Back") {
-                    mode = .choose
+                    // Return to the provider picker; drop the generated code and
+                    // any OAuth token so re-picking starts clean.
+                    joinProvider = nil
+                    joinRequest = nil
+                    oauthTokenJson = nil
+                    inviteCodeInput = ""
+                    decodedInvite = nil
                     error = nil
                 }
                 .buttonStyle(.bordered)
@@ -930,27 +1053,6 @@ extension WelcomeView {
                     .keyboardShortcut(.defaultAction)
             }
             .padding(.bottom, 24)
-        }
-        .padding(.horizontal)
-        // Entering the join flow fresh: clear any OAuth token connected in
-        // another mode so it can't leak across flows, then generate the code.
-        .task {
-            oauthTokenJson = nil
-            error = nil
-            await generateJoinCode()
-        }
-        .onDisappear {
-            genTask?.cancel()
-            joinTask?.cancel()
-        }
-        .sheet(isPresented: $showInviteScanner) {
-            InviteScannerSheet(
-                onScan: { code in
-                    inviteCodeInput = code
-                    showInviteScanner = false
-                },
-                onDismiss: { showInviteScanner = false },
-            )
         }
     }
 
@@ -1024,7 +1126,6 @@ extension WelcomeView {
             Button("Scan") { showInviteScanner = true }
         }
         .onChange(of: inviteCodeInput) { _, newInput in
-            oauthTokenJson = nil
             let trimmed = newInput.trimmingCharacters(in: .whitespaces)
             decodedInvite =
                 trimmed.isEmpty
@@ -1043,8 +1144,15 @@ extension WelcomeView {
                 value: info.ownerFingerprint
             )
             #if BAE_OAUTH_PROVIDERS
-                if info.needsOauth {
-                    inviteOauthRow(provider: info.cloudProvider)
+                // OAuth is done up front at provider selection, so a token is
+                // already held. A missing token here means the joiner picked a
+                // provider that doesn't match this library — send them back.
+                if info.needsOauth && oauthTokenJson == nil {
+                    Text(
+                        "This library needs a signed-in provider. Go back and choose the provider it uses."
+                    )
+                    .foregroundStyle(.red)
+                    .font(.callout)
                 }
             #else
                 if info.needsOauth {
@@ -1063,40 +1171,8 @@ extension WelcomeView {
         }
     }
 
-    #if BAE_OAUTH_PROVIDERS
-        private func inviteOauthRow(
-            provider: BridgeCloudProvider
-        ) -> some View {
-            HStack {
-                if oauthTokenJson != nil {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text("Connected")
-                        .foregroundStyle(.secondary)
-                }
-                else if isAuthorizing {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("Authorizing...")
-                        .foregroundStyle(.secondary)
-                    Button("Cancel") {
-                        oauthCancel()
-                        isAuthorizing = false
-                    }
-                    .buttonStyle(.borderless)
-                    .font(.callout)
-                }
-                else {
-                    Button("Connect \(provider.displayName)") {
-                        doOAuthAuthorize(provider: provider)
-                    }
-                }
-            }
-        }
-    #endif
-
-    /// Whether the Join button should be enabled: a valid invite code, plus
-    /// OAuth done if the provider needs it.
+    /// Whether the Join button should be enabled: a valid invite code, plus the
+    /// up-front OAuth token held when the picked provider needs it.
     private var joinReady: Bool {
         guard case .success(let info) = decodedInvite else {
             return false
@@ -1107,11 +1183,60 @@ extension WelcomeView {
         return true
     }
 
+    /// Pick the provider the target library uses. For an OAuth provider this
+    /// authenticates and fetches the account email up front (baked into the
+    /// generated code and reused for the eventual join); for S3/iCloud it goes
+    /// straight to generating a code with no email.
+    private func selectJoinProvider(_ provider: BridgeCloudProvider) {
+        genTask?.cancel()
+        error = nil
+        oauthTokenJson = nil
+        joinEmail = nil
+        genTask = Task { await prepareJoin(provider: provider) }
+    }
+
+    private func prepareJoin(provider: BridgeCloudProvider) async {
+        #if BAE_OAUTH_PROVIDERS
+            switch provider {
+            case .googleDrive, .dropbox, .oneDrive:
+                isAuthorizing = true
+                do {
+                    let tokenJson = try await DetachedWork.run {
+                        try oauthAuthorize(provider: provider)
+                    }
+                    let email = try await DetachedWork.run {
+                        try fetchAccountEmail(
+                            provider: provider,
+                            oauthTokenJson: tokenJson
+                        )
+                    }
+                    isAuthorizing = false
+                    oauthTokenJson = tokenJson
+                    joinEmail = email
+                }
+                catch is CancellationError {
+                    isAuthorizing = false
+                    return
+                }
+                catch {
+                    isAuthorizing = false
+                    self.error = error.localizedDescription
+                    return
+                }
+            default:
+                break
+            }
+        #endif
+        joinProvider = provider
+        await generateJoinCode()
+    }
+
     private func generateJoinCode() async {
         joinRequest = nil
+        let email = joinEmail
         do {
             let generated = try await DetachedWork.run {
-                try generateJoinRequest(email: nil)
+                try generateJoinRequest(email: email)
             }
             joinRequest = .success(generated)
         }
