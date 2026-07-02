@@ -1189,7 +1189,7 @@ pub unsafe extern "C" fn bae_restore_from_code(
 /// ([`bae_startup`]). Free with [`bae_string_free`].
 ///
 /// `email` is the OAuth account address the joiner authenticated as (from
-/// [`bae_fetch_account_email`]), baked into the code so the approver can share
+/// `bae_fetch_account_email`), baked into the code so the approver can share
 /// the OAuth folder to it; pass null/empty for S3, which shares no folder.
 ///
 /// # Safety

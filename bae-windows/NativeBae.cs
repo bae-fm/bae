@@ -234,7 +234,8 @@ internal static class NativeBae
         CopyAndFree(RestoreFromCodePtr(code, oauthTokenJson));
 
     [DllImport(Dll, EntryPoint = "bae_generate_join_request", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr GenerateJoinRequestPtr();
+    private static extern IntPtr GenerateJoinRequestPtr(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? email);
 
     /// <summary>
     /// This device's join-request code and the fingerprint it encodes, as JSON
@@ -242,7 +243,11 @@ internal static class NativeBae
     /// or null on error. The joining device has no library yet, so this needs no
     /// handle; it only requires <see cref="Startup"/>. Copies and frees.
     /// </summary>
-    internal static string? GenerateJoinRequest() => CopyAndFree(GenerateJoinRequestPtr());
+    /// <param name="email">The OAuth account address the joiner authenticated as,
+    /// baked into the code so the approver can share the OAuth folder to it; null
+    /// for S3, which shares no folder.</param>
+    internal static string? GenerateJoinRequest(string? email = null) =>
+        CopyAndFree(GenerateJoinRequestPtr(email));
 
     [DllImport(Dll, EntryPoint = "bae_decode_join_request", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr DecodeJoinRequestPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string code);
@@ -725,15 +730,18 @@ internal static class NativeBae
     [DllImport(Dll, EntryPoint = "bae_invite_member", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr InviteMemberPtr(
         IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string publicKeyHex);
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string publicKeyHex,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? inviteeEmail);
 
     /// <summary>
     /// Approve a device into the library by its public key (hex); returns the
     /// invite code to hand back to the joining device, or null on error. Blocks on
     /// the cloud write — call off the UI thread. Copies and frees.
     /// </summary>
-    internal static string? InviteMember(IntPtr handle, string publicKeyHex) =>
-        CopyAndFree(InviteMemberPtr(handle, publicKeyHex));
+    /// <param name="inviteeEmail">The joiner's OAuth account address (from its
+    /// join-request), so the folder is shared to it; null for S3.</param>
+    internal static string? InviteMember(IntPtr handle, string publicKeyHex, string? inviteeEmail = null) =>
+        CopyAndFree(InviteMemberPtr(handle, publicKeyHex, inviteeEmail));
 
     [DllImport(Dll, EntryPoint = "bae_remove_member", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr RemoveMemberPtr(
