@@ -17875,6 +17875,39 @@
           }
         }
       }
+    },
+    "Choose the cloud provider the library you're joining uses.": {
+      "comment": "Join flow: provider picker prompt shown before generating this device's join code",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the cloud provider the library you're joining uses."
+          }
+        }
+      }
+    },
+    "Signing in...": {
+      "comment": "Join flow: authenticating with the chosen OAuth provider before generating the join code",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signing in..."
+          }
+        }
+      }
+    },
+    "This library needs a signed-in provider. Go back and choose the provider it uses.": {
+      "comment": "Join flow: the picked provider does not match the library's OAuth provider",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This library needs a signed-in provider. Go back and choose the provider it uses."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
