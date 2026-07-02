@@ -59,8 +59,8 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.JoinFromCodeOperation
 import uniffi.bae_bridge.RestoreFromCodeOperation
-import uniffi.bae_bridge.decodeInviteCode
 import uniffi.bae_bridge.decodeRestoreCode
+import uniffi.bae_bridge.generateJoinRequest
 import uniffi.bae_bridge.joinFromCodeOperation
 import uniffi.bae_bridge.restoreFromCodeOperation
 
@@ -114,18 +114,11 @@ private class JoinFlow(
 
     suspend fun execute(
         code: String,
-        oauthLinking: OAuthLinker?,
-        oauthLinkingError: String?,
-        context: Context,
+        oauthTokenJson: String?,
         onJoined: (BridgeLibrary) -> Unit,
     ) {
-        val info = decodeInviteCode(code)
-        val oauthTokenJson =
-            if (info.needsOauth) {
-                resolveOauthToken(oauthLinking, oauthLinkingError, context, info.cloudProvider)
-            } else {
-                null
-            }
+        // OAuth (and the account-email fetch) already ran when the provider was
+        // picked; the token captured then is reused here — no second sign-in.
         val operation = joinFromCodeOperation(code = code, oauthTokenJson = oauthTokenJson)
         joinOperation = operation
         val libraryInfo = withContext(Dispatchers.IO) { operation.join() }
@@ -137,6 +130,19 @@ private class JoinFlow(
         job.cancel()
     }
 }
+
+/** The OAuth providers, for which the joiner authenticates before generating its code. */
+private fun providerUsesOauth(provider: BridgeCloudProvider): Boolean =
+    when (provider) {
+        BridgeCloudProvider.GOOGLE_DRIVE,
+        BridgeCloudProvider.DROPBOX,
+        BridgeCloudProvider.ONE_DRIVE,
+        -> true
+
+        BridgeCloudProvider.S3,
+        BridgeCloudProvider.CLOUD_KIT,
+        -> false
+    }
 
 private suspend fun resolveOauthToken(
     oauthLinking: OAuthLinker?,
@@ -203,9 +209,12 @@ private class LinkLauncher(
 }
 
 /**
- * The join twin of [LinkLauncher]: holds the in-progress join attempt and its
- * UI state. Identical attempt/supersede/cleanup discipline; it drives a
- * [JoinFlow] instead of a [LinkFlow].
+ * The join twin of [LinkLauncher], plus the up-front provider step joining needs.
+ * The joiner first picks the target library's provider ([selectProvider]); for an
+ * OAuth provider that authenticates and fetches the account email, then generates
+ * this device's join-request with the email baked in. The captured token is held
+ * and reused by [join] — no second sign-in. Same attempt/supersede/cleanup
+ * discipline as [LinkLauncher] for the join itself.
  */
 class JoinLauncher(
     private val scope: CoroutineScope,
@@ -216,18 +225,98 @@ class JoinLauncher(
     private var flow by mutableStateOf<JoinFlow?>(null)
     val isJoining: Boolean get() = flow != null
 
-    fun join(
-        code: String,
+    // Provider-prep state, read by JoinLibraryScreen.
+    var provider by mutableStateOf<BridgeCloudProvider?>(null)
+        private set
+    var requestCode by mutableStateOf<String?>(null)
+        private set
+    var fingerprint by mutableStateOf<String?>(null)
+        private set
+    var generateError by mutableStateOf<String?>(null)
+        private set
+    var isAuthorizing by mutableStateOf(false)
+        private set
+
+    // The token/email captured at provider selection: the token is reused for
+    // the join, the email is baked into the generated code.
+    private var oauthTokenJson: String? = null
+    private var prepJob: Job? = null
+
+    /**
+     * Pick the provider the target library uses and prepare this device's
+     * join-request. For an OAuth provider this authenticates and fetches the
+     * account email up front; for S3/iCloud it generates the code with no email.
+     */
+    fun selectProvider(
+        provider: BridgeCloudProvider,
         oauthLinking: OAuthLinker?,
         oauthLinkingError: String?,
     ) {
+        prepJob?.cancel()
+        error = null
+        generateError = null
+        oauthTokenJson = null
+        requestCode = null
+        fingerprint = null
+        this.provider = provider
+        prepJob =
+            scope.launch {
+                try {
+                    var email: String? = null
+                    if (providerUsesOauth(provider)) {
+                        isAuthorizing = true
+                        val oauthError =
+                            oauthLinkingError
+                                ?: if (oauthLinking == null) {
+                                    context.getString(R.string.onboarding_oauth_unconfigured)
+                                } else {
+                                    null
+                                }
+                        if (oauthError != null) {
+                            generateError = oauthError
+                            isAuthorizing = false
+                            return@launch
+                        }
+                        val token = oauthLinking!!.authorize(context, provider)
+                        email = oauthLinking.fetchAccountEmail(provider, token)
+                        oauthTokenJson = token
+                        isAuthorizing = false
+                    }
+                    val request = withContext(Dispatchers.IO) { generateJoinRequest(email) }
+                    requestCode = request.code
+                    fingerprint = request.fingerprint
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.error("Failed to prepare join request", e)
+                    isAuthorizing = false
+                    generateError = e.message ?: context.getString(R.string.onboarding_join_generate_failed)
+                }
+            }
+    }
+
+    /** Return to the provider picker, dropping the generated code and token. */
+    fun resetProvider() {
+        prepJob?.cancel()
+        provider = null
+        requestCode = null
+        fingerprint = null
+        generateError = null
+        isAuthorizing = false
+        oauthTokenJson = null
+        error = null
+    }
+
+    fun join(code: String) {
+        // Reuse the token captured at provider selection — no second OAuth.
+        val oauthTokenJson = this.oauthTokenJson
         error = null
         flow?.cancel()
         lateinit var started: JoinFlow
         val launched =
             scope.launch(start = CoroutineStart.LAZY) {
                 try {
-                    started.execute(code, oauthLinking, oauthLinkingError, context, onJoined)
+                    started.execute(code, oauthTokenJson, onJoined)
                 } catch (e: BridgeException.Cancelled) {
                     logger.debug("join flow cancelled by bridge", e)
                 } catch (e: CancellationException) {
@@ -357,7 +446,7 @@ fun OnboardingScreen(
                     scanTarget = null
                     when (target) {
                         ScanTarget.RESTORE_CODE -> launcher.link(code, oauthLinking, oauthLinkingError)
-                        ScanTarget.INVITE_CODE -> joinLauncher.join(code, oauthLinking, oauthLinkingError)
+                        ScanTarget.INVITE_CODE -> joinLauncher.join(code)
                     }
                 },
                 onDismiss = { scanTarget = null },
@@ -379,7 +468,7 @@ fun OnboardingScreen(
                 oauthLinkingError = oauthLinkingError,
                 onRequestScan = { onRequestScan(ScanTarget.INVITE_CODE) },
                 onBack = {
-                    joinLauncher.error = null
+                    joinLauncher.resetProvider()
                     showJoin = false
                 },
             )

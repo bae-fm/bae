@@ -30,6 +30,16 @@ interface OAuthLinker {
         provider: BridgeCloudProvider,
     ): String
 
+    /**
+     * Turn an OAuth token into the account email so the joiner can bake it into
+     * its join-request. Routed through this interface because the underlying
+     * `fetchAccountEmail` bridge binding exists only in the full edition.
+     */
+    suspend fun fetchAccountEmail(
+        provider: BridgeCloudProvider,
+        oauthTokenJson: String,
+    ): String
+
     companion object {
         /**
          * Load the host's OAuth client creds, or null when this edition ships no

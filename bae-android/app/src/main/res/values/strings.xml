@@ -145,6 +145,14 @@
 
     <!-- Onboarding: join a library -->
     <string name="onboarding_join_title">Join a library</string>
+    <string name="onboarding_join_pick_provider">Choose the cloud provider the library you\'re joining uses.</string>
+    <string name="onboarding_join_signing_in">Signing in…</string>
+    <!-- Cloud provider names for the join provider picker -->
+    <string name="cloud_provider_google_drive">Google Drive</string>
+    <string name="cloud_provider_dropbox">Dropbox</string>
+    <string name="cloud_provider_onedrive">OneDrive</string>
+    <string name="cloud_provider_s3">S3-compatible</string>
+    <string name="cloud_provider_icloud">iCloud</string>
     <string name="onboarding_join_instructions">Show this code to one of your other devices and approve it there from Settings → Devices.</string>
     <string name="onboarding_join_code_description">This device\'s join code</string>
     <!-- %1$s = this device's fingerprint -->
