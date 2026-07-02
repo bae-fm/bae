@@ -412,13 +412,36 @@ impl RestoreFromCodeOperation {
 /// hand to an existing member for approval. Safe to call before any library
 /// exists on this device (the joining device has no library yet); it only needs
 /// the keyring initialized.
+///
+/// `email` is the OAuth account address the joiner authenticated as, baked into
+/// the code so the approver can share the OAuth folder to it; `None` for S3. The
+/// caller runs the OAuth flow and `fetch_account_email` first, then passes the
+/// result here.
 #[uniffi::export]
-pub fn generate_join_request() -> Result<BridgeJoinRequest, BridgeError> {
-    let request = bae_core::sync::sync_manager::generate_join_request()
+pub fn generate_join_request(email: Option<String>) -> Result<BridgeJoinRequest, BridgeError> {
+    let request = bae_core::sync::sync_manager::generate_join_request(email)
         .map_err(|e| BridgeError::config(format!("Failed to generate join request: {e}")))?;
     Ok(BridgeJoinRequest {
         code: request.code,
         fingerprint: request.fingerprint,
+    })
+}
+
+/// Fetch the email of the OAuth account `oauth_token_json` authenticated, so the
+/// joiner can bake it into its join-request. The caller runs `oauth_authorize`
+/// (or `oauth_begin`/`oauth_complete`) first and passes the resulting token JSON.
+#[cfg(feature = "oauth-providers")]
+#[uniffi::export]
+pub fn fetch_account_email(
+    provider: BridgeCloudProvider,
+    oauth_token_json: String,
+) -> Result<String, BridgeError> {
+    let tokens = parse_oauth_tokens(&oauth_token_json)?;
+    let core_provider = bridge_cloud_provider_to_core(provider);
+    on_worker(move || async move {
+        bae_core::sync::sync_manager::fetch_account_email(core_provider, &tokens)
+            .await
+            .map_err(|e| BridgeError::config(format!("Failed to fetch account email: {e}")))
     })
 }
 

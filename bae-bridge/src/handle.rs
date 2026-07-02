@@ -676,11 +676,17 @@ impl AppHandle {
     }
 
     /// Approve a joining device by its public key (from its join-request code),
-    /// returning the invite code to hand back to that device.
-    pub async fn invite_member(&self, public_key_hex: String) -> Result<String, BridgeError> {
+    /// returning the invite code to hand back to that device. `invitee_email` is
+    /// the joiner's OAuth account address decoded from its join-request, which
+    /// coven shares the OAuth folder to; `None` for S3.
+    pub async fn invite_member(
+        &self,
+        public_key_hex: String,
+        invitee_email: Option<String>,
+    ) -> Result<String, BridgeError> {
         self.services
             .library_manager()
-            .invite_member(&public_key_hex)
+            .invite_member(&public_key_hex, invitee_email.as_deref())
             .await
             .map_err(BridgeError::internal)
     }
