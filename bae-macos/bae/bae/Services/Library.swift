@@ -11,6 +11,9 @@ final class Library: Sendable, Observable {
             _ sortCriteria: [BridgeSortCriterion], _ offset: UInt64,
             _ limit: UInt64
         ) throws -> [BridgeAlbum]
+    let getAlbumIndex:
+        @Sendable (_ sortCriteria: [BridgeSortCriterion], _ albumId: String)
+            throws -> UInt64?
     let getComposerCount: @Sendable () throws -> UInt64
     let getComposerPage:
         @Sendable (
@@ -42,6 +45,9 @@ final class Library: Sendable, Observable {
         getAlbumPage:
             @escaping @Sendable ([BridgeSortCriterion], UInt64, UInt64) throws
             -> [BridgeAlbum] = { _, _, _ in [] },
+        getAlbumIndex:
+            @escaping @Sendable ([BridgeSortCriterion], String) throws
+            -> UInt64? = { _, _ in throw StubError.notImplemented },
         getComposerCount: @escaping @Sendable () throws -> UInt64 = {
             throw StubError.notImplemented
         },
@@ -88,6 +94,7 @@ final class Library: Sendable, Observable {
     ) {
         self.getAlbumCount = getAlbumCount
         self.getAlbumPage = getAlbumPage
+        self.getAlbumIndex = getAlbumIndex
         self.getComposerCount = getComposerCount
         self.getComposerPage = getComposerPage
         self.getComposerDetail = getComposerDetail
@@ -115,6 +122,9 @@ final class Library: Sendable, Observable {
                         offset: $1,
                         limit: $2
                     )
+                },
+                getAlbumIndex: {
+                    try handle.getAlbumIndex(sortCriteria: $0, albumId: $1)
                 },
                 getComposerCount: { try handle.getComposerCount() },
                 getComposerPage: {

@@ -11,6 +11,8 @@ struct AlbumGridView<ExpansionContent: View>: View {
     private var uiStore
     @Environment(LibraryStore.self)
     private var libraryStore
+    @Environment(Library.self)
+    private var library
     let list: AlbumList
     @Binding
     var sortCriteria: [BridgeSortCriterion]
@@ -153,18 +155,8 @@ struct AlbumGridView<ExpansionContent: View>: View {
                                         index: rowIndex
                                     )
                                 ) {
-                                    let firstAlbum = max(
-                                        0,
-                                        rowIndex * columnCount - loadBatchSize
-                                            / 2
-                                    )
-                                    let batchEnd = min(
-                                        firstAlbum + loadBatchSize,
-                                        list.totalCount
-                                    )
-                                    await list.loadRange(
-                                        offset: firstAlbum,
-                                        limit: batchEnd - firstAlbum
+                                    await loadBatch(
+                                        around: rowIndex * columnCount
                                     )
                                 }
                                 AlbumExpansionSlot(
@@ -182,23 +174,15 @@ struct AlbumGridView<ExpansionContent: View>: View {
                     .frame(maxWidth: Self.maxContentWidth)
                     .frame(maxWidth: .infinity)
                 }
-                .onReceive(uiStore.navigationSubject) { command in
-                    guard let albumIndex = list.position(of: command.albumId),
-                        columnCount > 0
-                    else {
-                        albumGridLogger.warning(
-                            "Dropping album navigation command for unloaded album \(command.albumId)"
-                        )
+                .task(id: uiStore.albumReveal?.seq) {
+                    guard let reveal = uiStore.albumReveal else {
                         return
                     }
-
-                    let rowIndex = albumIndex / columnCount
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(50))
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            scrollProxy.scrollTo(rowIndex, anchor: .top)
-                        }
-                    }
+                    await revealAlbum(
+                        reveal.albumId,
+                        columnCount: columnCount,
+                        scrollProxy: scrollProxy
+                    )
                 }
             }
         }
@@ -207,6 +191,62 @@ struct AlbumGridView<ExpansionContent: View>: View {
 }
 
 extension AlbumGridView {
+    /// Scroll the grid to `albumId`, resolving its row deterministically.
+    ///
+    /// The album's page may never have been fetched, so `list.position(of:)`
+    /// can't be trusted. Ask the core for the album's index under the current
+    /// sort (off the main actor), load the page that contains it, then scroll.
+    /// Each async stage checks `Task.isCancelled`, and the scroll — the only
+    /// durable effect — commits last, so a cancel (a newer reveal, or the grid
+    /// disappearing) before that point changes nothing. SwiftUI drives the
+    /// cancellation by keying the calling `.task` on `albumReveal.seq`.
+    private func revealAlbum(
+        _ albumId: String,
+        columnCount: Int,
+        scrollProxy: ScrollViewProxy
+    ) async {
+        let getAlbumIndex = library.getAlbumIndex
+        let sort = sortCriteria
+        do {
+            let resolved = try await DetachedWork.run {
+                try getAlbumIndex(sort, albumId)
+            }
+            if Task.isCancelled {
+                return
+            }
+            guard let index = resolved.map(Int.init) else {
+                albumGridLogger.warning(
+                    "No index for album \(albumId) under the current sort; skipping reveal"
+                )
+                return
+            }
+
+            // Load the page that holds the target so its row exists to scroll to.
+            await loadBatch(around: index)
+            if Task.isCancelled {
+                return
+            }
+
+            let rowIndex = index / columnCount
+            withAnimation(.easeInOut(duration: 0.3)) {
+                scrollProxy.scrollTo(rowIndex, anchor: .top)
+            }
+        }
+        catch {
+            uiStore.showError(error.localizedDescription)
+        }
+    }
+
+    /// Load the batch of albums centered on `albumIndex` so its row is
+    /// materialized. Shared by lazy row loading and by `revealAlbum`, which
+    /// scrolls to a possibly-unfetched album — one definition of the batch
+    /// bounds keeps the two from drifting.
+    private func loadBatch(around albumIndex: Int) async {
+        let first = max(0, albumIndex - loadBatchSize / 2)
+        let end = min(first + loadBatchSize, list.totalCount)
+        await list.loadRange(offset: first, limit: end - first)
+    }
+
     private func selectedAlbumId(rowIndex: Int, columnCount: Int) -> String? {
         guard let selectedId = uiStore.selectedAlbumId else {
             return nil

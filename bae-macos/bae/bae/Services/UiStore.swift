@@ -20,11 +20,20 @@ enum LibraryBrowserMode: CaseIterable {
     }
 }
 
-/// One-shot imperative command fired when the UI should navigate to and
-/// reveal an album (and optionally flash a track inside it).
-struct NavigationCommand {
+/// A request to reveal an album (scroll the grid to it) and optionally flash
+/// a track inside it. Durable state, not a `PassthroughSubject`: the consumer
+/// (`AlbumGridView`, `AlbumDetailView`) does not exist when the producer emits.
+/// Navigating from composers mode switches to albums mode, which *mounts* the
+/// grid — so a subject would publish before any subscriber is alive and the
+/// request would be lost. As state, the request persists across that remount
+/// and the freshly-mounted grid reads it. `seq` is the version: it lets a
+/// consumer detect a new request even when `albumId` repeats (navigate to the
+/// same album twice), and drives `.task(id:)` so SwiftUI cancels a stale reveal
+/// when a newer one arrives.
+struct AlbumReveal {
     let albumId: String
     let trackId: String?
+    let seq: Int
 }
 
 enum LibraryNavigationTarget {
@@ -45,10 +54,11 @@ class UiStore: @unchecked Sendable {
     var selectedAlbumId: String?
     var showQueue: Bool = false
 
-    /// One-shot navigation commands (scroll/flash). State fields describe
-    /// what the UI *is*; this subject carries what should *happen once*.
-    @ObservationIgnored
-    let navigationSubject = PassthroughSubject<NavigationCommand, Never>()
+    /// The current album-reveal request (scroll + optional track flash), or
+    /// `nil` before any navigation. Durable — see `AlbumReveal` for why this is
+    /// state rather than a one-shot subject.
+    private(set) var albumReveal: AlbumReveal?
+    private var revealSeq = 0
 
     @ObservationIgnored
     let libraryNavigationSubject = PassthroughSubject<
@@ -103,8 +113,11 @@ class UiStore: @unchecked Sendable {
         if let releaseId {
             selectRelease(releaseId, inAlbum: albumId)
         }
-        navigationSubject.send(
-            NavigationCommand(albumId: albumId, trackId: trackId)
+        revealSeq += 1
+        albumReveal = AlbumReveal(
+            albumId: albumId,
+            trackId: trackId,
+            seq: revealSeq
         )
     }
 

@@ -32,6 +32,16 @@ impl LibraryManager {
             .collect())
     }
 
+    /// Resolve an album's 0-based position under a sort, matching the paging
+    /// order of `get_album_page`. `None` if the album isn't in the library.
+    pub async fn get_album_index(
+        &self,
+        sort: &[crate::db::AlbumSortCriterion],
+        album_id: &str,
+    ) -> Result<Option<u64>, LibraryError> {
+        Ok(self.database.get_album_index(sort, album_id).await?)
+    }
+
     /// Count total albums.
     pub async fn get_album_count(&self) -> Result<u64, LibraryError> {
         Ok(self.database.get_album_count().await?)

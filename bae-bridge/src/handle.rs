@@ -87,6 +87,26 @@ impl AppHandle {
         })
     }
 
+    /// 0-based position of `album_id` under the given sort, matching
+    /// `get_album_page`'s ordering, or `None` if the album isn't present.
+    /// Lets the grid load the page containing an album and scroll to it
+    /// without depending on that page already being fetched.
+    pub fn get_album_index(
+        &self,
+        sort_criteria: Vec<BridgeSortCriterion>,
+        album_id: String,
+    ) -> Result<Option<u64>, BridgeError> {
+        self.runtime.block_on(async {
+            let sort: Vec<bae_core::db::AlbumSortCriterion> =
+                sort_criteria.iter().map(bridge_sort_to_core).collect();
+            self.services
+                .library_manager()
+                .get_album_index(&sort, &album_id)
+                .await
+                .map_err(|e| BridgeError::database(format!("{e}")))
+        })
+    }
+
     pub fn get_album_count(&self) -> Result<u64, BridgeError> {
         self.runtime.block_on(async {
             self.services

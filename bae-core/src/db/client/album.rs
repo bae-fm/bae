@@ -200,6 +200,42 @@ impl Database {
         .await
     }
 
+    /// Resolve an album's 0-based position under a sort.
+    ///
+    /// Wraps the *identical* `build_order_by` + `album_summary_artist_join`
+    /// that `get_album_page` uses in a `ROW_NUMBER() OVER (ORDER BY …)`
+    /// window, then selects the row for `album_id`. Because the ORDER BY is
+    /// the same, the returned index is exactly the offset at which
+    /// `get_album_page` would return this album — the caller can load that
+    /// page and scroll to the row deterministically. `None` when the album
+    /// isn't in the library.
+    pub async fn get_album_index(
+        &self,
+        sort: &[AlbumSortCriterion],
+        album_id: &str,
+    ) -> Result<Option<u64>, DbError> {
+        let (order_by, needs_artist_sort_join) = build_order_by(sort, "a.created_at DESC");
+        let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
+        let album_id = album_id.to_string();
+
+        let query = format!(
+            "SELECT idx FROM ( \
+                SELECT a.id AS id, \
+                    ROW_NUMBER() OVER (ORDER BY {order_by}) - 1 AS idx \
+                FROM albums a \
+                {artist_sort_join} \
+            ) WHERE id = ?"
+        );
+
+        self.call(move |conn| {
+            conn.query_row(&query, params![album_id], |row| row.get::<_, i64>("idx"))
+                .optional()
+                .map(|idx| idx.map(|i| i as u64))
+                .map_err(DbError::from)
+        })
+        .await
+    }
+
     /// Count total albums.
     pub async fn get_album_count(&self) -> Result<u64, DbError> {
         self.call(move |conn| {

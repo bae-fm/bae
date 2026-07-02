@@ -313,6 +313,85 @@ async fn test_multi_criteria_artist_then_year() {
 }
 
 #[tokio::test]
+async fn test_album_index_matches_page_position() {
+    let (db, _dir) = setup_db().await;
+    let aid = insert_default_artist(&db).await;
+
+    // A handful of albums with distinct titles so a title sort is total.
+    let titles = ["Delta", "alpha", "Charlie", "Bravo", "echo"];
+    for (i, title) in titles.iter().enumerate() {
+        db.insert_album(&make_album(title, &aid, Some(2000), i as i64))
+            .await
+            .unwrap();
+    }
+
+    let sort = [AlbumSortCriterion {
+        field: AlbumSortField::Title,
+        direction: SortDirection::Ascending,
+    }];
+
+    // The paged list is the ground truth; the index query must agree with it.
+    let page = db.get_album_page(&sort, 0, 100).await.unwrap();
+    assert_eq!(page.len(), titles.len());
+
+    for (position, summary) in page.iter().enumerate() {
+        let index = db.get_album_index(&sort, &summary.id).await.unwrap();
+        assert_eq!(index, Some(position as u64), "album {}", summary.title);
+    }
+
+    // An id that isn't in the library has no position.
+    let missing = db.get_album_index(&sort, "no-such-album").await.unwrap();
+    assert_eq!(missing, None);
+}
+
+#[tokio::test]
+async fn test_album_index_matches_page_position_default_sort() {
+    let (db, _dir) = setup_db().await;
+    let aid = insert_default_artist(&db).await;
+
+    for i in 0..4 {
+        db.insert_album(&make_album(&format!("Album {i}"), &aid, Some(2000), i))
+            .await
+            .unwrap();
+    }
+
+    // Empty sort exercises the default `created_at DESC` order, which needs no
+    // artist join — same path `get_album_page` takes for the default sort.
+    let page = db.get_album_page(&[], 0, 100).await.unwrap();
+    for (position, summary) in page.iter().enumerate() {
+        let index = db.get_album_index(&[], &summary.id).await.unwrap();
+        assert_eq!(index, Some(position as u64));
+    }
+}
+
+#[tokio::test]
+async fn test_album_index_matches_page_position_on_ties() {
+    let (db, _dir) = setup_db().await;
+    let aid = insert_default_artist(&db).await;
+
+    // Many albums sharing one title and one created_at offset: the sort value
+    // ties on every row, so only the `a.id` tiebreaker gives a total order.
+    // The window-function index query and the LIMIT/OFFSET page query must
+    // still agree row-for-row.
+    for _ in 0..8 {
+        db.insert_album(&make_album("Same Title", &aid, Some(2000), 0))
+            .await
+            .unwrap();
+    }
+
+    let sort = [AlbumSortCriterion {
+        field: AlbumSortField::Title,
+        direction: SortDirection::Ascending,
+    }];
+    let page = db.get_album_page(&sort, 0, 100).await.unwrap();
+    assert_eq!(page.len(), 8);
+    for (position, summary) in page.iter().enumerate() {
+        let index = db.get_album_index(&sort, &summary.id).await.unwrap();
+        assert_eq!(index, Some(position as u64), "album {}", summary.id);
+    }
+}
+
+#[tokio::test]
 async fn test_multi_criteria_year_asc_then_title_asc() {
     let (db, _dir) = setup_db().await;
     let aid = insert_default_artist(&db).await;

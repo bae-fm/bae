@@ -60,4 +60,34 @@ struct UiStoreLibraryBrowserModeTests {
         store.navigateToAlbum("album-1", releaseId: "release-9")
         #expect(store.selectedReleaseIdByAlbum["album-1"] == "release-9")
     }
+
+    @Test("navigateToAlbum sets the reveal request with albumId and trackId")
+    func navigateToAlbumSetsRevealRequest() {
+        let store = UiStore()
+        store.navigateToAlbum("album-1", trackId: "track-7")
+        #expect(store.albumReveal?.albumId == "album-1")
+        #expect(store.albumReveal?.trackId == "track-7")
+    }
+
+    @Test("navigateToAlbum bumps the reveal seq (strictly increasing)")
+    func navigateToAlbumBumpsSeq() {
+        let store = UiStore()
+        store.navigateToAlbum("album-1")
+        let first = store.albumReveal?.seq
+        store.navigateToAlbum("album-2")
+        let second = store.albumReveal?.seq
+        #expect(first != nil)
+        #expect(second != nil)
+        #expect(second! > first!)
+    }
+
+    @Test("repeat navigation to the same album produces two distinct seq values")
+    func navigateToSameAlbumTwiceRefires() {
+        let store = UiStore()
+        store.navigateToAlbum("album-1")
+        let first = store.albumReveal?.seq
+        store.navigateToAlbum("album-1")
+        let second = store.albumReveal?.seq
+        #expect(first != second)
+    }
 }

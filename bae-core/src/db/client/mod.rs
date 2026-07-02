@@ -375,8 +375,16 @@ fn row_to_library_image(
 /// Build an ORDER BY clause from sort criteria.
 /// Returns `(order_by_clause, needs_artist_join)`.
 fn build_order_by(sort: &[AlbumSortCriterion], default: &str) -> (String, bool) {
+    // Every clause ends with `a.id` — a total-order tiebreaker over the album
+    // primary key. Without it, rows sharing a sort value (same title, same
+    // year, same created_at from a bulk import) order arbitrarily, and the
+    // ambiguity is worse than cosmetic: `get_album_page` (LIMIT/OFFSET) and
+    // `get_album_index` (a ROW_NUMBER window) are different query shapes, so
+    // SQLite could tie-break them differently and a reveal would scroll to the
+    // wrong album. The id tiebreaker makes both deterministic and mutually
+    // consistent.
     if sort.is_empty() {
-        return (default.to_string(), false);
+        return (format!("{default}, a.id"), false);
     }
     let needs_artist_join = sort.iter().any(|c| c.field == AlbumSortField::Artist);
     let clause = sort
@@ -412,7 +420,7 @@ fn build_order_by(sort: &[AlbumSortCriterion], default: &str) -> (String, bool) 
         })
         .collect::<Vec<_>>()
         .join(", ");
-    (clause, needs_artist_join)
+    (format!("{clause}, a.id"), needs_artist_join)
 }
 
 /// Build an ORDER BY clause for `get_storage_page`. Returns
