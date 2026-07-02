@@ -2,11 +2,6 @@ import SwiftUI
 
 private let composerLoadBatchSize = 50
 
-private enum LibraryBrowserMode {
-    case albums
-    case composers
-}
-
 private enum ComposerPaneSelection: Equatable {
     case none
     case composer(artistId: String, workId: String?)
@@ -50,8 +45,6 @@ struct LibraryView: View {
     var uiStore
 
     @State
-    private var mode: LibraryBrowserMode = .albums
-    @State
     private var albumList: AlbumList?
     @State
     private var composerList: ComposerList?
@@ -66,19 +59,12 @@ struct LibraryView: View {
     private var detailSelection: ComposerPaneSelection = .none
 
     var body: some View {
-        @Bindable
-        var uiStore = uiStore
-        VStack(spacing: 0) {
-            modePicker
-                .padding(.top, 14)
-                .padding(.horizontal, 16)
-            Group {
-                switch mode {
-                case .albums:
-                    albumContent
-                case .composers:
-                    composerContent
-                }
+        Group {
+            switch uiStore.libraryBrowserMode {
+            case .albums:
+                albumContent
+            case .composers:
+                composerContent
             }
         }
         .background(Theme.background)
@@ -86,8 +72,8 @@ struct LibraryView: View {
             Self.saveSortCriteria(sortCriteria)
             await reloadAlbumList(sort: sortCriteria)
         }
-        .task(id: mode) {
-            if mode == .composers {
+        .task(id: uiStore.libraryBrowserMode) {
+            if uiStore.libraryBrowserMode == .composers {
                 await ensureComposerListLoaded()
             }
         }
@@ -98,7 +84,7 @@ struct LibraryView: View {
             await loadWorkDetail()
         }
         .task(id: composerSortCriterion) {
-            if mode == .composers {
+            if uiStore.libraryBrowserMode == .composers {
                 await reloadComposerList(sort: composerSortCriterion)
             }
         }
@@ -112,7 +98,6 @@ struct LibraryView: View {
             }
         }
         .onReceive(uiStore.libraryNavigationSubject) { target in
-            mode = .composers
             switch target {
             case .composer(let artistId):
                 detailSelection = .composer(artistId: artistId, workId: nil)
@@ -126,15 +111,6 @@ struct LibraryView: View {
 }
 
 extension LibraryView {
-    private var modePicker: some View {
-        Picker("Library", selection: $mode) {
-            Text("Albums").tag(LibraryBrowserMode.albums)
-            Text("Composers").tag(LibraryBrowserMode.composers)
-        }
-        .pickerStyle(.segmented)
-        .frame(maxWidth: 260)
-    }
-
     private var albumContent: some View {
         Group {
             if let albumList {
@@ -236,6 +212,7 @@ extension LibraryView {
             Text("Composers")
                 .font(.title.bold())
             Spacer()
+            LibraryModeMenu()
             composerSortControls
         }
     }
@@ -361,7 +338,7 @@ extension LibraryView {
                                     inAlbum: albumId
                                 )
                                 uiStore.selectAlbum(albumId)
-                                mode = .albums
+                                uiStore.setLibraryBrowserMode(.albums)
                             }
                         )
                     }
@@ -376,7 +353,7 @@ extension LibraryView {
                         openAlbum: { albumId, releaseId in
                             uiStore.selectRelease(releaseId, inAlbum: albumId)
                             uiStore.selectAlbum(albumId)
-                            mode = .albums
+                            uiStore.setLibraryBrowserMode(.albums)
                         }
                     )
                 }

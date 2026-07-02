@@ -131,6 +131,23 @@ struct OpenStorageManagerButton: View {
     }
 }
 
+/// One checkmarked button per library browser mode. Opens the main window and
+/// navigates to the library section before setting the mode, so the item works
+/// from any window (matching `OpenLibraryButton`).
+struct LibraryModeCommandButtons: View {
+    let uiStore: UiStore
+    @Environment(\.openWindow)
+    private var openWindow
+
+    var body: some View {
+        LibraryModeButtons(uiStore: uiStore) { mode in
+            openWindow(id: "main")
+            uiStore.navigateToLibraryRoot()
+            uiStore.setLibraryBrowserMode(mode)
+        }
+    }
+}
+
 struct MainAppMenuCommands: Commands {
     let playback: Playback
     let importer: Importer
@@ -190,6 +207,10 @@ struct MainAppMenuCommands: Commands {
             OpenLibraryButton(uiStore: uiStore)
             OpenImportButton(uiStore: uiStore)
             OpenStorageManagerButton()
+
+            Divider()
+
+            LibraryModeCommandButtons(uiStore: uiStore)
 
             Divider()
 

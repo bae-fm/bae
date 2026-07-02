@@ -8,6 +8,18 @@ enum MainSection {
     case importing
 }
 
+enum LibraryBrowserMode: CaseIterable {
+    case albums
+    case composers
+
+    var displayName: String {
+        switch self {
+        case .albums: String(localized: "Albums")
+        case .composers: String(localized: "Composers")
+        }
+    }
+}
+
 /// One-shot imperative command fired when the UI should navigate to and
 /// reveal an album (and optionally flash a track inside it).
 struct NavigationCommand {
@@ -29,6 +41,7 @@ class UiStore: @unchecked Sendable {
     // ── Navigation ─────────────────────────────────────────────────────
 
     var activeSection: MainSection = .library
+    var libraryBrowserMode: LibraryBrowserMode = .albums
     var selectedAlbumId: String?
     var showQueue: Bool = false
 
@@ -75,6 +88,10 @@ class UiStore: @unchecked Sendable {
         activeSection = .library
     }
 
+    func setLibraryBrowserMode(_ mode: LibraryBrowserMode) {
+        libraryBrowserMode = mode
+    }
+
     func navigateToAlbum(
         _ albumId: String,
         trackId: String? = nil,
@@ -96,11 +113,13 @@ class UiStore: @unchecked Sendable {
 
     func navigateToComposer(_ artistId: String) {
         activeSection = .library
+        libraryBrowserMode = .composers
         libraryNavigationSubject.send(.composer(artistId))
     }
 
     func navigateToWork(_ workId: String) {
         activeSection = .library
+        libraryBrowserMode = .composers
         libraryNavigationSubject.send(.work(workId))
     }
 

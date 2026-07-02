@@ -224,6 +224,7 @@ extension AlbumGridView {
             Text(headerTitle)
                 .font(.system(size: 36, weight: .bold))
             Spacer()
+            LibraryModeMenu()
             Button(action: onShuffleLibrary) {
                 Label("Shuffle Library", systemImage: "shuffle")
             }
