@@ -234,7 +234,8 @@ internal static class NativeBae
         CopyAndFree(RestoreFromCodePtr(code, oauthTokenJson));
 
     [DllImport(Dll, EntryPoint = "bae_generate_join_request", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr GenerateJoinRequestPtr();
+    private static extern IntPtr GenerateJoinRequestPtr(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? email);
 
     /// <summary>
     /// This device's join-request code and the fingerprint it encodes, as JSON
@@ -242,7 +243,11 @@ internal static class NativeBae
     /// or null on error. The joining device has no library yet, so this needs no
     /// handle; it only requires <see cref="Startup"/>. Copies and frees.
     /// </summary>
-    internal static string? GenerateJoinRequest() => CopyAndFree(GenerateJoinRequestPtr());
+    /// <param name="email">The OAuth account address the joiner authenticated as,
+    /// baked into the code so the approver can share the OAuth folder to it; null
+    /// for S3, which shares no folder.</param>
+    internal static string? GenerateJoinRequest(string? email = null) =>
+        CopyAndFree(GenerateJoinRequestPtr(email));
 
     [DllImport(Dll, EntryPoint = "bae_decode_join_request", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr DecodeJoinRequestPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string code);
