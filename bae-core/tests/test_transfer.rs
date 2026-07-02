@@ -60,6 +60,7 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
+        None,
     )
     .unwrap();
     (mgr.database_for_test(), mgr)

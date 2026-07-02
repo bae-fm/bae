@@ -55,8 +55,14 @@ impl LibraryManager {
     /// key to it and signing a membership entry. Returns the invite code to hand
     /// back to the joining device. bae adds every device as a `Member`; the
     /// founding device is the `Owner`.
-    pub async fn invite_member(&self, public_key_hex: &str) -> Result<String, String> {
-        self.sync.invite_member(public_key_hex).await
+    pub async fn invite_member(
+        &self,
+        public_key_hex: &str,
+        provider_account_email: Option<&str>,
+    ) -> Result<String, String> {
+        self.sync
+            .invite_member(public_key_hex, provider_account_email)
+            .await
     }
 
     /// Remove a device from the library and rotate the library key so the removed

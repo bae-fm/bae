@@ -615,6 +615,7 @@ impl LibraryManager {
         clock: ClockRef,
         ids: IdRef,
         runtime_handle: tokio::runtime::Handle,
+        cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     ) -> Result<Self, coven::DbError> {
         let (event_tx, _) = broadcast::channel(16);
         let outbox_in_flight = Arc::new(Mutex::new(HashMap::new()));
@@ -633,6 +634,7 @@ impl LibraryManager {
             .synced_tables(crate::sync::synced_tables())
             .clock(clock.clone())
             .key_service(key_service.clone())
+            .apply_cloudkit_ops(cloudkit_ops.clone())
             .observer(observer.clone() as Arc<dyn coven::BlobTransitionObserver>)
             .migrations(crate::migrations::all())
             .open()
@@ -654,6 +656,7 @@ impl LibraryManager {
             outbox_in_flight,
             upload_throughput,
             sync_paused,
+            cloudkit_ops,
         );
 
         let discogs = DiscogsCredentials::new(config_handle.clone(), key_service.clone());
@@ -704,6 +707,7 @@ impl LibraryManager {
             Arc::new(Mutex::new(HashMap::new())),
             Arc::new(crate::library::UploadThroughput::new()),
             Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            None,
         );
 
         let discogs = DiscogsCredentials::new(config_handle.clone(), key_service.clone());

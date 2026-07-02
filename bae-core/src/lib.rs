@@ -36,3 +36,5 @@ pub mod sync;
 pub mod text_encoding;
 pub mod ui;
 pub mod util;
+
+pub type CloudKitOpsRef = std::sync::Arc<dyn coven::CloudKitOps>;

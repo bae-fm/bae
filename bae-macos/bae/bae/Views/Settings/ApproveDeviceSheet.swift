@@ -7,11 +7,13 @@ private let logger = Logger.bae("ApproveDevice")
 /// code (camera scan or pasted text), preview its public key, approve it, then
 /// show the invite code to carry back to that device.
 ///
-/// `invite` is `Sync.inviteMember`: it takes the joining device's public key and
-/// returns the invite code. The sheet drives a small step machine so each stage
-/// renders only what that stage needs.
+/// `invite` is `Sync.inviteMember`: it takes the joining device's public key
+/// plus any provider account email and returns the invite code. The sheet drives
+/// a small step machine so each stage renders only what that stage needs.
 struct ApproveDeviceSheet: View {
-    let invite: @Sendable (_ publicKeyHex: String) async throws -> String
+    let invite:
+        @Sendable (_ publicKeyHex: String, _ providerAccountEmail: String?)
+            async throws -> String
     let onDismiss: () -> Void
     /// Called once a device has been approved, so the caller can refresh its
     /// member list.
@@ -31,6 +33,8 @@ struct ApproveDeviceSheet: View {
     private var step: Step = .capture
     @State
     private var pasteInput = ""
+    @State
+    private var providerAccountEmail = ""
     @State
     private var error: String?
     @State
@@ -130,6 +134,10 @@ struct ApproveDeviceSheet: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            TextField("iCloud email", text: $providerAccountEmail)
+                .textFieldStyle(.roundedBorder)
+                .textContentType(.emailAddress)
+                .frame(maxWidth: 260)
             Text(
                 "It will be added to your library and able to sync. You'll get a code to enter on it."
             )
@@ -199,6 +207,7 @@ struct ApproveDeviceSheet: View {
         guard !trimmed.isEmpty else { return }
         do {
             let info = try decodeJoinRequest(code: trimmed)
+            providerAccountEmail = info.email ?? ""
             error = nil
             step = .confirm(info)
         }
@@ -212,12 +221,15 @@ struct ApproveDeviceSheet: View {
 
     private func approve(_ info: BridgeJoinRequestInfo) {
         let pubkey = info.pubkey
+        let email = providerAccountEmail.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
         error = nil
         step = .inviting(info)
         inviteTask?.cancel()
         inviteTask = Task { @MainActor in
             do {
-                let code = try await invite(pubkey)
+                let code = try await invite(pubkey, email.isEmpty ? nil : email)
                 step = .invited(code: code)
                 onApproved()
             }

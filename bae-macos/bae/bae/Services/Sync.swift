@@ -25,7 +25,9 @@ final class Sync: Sendable, Observable {
     let getMembers: @Sendable () async throws -> BridgeMembership
     /// Approve a joining device by its public key (from its join-request code),
     /// returning the invite code to hand back to that device.
-    let inviteMember: @Sendable (_ publicKeyHex: String) async throws -> String
+    let inviteMember:
+        @Sendable (_ publicKeyHex: String, _ providerAccountEmail: String?)
+            async throws -> String
     /// Remove a device from the library and rotate the library key.
     let removeMember: @Sendable (_ publicKeyHex: String) async throws -> Void
     /// Warning text for the disconnect-sync confirmation: `nil` when no
@@ -77,10 +79,12 @@ final class Sync: Sendable, Observable {
         getMembers: @escaping @Sendable () async throws -> BridgeMembership = {
             throw StubError.notImplemented
         },
-        inviteMember: @escaping @Sendable (String) async throws -> String = {
-            _ in
-            throw StubError.notImplemented
-        },
+        inviteMember:
+            @escaping @Sendable (String, String?) async throws -> String = {
+                _,
+                _ in
+                throw StubError.notImplemented
+            },
         removeMember: @escaping @Sendable (String) async throws -> Void = {
             _ in
             throw StubError.notImplemented
@@ -152,7 +156,12 @@ final class Sync: Sendable, Observable {
             saveSyncConfig: { try await handle.saveSyncConfig(configData: $0) },
             generateRestoreCode: { try handle.generateRestoreCode() },
             getMembers: { try await handle.getMembers() },
-            inviteMember: { try await handle.inviteMember(publicKeyHex: $0) },
+            inviteMember: {
+                try await handle.inviteMember(
+                    publicKeyHex: $0,
+                    providerAccountEmail: $1
+                )
+            },
             removeMember: { try await handle.removeMember(publicKeyHex: $0) },
             disconnectWarningMessage: { try handle.disconnectWarningMessage() },
             retryOutbox: { try handle.retryOutbox() },

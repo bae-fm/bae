@@ -49,6 +49,7 @@ pub(crate) struct SyncController {
     upload_throughput: Arc<UploadThroughput>,
     /// User-driven pause flag for the cloud-upload pipeline.
     sync_paused: Arc<AtomicBool>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
 }
 
 impl SyncController {
@@ -62,6 +63,7 @@ impl SyncController {
         outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
         upload_throughput: Arc<UploadThroughput>,
         sync_paused: Arc<AtomicBool>,
+        cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     ) -> Self {
         Self {
             handle,
@@ -72,6 +74,7 @@ impl SyncController {
             outbox_in_flight,
             upload_throughput,
             sync_paused,
+            cloudkit_ops,
         }
     }
 
@@ -345,10 +348,15 @@ impl SyncController {
     /// key to it and signing a membership entry. Returns the invite code to hand
     /// back to the joining device. bae adds every device as a `Member`; the
     /// founding device is the `Owner`.
-    pub(crate) async fn invite_member(&self, public_key_hex: &str) -> Result<String, String> {
+    pub(crate) async fn invite_member(
+        &self,
+        public_key_hex: &str,
+        provider_account_email: Option<&str>,
+    ) -> Result<String, String> {
         self.handle
             .invite_member(
                 public_key_hex,
+                provider_account_email,
                 crate::sync::sync_manager::MemberRole::Member,
             )
             .await
@@ -493,6 +501,9 @@ impl SyncController {
             .update(move |c| {
                 c.cloud_home.provider = Some(CloudProvider::CloudKit);
                 c.cloud_home.storage = storage;
+                c.cloud_home.cloudkit_share_url = None;
+                c.cloud_home.cloudkit_owner_name = None;
+                c.cloud_home.cloudkit_zone_name = None;
             })
             .map_err(|e| format!("Failed to save CloudKit config: {e}"))?;
         self.ensure_sync_manager_and_start().await?;
@@ -529,7 +540,21 @@ impl SyncController {
         &self,
         encryption_service: Option<EncryptionService>,
     ) -> Result<(), String> {
-        self.handle.connect_sync(encryption_service).await?;
+        let provider = self.config_handle.config().cloud_home.provider.clone();
+        match provider {
+            Some(CloudProvider::CloudKit) => {
+                let ops = self
+                    .cloudkit_ops
+                    .clone()
+                    .ok_or_else(|| "CloudKit driver not provided".to_string())?;
+                self.handle
+                    .connect_sync_with_cloudkit(encryption_service, ops)
+                    .await?;
+            }
+            _ => {
+                self.handle.connect_sync(encryption_service).await?;
+            }
+        }
         Ok(())
     }
 
@@ -585,7 +610,21 @@ impl SyncController {
         // — and the encryption-key fingerprint below is reached only on success, so
         // a failed setup stays a clean retry (no fingerprint telling the next
         // launch's unlock flow "encryption is set up" while sync is still broken).
-        self.handle.connect_sync(enc_service).await?;
+        let provider = self.config_handle.config().cloud_home.provider.clone();
+        match provider {
+            Some(CloudProvider::CloudKit) => {
+                let ops = self
+                    .cloudkit_ops
+                    .clone()
+                    .ok_or_else(|| "CloudKit driver not provided".to_string())?;
+                self.handle
+                    .connect_sync_with_cloudkit(enc_service, ops)
+                    .await?;
+            }
+            _ => {
+                self.handle.connect_sync(enc_service).await?;
+            }
+        }
 
         // Sync started. For an opaque home, persist the encryption-key hint flag so
         // the next launch's unlock flow knows this library has encryption set up. A

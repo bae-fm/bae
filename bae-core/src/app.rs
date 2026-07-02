@@ -52,10 +52,12 @@ pub enum BootstrapError {
 pub fn bootstrap(
     library_id: String,
     position_update_interval_ms: u32,
+    cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     bootstrap_on_thread(
         BootstrapTarget::RegisteredId(library_id),
         position_update_interval_ms,
+        cloudkit_ops,
     )
 }
 
@@ -66,12 +68,14 @@ pub fn bootstrap_library_path(
     bootstrap_on_thread(
         BootstrapTarget::LibraryPath(library_path),
         position_update_interval_ms,
+        None,
     )
 }
 
 fn bootstrap_on_thread(
     target: BootstrapTarget,
     position_update_interval_ms: u32,
+    cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     // Building the sync manager (loading keys, opening the synced DB) and
     // `block_on`-ing the async setup uses a deep stack — especially in debug
@@ -83,7 +87,7 @@ fn bootstrap_on_thread(
     std::thread::Builder::new()
         .name("bae-bootstrap".to_string())
         .stack_size(32 * 1024 * 1024)
-        .spawn(move || bootstrap_inner(target, position_update_interval_ms))
+        .spawn(move || bootstrap_inner(target, position_update_interval_ms, cloudkit_ops))
         .expect("spawn bae-bootstrap thread")
         .join()
         .expect("bae-bootstrap thread panicked")
@@ -97,6 +101,7 @@ enum BootstrapTarget {
 fn bootstrap_inner(
     target: BootstrapTarget,
     position_update_interval_ms: u32,
+    cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     // Composition root for the injected wall clock + id source. Production wires
     // the real implementations; both are passed down to the data layer. Built
@@ -185,6 +190,7 @@ fn bootstrap_inner(
         Arc::clone(&clock),
         ids,
         runtime.handle().clone(),
+        cloudkit_ops,
     )
     .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
 

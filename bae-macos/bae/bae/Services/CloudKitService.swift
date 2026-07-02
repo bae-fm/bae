@@ -18,11 +18,17 @@
         )
         private let recordType = "BaeFile"
 
-        private var database: CKDatabase {
+        private var privateDatabase: CKDatabase {
             container.privateCloudDatabase
         }
 
-        private let zoneID = CKRecordZone.ID(zoneName: CloudKitService.zoneName)
+        private var sharedDatabase: CKDatabase {
+            container.sharedCloudDatabase
+        }
+
+        private let privateZoneID = CKRecordZone.ID(
+            zoneName: CloudKitService.zoneName
+        )
 
         /// The service pointed at bae's CloudKit container and library zone.
         static func bae() -> CloudKitService {
@@ -80,8 +86,8 @@
             }
             let sem = DispatchSemaphore(value: 0)
             nonisolated(unsafe) var resultError: Error?
-            let zone = CKRecordZone(zoneID: zoneID)
-            database.save(zone) { _, error in
+            let zone = CKRecordZone(zoneID: privateZoneID)
+            privateDatabase.save(zone) { _, error in
                 resultError = error
                 sem.signal()
             }
@@ -96,8 +102,55 @@
 
         // MARK: - Record ID from key
 
-        private func recordID(for key: String) -> CKRecord.ID {
-            CKRecord.ID(recordName: key, zoneID: zoneID)
+        private struct RecordScope {
+            let database: CKDatabase
+            let zoneID: CKRecordZone.ID
+            let ownsZone: Bool
+        }
+
+        private func recordScope(ownerName: String?, zoneName: String?) throws
+            -> RecordScope
+        {
+            switch (ownerName, zoneName) {
+            case (nil, nil):
+                return RecordScope(
+                    database: privateDatabase,
+                    zoneID: privateZoneID,
+                    ownsZone: true
+                )
+            case (.some(let ownerName), .some(let zoneName)):
+                guard !ownerName.isEmpty, !zoneName.isEmpty else {
+                    throw CloudKitError.Storage(
+                        msg:
+                            "CloudKit shared scope requires non-empty owner and zone names"
+                    )
+                }
+                return RecordScope(
+                    database: sharedDatabase,
+                    zoneID: CKRecordZone.ID(
+                        zoneName: zoneName,
+                        ownerName: ownerName
+                    ),
+                    ownsZone: false
+                )
+            case (nil, .some(_)), (.some(_), nil):
+                throw CloudKitError.Storage(
+                    msg:
+                        "CloudKit shared scope requires both owner and zone names"
+                )
+            }
+        }
+
+        private func recordID(for key: String, in scope: RecordScope)
+            -> CKRecord.ID
+        {
+            CKRecord.ID(recordName: key, zoneID: scope.zoneID)
+        }
+
+        private func ensureWritableZone(for scope: RecordScope) throws {
+            if scope.ownsZone {
+                try ensureZone()
+            }
         }
 
         // MARK: - Error classification
@@ -135,8 +188,17 @@
     // MARK: - CloudKitDriver Protocol
 
     extension CloudKitService {
-        func writeRecord(key: String, data: Data) throws {
-            try ensureZone()
+        func writeRecord(
+            ownerName: String?,
+            zoneName: String?,
+            key: String,
+            data: Data
+        ) throws {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
+            try ensureWritableZone(for: scope)
             let sem = DispatchSemaphore(value: 0)
             nonisolated(unsafe) var resultError: Error?
 
@@ -156,7 +218,7 @@
 
             let record = CKRecord(
                 recordType: recordType,
-                recordID: recordID(for: key)
+                recordID: recordID(for: key, in: scope)
             )
             record["key"] = key as CKRecordValue
             record["data"] = CKAsset(fileURL: tempURL)
@@ -172,7 +234,7 @@
                 }
                 sem.signal()
             }
-            database.add(op)
+            scope.database.add(op)
             sem.wait()
 
             if let error = resultError {
@@ -182,12 +244,22 @@
             }
         }
 
-        func readRecord(key: String) throws -> Data {
+        func readRecord(
+            ownerName: String?,
+            zoneName: String?,
+            key: String
+        ) throws -> Data {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
             let sem = DispatchSemaphore(value: 0)
             nonisolated(unsafe) var resultData: Data?
             nonisolated(unsafe) var resultError: Error?
 
-            database.fetch(withRecordID: recordID(for: key)) { record, error in
+            scope.database.fetch(withRecordID: recordID(for: key, in: scope)) {
+                record,
+                error in
                 if let error {
                     resultError = error
                 }
@@ -220,23 +292,31 @@
             return data
         }
 
-        func listRecords(prefix: String) throws -> [String] {
-            try ensureZone()
+        func listRecords(
+            ownerName: String?,
+            zoneName: String?,
+            prefix: String
+        ) throws -> [String] {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
+            try ensureWritableZone(for: scope)
             var keys: [String] = []
 
             let predicate = NSPredicate(format: "key BEGINSWITH %@", prefix)
             let query = CKQuery(recordType: recordType, predicate: predicate)
 
             var cursor = try fetchKeysPage(into: &keys) { handler in
-                database.fetch(
+                scope.database.fetch(
                     withQuery: query,
-                    inZoneWith: zoneID,
+                    inZoneWith: scope.zoneID,
                     completionHandler: handler
                 )
             }
             while let activeCursor = cursor {
                 cursor = try fetchKeysPage(into: &keys) { handler in
-                    database.fetch(
+                    scope.database.fetch(
                         withCursor: activeCursor,
                         completionHandler: handler
                     )
@@ -299,13 +379,21 @@
             return nextCursor
         }
 
-        func deleteRecord(key: String) throws {
+        func deleteRecord(
+            ownerName: String?,
+            zoneName: String?,
+            key: String
+        ) throws {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
             let sem = DispatchSemaphore(value: 0)
             nonisolated(unsafe) var resultError: Error?
 
             let op = CKModifyRecordsOperation(
                 recordsToSave: nil,
-                recordIDsToDelete: [recordID(for: key)],
+                recordIDsToDelete: [recordID(for: key, in: scope)],
             )
             op.modifyRecordsResultBlock = { result in
                 if case .failure(let error) = result {
@@ -320,7 +408,7 @@
                 }
                 sem.signal()
             }
-            database.add(op)
+            scope.database.add(op)
             sem.wait()
 
             if let error = resultError {
@@ -330,12 +418,22 @@
             }
         }
 
-        func recordExists(key: String) throws -> Bool {
+        func recordExists(
+            ownerName: String?,
+            zoneName: String?,
+            key: String
+        ) throws -> Bool {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
             let sem = DispatchSemaphore(value: 0)
             nonisolated(unsafe) var exists = false
             nonisolated(unsafe) var resultError: Error?
 
-            database.fetch(withRecordID: recordID(for: key)) { record, error in
+            scope.database.fetch(withRecordID: recordID(for: key, in: scope)) {
+                record,
+                error in
                 if let error {
                     if let ckError = error as? CKError,
                         ckError.code == .unknownItem
@@ -359,6 +457,336 @@
                 )
             }
             return exists
+        }
+
+        func grantShare(memberPubkey: String, email: String) throws
+            -> BridgeCloudKitShare
+        {
+            try ensureZoneSupportsSharing()
+            let participant = try fetchParticipant(email: email)
+            let share =
+                try fetchZoneWideShare()
+                ?? CKShare(
+                    recordZoneID: privateZoneID
+                )
+
+            participant.permission = .readWrite
+            share.addParticipant(participant)
+            share[memberEmailFieldKey(for: memberPubkey)] =
+                email as CKRecordValue
+
+            let savedShare = try saveShare(share, op: "Grant share")
+            guard let shareURL = savedShare.url?.absoluteString else {
+                throw CloudKitError.Storage(
+                    msg: "CloudKit did not return a URL for the saved share"
+                )
+            }
+            return BridgeCloudKitShare(
+                shareUrl: shareURL,
+                ownerName: savedShare.recordID.zoneID.ownerName,
+                zoneName: savedShare.recordID.zoneID.zoneName
+            )
+        }
+
+        func revokeShare(memberPubkey: String, email: String) throws {
+            guard let share = try fetchZoneWideShare() else {
+                return
+            }
+
+            let emailFieldKey = memberEmailFieldKey(for: memberPubkey)
+            let mappedEmail = share[emailFieldKey] as? String
+            let emailToRemove: String
+            if let mappedEmail {
+                guard mappedEmail == email else {
+                    throw CloudKitError.Storage(
+                        msg:
+                            "CloudKit share member email does not match signed membership email"
+                    )
+                }
+                emailToRemove = mappedEmail
+            }
+            else {
+                emailToRemove = email
+            }
+
+            if let participant = share.participants.first(where: {
+                participantMatches($0, email: emailToRemove)
+            }) {
+                share.removeParticipant(participant)
+            }
+            else {
+                return
+            }
+            share[emailFieldKey] = nil
+            _ = try saveShare(share, op: "Revoke share")
+        }
+
+        func acceptShare(shareUrl: String) throws -> BridgeCloudKitShare {
+            guard let url = URL(string: shareUrl) else {
+                throw CloudKitError.Storage(
+                    msg: "CloudKit share URL is invalid"
+                )
+            }
+            let metadata = try fetchShareMetadata(url: url)
+            let acceptedShare = try acceptShare(metadata: metadata)
+            return BridgeCloudKitShare(
+                shareUrl: shareUrl,
+                ownerName: acceptedShare.recordID.zoneID.ownerName,
+                zoneName: acceptedShare.recordID.zoneID.zoneName
+            )
+        }
+
+        private func ensureZoneSupportsSharing() throws {
+            try ensureZone()
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var fetchedZone: CKRecordZone?
+            nonisolated(unsafe) var resultError: Error?
+
+            privateDatabase.fetch(withRecordZoneID: privateZoneID) {
+                zone,
+                error in
+                if let error {
+                    resultError = error
+                }
+                else {
+                    fetchedZone = zone
+                }
+                sem.signal()
+            }
+            sem.wait()
+
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(error, op: "Share zone lookup")
+                )
+            }
+            guard let fetchedZone else {
+                throw CloudKitError.Storage(
+                    msg: "CloudKit sharing zone was not returned"
+                )
+            }
+            guard fetchedZone.capabilities.contains(.zoneWideSharing) else {
+                throw CloudKitError.Storage(
+                    msg: "CloudKit zone-wide sharing is not available"
+                )
+            }
+        }
+
+        private func fetchParticipant(email: String) throws
+            -> CKShare.Participant
+        {
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var participant: CKShare.Participant?
+            nonisolated(unsafe) var resultError: Error?
+
+            container.fetchShareParticipant(withEmailAddress: email) {
+                fetchedParticipant,
+                error in
+                if let error {
+                    resultError = error
+                }
+                else {
+                    participant = fetchedParticipant
+                }
+                sem.signal()
+            }
+            sem.wait()
+
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(
+                        error,
+                        op: "Share participant lookup"
+                    )
+                )
+            }
+            guard let participant else {
+                throw CloudKitError.Storage(
+                    msg: "CloudKit did not return a share participant"
+                )
+            }
+            return participant
+        }
+
+        private func fetchZoneWideShare() throws -> CKShare? {
+            let shareID = CKRecord.ID(
+                recordName: CKRecordNameZoneWideShare,
+                zoneID: privateZoneID
+            )
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var share: CKShare?
+            nonisolated(unsafe) var resultError: Error?
+
+            privateDatabase.fetch(withRecordID: shareID) { record, error in
+                if let error {
+                    if let ckError = error as? CKError,
+                        ckError.code == .unknownItem
+                    {
+                        share = nil
+                    }
+                    else {
+                        resultError = error
+                    }
+                }
+                else if let fetchedShare = record as? CKShare {
+                    share = fetchedShare
+                }
+                else if record != nil {
+                    resultError = CloudKitError.Storage(
+                        msg:
+                            "CloudKit zone-wide share record has an unexpected type"
+                    )
+                }
+                sem.signal()
+            }
+            sem.wait()
+
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(error, op: "Share lookup")
+                )
+            }
+            return share
+        }
+
+        private func saveShare(_ share: CKShare, op: String) throws -> CKShare {
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var savedShare: CKShare?
+            nonisolated(unsafe) var resultError: Error?
+
+            let operation = CKModifyRecordsOperation(
+                recordsToSave: [share],
+                recordIDsToDelete: nil
+            )
+            operation.savePolicy = .allKeys
+            operation.perRecordSaveBlock = { _, result in
+                switch result {
+                case .success(let record):
+                    if let share = record as? CKShare {
+                        savedShare = share
+                    }
+                    else {
+                        resultError = CloudKitError.Storage(
+                            msg: "\(op) returned a non-share record"
+                        )
+                    }
+                case .failure(let error):
+                    resultError = error
+                }
+            }
+            operation.modifyRecordsResultBlock = { result in
+                if case .failure(let error) = result {
+                    resultError = error
+                }
+                sem.signal()
+            }
+            privateDatabase.add(operation)
+            sem.wait()
+
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(error, op: op)
+                )
+            }
+            guard let savedShare else {
+                throw CloudKitError.Storage(
+                    msg: "\(op) failed: CloudKit did not return a share"
+                )
+            }
+            return savedShare
+        }
+
+        private func fetchShareMetadata(url: URL) throws -> CKShare.Metadata {
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var metadata: CKShare.Metadata?
+            nonisolated(unsafe) var resultError: Error?
+
+            let operation = CKFetchShareMetadataOperation(shareURLs: [url])
+            operation.perShareMetadataResultBlock = { _, result in
+                switch result {
+                case .success(let fetchedMetadata):
+                    metadata = fetchedMetadata
+                case .failure(let error):
+                    resultError = error
+                }
+            }
+            operation.fetchShareMetadataResultBlock = { result in
+                if case .failure(let error) = result {
+                    resultError = error
+                }
+                sem.signal()
+            }
+            operation.container = container
+            operation.qualityOfService = .userInitiated
+            operation.start()
+            sem.wait()
+
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(
+                        error,
+                        op: "Share metadata lookup"
+                    )
+                )
+            }
+            guard let metadata else {
+                throw CloudKitError.Storage(
+                    msg: "CloudKit did not return share metadata"
+                )
+            }
+            return metadata
+        }
+
+        private func acceptShare(metadata: CKShare.Metadata) throws -> CKShare {
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var acceptedShare: CKShare?
+            nonisolated(unsafe) var resultError: Error?
+
+            let operation = CKAcceptSharesOperation(shareMetadatas: [metadata])
+            operation.perShareResultBlock = { _, result in
+                switch result {
+                case .success(let share):
+                    acceptedShare = share
+                case .failure(let error):
+                    resultError = error
+                }
+            }
+            operation.acceptSharesResultBlock = { result in
+                if case .failure(let error) = result {
+                    resultError = error
+                }
+                sem.signal()
+            }
+            operation.qualityOfService = .userInitiated
+            container.add(operation)
+            sem.wait()
+
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(error, op: "Accept share")
+                )
+            }
+            guard let acceptedShare else {
+                throw CloudKitError.Storage(
+                    msg: "CloudKit did not return accepted share"
+                )
+            }
+            return acceptedShare
+        }
+
+        private func memberEmailFieldKey(for memberPubkey: String) -> String {
+            let prefix = memberPubkey.prefix(48)
+                .map { character in
+                    character.isLetter || character.isNumber ? character : "_"
+                }
+            return "coven_member_\(String(prefix))"
+        }
+
+        private func participantMatches(
+            _ participant: CKShare.Participant,
+            email: String
+        ) -> Bool {
+            participant.userIdentity.lookupInfo?.emailAddress == email
         }
     }
 

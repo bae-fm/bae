@@ -11,6 +11,14 @@ use bae_core::diagnostics::{
 use crate::handle::AppHandle;
 use crate::types::BridgeError;
 
+#[cfg(feature = "cloudkit")]
+use crate::cloudkit::get_cloudkit_ops;
+
+#[cfg(not(feature = "cloudkit"))]
+fn get_cloudkit_ops() -> Option<Arc<dyn coven::CloudKitOps>> {
+    None
+}
+
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeDiagnosticsConfig {
     Disabled,
@@ -65,9 +73,10 @@ pub fn init_app(
 
     #[cfg(feature = "desktop")]
     {
-        let app = bae_desktop::bootstrap(library_id, position_update_interval_ms)
-            .map_err(bootstrap_error_to_bridge)?;
-        return Ok(Arc::new(AppHandle { app }));
+        let app =
+            bae_desktop::bootstrap(library_id, position_update_interval_ms, get_cloudkit_ops())
+                .map_err(bootstrap_error_to_bridge)?;
+        Ok(Arc::new(AppHandle { app }))
     }
 
     #[cfg(not(feature = "desktop"))]
@@ -75,7 +84,8 @@ pub fn init_app(
         runtime,
         services,
         ui_event_bus,
-    } = bootstrap(library_id, position_update_interval_ms).map_err(bootstrap_error_to_bridge)?;
+    } = bootstrap(library_id, position_update_interval_ms, get_cloudkit_ops())
+        .map_err(bootstrap_error_to_bridge)?;
 
     #[cfg(not(feature = "desktop"))]
     Ok(Arc::new(AppHandle {

@@ -35,8 +35,10 @@ impl std::error::Error for DesktopMcpConfigError {}
 pub fn bootstrap(
     library_id: String,
     position_update_interval_ms: u32,
+    cloudkit_ops: Option<bae_core::CloudKitOpsRef>,
 ) -> Result<DesktopApp, BootstrapError> {
-    bootstrap_core(library_id, position_update_interval_ms).map(DesktopApp::from_running_app)
+    bootstrap_core(library_id, position_update_interval_ms, cloudkit_ops)
+        .map(DesktopApp::from_running_app)
 }
 
 impl DesktopApp {

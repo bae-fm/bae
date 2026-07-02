@@ -461,12 +461,15 @@ impl coven::CloudHome for MockCloudHome {
 
     async fn grant_access(
         &self,
-        _member_id: &str,
+        _grant: coven::CloudAccessGrant,
     ) -> Result<coven::CloudHomeJoinInfo, coven::CloudHomeError> {
         unimplemented!("grant_access not used by storage transition tests")
     }
 
-    async fn revoke_access(&self, _member_id: &str) -> Result<(), coven::CloudHomeError> {
+    async fn revoke_access(
+        &self,
+        _revoke: coven::CloudAccessRevoke,
+    ) -> Result<(), coven::CloudHomeError> {
         unimplemented!("revoke_access not used by storage transition tests")
     }
 }

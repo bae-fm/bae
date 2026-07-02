@@ -1366,17 +1366,33 @@ mod tests {
         let library_path = tmp.path().join("libraries").join("restored-lib-abc-123");
         let library_id = "restored-lib-abc-123";
 
-        let coven_config = coven::Config::with_defaults(
+        let mut coven_config = coven::Config::with_defaults(
             library_id.to_string(),
             "restored-device".to_string(),
             LibraryDir::new(library_path.clone()),
             "Test Library".to_string(),
         );
+        coven_config.cloud_home.provider = Some(CloudProvider::CloudKit);
+        coven_config.cloud_home.cloudkit_share_url = Some("https://icloud.com/share".to_string());
+        coven_config.cloud_home.cloudkit_owner_name = Some("_owner".to_string());
+        coven_config.cloud_home.cloudkit_zone_name = Some("bae-library".to_string());
         let config = Config::from_coven(coven_config);
 
         assert_eq!(config.library_id, library_id);
         assert_eq!(config.library_name, "Test Library");
         assert_eq!(config.mcp, McpConfig::disabled_default());
+        assert_eq!(
+            config.cloud_home.cloudkit_share_url.as_deref(),
+            Some("https://icloud.com/share")
+        );
+        assert_eq!(
+            config.cloud_home.cloudkit_owner_name.as_deref(),
+            Some("_owner")
+        );
+        assert_eq!(
+            config.cloud_home.cloudkit_zone_name.as_deref(),
+            Some("bae-library")
+        );
 
         config.save_to_config_yaml().unwrap();
 
@@ -1386,5 +1402,17 @@ mod tests {
         .unwrap();
         assert_eq!(yaml.library_id, library_id);
         assert_eq!(yaml.mcp, McpConfig::disabled_default());
+        assert_eq!(
+            yaml.cloud_home.cloudkit_share_url.as_deref(),
+            Some("https://icloud.com/share")
+        );
+        assert_eq!(
+            yaml.cloud_home.cloudkit_owner_name.as_deref(),
+            Some("_owner")
+        );
+        assert_eq!(
+            yaml.cloud_home.cloudkit_zone_name.as_deref(),
+            Some("bae-library")
+        );
     }
 }

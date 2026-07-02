@@ -9,11 +9,51 @@ use crate::types::CloudKitError;
 /// Synchronous CloudKit operations, implemented in Swift via UniFFI callback.
 #[uniffi::export(callback_interface)]
 pub trait CloudKitDriver: Send + Sync {
-    fn write_record(&self, key: String, data: Vec<u8>) -> Result<(), CloudKitError>;
-    fn read_record(&self, key: String) -> Result<Vec<u8>, CloudKitError>;
-    fn list_records(&self, prefix: String) -> Result<Vec<String>, CloudKitError>;
-    fn delete_record(&self, key: String) -> Result<(), CloudKitError>;
-    fn record_exists(&self, key: String) -> Result<bool, CloudKitError>;
+    fn write_record(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+        key: String,
+        data: Vec<u8>,
+    ) -> Result<(), CloudKitError>;
+    fn read_record(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+        key: String,
+    ) -> Result<Vec<u8>, CloudKitError>;
+    fn list_records(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+        prefix: String,
+    ) -> Result<Vec<String>, CloudKitError>;
+    fn delete_record(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+        key: String,
+    ) -> Result<(), CloudKitError>;
+    fn record_exists(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+        key: String,
+    ) -> Result<bool, CloudKitError>;
+    fn grant_share(
+        &self,
+        member_pubkey: String,
+        email: String,
+    ) -> Result<BridgeCloudKitShare, CloudKitError>;
+    fn revoke_share(&self, member_pubkey: String, email: String) -> Result<(), CloudKitError>;
+    fn accept_share(&self, share_url: String) -> Result<BridgeCloudKitShare, CloudKitError>;
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCloudKitShare {
+    pub share_url: String,
+    pub owner_name: String,
+    pub zone_name: String,
 }
 
 /// Adapts a UniFFI `CloudKitDriver` callback to `CloudKitOps` (bae-core).
@@ -22,34 +62,102 @@ struct CloudKitDriverAdapter {
 }
 
 impl coven::CloudKitOps for CloudKitDriverAdapter {
-    fn write_record(&self, key: &str, data: Vec<u8>) -> Result<(), coven::CloudHomeError> {
+    fn write_record(
+        &self,
+        scope: &coven::CloudKitScope,
+        key: &str,
+        data: Vec<u8>,
+    ) -> Result<(), coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
         self.driver
-            .write_record(key.to_string(), data)
+            .write_record(owner_name, zone_name, key.to_string(), data)
             .map_err(cloudkit_err_to_cloud_home_err)
     }
 
-    fn read_record(&self, key: &str) -> Result<Vec<u8>, coven::CloudHomeError> {
+    fn read_record(
+        &self,
+        scope: &coven::CloudKitScope,
+        key: &str,
+    ) -> Result<Vec<u8>, coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
         self.driver
-            .read_record(key.to_string())
+            .read_record(owner_name, zone_name, key.to_string())
             .map_err(cloudkit_err_to_cloud_home_err)
     }
 
-    fn list_records(&self, prefix: &str) -> Result<Vec<String>, coven::CloudHomeError> {
+    fn list_records(
+        &self,
+        scope: &coven::CloudKitScope,
+        prefix: &str,
+    ) -> Result<Vec<String>, coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
         self.driver
-            .list_records(prefix.to_string())
+            .list_records(owner_name, zone_name, prefix.to_string())
             .map_err(cloudkit_err_to_cloud_home_err)
     }
 
-    fn delete_record(&self, key: &str) -> Result<(), coven::CloudHomeError> {
+    fn delete_record(
+        &self,
+        scope: &coven::CloudKitScope,
+        key: &str,
+    ) -> Result<(), coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
         self.driver
-            .delete_record(key.to_string())
+            .delete_record(owner_name, zone_name, key.to_string())
             .map_err(cloudkit_err_to_cloud_home_err)
     }
 
-    fn record_exists(&self, key: &str) -> Result<bool, coven::CloudHomeError> {
+    fn record_exists(
+        &self,
+        scope: &coven::CloudKitScope,
+        key: &str,
+    ) -> Result<bool, coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
         self.driver
-            .record_exists(key.to_string())
+            .record_exists(owner_name, zone_name, key.to_string())
             .map_err(cloudkit_err_to_cloud_home_err)
+    }
+
+    fn grant_share(
+        &self,
+        member_pubkey: &str,
+        email: &str,
+    ) -> Result<coven::CloudKitShare, coven::CloudHomeError> {
+        self.driver
+            .grant_share(member_pubkey.to_string(), email.to_string())
+            .map(bridge_share_to_coven)
+            .map_err(cloudkit_err_to_cloud_home_err)
+    }
+
+    fn revoke_share(&self, member_pubkey: &str, email: &str) -> Result<(), coven::CloudHomeError> {
+        self.driver
+            .revoke_share(member_pubkey.to_string(), email.to_string())
+            .map_err(cloudkit_err_to_cloud_home_err)
+    }
+
+    fn accept_share(&self, share_url: &str) -> Result<coven::CloudKitShare, coven::CloudHomeError> {
+        self.driver
+            .accept_share(share_url.to_string())
+            .map(bridge_share_to_coven)
+            .map_err(cloudkit_err_to_cloud_home_err)
+    }
+}
+
+fn scope_fields(scope: &coven::CloudKitScope) -> (Option<String>, Option<String>) {
+    match scope {
+        coven::CloudKitScope::Private => (None, None),
+        coven::CloudKitScope::Shared {
+            owner_name,
+            zone_name,
+        } => (Some(owner_name.clone()), Some(zone_name.clone())),
+    }
+}
+
+fn bridge_share_to_coven(share: BridgeCloudKitShare) -> coven::CloudKitShare {
+    coven::CloudKitShare {
+        share_url: share.share_url,
+        owner_name: share.owner_name,
+        zone_name: share.zone_name,
     }
 }
 

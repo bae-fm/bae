@@ -1459,6 +1459,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),
+        None,
     )
     .expect("open library manager");
     if storage_mode == StorageMode::Remote {
