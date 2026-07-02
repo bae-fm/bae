@@ -266,7 +266,7 @@ pub unsafe extern "C" fn bae_init(
         tracing::error!("bae_init: null or non-UTF-8 library_id");
         return std::ptr::null_mut();
     };
-    match bae_desktop::bootstrap(library_id, position_update_interval_ms) {
+    match bae_desktop::bootstrap(library_id, position_update_interval_ms, None) {
         Ok(app) => Box::into_raw(Box::new(BaeHandle(app))),
         Err(e) => {
             tracing::error!("bae_init failed: {e}");
@@ -4476,7 +4476,7 @@ pub unsafe extern "C" fn bae_invite_member(
     match app.runtime.block_on(
         app.services
             .library_manager()
-            .invite_member(&public_key_hex),
+            .invite_member(&public_key_hex, None),
     ) {
         Ok(code) => error_cstring(&code),
         Err(e) => {

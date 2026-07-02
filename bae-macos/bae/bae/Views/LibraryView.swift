@@ -847,9 +847,13 @@ private struct WorkDetailView: View {
     private func workReleaseMetadata(
         _ release: BridgeWorkReleaseSummary
     ) -> String {
-        [release.displayName, release.format]
-            .compactMap { $0 }
-            .filter { !$0.isEmpty }
-            .joined(separator: " \u{00B7} ")
+        precondition(
+            !release.displayName.isEmpty,
+            "work release display name is empty for \(release.releaseId)"
+        )
+        if let format = release.format, !format.isEmpty {
+            return "\(release.displayName) \u{00B7} \(format)"
+        }
+        return release.displayName
     }
 }

@@ -1,10 +1,11 @@
 package fm.bae.app.ui
 
+import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
@@ -54,9 +55,7 @@ internal fun LibraryBrowser(
     val syncError by session.configStore.syncError.collectAsState()
     val appError by session.configStore.error.collectAsState()
     val gridState = rememberLazyGridState()
-    val libraryActionFailed = stringResource(R.string.library_load_failed)
-    val page = rememberLibraryPage(session, generation, sortCriterion, LocalContext.current, gridState)
-    val composerPage = rememberComposerPage(session, composerGeneration, composerSortCriterion, LocalContext.current)
+    val appContext = LocalContext.current
 
     Column(modifier = Modifier.fillMaxSize()) {
         LibraryBrowserChrome(
@@ -75,29 +74,160 @@ internal fun LibraryBrowser(
             composerSortCriterion = composerSortCriterion,
             onComposerSortChange = { composerSortCriterion = it },
             syncing = syncing,
-            onShuffleLibrary = {
-                try {
-                    session.appHandle.playLibraryShuffled()
-                } catch (e: Exception) {
-                    logger.error("playLibraryShuffled failed", e)
-                    session.configStore.showError(libraryActionFailed)
-                }
-            },
+            onShuffleLibrary = { session.playLibraryShuffledOrReport(appContext) },
             onSettings = onSettings,
         )
-        LibraryErrorBanner(page = page, appError = appError, syncError = syncError, session = session)
         LibraryBrowserContent(
+            modifier = Modifier.fillMaxWidth().weight(1f),
             session = session,
             searchQuery = searchQuery,
             mode = mode,
-            page = page,
-            composerPage = composerPage,
+            generation = generation,
+            composerGeneration = composerGeneration,
+            sortCriterion = sortCriterion,
+            composerSortCriterion = composerSortCriterion,
+            appError = appError,
+            syncError = syncError,
             gridState = gridState,
             onSelectAlbum = onSelectAlbum,
             onSelectComposer = onSelectComposer,
             onSelectWork = onSelectWork,
+            appContext = appContext,
         )
         NowPlayingBar(session = session)
+    }
+}
+
+private fun OpenLibrary.playLibraryShuffledOrReport(appContext: Context) {
+    try {
+        appHandle.playLibraryShuffled()
+    } catch (e: Exception) {
+        logger.error("playLibraryShuffled failed", e)
+        configStore.showError(appContext.getString(R.string.library_load_failed))
+    }
+}
+
+@Composable
+private fun LibraryBrowserContent(
+    modifier: Modifier,
+    session: OpenLibrary,
+    searchQuery: String,
+    mode: LibraryBrowserMode,
+    generation: Long,
+    composerGeneration: Long,
+    sortCriterion: BridgeSortCriterion,
+    composerSortCriterion: BridgeComposerSortCriterion,
+    appError: String?,
+    syncError: String?,
+    gridState: LazyGridState,
+    onSelectAlbum: (String) -> Unit,
+    onSelectComposer: (String) -> Unit,
+    onSelectWork: (String) -> Unit,
+    appContext: Context,
+) {
+    Box(modifier = modifier) {
+        if (searchQuery.isNotBlank()) {
+            SearchResultsScreen(
+                session = session,
+                query = searchQuery,
+                onSelectAlbum = onSelectAlbum,
+                onSelectComposer = onSelectComposer,
+                onSelectWork = onSelectWork,
+            )
+        } else {
+            when (mode) {
+                LibraryBrowserMode.ALBUMS -> {
+                    AlbumBrowserContent(
+                        session = session,
+                        generation = generation,
+                        sortCriterion = sortCriterion,
+                        appError = appError,
+                        syncError = syncError,
+                        gridState = gridState,
+                        onSelectAlbum = onSelectAlbum,
+                        appContext = appContext,
+                    )
+                }
+
+                LibraryBrowserMode.COMPOSERS -> {
+                    ComposerBrowserContent(
+                        session = session,
+                        generation = composerGeneration,
+                        sortCriterion = composerSortCriterion,
+                        appError = appError,
+                        syncError = syncError,
+                        onSelectComposer = onSelectComposer,
+                        appContext = appContext,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlbumBrowserContent(
+    session: OpenLibrary,
+    generation: Long,
+    sortCriterion: BridgeSortCriterion,
+    appError: String?,
+    syncError: String?,
+    gridState: LazyGridState,
+    onSelectAlbum: (String) -> Unit,
+    appContext: Context,
+) {
+    val page =
+        rememberLibraryPage(
+            session = session,
+            generation = generation,
+            sortCriterion = sortCriterion,
+            appContext = appContext,
+            gridState = gridState,
+        )
+    Column(modifier = Modifier.fillMaxSize()) {
+        LibraryErrorBanner(
+            page = page,
+            appError = appError,
+            syncError = syncError,
+            session = session,
+        )
+        LibraryGridContent(
+            session = session,
+            page = page,
+            gridState = gridState,
+            onSelectAlbum = onSelectAlbum,
+        )
+    }
+}
+
+@Composable
+private fun ComposerBrowserContent(
+    session: OpenLibrary,
+    generation: Long,
+    sortCriterion: BridgeComposerSortCriterion,
+    appError: String?,
+    syncError: String?,
+    onSelectComposer: (String) -> Unit,
+    appContext: Context,
+) {
+    val page =
+        rememberComposerPage(
+            session = session,
+            generation = generation,
+            sortCriterion = sortCriterion,
+            appContext = appContext,
+        )
+    Column(modifier = Modifier.fillMaxSize()) {
+        LibraryGlobalErrorBanner(
+            appError = appError,
+            syncError = syncError,
+            session = session,
+        )
+        ComposerListContent(
+            page = page,
+            loadImage = session.library::imageBytes,
+            onSelectComposer = onSelectComposer,
+        )
     }
 }
 
@@ -143,49 +273,5 @@ private fun LibraryBrowserChrome(
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surface,
         )
-    }
-}
-
-@Composable
-private fun ColumnScope.LibraryBrowserContent(
-    session: OpenLibrary,
-    searchQuery: String,
-    mode: LibraryBrowserMode,
-    page: LibraryPage,
-    composerPage: ComposerPage,
-    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
-    onSelectAlbum: (String) -> Unit,
-    onSelectComposer: (String) -> Unit,
-    onSelectWork: (String) -> Unit,
-) {
-    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-        if (searchQuery.isNotBlank()) {
-            SearchResultsScreen(
-                session = session,
-                query = searchQuery,
-                onSelectAlbum = onSelectAlbum,
-                onSelectComposer = onSelectComposer,
-                onSelectWork = onSelectWork,
-            )
-        } else {
-            when (mode) {
-                LibraryBrowserMode.ALBUMS -> {
-                    LibraryGridContent(
-                        session = session,
-                        page = page,
-                        gridState = gridState,
-                        onSelectAlbum = onSelectAlbum,
-                    )
-                }
-
-                LibraryBrowserMode.COMPOSERS -> {
-                    ComposerListContent(
-                        page = composerPage,
-                        loadImage = session.library::imageBytes,
-                        onSelectComposer = onSelectComposer,
-                    )
-                }
-            }
-        }
     }
 }

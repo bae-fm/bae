@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
@@ -229,4 +229,18 @@
   <data name="settings.automation.token_unavailable" xml:space="preserve"><value>Token MCP není k dispozici</value></data>
   <data name="settings.automation.token_copied" xml:space="preserve"><value>token zkopírován</value></data>
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>token obměněn a zkopírován</value></data>
+  <data name="sort.name" xml:space="preserve"><value>name</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>Albums</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>Composers</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>No composers</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>Albums</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>Tracks</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>Composers</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>Works</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>Releases</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>Credits</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>Recordings</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
 </root>

@@ -70,6 +70,7 @@ private sealed interface AddDeviceStep {
     data class Confirm(
         val pubkey: String,
         val fingerprint: String,
+        val providerAccountEmail: String?,
     ) : AddDeviceStep
 
     /** Approving — calling the bridge to mint the invite code. */
@@ -110,7 +111,7 @@ private class AddDeviceModel(
         error = null
         try {
             val request = decodeJoinRequest(code)
-            step = AddDeviceStep.Confirm(request.pubkey, request.fingerprint)
+            step = AddDeviceStep.Confirm(request.pubkey, request.fingerprint, request.email)
         } catch (e: Exception) {
             logger.error("Failed to decode join request", e)
             error = e.message ?: appContext.getString(R.string.members_add_decode_failed)
@@ -121,7 +122,12 @@ private class AddDeviceModel(
         step = AddDeviceStep.Inviting
         val inviteCode =
             try {
-                withContext(Dispatchers.IO) { session.appHandle.inviteMember(device.pubkey) }
+                withContext(Dispatchers.IO) {
+                    session.appHandle.inviteMember(
+                        publicKeyHex = device.pubkey,
+                        providerAccountEmail = device.providerAccountEmail,
+                    )
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

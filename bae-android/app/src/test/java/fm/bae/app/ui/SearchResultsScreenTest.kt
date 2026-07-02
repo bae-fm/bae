@@ -34,19 +34,4 @@ class SearchResultsScreenTest {
                 ).hasNoResults(),
         )
     }
-
-    @Test
-    fun workDetailFixtureCarriesReleaseRows() {
-        val release =
-            BridgeFixtures.workReleaseSummary(
-                releaseId = "rel-2",
-                albumId = "alb-2",
-            )
-        val detail = BridgeFixtures.workDetail(releases = listOf(release))
-
-        assertFalse(detail.releases.isEmpty())
-        assertTrue(detail.releases.any { it.releaseId == "rel-2" })
-        assertTrue(detail.releases.any { it.albumId == "alb-2" })
-        assertTrue(detail.releases.any { it.albumTitle == "Album Title" })
-    }
 }

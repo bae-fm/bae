@@ -578,7 +578,7 @@ fn bootstrap_registered_library(id: String) -> Result<RunningApp, CliError> {
     let config = Config::load_registered_library(&id, &coven::UuidProvider)
         .map_err(|e| CliError::Config(e.to_string()))?;
     require_unlocked_for_headless(&config)?;
-    bootstrap(id, 1000).map_err(bootstrap_error)
+    bootstrap(id, 1000, None).map_err(bootstrap_error)
 }
 
 fn require_unlocked_for_headless(config: &Config) -> Result<(), CliError> {

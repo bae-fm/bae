@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using Microsoft.UI.Xaml.Media;
 
@@ -26,6 +27,13 @@ public sealed class TrackSearchResult
 
 public sealed class ComposerSummary
 {
+    [SetsRequiredMembers]
+    public ComposerSummary()
+    {
+        ArtistId = string.Empty;
+        Name = string.Empty;
+    }
+
     public required string ArtistId { get; set; }
     public required string Name { get; set; }
     public string? SortName { get; set; }

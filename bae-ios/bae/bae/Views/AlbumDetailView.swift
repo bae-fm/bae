@@ -37,10 +37,25 @@ struct AlbumDetailView: View {
 
     var body: some View {
         Group {
-            if let summary = libraryStore.albumSummaries[albumId] {
+            if let context {
+                if let releaseId = selectedReleaseId,
+                    let detail = libraryStore.releaseDetails[releaseId]
+                {
+                    content(
+                        display: AlbumDetailDisplay(context: context),
+                        releasePickerSummary: nil,
+                        releaseId: releaseId,
+                        detail: detail
+                    )
+                }
+                else {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            else if let summary = libraryStore.albumSummaries[albumId] {
                 let releaseId = activeReleaseId(summary: summary)
-                let detail = releaseId.flatMap { libraryStore.releaseDetails[$0] }
-                if let releaseId, let detail {
+                if let detail = libraryStore.releaseDetails[releaseId] {
                     content(
                         display: AlbumDetailDisplay(summary: summary),
                         releasePickerSummary: summary,
@@ -52,17 +67,6 @@ struct AlbumDetailView: View {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-            }
-            else if let releaseId = selectedReleaseId,
-                let detail = libraryStore.releaseDetails[releaseId],
-                let context
-            {
-                content(
-                    display: AlbumDetailDisplay(context: context),
-                    releasePickerSummary: nil,
-                    releaseId: releaseId,
-                    detail: detail
-                )
             }
             else {
                 ProgressView()
@@ -76,6 +80,15 @@ struct AlbumDetailView: View {
             NowPlayingBar()
         }
         .task(id: albumId) {
+            if context != nil {
+                if let releaseId = selectedReleaseId {
+                    await libraryStore.loadReleaseDetail(
+                        releaseId: releaseId,
+                        library: library
+                    )
+                }
+                return
+            }
             // Eagerly load detail for every release so the picker has labels
             // and switching releases doesn't flash a spinner. N is typically
             // 1-3. Bail on cancellation (the user navigated away).
@@ -150,9 +163,6 @@ struct AlbumDetailView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(summary.releaseIds, id: \.self) { id in
-                    let label =
-                        libraryStore.releaseDetails[id]?.displayName
-                        ?? String(localized: "Release")
                     Button {
                         selectedReleaseId = id
                         Task {
@@ -162,19 +172,27 @@ struct AlbumDetailView: View {
                             )
                         }
                     } label: {
-                        Text(label)
-                            .font(.callout)
-                            .lineLimit(1)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(
-                                        id == activeReleaseId(summary: summary)
-                                            ? Theme.accentSoft
-                                            : Theme.surfaceElevated
-                                    )
-                            )
+                        Group {
+                            if let label = libraryStore.releaseDetails[id]?.displayName {
+                                Text(label)
+                                    .font(.callout)
+                                    .lineLimit(1)
+                            }
+                            else {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(
+                                    id == activeReleaseId(summary: summary)
+                                        ? Theme.accentSoft
+                                        : Theme.surfaceElevated
+                                )
+                        )
                     }
                     .buttonStyle(.plain)
                 }
@@ -182,15 +200,16 @@ struct AlbumDetailView: View {
         }
     }
 
-    /// The active release: explicit selection → primary → first.
-    private func activeReleaseId(summary: AlbumSummary) -> String? {
+    /// The active release: explicit selection, otherwise the album's primary release.
+    private func activeReleaseId(summary: AlbumSummary) -> String {
         if let id = selectedReleaseId, summary.releaseIds.contains(id) {
             return id
         }
-        if summary.releaseIds.contains(summary.primaryReleaseId) {
-            return summary.primaryReleaseId
-        }
-        return summary.releaseIds.first
+        precondition(
+            summary.releaseIds.contains(summary.primaryReleaseId),
+            "primaryReleaseId missing from releaseIds for album \(summary.id)"
+        )
+        return summary.primaryReleaseId
     }
 }
 

@@ -175,7 +175,10 @@ internal fun ComposerListContent(
         else -> {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(page.order, key = { it }) { artistId ->
-                    val composer = page.composers[artistId] ?: return@items
+                    val composer =
+                        checkNotNull(page.composers[artistId]) {
+                            "composer page order referenced missing composer: $artistId"
+                        }
                     ComposerSummaryRow(
                         composer = composer,
                         loadImage = loadImage,
@@ -256,13 +259,13 @@ internal fun ComposerSortMenu(
 internal fun ComposerSummaryRow(
     composer: BridgeComposerSummary,
     loadImage: suspend (imageId: String) -> ByteArray?,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
 ) {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

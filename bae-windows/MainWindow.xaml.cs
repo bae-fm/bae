@@ -3123,7 +3123,7 @@ public sealed partial class MainWindow : Window
         SearchResultsPanel.Children.Add(new TextBlock
         {
             Text = title,
-            Style = (Style)Resources["SubtitleTextBlockStyle"],
+            Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
         });
         foreach (var row in rows)
         {
@@ -3262,7 +3262,7 @@ public sealed partial class MainWindow : Window
         ComposerDetailPane.Children.Add(new TextBlock
         {
             Text = detail.Composer.Name,
-            Style = (Style)Resources["TitleTextBlockStyle"],
+            Style = (Style)Application.Current.Resources["TitleTextBlockStyle"],
         });
         if (detail.WorkGroups.Count > 0)
         {
@@ -3310,7 +3310,7 @@ public sealed partial class MainWindow : Window
         ComposerDetailPane.Children.Add(new TextBlock
         {
             Text = title,
-            Style = (Style)Resources["SubtitleTextBlockStyle"],
+            Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
         });
     }
 
@@ -3371,7 +3371,7 @@ public sealed partial class MainWindow : Window
         ComposerDetailPane.Children.Add(new TextBlock
         {
             Text = detail.Work.Title,
-            Style = (Style)Resources["TitleTextBlockStyle"],
+            Style = (Style)Application.Current.Resources["TitleTextBlockStyle"],
         });
         if (detail.ChildWorks.Count > 0)
         {

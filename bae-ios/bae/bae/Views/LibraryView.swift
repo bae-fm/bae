@@ -81,10 +81,10 @@ struct LibraryView: View {
                     ComposerDetailScreen(
                         artistId: artistId,
                         openWork: { routePath.append(.work($0)) },
-                        openAlbum: {
+                        openAlbum: { albumId, releaseId in
                             routePath.appendAlbum(
-                                albumId: $0,
-                                initialReleaseId: nil,
+                                albumId: albumId,
+                                initialReleaseId: releaseId,
                                 context: nil
                             )
                         }
@@ -461,7 +461,7 @@ private struct LibraryContentView: View {
             AlbumGrid(list: albumList, onSelect: onSelectAlbum)
                 .refreshable {
                     sync.triggerSync()
-                    try? await Task.sleep(for: .seconds(0.9))
+                    await settleAfterRefresh()
                 }
         }
         else {
@@ -476,12 +476,22 @@ private struct LibraryContentView: View {
             ComposerListView(list: composerList, onSelect: onSelectComposer)
                 .refreshable {
                     sync.triggerSync()
-                    try? await Task.sleep(for: .seconds(0.9))
+                    await settleAfterRefresh()
                 }
         }
         else {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func settleAfterRefresh() async {
+        do {
+            try await Task.sleep(for: .seconds(0.9))
+        }
+        catch is CancellationError {}
+        catch {
+            preconditionFailure("Unexpected refresh sleep error: \(error)")
         }
     }
 }
@@ -693,7 +703,7 @@ private struct ComposerSummaryRow: View {
 private struct ComposerDetailScreen: View {
     let artistId: String
     let openWork: (String) -> Void
-    let openAlbum: (String) -> Void
+    let openAlbum: (String, String) -> Void
 
     @Environment(Library.self)
     private var library
@@ -722,11 +732,21 @@ private struct ComposerDetailScreen: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle(detail?.composer.name ?? String(localized: "Composers"))
+        .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: artistId) {
             await load()
         }
+    }
+
+    private var navigationTitle: String {
+        if let detail {
+            return detail.composer.name
+        }
+        if error != nil {
+            return String(localized: "Composers")
+        }
+        return ""
     }
 
     private func load() async {
@@ -755,7 +775,7 @@ private struct ComposerDetailScreen: View {
 private struct ComposerDetailContent: View {
     let detail: BridgeComposerDetail
     let openWork: (String) -> Void
-    let openAlbum: (String) -> Void
+    let openAlbum: (String, String) -> Void
 
     var body: some View {
         List {
@@ -779,7 +799,7 @@ private struct ComposerDetailContent: View {
                     ForEach(detail.unlinkedReleaseRoles, id: \.releaseId) {
                         role in
                         Button {
-                            openAlbum(role.albumId)
+                            openAlbum(role.albumId, role.releaseId)
                         } label: {
                             TwoLineRow(
                                 title: role.albumTitle,
@@ -836,11 +856,21 @@ private struct WorkDetailScreen: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle(detail?.work.title ?? String(localized: "Works"))
+        .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: workId) {
             await load()
         }
+    }
+
+    private var navigationTitle: String {
+        if let detail {
+            return detail.work.title
+        }
+        if error != nil {
+            return String(localized: "Works")
+        }
+        return ""
     }
 
     private func load() async {
@@ -919,10 +949,14 @@ private struct WorkDetailContent: View {
     private func workReleaseMetadata(
         _ release: BridgeWorkReleaseSummary
     ) -> String {
-        [release.displayName, release.format]
-            .compactMap { $0 }
-            .filter { !$0.isEmpty }
-            .joined(separator: " \u{00B7} ")
+        precondition(
+            !release.displayName.isEmpty,
+            "work release display name is empty for \(release.releaseId)"
+        )
+        if let format = release.format, !format.isEmpty {
+            return "\(release.displayName) \u{00B7} \(format)"
+        }
+        return release.displayName
     }
 }
 

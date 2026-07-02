@@ -1008,8 +1008,7 @@ mod tests {
     /// demand. Dropping the buffer's last strong ref frees it, and the buffer's
     /// `Drop` wakes the parked fill so the task exits — releasing its clone of
     /// the wake handle. Sabotage either half — `start_reading` keeping a strong
-    /// ref, or removing the `Drop` wake — and an assertion fails. Yields, not a
-    /// timer, advance the single-threaded test runtime.
+    /// ref, or removing the `Drop` wake — and an assertion fails.
     #[tokio::test]
     async fn start_reading_fill_follows_the_buffer_and_exits_when_it_is_dropped() {
         let source_size = 4 * WINDOW;
@@ -1045,14 +1044,13 @@ mod tests {
         // parked fill, which upgrades to None and exits, dropping its wake clone.
         drop(buffer);
         assert!(weak.upgrade().is_none(), "the buffer must be freed");
-        for _ in 0..20 {
-            tokio::task::yield_now().await;
-        }
-        assert_eq!(
-            Arc::strong_count(&wake),
-            1,
-            "the parked fill task must exit when the buffer is dropped, not leak"
-        );
+        timeout(Duration::from_secs(5), async {
+            while Arc::strong_count(&wake) != 1 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("the parked fill task must exit when the buffer is dropped, not leak");
     }
 
     /// A reader blocked at the seek target unblocks as soon as that target's

@@ -51,7 +51,7 @@ internal fun ComposerDetailScreen(
     artistId: String,
     onBack: () -> Unit,
     onSelectWork: (String) -> Unit,
-    onSelectAlbum: (String) -> Unit,
+    onSelectAlbum: (String, String) -> Unit,
 ) {
     var detail by remember(artistId) { mutableStateOf<BridgeComposerDetail?>(null) }
     var loadError by remember(artistId) { mutableStateOf<String?>(null) }
@@ -107,14 +107,14 @@ private fun ComposerDetailContent(
     detail: BridgeComposerDetail,
     loadImage: suspend (imageId: String) -> ByteArray?,
     onSelectWork: (String) -> Unit,
-    onSelectAlbum: (String) -> Unit,
+    onSelectAlbum: (String, String) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             ComposerSummaryRow(
                 composer = detail.composer,
                 loadImage = loadImage,
-                onClick = {},
+                onClick = null,
             )
         }
         if (detail.workGroups.isNotEmpty()) {
@@ -146,7 +146,7 @@ private fun ComposerDetailContent(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .clickable { onSelectAlbum(role.albumId) }
+                            .clickable { onSelectAlbum(role.albumId, role.releaseId) }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
@@ -227,7 +227,7 @@ private fun WorkDetailContent(
     onSelectAlbum: (String, String) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item { WorkSummaryRow(work = detail.work, loadImage = loadImage, onClick = {}) }
+        item { WorkSummaryRow(work = detail.work, loadImage = loadImage, onClick = null) }
         if (detail.childWorks.isNotEmpty()) {
             item { LibrarySectionHeader(stringResource(R.string.search_section_works)) }
             items(detail.childWorks, key = { it.workId }) { work ->
@@ -273,21 +273,26 @@ private fun WorkDetailContent(
 }
 
 private fun workReleaseMetadata(release: BridgeWorkReleaseSummary): String =
-    listOfNotNull(release.displayName, release.format)
-        .filter { it.isNotEmpty() }
-        .joinToString(" · ")
+    if (release.format.isNullOrEmpty()) {
+        check(release.displayName.isNotEmpty()) {
+            "work release display name is empty for ${release.releaseId}"
+        }
+        release.displayName
+    } else {
+        "${release.displayName} · ${release.format}"
+    }
 
 @Composable
 private fun WorkSummaryRow(
     work: BridgeWorkSummary,
     loadImage: suspend (imageId: String) -> ByteArray?,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
 ) {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

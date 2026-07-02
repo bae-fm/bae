@@ -3,9 +3,7 @@ package fm.bae.app
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
-import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerSummary
-import uniffi.bae_bridge.BridgeComposerWorkGroup
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeExportLocation
@@ -16,10 +14,7 @@ import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
-import uniffi.bae_bridge.BridgeWorkDetail
-import uniffi.bae_bridge.BridgeWorkReleaseSummary
 import uniffi.bae_bridge.BridgeWorkSummary
-import uniffi.bae_bridge.BridgeWorkTrackSummary
 
 /**
  * Plain `Bridge*` data-class constructors for the JVM unit tests. These build
@@ -132,67 +127,6 @@ object BridgeFixtures {
             linkedReleaseCount = 1L,
             representativeReleaseId = "rel-1",
             representativeCover = null,
-        )
-
-    fun composerWorkGroup(
-        id: String = "group-1",
-        parent: BridgeWorkSummary? = null,
-        works: List<BridgeWorkSummary> = listOf(workSummary()),
-    ): BridgeComposerWorkGroup =
-        BridgeComposerWorkGroup(
-            id = id,
-            parent = parent,
-            works = works,
-        )
-
-    fun composerDetail(
-        composer: BridgeComposerSummary = composerSummary(),
-        workGroups: List<BridgeComposerWorkGroup> = listOf(composerWorkGroup()),
-    ): BridgeComposerDetail =
-        BridgeComposerDetail(
-            composer = composer,
-            workGroups = workGroups,
-            unlinkedReleaseRoles = emptyList(),
-            unlinkedTrackRoles = emptyList(),
-            defaultWorkId = null,
-        )
-
-    fun workReleaseSummary(
-        releaseId: String = "rel-1",
-        albumId: String = "alb-1",
-    ): BridgeWorkReleaseSummary =
-        BridgeWorkReleaseSummary(
-            releaseId = releaseId,
-            albumId = albumId,
-            albumTitle = "Album Title",
-            displayName = "Release",
-            format = "Format",
-            cover = null,
-        )
-
-    fun workTrackSummary(
-        trackId: String = "trk-1",
-        releaseId: String = "rel-1",
-        albumId: String = "alb-1",
-    ): BridgeWorkTrackSummary =
-        BridgeWorkTrackSummary(
-            trackId = trackId,
-            trackTitle = "Track Title",
-            releaseId = releaseId,
-            albumId = albumId,
-            albumTitle = "Album Title",
-        )
-
-    fun workDetail(
-        work: BridgeWorkSummary = workSummary(),
-        releases: List<BridgeWorkReleaseSummary> = listOf(workReleaseSummary()),
-        tracks: List<BridgeWorkTrackSummary> = listOf(workTrackSummary()),
-    ): BridgeWorkDetail =
-        BridgeWorkDetail(
-            work = work,
-            childWorks = emptyList(),
-            releases = releases,
-            tracks = tracks,
         )
 
     fun searchResults(

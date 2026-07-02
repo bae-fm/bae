@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -35,7 +34,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,7 +43,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -60,7 +57,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -75,7 +71,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeComposerSortCriterion
-import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
@@ -100,6 +95,24 @@ private data class AlbumTarget(
     val albumId: String,
     val initialReleaseId: String? = null,
 )
+
+private sealed interface LibraryDestination {
+    data class Album(
+        val target: AlbumTarget,
+    ) : LibraryDestination
+
+    data class Work(
+        val workId: String,
+    ) : LibraryDestination
+
+    data class Composer(
+        val artistId: String,
+    ) : LibraryDestination
+
+    data object Members : LibraryDestination
+
+    data object Settings : LibraryDestination
+}
 
 /**
  * Loads and accumulates the album grid one page at a time. Owns the loaded
@@ -207,65 +220,62 @@ fun LibraryScreen(
     session: OpenLibrary,
     onLeaveLibrary: () -> Unit,
 ) {
-    var selectedAlbum by remember { mutableStateOf<AlbumTarget?>(null) }
-    var selectedComposerId by remember { mutableStateOf<String?>(null) }
-    var selectedWorkId by remember { mutableStateOf<String?>(null) }
-    var showSettings by remember { mutableStateOf(false) }
-    var showMembers by remember { mutableStateOf(false) }
-    val selected = selectedAlbum
-    when {
-        selected != null -> {
+    var destination by remember { mutableStateOf<LibraryDestination?>(null) }
+    when (val activeDestination = destination) {
+        is LibraryDestination.Album -> {
+            val selected = activeDestination.target
             AlbumDetailScreen(
                 session = session,
                 albumId = selected.albumId,
                 initialReleaseId = selected.initialReleaseId,
-                onBack = { selectedAlbum = null },
+                onBack = { destination = null },
             )
         }
 
-        selectedWorkId != null -> {
-            val workId = selectedWorkId ?: return
+        is LibraryDestination.Work -> {
             WorkDetailScreen(
                 session = session,
-                workId = workId,
-                onBack = { selectedWorkId = null },
-                onSelectWork = { selectedWorkId = it },
+                workId = activeDestination.workId,
+                onBack = { destination = null },
+                onSelectWork = { destination = LibraryDestination.Work(it) },
                 onSelectAlbum = { albumId, releaseId ->
-                    selectedAlbum = AlbumTarget(albumId, releaseId)
+                    destination = LibraryDestination.Album(AlbumTarget(albumId, releaseId))
                 },
             )
         }
 
-        selectedComposerId != null -> {
+        is LibraryDestination.Composer -> {
             ComposerDetailScreen(
                 session = session,
-                artistId = selectedComposerId,
-                onBack = { selectedComposerId = null },
-                onSelectWork = { selectedWorkId = it },
-                onSelectAlbum = { selectedAlbum = AlbumTarget(it) },
+                artistId = activeDestination.artistId,
+                onBack = { destination = null },
+                onSelectWork = { destination = LibraryDestination.Work(it) },
+                onSelectAlbum = { albumId, releaseId ->
+                    destination = LibraryDestination.Album(AlbumTarget(albumId, releaseId))
+                },
             )
         }
 
-        showMembers -> {
-            MembersScreen(session = session, onBack = { showMembers = false })
+        LibraryDestination.Members -> {
+            MembersScreen(session = session, onBack = { destination = null })
         }
 
-        showSettings -> {
+        LibraryDestination.Settings -> {
             SettingsScreen(
                 session = session,
-                onBack = { showSettings = false },
-                onManageDevices = { showMembers = true },
+                onBack = { destination = null },
+                onManageDevices = { destination = LibraryDestination.Members },
                 onLeaveLibrary = onLeaveLibrary,
             )
         }
 
-        else -> {
+        null -> {
             LibraryBrowser(
                 session = session,
-                onSelectAlbum = { selectedAlbum = AlbumTarget(it) },
-                onSelectComposer = { selectedComposerId = it },
-                onSelectWork = { selectedWorkId = it },
-                onSettings = { showSettings = true },
+                onSelectAlbum = { destination = LibraryDestination.Album(AlbumTarget(it)) },
+                onSelectComposer = { destination = LibraryDestination.Composer(it) },
+                onSelectWork = { destination = LibraryDestination.Work(it) },
+                onSettings = { destination = LibraryDestination.Settings },
             )
         }
     }
@@ -354,6 +364,19 @@ internal fun LibraryErrorBanner(
                 appError == null && syncError != null -> ({ session.appHandle.triggerSync() })
                 else -> null
             },
+    )
+}
+
+@Composable
+internal fun LibraryGlobalErrorBanner(
+    appError: String?,
+    syncError: String?,
+    session: OpenLibrary,
+) {
+    val banner = appError ?: syncError ?: return
+    ErrorBanner(
+        message = banner,
+        onRetry = if (appError == null && syncError != null) ({ session.appHandle.triggerSync() }) else null,
     )
 }
 
@@ -529,29 +552,6 @@ private fun SortMenu(
                     Icon(imageVector = icon, contentDescription = null)
                 },
             )
-        }
-    }
-}
-
-@Composable
-private fun ErrorBanner(
-    message: String,
-    onRetry: (() -> Unit)? = null,
-) {
-    Surface(color = MaterialTheme.colorScheme.errorContainer, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.weight(1f),
-            )
-            if (onRetry != null) {
-                TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
-            }
         }
     }
 }
