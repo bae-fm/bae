@@ -1111,7 +1111,7 @@ extension WelcomeView {
         joinRequest = nil
         do {
             let generated = try await DetachedWork.run {
-                try generateJoinRequest()
+                try generateJoinRequest(email: nil)
             }
             joinRequest = .success(generated)
         }
