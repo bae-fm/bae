@@ -131,19 +131,6 @@ private class JoinFlow(
     }
 }
 
-/** The OAuth providers, for which the joiner authenticates before generating its code. */
-private fun providerUsesOauth(provider: BridgeCloudProvider): Boolean =
-    when (provider) {
-        BridgeCloudProvider.GOOGLE_DRIVE,
-        BridgeCloudProvider.DROPBOX,
-        BridgeCloudProvider.ONE_DRIVE,
-        -> true
-
-        BridgeCloudProvider.S3,
-        BridgeCloudProvider.CLOUD_KIT,
-        -> false
-    }
-
 private suspend fun resolveOauthToken(
     oauthLinking: OAuthLinker?,
     oauthLinkingError: String?,

@@ -252,3 +252,16 @@ private fun JoinInviteEntry(
         Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
     }
 }
+
+/** The OAuth providers, for which the joiner authenticates before generating its code. */
+internal fun providerUsesOauth(provider: BridgeCloudProvider): Boolean =
+    when (provider) {
+        BridgeCloudProvider.GOOGLE_DRIVE,
+        BridgeCloudProvider.DROPBOX,
+        BridgeCloudProvider.ONE_DRIVE,
+        -> true
+
+        BridgeCloudProvider.S3,
+        BridgeCloudProvider.CLOUD_KIT,
+        -> false
+    }
