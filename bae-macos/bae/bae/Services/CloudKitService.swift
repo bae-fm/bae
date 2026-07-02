@@ -459,21 +459,19 @@
             return exists
         }
 
-        func grantShare(memberPubkey: String, email: String) throws
-            -> BridgeCloudKitShare
-        {
+        func grantShare(memberPubkey: String) throws -> BridgeCloudKitShare {
             try ensureZoneSupportsSharing()
-            let participant = try fetchParticipant(email: email)
             let share =
                 try fetchZoneWideShare()
                 ?? CKShare(
                     recordZoneID: privateZoneID
                 )
 
-            participant.permission = .readWrite
-            share.addParticipant(participant)
-            share[memberEmailFieldKey(for: memberPubkey)] =
-                email as CKRecordValue
+            // URL-accept: anyone holding the share URL can accept and gets
+            // read/write. Apple binds the accepting participant's identity at
+            // accept time, so no participant is pre-added and no member email
+            // is captured here — the joiner supplies only its key.
+            share.publicPermission = .readWrite
 
             let savedShare = try saveShare(share, op: "Grant share")
             guard let shareURL = savedShare.url?.absoluteString else {
@@ -488,37 +486,18 @@
             )
         }
 
-        func revokeShare(memberPubkey: String, email: String) throws {
-            guard let share = try fetchZoneWideShare() else {
-                return
-            }
-
-            let emailFieldKey = memberEmailFieldKey(for: memberPubkey)
-            let mappedEmail = share[emailFieldKey] as? String
-            let emailToRemove: String
-            if let mappedEmail {
-                guard mappedEmail == email else {
-                    throw CloudKitError.Storage(
-                        msg:
-                            "CloudKit share member email does not match signed membership email"
-                    )
-                }
-                emailToRemove = mappedEmail
-            }
-            else {
-                emailToRemove = email
-            }
-
-            if let participant = share.participants.first(where: {
-                participantMatches($0, email: emailToRemove)
-            }) {
-                share.removeParticipant(participant)
-            }
-            else {
-                return
-            }
-            share[emailFieldKey] = nil
-            _ = try saveShare(share, op: "Revoke share")
+        /// Revoking a member's content access rides on coven's library-key
+        /// rotation, exactly like S3's `revoke_access`: the removed member may
+        /// still read the CloudKit ciphertext but cannot decrypt anything
+        /// written after the key rotates. A public URL-accept share carries no
+        /// per-member participant mapping to remove, so this is a deliberate
+        /// near-no-op. It does not throw, and does not claim to remove a
+        /// participant it cannot identify. Precise per-participant CKShare
+        /// removal is a follow-up that needs an identity binding written at
+        /// accept time.
+        func revokeShare(memberPubkey: String) throws {
+            // Nothing to remove on the share itself; access loss follows from
+            // coven rotating the library key.
         }
 
         func acceptShare(shareUrl: String) throws -> BridgeCloudKitShare {
@@ -570,42 +549,6 @@
                     msg: "CloudKit zone-wide sharing is not available"
                 )
             }
-        }
-
-        private func fetchParticipant(email: String) throws
-            -> CKShare.Participant
-        {
-            let sem = DispatchSemaphore(value: 0)
-            nonisolated(unsafe) var participant: CKShare.Participant?
-            nonisolated(unsafe) var resultError: Error?
-
-            container.fetchShareParticipant(withEmailAddress: email) {
-                fetchedParticipant,
-                error in
-                if let error {
-                    resultError = error
-                }
-                else {
-                    participant = fetchedParticipant
-                }
-                sem.signal()
-            }
-            sem.wait()
-
-            if let error = resultError {
-                throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(
-                        error,
-                        op: "Share participant lookup"
-                    )
-                )
-            }
-            guard let participant else {
-                throw CloudKitError.Storage(
-                    msg: "CloudKit did not return a share participant"
-                )
-            }
-            return participant
         }
 
         private func fetchZoneWideShare() throws -> CKShare? {
@@ -772,21 +715,6 @@
                 )
             }
             return acceptedShare
-        }
-
-        private func memberEmailFieldKey(for memberPubkey: String) -> String {
-            let prefix = memberPubkey.prefix(48)
-                .map { character in
-                    character.isLetter || character.isNumber ? character : "_"
-                }
-            return "coven_member_\(String(prefix))"
-        }
-
-        private func participantMatches(
-            _ participant: CKShare.Participant,
-            email: String
-        ) -> Bool {
-            participant.userIdentity.lookupInfo?.emailAddress == email
         }
     }
 

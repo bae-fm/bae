@@ -40,12 +40,8 @@ pub trait CloudKitDriver: Send + Sync {
         zone_name: Option<String>,
         key: String,
     ) -> Result<bool, CloudKitError>;
-    fn grant_share(
-        &self,
-        member_pubkey: String,
-        email: String,
-    ) -> Result<BridgeCloudKitShare, CloudKitError>;
-    fn revoke_share(&self, member_pubkey: String, email: String) -> Result<(), CloudKitError>;
+    fn grant_share(&self, member_pubkey: String) -> Result<BridgeCloudKitShare, CloudKitError>;
+    fn revoke_share(&self, member_pubkey: String) -> Result<(), CloudKitError>;
     fn accept_share(&self, share_url: String) -> Result<BridgeCloudKitShare, CloudKitError>;
 }
 
@@ -121,17 +117,16 @@ impl coven::CloudKitOps for CloudKitDriverAdapter {
     fn grant_share(
         &self,
         member_pubkey: &str,
-        email: &str,
     ) -> Result<coven::CloudKitShare, coven::CloudHomeError> {
         self.driver
-            .grant_share(member_pubkey.to_string(), email.to_string())
+            .grant_share(member_pubkey.to_string())
             .map(bridge_share_to_coven)
             .map_err(cloudkit_err_to_cloud_home_err)
     }
 
-    fn revoke_share(&self, member_pubkey: &str, email: &str) -> Result<(), coven::CloudHomeError> {
+    fn revoke_share(&self, member_pubkey: &str) -> Result<(), coven::CloudHomeError> {
         self.driver
-            .revoke_share(member_pubkey.to_string(), email.to_string())
+            .revoke_share(member_pubkey.to_string())
             .map_err(cloudkit_err_to_cloud_home_err)
     }
 
