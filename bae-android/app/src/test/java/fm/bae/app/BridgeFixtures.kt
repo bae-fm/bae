@@ -151,6 +151,17 @@ object BridgeFixtures {
             encryptionKeyFingerprint = null,
             pauseBetweenSides = false,
             exportLocation = BridgeExportLocation.AskEachTime,
+            exportFilenameTemplate = "{track_number} - {title}",
+            exportMetadata =
+                BridgeExportMetadata(
+                    title = true,
+                    artist = true,
+                    album = true,
+                    year = true,
+                    trackNumber = true,
+                    discNumber = true,
+                    coverArt = true,
+                ),
             mcp = BridgeMcpConfig(enabled = false, port = 47777u),
             discogsTokenStatus = BridgeDiscogsTokenStatus.NOT_CONFIGURED,
             discogsUsable = false,
