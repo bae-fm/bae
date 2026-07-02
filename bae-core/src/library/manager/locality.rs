@@ -54,9 +54,15 @@ impl LibraryManager {
     /// Approve a device into the library by its public key, wrapping the library
     /// key to it and signing a membership entry. Returns the invite code to hand
     /// back to the joining device. bae adds every device as a `Member`; the
-    /// founding device is the `Owner`.
-    pub async fn invite_member(&self, public_key_hex: &str) -> Result<String, String> {
-        self.sync.invite_member(public_key_hex).await
+    /// founding device is the `Owner`. `invitee_email` is the joiner's OAuth
+    /// account address (decoded from its join-request) that coven shares the
+    /// OAuth folder to; `None` for S3.
+    pub async fn invite_member(
+        &self,
+        public_key_hex: &str,
+        invitee_email: Option<&str>,
+    ) -> Result<String, String> {
+        self.sync.invite_member(public_key_hex, invitee_email).await
     }
 
     /// Remove a device from the library and rotate the library key so the removed
